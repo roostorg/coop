@@ -1,9 +1,11 @@
+/* eslint-disable max-lines */
 import crypto from 'node:crypto';
 import { type Kysely } from 'kysely';
 
 import type { Dependencies } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
 import {
+  makeBadRequestError,
   makeNotFoundError,
   makeUnauthorizedError,
 } from '../../utils/errors.js';
@@ -11,6 +13,7 @@ import { makeKyselyTransactionWithRetry } from '../../utils/kyselyTransactionWit
 import { asyncRandomBytes } from '../../utils/misc.js';
 import { HOUR_MS } from '../../utils/time.js';
 import { CoopEmailAddress } from '../sendEmailService/sendEmailService.js';
+import { MIN_PASSWORD_LENGTH } from './constants.js';
 import type { MrtChartConfig } from './dbTypes.js';
 import type { UserManagementPg } from './index.js';
 import {
@@ -28,20 +31,18 @@ class UserManagementService {
     private readonly configService: Dependencies['ConfigService'],
   ) {}
 
-  // Returns null for orgs without seeded role rows; the read path falls
-  // back to UserPermissionsForRole defaults.
   async #lookupSystemRoleId(opts: {
     orgId: string;
     role: UserRole;
-  }): Promise<string | null> {
+  }): Promise<string> {
     const row = await this.pgQuery
       .selectFrom('public.roles')
       .select('id')
       .where('org_id', '=', opts.orgId)
       .where('key', '=', opts.role)
       .where('is_system', '=', true)
-      .executeTakeFirst();
-    return row?.id ?? null;
+      .executeTakeFirstOrThrow();
+    return row.id;
   }
 
   async getUserInterfaceSettings(opts: { userId: string; orgId: string }) {
@@ -54,15 +55,17 @@ class UserManagementService {
 
     if (
       row &&
-      row.moderator_safety_grayscale &&
-      row.moderator_safety_blur_level &&
-      row.moderator_safety_mute_video
+      row.moderator_safety_grayscale != null &&
+      row.moderator_safety_blur_level != null &&
+      row.moderator_safety_mute_video != null &&
+      row.moderator_safety_sepia != null
     ) {
       // If all the user's settings have been set, just return them
       return {
         moderatorSafetyGrayscale: row.moderator_safety_grayscale,
         moderatorSafetyBlurLevel: row.moderator_safety_blur_level,
         moderatorSafetyMuteVideo: row.moderator_safety_mute_video,
+        moderatorSafetySepia: row.moderator_safety_sepia,
         mrtChartConfigurations: row.mrt_chart_configurations ?? [],
       };
     }
@@ -73,6 +76,8 @@ class UserManagementService {
     return {
       moderatorSafetyGrayscale:
         row?.moderator_safety_grayscale ?? orgDefaults.moderatorSafetyGrayscale,
+      moderatorSafetySepia:
+        row?.moderator_safety_sepia ?? orgDefaults.moderatorSafetySepia,
       moderatorSafetyBlurLevel:
         row?.moderator_safety_blur_level ??
         orgDefaults.moderatorSafetyBlurLevel,
@@ -87,8 +92,18 @@ class UserManagementService {
     const { token } = opts;
     const tokenRow = await this.pgQuery
       .selectFrom('public.invite_user_tokens')
-      .selectAll()
-      .where('token', '=', token)
+      .innerJoin('public.roles', (join) =>
+        join
+          .onRef('public.roles.id', '=', 'public.invite_user_tokens.role_id')
+          .onRef(
+            'public.roles.org_id',
+            '=',
+            'public.invite_user_tokens.org_id',
+          ),
+      )
+      .selectAll('public.invite_user_tokens')
+      .select('public.roles.key as role')
+      .where('public.invite_user_tokens.token', '=', token)
       .executeTakeFirst();
 
     if (tokenRow == null) {
@@ -121,7 +136,7 @@ class UserManagementService {
     const token = (await asyncRandomBytes(32)).toString('hex');
     await this.pgQuery
       .insertInto('public.invite_user_tokens')
-      .values({ token, email, role, role_id: roleId, org_id: orgId })
+      .values({ token, email, role_id: roleId, org_id: orgId })
       .execute();
     return token;
   }
@@ -133,9 +148,19 @@ class UserManagementService {
   > {
     const result = await this.pgQuery
       .selectFrom('public.invite_user_tokens')
-      .selectAll()
-      .where('org_id', '=', orgId)
-      .orderBy('created_at', 'desc')
+      .innerJoin('public.roles', (join) =>
+        join
+          .onRef('public.roles.id', '=', 'public.invite_user_tokens.role_id')
+          .onRef(
+            'public.roles.org_id',
+            '=',
+            'public.invite_user_tokens.org_id',
+          ),
+      )
+      .selectAll('public.invite_user_tokens')
+      .select('public.roles.key as role')
+      .where('public.invite_user_tokens.org_id', '=', orgId)
+      .orderBy('public.invite_user_tokens.created_at', 'desc')
       .execute();
 
     return result.map((row) => ({
@@ -163,6 +188,7 @@ class UserManagementService {
         moderatorSafetyMuteVideo: boolean;
         moderatorSafetyGrayscale: boolean;
         moderatorSafetyBlurLevel: number;
+        moderatorSafetySepia: boolean;
       };
       mrtChartConfigurations?: readonly MrtChartConfig[];
     };
@@ -176,6 +202,8 @@ class UserManagementService {
         ? {
             moderator_safety_grayscale:
               moderatorSafetySettings.moderatorSafetyGrayscale,
+            moderator_safety_sepia:
+              moderatorSafetySettings.moderatorSafetySepia,
             moderator_safety_blur_level:
               moderatorSafetySettings.moderatorSafetyBlurLevel,
             moderator_safety_mute_video:
@@ -221,6 +249,7 @@ class UserManagementService {
 
     return {
       moderatorSafetyGrayscale: row.moderator_safety_grayscale,
+      moderatorSafetySepia: row.moderator_safety_sepia,
       moderatorSafetyBlurLevel: row.moderator_safety_blur_level,
       moderatorSafetyMuteVideo: row.moderator_safety_mute_video,
     };
@@ -231,18 +260,23 @@ class UserManagementService {
     // If you don't provide these values, they will be set to the default values
     // configured on the pg table definition
     moderatorSafetyGrayscale?: boolean;
+    moderatorSafetySepia?: boolean;
     moderatorSafetyBlurLevel?: number;
     moderatorSafetyMuteVideo?: boolean;
   }) {
     const {
       orgId,
       moderatorSafetyGrayscale,
+      moderatorSafetySepia,
       moderatorSafetyBlurLevel,
       moderatorSafetyMuteVideo,
     } = opts;
     const updateFields = {
       ...(moderatorSafetyGrayscale !== undefined
         ? { moderator_safety_grayscale: moderatorSafetyGrayscale }
+        : {}),
+      ...(moderatorSafetySepia !== undefined
+        ? { moderator_safety_sepia: moderatorSafetySepia }
         : {}),
       ...(moderatorSafetyBlurLevel !== undefined
         ? { moderator_safety_blur_level: moderatorSafetyBlurLevel }
@@ -258,6 +292,7 @@ class UserManagementService {
         {
           org_id: orgId,
           moderator_safety_grayscale: moderatorSafetyGrayscale,
+          moderator_safety_sepia: moderatorSafetySepia,
           moderator_safety_blur_level: moderatorSafetyBlurLevel,
           moderator_safety_mute_video: moderatorSafetyMuteVideo,
         },
@@ -306,7 +341,7 @@ class UserManagementService {
 
     const result = await this.pgQuery
       .updateTable('public.users')
-      .set({ role: newRole, role_id: newRoleId })
+      .set({ role_id: newRoleId })
       .where('id', '=', userId)
       .where('org_id', '=', invoker.orgId)
       .executeTakeFirst();
@@ -459,6 +494,13 @@ class UserManagementService {
       return;
     }
 
+    if (newPassword.length < MIN_PASSWORD_LENGTH) {
+      throw makeBadRequestError(
+        `Password must be at least ${MIN_PASSWORD_LENGTH} characters long.`,
+        { shouldErrorSpan: false, pointer: '/input/newPassword' },
+      );
+    }
+
     const hashedPassword = await hashPassword(newPassword);
     // Atomic: a committed password change must not leave the user's sessions
     // or reset tokens alive.
@@ -479,16 +521,21 @@ class UserManagementService {
   async getUsersForOrg(orgId: string) {
     return this.pgQuery
       .selectFrom('public.users')
+      .innerJoin('public.roles', (join) =>
+        join
+          .onRef('public.roles.id', '=', 'public.users.role_id')
+          .onRef('public.roles.org_id', '=', 'public.users.org_id'),
+      )
       .select([
-        'id',
-        'email',
-        'first_name as firstName',
-        'last_name as lastName',
-        'role',
+        'public.users.id',
+        'public.users.email',
+        'public.users.first_name as firstName',
+        'public.users.last_name as lastName',
+        'public.roles.key as role',
       ])
-      .where('org_id', '=', orgId)
-      .where('rejected_by_admin', '=', false)
-      .where('approved_by_admin', '=', true)
+      .where('public.users.org_id', '=', orgId)
+      .where('public.users.rejected_by_admin', '=', false)
+      .where('public.users.approved_by_admin', '=', true)
       .execute();
   }
 }

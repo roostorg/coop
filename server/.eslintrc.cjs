@@ -694,6 +694,7 @@ module.exports = {
           },
         ],
         'no-console': 'off',
+        'max-lines': 'off',
         // Allow `typeof import('...')` annotations; needed for E2E tests.
         '@typescript-eslint/consistent-type-imports': [
           'error',

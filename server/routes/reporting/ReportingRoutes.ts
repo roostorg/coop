@@ -12,8 +12,7 @@ import submitReport from './submitReport.js';
 
 export type ReportItemInput = {
   reporter:
-    | { kind: 'rule'; id: string }
-    | { kind: 'user'; typeId: string; id: string };
+    { kind: 'rule'; id: string } | { kind: 'user'; typeId: string; id: string };
   reportedAt: string;
   reportedForReason?: {
     policyId?: string | null;

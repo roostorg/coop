@@ -15,6 +15,7 @@ describe('Calendar Component', () => {
     renderCalendar({
       mode: 'single',
       selected: selectedDate,
+      defaultMonth: selectedDate,
     });
 
     const selectedDay = screen.getByText('15');
@@ -26,6 +27,7 @@ describe('Calendar Component', () => {
     renderCalendar({
       mode: 'multiple',
       selected: selectedDates,
+      defaultMonth: selectedDates[0],
     });
 
     selectedDates.forEach((date) => {

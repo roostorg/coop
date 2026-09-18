@@ -1,30 +1,147 @@
-# Coop 1.0.1
+# Changelog
 
-## Review Console
+All notable changes to Coop will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/2.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+For more information about each release including git tags and artifacts, see [Releases](https://github.com/roostorg/coop/releases).
+
+## [Unreleased]
+
+### Added
+
+- List parameters used in the action in the item action history view ([#1173](https://github.com/roostorg/coop/pull/1173) by [@maarkN](https://github.com/maarkN), closes [#833](https://github.com/roostorg/coop/issues/833))
+- Manual Review Analytics with average handle time per moderator ([#1022](https://github.com/roostorg/coop/pull/1022) by [@juanmrad](https://github.com/juanmrad), closes [#380](https://github.com/roostorg/coop/issues/380))
+- Support for text-only NCMEC reports ([#866](https://github.com/roostorg/coop/pull/866), [#881](https://github.com/roostorg/coop/pull/881) by [@calebmcquaid](https://github.com/calebmcquaid), closes [#661](https://github.com/roostorg/coop/issues/661))
+- OpenAI `self-harm/intent` and `self-harm/instructions` signals for text and image ([#535](https://github.com/roostorg/coop/pull/535) by [@julietshen](https://github.com/julietshen))
+- Sepia filter for moderator wellness controls ([#62](https://github.com/roostorg/coop/pull/62) by [@serendipty01](https://github.com/serendipty01))
+
+### Changed
+
+- Scylla is now optional via `ITEM_INVESTIGATION_AND_STRIKES_ENABLED` ([#918](https://github.com/roostorg/coop/pull/918) by [@sunilatlas](https://github.com/sunilatlas))
+- Settings "Other" tab renamed to "Partial Items" and its settings relocated ([#965](https://github.com/roostorg/coop/pull/965) by [@golden-fox07](https://github.com/golden-fox07))
+- Queue deletion is refused while routing rules still reference the queue ([#808](https://github.com/roostorg/coop/pull/808) by [@reitblatt](https://github.com/reitblatt))
+- Long text fields in the review console collapse behind a "Read more" control ([#903](https://github.com/roostorg/coop/pull/903) by [@taobojlen](https://github.com/taobojlen))
+- Production Node images moved from Debian 11 (bullseye) to Debian 12 (bookworm) ([#1138](https://github.com/roostorg/coop/pull/1138) by [@juanmrad](https://github.com/juanmrad))
+
+### Removed
+
+- Unused `GRAPHQL_OPAQUE_SCALAR_SECRET` and `LAUNCHDARKLY_SECRET` environment variables ([#1246](https://github.com/roostorg/coop/pull/1246) by [@ThisIsMissEm](https://github.com/ThisIsMissEm))
+- Google Cloud Translation API, the `ENGLISH_TRANSLATION` derived field, and `GOOGLE_TRANSLATE_API_KEY` ([#1045](https://github.com/roostorg/coop/pull/1045) by [@julietshen](https://github.com/julietshen))
+- `IMAGE_SIMILARITY_SCORE` and `IMAGE_EXACT_MATCH` signal types ([#1043](https://github.com/roostorg/coop/pull/1043) by [@julietshen](https://github.com/julietshen), closes [#686](https://github.com/roostorg/coop/issues/686))
+
+### Fixed
+
+- Rule history dropping other rules' versions when filtered by start date ([#1056](https://github.com/roostorg/coop/pull/1056) by [@juanmrad](https://github.com/juanmrad))
+- `RetryFailedNcmecDecisionsJob` ignoring `NCMEC_ENV` and retrying test decisions ([#928](https://github.com/roostorg/coop/pull/928) by [@taobojlen](https://github.com/taobojlen))
+- Queue creation failing with "name already exists" on the default reviewer selection ([#1069](https://github.com/roostorg/coop/pull/1069) by [@jess-upscrolled](https://github.com/jess-upscrolled), closes [#1074](https://github.com/roostorg/coop/issues/1074))
+- Job submission failing when an item has an unparseable `Created At` value ([#913](https://github.com/roostorg/coop/pull/913) by [@julietshen](https://github.com/julietshen))
+- "Something Went Wrong" when opening a job or queue with an unparseable `Created At` value ([#916](https://github.com/roostorg/coop/pull/916) by [@julietshen](https://github.com/julietshen))
+- "Skipped Jobs By Queue" grouping by reviewer instead of queue ([#1009](https://github.com/roostorg/coop/pull/1009) by [@taobojlen](https://github.com/taobojlen))
+- Strike analytics User column linking to the triggering item instead of the struck user ([#979](https://github.com/roostorg/coop/pull/979) by [@juanmrad](https://github.com/juanmrad), closes [#818](https://github.com/roostorg/coop/issues/818))
+- Child policies in User Strikes showing the parent policy's score ([#992](https://github.com/roostorg/coop/pull/992) by [@taobojlen](https://github.com/taobojlen))
+- "Oldest Task Age" showing the newest job's age ([#909](https://github.com/roostorg/coop/pull/909) by [@dom-notion](https://github.com/dom-notion))
+- Sorting on the merged reports and users tables, and on enum columns ([#993](https://github.com/roostorg/coop/pull/993), [#995](https://github.com/roostorg/coop/pull/995), [#1003](https://github.com/roostorg/coop/pull/1003) by [@taobojlen](https://github.com/taobojlen))
+- Scylla healthcheck probing gossip instead of CQL readiness ([#1041](https://github.com/roostorg/coop/pull/1041) by [@reitblatt](https://github.com/reitblatt))
+- Podman Compose setup failing to resolve the backend ([#981](https://github.com/roostorg/coop/pull/981) by [@juanmrad](https://github.com/juanmrad))
+- DB Migrator rejecting non-standard Scylla ports ([#878](https://github.com/roostorg/coop/pull/878) by [@jess-upscrolled](https://github.com/jess-upscrolled))
+
+### Security
+
+- Passwords are hashed with Argon2id instead of bcrypt at cost factor 5 ([#901](https://github.com/roostorg/coop/pull/901) by [@serendipty01](https://github.com/serendipty01), closes [#900](https://github.com/roostorg/coop/issues/900))
+- Minimum password length raised to 15 and enforced server-side ([#1065](https://github.com/roostorg/coop/pull/1065), [#1094](https://github.com/roostorg/coop/pull/1094) by [@serendipty01](https://github.com/serendipty01))
+
+## [1.0.2] - 2026-06-30
+
+This release addresses reported security advisories, improves NCMEC CyberTipline reporting, and includes front-end quality-of-life improvements.
+
+### Security
+
+> [!NOTE]
+> For security announcements, we encourage adopters to subscribe to the [security-announce@roost.tools mailing list](https://groups.google.com/a/roost.tools/g/security-announce).
+
+- Routine dependency package upgrades to address vulnerabilities
+- See [Security and quality](https://github.com/roostorg/community/security) for published security advisories
+
+### NCMEC
+
+- Added `email` as a supported schema field role for user items, ensuring inclusion and validation for NCMEC reports (#840, #842)
+- `EMAIL_ADDRESS` added as a first-class scalar in `@roostorg/coop-types` (v2.4.0) (#841)
+- Auto-populate `originalFileName` (from the media URL) and `fileRelevance` (defaults to `Reported`) for NCMEC reports (#855)
+- Fixed `fileDetails.ipCaptureEvent` XSD element ordering (#856)
+
+### Review Console
+
+- Added User Strikes count to job and item investigation views (#766)
+- Added decision reasons to recent decisions view and CSV exports (#772)
+- Split "require decision reason" into separate action and ignore settings (#780)
+- Fixed duplicate entries in recent decisions (#774)
+- Empty threads are no longer hidden (#804)
+- Improved Review Console dashboard display by ellipsizing long queue IDs (#849)
+- Improved moderator textarea placeholder for clarity (#711)
+- Fixed content URL rendering in the review iframe when no content proxy is configured (#777)
+
+### Actions
+
+- Parameterized actions now work with proactive rules and user strikes (#792)
+- New per-queue "clear other reports for a user" sweep action; sweep now also handles related items (#817, #835)
+- Added `creator` field to action webhook callbacks (#755)
+
+### Investigations
+
+- Added IP address lookup to investigation view (#754)
+
+### Other fixes
+
+- Added client-side email validation for invites (#786)
+- Express session store now properly closed on API shutdown (#825)
+
+### CI & infrastructure
+
+- Server integration tests now run in CI (#827); basic Playwright E2E test suite added (#823)
+- Server tests isolated via transaction rollback (#732)
+- TypeScript type-checking added for `db` and `migrator` in CI (#782)
+- Prettier enforced globally in CI (#834)
+- GitHub Actions updated to Node 24 runtime (#795)
+- `zizmor` added to lint CI workflows for security issues (#721)
+- Knip added across all packages to remove unused dependencies (#734, #760, #761, #762)
+- Redis user/password now correctly set in no-cluster mode (#747)
+
+### New contributors
+
+- @reitblatt made their first contribution in https://github.com/roostorg/coop/pull/785
+- @jess-upscrolled made their first contribution in https://github.com/roostorg/coop/pull/804
+- @ltianyi992 made their first contribution in https://github.com/roostorg/coop/pull/711
+
+**Full Changelog**: https://github.com/roostorg/coop/compare/1.0.1...1.0.2
+
+## [1.0.1] - 2026-06-11
+
+### Review Console
 
 - Incomplete User Score removed from UI in favor of User Strikes (#726)
 - Related items now show the item's name rather than its raw ID; duplicate entries removed (#730)
 
-## NCMEC
+### NCMEC
 
 - Minimum image count required before submitting an NCMEC report is now configurable (#710)
 - Policy selection and decision-reason requirements are skipped for NCMEC jobs, which don't meaningfully apply (#737, closes #736)
 
-## Integrations
+### Integrations
 
 - OpenAI integration correctly labeled as "OpenAI Moderation API" with a link to the model card in the UI (#742, #739)
 
-## Documentation
+### Documentation
 
 - Administration guide expanded to cover newly-added organization settings
 - User Strikes docs added
 - Role Management section added to the administration guide, covering configurable roles and permissions
 
-## Removals
+### Removals
 
 - GDPR delete endpoint, database table, and related documentation removed; the endpoint was reconsidered and dropped rather than implemented (#728, closes #336)
 
-## CI & infrastructure
+### CI & infrastructure
 
 - Docker image release workflow fixed; manual trigger for releases added (#741)
 - AGENTS.md added to `.github/` for AI coding assistants (#731)
@@ -32,7 +149,7 @@
 
 **Full Changelog**: https://github.com/roostorg/coop/compare/1.0...1.0.1
 
-# Coop 1.0
+## [1.0.0] - 2026-06-09
 
 We're thrilled to share Coop 1.0! This is our first major release and the one we've been building toward since Coop went open source: ready for self-hosted deployment by platforms of all sizes. Since v0.1, we've focused on three major areas:
 
@@ -42,29 +159,29 @@ We're thrilled to share Coop 1.0! This is our first major release and the one we
 
 - **Reliability & sustainability** including several fixes, improvements, and security hardening to ensure Coop is production-ready and well-positioned as a critical open source project
 
-## Making it easier to get started
+### Making it easier to get started
 
 We focused a _ton_ of time and effort on making it faster, easier, and lighter-weight to get up and running with Coop.
 
-### Simplification & modernization
+#### Simplification & modernization
 
 Coop 1.0 is dramatically simpler to deploy than earlier versions. We now build and publish Docker images for easier testing and deployment. We migrated from Sequelize to Kysely, making Coop lighter-weight and easier to keep secure with fewer dependencies. We replaced Kafka with BullMQ for item submission processing, removing one of the most operationally demanding deployment dependencies. And we cleaned up a significant amount of SaaS-era code that was never meant for self-hosted deployments, including legacy client marketing and tracking assets, Snowflake, the legacy risk AI model, and other unmaintained remnants.
 
 On the modernization front, we upgraded to Apollo v5, Express 5, and migrated the client build from Create React App to Vite.
 
-### Rewritten documentation
+#### Rewritten documentation
 
 Before Coop 1.0, our documentation was a mix of SaaS-oriented content, early architectural notes, and several incomplete attempts to expand coverage. We spent significant time completely reworking it. The README is simpler to skim, and the new docs site structure separates content into four distinct sections: user guide, development and deployment, API reference, and integrations. We also implemented versioning, so docs for `main` will always live at [roostorg.github.io/coop/latest](https://roostorg.github.io/coop/latest) and docs for this release at [roostorg.github.io/coop/1.0](https://roostorg.github.io/coop/1.0.0).
 
-### Admin settings
+#### Admin settings
 
 We built out a new granular capability-based permissions system that makes it easier to customize what roles and permissions are available for your team. As a SaaS product, several features for organizations were also hidden behind database-only toggles; to make it easier to customize Coop for your platform and deployment, we've moved these settings directly into the Coop front-end for administrators.
 
-## Expanded features & capability
+### Expanded features & capability
 
 We were extremely fortunate to have multiple platforms adopt Coop during the 1.0 development cycle; this meant we had real-world users sharing invaluable feedback. As a result, Coop 1.0 is now a better product—not just for these adopters, but for everyone. We shipped several significant capabilities as a result:
 
-### Review & moderation improvements
+#### Review & moderation improvements
 
 - User Strikes are now enabled, giving platforms a native way to track and act on repeat violations directly within Coop
 - Parameterized actions let moderators pass runtime values when making decisions, making enforcement workflows significantly more flexible
@@ -75,7 +192,7 @@ We were extremely fortunate to have multiple platforms adopt Coop during the 1.0
 - Recent actions list refreshes automatically after submitting an action
 - Point of Interest (Google Maps) is gracefully disabled when no API key is configured
 
-### Additional platform needs
+#### Additional platform needs
 
 - Coop now supports OpenAI's omni-moderation-latest model as an image moderation signal source
 - HMA exchanges can now be configured directly from the Coop UI, removing the need to manage that setup separately
@@ -83,7 +200,7 @@ We were extremely fortunate to have multiple platforms adopt Coop during the 1.0
 - A new MEDIA content type is supported end to end, from submission through the review console
 - A `create-org` script is now available for provisioning new organizations from the command line
 
-### Child safety improvements
+#### Child safety improvements
 
 - Built-in NCMEC enqueue actions are now available to all orgs
 - NCMEC and Review Console enqueue actions now work for users with no prior submission record
@@ -93,11 +210,11 @@ We were extremely fortunate to have multiple platforms adopt Coop during the 1.0
 - NCMEC report routing moved from hardcoded values to environment config
 - Reviewer-friendly error messages now surface for failed NCMEC jobs
 
-## Reliability & sustainability
+### Reliability & sustainability
 
 As a critical open source project that empowers platforms to keep their users safe, it's crucial that Coop is reliable, sustainable, and secure. We focused on ensuring Coop 1.0 meets these goals and will continue to meet them going forward.
 
-### Fixes
+#### Fixes
 
 - Postgres idle-client errors crashes are fixed
 - ClickHouse outages no longer crash dashboard pages
@@ -109,11 +226,11 @@ As a critical open source project that empowers platforms to keep their users sa
 - Fixed the Submit button being cut off when content overflows in MRT and investigation views
 - Fixed CoopButton links not respecting disabled state
 
-### Security & dependencies
+#### Security & dependencies
 
 When we first released Coop's source code, there was a significant amount of dependency debt to address. Coop 1.0 resolves every known critical and high severity alert through a combination of dependency removal and version updates across the entire project. We also hardened our supply chain practices: GitHub Actions are now SHA-pinned with `--ignore-scripts`, and the Busybox Docker image is pinned by digest to prevent silent substitution. We added automated license scanning to CI to enforce compatibility with Coop's Apache-2.0 license.
 
-### Other improvements
+#### Other improvements
 
 - End-to-end integration tests added for item submission, report flow, and rule changes
 - CI checks moved into Docker Compose services for consistency with local development
@@ -121,11 +238,11 @@ When we first released Coop's source code, there was a significant amount of dep
 - `AGENTS.md` added with Coop-specific guidance for AI coding assistants
 - Issue forms added to guide bug reports and feature requests
 
-## Get involved
+### Get involved
 
 We're building Coop in the open and this release reflects the work of an incredibly active community of contributors, adopters, and testers. Whether you're deploying Coop, hitting a rough edge, or have ideas to explore, please [open an issue](https://github.com/roostorg/coop/issues/new) or [join our Discord](https://discord.gg/5Csqnw2FSQ). Your feedback directly [shapes our roadmap](https://github.com/roostorg/community/blob/main/roadmap.md).
 
-## Thank you!
+### Thank you!
 
 A huge thank you to everyone who contributed to this release, and a special welcome to our nine new contributors making their first contributions to Coop: [@TomHawk123](https://github.com/TomHawk123), [@dom-notion](https://github.com/dom-notion), [@vinaysrao1](https://github.com/vinaysrao1), [@samuelralak](https://github.com/samuelralak), [@ThatKoffe](https://github.com/ThatKoffe), [@haileyok](https://github.com/haileyok), [@davidyshin](https://github.com/davidyshin), [@ded-furby](https://github.com/ded-furby), and [@JagadeeshChandra12](https://github.com/JagadeeshChandra12), alongside returning contributors [@juanmrad](https://github.com/juanmrad), [@julietshen](https://github.com/julietshen), [@pawiecz](https://github.com/pawiecz), [@cassidyjames](https://github.com/cassidyjames), [serendipty01](https://github.com/serendipty01), [@wayjaywang ](https://github.com/wayjaywang), and [@calebmcquaid](https://github.com/calebmcquaid). This release is a testament to what an open, collaborative community can build together. Thank you all. 🎉
 
@@ -133,11 +250,11 @@ A huge thank you to everyone who contributed to this release, and a special welc
 
 ---
 
-# Coop v0.1
+## [0.1] - 2026-03-20
 
 We're excited to share Coop v0.1! This release is all about strengthening the foundation: better integrations, improved stability, and a handful of meaningful feature additions driven by early community feedback.
 
-## What's new
+### What's new
 
 - Coop now supports Zentropi as a signal source, expanding the range of classifiers you can plug into your review workflows
 - You can now use Amazon SES as an email backend option, giving teams more flexibility in how they handle notifications
@@ -146,7 +263,7 @@ We're excited to share Coop v0.1! This release is all about strengthening the fo
 - The investigation workflow's action flow has been meaningfully improved and better documented
 - We've laid the scaffolding for a config-based integrations plugin system, including types, a registry, and a logo API. This should make it easier to build and ship signal integrations going forward!
 
-## Under the hood
+### Under the hood
 
 - Upgraded BullMQ to latest and bumped several deprecated packages
 - Locked Node to v24.14.0 for consistency across development environments
@@ -158,11 +275,11 @@ We're excited to share Coop v0.1! This release is all about strengthening the fo
 - Fixed code scanning alerts surfaced by GitHub
 - Various CI improvements and dependency cleanup
 
-## Get involved
+### Get involved
 
 We're building Coop in the open and this release reflects the fixes, features, and improvements that came directly from people digging in and contributing. Whether you're running Coop in a test environment, hitting a rough edge, or have ideas you want to explore, please [open an issue](https://github.com/roostorg/coop/issues/new) or [join our Discord](https://discord.gg/5Csqnw2FSQ). Your feedback directly [shapes our roadmap](https://github.com/roostorg/community/blob/main/roadmap.md).
 
-## Thank you!
+### Thank you!
 
 A huge thank you to everyone who contributed to this release, and a special welcome to our five new contributors making their first contributions to Coop: @serendipty01, @samidh, @calebmcquaid, and @mac-df alongside returning contributors @juanmrad, @julietshen, @pawiecz, and @vinaysrao1. This release is a testament to what an open, collaborative community can build together. Thank you all. 🎉
 
@@ -170,7 +287,7 @@ A huge thank you to everyone who contributed to this release, and a special welc
 
 ---
 
-# Coop v0
+## [0.0] - 2026-02-10
 
 We’re thrilled to announce the initial release of Coop! This v0 release includes core review capabilities alongside specialized child safety workflow functionality:
 
@@ -189,10 +306,17 @@ As an early v0 release, we've focused on getting core review capabilities and ch
 
 For more information about Coop, check out our [announcement blog post](https://roost.tools/blog/meet-coop-v-0/).
 
-## Get Involved
+### Get Involved
 
 We're developing Coop in the open and want to hear from you. Whether you're testing it out, running into issues, or have ideas for improvements, please [open an issue](https://github.com/roostorg/coop/issues/new/choose) or [join our Discord](https://discord.gg/5Csqnw2FSQ). Your feedback directly shapes our [roadmap](https://roostorg.github.io/community/roadmap.html).
 
-## Thank You
+### Thank You
 
 This release was possible because of the efforts of contributors who worked through complex redesign, partners who believed in the vision of open source safety tools, and the broader trust and safety community who provided feedback and guidance. Thank you especially to @juanmrad, @pawiecz, @kbicevski, Sjoerd Simons, @emanueleaina, @dom-notion, @cassidyjames, @vinaysrao1, @wayjaywang, and @julietshen.
+
+[unreleased]: https://github.com/roostorg/coop/compare/1.0.2...HEAD
+[1.0.2]: https://github.com/roostorg/coop/compare/1.0.1...1.0.2
+[1.0.1]: https://github.com/roostorg/coop/compare/1.0.0...1.0.1
+[1.0.0]: https://github.com/roostorg/coop/compare/0.1...1.0.0
+[0.1]: https://github.com/roostorg/coop/compare/0.0...0.1
+[0.0]: https://github.com/roostorg/coop/releases/tag/0.0

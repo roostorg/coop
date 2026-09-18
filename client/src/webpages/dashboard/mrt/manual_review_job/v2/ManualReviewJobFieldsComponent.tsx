@@ -1,6 +1,5 @@
 import { getFieldValueForRole } from '@/utils/itemUtils';
 import type { ItemTypeFieldFieldData } from '@/webpages/dashboard/item_types/itemTypeUtils';
-import { DownOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import {
   isContainerField,
@@ -9,11 +8,13 @@ import {
   ScalarTypeRuntimeType,
 } from '@roostorg/coop-types';
 import isPlainObject from 'lodash/isPlainObject';
+import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
-import ReactAudioPlayer from 'react-audio-player';
+import ReactPlayer from 'react-player/lazy';
 import { Link } from 'react-router-dom';
 
 import ComponentLoading from '../../../../../components/common/ComponentLoading';
+import CollapsibleText from '@/webpages/dashboard/mrt/manual_review_job/v2/components/CollapsibleText';
 
 import {
   GQLContentItem,
@@ -89,6 +90,85 @@ type FieldsComponentOptions = {
   unblurAllMedia?: boolean;
   transparentBackground?: boolean;
 };
+
+gql`
+  query getRelatedItems($itemIdentifiers: [ItemIdentifierInput!]!) {
+    latestItemSubmissions(itemIdentifiers: $itemIdentifiers) {
+      ... on UserItem {
+        id
+        submissionId
+        submissionTime
+        data
+        type {
+          id
+          name
+          baseFields {
+            name
+            type
+            required
+            container {
+              containerType
+              keyScalarType
+              valueScalarType
+            }
+          }
+          schemaFieldRoles {
+            displayName
+            createdAt
+            profileIcon
+            backgroundImage
+          }
+        }
+      }
+      ... on ContentItem {
+        id
+        submissionId
+        submissionTime
+        data
+        type {
+          id
+          name
+          baseFields {
+            name
+            type
+            required
+            container {
+              containerType
+              keyScalarType
+              valueScalarType
+            }
+          }
+          schemaFieldRoles {
+            displayName
+          }
+        }
+      }
+      ... on ThreadItem {
+        id
+        submissionId
+        submissionTime
+        data
+        type {
+          id
+          name
+          baseFields {
+            name
+            type
+            required
+            container {
+              containerType
+              keyScalarType
+              valueScalarType
+            }
+          }
+          schemaFieldRoles {
+            displayName
+          }
+        }
+      }
+    }
+  }
+`;
 
 gql`
   query ItemTypeHiddenFields {
@@ -186,7 +266,19 @@ function TableRowComponent(props: {
       return (
         <div className="flex flex-col px-2 align-top text-start">
           {label ? <div className="pr-3 font-bold">{label}</div> : null}
-          <ReactAudioPlayer src={url} autoPlay controls />
+          <ReactPlayer url={url} controls width="100%" height="54px" />
+        </div>
+      );
+    }
+    case 'STRING': {
+      return (
+        <div className="flex flex-col whitespace-normal align-top text-start">
+          {label ? (
+            <div className="pr-3 font-bold text-slate-500 whitespace-nowrap">
+              {label}
+            </div>
+          ) : null}
+          <CollapsibleText text={String(value)} />
         </div>
       );
     }
@@ -195,7 +287,9 @@ function TableRowComponent(props: {
     case 'ID':
     case 'NUMBER':
     case 'POLICY_ID':
-    case 'STRING': {
+    case 'EMAIL_ADDRESS': {
+      // EMAIL_ADDRESS renders as plain text for now; a follow-up could make
+      // it a mailto/pivot link the way IP_ADDRESS pivots on the IP.
       return (
         <div className="flex flex-col whitespace-normal align-top text-start">
           {label ? (
@@ -275,6 +369,7 @@ function TableRowComponent(props: {
                   ? (safetySettings.moderatorSafetyBlurLevel as BlurStrength)
                   : (2 as const),
               grayscale: safetySettings?.moderatorSafetyGrayscale ?? false,
+              sepia: safetySettings?.moderatorSafetySepia ?? false,
             }}
           />
           {label ? <div className="font-bold">{label}</div> : null}
@@ -349,6 +444,7 @@ function TableRowComponent(props: {
                     ? (safetySettings.moderatorSafetyBlurLevel as BlurStrength)
                     : (2 as const),
                 grayscale: safetySettings?.moderatorSafetyGrayscale ?? false,
+                sepia: safetySettings?.moderatorSafetySepia ?? false,
               }}
             />
             {label ? <div className="font-bold">{label}</div> : null}
@@ -383,7 +479,7 @@ function TableRowComponent(props: {
         return (
           <div className="flex flex-col px-2 align-top text-start">
             {label ? <div className="pr-3 font-bold">{label}</div> : null}
-            <ReactAudioPlayer src={url} autoPlay controls />
+            <ReactPlayer url={url} controls width="100%" height="54px" />
           </div>
         );
       }
@@ -520,9 +616,10 @@ function FieldComponent(props: {
     case 'URL':
     case 'POLICY_ID':
     case 'IP_ADDRESS':
+    case 'EMAIL_ADDRESS':
     case 'DATETIME':
       return (
-        <div className="py-0" key={data.name}>
+        <div className="py-0 min-w-0" key={data.name}>
           {!hideLabels ? (
             <div className="pb-px align-top text-start whitespace-nowrap">
               <ContentFieldLabelComponent data={data} />
@@ -576,6 +673,7 @@ function ContainerComponent(props: {
             case 'DATETIME':
             case 'POLICY_ID':
             case 'IP_ADDRESS':
+            case 'EMAIL_ADDRESS':
               return true;
             case 'AUDIO':
             case 'IMAGE':
@@ -618,6 +716,7 @@ function ContainerComponent(props: {
       case 'URL':
       case 'POLICY_ID':
       case 'IP_ADDRESS':
+      case 'EMAIL_ADDRESS':
       case 'MEDIA':
       case 'VIDEO': {
         throw Error('Cannot call container component with scalar field');
@@ -638,7 +737,7 @@ function ContainerComponent(props: {
         type: data.container!.valueScalarType,
       };
       return (
-        <div key={i} className="align-top text-start whitespace-nowrap">
+        <div key={i} className="align-top text-start min-w-0">
           {/*Talk to ethan about how to avoid casting here*/}
           <TableRowComponent
             data={itemData as TableRowComponentData}
@@ -664,7 +763,7 @@ function ContainerComponent(props: {
           >
             Expand{' '}
             {`(${itemComponents.length - collapsedItemLimit} more items)`}
-            <DownOutlined className="pt-1 pl-2" />
+            <ChevronDown className="w-4 h-4 pt-1 pl-2" />
           </div>
         </div>
       );
@@ -681,14 +780,14 @@ function ContainerComponent(props: {
         </div>
       ) : null}
       <div
-        className={` ${
+        className={`${
           data.container!.valueScalarType === 'IMAGE' ||
           data.container!.valueScalarType === 'VIDEO' ||
           data.container!.valueScalarType === 'AUDIO' ||
           data.container!.valueScalarType === 'MEDIA'
-            ? ''
-            : 'flex-col'
-        } flex overflow-x-scroll border-slate-200 rounded p-1.5 ${
+            ? 'flex overflow-x-scroll'
+            : 'flex flex-col'
+        } border-slate-200 rounded p-1.5 ${
           transparentBackground ? '' : 'bg-slate-100'
         } ${expanded ? 'max-h-96 overflow-y-auto' : 'overflow-y-hidden'}`}
       >

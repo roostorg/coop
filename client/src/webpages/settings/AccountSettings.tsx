@@ -10,6 +10,13 @@ import {
 } from '@/coop-ui/Dialog';
 import { Input } from '@/coop-ui/Input';
 import { Label } from '@/coop-ui/Label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/coop-ui/Select';
 import { Slider } from '@/coop-ui/Slider';
 import { Switch } from '@/coop-ui/Switch';
 import { toast } from '@/coop-ui/Toast';
@@ -26,11 +33,21 @@ import {
   useGQLAccountSettingsQuery,
   useGQLChangePasswordMutation,
   useGQLDeleteUserMutation,
+  useGQLPasswordRequirementsQuery,
   useGQLPersonalSafetySettingsQuery,
   useGQLSetModeratorSafetySettingsMutation,
   useGQLUpdateAccountInfoMutation,
 } from '../../graphql/generated';
 import GoldenRetrieverPuppies from '../../images/GoldenRetrieverPuppies.png';
+import {
+  colorSchemeClassName,
+  colorSchemeFromPreferences,
+  MODERATOR_SAFETY_COLOR_SCHEME_LABELS,
+  MODERATOR_SAFETY_COLOR_SCHEMES,
+  preferencesFromColorScheme,
+  type ModeratorSafetyColorScheme,
+} from '../../models/safetySettings';
+import { DEFAULT_MIN_PASSWORD_LENGTH } from '../../utils/password';
 import {
   BLUR_LEVELS,
   type BlurStrength,
@@ -60,6 +77,7 @@ gql`
         moderatorSafetyMuteVideo
         moderatorSafetyGrayscale
         moderatorSafetyBlurLevel
+        moderatorSafetySepia
       }
     }
   }
@@ -141,6 +159,7 @@ type SafetySettings = {
   moderatorSafetyBlurLevel: BlurStrength;
   moderatorSafetyGrayscale: boolean;
   moderatorSafetyMuteVideo: boolean;
+  moderatorSafetySepia: boolean;
 };
 
 export default function AccountSettings() {
@@ -149,6 +168,7 @@ export default function AccountSettings() {
     moderatorSafetyBlurLevel: 2,
     moderatorSafetyGrayscale: true,
     moderatorSafetyMuteVideo: true,
+    moderatorSafetySepia: false,
   });
 
   const [dialogConfig, setDialogConfig] = useState<ModalInfo>({
@@ -204,6 +224,11 @@ export default function AccountSettings() {
     error: accountSettingsError,
   } = useGQLAccountSettingsQuery();
 
+  const { data: passwordRequirementsData } = useGQLPasswordRequirementsQuery();
+  const minPasswordLength =
+    passwordRequirementsData?.passwordRequirements.minLength ??
+    DEFAULT_MIN_PASSWORD_LENGTH;
+
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
@@ -228,12 +253,14 @@ export default function AccountSettings() {
       moderatorSafetyMuteVideo,
       moderatorSafetyGrayscale,
       moderatorSafetyBlurLevel,
+      moderatorSafetySepia,
     } = safetySettingsData.me.interfacePreferences;
 
     setSafetySettings({
       moderatorSafetyMuteVideo,
       moderatorSafetyGrayscale,
       moderatorSafetyBlurLevel: moderatorSafetyBlurLevel as BlurStrength,
+      moderatorSafetySepia,
     });
   }, [safetySettingsData?.me?.interfacePreferences]);
 
@@ -298,11 +325,20 @@ export default function AccountSettings() {
     }));
   }, []);
 
-  const setGrayscalePreference = useCallback(
-    (moderatorSafetyGrayscale: boolean): void =>
+  const setMuteVideoPreference = useCallback(
+    (moderatorSafetyMuteVideo: boolean): void =>
       setSafetySettings((prevSettings) => ({
         ...prevSettings,
-        moderatorSafetyGrayscale,
+        moderatorSafetyMuteVideo,
+      })),
+    [],
+  );
+
+  const setColorSchemePreference = useCallback(
+    (colorScheme: ModeratorSafetyColorScheme): void =>
+      setSafetySettings((prevSettings) => ({
+        ...prevSettings,
+        ...preferencesFromColorScheme(colorScheme),
       })),
     [],
   );
@@ -349,9 +385,9 @@ export default function AccountSettings() {
       return;
     }
 
-    if (newPassword.length < 8) {
+    if (newPassword.length < minPasswordLength) {
       toast.error('Password Too Short', {
-        description: 'Password must be at least 8 characters long.',
+        description: `Password must be at least ${minPasswordLength} characters long.`,
       });
       return;
     }
@@ -364,16 +400,13 @@ export default function AccountSettings() {
         },
       },
     });
-  }, [currentPassword, newPassword, confirmNewPassword, changePassword]);
-
-  const setMuteVideoPreference = useCallback(
-    (moderatorSafetyMuteVideo: boolean): void =>
-      setSafetySettings((prevSettings) => ({
-        ...prevSettings,
-        moderatorSafetyMuteVideo,
-      })),
-    [],
-  );
+  }, [
+    currentPassword,
+    newPassword,
+    confirmNewPassword,
+    changePassword,
+    minPasswordLength,
+  ]);
 
   const moderatorSafetyBlurValue = useMemo(
     () => [safetySettings.moderatorSafetyBlurLevel],
@@ -430,8 +463,18 @@ export default function AccountSettings() {
   const hasPasswordLogin =
     accountSettingsData?.me?.loginMethods?.includes('password') ?? false;
 
+  const isNewPasswordTooShort =
+    Boolean(newPassword) && newPassword.length < minPasswordLength;
+
+  const doNewPasswordsMismatch =
+    Boolean(confirmNewPassword) && newPassword !== confirmNewPassword;
+
   const isChangePasswordButtonDisabled =
-    !currentPassword || !newPassword || !confirmNewPassword;
+    !currentPassword ||
+    !newPassword ||
+    !confirmNewPassword ||
+    isNewPasswordTooShort ||
+    doNewPasswordsMismatch;
 
   return (
     <>
@@ -458,7 +501,7 @@ export default function AccountSettings() {
           </DialogHeader>
           <DialogDescription>
             Enter your current password and choose a new password. Your new
-            password must be at least 8 characters long.
+            password must be at least {minPasswordLength} characters long.
           </DialogDescription>
           <div className="flex flex-col gap-4 p-4">
             <div>
@@ -479,7 +522,19 @@ export default function AccountSettings() {
                 value={newPassword}
                 onChange={handleNewPasswordChange}
                 placeholder="Enter your new password"
+                aria-invalid={isNewPasswordTooShort}
+                aria-describedby={
+                  isNewPasswordTooShort ? 'newPassword-error' : undefined
+                }
               />
+              {isNewPasswordTooShort && (
+                <div
+                  id="newPassword-error"
+                  className="text-xs text-red-600 mt-1"
+                >
+                  Password must be at least {minPasswordLength} characters long.
+                </div>
+              )}
             </div>
             <div>
               <Label htmlFor="confirmNewPassword">Confirm New Password</Label>
@@ -489,7 +544,21 @@ export default function AccountSettings() {
                 value={confirmNewPassword}
                 onChange={handleConfirmNewPasswordChange}
                 placeholder="Confirm your new password"
+                aria-invalid={doNewPasswordsMismatch}
+                aria-describedby={
+                  doNewPasswordsMismatch
+                    ? 'confirmNewPassword-error'
+                    : undefined
+                }
               />
+              {doNewPasswordsMismatch && (
+                <div
+                  id="confirmNewPassword-error"
+                  className="text-xs text-red-600 mt-1"
+                >
+                  Passwords do not match.
+                </div>
+              )}
             </div>
           </div>
           <DialogFooter>
@@ -589,11 +658,24 @@ export default function AccountSettings() {
               />
             </div>
             <div className="flex gap-1 items-center justify-between">
-              <Label>Grayscale</Label>
-              <Switch
-                onCheckedChange={setGrayscalePreference}
-                checked={safetySettings.moderatorSafetyGrayscale}
-              />
+              <Label>Color Scheme</Label>
+              <Select
+                value={colorSchemeFromPreferences(safetySettings)}
+                onValueChange={(value) =>
+                  setColorSchemePreference(value as ModeratorSafetyColorScheme)
+                }
+              >
+                <SelectTrigger size="small" className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {MODERATOR_SAFETY_COLOR_SCHEMES.map((scheme) => (
+                    <SelectItem value={scheme} key={scheme}>
+                      {MODERATOR_SAFETY_COLOR_SCHEME_LABELS[scheme]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="flex gap-1 items-center justify-between">
@@ -608,7 +690,7 @@ export default function AccountSettings() {
           <img
             className={`rounded object-scale-down w-72 h-44 ${
               BLUR_LEVELS[safetySettings.moderatorSafetyBlurLevel] ?? 'blur-sm'
-            } ${safetySettings.moderatorSafetyGrayscale ? 'grayscale' : ''}`}
+            } ${colorSchemeClassName(colorSchemeFromPreferences(safetySettings))}`}
             alt="puppies"
             src={GoldenRetrieverPuppies}
           />

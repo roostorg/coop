@@ -43,7 +43,6 @@ function stubRoleParent() {
     description: 'desc',
     isSystem: true,
     permissions: [UserPermission.MANAGE_ORG],
-    isFallback: false,
     userCount: 1,
   };
 }

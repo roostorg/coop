@@ -1,4 +1,5 @@
 import { Tag } from 'antd';
+import { Hash } from 'lucide-react';
 import React, { MouseEvent, useCallback, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router-dom';
@@ -92,36 +93,40 @@ export default function HashBanksDashboard() {
   const columns = useMemo(
     () => [
       {
-        Header: 'Name',
-        accessor: 'name',
-        Filter: (props: ColumnProps) =>
-          DefaultColumnFilter({
-            columnProps: props,
-            accessor: 'name',
-          }),
-        filter: 'text',
-        sortType: stringSort,
+        header: 'Name',
+        accessorKey: 'name',
+        meta: {
+          filter: (props: ColumnProps) =>
+            DefaultColumnFilter({
+              columnProps: props,
+              accessor: 'name',
+            }),
+        },
+        filterFn: 'text' as const,
+        sortFn: stringSort,
       },
       {
-        Header: 'Description',
-        accessor: 'description',
-        Filter: (props: ColumnProps) =>
-          DefaultColumnFilter({
-            columnProps: props,
-            accessor: 'description',
-          }),
-        filter: 'text',
-        sortType: stringSort,
+        header: 'Description',
+        accessorKey: 'description',
+        meta: {
+          filter: (props: ColumnProps) =>
+            DefaultColumnFilter({
+              columnProps: props,
+              accessor: 'description',
+            }),
+        },
+        filterFn: 'text' as const,
+        sortFn: stringSort,
       },
       {
-        Header: 'Status',
-        accessor: 'enabled_ratio',
-        canSort: false,
+        header: 'Status',
+        accessorKey: 'enabled_ratio',
+        enableSorting: false,
       },
       {
-        Header: '',
-        accessor: 'mutations', // accessor is the "key" in the data
-        canSort: false,
+        header: '',
+        accessorKey: 'mutations', // accessor is the "key" in the data
+        enableSorting: false,
       },
     ],
     [],
@@ -207,7 +212,7 @@ export default function HashBanksDashboard() {
       buttonLinkPath="form/hash"
       buttonTitle="Create Hash Banks"
       dashboardName="Hash Banks"
-      icon={<div>🔍</div>}
+      icon={<Hash className="w-24 h-24" />}
     />
   );
 

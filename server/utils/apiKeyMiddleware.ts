@@ -20,8 +20,7 @@ export interface RequestWithOrgId {
 export function createApiKeyMiddleware<
   ReqBody extends JsonObject = JsonObject,
   ResBody extends ReadonlyDeep<JsonValue> | undefined =
-    | ReadonlyDeep<JsonValue>
-    | undefined,
+    ReadonlyDeep<JsonValue> | undefined,
 >({
   ApiKeyService,
 }: Pick<Dependencies, 'ApiKeyService'>): RequestHandlerWithBodies<

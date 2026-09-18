@@ -1,14 +1,18 @@
 import { DateRangePicker } from '@/coop-ui/DateRangePicker';
-import { InvestmentFilled, PieChartAltFilled } from '@/icons';
 import { truncateAndFormatLargeNumber } from '@/utils/number';
-import { BarChartOutlined, LineChartOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import { format } from 'date-fns';
 import last from 'lodash/last';
 import orderBy from 'lodash/orderBy';
 import sortBy from 'lodash/sortBy';
 import sumBy from 'lodash/sumBy';
-import { TriangleAlert } from 'lucide-react';
+import {
+  BarChart3,
+  TrendingUp as InvestmentFilled,
+  LineChart,
+  PieChart as PieChartAltFilled,
+  TriangleAlert,
+} from 'lucide-react';
 import { ReactNode, useCallback, useMemo, useState } from 'react';
 import {
   Bar,
@@ -359,10 +363,14 @@ export default function RuleInsightsActionsChart(props: { ruleId: string }) {
     <div className="flex items-center justify-center">
       {chartTypeButton(
         ChartType.LINE,
-        <LineChartOutlined />,
+        <LineChart className="w-4 h-4" />,
         'rounded-l-full border-r-0',
       )}
-      {chartTypeButton(ChartType.BAR, <BarChartOutlined />, 'rounded-r-full')}
+      {chartTypeButton(
+        ChartType.BAR,
+        <BarChart3 className="w-4 h-4" />,
+        'rounded-r-full',
+      )}
     </div>
   );
 
@@ -374,7 +382,7 @@ export default function RuleInsightsActionsChart(props: { ruleId: string }) {
   const noRuleRunsComponent = (
     <div className="text-center">
       <RuleInsightsEmptyCard
-        icon={<LineChartOutlined />}
+        icon={<LineChart className="w-4 h-4" />}
         title="No Actions"
         subtitle="Your rule has not executed any actions in this time period. As soon as it does, you'll see the data here."
       />

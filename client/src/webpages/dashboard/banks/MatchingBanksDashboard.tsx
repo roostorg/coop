@@ -1,7 +1,6 @@
 import { GQLUserPermission, useGQLPermissionsQuery } from '@/graphql/generated';
-import World2 from '@/icons/lni/Education/world-2.svg?react';
-import TextUnderlineAlt from '@/icons/lni/Text editor/text-underline-alt.svg?react';
 import { userHasPermissions } from '@/routing/permissions';
+import { Hash, Type, Globe as World2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useSearchParams } from 'react-router-dom';
@@ -76,12 +75,12 @@ export default function MatchingBanksDashboard() {
         tabs={[
           {
             label: 'Hash Banks',
-            icon: <TextUnderlineAlt />,
+            icon: <Hash />,
             value: 'HASH',
           },
           {
             label: 'Text Banks',
-            icon: <TextUnderlineAlt />,
+            icon: <Type />,
             value: 'TEXT',
           },
           {

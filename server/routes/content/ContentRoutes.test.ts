@@ -20,7 +20,7 @@ describe('POST Content', () => {
 
     await ModerationConfigService.createContentType(orgId, {
       name: 'test',
-      description: faker.datatype.string(),
+      description: faker.string.sample(),
       schema: [
         {
           name: 'name',
@@ -42,7 +42,7 @@ describe('POST Content', () => {
       orgId,
       {
         name: 'tes333t',
-        description: faker.datatype.string(),
+        description: faker.string.sample(),
         schema: [
           {
             name: 'video',
@@ -145,7 +145,7 @@ describe('POST Content', () => {
         seedOrgId,
         {
           name: 'tes333t',
-          description: faker.datatype.string(),
+          description: faker.string.sample(),
           schema: [
             {
               name: 'video',

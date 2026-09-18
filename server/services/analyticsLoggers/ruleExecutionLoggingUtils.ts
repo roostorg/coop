@@ -43,8 +43,7 @@ export type ConditionSetWithResultAsLogged = Omit<
 };
 
 export type ConditionWithResultAsLogged =
-  | ConditionSetWithResultAsLogged
-  | LeafConditionWithResultAsLogged;
+  ConditionSetWithResultAsLogged | LeafConditionWithResultAsLogged;
 
 // NB: we make these types to ensure, at the type level, that we're generating
 // correlation ids consistently for everything we log.
@@ -162,8 +161,8 @@ export function pickLeafConditionPropsTolog(
     threshold: condition.threshold,
     input: condition.input,
     result: condition.result satisfies
-      | ReadonlyDeep<ConditionResult>
-      | undefined as ConditionResultAsLogged | undefined,
+      ReadonlyDeep<ConditionResult> | undefined as
+      ConditionResultAsLogged | undefined,
     signal: signal && {
       id: signal.id,
       type: signal.type,

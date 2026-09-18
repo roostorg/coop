@@ -212,7 +212,6 @@ const typeDefs = /* GraphQL */ `
   }
 
   enum DerivedFieldDerivationType {
-    ENGLISH_TRANSLATION
     VIDEO_TRANSCRIPTION
   }
 

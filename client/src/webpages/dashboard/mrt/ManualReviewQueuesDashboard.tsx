@@ -1,12 +1,22 @@
-import { StarFilled, TapFilled } from '@/icons';
-import AngleDoubleRight from '@/icons/lni/Direction/angle-double-right.svg?react';
-import Star from '@/icons/lni/Web and Technology/star.svg?react';
-import GridAlt from '@/icons/lnif/Design/grid-alt.svg?react';
 import { gql } from '@apollo/client';
 import Button from 'antd/lib/button';
 import Checkbox from 'antd/lib/checkbox';
 import Input from 'antd/lib/input';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ChevronsRight as AngleDoubleRight,
+  LayoutGrid as GridAlt,
+  Star,
+  Star as StarFilled,
+  MousePointerClick as TapFilled,
+} from 'lucide-react';
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link, useNavigate } from 'react-router-dom';
 
@@ -207,8 +217,29 @@ export default function ManualReviewQueuesDashboard() {
     fetchPolicy: 'no-cache',
     pollInterval: 5000,
   });
+  const [deleteError, setDeleteError] = useState<{
+    message: string;
+    ruleNames: string[];
+  } | null>(null);
   const [deleteReviewQueue] = useGQLDeleteManualReviewQueueMutation({
-    onError: () => {},
+    onError: (error) => {
+      const gqlError = error.graphQLErrors[0];
+      const message = gqlError?.message ?? 'Failed to delete queue.';
+      const rawDetail = gqlError?.extensions?.['detail'];
+      let ruleNames: string[] = [];
+      if (typeof rawDetail === 'string') {
+        try {
+          const parsed: unknown = JSON.parse(rawDetail);
+          if (
+            Array.isArray(parsed) &&
+            parsed.every((n): n is string => typeof n === 'string')
+          ) {
+            ruleNames = parsed;
+          }
+        } catch {}
+      }
+      setDeleteError({ message, ruleNames });
+    },
     onCompleted: async () => refetch(),
   });
   const [addFavoriteMRTQueue] = useGQLAddFavoriteMrtQueueMutation({
@@ -442,6 +473,41 @@ export default function ManualReviewQueuesDashboard() {
     </CoopModal>
   );
 
+  const deleteErrorModal = (
+    <CoopModal
+      title="Could Not Delete Queue"
+      visible={deleteError !== null}
+      footer={[
+        {
+          title: 'OK',
+          onClick: () => setDeleteError(null),
+          type: 'primary',
+        },
+      ]}
+      onClose={() => setDeleteError(null)}
+    >
+      {deleteError?.ruleNames && deleteError.ruleNames.length > 0 ? (
+        <div className="space-y-2">
+          <p>
+            This queue cannot be deleted because it is used by the following
+            routing rules:
+          </p>
+          <p className="pl-4">
+            {deleteError.ruleNames.map((name, i) => (
+              <Fragment key={i}>
+                {i > 0 && ', '}
+                <Link to="/dashboard/manual_review/routing">{name}</Link>
+              </Fragment>
+            ))}
+          </p>
+          <p>Update or delete those rules first.</p>
+        </div>
+      ) : (
+        <p>{deleteError?.message}</p>
+      )}
+    </CoopModal>
+  );
+
   const onDeleteReviewQueue = (id: string) => {
     deleteReviewQueue({
       variables: { id },
@@ -475,87 +541,93 @@ export default function ManualReviewQueuesDashboard() {
       filterNullOrUndefined([
         columnVisibility.favoriteQueues
           ? {
-              Header: '',
-              accessor: 'favoriteQueues',
-              canSort: false,
+              header: '',
+              accessorKey: 'favoriteQueues',
+              enableSorting: false,
             }
           : undefined,
         columnVisibility.id
           ? {
-              Header: 'ID',
-              accessor: 'id',
-              Filter: (props: ColumnProps) =>
-                DefaultColumnFilter({
-                  columnProps: props,
-                  accessor: 'id',
-                  placeholder: 'Queue ID',
-                }),
-              filter: 'text',
-              sortType: stringSort,
+              header: 'ID',
+              accessorKey: 'id',
+              meta: {
+                filter: (props: ColumnProps) =>
+                  DefaultColumnFilter({
+                    columnProps: props,
+                    accessor: 'id',
+                    placeholder: 'Queue ID',
+                  }),
+              },
+              filterFn: 'text' as const,
+              sortFn: stringSort,
             }
           : undefined,
         columnVisibility.name
           ? {
-              Header: 'Name',
-              accessor: 'name',
-              Filter: (props: ColumnProps) =>
-                DefaultColumnFilter({
-                  columnProps: props,
-                  accessor: 'name',
-                  placeholder: 'My Queue',
-                }),
-              filter: 'text',
-              sortType: stringSort,
+              header: 'Name',
+              accessorKey: 'name',
+              meta: {
+                filter: (props: ColumnProps) =>
+                  DefaultColumnFilter({
+                    columnProps: props,
+                    accessor: 'name',
+                    placeholder: 'My Queue',
+                  }),
+              },
+              filterFn: 'text' as const,
+              sortFn: stringSort,
             }
           : undefined,
         columnVisibility.description
           ? {
-              Header: 'Description',
-              accessor: 'description',
-              Filter: (props: ColumnProps) =>
-                DefaultColumnFilter({
-                  columnProps: props,
-                  accessor: 'description',
-                }),
-              filter: 'text',
-              sortType: stringSort,
+              header: 'Description',
+              accessorKey: 'description',
+              meta: {
+                filter: (props: ColumnProps) =>
+                  DefaultColumnFilter({
+                    columnProps: props,
+                    accessor: 'description',
+                  }),
+              },
+              filterFn: 'text' as const,
+              sortFn: stringSort,
             }
           : undefined,
         columnVisibility.oldestTaskAge
           ? {
-              Header: 'Oldest Task Age',
-              accessor: 'oldestTaskAge',
-              sortType: dateSort('oldestJobCreatedAt'),
+              header: 'Oldest Task Age',
+              accessorKey: 'oldestTaskAge',
+              sortFn: dateSort('oldestJobCreatedAt'),
             }
           : undefined,
         columnVisibility.pendingJobCount
           ? {
-              Header: 'Pending Jobs',
-              accessor: 'pendingJobCount',
-              sortType: integerSort,
+              header: 'Pending Jobs',
+              accessorKey: 'pendingJobCount',
+              sortFn: integerSort,
             }
           : undefined,
         columnVisibility.startReviewing
           ? {
-              Header: '',
-              accessor: 'startReviewing',
-              canSort: false,
+              header: '',
+              accessorKey: 'startReviewing',
+              enableSorting: false,
             }
           : undefined,
         columnVisibility.mutations
           ? {
-              Header: '',
-              accessor: 'mutations',
-              canSort: false,
+              header: '',
+              accessorKey: 'mutations',
+              enableSorting: false,
             }
           : undefined,
         userHasPermissions(data?.me?.permissions, [
           GQLUserPermission.ManageOrg,
         ]) && columnVisibility.deleteJobs
           ? {
-              Header: '',
-              accessor: 'deleteJobs',
-              canSort: false,
+              header: '',
+              accessorKey: 'deleteJobs',
+              enableSorting: false,
             }
           : undefined,
         previewJobsViewEnabled &&
@@ -564,9 +636,9 @@ export default function ManualReviewQueuesDashboard() {
         ]) &&
         columnVisibility.previewJobs
           ? {
-              Header: '',
-              accessor: 'previewJobs',
-              canSort: false,
+              header: '',
+              accessorKey: 'previewJobs',
+              enableSorting: false,
             }
           : undefined,
       ]),
@@ -728,13 +800,14 @@ export default function ManualReviewQueuesDashboard() {
                   }}
                 >
                   <StarFilled
-                    className={`cursor-pointer text-xl absolute top-0 left-0 text-coop-yellow fill-coop-yellow ${
+                    fill="currentColor"
+                    className={`cursor-pointer w-5 h-5 absolute top-0 left-0 text-coop-yellow ${
                       values.isFavorited ? '' : 'invisible'
                     }`}
                   />
                 </div>
                 <Star
-                  className={`cursor-pointer text-xl absolute top-0 left-0 text-coop-yellow fill-coop-yellow ${
+                  className={`cursor-pointer w-5 h-5 absolute top-0 left-0 text-coop-yellow ${
                     values.isFavorited ? 'invisible' : ''
                   }`}
                   onClick={(event) => {
@@ -745,7 +818,12 @@ export default function ManualReviewQueuesDashboard() {
                 />
               </div>
             ),
-            id: <CopyTextComponent value={values.id} />,
+            id: (
+              <CopyTextComponent
+                value={values.id}
+                displayValue={`${values.id.slice(0, 8)}…`}
+              />
+            ),
             name: (
               <div className="ContentTypesDashboard-type-name">
                 {values.name}
@@ -790,9 +868,7 @@ export default function ManualReviewQueuesDashboard() {
             ? 'bg-white text-gray-600 hover:bg-white hover:text-gray-600'
             : 'bg-gray-600 text-white border-none hover:bg-gray-500'
         }`}
-        icon={
-          <GridAlt className="inline-block w-4 h-4 mr-2" fill="currentColor" />
-        }
+        icon={<GridAlt className="inline-block w-4 h-4 mr-2" />}
         onClick={() => setColumnsMenuVisible(!columnsMenuVisible)}
       >
         Columns
@@ -871,11 +947,7 @@ export default function ManualReviewQueuesDashboard() {
               </div>
             </div>
             <div className="pl-2 rounded">
-              <TapFilled
-                width={24}
-                height={24}
-                className={`text-xl text-sky-400 fill-sky-400`}
-              />
+              <TapFilled size={24} className={`text-sky-400`} />
             </div>
           </div>
           <div className="flex justify-between p-4 mb-4 bg-white border border-solid rounded border-slate-200 w-96">
@@ -891,11 +963,7 @@ export default function ManualReviewQueuesDashboard() {
               </div>
             </div>
             <div className="pl-2 rounded">
-              <AngleDoubleRight
-                width={24}
-                height={24}
-                className={`text-xl text-amber-400 fill-amber-400`}
-              />
+              <AngleDoubleRight size={24} className={`text-amber-400`} />
             </div>
           </div>
         </div>
@@ -911,6 +979,7 @@ export default function ManualReviewQueuesDashboard() {
         />
       }
       {deleteModal}
+      {deleteErrorModal}
       {deleteAllJobsModal}
     </div>
   );

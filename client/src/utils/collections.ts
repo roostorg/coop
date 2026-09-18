@@ -22,6 +22,8 @@ export function filterNullOrUndefined<T>(
   return array.filter((it) => it !== null && it !== undefined) as T[];
 }
 
-export function arrayFromArrayOrSingleItem<T>(array: readonly T[] | T): T[] {
-  return Array.isArray(array) ? [...array] : [array];
+export function arrayFromArrayOrSingleItem(
+  array: readonly string[] | string,
+): string[] {
+  return typeof array === 'string' ? [array] : [...array];
 }

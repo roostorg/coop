@@ -43,7 +43,7 @@ interface StringKeywords {
 
 type UncheckedJSONSchemaType<T, IsPartial extends boolean> = (
   | // these two unions allow arbitrary unions of types
-  {
+    {
       anyOf: readonly UncheckedJSONSchemaType<T, IsPartial>[];
     }
   | {
@@ -113,8 +113,7 @@ type UncheckedJSONSchemaType<T, IsPartial extends boolean> = (
                     // "patternProperties" and can be only used with interfaces that have string index
                     type: JSONType<'object', IsPartial>;
                     additionalProperties?:
-                      | boolean
-                      | UncheckedJSONSchemaType<T[string], false>;
+                      boolean | UncheckedJSONSchemaType<T[string], false>;
                     properties?: IsPartial extends true
                       ? Partial<PropertiesSchema<T>>
                       : PropertiesSchema<T>;
@@ -151,17 +150,11 @@ type UncheckedJSONSchemaType<T, IsPartial extends boolean> = (
 export type JSONSchemaV4<T> = UncheckedJSONSchemaType<T, false>;
 
 export type JSON =
-  | { [key: string]: JSON }
-  | JSON[]
-  | number
-  | string
-  | boolean
-  | null;
+  { [key: string]: JSON } | JSON[] | number | string | boolean | null;
 
 export type PropertiesSchema<T> = {
   [K in keyof T]-?:
-    | (UncheckedJSONSchemaType<T[K], false> & Nullable<T[K]>)
-    | { $ref: string };
+    (UncheckedJSONSchemaType<T[K], false> & Nullable<T[K]>) | { $ref: string };
 };
 
 export type RequiredMembers<T> = {

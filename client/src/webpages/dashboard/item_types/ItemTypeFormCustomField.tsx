@@ -1,8 +1,8 @@
 import { Checkbox } from '@/coop-ui/Checkbox';
 import { Label } from '@/coop-ui/Label';
-import { DeleteOutlined } from '@ant-design/icons';
 import { isContainerType, type ItemTypeKind } from '@roostorg/coop-types';
 import { Button, Input, Select, Tooltip } from 'antd';
+import { Trash2 } from 'lucide-react';
 
 import { selectFilterByLabelOption } from '../components/antDesignUtils';
 
@@ -165,7 +165,7 @@ export default function ItemTypeFormCustomField<T extends ItemTypeKind>(props: {
 
         <div className="flex items-center mb-2 mr-2 space-x-2">
           <Checkbox
-            id="required-checkbox"
+            id={`required-checkbox-${field.index}`}
             checked={field.required}
             onCheckedChange={(isChecked) =>
               updateFieldState(field, {
@@ -174,12 +174,12 @@ export default function ItemTypeFormCustomField<T extends ItemTypeKind>(props: {
               })
             }
           />
-          <Label htmlFor="required-checkbox">Required</Label>
+          <Label htmlFor={`required-checkbox-${field.index}`}>Required</Label>
         </div>
 
         <div className="flex items-center mb-2 space-x-2">
           <Checkbox
-            id="hidden-checkbox"
+            id={`hidden-checkbox-${field.index}`}
             checked={field.hidden}
             onCheckedChange={(isChecked) =>
               updateFieldState(field, {
@@ -188,11 +188,12 @@ export default function ItemTypeFormCustomField<T extends ItemTypeKind>(props: {
               })
             }
           />
-          <Label htmlFor="hidden-checkbox">Hidden Field</Label>
+          <Label htmlFor={`hidden-checkbox-${field.index}`}>Hidden Field</Label>
         </div>
         <Button
           className="self-end ml-2 text-red-500 border-none"
-          icon={<DeleteOutlined />}
+          icon={<Trash2 className="w-4 h-4" />}
+          aria-label="Delete field"
           onClick={onClickDelete}
         />
       </div>

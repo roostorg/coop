@@ -3,7 +3,7 @@ import lodash from 'lodash';
 import { type Dependencies } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
 import { WEEK_MS } from '../../utils/time.js';
-import { type RuleAlarmStatus } from '../moderationConfigService/index.js';
+import { RuleAlarmStatus } from '../moderationConfigService/index.js';
 import getRuleAlarmStatus from './getRuleAlarmStatus.js';
 
 const { mapValues, groupBy } = lodash;
@@ -18,11 +18,12 @@ const makeGetCurrentPeriodRuleAlarmStatuses = inject(
       const passStats = await getRuleStats({ startTime: oneWeekAgo });
       const statsByRule = groupBy(passStats, (it) => it.ruleId);
 
-      const minVersionsByRule = await getMinimumAnomalyDetectionRuleVersions(
-        getRuleHistory,
-        undefined,
-        oneWeekAgo,
-      );
+      const minVersionsByRule: Partial<Record<string, Date>> =
+        await getMinimumAnomalyDetectionRuleVersions(
+          getRuleHistory,
+          undefined,
+          oneWeekAgo,
+        );
 
       return mapValues(statsByRule, (passStats) => {
         const { ruleId } = passStats[0];
@@ -50,8 +51,22 @@ const makeGetCurrentPeriodRuleAlarmStatuses = inject(
         // model, we represent the number of passes _not_ as the number of times
         // that the rule passed in a period, but rather as the number of
         // distinct users that caused the rule to pass in that period.
+        const minVersion = minVersionsByRule[ruleId];
+        // Without a version bound we cannot tell whether warehouse stats
+        // predate a condition/item-type change. Fail closed rather than
+        // treating missing history as "all stats apply".
+        if (minVersion === undefined) {
+          return {
+            status: RuleAlarmStatus.INSUFFICIENT_DATA,
+            meta: {
+              lastPeriodPassRate: undefined,
+              secondToLastPeriodPassRate: undefined,
+            },
+          };
+        }
+
         const applicableStats = passStats
-          .filter((it) => it.approxRuleVersion >= minVersionsByRule[ruleId])
+          .filter((it) => it.approxRuleVersion >= minVersion)
           .map((it) => ({ passes: it.passingUsersCount, runs: it.runsCount }));
 
         return {

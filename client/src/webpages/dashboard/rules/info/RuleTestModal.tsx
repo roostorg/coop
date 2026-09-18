@@ -140,6 +140,8 @@ export default function RuleTestModal(props: {
         return 'user-id';
       case 'IP_ADDRESS':
         return '192.0.2.1';
+      case 'EMAIL_ADDRESS':
+        return 'user@example.com';
       case 'ARRAY':
         return `${getPlaceholder(
           containerValueScalarType!,

@@ -380,9 +380,7 @@ class RuleAPI {
     orgId: string,
     actionIds: readonly string[],
     actionParameters:
-      | readonly { actionId: string; parameters: unknown }[]
-      | null
-      | undefined,
+      readonly { actionId: string; parameters: unknown }[] | null | undefined,
   ): Promise<ReadonlyMap<string, JsonObject> | undefined> {
     if (actionIds.length === 0) {
       return undefined;
@@ -990,8 +988,7 @@ function conditionInputIsValid(
 }
 
 type ValidatedGQLConditionInput =
-  | ValidatedGQLConditionSetInput
-  | ValidatedGQLLeafConditionInput;
+  ValidatedGQLConditionSetInput | ValidatedGQLLeafConditionInput;
 
 type ValidatedGQLConditionSetInput = RequiredWithoutNull<
   Pick<GQLConditionInput, 'conditions' | 'conjunction'>

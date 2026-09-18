@@ -1,7 +1,7 @@
 import { readFileSync } from 'fs';
 import { dirname, join } from 'path';
 import fc from 'fast-check';
-import yaml from 'js-yaml';
+import { load } from 'js-yaml';
 import _ from 'lodash';
 
 import { RuleAlarmStatus } from '../moderationConfigService/index.js';
@@ -17,7 +17,7 @@ const samplesPassRate = (samples: { passes: number; runs: number }[]) =>
   sum(samples.map((it) => it.passes)) / sum(samples.map((it) => it.runs));
 
 const __dirname = dirname(new URL(import.meta.url).pathname);
-const tableDump = yaml.load(
+const tableDump = load(
   // eslint-disable-next-line security/detect-non-literal-fs-filename
   readFileSync(
     join(__dirname, '../../test/stubs/rule_pass_sample_data.yaml'),

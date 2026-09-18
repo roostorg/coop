@@ -1,4 +1,11 @@
 import { Label } from '@/coop-ui/Label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/coop-ui/Select';
 import { Slider } from '@/coop-ui/Slider';
 import { Switch } from '@/coop-ui/Switch';
 import { gql } from '@apollo/client';
@@ -16,6 +23,14 @@ import {
 } from '../../../graphql/generated';
 import GoldenRetrieverPuppies from '../../../images/GoldenRetrieverPuppies.png';
 import {
+  colorSchemeClassName,
+  colorSchemeFromPreferences,
+  MODERATOR_SAFETY_COLOR_SCHEME_LABELS,
+  MODERATOR_SAFETY_COLOR_SCHEMES,
+  preferencesFromColorScheme,
+  type ModeratorSafetyColorScheme,
+} from '../../../models/safetySettings';
+import {
   BLUR_LEVELS,
   BlurStrength,
 } from './manual_review_job/v2/ncmec/NCMECMediaViewer';
@@ -27,6 +42,7 @@ gql`
         moderatorSafetyMuteVideo
         moderatorSafetyGrayscale
         moderatorSafetyBlurLevel
+        moderatorSafetySepia
       }
     }
   }
@@ -47,10 +63,12 @@ export default function ManualReviewSafetySettings() {
     moderatorSafetyBlurLevel: BlurStrength;
     moderatorSafetyGrayscale: boolean;
     moderatorSafetyMuteVideo: boolean;
+    moderatorSafetySepia: boolean;
   }>({
     moderatorSafetyBlurLevel: 2,
     moderatorSafetyGrayscale: true,
     moderatorSafetyMuteVideo: true,
+    moderatorSafetySepia: false,
   });
   const [notificationApi, notificationContextHolder] =
     notification.useNotification();
@@ -76,11 +94,13 @@ export default function ManualReviewSafetySettings() {
       moderatorSafetyMuteVideo,
       moderatorSafetyGrayscale,
       moderatorSafetyBlurLevel,
+      moderatorSafetySepia,
     } = data.me.interfacePreferences;
     setSettings({
       moderatorSafetyMuteVideo,
       moderatorSafetyGrayscale,
       moderatorSafetyBlurLevel: moderatorSafetyBlurLevel as BlurStrength,
+      moderatorSafetySepia,
     });
   }, [data?.me?.interfacePreferences]);
 
@@ -123,27 +143,35 @@ export default function ManualReviewSafetySettings() {
               step={1}
             />
           </div>
-          <div className="flex items-center h-10">
-            <div className="flex items-center space-x-2">
-              <Switch
-                id="grayscale"
-                defaultChecked
-                onCheckedChange={(value) =>
-                  setSettings({
-                    ...settings,
-                    moderatorSafetyGrayscale: value,
-                  })
-                }
-                checked={settings.moderatorSafetyGrayscale}
-              />
-              <Label htmlFor="grayscale">Grayscale</Label>
-            </div>
+          <div className="flex items-center h-10 gap-2">
+            <Label htmlFor="color-scheme">Color Scheme</Label>
+            <Select
+              value={colorSchemeFromPreferences(settings)}
+              onValueChange={(value) =>
+                setSettings({
+                  ...settings,
+                  ...preferencesFromColorScheme(
+                    value as ModeratorSafetyColorScheme,
+                  ),
+                })
+              }
+            >
+              <SelectTrigger id="color-scheme" size="small" className="w-32">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {MODERATOR_SAFETY_COLOR_SCHEMES.map((scheme) => (
+                  <SelectItem value={scheme} key={scheme}>
+                    {MODERATOR_SAFETY_COLOR_SCHEME_LABELS[scheme]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex items-center h-10">
             <div className="flex items-center space-x-2">
               <Switch
                 id="mute-videos"
-                defaultChecked
                 onCheckedChange={(value) =>
                   setSettings({
                     ...settings,
@@ -161,7 +189,7 @@ export default function ManualReviewSafetySettings() {
             settings.moderatorSafetyBlurLevel != null
               ? BLUR_LEVELS[settings.moderatorSafetyBlurLevel]
               : 'blur-sm'
-          } ${settings.moderatorSafetyGrayscale ? 'grayscale' : ''}`}
+          } ${colorSchemeClassName(colorSchemeFromPreferences(settings))}`}
           alt="puppies"
           src={GoldenRetrieverPuppies}
         />

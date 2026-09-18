@@ -37,8 +37,8 @@ export default function ManualReviewJobContentView(props: {
   allItemTypes: readonly GQLItemType[];
   onEnqueueActions: (action: ManualReviewJobEnqueuedActionData[]) => void;
   unblurAllMedia: boolean;
-  parentRef: React.RefObject<HTMLDivElement>;
-  reportedUserRef?: React.RefObject<HTMLDivElement>;
+  parentRef: React.RefObject<HTMLDivElement | null>;
+  reportedUserRef?: React.RefObject<HTMLDivElement | null>;
   requirePolicySelectionToEnqueueAction: boolean;
   allowMoreThanOnePolicySelection: boolean;
   orgId: string;
@@ -131,7 +131,7 @@ export default function ManualReviewJobContentView(props: {
   );
 
   return (
-    <div className="flex flex-col overflow-x-scroll">
+    <div className="flex flex-col">
       <div className="flex flex-row items-start py-4 space-x-4">
         {/* Split the data into two columns: non-media fields and media fields*/}
         <div className="max-w-full min-w-[50%] grow">

@@ -1,0 +1,5 @@
+ALTER TABLE user_management_service.user_interface_settings
+ADD COLUMN moderator_safety_sepia boolean;
+
+ALTER TABLE user_management_service.org_default_user_interface_settings
+ADD COLUMN moderator_safety_sepia boolean NOT NULL DEFAULT false;

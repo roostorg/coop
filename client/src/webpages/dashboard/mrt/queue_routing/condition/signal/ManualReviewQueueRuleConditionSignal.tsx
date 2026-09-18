@@ -1,6 +1,6 @@
 import { GQLSignal } from '@/graphql/generated';
-import { DownOutlined } from '@ant-design/icons';
 import { Button } from 'antd';
+import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 
 import RuleFormSignalModal from '../../../../rules/rule_form/signal_modal/RuleFormSignalModal';
@@ -72,7 +72,7 @@ export default function ManualReviewQueueRuleConditionSignal(props: {
             }
           >
             {signalLabel}{' '}
-            <DownOutlined className="text-xs !text-[#bfbfbf] !hover:text-[#bfbfbf]" />
+            <ChevronDown className="w-3 h-3 !text-[#bfbfbf] !hover:text-[#bfbfbf]" />
           </Button>
         ) : (
           <ManualReviewQueueRoutingStaticTextField text={signalLabel} />

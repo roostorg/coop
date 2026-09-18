@@ -2,12 +2,7 @@
  * JSON-serializable values.
  */
 export type JSON =
-  | null
-  | string
-  | boolean
-  | number
-  | JSON[]
-  | { [k: string]: JSON };
+  null | string | boolean | number | JSON[] | { [k: string]: JSON };
 
 export type Bind1<
   F extends (arg0: A0, ...args: never[]) => unknown,

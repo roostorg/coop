@@ -7,10 +7,8 @@ import { type UserScore } from '../../userStatisticsService/userStatisticsServic
 import { type UserStrikeService } from '../../userStrikeService/index.js';
 import AggregationSignal from '../signals/aggregation/AggregationSignal.js';
 import GeoContainedWithinSignal from '../signals/GeoContainedWithinSignal.js';
-import ImageExactMatchSignal from '../signals/ImageExactMatchSignal.js';
 import ImageSimilarityDoesNotMatchSignal from '../signals/ImageSimilarityDoesNotMatch.js';
 import ImageSimilarityMatchSignal from '../signals/ImageSimilarityMatch.js';
-import ImageSimilarityScoreSignal from '../signals/ImageSimilarityScoreSignal.js';
 import {
   type SignalBase,
   type SignalInputType,
@@ -22,12 +20,15 @@ import TextMatchingContainsTextSignal from '../signals/text_matching/TextMatchin
 import TextMatchingNotContainsRegexSignal from '../signals/text_matching/TextMatchingNotContainsRegexSignal.js';
 import TextMatchingNotContainsTextSignal from '../signals/text_matching/TextMatchingNotContainsTextSignal.js';
 import GoogleContentSafetyImageSignal from '../signals/third_party_signals/google/content_safety/GoogleContentSafetyImageSignal.js';
-import GoogleCloudTranslationAPISignal from '../signals/third_party_signals/google/GoogleCloudTranslationAPISignal.js';
 import OpenAiGraphicViolenceImageSignal from '../signals/third_party_signals/open_ai/moderation/OpenAiGraphicViolenceImageSignal.js';
 import OpenAiGraphicViolenceTextSignal from '../signals/third_party_signals/open_ai/moderation/OpenAiGraphicViolenceTextSignal.js';
 import OpenAiHateTextSignal from '../signals/third_party_signals/open_ai/moderation/OpenAiHateTextSignal.js';
 import OpenAiHateThreateningTextSignal from '../signals/third_party_signals/open_ai/moderation/OpenAiHateThreateningTextSignal.js';
 import OpenAiSelfHarmImageSignal from '../signals/third_party_signals/open_ai/moderation/OpenAiSelfHarmImageSignal.js';
+import OpenAiSelfHarmInstructionsImageSignal from '../signals/third_party_signals/open_ai/moderation/OpenAiSelfHarmInstructionsImageSignal.js';
+import OpenAiSelfHarmInstructionsTextSignal from '../signals/third_party_signals/open_ai/moderation/OpenAiSelfHarmInstructionsTextSignal.js';
+import OpenAiSelfHarmIntentImageSignal from '../signals/third_party_signals/open_ai/moderation/OpenAiSelfHarmIntentImageSignal.js';
+import OpenAiSelfHarmIntentTextSignal from '../signals/third_party_signals/open_ai/moderation/OpenAiSelfHarmIntentTextSignal.js';
 import OpenAiSelfHarmTextSignal from '../signals/third_party_signals/open_ai/moderation/OpenAiSelfHarmTextSignal.js';
 import OpenAiSexualImageSignal from '../signals/third_party_signals/open_ai/moderation/OpenAiSexualImageSignal.js';
 import OpenAiSexualMinorsTextSignal from '../signals/third_party_signals/open_ai/moderation/OpenAiSexualMinorsTextSignal.js';
@@ -73,8 +74,6 @@ export function instantiateBuiltInSignals(
     [SignalType.TEXT_MATCHING_CONTAINS_VARIANT]:
       new TextMatchingContainsVariantSignal(),
     [SignalType.TEXT_SIMILARITY_SCORE]: new TextSimilarityScoreSignal(),
-    [SignalType.IMAGE_EXACT_MATCH]: new ImageExactMatchSignal(),
-    [SignalType.IMAGE_SIMILARITY_SCORE]: new ImageSimilarityScoreSignal(),
     [SignalType.IMAGE_SIMILARITY_DOES_NOT_MATCH]:
       new ImageSimilarityDoesNotMatchSignal(hmaService),
     [SignalType.IMAGE_SIMILARITY_MATCH]: new ImageSimilarityMatchSignal(
@@ -108,6 +107,26 @@ export function instantiateBuiltInSignals(
       credentialGetters.OPEN_AI,
       getOpenAiScores,
     ),
+    [SignalType.OPEN_AI_SELF_HARM_INSTRUCTIONS_IMAGE_MODEL]:
+      new OpenAiSelfHarmInstructionsImageSignal(
+        credentialGetters.OPEN_AI,
+        getOpenAiScores,
+      ),
+    [SignalType.OPEN_AI_SELF_HARM_INSTRUCTIONS_TEXT_MODEL]:
+      new OpenAiSelfHarmInstructionsTextSignal(
+        credentialGetters.OPEN_AI,
+        getOpenAiScores,
+      ),
+    [SignalType.OPEN_AI_SELF_HARM_INTENT_IMAGE_MODEL]:
+      new OpenAiSelfHarmIntentImageSignal(
+        credentialGetters.OPEN_AI,
+        getOpenAiScores,
+      ),
+    [SignalType.OPEN_AI_SELF_HARM_INTENT_TEXT_MODEL]:
+      new OpenAiSelfHarmIntentTextSignal(
+        credentialGetters.OPEN_AI,
+        getOpenAiScores,
+      ),
     [SignalType.OPEN_AI_SELF_HARM_TEXT_MODEL]: new OpenAiSelfHarmTextSignal(
       credentialGetters.OPEN_AI,
       getOpenAiScores,
@@ -143,8 +162,6 @@ export function instantiateBuiltInSignals(
     [SignalType.USER_SCORE]: new UserScoreSignal(
       getUserScoreEventuallyConsistent,
     ),
-    [SignalType.GOOGLE_CLOUD_TRANSLATE_MODEL]:
-      new GoogleCloudTranslationAPISignal(),
     [SignalType.AGGREGATION]: new AggregationSignal(aggregationsService),
     [SignalType.ZENTROPI_LABELER]: new ZentropiLabelerSignal(
       credentialGetters.ZENTROPI,

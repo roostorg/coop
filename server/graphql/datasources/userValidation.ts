@@ -26,18 +26,12 @@ const validator = createRequire(import.meta.url)('validator') as ValidatorLib;
 export type UserValidationFailure = {
   /** Kept stable for GraphQL JSON pointers. */
   field:
-    | 'email'
-    | 'firstName'
-    | 'lastName'
-    | 'role'
-    | 'loginMethods'
-    | 'password';
+    'email' | 'firstName' | 'lastName' | 'role' | 'loginMethods' | 'password';
   message: string;
 };
 
 export type UserValidationResult =
-  | { ok: true }
-  | { ok: false; failure: UserValidationFailure };
+  { ok: true } | { ok: false; failure: UserValidationFailure };
 
 function isEmailShape(value: string): boolean {
   return validator.isEmail(value);

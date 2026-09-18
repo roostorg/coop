@@ -6,7 +6,6 @@ import type {
   JobCreationsInput,
 } from '../manualReviewToolService/modules/DecisionAnalytics.js';
 import { type OrgSettingsPg } from '../orgSettingsService/index.js';
-import type { UserRole } from './permissioning.js';
 
 export type MrtChartConfig = {
   title: string;
@@ -27,6 +26,7 @@ export type UserManagementPg = {
     user_id: string;
     moderator_safety_mute_video: boolean | null;
     moderator_safety_grayscale: boolean | null;
+    moderator_safety_sepia: boolean | null;
     moderator_safety_blur_level: number | null;
     mrt_chart_configurations: MrtChartConfig[] | null;
   };
@@ -41,6 +41,11 @@ export type UserManagementPg = {
       boolean | undefined
     >;
     moderator_safety_grayscale: ColumnType<
+      boolean,
+      boolean | undefined,
+      boolean | undefined
+    >;
+    moderator_safety_sepia: ColumnType<
       boolean,
       boolean | undefined,
       boolean | undefined
@@ -66,8 +71,7 @@ export type UserManagementPg = {
     id: GeneratedAlways<string>;
     token: string;
     email: string;
-    role: UserRole;
-    role_id: string | null;
+    role_id: string;
     created_at: GeneratedAlways<Date>;
     updated_at: GeneratedAlways<Date>;
     org_id: string;

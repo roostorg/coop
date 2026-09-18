@@ -142,6 +142,123 @@ describe('ClickhouseActionExecutionsAdapter.findInferredUserIdentity', () => {
   });
 });
 
+describe('ClickhouseActionExecutionsAdapter.getRecentUserStrikeActions', () => {
+  it('includes creator fields in the returned records', async () => {
+    const ts = '2026-06-01T10:00:00.000Z';
+    const { adapter } = makeAdapter([
+      {
+        ts,
+        item_id: 'content-1',
+        item_type_id: 'content-type-A',
+        item_type_kind: 'CONTENT',
+        item_creator_id: 'user-7',
+        item_creator_type_id: 'user-type-X',
+        action_id: 'action-ban',
+        action_source: 'user-strike-action-execution',
+      },
+    ]);
+
+    const results = await adapter.getRecentUserStrikeActions({
+      orgId: 'org-1',
+      limit: 10,
+    });
+
+    expect(results).toHaveLength(1);
+    expect(results[0]).toMatchObject({
+      actionId: 'action-ban',
+      itemId: 'content-1',
+      itemTypeId: 'content-type-A',
+      creatorId: 'user-7',
+      creatorTypeId: 'user-type-X',
+      source: 'user-strike-action-execution',
+    });
+  });
+
+  it('returns null creator fields when columns are null', async () => {
+    const ts = '2026-06-01T10:00:00.000Z';
+    const { adapter } = makeAdapter([
+      {
+        ts,
+        item_id: 'user-direct',
+        item_type_id: 'user-type-A',
+        item_type_kind: 'USER',
+        item_creator_id: null,
+        item_creator_type_id: null,
+        action_id: 'action-suspend',
+        action_source: 'user-strike-action-execution',
+      },
+    ]);
+
+    const results = await adapter.getRecentUserStrikeActions({
+      orgId: 'org-1',
+      limit: 10,
+    });
+
+    expect(results).toHaveLength(1);
+    expect(results[0]?.creatorId).toBeNull();
+    expect(results[0]?.creatorTypeId).toBeNull();
+  });
+
+  it('returns both creator fields when both are present in the row', async () => {
+    const ts = '2026-06-01T10:00:00.000Z';
+    const { adapter } = makeAdapter([
+      {
+        ts,
+        item_id: 'content-1',
+        item_type_id: 'content-type-A',
+        item_type_kind: 'CONTENT',
+        item_creator_id: 'user-5',
+        item_creator_type_id: null,
+        action_id: 'action-ban',
+        action_source: 'user-strike-action-execution',
+      },
+    ]);
+
+    const results = await adapter.getRecentUserStrikeActions({
+      orgId: 'org-1',
+      limit: 10,
+    });
+
+    expect(results[0]?.creatorId).toBe('user-5');
+    expect(results[0]?.creatorTypeId).toBeNull();
+  });
+
+  it('normalizes empty-string creator fields to null', async () => {
+    const ts = '2026-06-01T10:00:00.000Z';
+    const { adapter } = makeAdapter([
+      {
+        ts,
+        item_id: 'content-1',
+        item_type_id: 'content-type-A',
+        item_type_kind: 'CONTENT',
+        item_creator_id: '',
+        item_creator_type_id: '',
+        action_id: 'action-ban',
+        action_source: 'user-strike-action-execution',
+      },
+    ]);
+
+    const results = await adapter.getRecentUserStrikeActions({
+      orgId: 'org-1',
+      limit: 10,
+    });
+
+    expect(results).toHaveLength(1);
+    expect(results[0]?.creatorId).toBeNull();
+    expect(results[0]?.creatorTypeId).toBeNull();
+  });
+
+  it('selects item_creator_id and item_creator_type_id in the SQL', async () => {
+    const { adapter, query } = makeAdapter([]);
+
+    await adapter.getRecentUserStrikeActions({ orgId: 'org-1', limit: 5 });
+
+    const sentSql = query.mock.calls[0][0];
+    expect(sentSql).toContain('item_creator_id');
+    expect(sentSql).toContain('item_creator_type_id');
+  });
+});
+
 describe('ClickhouseActionExecutionsAdapter.findContentCreatorIdentity', () => {
   it('returns null when no rows match', async () => {
     const { adapter } = makeAdapter([]);
@@ -226,5 +343,93 @@ describe('ClickhouseActionExecutionsAdapter.findContentCreatorIdentity', () => {
 
     const sentSql = query.mock.calls[0][0];
     expect(sentSql).toContain('content-type-PHOTO');
+  });
+});
+
+describe('ClickhouseActionExecutionsAdapter.getItemActionHistory', () => {
+  const historyInput = {
+    orgId: 'org-1',
+    itemId: 'user-1',
+    itemTypeId: 'user-type-A',
+    itemSubmissionTime: undefined,
+  };
+
+  function actionRow(overrides: Record<string, unknown> = {}) {
+    return {
+      ts: '2026-06-01T10:00:00.000Z',
+      item_id: 'user-1',
+      item_type_id: 'user-type-A',
+      item_creator_id: null,
+      item_creator_type_id: null,
+      actor_id: 'moderator-1',
+      job_id: null,
+      policies: '[]',
+      rules: '[]',
+      action_id: 'action-ban',
+      ...overrides,
+    };
+  }
+
+  it('exposes the moderator-supplied parameters for the execution', async () => {
+    const { adapter } = makeAdapter([
+      actionRow({ parameters: '{"num_days":7,"reason":"spam"}' }),
+    ]);
+
+    const results = await adapter.getItemActionHistory(historyInput);
+
+    expect(results).toHaveLength(1);
+    expect(results[0]?.parameters).toEqual({ num_days: 7, reason: 'spam' });
+  });
+
+  it('returns an empty object when the action took no parameters', async () => {
+    const { adapter } = makeAdapter([actionRow({ parameters: '{}' })]);
+
+    const results = await adapter.getItemActionHistory(historyInput);
+
+    expect(results[0]?.parameters).toEqual({});
+  });
+
+  it.each([
+    ['missing', undefined],
+    ['null', null],
+    ['empty string', ''],
+  ])(
+    'returns an empty object when the stored value is %s',
+    async (_label, stored) => {
+      const { adapter } = makeAdapter([actionRow({ parameters: stored })]);
+
+      const results = await adapter.getItemActionHistory(historyInput);
+
+      expect(results[0]?.parameters).toEqual({});
+    },
+  );
+
+  it.each([
+    ['unparseable text', 'not-json'],
+    ['a JSON array', '[1,2,3]'],
+    ['a JSON scalar', '42'],
+  ])(
+    'returns an empty object without failing the query when the value is %s',
+    async (_label, stored) => {
+      const { adapter } = makeAdapter([
+        actionRow({ action_id: 'action-a', parameters: stored }),
+        actionRow({ action_id: 'action-b', parameters: '{"num_days":3}' }),
+      ]);
+
+      const results = await adapter.getItemActionHistory(historyInput);
+
+      expect(results).toHaveLength(2);
+      expect(results[0]?.parameters).toEqual({});
+      // The sibling row in the same result set stays intact.
+      expect(results[1]?.parameters).toEqual({ num_days: 3 });
+    },
+  );
+
+  it('selects the parameters column in the SQL', async () => {
+    const { adapter, query } = makeAdapter([]);
+
+    await adapter.getItemActionHistory(historyInput);
+
+    expect(query.mock.calls[0]?.[0]).toMatch(/\bparameters\b/);
   });
 });

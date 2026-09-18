@@ -4,9 +4,7 @@ export default function RoundedTag(
   props: {
     title: string;
   } & (
-    | { status: GQLRuleStatus }
-    | { environment: GQLRuleEnvironment }
-    | object
+    { status: GQLRuleStatus } | { environment: GQLRuleEnvironment } | object
   ),
 ) {
   const { title } = props;

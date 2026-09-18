@@ -32,8 +32,7 @@ export function makeKyselyTransactionWithRetry<T>(kysely: Kysely<T>) {
   ): Promise<R>;
   async function transactionWithRetry<R>(
     optionsOrCallback:
-      | TransactionWithRetryOptions
-      | ((trx: Transaction<T>) => Promise<R>),
+      TransactionWithRetryOptions | ((trx: Transaction<T>) => Promise<R>),
     maybeCallback?: (trx: Transaction<T>) => Promise<R>,
   ): Promise<R> {
     const [options, callback] =

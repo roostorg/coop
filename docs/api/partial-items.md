@@ -8,10 +8,7 @@ To use this API, your platform must provide a Partial Items API endpoint that ca
 
 To verify that an incoming request actually came from Coop, check the `Coop-Signature` header. See [API Keys & Authentication](../development/api-auth.md#verifying-incoming-requests-from-coop) for the signature verification algorithm and a code example.
 
-> [!IMPORTANT]
-> **It is not yet possible to configure this from the Coop UI**, so you'll have to manage it in code. See [roostorg/coop#378](https://github.com/roostorg/coop/issues/378) for details.
-
-You'll need to update your Coop instance's code with the endpoint URL and any required headers (including any additional authentication, such as an API key) so it can make the HTTP requests.
+You can configure the Partial Items API endpoint URL and any required headers (including any additional authentication, such as an API key) under [Settings](../user/administration.md#partial-items).
 
 ## REST API example
 

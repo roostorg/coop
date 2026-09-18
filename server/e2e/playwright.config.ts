@@ -10,9 +10,12 @@ export default defineConfig({
   // Configured paths resolve relative to this config file's dir (server/e2e/),
   // so these land at server/e2e/{test-results,playwright-report}.
   outputDir: 'test-results',
-  // Run every test concurrently. This helps ensure that we do
-  // not get implicit dependencies between tests.
-  fullyParallel: true,
+  // Run the suite serially. The tests share a single in-process BullMQ worker
+  // (the e2e `deps` fixture) and a content-type fixture path that races a
+  // global `REFRESH MATERIALIZED VIEW` trigger under concurrent inserts — so
+  // parallel `createContentType` calls intermittently return undefined.
+  fullyParallel: false,
+  workers: 1,
   // Fail the build on CI if test.only was left in the source.
   forbidOnly: Boolean(process.env.CI),
   // Retry flaky flows on CI; fail fast locally.

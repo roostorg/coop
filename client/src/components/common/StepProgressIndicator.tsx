@@ -1,5 +1,4 @@
-import Checkmark from '@/icons/lni/Interface and Sign/checkmark.svg?react';
-import MoreAlt from '@/icons/lni/Interface and Sign/more-alt.svg?react';
+import { Check as Checkmark, MoreHorizontal as MoreAlt } from 'lucide-react';
 
 // This governs which steps, if any, are clickable by the user.
 // The options are:
@@ -16,19 +15,19 @@ type ProgressStep = {
 
 function completedStepIcon() {
   return (
-    <Checkmark className="w-6 h-6 p-1 text-white rounded-full bg-coop-blue fill-white stroke-white" />
+    <Checkmark className="w-6 h-6 p-1 text-white rounded-full bg-coop-blue" />
   );
 }
 
 function currentStepIcon() {
   return (
-    <MoreAlt className="w-6 h-6 p-1 text-white bg-gray-500 rounded-full fill-white stroke-white" />
+    <MoreAlt className="w-6 h-6 p-1 text-white bg-gray-500 rounded-full" />
   );
 }
 
 function futureStepIcon() {
   return (
-    <MoreAlt className="w-6 h-6 p-1 text-gray-400 bg-white border border-gray-400 border-solid rounded-full fill-gray-400 stroke-gray-400" />
+    <MoreAlt className="w-6 h-6 p-1 text-gray-400 bg-white border border-gray-400 border-solid rounded-full" />
   );
 }
 

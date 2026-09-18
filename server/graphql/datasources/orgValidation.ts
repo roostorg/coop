@@ -31,8 +31,7 @@ export type OrgValidationFailure = {
 };
 
 export type OrgValidationResult =
-  | { ok: true }
-  | { ok: false; failure: OrgValidationFailure };
+  { ok: true } | { ok: false; failure: OrgValidationFailure };
 
 function isEmailShape(value: string): boolean {
   return validator.isEmail(value);

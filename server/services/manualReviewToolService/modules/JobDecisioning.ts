@@ -5,12 +5,14 @@ import { type JsonObject } from 'type-fest';
 
 import { type Dependencies } from '../../../iocContainer/index.js';
 import { filterNullOrUndefined } from '../../../utils/collections.js';
+import { jsonStringify } from '../../../utils/encoding.js';
 import {
   CoopError,
   ErrorType,
   type ErrorInstanceData,
 } from '../../../utils/errors.js';
 import { assertUnreachable } from '../../../utils/misc.js';
+import { isValidDate } from '../../../utils/time.js';
 import { isNonEmptyString } from '../../../utils/typescript-types.js';
 import { getFieldValueForRole } from '../../itemProcessingService/index.js';
 import { type NCMECMediaReport } from '../../ncmecService/ncmecReporting.js';
@@ -26,6 +28,7 @@ import {
   type ManualReviewJobEnqueueSourceInfo,
   type ReportHistory,
 } from '../manualReviewToolService.js';
+import type ClaimOperations from './ClaimOperations.js';
 import type ManualReviewToolSettings from './ManualReviewToolSettings.js';
 import type QueueOperations from './QueueOperations.js';
 import { jobIdToGuid } from './QueueOperations.js';
@@ -75,6 +78,24 @@ type MRTJobAutoCloseReason =
  */
 export const AUTOMATED_DECISION_REVIEWER_ID = '';
 
+/**
+ * Normalizes an item's createdAt field value into a Date for the
+ * `item_created_at` column. A truthy-but-unparseable value (whitespace, or a
+ * non-ISO format some report sources emit) yields an Invalid Date, which throws
+ * on pg serialization and fails the entire decision insert. Return null in that
+ * case so the nullable column absorbs it and the decision still records.
+ */
+export function parseItemCreatedAt(
+  value: string | number | Date | null | undefined,
+): Date | null {
+  // Guard only null/undefined/empty-string; a numeric 0 is a valid epoch.
+  if (value == null || value === '') {
+    return null;
+  }
+  const parsed = new Date(value);
+  return isValidDate(parsed) ? parsed : null;
+}
+
 export type ManualReviewDecisionComponent =
   | { type: 'IGNORE' }
   | {
@@ -115,8 +136,7 @@ export type ManualReviewDecisionComponent =
     };
 
 export type ManualReviewDecisionType =
-  | ManualReviewDecisionComponent['type']
-  | 'RELATED_ACTION';
+  ManualReviewDecisionComponent['type'] | 'RELATED_ACTION';
 
 export type CustomActionDecisionComponent = Extract<
   ManualReviewDecisionComponent,
@@ -163,6 +183,9 @@ export type OnRecordDecisionInput = {
   suppressUserReportSweep?: boolean;
 };
 
+export const NCMEC_ESCALATION_SKIP_WARNING =
+  'NCMEC escalation was skipped: this user already has a submitted NCMEC report.';
+
 export default class JobDecisioning {
   constructor(
     private readonly queueOps: QueueOperations,
@@ -172,6 +195,12 @@ export default class JobDecisioning {
     private readonly moderationConfigService: Dependencies['ModerationConfigService'],
     private readonly tracer: Dependencies['Tracer'],
     private readonly manualReviewToolSettings: ManualReviewToolSettings,
+    private readonly claimOps: ClaimOperations,
+    private readonly getUserHasExistingNcmecReport: (params: {
+      orgId: string;
+      userId: string;
+      userItemTypeId: string;
+    }) => Promise<boolean>,
   ) {}
 
   async submitDecision(opts: SubmitDecisionInput) {
@@ -413,7 +442,10 @@ export default class JobDecisioning {
 
       return {
         newDecisionStored: logDecisionStatus === 'SUCCESS',
-        error: match([logDecisionStatus, removeJobStatus] as const)
+        error: match([logDecisionStatus, removeJobStatus] as readonly [
+          'SUCCESS' | 'ALREADY_LOGGED',
+          'SUCCESS' | 'FAILED',
+        ])
           // Case 1, happy path.
           .with(['SUCCESS', 'SUCCESS'], () => undefined)
           // Case 2, decision logged but job not deleted.
@@ -462,6 +494,46 @@ export default class JobDecisioning {
     if (error) {
       throw error;
     }
+
+    return {
+      warnings:
+        newDecisionStored && automaticCloseDecision === undefined
+          ? await this.#ncmecEscalationSkipWarnings({ decisionComponents, job })
+          : [],
+    };
+  }
+
+  /**
+   * The NCMEC re-enqueue for a TRANSFORM_JOB_AND_RECREATE_IN_QUEUE decision
+   * runs asynchronously via onRecordDecision, and it silently no-ops when the
+   * reviewed user already has a submitted NCMEC report (see
+   * NcmecEnqueueToMrt.enqueueForHumanReviewIfApplicable). Predict that skip
+   * here, with the same check the enqueue path performs, so the reviewer is
+   * told on the decision response instead of believing the escalation went
+   * through.
+   */
+  async #ncmecEscalationSkipWarnings(opts: {
+    decisionComponents: ManualReviewDecisionComponent[];
+    job: {
+      orgId: string;
+      payload: { item: { itemId: string; itemTypeIdentifier: { id: string } } };
+    };
+  }): Promise<string[]> {
+    const escalatesToNcmec = opts.decisionComponents.some(
+      (it) =>
+        it.type === 'TRANSFORM_JOB_AND_RECREATE_IN_QUEUE' &&
+        it.newJobKind === 'NCMEC',
+    );
+    if (!escalatesToNcmec) {
+      return [];
+    }
+    const hasExistingReport = await this.getUserHasExistingNcmecReport({
+      orgId: opts.job.orgId,
+      userId: opts.job.payload.item.itemId,
+      userItemTypeId: opts.job.payload.item.itemTypeIdentifier.id,
+    });
+
+    return hasExistingReport ? [NCMEC_ESCALATION_SKIP_WARNING] : [];
   }
 
   /**
@@ -518,6 +590,7 @@ export default class JobDecisioning {
         relatedActions: [],
         enqueueSourceInfo: job.enqueueSourceInfo,
         decisionReason,
+        recordAssignedAt: false,
       });
     } catch (error) {
       // A concurrent reviewer already decided this job; nothing left to do.
@@ -598,6 +671,7 @@ export default class JobDecisioning {
     relatedActions: ManualReviewDecisionRelatedAction[];
     enqueueSourceInfo?: ManualReviewJobEnqueueSourceInfo;
     decisionReason?: string;
+    recordAssignedAt?: boolean;
   }) {
     const {
       id,
@@ -609,6 +683,7 @@ export default class JobDecisioning {
       relatedActions,
       enqueueSourceInfo,
       decisionReason,
+      recordAssignedAt = true,
     } = opts;
 
     const itemType = await this.moderationConfigService.getItemType({
@@ -624,9 +699,64 @@ export default class JobDecisioning {
           job.payload.item.data,
         )
       : null;
-    const itemCreatedAt = itemCreatedAtField
-      ? new Date(itemCreatedAtField)
-      : null;
+    const itemCreatedAt = parseItemCreatedAt(itemCreatedAtField);
+
+    // Record when a present createdAt couldn't be parsed. We store null so the
+    // decision still saves, but surface the bad value so it's diagnosable and
+    // can be backfilled rather than silently dropped.
+    if (
+      itemCreatedAt === null &&
+      itemCreatedAtField != null &&
+      itemCreatedAtField !== ''
+    ) {
+      this.tracer.addSpan(
+        {
+          resource: 'mrtService',
+          operation: 'logDecision.invalidItemCreatedAt',
+        },
+        (span) => {
+          span.setAttribute('job.id', job.id);
+          span.setAttribute('org.id', orgId);
+          this.tracer.logSpanFailed(
+            span,
+            new Error(
+              `Unparseable item createdAt for job ${job.id}: ${jsonStringify(
+                itemCreatedAtField,
+              )}. Storing null.`,
+            ),
+          );
+          return null;
+        },
+      );
+    }
+
+    const isAutomaticClose = decisionComponents.some(
+      (component) => component.type === 'AUTOMATIC_CLOSE',
+    );
+    const assignedAt =
+      recordAssignedAt && reviewerId != null && !isAutomaticClose
+        ? await this.claimOps
+            .getLatestClaimedAt({
+              orgId,
+              jobId: job.id,
+              userId: reviewerId,
+            })
+            .catch((error: unknown) => {
+              this.tracer.addSpan(
+                {
+                  resource: 'mrtService',
+                  operation: 'logDecision.getLatestClaimedAt',
+                },
+                (span) => {
+                  span.setAttribute('job.id', job.id);
+                  span.setAttribute('org.id', orgId);
+                  this.tracer.logSpanFailed(span, error);
+                  return null;
+                },
+              );
+              return null;
+            })
+        : null;
 
     return this.pgQuery
       .insertInto('manual_review_tool.manual_review_decisions')
@@ -644,6 +774,7 @@ export default class JobDecisioning {
         enqueue_source_info: enqueueSourceInfo,
         item_created_at: itemCreatedAt,
         decision_reason: decisionReason,
+        assigned_at: assignedAt,
       })
       .execute();
   }

@@ -29,6 +29,10 @@ export function integrationForSignalType(type: string) {
     case 'OPEN_AI_HATE_TEXT_MODEL':
     case 'OPEN_AI_HATE_THREATENING_TEXT_MODEL':
     case 'OPEN_AI_SELF_HARM_IMAGE_MODEL':
+    case 'OPEN_AI_SELF_HARM_INSTRUCTIONS_IMAGE_MODEL':
+    case 'OPEN_AI_SELF_HARM_INSTRUCTIONS_TEXT_MODEL':
+    case 'OPEN_AI_SELF_HARM_INTENT_IMAGE_MODEL':
+    case 'OPEN_AI_SELF_HARM_INTENT_TEXT_MODEL':
     case 'OPEN_AI_SELF_HARM_TEXT_MODEL':
     case 'OPEN_AI_SEXUAL_IMAGE_MODEL':
     case 'OPEN_AI_SEXUAL_MINORS_TEXT_MODEL':
@@ -42,10 +46,8 @@ export function integrationForSignalType(type: string) {
     case 'AGGREGATION':
     case 'CUSTOM':
     case 'GEO_CONTAINED_WITHIN':
-    case 'IMAGE_EXACT_MATCH':
     case 'IMAGE_SIMILARITY_MATCH':
     case 'IMAGE_SIMILARITY_DOES_NOT_MATCH':
-    case 'IMAGE_SIMILARITY_SCORE':
     case 'TEXT_MATCHING_CONTAINS_REGEX':
     case 'TEXT_MATCHING_CONTAINS_TEXT':
     case 'TEXT_MATCHING_CONTAINS_VARIANT':
@@ -96,6 +98,7 @@ export function outputTypeToComparators(outputType: GQLSignalOutputType) {
     case GQLScalarType.Url:
     case GQLScalarType.String:
     case GQLScalarType.IpAddress:
+    case GQLScalarType.EmailAddress:
       return outputType.__typename === 'EnumSignalOutputType' &&
         outputType.ordered
         ? orderedComparators

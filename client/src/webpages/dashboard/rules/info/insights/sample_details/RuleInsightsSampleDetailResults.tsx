@@ -9,12 +9,8 @@ import {
   type GQLConditionInputField,
 } from '@/graphql/generated';
 import { titleCaseEnumString } from '@/utils/string';
-import {
-  CheckCircleFilled,
-  FlagFilled,
-  MinusCircleFilled,
-} from '@ant-design/icons';
 import type { ItemIdentifier } from '@roostorg/coop-types';
+import { CheckCircle, Flag, MinusCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 import ComponentLoading from '@/components/common/ComponentLoading';
@@ -78,13 +74,13 @@ export function outcomeString(outcome?: GQLConditionOutcome, prefix?: string) {
 export function outcomeIcon(outcome?: GQLConditionOutcome) {
   switch (outcome) {
     case GQLConditionOutcome.Passed:
-      return <FlagFilled className="text-base !text-red-800" />;
+      return <Flag className="w-4 h-4 text-red-800" fill="currentColor" />;
     case GQLConditionOutcome.Failed:
-      return <CheckCircleFilled className="text-base !text-teal-800" />;
+      return <CheckCircle className="w-4 h-4 text-teal-800" />;
     case GQLConditionOutcome.Inapplicable:
     case GQLConditionOutcome.Errored:
     case undefined:
-      return <MinusCircleFilled className="text-base !text-zinc-500" />;
+      return <MinusCircle className="w-4 h-4 text-zinc-500" />;
   }
 }
 

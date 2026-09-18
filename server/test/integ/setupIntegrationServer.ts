@@ -6,10 +6,6 @@
  * Requires the docker-compose stack from `npm run up` and migrations applied
  * via `npm run db:update`.
  */
-// Load .env before any module that reads process.env (notably the IoC
-// container). The unit-test `npm test` path goes through dotenv via its
-// NODE_OPTIONS; `test:integ` does not, so we do it here.
-import 'dotenv/config';
 
 import * as superTest from 'supertest';
 
@@ -22,8 +18,20 @@ export type IntegrationServer = {
   shutdown: () => Promise<void>;
 };
 
-export async function makeIntegrationServer(): Promise<IntegrationServer> {
+export type MakeIntegrationServerOptions = {
+  /** A hash of mocked dependencies to replace in the bottle  */
+  mockedDeps?: Partial<Dependencies>;
+};
+
+export async function makeIntegrationServer(
+  opts: MakeIntegrationServerOptions = {},
+): Promise<IntegrationServer> {
   const bottle = await getBottle();
+  if (opts.mockedDeps != null) {
+    for (const [name, value] of Object.entries(opts.mockedDeps)) {
+      bottle.factory(name as keyof Dependencies, () => value);
+    }
+  }
   const deps = bottle.container as Dependencies;
 
   const { app, shutdown: shutdownServer } = await makeServer(deps);

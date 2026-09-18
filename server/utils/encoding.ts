@@ -1,7 +1,7 @@
 import stringify from 'safe-stable-stringify';
 import { type Opaque } from 'type-fest';
 
-import { JSON } from './json-schema-types.js';
+import { type JSON } from './json-schema-types.js';
 
 /**
  * This function accepts any JS string and encodes it in base64, using a UTF8

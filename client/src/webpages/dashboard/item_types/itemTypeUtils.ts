@@ -50,7 +50,7 @@ export const schemaFieldRolesFieldTypes = {
   [SchemaFieldRoles.BACKGROUND_IMAGE]: GQLScalarType.Image,
   [SchemaFieldRoles.IS_DELETED]: GQLScalarType.Boolean,
   [SchemaFieldRoles.IP_ADDRESS]: GQLScalarType.IpAddress,
-  [SchemaFieldRoles.EMAIL]: GQLScalarType.String,
+  [SchemaFieldRoles.EMAIL]: GQLScalarType.EmailAddress,
 } satisfies Omit<
   { [key in SchemaFieldRoles]: GQLScalarType },
   SchemaFieldRoles.NONE
@@ -229,6 +229,8 @@ export function generateFakeScalarFieldValue(fieldType: ScalarType) {
       return `https://url.com/some-path/${Math.floor(100 * Math.random())}`;
     case 'IP_ADDRESS':
       return `192.0.2.${Math.floor(255 * Math.random())}`;
+    case 'EMAIL_ADDRESS':
+      return `user${Math.floor(1000 * Math.random())}@example.com`;
     case 'MEDIA': {
       // Like AUDIO/IMAGE/VIDEO, the fake value is the *input* (pre-coercion) form
       // — a raw URL string. The server's MEDIA coercion resolves the kind from

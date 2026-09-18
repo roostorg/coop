@@ -23,13 +23,13 @@ module.exports = {
   extends: ['plugin:react/recommended', 'plugin:react-hooks/recommended'],
   parser: '@typescript-eslint/parser',
   parserOptions: {
-    project: ['./tsconfig.json'],
+    project: ['./tsconfig.json', './tsconfig.test.json'],
     tsconfigRootDir: __dirname,
   },
   ignorePatterns: [
     '.eslintrc.cjs',
     'eslint',
-    'tailwind.config.js',
+    'tailwind.config.mjs',
     '*.stories.tsx',
     'vite.config.ts',
     'vite-env.d.ts',
@@ -113,7 +113,7 @@ module.exports = {
           {
             name: '@ant-design/icons',
             message:
-              'AntDesign icons are now deprecated in our codebase. Please use line icons instead.',
+              'AntDesign icons have been removed. Use lucide-react instead.',
           },
           {
             name: '@/icons',

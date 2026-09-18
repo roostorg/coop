@@ -5,10 +5,10 @@ import {
   type GQLActionParameter,
 } from '@/graphql/generated';
 import { stripTypename } from '@/graphql/inputHelpers';
-import Pencil from '@/icons/lni/Education/pencil.svg?react';
 import { ItemIdentifier } from '@roostorg/coop-types';
 import { Button, Input, Select } from 'antd';
 import orderBy from 'lodash/orderBy';
+import { Pencil } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { type JsonObject } from 'type-fest';
 
@@ -30,8 +30,7 @@ type EligibleAction = {
 };
 
 type ParamsModalState =
-  | { open: false }
-  | { open: true; mode: 'create' | 'edit'; actionId: string };
+  { open: false } | { open: true; mode: 'create' | 'edit'; actionId: string };
 
 export default function ItemAction(props: {
   itemIdentifier: ItemIdentifier;
@@ -187,8 +186,7 @@ export default function ItemAction(props: {
         // issue. See https://github.com/microsoft/TypeScript/issues/17002 for
         // more details.
         const policyId = policyIds satisfies
-          | string
-          | readonly string[] as string;
+          string | readonly string[] as string;
         setSelectedPolicyIds([policyId]);
       }
     },

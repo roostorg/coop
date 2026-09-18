@@ -1,3 +1,5 @@
+import type { JsonObject } from 'type-fest';
+
 export interface ItemActionHistoryRecord {
   actionId: string;
   itemId: string;
@@ -8,6 +10,13 @@ export interface ItemActionHistoryRecord {
   userTypeId: string | null;
   policies: readonly string[];
   ruleIds: readonly string[];
+  /**
+   * Moderator-supplied parameter values the action ran with, keyed by the
+   * parameter's `name`. Always an object: executions that took no parameters,
+   * predate parameter capture, or stored an unreadable value all read back as
+   * `{}` so consumers don't have to distinguish those cases.
+   */
+  parameters: JsonObject;
   occurredAt: Date;
 }
 
@@ -15,6 +24,8 @@ export interface UserStrikeActionRecord {
   actionId: string;
   itemId: string;
   itemTypeId: string;
+  creatorId: string | null;
+  creatorTypeId: string | null;
   source: string;
   occurredAt: Date;
 }

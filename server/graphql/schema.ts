@@ -67,6 +67,7 @@ const typeDefs = /* GraphQL */ `
     URL
     POLICY_ID
     IP_ADDRESS
+    EMAIL_ADDRESS
   }
 
   # This is equivalent to ScalarType, but with 'FULL_ITEM' added
@@ -87,6 +88,7 @@ const typeDefs = /* GraphQL */ `
     FULL_ITEM
     POLICY_ID
     IP_ADDRESS
+    EMAIL_ADDRESS
   }
 
   # !! IMPORTANT: when you add a value here, also add it to FieldType !!
@@ -113,6 +115,7 @@ const typeDefs = /* GraphQL */ `
     URL
     POLICY_ID
     IP_ADDRESS
+    EMAIL_ADDRESS
   }
 
   enum Language {
@@ -454,12 +457,17 @@ const typeDefs = /* GraphQL */ `
 
   directive @publicResolver on FIELD_DEFINITION
 
+  type PasswordRequirements {
+    minLength: Int!
+  }
+
   type Query {
     myOrg: Org
     userFromToken(token: String!): ID
     inviteUserToken(token: String!): InviteUserTokenResponse! @publicResolver
     allRuleInsights: AllRuleInsights
     isWarehouseAvailable: Boolean!
+    passwordRequirements: PasswordRequirements! @publicResolver
   }
 
   type Mutation {

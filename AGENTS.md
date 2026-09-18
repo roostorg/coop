@@ -111,29 +111,29 @@ If tests fail with database errors, check migration logs via `docker compose log
 
 ## CI
 
-CI runs entirely via GitHub Actions (`.github/workflows/apply_pr_checks.yaml`). Most PR checks are defined as `docker compose` services so you can reproduce any CI job locally; the formatting check runs directly via `actions/setup-node`. Run them in your shell (paste-as-is — each command's exit code matches the corresponding CI step's exit code):
+CI runs entirely via GitHub Actions (`.github/workflows/apply_pr_checks.yaml`). Most PR checks are defined as `docker compose` services so you can reproduce any CI job locally; formatting and GraphQL codegen run directly via `actions/setup-node`. Run them in your shell (paste-as-is — each command's exit code matches the corresponding CI step's exit code):
 
 ```bash
-docker compose run --rm codegen-check
+npm ci && npm run prettier
+npm ci && npm run generate && test -z "$(git status --porcelain)"
 docker compose run --rm backend npm run lint
 docker compose run --rm backend npm run build
 docker compose run --rm client npm run lint
 docker compose run --rm client npm run build
 docker compose run --rm test
-npm ci && npm run prettier
 ```
 
 Individual checks:
 
-| CI job                                   | Local command                                   |
-| ---------------------------------------- | ----------------------------------------------- |
-| `check_formatting`                       | `npm ci && npm run prettier`                    |
-| `check_generated_graphql`                | `docker compose run --rm codegen-check`         |
-| `check_api_server` (lint)                | `docker compose run --rm backend npm run lint`  |
-| `check_api_server` (build)               | `docker compose run --rm backend npm run build` |
-| `run_frontend_checks_if_changed` (lint)  | `docker compose run --rm client npm run lint`   |
-| `run_frontend_checks_if_changed` (build) | `docker compose run --rm client npm run build`  |
-| `check_api_server` (test)                | `docker compose run --rm test`                  |
+| CI job                                   | Local command                                                       |
+| ---------------------------------------- | ------------------------------------------------------------------- |
+| `check_formatting`                       | `npm ci && npm run prettier`                                        |
+| `check_generated_graphql`                | `npm ci && npm run generate && test -z "$(git status --porcelain)"` |
+| `check_api_server` (lint)                | `docker compose run --rm backend npm run lint`                      |
+| `check_api_server` (build)               | `docker compose run --rm backend npm run build`                     |
+| `run_frontend_checks_if_changed` (lint)  | `docker compose run --rm client npm run lint`                       |
+| `run_frontend_checks_if_changed` (build) | `docker compose run --rm client npm run build`                      |
+| `check_api_server` (test)                | `docker compose run --rm test`                                      |
 
 Tear down:
 
@@ -155,9 +155,22 @@ Note: `check_migration_order` runs only in GitHub Actions — it's GitHub-specif
 
 - Keep diffs small and focused; split unrelated changes into separate PRs.
 - PR titles are descriptive and imperative ("Add X", "Fix Y").
-- When opening a GitHub PR, use the template at [`.github/pull_request_template.md`](.github/pull_request_template.md) but do not actually write anything in the PR description. Let your human operator do that.
+- When opening a GitHub PR, use the template at [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md) but do not actually write anything in the PR description. Let your human operator do that.
 - New behavior requires a test. Bug fixes require a regression test.
 - All CI checks (above) must pass before requesting review.
+
+## Changelog
+
+`CHANGELOG.md` follows [Keep a Changelog](https://keepachangelog.com/en/2.0.0/); Coop versions follow [SemVer](https://semver.org/). Release process: [`docs/development/releases.md`](docs/development/releases.md).
+
+- Update `## [Unreleased]` in the same PR as the change, not in a later cleanup PR.
+- Only **notable** changes get an entry: what someone deploying Coop needs to know. Internal refactors, test and CI plumbing, lint fixes, repo hygiene, and dependency bumps with no user-visible impact do not.
+- Use only the six Keep a Changelog headings — `### Added`, `### Changed`, `### Deprecated`, `### Removed`, `### Fixed`, `### Security` — adding the heading under `## [Unreleased]` if it's missing. Don't invent others.
+- `Fixed` is for behavior that was wrong and is now correct; `Changed` is for intentionally altering behavior that was already correct.
+- Keep each entry to a single concise line, essentially a title: no reasoning, mechanism, or caveats. Anyone who needs the detail follows the PR link.
+- Format: `- Description ([#123](https://github.com/roostorg/coop/pull/123) by [@user](https://github.com/user))`, adding `, closes [#456](...)` where it applies.
+- Removing a GraphQL enum value, type, or field, or removing or renaming an environment variable, always earns an entry.
+- Never edit a released version's section; it's a historical record. Corrections go under `## [Unreleased]`.
 
 ## Code style
 
@@ -200,6 +213,8 @@ Two things differ from a local dev setup:
 
 ## Human-approval-required actions
 
+Routine local setup and verification commands, including `npm ci` and existing build/test/lint/format/check scripts, do not require approval; the gates below apply to the changes being made, not merely to running commands.
+
 Stop and get explicit human approval before:
 
 - Changing license headers, copyright notices, or any legal text (including `LICENSE`).
@@ -208,7 +223,7 @@ Stop and get explicit human approval before:
 - Deleting or renaming an existing GraphQL type or field — this breaks cached Apollo client state and any downstream consumer. Additive changes are usually safe; removals need a migration plan.
 - Rewiring `server/iocContainer` in a way that changes service lifecycles or startup order — cascading effects on tests and boot.
 - Auth, session, or request middleware (under `server/api.ts`) — security-sensitive; prefer a small, reviewable PR with explicit callouts.
-- Adding, removing, or upgrading any library or package (including transitive dependencies in `package-lock.json`) — confirm licenses are compatible with Apache 2.0 and that there are no known CVEs.
+- Adding, removing, or upgrading any dependency (including transitive dependencies in `package-lock.json`) — confirm licenses are compatible with Apache 2.0 and that there are no known CVEs.
 - Multi-thousand-line diffs — ROOST policy is that reviewers can digest the change. Split into reviewable PRs; regenerated codegen and lockfile bumps are the only exceptions.
 
 ## Commit attribution
@@ -228,3 +243,4 @@ Coop is open source and contributions flow upstream; attribution matters for mai
 - Commit `.env`, credentials, or API keys.
 - Bypass `iocContainer` by importing server singletons directly.
 - Silently modify a migration file that has already been applied to a shared environment — add a new forward migration instead.
+- Edit a released version's section in `CHANGELOG.md` — add to `## [Unreleased]` instead.

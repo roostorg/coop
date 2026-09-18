@@ -23,9 +23,7 @@ import {
 } from '../../../../graphql/generated';
 
 type SchemaField = GQLExchangeApiSchemaQuery['exchangeApiSchema'] extends
-  | infer S
-  | null
-  | undefined
+  infer S | null | undefined
   ? S extends { config_schema: { fields: ReadonlyArray<infer F> } }
     ? F
     : never

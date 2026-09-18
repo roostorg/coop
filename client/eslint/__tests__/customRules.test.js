@@ -1,22 +1,24 @@
-const { Linter } = require('eslint');
-const rule = require('../no-casting-in-getFieldValueForRole');
+import tsParser from '@typescript-eslint/parser';
+import { Linter } from 'eslint';
 
-const linter = new Linter();
+import rule from '../no-casting-in-getFieldValueForRole.js';
+
+const linter = new Linter({ configType: 'flat' });
 
 const runLint = (code) => {
-  const messages = linter.verify(code, {
-    plugins: {
-      custom: {
-        rules: {
-          'no-casting-in-getFieldValueForRole': rule,
-        },
+  const messages = linter.verify(code, [
+    {
+      plugins: {
+        local: { rules: { 'no-casting-in-getFieldValueForRole': rule } },
+      },
+      rules: { 'local/no-casting-in-getFieldValueForRole': 'error' },
+      languageOptions: {
+        parser: tsParser,
+        ecmaVersion: 2015,
+        sourceType: 'module',
       },
     },
-    rules: {
-      'custom/no-casting-in-getFieldValueForRole': 'error',
-    },
-    languageOptions: { ecmaVersion: 2015, sourceType: 'module' },
-  });
+  ]);
   return messages;
 };
 

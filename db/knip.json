@@ -2,5 +2,5 @@
   "$schema": "./node_modules/knip/schema.json",
   "entry": ["src/index.ts"],
   "project": ["src/**/*.ts"],
-  "ignoreDependencies": ["ts-node", "dotenv"]
+  "ignoreDependencies": ["ts-node"]
 }

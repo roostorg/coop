@@ -325,8 +325,7 @@ export class DataWarehouseFactory {
             password: process.env.CLICKHOUSE_PASSWORD ?? '',
             database: process.env.CLICKHOUSE_DATABASE ?? 'default',
             protocol: (process.env.CLICKHOUSE_PROTOCOL ?? 'http') as
-              | 'http'
-              | 'https',
+              'http' | 'https',
           },
           pool: {
             max: process.env.CLICKHOUSE_POOL_SIZE

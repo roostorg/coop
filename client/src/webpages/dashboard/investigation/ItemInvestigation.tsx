@@ -11,6 +11,7 @@ import ItemAction from '@/components/ItemAction';
 import {
   GQLItemHistoryResult,
   GQLItemType,
+  GQLSchemaFieldRoles,
   GQLThreadItem,
   GQLUserItem,
   useGQLGetItemsWithIdLazyQuery,
@@ -401,14 +402,8 @@ export default function ItemInvestigation(props: {
     // shadowing it.
     const derivedIpAddress = (() => {
       try {
-        return getFieldValueForRole(
-          {
-            // eslint-disable-next-line custom-rules/no-casting-in-getFieldValueForRole
-            type: item.type as Parameters<
-              typeof getFieldValueForRole
-            >[0]['type'],
-            data: item.data,
-          },
+        return getFieldValueForRole<GQLSchemaFieldRoles, 'ipAddress'>(
+          { type: item.type, data: item.data },
           'ipAddress',
         );
       } catch {

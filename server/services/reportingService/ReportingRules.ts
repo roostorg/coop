@@ -461,8 +461,7 @@ export default class ReportingRules {
 }
 
 export type ReportingRuleErrorType =
-  | 'ReportingRuleNameExistsError'
-  | 'NotFoundError';
+  'ReportingRuleNameExistsError' | 'NotFoundError';
 
 function isReportingRuleNameExistsError(error: unknown) {
   return (

@@ -1,6 +1,6 @@
-import UserAlt4 from '@/icons/lni/User/user-alt-4.svg?react';
 import type { ItemTypeFieldFieldData } from '@/webpages/dashboard/item_types/itemTypeUtils';
 import { Button } from 'antd';
+import { User as UserAlt4 } from 'lucide-react';
 import { JsonObject } from 'type-fest';
 
 import { GQLUserItemType } from '../../../../../../graphql/generated';
@@ -31,7 +31,9 @@ export default function ManualReviewJobUserVerticalComponent(props: {
           imageUrl={profilePicUrl?.url}
           itemIdentifier={{ id: user.id, typeId: user.type.id }}
           label={displayName ? `${displayName} (${user.id})` : user.id}
-          fallbackComponent={<UserAlt4 className="p-3 fill-slate-500 w-11" />}
+          fallbackComponent={
+            <UserAlt4 className="p-3 text-slate-500 w-11 h-11" />
+          }
         />
         <Button
           className="rounded-md"

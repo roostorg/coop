@@ -98,7 +98,7 @@ export default function ManualReviewJobLatestSubmissionsWithThreadComponent(prop
   relatedActions: readonly ManualReviewJobEnqueuedActionData[];
   onEnqueueActions: (actions: ManualReviewJobEnqueuedActionData[]) => void;
   setRelatedUser: (user: RelatedItem) => void;
-  reportedUserRef?: React.RefObject<HTMLDivElement>;
+  reportedUserRef?: React.RefObject<HTMLDivElement | null>;
   isActionable?: boolean;
   requirePolicySelectionToEnqueueAction: boolean;
   allowMoreThanOnePolicySelection: boolean;
@@ -255,9 +255,12 @@ export default function ManualReviewJobLatestSubmissionsWithThreadComponent(prop
       }
       return (
         <ContentRelatedItemComponent
-          relatedItem={{
-            id: item.itemId,
-            typeId: item.itemTypeId,
+          item={{
+            data: item.itemData,
+            type: {
+              id: item.itemTypeId,
+              baseFields: item.itemTypeFields,
+            },
           }}
           unblurAllMedia={unblurAllMedia}
           title={`${item.itemTypeName}`}

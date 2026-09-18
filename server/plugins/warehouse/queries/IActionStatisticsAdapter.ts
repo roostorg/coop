@@ -3,17 +3,10 @@ import { type ReadonlyDeep } from 'type-fest';
 export type ActionStatisticsTimeDivisionOptions = 'DAY' | 'HOUR';
 
 export type ActionExecutionsGroupByAllowedFields =
-  | 'RULE_ID'
-  | 'ACTION_ID'
-  | 'ITEM_TYPE_ID'
-  | 'ACTION_SOURCE'
-  | 'POLICY_ID';
+  'RULE_ID' | 'ACTION_ID' | 'ITEM_TYPE_ID' | 'ACTION_SOURCE' | 'POLICY_ID';
 
 export type ActionSourceOptions =
-  | 'automated-rule'
-  | 'mrt-decision'
-  | 'manual-action-run'
-  | 'post-actions';
+  'automated-rule' | 'mrt-decision' | 'manual-action-run' | 'post-actions';
 
 export type ActionCountsInput = ReadonlyDeep<{
   orgId: string;

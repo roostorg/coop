@@ -34,7 +34,7 @@ type ResponseBodyMappings = {
   discard: undefined;
 };
 
-type HandleResponseBody = keyof ResponseBodyMappings;
+export type HandleResponseBody = keyof ResponseBodyMappings;
 
 // A symbol that we can stick on FormDataLikeWithStreams objects to
 // unambiguously identify those objects as FormDataLikeWithStreams.

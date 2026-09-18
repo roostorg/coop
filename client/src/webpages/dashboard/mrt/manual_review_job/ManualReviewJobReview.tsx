@@ -1,12 +1,17 @@
-import Sidebar1 from '@/icons/lni/Design/sidebar-1.svg?react';
-import AngleDoubleRight from '@/icons/lni/Direction/angle-double-right.svg?react';
+import { toast } from '@/coop-ui/Toast';
 import { userHasPermissions } from '@/routing/permissions';
 import { __throw } from '@/utils/misc';
 import { isNonEmptyString } from '@/utils/string';
 import { multilevelListFromFlatList } from '@/utils/tree';
-import { DownOutlined, EditOutlined, LoadingOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import { Button, Dropdown, Input, Select, Tooltip } from 'antd';
+import {
+  ChevronsRight as AngleDoubleRight,
+  ChevronDown,
+  Loader2,
+  Pencil,
+  PanelLeft as Sidebar1,
+} from 'lucide-react';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -54,6 +59,7 @@ import { JOB_FRAGMENT } from './jobFragment';
 import ManualReviewJobDequeueErrorComponent from './ManualReviewJobDequeueErrorComponent';
 import MergedReportsComponent from './MergedReportsComponent';
 import ReportInfoComponent from './ReportInfoComponent';
+import { selectManualReviewJob } from './selectManualReviewJob';
 import ManualReviewJobContentView from './v2/ManualReviewJobContentView';
 import ManualReviewJobEmptyQueue from './v2/ManualReviewJobEmptyQueue';
 import { ManualReviewJobOtherItemsComponent } from './v2/ManualReviewJobOtherItemsComponent';
@@ -86,7 +92,7 @@ function actionHasParameters(
 gql`
   ${JOB_FRAGMENT}
   ${ITEM_TYPE_FRAGMENT}
-  query ManualReviewJobInfo($jobIds: [ID!]) {
+  query ManualReviewJobInfo($jobIds: [ID!], $lockToken: String) {
     myOrg {
       id
       policies {
@@ -159,7 +165,7 @@ gql`
         name
         pendingJobCount
         hiddenActionIds
-        jobs(ids: $jobIds) {
+        jobs(ids: $jobIds, lockToken: $lockToken) {
           ...JobFields
         }
       }
@@ -183,6 +189,7 @@ gql`
     submitManualReviewDecision(input: $input) {
       ... on SubmitDecisionSuccessResponse {
         success
+        warnings
       }
       ... on JobHasAlreadyBeenSubmittedError {
         title
@@ -376,7 +383,10 @@ function ManualReviewJobReviewImpl(props: {
     loading,
     refetch: refetchJobInfo,
   } = useGQLManualReviewJobInfoQuery({
-    variables: { jobIds: closedJob ? [closedJob.id] : jobId ? [jobId] : [] },
+    variables: {
+      jobIds: closedJob ? [closedJob.id] : jobId ? [jobId] : [],
+      lockToken: closedJob ? undefined : lockToken,
+    },
     fetchPolicy: 'no-cache',
   });
 
@@ -515,6 +525,9 @@ function ManualReviewJobReviewImpl(props: {
       onCompleted: async (response) => {
         switch (response.submitManualReviewDecision.__typename) {
           case 'SubmitDecisionSuccessResponse': {
+            response.submitManualReviewDecision.warnings.forEach((warning) =>
+              toast.warning(warning),
+            );
             resetState();
             await getNextJob();
             break;
@@ -718,13 +731,14 @@ function ManualReviewJobReviewImpl(props: {
       ),
   });
 
-  const job = closedJob
-    ? closedJob
-    : jobData
-      ? jobData.dequeueManualReviewJob?.job
-      : data?.me?.reviewableQueues
-          .find((queue) => queue.id === queueId)
-          ?.jobs.find((job) => job.id === jobId);
+  const queriedJob = data?.me?.reviewableQueues
+    .find((queue) => queue.id === queueId)
+    ?.jobs.find((job) => job.id === jobId);
+  const job = selectManualReviewJob({
+    closedJob,
+    queriedJob,
+    dequeuedJob: jobData?.dequeueManualReviewJob?.job,
+  });
   const pendingJobCount = jobData?.dequeueManualReviewJob
     ? jobData.dequeueManualReviewJob.numPendingJobs
     : data?.me?.reviewableQueues
@@ -870,6 +884,7 @@ function ManualReviewJobReviewImpl(props: {
     if (closedJob) {
       return (
         <NCMECReviewUser
+          key={jobId}
           orgId={org.id}
           payload={payload}
           isActionable={false}
@@ -888,6 +903,7 @@ function ManualReviewJobReviewImpl(props: {
       return (
         <div>
           <NCMECReviewUser
+            key={jobId}
             orgId={org.id}
             payload={payload}
             isActionable={true}
@@ -1183,7 +1199,7 @@ function ManualReviewJobReviewImpl(props: {
                   }}
                 >
                   <div>
-                    Move <DownOutlined />
+                    Move <ChevronDown className="w-4 h-4 inline" />
                   </div>
                 </Dropdown>
               </div>
@@ -1295,7 +1311,7 @@ function ManualReviewJobReviewImpl(props: {
                       });
                     }}
                   >
-                    <EditOutlined />
+                    <Pencil className="w-4 h-4" />
                   </span>
                 </Tooltip>
               )}
@@ -1337,8 +1353,8 @@ function ManualReviewJobReviewImpl(props: {
       trigger={['click']}
     >
       <Button className="flex flex-row bottom-0 w-2/3 !px-2 mb-2 hidden !border-slate-200 !hover:fill-[#40a9ff] !focus:fill-[#40a9ff]">
-        <div className="flex flex-row">
-          <Sidebar1 className="w-3.5 mr-2 fill-inherit" /> View Policy
+        <div className="flex flex-row items-center">
+          <Sidebar1 className="w-3.5 h-3.5 mr-2" /> View Policy
         </div>
       </Button>
     </Dropdown>
@@ -1352,8 +1368,8 @@ function ManualReviewJobReviewImpl(props: {
         onClick={skipToNextJob}
         disabled={pendingJobCount === 0}
       >
-        <div className="flex flex-row">
-          Skip <AngleDoubleRight className="w-3.5 ml-2 fill-inherit" />
+        <div className="flex flex-row items-center">
+          Skip <AngleDoubleRight className="w-3.5 h-3.5 ml-2" />
         </div>
       </Button>
     );
@@ -1402,8 +1418,7 @@ function ManualReviewJobReviewImpl(props: {
           // issue. See https://github.com/microsoft/TypeScript/issues/17002 for
           // more details.
           const policyId = policyIds satisfies
-            | string
-            | readonly string[] as string;
+            string | readonly string[] as string;
           setSelectedPrimaryPolicies(policiesFromIds([policyId]));
           setSelectedPrimaryActions(
             selectedPrimaryActions.map((action) => ({
@@ -1458,8 +1473,7 @@ function ManualReviewJobReviewImpl(props: {
       <ManualReviewJobListOfThreadsComponent
         payload={
           payload as
-            | GQLContentManualReviewJobPayload
-            | GQLUserManualReviewJobPayload
+            GQLContentManualReviewJobPayload | GQLUserManualReviewJobPayload
         }
         thread={thread}
         threadMessages={threadItems}
@@ -1942,7 +1956,7 @@ function ManualReviewJobReviewImpl(props: {
                 }}
               >
                 {submissionLoading ? (
-                  <LoadingOutlined spin className="self-start" />
+                  <Loader2 className="w-4 h-4 animate-spin self-start" />
                 ) : (
                   <div className="text-base">Submit</div>
                 )}

@@ -29,12 +29,12 @@ Authentication: `X-API-KEY` header. See [API Keys & Authentication](../developme
 
 ### Response fields
 
-| Field                 | Type   | Description                                  |
+| Field | Type | Description |
 | :-------------------- | :----- | :------------------------------------------- | ---------------------------------------------------------------- |
-| `policies`            | Array  | All policies for your organization           |
-| `policies[].id`       | String | Coop's unique, immutable ID for this policy  |
-| `policies[].name`     | String | The display name you assigned to this policy |
-| `policies[].parentId` | String | null                                         | ID of the parent policy, or `null` if this is a top-level policy |
+| `policies` | Array | All policies for your organization |
+| `policies[].id` | String | Coop's unique, immutable ID for this policy |
+| `policies[].name` | String | The display name you assigned to this policy |
+| `policies[].parentId` | String | null | ID of the parent policy, or `null` if this is a top-level policy |
 
 ## Notes
 

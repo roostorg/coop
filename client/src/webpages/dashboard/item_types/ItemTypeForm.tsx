@@ -1,10 +1,10 @@
-import { PlusOutlined } from '@ant-design/icons';
 import { gql } from '@apollo/client';
 import { ItemTypeKind } from '@roostorg/coop-types';
 import { Button, Input, Select } from 'antd';
 import capitalize from 'lodash/capitalize';
 import invert from 'lodash/invert';
 import pickBy from 'lodash/pickBy';
+import { Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -590,11 +590,11 @@ export default function ItemTypeForm() {
             onClick={() =>
               setCustomFields([
                 ...customFields,
-                getDefaultEmptyField(customFields.length),
+                getDefaultEmptyField(nextFieldIndex(customFields)),
               ])
             }
           >
-            <PlusOutlined />
+            <Plus className="w-4 h-4" />
             Add Field
           </Button>
           <div className="flex flex-row gap-16">
@@ -673,6 +673,18 @@ export default function ItemTypeForm() {
       {modal}
     </div>
   );
+}
+
+/**
+ * Next unused field index. Deliberately not `customFields.length`:
+ * `onClickDelete` removes a field by filtering on `index` without
+ * re-indexing the rest, so a new field taking `length` can collide with an
+ * existing index — producing duplicate React keys and duplicate
+ * Required/Hidden checkbox DOM ids (the bug this file's ids are meant to
+ * avoid).
+ */
+export function nextFieldIndex(fields: readonly FieldState[]): number {
+  return fields.reduce((max, field) => Math.max(max, field.index), -1) + 1;
 }
 
 function getDefaultEmptyField(index: number): FieldState {

@@ -44,7 +44,7 @@ export type NcmecReportingServicePg = {
     report_id: string;
     user_id: string;
     user_item_type_id: string;
-    reported_media: NonEmptyArray<NcmecMediaReport>;
+    reported_media: Array<NcmecMediaReport>;
     reviewer_id?: string;
     created_at: GeneratedAlways<Date>;
     updated_at: GeneratedAlways<Date>;

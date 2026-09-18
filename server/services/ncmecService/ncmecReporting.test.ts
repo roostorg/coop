@@ -1,6 +1,7 @@
 import {
   buildInternetDetailsFromOrgSetting,
   clampIncidentDateTimeToPast,
+  latestEvidenceTimestamp,
   mergeFieldRoleIpIntoEvents,
   NCMECEvent,
   resolveReportedPersonEmail,
@@ -143,7 +144,80 @@ describe('NCMEC reporting', () => {
 
     it('throws on invalid timestamps', () => {
       expect(() => clampIncidentDateTimeToPast('not-a-date', NOW_MS)).toThrow(
-        /Invalid media createdAt timestamp/,
+        /Invalid timestamp for incidentDateTime/,
+      );
+    });
+  });
+
+  describe('latestEvidenceTimestamp', () => {
+    const media = (createdAt: string) => ({ createdAt });
+    const thread = (...sentAts: (string | Date)[]) => ({
+      reportedContent: sentAts.map((sentAt) => ({ sentAt })),
+    });
+
+    it('returns the most recent media createdAt', () => {
+      expect(
+        latestEvidenceTimestamp(
+          [
+            media('2026-01-10T00:00:00.000Z'),
+            media('2026-01-12T00:00:00.000Z'),
+          ],
+          [],
+        ),
+      ).toEqual('2026-01-12T00:00:00.000Z');
+    });
+
+    it('derives the timestamp from messages for a text-only report', () => {
+      expect(
+        latestEvidenceTimestamp(
+          [],
+          [thread('2026-01-05T00:00:00.000Z', '2026-01-08T00:00:00.000Z')],
+        ),
+      ).toEqual('2026-01-08T00:00:00.000Z');
+    });
+
+    it('takes the max across both media and messages', () => {
+      expect(
+        latestEvidenceTimestamp(
+          [media('2026-01-12T00:00:00.000Z')],
+          [thread('2026-01-20T00:00:00.000Z')],
+        ),
+      ).toEqual('2026-01-20T00:00:00.000Z');
+    });
+
+    it('accepts Date-valued message timestamps', () => {
+      expect(
+        latestEvidenceTimestamp(
+          [],
+          [thread(new Date('2026-01-09T00:00:00.000Z'))],
+        ),
+      ).toEqual('2026-01-09T00:00:00.000Z');
+    });
+
+    it('throws when there is no evidence at all', () => {
+      expect(() => latestEvidenceTimestamp([], [])).toThrow(
+        /Report has neither media nor messages/,
+      );
+      expect(() => latestEvidenceTimestamp([], [thread()])).toThrow(
+        /Report has neither media nor messages/,
+      );
+    });
+
+    it('skips an unparseable timestamp and uses the latest valid one', () => {
+      expect(
+        latestEvidenceTimestamp(
+          [],
+          [thread('not-a-date', '2026-01-08T00:00:00.000Z')],
+        ),
+      ).toEqual('2026-01-08T00:00:00.000Z');
+    });
+
+    it('throws when evidence exists but no timestamp parses', () => {
+      expect(() => latestEvidenceTimestamp([media('not-a-date')], [])).toThrow(
+        /Invalid timestamp for incidentDateTime/,
+      );
+      expect(() => latestEvidenceTimestamp([], [thread('not-a-date')])).toThrow(
+        /Invalid timestamp for incidentDateTime/,
       );
     });
   });
@@ -306,6 +380,34 @@ describe('NCMEC reporting', () => {
       expect(webhook).toHaveLength(1);
       expect(params).toHaveLength(1);
     });
+
+    it('canonicalises webhook/param event key order to the XSD sequence', () => {
+      // A webhook returning ipCaptureEvent with keys in non-XSD order must be
+      // rebuilt as { ipAddress, eventName, dateTime, possibleProxy?, port? }
+      // before serialisation, or xml-js emits out-of-order children and NCMEC
+      // rejects the report with responseCode=4100.
+      const nonCanonicalWebhook = {
+        eventName: NCMECEvent.Login,
+        dateTime: '2026-01-01T00:00:00.000Z',
+        ipAddress: '192.0.2.1',
+        port: 443,
+        possibleProxy: true,
+      };
+      const result = mergeFieldRoleIpIntoEvents(
+        [nonCanonicalWebhook],
+        undefined,
+        undefined,
+        synth,
+      );
+      expect(result).toEqual([nonCanonicalWebhook]);
+      expect(Object.keys(result![0])).toEqual([
+        'ipAddress',
+        'eventName',
+        'dateTime',
+        'possibleProxy',
+        'port',
+      ]);
+    });
   });
 
   describe('resolveReportedPersonEmail', () => {
@@ -349,6 +451,9 @@ describe('NCMEC reporting', () => {
       ).toEqual([{ _text: 'role@example.com' }]);
     });
   });
+
+  // toOriginalFileHashes tests moved to ./toOriginalFileHashes.test.ts
+  // (this file was over the 500-line max-lines limit after expansion).
 
   describe('summarizeCyberTipFailure', () => {
     const previousDebug = process.env.NCMEC_DEBUG;

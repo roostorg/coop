@@ -88,7 +88,7 @@ Define how long strikes stay on record and what happens when a user's strike sco
 
 ![Thresholds & Settings tab showing the Strike Window (TTL) and a list of thresholds with associated actions](../images/user-strike-thresholds.png)
 
-**Strike Window** controls how long a strike stays on a user's record. Strikes older than the window are excluded from the running score. The same value is editable from [Settings → Other → User Strike TTL](settings.md#other).
+**Strike Window** controls how long a strike stays on a user's record. Strikes older than the window are excluded from the running score.
 
 **Thresholds** are score values that, when crossed, trigger an action automatically. Configure as many as you want. For example:
 

@@ -22,8 +22,7 @@ export type {
  * recursively transforms the keys of objects in array/tuple types.
  */
 export type SnakeCasedPropertiesDeepWithArrays<T> = T extends
-  | readonly []
-  | readonly [...never[]]
+  readonly [] | readonly [...never[]]
   ? readonly []
   : T extends readonly [infer U, ...infer V]
     ? readonly [
@@ -39,9 +38,9 @@ export type SnakeCasedPropertiesDeepWithArrays<T> = T extends
         ? ReadonlyArray<SnakeCasedPropertiesDeepWithArrays<ItemType>>
         : T extends object
           ? {
-              [K in keyof T as SnakeCase<K>]: SnakeCasedPropertiesDeepWithArrays<
-                T[K]
-              >;
+              [
+                K in keyof T as SnakeCase<K>
+              ]: SnakeCasedPropertiesDeepWithArrays<T[K]>;
             }
           : T;
 

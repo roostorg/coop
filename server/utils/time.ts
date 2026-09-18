@@ -62,3 +62,15 @@ export function getEndOfDayInTimezone(timezone: string) {
   dateInTimezone.setHours(23, 59, 59, 999);
   return dateInTimezone;
 }
+
+/**
+ * ClickHouse returns `DateTime64` as `"YYYY-MM-DD HH:MM:SS.sss"` with no
+ * timezone marker, which `new Date(...)` would parse as local time.
+ * Normalise to an ISO string with an explicit `Z` so it parses as UTC.
+ */
+export function parseClickhouseTimestamp(raw: string | number | Date): Date {
+  if (raw instanceof Date) return raw;
+  if (typeof raw === 'number') return new Date(raw);
+  const isoish = raw.replace(' ', 'T');
+  return new Date(isoish.endsWith('Z') ? isoish : `${isoish}Z`);
+}

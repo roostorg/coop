@@ -23,7 +23,7 @@ import express, { type ErrorRequestHandler, type Request } from 'express';
 import session from 'express-session';
 import { GraphQLError, type GraphQLFormattedError } from 'graphql';
 import helmet from 'helmet';
-import passport from 'passport';
+import { Passport } from 'passport';
 
 import { kyselyUserFindById } from './graphql/datasources/userKyselyPersistence.js';
 import resolvers, { type Context } from './graphql/resolvers.js';
@@ -92,6 +92,7 @@ const sessionStore = connectPgSimple(session);
 
 export default async function makeApiServer(deps: Dependencies) {
   const app = express();
+  const passport = new Passport();
   const { KyselyPg, KyselyPgPool } = deps;
 
   app.use(cors());
@@ -456,11 +457,6 @@ function makeGqlServices(deps: Dependencies) {
       'UserStrikeService',
       'SSOService',
     ]),
-    // Calling sendEmail straight from a resolver is hella sketch, as the
-    // resolvers shouldn’t have real business logic in them. Future sendEmail
-    // calls should be encapsulated inside some business-logic-containing
-    // service, and it’s that service that should be called from the resolvers.
-    legacy_DO_NOT_USE_DIRECTLY_sendEmail: deps.sendEmail,
   };
 }
 

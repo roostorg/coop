@@ -2,12 +2,11 @@ import { type ItemIdentifier } from '@roostorg/types';
 import { uid } from 'uid';
 import { v1 as uuidv1 } from 'uuid';
 
-import getBottle from '../../../iocContainer/index.js';
 import createContentItemTypes from '../../../test/fixtureHelpers/createContentItemTypes.js';
 import createMrtQueue from '../../../test/fixtureHelpers/createMrtQueue.js';
 import createOrg from '../../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../../test/fixtureHelpers/createUser.js';
-import { makeTestWithFixture } from '../../../test/utils.js';
+import { makeTransactionalTestWithFixture } from '../../../test/harness/transactionalTest.js';
 import { instantiateOpaqueType } from '../../../utils/typescript-types.js';
 import {
   makeSubmissionId,
@@ -19,33 +18,28 @@ import { type CustomActionDecisionComponent } from './JobDecisioning.js';
 const TRIGGER_ACTION_ID = 'ban-action';
 
 const testWithQueue = () =>
-  makeTestWithFixture(async () => {
-    const container = (await getBottle()).container;
-    const { org, cleanup: orgCleanup } = await createOrg(
+  makeTransactionalTestWithFixture(async ({ deps }) => {
+    const { org } = await createOrg(
       {
-        KyselyPg: container.KyselyPg,
-        ModerationConfigService: container.ModerationConfigService,
-        ApiKeyService: container.ApiKeyService,
+        KyselyPg: deps.KyselyPg,
+        ModerationConfigService: deps.ModerationConfigService,
+        ApiKeyService: deps.ApiKeyService,
       },
       uid(),
     );
-    const { user, cleanup: userCleanup } = await createUser(
-      container.KyselyPg,
-      org.id,
-    );
-    const { itemTypes, cleanup: itemTypesCleanup } =
-      await createContentItemTypes({
-        moderationConfigService: container.ModerationConfigService,
-        orgId: org.id,
-        extra: {},
-      });
-    const { queue, cleanup: queueCleanup } = await createMrtQueue({
+    const { user } = await createUser(deps.KyselyPg, org.id);
+    const { itemTypes } = await createContentItemTypes({
+      moderationConfigService: deps.ModerationConfigService,
       orgId: org.id,
-      mrtService: container.ManualReviewToolService,
+      extra: {},
+    });
+    const { queue } = await createMrtQueue({
+      orgId: org.id,
+      mrtService: deps.ManualReviewToolService,
       userId: user.id,
     });
 
-    const mrtService = container.ManualReviewToolService;
+    const mrtService = deps.ManualReviewToolService;
     const queueOps = mrtService['queueOps'];
 
     const addJob = async (opts: {
@@ -122,14 +116,6 @@ const testWithQueue = () =>
       addJob,
       configureQueue,
       pendingJobIds,
-      cleanup: async () => {
-        await queueCleanup();
-        await itemTypesCleanup();
-        await userCleanup();
-        await orgCleanup();
-        await container.KyselyPg.destroy();
-        await container.KyselyPgReadReplica.destroy();
-      },
     };
   });
 

@@ -200,9 +200,7 @@ async function runSignal(
               matchingValues?.strings ?? matchingValues?.locations ?? [];
 
             let matchingValuesFromBanks: readonly (
-              | string
-              | ReadonlyDeep<LocationArea>
-              | HashBank
+              string | ReadonlyDeep<LocationArea> | HashBank
             )[] = [];
             if (textBankIds?.length) {
               matchingValuesFromBanks = await textBanksStringsLoader(

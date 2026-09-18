@@ -3,10 +3,9 @@ import { uid } from 'uid';
 
 import { UserRole } from '../../services/userManagementService/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
-import { makeMockedServer } from '../../test/setupMockedServer.js';
-import { makeTestWithFixture } from '../../test/utils.js';
+import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
+import { seedSystemRolesForOrg } from './rolePersistence.js';
 import {
-  kyselyUserDeleteById,
   kyselyUserFindByEmailAndOrg,
   kyselyUserInsert,
 } from './userKyselyPersistence.js';
@@ -16,8 +15,8 @@ function samlUserInput(orgId: string) {
     id: uid(),
     orgId,
     email: faker.internet.email(),
-    firstName: faker.name.firstName(),
-    lastName: faker.name.lastName(),
+    firstName: faker.person.firstName(),
+    lastName: faker.person.lastName(),
     role: UserRole.ADMIN,
     loginMethods: ['saml'] as const,
     password: null,
@@ -25,9 +24,8 @@ function samlUserInput(orgId: string) {
 }
 
 describe('kyselyUserFindByEmailAndOrg', () => {
-  const testWithFixture = makeTestWithFixture(async () => {
-    const { deps, shutdown } = await makeMockedServer();
-    const { org, cleanup: orgCleanup } = await createOrg(
+  const testWithFixture = makeTransactionalTestWithFixture(async ({ deps }) => {
+    const { org } = await createOrg(
       {
         KyselyPg: deps.KyselyPg,
         ModerationConfigService: deps.ModerationConfigService,
@@ -35,14 +33,8 @@ describe('kyselyUserFindByEmailAndOrg', () => {
       },
       uid(),
     );
-    return {
-      deps,
-      org,
-      async cleanup() {
-        await orgCleanup();
-        await shutdown();
-      },
-    };
+    await seedSystemRolesForOrg(deps.KyselyPg, org.id);
+    return { org };
   });
 
   testWithFixture(
@@ -50,15 +42,11 @@ describe('kyselyUserFindByEmailAndOrg', () => {
     async ({ deps, org }) => {
       const input = samlUserInput(org.id);
       await kyselyUserInsert({ db: deps.KyselyPg, ...input });
-      try {
-        const result = await kyselyUserFindByEmailAndOrg(deps.KyselyPg, {
-          email: input.email,
-          orgId: org.id,
-        });
-        expect(result).toMatchObject({ id: input.id, orgId: org.id });
-      } finally {
-        await kyselyUserDeleteById(deps.KyselyPg, input.id);
-      }
+      const result = await kyselyUserFindByEmailAndOrg(deps.KyselyPg, {
+        email: input.email,
+        orgId: org.id,
+      });
+      expect(result).toMatchObject({ id: input.id, orgId: org.id });
     },
   );
 
@@ -69,15 +57,11 @@ describe('kyselyUserFindByEmailAndOrg', () => {
     async ({ deps, org }) => {
       const input = samlUserInput(org.id);
       await kyselyUserInsert({ db: deps.KyselyPg, ...input });
-      try {
-        const result = await kyselyUserFindByEmailAndOrg(deps.KyselyPg, {
-          email: input.email,
-          orgId: `different-org-${uid()}`,
-        });
-        expect(result).toBeUndefined();
-      } finally {
-        await kyselyUserDeleteById(deps.KyselyPg, input.id);
-      }
+      const result = await kyselyUserFindByEmailAndOrg(deps.KyselyPg, {
+        email: input.email,
+        orgId: `different-org-${uid()}`,
+      });
+      expect(result).toBeUndefined();
     },
   );
 

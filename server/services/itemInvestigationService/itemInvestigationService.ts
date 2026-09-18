@@ -573,8 +573,7 @@ export class ItemInvestigationService {
         const submissionId = record.submissionId as SubmissionId;
         const itemData = record.itemData as JsonOf<NormalizedItemData>;
         const schemaVariant = record.itemTypeSchemaVariant as
-          | 'original'
-          | 'partial';
+          'original' | 'partial';
 
         return dbRowToItemSubmissionWithItemTypeIdentifier({
           submission_id: submissionId,
@@ -1092,8 +1091,7 @@ export class ItemInvestigationService {
         item_data: record.itemData as JsonOf<NormalizedItemData>,
         item_submission_time: record.occurredAt,
         item_type_schema_variant: record.itemTypeSchemaVariant as
-          | 'original'
-          | 'partial',
+          'original' | 'partial',
       });
 
     for (const group of recordsByItem.values()) {
@@ -1121,6 +1119,11 @@ export class ItemInvestigationService {
     throw new Error('Not Implemented');
   }
 
+  /**
+   * The item's action history, shaped for GraphQL. Records missing an item id
+   * or type id are dropped rather than surfaced partially, since the pair is
+   * what identifies an item.
+   */
   async getItemActionHistory(opts: {
     orgId: string;
     itemId: string;
@@ -1152,6 +1155,7 @@ export class ItemInvestigationService {
           itemCreatorTypeId: record.userTypeId ?? undefined,
           policies: record.policies,
           ruleIds: record.ruleIds,
+          parameters: record.parameters,
           ts: record.occurredAt,
         };
       }),

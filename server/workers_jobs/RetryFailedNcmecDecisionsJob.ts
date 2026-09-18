@@ -118,9 +118,10 @@ export default inject(
           getItemTypeEventuallyConsistent,
         });
         submitReportInvoked = true;
+        const isTest = process.env.NCMEC_ENV !== 'production';
         const reportResult = await ncmecService.submitReport(
           reportParams,
-          false,
+          isTest,
         );
         if (
           reportResult === 'UNSUPPORTED_ORG' ||
@@ -133,7 +134,8 @@ export default inject(
           await ncmecService.getNCMECActionsToRunAndPolicies(orgId);
         if (
           actionAndPolicy != null &&
-          actionAndPolicy.actionsToRunIds != null
+          actionAndPolicy.actionsToRunIds != null &&
+          !isTest
         ) {
           const actions = await moderationConfigService.getActions({
             orgId,

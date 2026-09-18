@@ -1,5 +1,9 @@
 import { type Dependencies } from '../../iocContainer/index.js';
-import { passwordMatchesHash } from '../../services/userManagementService/index.js';
+import {
+  hashPassword,
+  passwordMatchesHash,
+  passwordNeedsRehash,
+} from '../../services/userManagementService/index.js';
 import { CoopError, makeInternalServerError } from '../../utils/errors.js';
 import {
   makeLoginIncorrectPasswordError,
@@ -10,6 +14,40 @@ import {
   kyselyUserFindByEmail,
   type GraphQLUserParent,
 } from './userKyselyPersistence.js';
+
+/**
+ * Upgrade of a stale password hash to a fresh Argon2id hash at today's
+ * parameters. Runs only after the password has already been verified correct,
+ * because re-hashing requires the plaintext: it cannot be done as a migration,
+ * only opportunistically at the one moment we hold the password.
+ *
+ * Errors are deliberately not caught. Hashing or writing failing here means
+ * something is wrong with the process or the database, and a login is not the
+ * place to paper over that — it propagates to `verifyEmailPasswordCredentials`,
+ * which logs it and fails the login. The user can retry if it was transient.
+ *
+ * The write is a compare-and-swap on `verifiedHash` (the exact stored hash
+ * the plaintext was just checked against) rather than an unconditional
+ * update by id: if a concurrent password change lands between verification
+ * and this write, zero rows match and the stale rehash is dropped instead
+ * of clobbering the newer hash.
+ */
+async function rehashPasswordOnLogin(
+  deps: {
+    kyselyPg: Dependencies['KyselyPg'];
+  },
+  userId: string,
+  verifiedHash: string,
+  plaintextPassword: string,
+): Promise<void> {
+  const rehashed = await hashPassword(plaintextPassword);
+  await deps.kyselyPg
+    .updateTable('public.users')
+    .set({ password: rehashed, updated_at: new Date() })
+    .where('id', '=', userId)
+    .where('password', '=', verifiedHash)
+    .execute();
+}
 
 /**
  * Look up a user by email and verify their password, applying the same
@@ -60,11 +98,17 @@ export async function verifyEmailPasswordCredentials(
 
     // `loginMethods` includes 'password', so the DB CHECK constraint
     // guarantees `user.password` is non-null here.
-    if (
-      user.password == null ||
-      !(await passwordMatchesHash(password, user.password))
-    ) {
+    if (user.password == null) {
       throw makeLoginIncorrectPasswordError({ shouldErrorSpan: true });
+    }
+
+    const passwordMatches = await passwordMatchesHash(password, user.password);
+    if (!passwordMatches) {
+      throw makeLoginIncorrectPasswordError({ shouldErrorSpan: true });
+    }
+
+    if (passwordNeedsRehash(user.password)) {
+      await rehashPasswordOnLogin(deps, user.id, user.password, password);
     }
 
     return user;
