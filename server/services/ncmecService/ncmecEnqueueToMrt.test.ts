@@ -86,8 +86,6 @@ function makeEnqueue(enqueueSpy: jest.Mock): NcmecEnqueueToMrt {
     {
       getItemSubmissionsByCreator: () => emptyAsyncIterable(),
     } as unknown as never,
-    (async () => ({ status: 200 })) as unknown as never,
-    { sign: () => undefined } as unknown as never,
     {
       getUserHasExistingNcmeReport: async () => false,
     } as unknown as NcmecReporting,
