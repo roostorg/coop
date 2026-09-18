@@ -400,11 +400,13 @@ const Org: GQLOrgResolvers = {
     if (!user || user.orgId !== org.id) {
       throw unauthenticatedError('User required');
     }
-    return context.services.ManualReviewToolService.getAllQueuesForOrgAndDangerouslyBypassPermissioning(
-      {
+    return context.services.ManualReviewToolService.getReviewableQueuesForUser({
+      invoker: {
+        userId: user.id,
+        permissions: user.getPermissions(),
         orgId: user.orgId,
       },
-    );
+    });
   },
   async apiKey(org, _, context) {
     const user = context.getUser();
