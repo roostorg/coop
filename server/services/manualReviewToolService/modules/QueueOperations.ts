@@ -117,9 +117,12 @@ export type QueueOperationsErrorType =
 // scaling by orgId, so you need the orgId to find the queue.
 type QueueKey = { orgId: string; queueId: string };
 
-const MANUAL_REVIEW_LOCK_DURATION_MS = parseInt(
-  process.env.MANUAL_REVIEW_LOCK_DURATION_MS ?? '600000',
-);
+// Falls back to the default on anything that isn't a positive integer, since
+// BullMQ passes this straight to Redis and NaN or 0 would break lock renewal.
+const MANUAL_REVIEW_LOCK_DURATION_MS = (() => {
+  const configured = Number(process.env.MANUAL_REVIEW_LOCK_DURATION_MS);
+  return Number.isInteger(configured) && configured > 0 ? configured : 600_000;
+})();
 
 /**
  * This class handles everything that MRT does directly with queues: CRUDing

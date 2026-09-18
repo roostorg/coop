@@ -15,10 +15,16 @@ import { SignalPricingStructure } from '../../../../types/SignalPricingStructure
 import { SignalType } from '../../../../types/SignalType.js';
 import SignalBase, { type SignalInput } from '../../../SignalBase.js';
 
-// Overridable so deployments can point at Azure OpenAI or another
-// OpenAI-compatible endpoint instead of api.openai.com.
+// Overridable so deployments can point at any endpoint that implements
+// OpenAI's API contract (same routes and bearer-token auth) instead of
+// api.openai.com. `||` so an empty value in .env falls back to the default;
+// trailing slashes are stripped so the paths appended below don't double up.
 const OPEN_AI_BASE_URL =
-  process.env.OPEN_AI_BASE_URL ?? 'https://api.openai.com/v1';
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- `||` on purpose: an empty value must also fall back
+  (process.env.OPEN_AI_BASE_URL || 'https://api.openai.com/v1').replace(
+    /\/+$/,
+    '',
+  );
 
 export type FetchOpenAiTranscription = Bind1<
   typeof getOpenAiTranscription,
