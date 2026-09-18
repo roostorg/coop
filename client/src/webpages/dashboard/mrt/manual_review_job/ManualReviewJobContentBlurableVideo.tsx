@@ -1,5 +1,5 @@
 import { CirclePlay } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import ReactPlayer from 'react-player';
 
 import CoopModal from '../../components/CoopModal';
@@ -32,6 +32,21 @@ export default function ManualReviewJobContentBlurableVideo(props: {
     maxWidth = Infinity,
     maxHeight = Infinity,
   } = options ?? {};
+  // react-player defaults its wrapper <div> to a fixed 640x360 and forwards
+  // `style` straight to it. Left alone, that box overflows (or, once the parent
+  // clips it, hides) whenever the review panel is narrower than 640px. Make the
+  // player fill the container width instead, capped by any caller-supplied
+  // max-*; drop `max-*: Infinity`, which is invalid CSS.
+  const playerWidth = maxWidth !== Infinity ? maxWidth : '100%';
+  const playerHeight = maxHeight !== Infinity ? maxHeight : 360;
+  const playerStyle: CSSProperties = { display: 'flex', width: '100%' };
+  if (maxWidth !== Infinity) {
+    playerStyle.maxWidth = maxWidth;
+  }
+  if (maxHeight !== Infinity) {
+    playerStyle.maxHeight = maxHeight;
+  }
+
   const [videoError, setVideoError] = useState<boolean>(false);
   const [playing, setPlaying] = useState<boolean>(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -65,7 +80,10 @@ export default function ManualReviewJobContentBlurableVideo(props: {
   });
 
   return (
-    <div className={`${className} relative rounded-lg shadow h-fit`} ref={ref}>
+    <div
+      className={`${className} relative overflow-hidden rounded-lg shadow h-fit`}
+      ref={ref}
+    >
       <div
         className={`shadow ${
           shouldBlur
@@ -78,7 +96,9 @@ export default function ManualReviewJobContentBlurableVideo(props: {
         }`}
       >
         <ReactPlayer
-          style={{ display: 'flex', maxWidth, maxHeight }}
+          width={playerWidth}
+          height={playerHeight}
+          style={playerStyle}
           playing={playing}
           url={url}
           controls={!controlsDisabled}
@@ -94,6 +114,15 @@ export default function ManualReviewJobContentBlurableVideo(props: {
             file: {
               attributes: {
                 controlsList: 'nodownload',
+                // react-player spreads `attributes` after its own `style`, so
+                // this fully replaces it — restate width/height and add
+                // object-fit so the video letterboxes in the fixed wrapper box
+                // instead of stretching.
+                style: {
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'contain' as const,
+                },
               },
             },
           }}
