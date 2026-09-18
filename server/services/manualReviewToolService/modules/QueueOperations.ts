@@ -117,7 +117,9 @@ export type QueueOperationsErrorType =
 // scaling by orgId, so you need the orgId to find the queue.
 type QueueKey = { orgId: string; queueId: string };
 
-const MANUAL_REVIEW_LOCK_DURATION_MS = 600_000;
+const MANUAL_REVIEW_LOCK_DURATION_MS = parseInt(
+  process.env.MANUAL_REVIEW_LOCK_DURATION_MS ?? '600000',
+);
 
 /**
  * This class handles everything that MRT does directly with queues: CRUDing

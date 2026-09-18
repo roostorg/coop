@@ -264,5 +264,6 @@ namespace NodeJS {
     OPEN_AI_API_KEY?: string;
     OPEN_AI_BASE_URL?: string;
     SLACK_APP_BEARER_TOKEN?: string;
+    MANUAL_REVIEW_LOCK_DURATION_MS?: string;
   }
 }
