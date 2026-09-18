@@ -212,7 +212,7 @@ export default async function makeApiServer(deps: Dependencies) {
    * Apollo Server - uses /api/graphql path
    */
   const apolloServer = new ApolloServer<Context>({
-    schema: mapSchema(makeExecutableSchema({ typeDefs, resolvers }), {
+    schema: mapSchema(makeExecutableSchema<Context>({ typeDefs, resolvers }), {
       [MapperKind.QUERY_ROOT_FIELD](
         fieldConfig,
         _fieldName,
