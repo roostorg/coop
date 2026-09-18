@@ -1,7 +1,7 @@
 import { createRequire } from 'node:module';
 import type { IsEmailOptions } from 'validator/lib/isEmail.js';
 
-import { validateUrl } from '../../utils/url.js';
+import { validateUrl } from '../../utils/urlValidation.js';
 
 // `validator` is CJS with UMD-style types whose `default` doesn't resolve to
 // a callable under `module: NodeNext`; `createRequire` gives us `module.exports`

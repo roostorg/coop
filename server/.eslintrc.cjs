@@ -677,20 +677,14 @@ module.exports = {
     {
       files: ['test/**/*.ts', 'e2e/**/*.ts', './**/*.{spec,test}.ts'],
       rules: {
-        // Match prior test-only mutation policy: allow `this`, class internals,
-        // and `process.env.*`; production code is not in this override.
+        // Match prior test-only mutation policy: allow `this` and class
+        // internals; production code is not in this override.
         'functional/immutable-data': [
           'error',
           {
             ignoreImmediateMutation: true,
             ignoreClasses: true,
-            ignoreAccessorPattern: [
-              'this',
-              'this.*',
-              'this.*.*',
-              // Tests toggle env vars and clean up with `delete process.env.*`.
-              'process.env.*',
-            ],
+            ignoreAccessorPattern: ['this', 'this.*', 'this.*.*'],
           },
         ],
         'no-console': 'off',

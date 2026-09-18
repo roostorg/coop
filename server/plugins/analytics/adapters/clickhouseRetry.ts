@@ -1,8 +1,15 @@
-import {
-  safeGetEnvInt,
-  safeGetEnvNonNegativeInt,
-} from '../../../iocContainer/utils.js';
 import { withRetries } from '../../../utils/misc.js';
+
+/**
+ * How hard to retry a failed insert. Supplied by the caller rather than read
+ * from the environment, so adapters under `plugins/` stay independent of how a
+ * given deployment sources its configuration.
+ */
+export interface ClickhouseInsertRetrySettings {
+  maxRetries: number;
+  initialTimeMsBetweenRetries: number;
+  maxTimeMsBetweenRetries: number;
+}
 
 // Network errors we'll retry on. ClickHouse over HTTP can RST in-flight
 // connections (remote restart, idle-socket reaper between us and CH, etc.);
@@ -27,20 +34,10 @@ export function isTransientNetworkError(err: unknown): boolean {
 
 export function withClickhouseInsertRetries<Args extends unknown[]>(
   fn: (this: void, ...args: Args) => Promise<void>,
+  retry: ClickhouseInsertRetrySettings,
 ): (...args: Args) => Promise<void> {
   return withRetries(
-    {
-      maxRetries: safeGetEnvNonNegativeInt('CLICKHOUSE_INSERT_MAX_RETRIES', 2),
-      initialTimeMsBetweenRetries: safeGetEnvInt(
-        'CLICKHOUSE_INSERT_RETRY_INITIAL_MS',
-        100,
-      ),
-      maxTimeMsBetweenRetries: safeGetEnvInt(
-        'CLICKHOUSE_INSERT_RETRY_MAX_MS',
-        1000,
-      ),
-      isRetryableError: isTransientNetworkError,
-    },
+    { ...retry, isRetryableError: isTransientNetworkError },
     fn,
   );
 }

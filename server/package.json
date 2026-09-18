@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
+    "postbuild": "mkdir -p build && cp package.json build/package.json",
+    "prestart": "npm run postbuild",
     "start": "tsc-watch --onSuccess \"node --trace-warnings --env-file-if-exists=.env ./build/bin/www.js\"",
+    "prestart:trace": "npm run postbuild",
     "start:trace": "tsc-watch --onSuccess \"node --trace-warnings --env-file-if-exists=.env --require ../nodejs-instrumentation/build/autoinstrumentation.js ./build/bin/www.js\"",
     "test": "npm run test:local",
     "test:local": "NODE_OPTIONS=\"--no-warnings --loader ts-node/esm\" node --env-file-if-exists=.env node_modules/.bin/jest --watch --detectOpenHandles",
@@ -26,7 +29,13 @@
   },
   "author": "Roostorg",
   "license": "Apache-2.0",
+  "imports": {
+    "#config/*": "./config/*.js",
+    "#lib/env": "./lib/env/index.js",
+    "#start/*": "./start/*.js"
+  },
   "dependencies": {
+    "@adonisjs/env": "^7.1.0",
     "@apollo/server": "^5.5.0",
     "@as-integrations/express5": "^1.1.2",
     "@aws-sdk/client-s3": "^3.1017.0",
@@ -41,6 +50,7 @@
     "@node-saml/passport-saml": "^5.1.0",
     "@opentelemetry/api": "^1.8.0",
     "@opentelemetry/semantic-conventions": "^1.22.0",
+    "@poppinss/utils": "^7.1.0",
     "@roostorg/coop-integration-example": "^2.0.0",
     "@roostorg/coop-types": "^2.4.0",
     "@sendgrid/mail": "^8.1.6",

@@ -1,5 +1,4 @@
 import crypto from 'node:crypto';
-import { URL } from 'node:url';
 
 import { inject, type Dependencies } from '../../iocContainer/index.js';
 import { CoopEmailAddress } from '../../services/sendEmailService/index.js';
@@ -56,14 +55,14 @@ class OrgAPI {
       orgId,
     });
 
-    const url = new URL(`${this.config.uiUrl}/signup/${token}`);
+    const url = this.config.signupUrl(token);
     const msg = {
       to: email,
       from: CoopEmailAddress.NoReply,
       subject: "You've been invited to join your team on Coop!",
       html: `Hi, and welcome to Coop! Your admin has invited you to join the <strong>${org.name}</strong> Coop team.
       <br /><br />
-      Click on <a href='${url.href}'>this link</a> to get started! The link expires in 24 hours, so please make sure to sign up soon.
+      Click on <a href='${url}'>this link</a> to get started! The link expires in 24 hours, so please make sure to sign up soon.
       <br /><br />
       Best,<br />
       Coop Support Team`,

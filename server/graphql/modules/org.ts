@@ -1,5 +1,6 @@
 /* eslint-disable max-lines */
 
+import appConfig from '#config/app';
 import { GraphQLError } from 'graphql';
 import { type JsonObject, type JsonValue } from 'type-fest';
 
@@ -10,7 +11,7 @@ import {
 import { filterDecisionsToFailedSubmissions } from '../../services/ncmecService/index.js';
 import { UserPermission } from '../../services/userManagementService/index.js';
 import { __throw } from '../../utils/misc.js';
-import { isValidUrl } from '../../utils/url.js';
+import { isValidUrl } from '../../utils/urlValidation.js';
 import {
   type GQLIntegrationConfig,
   type GQLMatchingBanksResolvers,
@@ -423,9 +424,9 @@ const Org: GQLOrgResolvers = {
     // API Keys are required in prod, but no reason to throw outside prod (like
     // on engineers' local machines)
     if (!apiKey) {
-      return process.env.NODE_ENV !== 'production'
-        ? ''
-        : __throw(new GraphQLError('API Key not found'));
+      return appConfig.inProduction
+        ? __throw(new GraphQLError('API Key not found'))
+        : '';
     }
 
     return apiKey.key;

@@ -4,14 +4,14 @@
  * Proves that `createTransactionalTestDb` lets us wrap a whole test in a single
  * Postgres transaction that is rolled back at the end.
  */
+import databaseConfig from '#config/database';
 import { Kysely, PostgresDialect, sql, type PostgresPool } from 'kysely';
 import pg from 'pg';
 
-import { getPgConnectionParams } from '../../iocContainer/index.js';
 import { makeKyselyTransactionWithRetry } from '../../utils/kyselyTransactionWithRetry.js';
 import { createTransactionalTestDb } from './transactionalPgPool.js';
 
-const pgConfig = getPgConnectionParams();
+const pgConfig = databaseConfig.connectionParams;
 
 describe('createTransactionalTestDb', () => {
   it('exposes the pool metadata Kysely needs for query cancellation', async () => {

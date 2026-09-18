@@ -1,3 +1,5 @@
+import ncmecConfig from '#config/ncmec';
+
 import { type Dependencies } from '../../iocContainer/index.js';
 import { type ManualReviewToolService } from '../manualReviewToolService/manualReviewToolService.js';
 import {
@@ -104,11 +106,13 @@ export async function retryNcmecSubmission(
     return { kind: 'permanent_error', error };
   }
 
-  const isTest = process.env.NCMEC_ENV !== 'production';
   // submitReport owns `ncmec_reports_errors` writes via `jobId` so retries
   // always update retry_count/last_error. Don't double-write here.
   try {
-    const result = await deps.ncmecReporting.submitReport(reportParams, isTest);
+    const result = await deps.ncmecReporting.submitReport(
+      reportParams,
+      ncmecConfig.isTest,
+    );
     if (result === 'SUCCESS') {
       return { kind: 'success' };
     }

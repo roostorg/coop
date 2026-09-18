@@ -2,12 +2,12 @@
 
 import { type Exception } from '@opentelemetry/api';
 import { makeEnumLike } from '@roostorg/coop-types';
+import warehouseConfig from '#config/dataWarehouse';
 import { type Kysely } from 'kysely';
 import { type JsonObject } from 'type-fest';
 import { uid } from 'uid';
 
 import { inject, type Dependencies } from '../../iocContainer/index.js';
-import { safeGetEnvInt } from '../../iocContainer/utils.js';
 import { type ActionCountsInput } from '../../services/actionStatisticsService/index.js';
 import { type AggregationClause } from '../../services/aggregationsService/index.js';
 import { type ConditionSetWithResultAsLogged } from '../../services/analyticsLoggers/index.js';
@@ -676,11 +676,9 @@ class RuleAPI {
     // all five at once, and bound the window (env-tunable, default 90 days) so
     // a memory-constrained instance scans far less than a full year. The client
     // filters further client-side and defaults to a one-week view.
-    const lookbackDays = safeGetEnvInt(
-      'CLICKHOUSE_RULE_INSIGHTS_LOOKBACK_DAYS',
-      90,
+    const startAt = new Date(
+      Date.now() - warehouseConfig.warehouse.ruleInsightsLookbackDays * DAY_MS,
     );
-    const startAt = new Date(Date.now() - lookbackDays * DAY_MS);
 
     const runSafely = async <T>(
       fn: () => Promise<readonly T[]>,

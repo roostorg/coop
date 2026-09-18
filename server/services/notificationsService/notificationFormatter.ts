@@ -1,3 +1,4 @@
+import emailConfig from '#config/email';
 import { type ReadonlyDeep } from 'type-fest';
 
 import {
@@ -33,7 +34,7 @@ export function formatNotification<T extends NotificationType>(
         secondToLastPeriodPassRate,
       } = data;
 
-      const supportEmail = process.env.SUPPORT_EMAIL ?? 'support@example.com';
+      const supportEmail = emailConfig.addresses.support;
       const rateDetails =
         lastPeriodPassRate && secondToLastPeriodPassRate
           ? `In the past hour, the rule's pass rate went up${

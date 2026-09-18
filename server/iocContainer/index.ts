@@ -1,12 +1,12 @@
 /* eslint-disable max-lines */
-import { createRequire } from 'module';
 import Bottle from '@ethanresnick/bottlejs';
 import opentelemetry from '@opentelemetry/api';
 import { type ItemIdentifier } from '@roostorg/coop-types';
-import {
-  types as scyllaTypes,
-  type Host as ScyllaHost,
-} from 'cassandra-driver';
+import databaseConfig from '#config/database';
+import warehouseConfig from '#config/dataWarehouse';
+import ncmecConfig from '#config/ncmec';
+import redisConfig, { type RedisConnection } from '#config/redis';
+import scyllaConfig from '#config/scylla';
 import IORedis, { type Cluster } from 'ioredis';
 import { Kysely, PostgresDialect } from 'kysely';
 import _ from 'lodash';
@@ -58,10 +58,9 @@ import {
 import makeRuleEvaluator, {
   type RuleEvaluator,
 } from '../rule_engine/RuleEvaluator.js';
-import { Scylla } from '../scylla/index.js';
-import NoOpScylla, {
-  itemInvestigationAndStrikesEnabled,
-} from '../scylla/noOpScylla.js';
+import type { Scylla } from '../scylla/index.js';
+import NoOpScylla from '../scylla/noOpScylla.js';
+import ScyllaDatabase from '../scylla/scyllaDatabase.js';
 import {
   makeActionStatisticsService,
   type ActionStatisticsService,
@@ -101,6 +100,7 @@ import {
   type ApiKeyService,
 } from '../services/apiKeyService/index.js';
 import { type CombinedPg } from '../services/combinedDbTypes.js';
+import { ConfigService } from '../services/configService/index.js';
 import {
   makeDerivedFieldsService,
   type DerivedFieldsService,
@@ -239,7 +239,7 @@ import {
 } from '../utils/correlationIds.js';
 import { getUsableCoreCount } from '../utils/cpu-helpers.js';
 import { jsonStringify, type JsonOf } from '../utils/encoding.js';
-import { logErrorJson, logJson } from '../utils/logging.js';
+import { logJson } from '../utils/logging.js';
 import { __throw, assertUnreachable } from '../utils/misc.js';
 import SafeTracer from '../utils/SafeTracer.js';
 import {
@@ -251,17 +251,8 @@ import {
 import { createPgPool } from './createPgPool.js';
 import { registerGqlDataSources } from './services/gqlDataSources.js';
 import { registerWorkersAndJobs } from './services/workersAndJobs.js';
-import {
-  isEnvTrue,
-  register,
-  safeGetEnvNonNegativeInt,
-  safeGetEnvVar,
-} from './utils.js';
+import { register } from './utils.js';
 
-// the otel instrumentation currently intercepts require statements. support for
-// esm support is experimental so we should wait until it is stable
-const require = createRequire(import.meta.url);
-const { Client: ScyllaClient } = require('cassandra-driver');
 export type { DataSources } from './services/gqlDataSources.js';
 
 export type ItemSubmissionMessageKey = {
@@ -327,10 +318,7 @@ export interface Dependencies {
   // that each dependent service can type its arg more specifically with the set
   // of tables it is responsible for / allowed to query.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  Scylla: Scylla<any> & {
-    connect: () => Promise<void>;
-    close: () => Promise<void>;
-  };
+  Scylla: Scylla<any>;
 
   // Data Warehouse abstraction
   DataWarehouse: IDataWarehouse;
@@ -441,7 +429,7 @@ export interface Dependencies {
   Tracer: SafeTracer;
   Meter: CoopMeter;
   KeyValueStore: StringNumberKeyValueStore;
-  ConfigService: { uiUrl: string };
+  ConfigService: ConfigService;
 }
 
 // Takes a class and returns a type that just contains its public methods and
@@ -449,17 +437,6 @@ export interface Dependencies {
 // can satisfy this type (but can't satisfy the class-type because of the nominal
 // treatment that TS gives to classes with private fields; see https://stackoverflow.com/questions/55281162/can-i-force-the-typescript-compiler-to-use-nominal-typing)
 export type PublicInterface<T extends object> = { [K in keyof T]: T[K] };
-
-export function getPgConnectionParams(): pg.ClientConfig {
-  return {
-    user: process.env.DATABASE_USER ?? 'postgres',
-    database: process.env.DATABASE_NAME ?? 'development',
-    password: safeGetEnvVar('DATABASE_PASSWORD'),
-    port: parseInt(process.env.DATABASE_PORT ?? '5432'),
-    host: safeGetEnvVar('DATABASE_HOST'),
-    ssl: isEnvTrue('DATABASE_SSL') ? { rejectUnauthorized: false } : undefined,
-  };
-}
 
 /**
  * A function for creating our service container, configured for production.
@@ -472,87 +449,6 @@ export default async function getBottle(
     manualReviewContentResolver?: ManualReviewContentResolver;
   } = {},
 ) {
-  // Pool / client tuning shared by both Kysely pools. Defaults preserve our
-  // pre-Kysely behavior; env var names are generic.
-  const getPgPoolTuning = () => {
-    const statementTimeoutMs =
-      process.env.DATABASE_STATEMENT_TIMEOUT_MS?.trim();
-    const keepAliveInitialDelayMs =
-      process.env.DATABASE_KEEPALIVE_INITIAL_DELAY_MS?.trim();
-    return {
-      // pg's default is 10s, which churns connections during quiet periods.
-      idleTimeoutMillis: safeGetEnvNonNegativeInt(
-        'DATABASE_POOL_IDLE_TIMEOUT_MS',
-        300000,
-      ),
-      // pg's default is 0 (wait forever); fail fast if the db is unreachable.
-      connectionTimeoutMillis: safeGetEnvNonNegativeInt(
-        'DATABASE_POOL_CONNECTION_TIMEOUT_MS',
-        15000,
-      ),
-      // Client-side bound on long-running queries.
-      query_timeout: safeGetEnvNonNegativeInt(
-        'DATABASE_QUERY_TIMEOUT_MS',
-        1000000,
-      ),
-      // Optional server-side bound; defense in depth alongside `query_timeout`.
-      // Unset => Postgres' own default (no limit).
-      ...(statementTimeoutMs && {
-        statement_timeout: safeGetEnvNonNegativeInt(
-          'DATABASE_STATEMENT_TIMEOUT_MS',
-          0,
-        ),
-      }),
-      // Kill sessions sitting idle inside an open transaction (holding locks).
-      idle_in_transaction_session_timeout: safeGetEnvNonNegativeInt(
-        'DATABASE_IDLE_IN_TRANSACTION_TIMEOUT_MS',
-        300000,
-      ),
-      // Recycle each client after N seconds to dodge stale connections.
-      // 0 = never expire (default).
-      maxLifetimeSeconds: safeGetEnvNonNegativeInt(
-        'DATABASE_POOL_MAX_LIFETIME_SECONDS',
-        0,
-      ),
-      // TCP keepalive surfaces NAT/LB connection drops as pool errors
-      // (handled by `createPgPool`) rather than as hung queries. Defaults on;
-      // set DATABASE_KEEPALIVE=false to disable.
-      keepAlive:
-        process.env.DATABASE_KEEPALIVE?.trim().toLowerCase() !== 'false',
-      ...(keepAliveInitialDelayMs && {
-        keepAliveInitialDelayMillis: safeGetEnvNonNegativeInt(
-          'DATABASE_KEEPALIVE_INITIAL_DELAY_MS',
-          0,
-        ),
-      }),
-    };
-  };
-
-  // NB: this is a function because safeGetEnvVar can throw, so we only want to
-  // try to look up the env vars (and throw if they're missing) _if someone
-  // actually tries to fetch a service from bottle that needs these env vars_.
-  // Not every worker/job needs every service or is given every var in its env.
-  //
-  // NB: while we can reasonably provide default values for some of the env vars
-  // below, we wouldn't want to provide default values for all of them, as then
-  // that would defeat the ability of safeGetEnvVar to alert us in prod if a
-  // worker that needs these vars is run without them.
-  const getPgMasterConnectionInfo = () => ({
-    ...getPgConnectionParams(),
-    max: parseInt(process.env.DATABASE_POOL_MAX ?? '30'),
-    application_name:
-      getEnvVarOrWarn('OTEL_SERVICE_NAME') ?? 'unknown-coop-service',
-    ...getPgPoolTuning(),
-  });
-
-  // Kysely's default is `['error']`; opt-in to also logging every executed
-  // query (SQL, bound params, duration).
-  const kyselyLogLevels: ReadonlyArray<'query' | 'error'> = isEnvTrue(
-    'DATABASE_PRINT_LOGS',
-  )
-    ? ['query', 'error']
-    : ['error'];
-
   const bottle = new Bottle<Dependencies>();
 
   // Pg services.
@@ -567,7 +463,7 @@ export default async function getBottle(
   // - KyselyPgReadReplica gives us the same type safety, but sends queries to our
   //   replicas, for when we only need reads and we're ok w/ eventual consistency.
   bottle.factory('KyselyPgPool', () =>
-    createPgPool(getPgMasterConnectionInfo()),
+    createPgPool(databaseConfig.connections.primary),
   );
 
   bottle.factory(
@@ -579,7 +475,7 @@ export default async function getBottle(
           pool: container.KyselyPgPool,
           cursor: Cursor,
         }),
-        log: kyselyLogLevels,
+        log: databaseConfig.logLevels,
       }),
   );
 
@@ -589,77 +485,21 @@ export default async function getBottle(
       new Kysely<CombinedPg>({
         dialect: new PostgresDialect({
           controlClient: pg.Client,
-          pool: createPgPool({
-            ...getPgMasterConnectionInfo(),
-            max: parseInt(process.env.DATABASE_READ_POOL_MAX ?? '150'),
-            host: safeGetEnvVar('DATABASE_READ_ONLY_HOST'),
-          }),
+          pool: createPgPool(databaseConfig.connections.readReplica),
           cursor: Cursor,
         }),
-        log: kyselyLogLevels,
+        log: databaseConfig.logLevels,
       }),
   );
 
-  // AUTH-enabled Redis (e.g. ElastiCache with an auth token) rejects every
-  // command with NOAUTH unless credentials are sent, which leaves ioredis stuck
-  // before "ready" and parks commands in the offline queue forever. Local dev
-  // Redis has no password, so only pass credentials when REDIS_PASSWORD is set;
-  // REDIS_USER may be set-but-empty, which means the default user. Shared by the
-  // cluster and single-node paths so both authenticate identically.
-  const redisAuthOptions = (): { username?: string; password?: string } =>
-    process.env.REDIS_PASSWORD
-      ? {
-          ...(process.env.REDIS_USER
-            ? { username: process.env.REDIS_USER }
-            : {}),
-          password: process.env.REDIS_PASSWORD,
-        }
-      : {};
+  const makeRedis = (connection: RedisConnection): IORedis.Redis | Cluster =>
+    'clusters' in connection
+      ? new IORedis.Cluster(connection.clusters, connection.clusterOptions)
+      : new IORedis.default(connection);
 
-  const makeRedis = (
-    extraOptions: { enableOfflineQueue?: boolean } = {},
-  ): IORedis.Redis | Cluster =>
-    safeGetEnvVar('REDIS_USE_CLUSTER') === 'true'
-      ? new IORedis.Cluster(
-          [
-            {
-              host: safeGetEnvVar('REDIS_HOST'),
-              port: parseInt(process.env.REDIS_PORT ?? '6379'),
-            },
-          ],
-          {
-            // See
-            // https://github.com/luin/ioredis/blob/c275e9a337a4aee1565e96fe631d28a29ecb4efa/README.md#special-note-aws-elasticache-clusters-with-tls
-            dnsLookup: (address, callback) => callback(null, address),
-            redisOptions: {
-              tls: {},
-              // Required by BullMQ: its workers use blocking Redis commands
-              // that would otherwise be misinterpreted as timed-out requests.
-              maxRetriesPerRequest: null,
-              ...redisAuthOptions(),
-              ...extraOptions,
-            },
-          },
-        )
-      : new IORedis.default({
-          // Required by BullMQ: its workers use blocking Redis commands
-          // that would otherwise be misinterpreted as timed-out requests.
-          maxRetriesPerRequest: null,
-          port: parseInt(process.env.REDIS_PORT ?? '6379'),
-          host: safeGetEnvVar('REDIS_HOST'),
-          ...redisAuthOptions(),
-          ...(isEnvTrue('REDIS_TLS')
-            ? { tls: { servername: safeGetEnvVar('REDIS_HOST') } }
-            : {}),
-          ...extraOptions,
-        });
-
-  bottle.factory('IORedis', () => makeRedis());
-  // With `enableOfflineQueue: false`, a `queue.addBulk` while Redis is
-  // unreachable rejects immediately instead of resolving against the
-  // in-process buffer. fails enqueue early with "couldn't enqueue".
+  bottle.factory('IORedis', () => makeRedis(redisConfig.connections.main));
   bottle.factory('IORedisEnqueueNoBuffer', () =>
-    makeRedis({ enableOfflineQueue: false }),
+    makeRedis(redisConfig.connections.enqueueNoBuffer),
   );
 
   // Data Warehouse abstraction layer
@@ -670,25 +510,33 @@ export default async function getBottle(
   // - 'DataWarehouse' - Core queries and transactions
   // - 'DataWarehouseDialect' - Type-safe Kysely queries
   // - 'DataWarehouseAnalytics' - Bulk writes, CDC, logging
+  // The config names which connection each of these uses; turning a name into a
+  // connection is wiring, so it belongs here rather than in the config.
+  function getWarehouseConfig() {
+    return warehouseConfig.connections[warehouseConfig.warehouse.connection];
+  }
+
+  function getAnalyticsConfig() {
+    return warehouseConfig.connections[warehouseConfig.analytics.connection];
+  }
+
   bottle.factory('DataWarehouse', () => {
-    const config = DataWarehouseFactory.createConfigFromEnv();
-    const dataWarehouse = DataWarehouseFactory.createDataWarehouse(config);
+    const dataWarehouse =
+      DataWarehouseFactory.createDataWarehouse(getWarehouseConfig());
     dataWarehouse.start();
     return dataWarehouse;
   });
 
-  bottle.factory('DataWarehouseDialect', () => {
-    const config = DataWarehouseFactory.createConfigFromEnv();
-    return DataWarehouseFactory.createKyselyDialect(config);
-  });
+  bottle.factory('DataWarehouseDialect', () =>
+    DataWarehouseFactory.createKyselyDialect(getWarehouseConfig()),
+  );
 
-  bottle.factory('DataWarehouseAnalytics', (container) => {
-    const config = DataWarehouseFactory.createConfigFromEnv();
-    return DataWarehouseFactory.createAnalyticsAdapter(
-      config,
+  bottle.factory('DataWarehouseAnalytics', (container) =>
+    DataWarehouseFactory.createAnalyticsAdapter(
+      getAnalyticsConfig(),
       container.DataWarehouseDialect,
-    );
-  });
+    ),
+  );
 
   bottle.factory('ActionStatisticsAdapter', (container) => {
     return new ClickhouseActionStatisticsAdapter(
@@ -786,9 +634,7 @@ export default async function getBottle(
             executionContext,
           );
         },
-        itemInvestigationAndStrikesEnabled(
-          process.env.ITEM_INVESTIGATION_AND_STRIKES_ENABLED,
-        ),
+        scyllaConfig.enabled,
       ),
   );
 
@@ -802,124 +648,16 @@ export default async function getBottle(
   bottle.factory('Scylla', () => {
     // Scylla backs the item-investigation and user-strike features. Operators
     // who don't need those (and don't want to run a Scylla cluster) can set
-    // `ITEM_INVESTIGATION_AND_STRIKES_ENABLED=false` to swap in a no-op that
-    // drops writes and returns empty reads, so no `SCYLLA_*` connection env
-    // vars are required. Defaults to enabled to preserve existing behaviour.
-    if (
-      !itemInvestigationAndStrikesEnabled(
-        process.env.ITEM_INVESTIGATION_AND_STRIKES_ENABLED,
-      )
-    ) {
+    // `SCYLLA_ENABLED=false` to swap in a no-op that drops writes and returns
+    // empty reads, so no `SCYLLA_*` connection env vars are required. Defaults
+    // to enabled to preserve existing behaviour.
+    if (scyllaConfig.connection === null) {
       // eslint-disable-next-line no-restricted-syntax
-      logJson(
-        'scylla.disabled ITEM_INVESTIGATION_AND_STRIKES_ENABLED=false; using no-op Scylla',
-      );
+      logJson('scylla.disabled SCYLLA_ENABLED=false; using no-op Scylla');
       return new NoOpScylla();
     }
 
-    const contactPoints = safeGetEnvVar('SCYLLA_HOSTS')
-      .split(',')
-      .map((it) => it.trim())
-      .filter((it) => it.length > 0);
-    // For TLS hostname verification we need an SNI value that matches the
-    // server cert. Prefer an explicit `SCYLLA_SSL_SERVERNAME` (e.g., the
-    // Keyspaces regional endpoint) over inferring one from `SCYLLA_HOSTS`,
-    // which may contain multiple contact points with different cert names.
-    const sslServerName = process.env.SCYLLA_SSL_SERVERNAME ?? contactPoints[0];
-    const scyllaDriver = new ScyllaClient({
-      contactPoints,
-      credentials: {
-        username: safeGetEnvVar('SCYLLA_USERNAME'),
-        password: safeGetEnvVar('SCYLLA_PASSWORD'),
-      },
-      localDataCenter: safeGetEnvVar('SCYLLA_LOCAL_DATACENTER'),
-      keyspace: 'item_investigation_service',
-      protocolOptions: {
-        port: parseInt(process.env.SCYLLA_PORT ?? '9042'),
-      },
-      sslOptions: isEnvTrue('SCYLLA_SSL')
-        ? {
-            host: sslServerName,
-            rejectUnauthorized: true,
-          }
-        : undefined,
-      pooling: {
-        coreConnectionsPerHost: {
-          [scyllaTypes.distance.local]: 3,
-          [scyllaTypes.distance.remote]: 1,
-        },
-      },
-      queryOptions: {
-        // Quorum consistency requires a simple majority of nodes in a
-        // replica group to respond to read/write requests. Local Quorum is
-        // the same except it only expects nodes in the local datacenter to
-        // respond. For our current Scylla infrastructure quorum and local
-        // quorum will have identical behavior, but if we ever add another
-        // datacenter to the cluster using Quorum and requiring responses
-        // from multiple DCs would degrade performance significantly
-        consistency: scyllaTypes.consistencies.localQuorum,
-      },
-    });
-
-    // Surface cluster state changes so reconnect storms are visible in logs.
-    scyllaDriver.on('hostUp', (host: ScyllaHost) => {
-      // eslint-disable-next-line no-restricted-syntax
-      logJson(`scylla.hostUp address=${host.address}`);
-    });
-    scyllaDriver.on('hostDown', (host: ScyllaHost) => {
-      // eslint-disable-next-line no-restricted-syntax
-      logJson(`scylla.hostDown address=${host.address}`);
-    });
-    // Forward driver-internal warnings/errors (auth, TLS, connection drops,
-    // etc.); skip the very chatty `info`/`verbose` levels.
-    scyllaDriver.on(
-      'log',
-      (
-        level: 'verbose' | 'info' | 'warning' | 'error',
-        source: string,
-        message: string,
-        furtherInfo?: unknown,
-      ) => {
-        if (level !== 'warning' && level !== 'error') {
-          return;
-        }
-        const wrapped = new Error(`scylla.${level}: [${source}] ${message}`);
-        if (furtherInfo instanceof Error) {
-          wrapped.stack = furtherInfo.stack ?? wrapped.stack;
-        }
-        // eslint-disable-next-line no-restricted-syntax
-        logErrorJson({
-          message: `scylla.driver.${level}`,
-          error: wrapped,
-        });
-      },
-    );
-
-    // cassandra-driver leaks ~4 HostMap listeners per failed `Client._connect()`
-    // retry and never recreates the HostMap, so the default cap of 10 trips
-    // after ~3 failures. Raise it so transient blips don't spam the warning,
-    // but keep it bounded so a true runaway is still noticeable.
-    const controlConnection = (
-      scyllaDriver as unknown as {
-        controlConnection?: {
-          hosts?: { setMaxListeners?: (n: number) => void };
-        };
-      }
-    ).controlConnection;
-    controlConnection?.hosts?.setMaxListeners?.(15);
-
-    class ClosableScylla<
-      DB extends Record<string, Record<string, unknown>>,
-    > extends Scylla<DB> {
-      /** Eagerly connect; idempotent once `connected` is true. */
-      async connect() {
-        return scyllaDriver.connect();
-      }
-      async close() {
-        return scyllaDriver.shutdown();
-      }
-    }
-    return new ClosableScylla(scyllaDriver);
+    return new ScyllaDatabase(scyllaConfig.connection);
   });
 
   bottle.factory('ItemInvestigationService', (container) => {
@@ -1301,16 +1039,9 @@ export default async function getBottle(
                       getItemTypeEventuallyConsistent:
                         container.getItemTypeEventuallyConsistent,
                     });
-                  // Submissions go to the NCMEC test endpoint
-                  // (exttest.cybertip.org) unless the deployment is explicitly
-                  // configured for production via NCMEC_ENV=production. Operators
-                  // are responsible for matching this to whether the credentials
-                  // configured in Settings → NCMEC are production or test
-                  // credentials issued by NCMEC.
-                  const isTest = process.env.NCMEC_ENV !== 'production';
                   await container.NcmecService.submitReport(
                     reportParams,
-                    isTest,
+                    ncmecConfig.isTest,
                   );
                   const actionAndPolicy =
                     await container.NcmecService.getNCMECActionsToRunAndPolicies(
@@ -1325,7 +1056,7 @@ export default async function getBottle(
                     actionAndPolicy != null &&
                     actionAndPolicy.actionsToRunIds != null &&
                     isNonEmptyArray(decisionActions) &&
-                    !isTest
+                    !ncmecConfig.isTest
                   ) {
                     await publishActions({
                       decisionActions,
@@ -1666,7 +1397,9 @@ export default async function getBottle(
     'SigningKeyPairStorageService',
     (container) => new PostgresSigningKeyPairStorage(container.KyselyPg),
   );
-  bottle.value('ConfigService', { uiUrl: safeGetEnvVar('UI_URL') });
+  // A factory rather than a value so the instance is built on first use. It is
+  // still a singleton per container, as `bottle.factory` memoises.
+  bottle.factory('ConfigService', () => new ConfigService());
   bottle.value('S3StoreObjectFactory', s3StoreObjectFactory);
   bottle.factory('sendEmail', makeSendEmail);
   register(bottle, 'KeyValueStore', makeKeyValueStore);
@@ -1866,36 +1599,4 @@ function serviceHasBeenAccessed<Deps extends object>(
   // if it's a getter.
   const propDesc = Object.getOwnPropertyDescriptor(container, serviceName);
   return typeof propDesc?.get !== 'function';
-}
-
-/**
- * Gets an env var, or logs a warning if the variable is not defined. This is
- * useful for cases where an env var should be provided, but the app can recover
- * on the off-chance that the variable was improperly omitted, and we'd rather
- * have the fallback behavior than create an outage. However, we still want to
- * log a warning so that we can see in DD that we need to set this variable.
- *
- * TODO: create a DD metric that counts these warnings, and set up a monitor to
- * alert if there are any.
- */
-function getEnvVarOrWarn(varName: string) {
-  const value = process.env[varName];
-
-  if (value == null) {
-    // NB: using this format for the logged JSON is taking on some tech debt
-    // (esp if/once we create a DD monitor/metric that uses `title` to find
-    // these errors), because we probably want to reformat these logged errors
-    // later in a way that makes them more consistent amongst each other and
-    // possibly also more consistent with CoopError errors. For now, though,
-    // figuring out that end state isn't worth the brainpower.
-    // eslint-disable-next-line no-console
-    console.warn(
-      jsonStringify({
-        title: 'MissingEnvVar',
-        message: `Missing env var ${varName}`,
-      }),
-    );
-  }
-
-  return value;
 }

@@ -5,6 +5,7 @@
 /* eslint-disable max-classes-per-file */
 import { type Kysely } from 'kysely';
 
+import { type ClickhouseInsertRetrySettings } from '../../plugins/analytics/adapters/clickhouseRetry.js';
 import {
   ClickhouseAnalyticsAdapter as ClickhouseAnalyticsPlugin,
   NoOpAnalyticsAdapter,
@@ -15,6 +16,7 @@ import {
   NoOpWarehouseAdapter,
   type IWarehouseAdapter,
 } from '../../plugins/warehouse/index.js';
+import { type ClickhouseMemorySettings } from '../../plugins/warehouse/utils/clickhouseSettings.js';
 import { assertUnreachable } from '../../utils/misc.js';
 import type SafeTracer from '../../utils/SafeTracer.js';
 import {
@@ -43,8 +45,6 @@ import { PostgresAnalyticsAdapter } from './PostgresAnalyticsAdapter.js';
  */
 export type DataWarehouseProvider = 'clickhouse' | 'postgresql' | 'noop';
 
-export type AnalyticsProvider = 'clickhouse' | 'postgresql' | 'noop';
-
 // Re-export the interface provider type for external use
 export type { IDataWarehouseProvider };
 
@@ -53,7 +53,10 @@ export type DataWarehouseConfig =
       provider: 'clickhouse';
       connection: ClickhouseConnectionSettings;
       pool?: DataWarehousePoolSettings;
-      analyticsProvider?: AnalyticsProvider;
+      /** Per-query memory limits, passed to every adapter this config builds. */
+      memory: ClickhouseMemorySettings;
+      /** Retry policy for inserts, used by the analytics adapter. */
+      insertRetry: ClickhouseInsertRetrySettings;
     }
   | {
       provider: 'postgresql';
@@ -65,11 +68,9 @@ export type DataWarehouseConfig =
         database: string;
       };
       pool?: DataWarehousePoolSettings;
-      analyticsProvider?: AnalyticsProvider;
     }
   | {
       provider: 'noop';
-      analyticsProvider?: AnalyticsProvider;
     };
 
 class NoOpKyselyDialect implements IDataWarehouseDialect {
@@ -240,7 +241,11 @@ export class DataWarehouseFactory {
   ): IDataWarehouseDialect {
     switch (config.provider) {
       case 'clickhouse':
-        return new ClickhouseKyselyAdapter(config.connection, config.pool);
+        return new ClickhouseKyselyAdapter(
+          config.connection,
+          config.memory,
+          config.pool,
+        );
       case 'postgresql':
         throw new Error('PostgreSQL Kysely dialect not yet implemented');
       case 'noop':
@@ -263,21 +268,16 @@ export class DataWarehouseFactory {
     config: DataWarehouseConfig,
     dialect?: IDataWarehouseDialect,
   ): IDataWarehouseAnalytics {
-    const analyticsProvider = config.analyticsProvider ?? config.provider;
-
-    switch (analyticsProvider) {
+    switch (config.provider) {
       case 'noop':
         return new AnalyticsAdapterBridge('noop', new NoOpAnalyticsAdapter());
       case 'clickhouse':
-        if (config.provider !== 'clickhouse') {
-          throw new Error(
-            'Clickhouse analytics provider requires the clickhouse warehouse configuration.',
-          );
-        }
         return new AnalyticsAdapterBridge(
           'clickhouse',
           new ClickhouseAnalyticsPlugin({
             connection: config.connection,
+            memory: config.memory,
+            retry: config.insertRetry,
           }),
         );
       case 'postgresql': {
@@ -289,68 +289,10 @@ export class DataWarehouseFactory {
       }
       default:
         return assertUnreachable(
-          analyticsProvider,
-          `Unknown analytics provider: ${analyticsProvider as string}`,
-        );
-    }
-  }
-
-  /**
-   * Create configuration from environment variables
-   */
-
-  static createConfigFromEnv(): DataWarehouseConfig {
-    const provider = (process.env.WAREHOUSE_ADAPTER ??
-      process.env.DATA_WAREHOUSE_PROVIDER ??
-      'clickhouse') as DataWarehouseProvider;
-    const analyticsProvider = (process.env.ANALYTICS_ADAPTER ??
-      provider) as AnalyticsProvider;
-
-    switch (provider) {
-      case 'noop':
-        return {
-          provider: 'noop',
-          analyticsProvider,
-        };
-      case 'clickhouse':
-        return {
-          provider: 'clickhouse',
-          analyticsProvider,
-          connection: {
-            host: process.env.CLICKHOUSE_HOST ?? 'localhost',
-            port: process.env.CLICKHOUSE_PORT
-              ? parseInt(process.env.CLICKHOUSE_PORT)
-              : 8123,
-            username: process.env.CLICKHOUSE_USERNAME ?? 'default',
-            password: process.env.CLICKHOUSE_PASSWORD ?? '',
-            database: process.env.CLICKHOUSE_DATABASE ?? 'default',
-            protocol: (process.env.CLICKHOUSE_PROTOCOL ?? 'http') as
-              'http' | 'https',
-          },
-          pool: {
-            max: process.env.CLICKHOUSE_POOL_SIZE
-              ? parseInt(process.env.CLICKHOUSE_POOL_SIZE)
-              : 10,
-          },
-        };
-      case 'postgresql':
-        return {
-          provider: 'postgresql',
-          analyticsProvider,
-          connection: {
-            host: process.env.POSTGRES_HOST ?? 'localhost',
-            port: process.env.POSTGRES_PORT
-              ? parseInt(process.env.POSTGRES_PORT)
-              : undefined,
-            username: process.env.POSTGRES_USERNAME ?? 'postgres',
-            password: process.env.POSTGRES_PASSWORD ?? '',
-            database: process.env.POSTGRES_DATABASE ?? 'postgres',
-          },
-        };
-      default:
-        return assertUnreachable(
-          provider,
-          `Unknown data warehouse provider: ${provider as string}`,
+          config,
+          `Unknown analytics provider: ${
+            (config as DataWarehouseConfig).provider
+          }`,
         );
     }
   }

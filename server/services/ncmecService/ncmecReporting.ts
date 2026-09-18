@@ -1,6 +1,7 @@
 /* eslint-disable max-lines */
 import type { Exception } from '@opentelemetry/api';
 import { makeEnumLike, type ItemIdentifier } from '@roostorg/coop-types';
+import ncmecEnvConfig from '#config/ncmec';
 import _Ajv from 'ajv';
 import { sql, type Kysely } from 'kysely';
 import _ from 'lodash';
@@ -29,11 +30,7 @@ import {
   type FormDataLikeWithStreams,
 } from '../networkingService/index.js';
 import { type NcmecReportingServicePg } from './dbTypes.js';
-import {
-  ncmecDebugDump,
-  ncmecDebugEnabled,
-  ncmecDebugLog,
-} from './ncmecDebug.js';
+import { ncmecDebugDump, ncmecDebugLog } from './ncmecDebug.js';
 import { summarizeNcmecErrorForReviewer } from './ncmecReviewerErrors.js';
 
 export const NCMECEvent = makeEnumLike([
@@ -485,7 +482,7 @@ export function summarizeCyberTipFailure(
   if (responseDescription != null) {
     parts.push(`responseDescription=${responseDescription}`);
   }
-  if (ncmecDebugEnabled()) {
+  if (ncmecEnvConfig.debug) {
     let snippet: string;
     try {
       const serialized = jsonStringify(body ?? null);
@@ -621,7 +618,7 @@ export function toOriginalFileHashes(opts: {
     const trimmedAlgorithm = algorithm.trim();
     if (trimmedHash === '' || trimmedAlgorithm === '') return;
     const hashType = trimmedAlgorithm.toUpperCase();
-    const key = `${hashType} ${trimmedHash}`;
+    const key = `${hashType}\u0000${trimmedHash}`;
     if (seen.has(key)) return;
     seen.add(key);
     result.push({ _text: trimmedHash, _attributes: { hashType } });

@@ -82,7 +82,7 @@ const Query: GQLQueryResolvers = {
     const apiKeyRecord =
       await context.services.ApiKeyService.getActiveApiKeyForOrg(user.orgId);
     if (!apiKeyRecord) {
-      return process.env.NODE_ENV !== 'production' ? '' : '';
+      return '';
     }
     // Return a message indicating the key exists but is hidden for security
     return 'API key exists (hidden for security)';

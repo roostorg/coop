@@ -59,7 +59,10 @@ module.exports = {
   moduleNameMapper: {},
 
   // An array of regexp pattern strings, matched against all module paths before considered 'visible' to the module loader
-  // modulePathIgnorePatterns: [],
+  // `build/` holds the compiled output, including a copy of `package.json` so
+  // the `#`-prefixed subpath imports resolve when running it. Without this,
+  // jest's haste map sees two packages named `server` and warns on every run.
+  modulePathIgnorePatterns: ['<rootDir>/build/'],
 
   // Activates notifications for test results
   // notify: false,

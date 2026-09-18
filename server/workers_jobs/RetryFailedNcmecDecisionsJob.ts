@@ -1,3 +1,4 @@
+import ncmecConfig from '#config/ncmec';
 import _ from 'lodash';
 import { v1 as uuidv1 } from 'uuid';
 
@@ -118,10 +119,9 @@ export default inject(
           getItemTypeEventuallyConsistent,
         });
         submitReportInvoked = true;
-        const isTest = process.env.NCMEC_ENV !== 'production';
         const reportResult = await ncmecService.submitReport(
           reportParams,
-          isTest,
+          ncmecConfig.isTest,
         );
         if (
           reportResult === 'UNSUPPORTED_ORG' ||
@@ -135,7 +135,7 @@ export default inject(
         if (
           actionAndPolicy != null &&
           actionAndPolicy.actionsToRunIds != null &&
-          !isTest
+          !ncmecConfig.isTest
         ) {
           const actions = await moderationConfigService.getActions({
             orgId,

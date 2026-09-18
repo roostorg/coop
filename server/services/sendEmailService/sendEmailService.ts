@@ -1,10 +1,12 @@
 import { SendEmailCommand, SESClient } from '@aws-sdk/client-ses';
 import sgMail from '@sendgrid/mail';
+import appConfig from '#config/app';
+import emailConfig from '#config/email';
 
 export const CoopEmailAddress = {
-  NoReply: process.env.NOREPLY_EMAIL ?? 'noreply@example.com',
-  Support: process.env.SUPPORT_EMAIL ?? 'support@example.com',
-  Team: process.env.TEAM_EMAIL ?? 'team@example.com',
+  NoReply: emailConfig.addresses.noReply,
+  Support: emailConfig.addresses.support,
+  Team: emailConfig.addresses.team,
 } as const;
 
 export type CoopEmailAddress =
@@ -80,7 +82,7 @@ export function makeSendEmailViaSendGrid(apiKey: string) {
 }
 
 export function makeSendEmailViaConsole() {
-  if (process.env.NODE_ENV !== 'development') {
+  if (!appConfig.inDev) {
     throw new Error(
       'EMAIL_TRANSPORT=console is only available when NODE_ENV=development',
     );
@@ -100,13 +102,13 @@ const makeSendEmail = (clientOrContainer?: SESClient | unknown) => {
     return makeSendEmailViaSES(clientOrContainer);
   }
 
-  if (process.env.EMAIL_TRANSPORT === 'console') {
+  if (emailConfig.transport === 'console') {
     return makeSendEmailViaConsole();
   }
 
-  const sendGridApiKey = process.env.SENDGRID_API_KEY;
+  const sendGridApiKey = emailConfig.sendgridApiKey;
   if (sendGridApiKey) {
-    return makeSendEmailViaSendGrid(sendGridApiKey);
+    return makeSendEmailViaSendGrid(sendGridApiKey.release());
   }
 
   return makeSendEmailViaSES(new SESClient({}));

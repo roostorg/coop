@@ -10,6 +10,7 @@
  * Requires: `npm run up && npm run db:update`
  */
 import { ScalarTypes } from '@roostorg/coop-types';
+import ncmecConfig from '#config/ncmec';
 import { uid } from 'uid';
 
 import { jsonStringify } from '../../utils/encoding.js';
@@ -412,7 +413,7 @@ describe('NCMEC report and submission (integration)', () => {
 
       expect(reportRow.report_id).toBe(ncmecReportId);
       expect(reportRow.reviewer_id).toBe(reviewerId);
-      expect(reportRow.is_test).toBe(process.env.NCMEC_ENV !== 'production');
+      expect(reportRow.is_test).toBe(ncmecConfig.isTest);
 
       const reportedMediaIds = (
         reportRow.reported_media as Array<{ id: string; typeId: string }>

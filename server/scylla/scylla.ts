@@ -10,10 +10,17 @@ import {
 
 const StreamToAsyncIterator = _S2A.default;
 
-export default class Scylla<DB extends DBDefinition> {
-  constructor(private client: ScyllaClient) {
-    this.client = client;
-  }
+export default abstract class Scylla<DB extends DBDefinition> {
+  constructor(protected client: ScyllaClient) {}
+
+  /**
+   * Open the connection. Implementations make this idempotent, since callers
+   * (e.g. the item-processing worker) connect eagerly to fail fast.
+   */
+  abstract connect(): Promise<void>;
+
+  /** Close the connection and release whatever it holds. */
+  abstract close(): Promise<void>;
 
   async insert<RelationName extends keyof DB>(
     opts: {

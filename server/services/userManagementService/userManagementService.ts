@@ -373,12 +373,12 @@ class UserManagementService {
     const { userId, orgId } = existingUser;
     const token = await this.#createPasswordResetToken({ userId, orgId });
 
-    const url = new URL(`${this.configService.uiUrl}/reset_password/` + token);
+    const url = this.configService.resetPasswordUrl(token);
     const msg = {
       to: email,
       from: CoopEmailAddress.NoReply,
       subject: '[Coop] Reset your password',
-      html: `You recently indicated that you forgot your Coop password. Click on <a href='${url.href}'>this link</a> to create a new password. The link expires in 1 hour, so please make sure to sign up soon.
+      html: `You recently indicated that you forgot your Coop password. Click on <a href='${url}'>this link</a> to create a new password. The link expires in 1 hour, so please make sure to sign up soon.
       <br /><br />
       Best,<br />
       Coop Support Team`,
@@ -424,12 +424,12 @@ class UserManagementService {
     });
 
     // Send email using the standard flow (will be no-op if SendGrid not configured)
-    const url = new URL(`${this.configService.uiUrl}/reset_password/` + token);
+    const url = this.configService.resetPasswordUrl(token);
     const msg = {
       to: email,
       from: CoopEmailAddress.NoReply,
       subject: '[Coop] Reset your password',
-      html: `Your organization administrator has initiated a password reset for your account. Click on <a href='${url.href}'>this link</a> to create a new password. The link expires in 1 hour, so please make sure to reset your password soon.
+      html: `Your organization administrator has initiated a password reset for your account. Click on <a href='${url}'>this link</a> to create a new password. The link expires in 1 hour, so please make sure to reset your password soon.
       <br /><br />
       Best,<br />
       Coop Support Team`,

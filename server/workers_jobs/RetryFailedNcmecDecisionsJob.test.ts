@@ -1,3 +1,4 @@
+import env from '#start/env';
 import { v1 as uuidv1 } from 'uuid';
 
 import {
@@ -143,21 +144,17 @@ describe('RetryFailedNcmecDecisionsJob', () => {
 
   /** Snapshot of NCMEC_ENV across the suite so each test can mutate it
    * freely and we restore the original value in afterEach. */
-  let originalNcmecEnv: string | undefined;
+  let originalNcmecEnv: 'production' | 'test' | undefined;
 
   beforeEach(() => {
-    originalNcmecEnv = process.env.NCMEC_ENV;
+    originalNcmecEnv = env.get('NCMEC_ENV');
   });
   afterEach(() => {
-    if (originalNcmecEnv === undefined) {
-      delete process.env.NCMEC_ENV;
-    } else {
-      process.env.NCMEC_ENV = originalNcmecEnv;
-    }
+    env.set('NCMEC_ENV', originalNcmecEnv);
   });
 
   it('passes isTest=true to submitReport when NCMEC_ENV is unset', async () => {
-    delete process.env.NCMEC_ENV;
+    env.set('NCMEC_ENV', undefined);
     const deps = makeDeps({
       decisions: [makeNcmecDecisionRow(ORG_ID)],
     });
@@ -179,7 +176,7 @@ describe('RetryFailedNcmecDecisionsJob', () => {
   });
 
   it('passes isTest=true to submitReport when NCMEC_ENV is "test"', async () => {
-    process.env.NCMEC_ENV = 'test';
+    env.set('NCMEC_ENV', 'test');
     const deps = makeDeps({
       decisions: [makeNcmecDecisionRow(ORG_ID)],
     });
@@ -201,7 +198,7 @@ describe('RetryFailedNcmecDecisionsJob', () => {
   });
 
   it('passes isTest=false to submitReport when NCMEC_ENV=production', async () => {
-    process.env.NCMEC_ENV = 'production';
+    env.set('NCMEC_ENV', 'production');
     const deps = makeDeps({
       decisions: [makeNcmecDecisionRow(ORG_ID)],
     });
@@ -223,7 +220,7 @@ describe('RetryFailedNcmecDecisionsJob', () => {
   });
 
   it('does not publish actions when NCMEC_ENV is unset (isTest=true)', async () => {
-    delete process.env.NCMEC_ENV;
+    env.set('NCMEC_ENV', undefined);
     const deps = makeDeps({
       decisions: [makeNcmecDecisionRow(ORG_ID)],
       // Simulate an org that has actions configured to run on NCMEC report
@@ -251,7 +248,7 @@ describe('RetryFailedNcmecDecisionsJob', () => {
   });
 
   it('publishes actions when NCMEC_ENV=production (isTest=false)', async () => {
-    process.env.NCMEC_ENV = 'production';
+    env.set('NCMEC_ENV', 'production');
     const deps = makeDeps({
       decisions: [makeNcmecDecisionRow(ORG_ID)],
       getNCMECActionsToRunAndPolicies: jest.fn(async () => ({

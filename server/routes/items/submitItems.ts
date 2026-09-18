@@ -1,11 +1,11 @@
 import { type ItemIdentifier } from '@roostorg/coop-types';
+import featureFlags from '#config/featureFlags';
 import { v1 as uuidv1 } from 'uuid';
 
 import {
   type Dependencies,
   type ItemSubmissionMessageValue,
 } from '../../iocContainer/index.js';
-import { safeGetEnvVar } from '../../iocContainer/utils.js';
 import {
   getFieldValueForRole,
   itemSubmissionToItemSubmissionWithTypeIdentifier,
@@ -259,10 +259,7 @@ Dependencies): RequestHandlerWithBodies<SubmitItemsInput, undefined> {
     // Send a configurable percentage of traffic to the async processing queue
     // (BullMQ), otherwise handle inline (in this process, immediately after
     // returning 202 to the user). Set to 1 to route all traffic through the queue.
-    const trafficPercentage = Number(
-      safeGetEnvVar('ITEM_QUEUE_TRAFFIC_PERCENTAGE'),
-    );
-    if (Math.random() < trafficPercentage) {
+    if (Math.random() < featureFlags.itemQueueTrafficPercentage) {
       // toItemSubmission should always set a `submissionTime` property with a
       // valid Date, but due to legacy data the type returned, ItemSubmission, an
       // optional `submissionTime` property. this variable is used to convince

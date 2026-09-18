@@ -1,78 +1,49 @@
-import { type UrlString } from '@roostorg/coop-types';
+/**
+ * URL checks with no notion of how this deployment is configured — callers
+ * supply the rules. `./urlValidation.js` is the configured entry point that
+ * applies Coop's own rules; use that unless you specifically want to say what
+ * counts as valid.
+ */
 
-import { instantiateOpaqueType } from './typescript-types.js';
-
-type UrlValidationOptions = {
+export type UrlValidationOptions = {
   allowedSchemes: string[];
   blockedHostnames: string[];
 };
 
-function defaultBlockedHostnames(): string[] {
-  const { ALLOW_USER_INPUT_LOCALHOST_URIS } = process.env;
+/**
+ * Loopback addresses, blocked by default to reduce SSRF risk from user-supplied
+ * URLs (e.g. webhook callbacks). Deployments wanting stricter blocking against
+ * their own public hostname pass `blockedHostnames` themselves.
+ */
+export const LOOPBACK_HOSTNAMES: readonly string[] = Object.freeze([
+  'localhost',
+  '127.0.0.1',
+]);
 
-  // Block loopback addresses to reduce SSRF risk from user-supplied URLs (e.g.
-  // webhook callbacks). Operators who want stricter blocking against their own
-  // public hostname should pass `blockedHostnames` via `UrlValidationOptions`.
-  return ALLOW_USER_INPUT_LOCALHOST_URIS === 'true'
-    ? []
-    : ['localhost', '127.0.0.1'];
-}
-
-export function validateUrl(
-  value: string,
-  // If you update these opts make sure to update validateUrlOrNull's opts as
-  // well
-  opts: UrlValidationOptions = {
-    allowedSchemes: ['http', 'https'],
-    blockedHostnames: defaultBlockedHostnames(),
-  },
-) {
-  try {
-    const { allowedSchemes, blockedHostnames } = opts;
-    const { hostname, protocol } = new URL(value); // might throw.
-    const containsValidScheme = allowedSchemes.includes(protocol.slice(0, -1));
-    if (!containsValidScheme) {
-      throw new Error('URL contains invalid scheme');
-    }
-
-    const containsBlockedHostname = blockedHostnames.includes(hostname);
-
-    if (containsBlockedHostname) {
-      throw new Error('URL contains blocked hostname');
-    }
-  } catch (_) {
+export function validateUrl(value: string, opts: UrlValidationOptions) {
+  if (!URL.canParse(value)) {
     throw new Error('Invalid URL');
+  }
+
+  const { allowedSchemes, blockedHostnames } = opts;
+  const { hostname, protocol } = new URL(value);
+  const containsValidScheme = allowedSchemes.includes(protocol.slice(0, -1));
+  if (!containsValidScheme) {
+    throw new Error('URL contains invalid scheme');
+  }
+
+  const containsBlockedHostname = blockedHostnames.includes(hostname);
+
+  if (containsBlockedHostname) {
+    throw new Error('URL contains blocked hostname');
   }
 }
 
-export function isValidUrl(url: string, opts?: UrlValidationOptions) {
+export function isValidUrl(url: string, opts: UrlValidationOptions) {
   try {
     validateUrl(url, opts);
     return true;
   } catch (e) {
     return false;
   }
-}
-
-/**
- * Returns a {@link UrlString} if the input string is a valid URL; else
- * undefined. Does not accept urls that are invalid according to the default
- * {@link UrlValidationOptions} used by {@link validateUrl}.
- */
-export function makeUrlString(it: string) {
-  return isValidUrl(it) ? instantiateOpaqueType<UrlString>(it) : undefined;
-}
-
-export function validateUrlOrNull(
-  value?: string,
-  // Keep this default in sync with `validateUrl`'s default.
-  opts: UrlValidationOptions = {
-    allowedSchemes: ['http', 'https'],
-    blockedHostnames: defaultBlockedHostnames(),
-  },
-) {
-  if (value == null) {
-    return;
-  }
-  validateUrl(value, opts);
 }

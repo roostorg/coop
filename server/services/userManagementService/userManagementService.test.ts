@@ -1,6 +1,7 @@
 import { type Kysely } from 'kysely';
 
 import { makeTestWithFixture } from '../../test/utils.js';
+import { ConfigService } from '../configService/index.js';
 import { MIN_PASSWORD_LENGTH } from './constants.js';
 import type { UserManagementPg } from './index.js';
 import UserManagementService from './userManagementService.js';
@@ -16,9 +17,7 @@ const mockDb = {
 
 const mockSendEmail = jest.fn();
 
-const mockConfigService = {
-  uiUrl: 'http://localhost:3000',
-};
+const mockConfigService = new ConfigService('http://localhost:3000');
 
 describe('UserManagementService', () => {
   const testWithFixtures = makeTestWithFixture(() => {

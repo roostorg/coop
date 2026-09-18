@@ -3,13 +3,11 @@
 // relying on here).
 
 import otel from '@opentelemetry/api';
+import databaseConfig from '#config/database';
 import type pg from 'pg';
 import * as superTest from 'supertest';
 
-import getBottle, {
-  getPgConnectionParams,
-  type Dependencies,
-} from '../iocContainer/index.js';
+import getBottle, { type Dependencies } from '../iocContainer/index.js';
 import makeServer from '../server.js';
 import { type IDataWarehouse } from '../storage/dataWarehouse/IDataWarehouse.js';
 import type { IDataWarehouseAnalytics } from '../storage/dataWarehouse/IDataWarehouseAnalytics.js';
@@ -40,7 +38,7 @@ export function disableConsoleLogging() {
  * `makeTransactionalTestWithFixture`.
  */
 export async function makeMockedServer() {
-  const tdb = createTransactionalTestDb(getPgConnectionParams());
+  const tdb = createTransactionalTestDb(databaseConfig.connectionParams);
   await tdb.begin();
 
   const deps = await getBottleContainerWithIOMocks({ kyselyPool: tdb.pool });

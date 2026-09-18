@@ -6,11 +6,12 @@
 import { existsSync, readFileSync } from 'fs';
 import path from 'path';
 import type { CoopIntegrationsConfig } from '@roostorg/coop-types';
+import integrationsConfig from '#config/integrations';
 
 import { jsonParse, type JsonOf } from '../../utils/encoding.js';
 
 function getConfigPath(): string {
-  const envPath = process.env.INTEGRATIONS_CONFIG_PATH;
+  const envPath = integrationsConfig.configPath;
   if (envPath != null && envPath !== '') {
     return path.isAbsolute(envPath)
       ? envPath

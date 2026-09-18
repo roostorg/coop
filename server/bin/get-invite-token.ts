@@ -6,6 +6,7 @@
  * Usage:
  *   npm run get-invite -- --email "user@example.com"
  */
+import appConfig from '#config/app';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 
@@ -42,8 +43,7 @@ async function getInviteToken() {
     }
 
     const invite = result[0];
-    const uiUrl = process.env.UI_URL ?? 'http://localhost:3000';
-    const signupUrl = `${uiUrl}/signup/${invite.token}`;
+    const signupUrl = `${appConfig.uiUrl}/signup/${invite.token}`;
 
     console.log('\n✅ Invite Token Found!\n');
     console.log('═'.repeat(60));

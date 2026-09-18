@@ -5,6 +5,8 @@
 // folder (even though the logic in them really ought to be in a
 // transport-agnostic service in the services folder), so, for now, this file
 // has to import just those files from the graphql folder.
+import debugConfig from '#config/debug';
+
 import { type IntegrationErrorType } from '../graphql/datasources/IntegrationApi.js';
 import { type OrgErrorType } from '../graphql/datasources/OrgApi.js';
 import {
@@ -365,8 +367,7 @@ export const makeBadRequestError = (title: string, data: ErrorInstanceData) =>
     name: 'BadRequestError',
   });
 
-const exposeUnsafeErrorDetails =
-  process.env.EXPOSE_SENSITIVE_IMPLEMENTATION_DETAILS_IN_ERRORS === 'true';
+const exposeUnsafeErrorDetails = debugConfig.exposeUnsafeErrorDetails;
 
 export const sanitizeError = exposeUnsafeErrorDetails
   ? // In local dev, when exposeUnsafeErrorDetails is true, sanitizeError

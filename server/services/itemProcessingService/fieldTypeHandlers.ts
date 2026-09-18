@@ -17,7 +17,7 @@ import _ from 'lodash';
 import { match } from 'ts-pattern';
 
 import { doesThrow } from '../../utils/misc.js';
-import { isValidUrl, makeUrlString } from '../../utils/url.js';
+import { isValidUrl, makeUrlString } from '../../utils/urlValidation.js';
 
 const { isPlainObject } = _;
 

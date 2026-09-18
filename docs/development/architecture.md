@@ -364,7 +364,7 @@ Session configuration:
 
 - Store: PostgreSQL-backed
 - Cookie: Secure flag in production, 30-day expiry
-- Session secret: process.env.SESSION_SECRET
+- Session secret: SESSION_SECRET environment variable
 
 Files: `/server/api.ts`
 

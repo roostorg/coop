@@ -1,4 +1,5 @@
 /* eslint-disable max-lines */
+import integrationsConfig from '#config/integrations';
 import { type JsonValue } from 'type-fest';
 import { FormData } from 'undici';
 
@@ -185,8 +186,7 @@ export class HmaService {
     private readonly fetchHTTP: Dependencies['fetchHTTP'],
     kyselyPg: Dependencies['KyselyPg'],
   ) {
-    this.hmaServiceUrl =
-      process.env.HMA_SERVICE_URL ?? 'http://localhost:9876/';
+    this.hmaServiceUrl = integrationsConfig.hmaServiceUrl;
     this.hashBankService = new HashBankService(kyselyPg);
   }
 

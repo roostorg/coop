@@ -1,4 +1,5 @@
 import { Client } from '@googlemaps/google-maps-services-js';
+import integrationsConfig from '#config/integrations';
 
 import { inject } from '../../iocContainer/index.js';
 
@@ -9,7 +10,7 @@ class PlacesApiService {
     const requestParams = {
       params: {
         place_id: placeId,
-        key: String(process.env.GOOGLE_PLACES_API_KEY),
+        key: String(integrationsConfig.googlePlacesApiKey?.release()),
       },
     };
 

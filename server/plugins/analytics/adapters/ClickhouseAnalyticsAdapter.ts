@@ -3,7 +3,7 @@ import { createClient, type ClickHouseClient } from '@clickhouse/client';
 import { jsonStringify, tryJsonParse } from '../../../utils/encoding.js';
 import { logErrorJson } from '../../../utils/logging.js';
 import type SafeTracer from '../../../utils/SafeTracer.js';
-import { getClickhouseMemorySettings } from '../../warehouse/utils/clickhouseSettings.js';
+import { type ClickhouseMemorySettings } from '../../warehouse/utils/clickhouseSettings.js';
 import { formatClickhouseQuery } from '../../warehouse/utils/clickhouseSql.js';
 import type { IAnalyticsAdapter } from '../IAnalyticsAdapter.js';
 import {
@@ -14,6 +14,7 @@ import {
 import {
   isTransientNetworkError,
   withClickhouseInsertRetries,
+  type ClickhouseInsertRetrySettings,
 } from './clickhouseRetry.js';
 
 export interface ClickhouseAnalyticsConnection {
@@ -27,6 +28,10 @@ export interface ClickhouseAnalyticsConnection {
 
 export interface ClickhouseAnalyticsAdapterOptions {
   connection: ClickhouseAnalyticsConnection;
+  /** Per-query memory limits sent with every statement. */
+  memory: ClickhouseMemorySettings;
+  /** How hard to retry a failed insert. */
+  retry: ClickhouseInsertRetrySettings;
   tracer?: SafeTracer;
   defaultBatchSize?: number;
 }
@@ -104,7 +109,7 @@ export class ClickhouseAnalyticsAdapter implements IAnalyticsAdapter {
       ...(password ? { password } : {}),
       database: options.connection.database,
       clickhouse_settings: {
-        ...getClickhouseMemorySettings(),
+        ...options.memory,
       },
     });
 
@@ -118,6 +123,7 @@ export class ClickhouseAnalyticsAdapter implements IAnalyticsAdapter {
       }) => {
         await this.client.insert({ table, values, format: 'JSONEachRow' });
       },
+      options.retry,
     );
   }
 

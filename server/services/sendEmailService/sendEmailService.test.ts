@@ -1,5 +1,6 @@
 import { SendEmailCommand, type SESClient } from '@aws-sdk/client-ses';
 import sgMail from '@sendgrid/mail';
+import env from '#start/env';
 
 import makeSendEmail, {
   CoopEmailAddress,
@@ -179,8 +180,8 @@ describe('sendEmailService', () => {
 
   describe('console backend', () => {
     it('prints the email and reports successful delivery', async () => {
-      const previousNodeEnv = process.env.NODE_ENV;
-      process.env.NODE_ENV = 'development';
+      const previousNodeEnv = env.get('NODE_ENV');
+      env.set('NODE_ENV', 'development');
       const consoleSpy = jest
         .spyOn(console, 'log')
         .mockImplementation(() => {});
@@ -200,20 +201,16 @@ describe('sendEmailService', () => {
           msg,
         );
       } finally {
-        if (previousNodeEnv === undefined) {
-          delete process.env.NODE_ENV;
-        } else {
-          process.env.NODE_ENV = previousNodeEnv;
-        }
+        env.set('NODE_ENV', previousNodeEnv);
         consoleSpy.mockRestore();
       }
     });
 
     it('is selected explicitly through EMAIL_TRANSPORT', async () => {
-      const previousTransport = process.env.EMAIL_TRANSPORT;
-      const previousNodeEnv = process.env.NODE_ENV;
-      process.env.EMAIL_TRANSPORT = 'console';
-      process.env.NODE_ENV = 'development';
+      const previousTransport = env.get('EMAIL_TRANSPORT');
+      const previousNodeEnv = env.get('NODE_ENV');
+      env.set('EMAIL_TRANSPORT', 'console');
+      env.set('NODE_ENV', 'development');
       const consoleSpy = jest
         .spyOn(console, 'log')
         .mockImplementation(() => {});
@@ -230,25 +227,17 @@ describe('sendEmailService', () => {
         ).resolves.toBe(true);
         expect(consoleSpy).toHaveBeenCalledTimes(1);
       } finally {
-        if (previousTransport === undefined) {
-          delete process.env.EMAIL_TRANSPORT;
-        } else {
-          process.env.EMAIL_TRANSPORT = previousTransport;
-        }
-        if (previousNodeEnv === undefined) {
-          delete process.env.NODE_ENV;
-        } else {
-          process.env.NODE_ENV = previousNodeEnv;
-        }
+        env.set('EMAIL_TRANSPORT', previousTransport);
+        env.set('NODE_ENV', previousNodeEnv);
         consoleSpy.mockRestore();
       }
     });
 
     it('rejects console transport outside development', () => {
-      const previousTransport = process.env.EMAIL_TRANSPORT;
-      const previousNodeEnv = process.env.NODE_ENV;
-      process.env.EMAIL_TRANSPORT = 'console';
-      process.env.NODE_ENV = 'production';
+      const previousTransport = env.get('EMAIL_TRANSPORT');
+      const previousNodeEnv = env.get('NODE_ENV');
+      env.set('EMAIL_TRANSPORT', 'console');
+      env.set('NODE_ENV', 'production');
 
       try {
         for (const makeTransport of [
@@ -260,16 +249,8 @@ describe('sendEmailService', () => {
           );
         }
       } finally {
-        if (previousTransport === undefined) {
-          delete process.env.EMAIL_TRANSPORT;
-        } else {
-          process.env.EMAIL_TRANSPORT = previousTransport;
-        }
-        if (previousNodeEnv === undefined) {
-          delete process.env.NODE_ENV;
-        } else {
-          process.env.NODE_ENV = previousNodeEnv;
-        }
+        env.set('EMAIL_TRANSPORT', previousTransport);
+        env.set('NODE_ENV', previousNodeEnv);
       }
     });
   });

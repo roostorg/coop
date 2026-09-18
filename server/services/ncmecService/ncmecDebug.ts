@@ -1,20 +1,16 @@
+import ncmecConfig from '#config/ncmec';
+
 import { jsonStringify } from '../../utils/encoding.js';
 
-// Opt-in debug logs + XML/JSON dumps for NCMEC submissions. Gated on
-// `NCMEC_DEBUG=1` and `NODE_ENV !== 'production'` so we cannot leak
+// Opt-in debug logs + XML/JSON dumps for NCMEC submissions. `ncmecConfig.debug`
+// requires `NCMEC_DEBUG` *and* a non-production environment, so we cannot leak
 // reportable content in shared environments. Never log credentials.
-
-export function ncmecDebugEnabled(): boolean {
-  return (
-    process.env.NCMEC_DEBUG === '1' && process.env.NODE_ENV !== 'production'
-  );
-}
 
 export function ncmecDebugLog(
   event: string,
   fields: Record<string, unknown>,
 ): void {
-  if (!ncmecDebugEnabled()) {
+  if (!ncmecConfig.debug) {
     return;
   }
   // eslint-disable-next-line no-console
@@ -25,7 +21,7 @@ export async function ncmecDebugDump(
   filename: string,
   contents: string,
 ): Promise<void> {
-  if (!ncmecDebugEnabled()) {
+  if (!ncmecConfig.debug) {
     return;
   }
   try {

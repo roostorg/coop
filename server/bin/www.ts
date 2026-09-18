@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import http from 'http';
 import { promisify } from 'util';
+import env from '#start/env';
 import _ from 'lodash';
 
 import getBottle from '../iocContainer/index.js';
@@ -35,7 +36,7 @@ try {
   process.exit(1);
 }
 
-const port = parsePort(process.env.PORT) ?? 8080;
+const port = env.get('PORT', 8080);
 app.set('port', port);
 
 const server = http
@@ -145,10 +146,3 @@ process.on('unhandledRejection', (reason) => {
 
 process.once('SIGTERM', shutdownOnce);
 process.once('SIGINT', shutdownOnce);
-
-function parsePort(val: string | undefined): number | undefined {
-  if (!val) return undefined;
-
-  const parsed = parseInt(val, 10);
-  return isNaN(parsed) ? undefined : parsed;
-}

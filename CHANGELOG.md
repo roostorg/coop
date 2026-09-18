@@ -18,7 +18,10 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Changed
 
-- Scylla is now optional via `ITEM_INVESTIGATION_AND_STRIKES_ENABLED` ([#918](https://github.com/roostorg/coop/pull/918) by [@sunilatlas](https://github.com/sunilatlas))
+- Invalid environment variable values now prevent startup instead of falling back to defaults ([#1235](https://github.com/roostorg/coop/pull/1235) by [@ThisIsMissEm](https://github.com/ThisIsMissEm))
+- Boolean environment variables accept only `1`, `0`, `true` and `false` ([#1235](https://github.com/roostorg/coop/pull/1235) by [@ThisIsMissEm](https://github.com/ThisIsMissEm))
+- `DATABASE_READ_ONLY_HOST` is now optional, falling back to `DATABASE_HOST` ([#1235](https://github.com/roostorg/coop/pull/1235) by [@ThisIsMissEm](https://github.com/ThisIsMissEm))
+- Scylla is now optional via `SCYLLA_ENABLED` ([#918](https://github.com/roostorg/coop/pull/918) by [@sunilatlas](https://github.com/sunilatlas))
 - Settings "Other" tab renamed to "Partial Items" and its settings relocated ([#965](https://github.com/roostorg/coop/pull/965) by [@golden-fox07](https://github.com/golden-fox07))
 - Queue deletion is refused while routing rules still reference the queue ([#808](https://github.com/roostorg/coop/pull/808) by [@reitblatt](https://github.com/reitblatt))
 - Long text fields in the review console collapse behind a "Read more" control ([#903](https://github.com/roostorg/coop/pull/903) by [@taobojlen](https://github.com/taobojlen))
@@ -26,12 +29,15 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Removed
 
+- `postgresql` as a `WAREHOUSE_ADAPTER` / `ANALYTICS_ADAPTER` value, until it is implemented ([#1235](https://github.com/roostorg/coop/pull/1235) by [@ThisIsMissEm](https://github.com/ThisIsMissEm))
 - Unused `GRAPHQL_OPAQUE_SCALAR_SECRET` and `LAUNCHDARKLY_SECRET` environment variables ([#1246](https://github.com/roostorg/coop/pull/1246) by [@ThisIsMissEm](https://github.com/ThisIsMissEm))
 - Google Cloud Translation API, the `ENGLISH_TRANSLATION` derived field, and `GOOGLE_TRANSLATE_API_KEY` ([#1045](https://github.com/roostorg/coop/pull/1045) by [@julietshen](https://github.com/julietshen))
 - `IMAGE_SIMILARITY_SCORE` and `IMAGE_EXACT_MATCH` signal types ([#1043](https://github.com/roostorg/coop/pull/1043) by [@julietshen](https://github.com/julietshen), closes [#686](https://github.com/roostorg/coop/issues/686))
 
 ### Fixed
 
+- Doubled slashes in generated links when `UI_URL` ends with a slash ([#1235](https://github.com/roostorg/coop/pull/1235) by [@ThisIsMissEm](https://github.com/ThisIsMissEm))
+- Scylla TLS retargeting every connection to the certificate hostname instead of the cluster node ([#1235](https://github.com/roostorg/coop/pull/1235) by [@ThisIsMissEm](https://github.com/ThisIsMissEm))
 - Rule history dropping other rules' versions when filtered by start date ([#1056](https://github.com/roostorg/coop/pull/1056) by [@juanmrad](https://github.com/juanmrad))
 - `RetryFailedNcmecDecisionsJob` ignoring `NCMEC_ENV` and retrying test decisions ([#928](https://github.com/roostorg/coop/pull/928) by [@taobojlen](https://github.com/taobojlen))
 - Queue creation failing with "name already exists" on the default reviewer selection ([#1069](https://github.com/roostorg/coop/pull/1069) by [@jess-upscrolled](https://github.com/jess-upscrolled), closes [#1074](https://github.com/roostorg/coop/issues/1074))

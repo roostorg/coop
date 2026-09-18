@@ -1,39 +1,14 @@
-import NoOpScylla, {
-  itemInvestigationAndStrikesEnabled,
-} from './noOpScylla.js';
+import NoOpScylla from './noOpScylla.js';
 import Scylla from './scylla.js';
 
 /**
- * Tests for the Scylla-disabled path used when
- * `ITEM_INVESTIGATION_AND_STRIKES_ENABLED=false`.
+ * Tests for the Scylla-disabled path used when `SCYLLA_ENABLED=false`: the
+ * behavioural contract of {@link NoOpScylla} (drops writes, empty reads,
+ * connect/close resolve).
  *
- * Two things are covered:
- *  1. The behavioural contract of {@link NoOpScylla} (drops writes, empty reads,
- *     connect/close resolve).
- *  2. The exact flag-parsing predicate (`itemInvestigationAndStrikesEnabled`)
- *     used by the `Scylla` DI factory in `iocContainer` to decide
- *     enabled-vs-disabled. Imported directly (not mirrored) so the
- *     default-enabled (upstream-preserving) behaviour is guarded by a test.
+ * The flag itself is now parsed by the env schema (`Env.schema.boolean`), so
+ * there is no bespoke predicate left to test here.
  */
-
-describe('ITEM_INVESTIGATION_AND_STRIKES_ENABLED gate predicate', () => {
-  test('defaults to enabled when unset (preserves upstream behaviour)', () => {
-    expect(itemInvestigationAndStrikesEnabled(undefined)).toBe(true);
-    expect(itemInvestigationAndStrikesEnabled('')).toBe(true);
-  });
-
-  test('is disabled only for explicit falsey values', () => {
-    for (const v of ['false', 'FALSE', ' false ', '0', 'no', 'No']) {
-      expect(itemInvestigationAndStrikesEnabled(v)).toBe(false);
-    }
-  });
-
-  test('stays enabled for truthy / unrelated values', () => {
-    for (const v of ['true', 'TRUE', '1', 'yes', 'anything']) {
-      expect(itemInvestigationAndStrikesEnabled(v)).toBe(true);
-    }
-  });
-});
 
 describe('NoOpScylla', () => {
   // A minimal DB shape for the generic parameter.

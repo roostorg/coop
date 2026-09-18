@@ -1,3 +1,5 @@
+import env from '#start/env';
+
 import {
   buildInternetDetailsFromOrgSetting,
   clampIncidentDateTimeToPast,
@@ -456,17 +458,17 @@ describe('NCMEC reporting', () => {
   // (this file was over the 500-line max-lines limit after expansion).
 
   describe('summarizeCyberTipFailure', () => {
-    const previousDebug = process.env.NCMEC_DEBUG;
-    const previousNodeEnv = process.env.NODE_ENV;
+    const previousDebug = env.get('NCMEC_DEBUG');
+    const previousNodeEnv = env.get('NODE_ENV');
 
     afterEach(() => {
-      process.env.NCMEC_DEBUG = previousDebug;
-      process.env.NODE_ENV = previousNodeEnv;
+      env.set('NCMEC_DEBUG', previousDebug);
+      env.set('NODE_ENV', previousNodeEnv);
     });
 
     it('includes NCMEC responseCode and description in production', () => {
-      process.env.NCMEC_DEBUG = undefined;
-      process.env.NODE_ENV = 'production';
+      env.set('NCMEC_DEBUG', undefined);
+      env.set('NODE_ENV', 'production');
       const body = {
         reportResponse: {
           responseCode: { _text: '4100' },
@@ -481,8 +483,8 @@ describe('NCMEC reporting', () => {
     });
 
     it('does not leak unknown body fields in production', () => {
-      process.env.NCMEC_DEBUG = undefined;
-      process.env.NODE_ENV = 'production';
+      env.set('NCMEC_DEBUG', undefined);
+      env.set('NODE_ENV', 'production');
       const body = {
         secret: 'reportable-content-or-pii',
         unrelated: { nested: 'data' },
@@ -494,8 +496,8 @@ describe('NCMEC reporting', () => {
     });
 
     it('appends the truncated body when NCMEC_DEBUG is enabled in dev', () => {
-      process.env.NCMEC_DEBUG = '1';
-      process.env.NODE_ENV = 'test';
+      env.set('NCMEC_DEBUG', true);
+      env.set('NODE_ENV', 'test');
       const body = {
         reportResponse: {
           responseCode: { _text: '4000' },
@@ -510,8 +512,8 @@ describe('NCMEC reporting', () => {
     });
 
     it('still keeps body off in production even with NCMEC_DEBUG=1', () => {
-      process.env.NCMEC_DEBUG = '1';
-      process.env.NODE_ENV = 'production';
+      env.set('NCMEC_DEBUG', true);
+      env.set('NODE_ENV', 'production');
       const body = { reportResponse: { responseCode: { _text: '0' } } };
       const message = summarizeCyberTipFailure('/submit', 502, body);
       expect(message).not.toContain('body=');
