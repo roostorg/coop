@@ -7,7 +7,12 @@
       "ES2022",
       "DOM" /* needed for s3 sdk, which references dom readablestream */
     ],
-    "outDir": "./transpiled",
+    "outDir": "./build",
+    // Pin the source root so the layout under `outDir` is explicit rather than
+    // inferred from the common ancestor of the input files (which shifts if a
+    // file is ever added outside the current root). Also required once
+    // `package.json` `imports` entries are resolved against `outDir`.
+    "rootDir": ".",
     "declaration": false,
     "strict": true,
     "esModuleInterop": true,

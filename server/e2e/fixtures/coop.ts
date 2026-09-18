@@ -7,14 +7,14 @@ import { jsonStringify } from '../../utils/encoding.js';
 export { jsonStringify };
 
 /**
- * Server runtime is loaded from the COMPILED output (`transpiled/`), not the TS
+ * Server runtime is loaded from the COMPILED output (`build/`), not the TS
  * source, so we have to do some ugly type casting here.
  */
-const TRANSPILED = '../../transpiled';
+const BUILD_DIR = '../../build';
 
 async function importIocContainer() {
   return (await import(
-    `${TRANSPILED}/iocContainer/index.js`
+    `${BUILD_DIR}/iocContainer/index.js`
   )) as typeof import('../../iocContainer/index.js');
 }
 
@@ -28,27 +28,27 @@ async function importSeedHelpers() {
     createMrtQueue,
     itemSubmissionQueue,
   ] = await Promise.all([
-    import(`${TRANSPILED}/test/fixtureHelpers/createOrg.js`) as Promise<
+    import(`${BUILD_DIR}/test/fixtureHelpers/createOrg.js`) as Promise<
       typeof import('../../test/fixtureHelpers/createOrg.js')
     >,
-    import(`${TRANSPILED}/services/userManagementService/index.js`) as Promise<
+    import(`${BUILD_DIR}/services/userManagementService/index.js`) as Promise<
       typeof import('../../services/userManagementService/index.js')
     >,
     import(
-      `${TRANSPILED}/graphql/datasources/userKyselyPersistence.js`
+      `${BUILD_DIR}/graphql/datasources/userKyselyPersistence.js`
     ) as Promise<
       typeof import('../../graphql/datasources/userKyselyPersistence.js')
     >,
-    import(`${TRANSPILED}/graphql/datasources/rolePersistence.js`) as Promise<
+    import(`${BUILD_DIR}/graphql/datasources/rolePersistence.js`) as Promise<
       typeof import('../../graphql/datasources/rolePersistence.js')
     >,
-    import(`${TRANSPILED}/test/fixtureHelpers/createRule.js`) as Promise<
+    import(`${BUILD_DIR}/test/fixtureHelpers/createRule.js`) as Promise<
       typeof import('../../test/fixtureHelpers/createRule.js')
     >,
-    import(`${TRANSPILED}/test/fixtureHelpers/createMrtQueue.js`) as Promise<
+    import(`${BUILD_DIR}/test/fixtureHelpers/createMrtQueue.js`) as Promise<
       typeof import('../../test/fixtureHelpers/createMrtQueue.js')
     >,
-    import(`${TRANSPILED}/queues/itemSubmissionQueue.js`) as Promise<
+    import(`${BUILD_DIR}/queues/itemSubmissionQueue.js`) as Promise<
       typeof import('../../queues/itemSubmissionQueue.js')
     >,
   ]);

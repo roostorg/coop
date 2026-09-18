@@ -18,6 +18,5 @@ coop.code-workspace
 server/coverage
 **/node_modules/
 server/reports
-**/transpiled/
 models-service
 **/build

@@ -4,7 +4,7 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "lib": ["ES2022"],
-    "outDir": "./transpiled",
+    "outDir": "./build",
     "declaration": true,
     "strict": true,
     "esModuleInterop": true,
@@ -18,5 +18,5 @@
     "typeRoots": ["./node_modules/@types"]
   },
   "include": ["./**/*.ts", "./**/*.cts", "./**/*.mts"],
-  "exclude": ["node_modules", "package.json", "package-lock.json", "transpiled"]
+  "exclude": ["node_modules", "package.json", "package-lock.json", "build"]
 }
