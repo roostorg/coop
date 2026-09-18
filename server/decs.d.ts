@@ -250,6 +250,7 @@ namespace NodeJS {
     DATA_WAREHOUSE_PROVIDER?: string;
     NCMEC_ENV?: string;
     NCMEC_MESSAGES_URL?: string;
+    ENABLE_AGGREGATION_SIGNAL?: string;
     NODE_ENV?: string;
     EXPOSE_SENSITIVE_IMPLEMENTATION_DETAILS_IN_ERRORS?: string;
     ALLOW_USER_INPUT_LOCALHOST_URIS?: string;
