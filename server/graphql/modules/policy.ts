@@ -24,6 +24,7 @@ const typeDefs = /* GraphQL */ `
     policyType: PolicyType
     userStrikeCount: Int
     applyUserStrikeCountConfigToChildren: Boolean
+    penalty: UserPenaltySeverity!
   }
 
   enum PolicyType {
@@ -55,6 +56,7 @@ const typeDefs = /* GraphQL */ `
     parentId: ID
     parentName: String
     policyType: PolicyType
+    penalty: UserPenaltySeverity
   }
 
   input UpdatePolicyInput {
@@ -66,6 +68,7 @@ const typeDefs = /* GraphQL */ `
     policyType: PolicyType
     userStrikeCount: Int
     applyUserStrikeCountConfigToChildren: Boolean
+    penalty: UserPenaltySeverity
   }
 
   type Mutation {
@@ -127,6 +130,7 @@ const Mutation: GQLMutationResolvers = {
           policyText: policy.policyText ?? null,
           enforcementGuidelines: policy.enforcementGuidelines ?? null,
           policyType: policy.policyType ?? null,
+          penalty: policy.penalty ?? null,
         },
         orgId: user.orgId,
         invokedBy: {
@@ -172,6 +176,7 @@ const Mutation: GQLMutationResolvers = {
         policyType,
         userStrikeCount,
         applyUserStrikeCountConfigToChildren,
+        penalty,
       } = input;
 
       const updatedPolicy =
@@ -185,6 +190,7 @@ const Mutation: GQLMutationResolvers = {
             enforcementGuidelines,
             userStrikeCount,
             applyUserStrikeCountConfigToChildren,
+            penalty,
           },
           orgId: user.orgId,
           invokedBy: {

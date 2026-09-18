@@ -20,6 +20,7 @@ import {
 import { type ModerationConfigServicePg } from '../dbTypes.js';
 import { type Policy } from '../index.js';
 import type { PolicyType } from '../types/policies.js';
+import type { UserPenaltySeverity } from '../types/shared.js';
 
 const policyDbSelection = [
   'id',
@@ -154,6 +155,7 @@ export default class PolicyOperations {
       policyText?: string | null;
       enforcementGuidelines?: string | null;
       policyType?: PolicyType | null;
+      penalty?: UserPenaltySeverity | null;
     };
     invokedBy: Invoker;
   }) {
@@ -164,6 +166,7 @@ export default class PolicyOperations {
       policyText: policy_text,
       enforcementGuidelines: enforcement_guidelines,
       policyType: policy_type,
+      penalty,
     } = policy;
     if (!invokedBy.permissions.includes(UserPermission.MANAGE_POLICIES)) {
       throw makeUnauthorizedError(
@@ -180,7 +183,7 @@ export default class PolicyOperations {
           name,
           org_id,
           parent_id,
-          penalty: 'NONE',
+          penalty: penalty ?? 'NONE',
           policy_text,
           enforcement_guidelines,
           policy_type,
@@ -209,6 +212,7 @@ export default class PolicyOperations {
       policyType?: PolicyType | null;
       userStrikeCount?: number | null;
       applyUserStrikeCountConfigToChildren?: boolean | null;
+      penalty?: UserPenaltySeverity | null;
     };
     invokedBy: Invoker;
   }) {
@@ -233,6 +237,7 @@ export default class PolicyOperations {
             user_strike_count: policy.userStrikeCount ?? undefined,
             apply_user_strike_count_config_to_children:
               policy.applyUserStrikeCountConfigToChildren ?? undefined,
+            penalty: policy.penalty ?? undefined,
             updated_at: new Date(),
           }),
         )

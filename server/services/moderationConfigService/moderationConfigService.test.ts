@@ -20,6 +20,7 @@ import { type ModerationConfigServicePg } from './dbTypes.js';
 import {
   RuleStatus,
   RuleType,
+  UserPenaltySeverity,
   type ConditionSet,
   type Policy,
 } from './index.js';
@@ -1483,6 +1484,87 @@ describe('ModerationConfigService', () => {
           expect(fetched[0].id).toEqual(updatedPolicy.id);
           expect(fetched[0].name).toEqual('Updated Policy');
           expect(fetched[0].policyText).toEqual('Updated policy text');
+        },
+      );
+
+      testWithUserAndOrg(
+        'should default omitted penalty to NONE on create',
+        async ({ sutWithPrimary, org, user }) => {
+          const created = await sutWithPrimary.createPolicy({
+            orgId: org.id,
+            policy: {
+              name: 'Default Penalty Policy',
+              policyText: 'Policy text',
+              enforcementGuidelines: null,
+              policyType: null,
+              parentId: null,
+            },
+            invokedBy: {
+              orgId: org.id,
+              userId: user.id,
+              permissions: user.getPermissions(),
+            },
+          });
+
+          expect(created.penalty).toEqual(UserPenaltySeverity.NONE);
+
+          const fetched = await sutWithPrimary.getPolicies({ orgId: org.id });
+          expect(fetched).toHaveLength(1);
+          expect(fetched[0].penalty).toEqual(UserPenaltySeverity.NONE);
+        },
+      );
+
+      testWithUserAndOrg(
+        'should persist and update policy penalty',
+        async ({ sutWithPrimary, org, user }) => {
+          const invokedBy = {
+            orgId: org.id,
+            userId: user.id,
+            permissions: user.getPermissions(),
+          };
+
+          const created = await sutWithPrimary.createPolicy({
+            orgId: org.id,
+            policy: {
+              name: 'Penalty Policy',
+              policyText: 'Policy text',
+              enforcementGuidelines: null,
+              policyType: null,
+              parentId: null,
+              penalty: UserPenaltySeverity.HIGH,
+            },
+            invokedBy,
+          });
+
+          expect(created.penalty).toEqual(UserPenaltySeverity.HIGH);
+
+          const updated = await sutWithPrimary.updatePolicy({
+            orgId: org.id,
+            policy: {
+              id: created.id,
+              name: created.name,
+              penalty: UserPenaltySeverity.SEVERE,
+            },
+            invokedBy,
+          });
+
+          expect(updated.penalty).toEqual(UserPenaltySeverity.SEVERE);
+
+          const cleared = await sutWithPrimary.updatePolicy({
+            orgId: org.id,
+            policy: {
+              id: created.id,
+              name: created.name,
+              penalty: UserPenaltySeverity.NONE,
+            },
+            invokedBy,
+          });
+
+          expect(cleared.penalty).toEqual(UserPenaltySeverity.NONE);
+
+          const fetched = await sutWithPrimary.getPolicies({ orgId: org.id });
+          expect(fetched).toHaveLength(1);
+          expect(fetched[0].penalty).toEqual(UserPenaltySeverity.NONE);
         },
       );
 

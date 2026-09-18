@@ -250,6 +250,7 @@ export type GQLAddPolicyInput = {
   readonly name: Scalars['String']['input'];
   readonly parentId?: InputMaybe<Scalars['ID']['input']>;
   readonly parentName?: InputMaybe<Scalars['String']['input']>;
+  readonly penalty?: InputMaybe<GQLUserPenaltySeverity>;
   readonly policyText?: InputMaybe<Scalars['String']['input']>;
   readonly policyType?: InputMaybe<GQLPolicyType>;
 };
@@ -3417,6 +3418,7 @@ export type GQLPolicy = {
   readonly id: Scalars['ID']['output'];
   readonly name: Scalars['String']['output'];
   readonly parentId?: Maybe<Scalars['ID']['output']>;
+  readonly penalty: GQLUserPenaltySeverity;
   readonly policyText?: Maybe<Scalars['String']['output']>;
   readonly policyType?: Maybe<GQLPolicyType>;
   readonly userStrikeCount?: Maybe<Scalars['Int']['output']>;
@@ -4893,6 +4895,7 @@ export type GQLUpdatePolicyInput = {
   readonly id: Scalars['ID']['input'];
   readonly name: Scalars['String']['input'];
   readonly parentId?: InputMaybe<Scalars['ID']['input']>;
+  readonly penalty?: InputMaybe<GQLUserPenaltySeverity>;
   readonly policyText?: InputMaybe<Scalars['String']['input']>;
   readonly policyType?: InputMaybe<GQLPolicyType>;
   readonly userStrikeCount?: InputMaybe<Scalars['Int']['input']>;
@@ -19201,6 +19204,7 @@ export type GQLPolicyFieldsFragment = {
   readonly policyType?: GQLPolicyType | null;
   readonly userStrikeCount?: number | null;
   readonly applyUserStrikeCountConfigToChildren?: boolean | null;
+  readonly penalty: GQLUserPenaltySeverity;
 };
 
 export type GQLPoliciesQueryVariables = Exact<{ [key: string]: never }>;
@@ -19219,6 +19223,7 @@ export type GQLPoliciesQuery = {
       readonly policyType?: GQLPolicyType | null;
       readonly userStrikeCount?: number | null;
       readonly applyUserStrikeCountConfigToChildren?: boolean | null;
+      readonly penalty: GQLUserPenaltySeverity;
     }>;
   } | null;
 };
@@ -19241,6 +19246,7 @@ export type GQLPoliciesWithModelsQuery = {
       readonly policyType?: GQLPolicyType | null;
       readonly userStrikeCount?: number | null;
       readonly applyUserStrikeCountConfigToChildren?: boolean | null;
+      readonly penalty: GQLUserPenaltySeverity;
     }>;
   } | null;
   readonly me?: {
@@ -19268,6 +19274,7 @@ export type GQLAddPoliciesMutation = {
       readonly policyType?: GQLPolicyType | null;
       readonly userStrikeCount?: number | null;
       readonly applyUserStrikeCountConfigToChildren?: boolean | null;
+      readonly penalty: GQLUserPenaltySeverity;
     }>;
   };
 };
@@ -19290,6 +19297,7 @@ export type GQLUpdatePolicyMutation = {
         readonly policyType?: GQLPolicyType | null;
         readonly userStrikeCount?: number | null;
         readonly applyUserStrikeCountConfigToChildren?: boolean | null;
+        readonly penalty: GQLUserPenaltySeverity;
       };
 };
 
@@ -25914,6 +25922,7 @@ export const GQLPolicyFieldsFragmentDoc = gql`
     policyType
     userStrikeCount
     applyUserStrikeCountConfigToChildren
+    penalty
   }
 `;
 export const GQLRulesDashboardRuleFieldsFragmentFragmentDoc = gql`

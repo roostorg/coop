@@ -76,6 +76,8 @@ Policies can have sub-policies; for example, a _Spam_ policy could have sub-poli
 
 It is often useful (and in some cases required, i.e. by the EU's Digital Services Act) to tie every Action you take to one or more specific Policies. For example, you could _Delete_ a comment under your _Hate Speech_ policy, or you could _Delete_ it under your _Spam_ policy. Coop allows you to track those differences and measure how many Actions you've taken for each Policy. That way, you can see how effectively you're enforcing each Policy over time, identify Policies for which your enforcement is poor or degrading, and report performance metrics to your leadership (or to regulators, i.e. in the form of a DSA Transparency Report).
 
+Each Policy also has a **Penalty** severity (**None**, **Low**, **Medium**, **High**, or **Severe**) that you set when creating or editing the policy. Penalty appears on the Policies dashboard and is sent with the policy in [action webhook payloads](../api/actions.md), so your platform can treat violations of more serious policies differently from milder ones.
+
 You can create and manage your Policies in the **Policies** dashboard, and you can fetch them programmatically through the [Policies API](../api/policies.md). Policies added in Coop's UI are also visible to reviewers directly in the [Job view](review-console.md#job-view) of the Review Console.
 
 ## Jobs

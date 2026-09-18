@@ -70,6 +70,8 @@ Policies are the set of rules and guidelines that a platform uses to govern the 
 
 ![Policy Dashboard showing 4 policies: Fraud, Nudity, Scams, Spam. There's a button to create new policies as well as options to add sub-policies for each existing policy and edit or delete them](../images/policies.png)
 
+When you create or edit a policy, you can set its **Penalty** to one of: **None**, **Low**, **Medium**, **High**, or **Severe**. The Policies dashboard shows each policy's penalty next to its name. Penalty is included with the policy in [action webhook payloads](../api/actions.md) so your platform can weigh how serious a given policy violation is.
+
 Policies added in Coop's UI are visible to reviewers directly in the [Job view](review-console.md#job-view) of the Review Console.
 
 ## User management
