@@ -33,6 +33,11 @@ export default function TextTokenInput(props: {
       if (
         inputEl.current &&
         !inputEl.current.contains(event.target as Node) &&
+        // If the click moved focus out of the input, `onBlur` already
+        // committed the pending text — bail so we don't call addToken (and
+        // updateTokenValues) a second time. This handler now only covers
+        // clicks on non-focusable "dead space", which don't fire a blur.
+        document.activeElement === inputEl.current &&
         tokenBuilder.length > 0
       ) {
         addToken();
@@ -113,6 +118,13 @@ export default function TextTokenInput(props: {
               }
             }}
             onChange={(event) => setTokenBuiler(event.target.value)}
+            onBlur={() => {
+              // Commit whatever is typed when focus leaves the field (e.g.
+              // clicking "Save Changes"), not just on Enter / outside click.
+              if (tokenBuilder.length > 0) {
+                addToken();
+              }
+            }}
             placeholder={
               tokens.length > 0 || placeholder == null ? '' : placeholder
             }
