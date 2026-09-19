@@ -783,9 +783,7 @@ export default async function getBottle(
             executionContext,
           );
         },
-        itemInvestigationAndStrikesEnabled(
-          process.env.ITEM_INVESTIGATION_AND_STRIKES_ENABLED,
-        ),
+        itemInvestigationAndStrikesEnabled(process.env.SCYLLA_ENABLED),
       ),
   );
 
@@ -799,18 +797,12 @@ export default async function getBottle(
   bottle.factory('Scylla', () => {
     // Scylla backs the item-investigation and user-strike features. Operators
     // who don't need those (and don't want to run a Scylla cluster) can set
-    // `ITEM_INVESTIGATION_AND_STRIKES_ENABLED=false` to swap in a no-op that
+    // `SCYLLA_ENABLED=false` to swap in a no-op that
     // drops writes and returns empty reads, so no `SCYLLA_*` connection env
     // vars are required. Defaults to enabled to preserve existing behaviour.
-    if (
-      !itemInvestigationAndStrikesEnabled(
-        process.env.ITEM_INVESTIGATION_AND_STRIKES_ENABLED,
-      )
-    ) {
+    if (!itemInvestigationAndStrikesEnabled(process.env.SCYLLA_ENABLED)) {
       // eslint-disable-next-line no-restricted-syntax
-      logJson(
-        'scylla.disabled ITEM_INVESTIGATION_AND_STRIKES_ENABLED=false; using no-op Scylla',
-      );
+      logJson('scylla.disabled SCYLLA_ENABLED=false; using no-op Scylla');
       return new NoOpScylla();
     }
 
