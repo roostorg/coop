@@ -100,6 +100,7 @@ describe('NCMEC report and submission (integration)', () => {
       contactPersonPhone: null,
       mediaReviewRequirement: 'ALL',
       minMediaToReview: null,
+      reportedMediaHashBankId: null,
     });
   }, 60_000);
 

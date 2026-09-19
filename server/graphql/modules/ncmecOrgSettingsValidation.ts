@@ -20,6 +20,7 @@ export type NcmecOrgSettingsInputShape = {
   contactPersonPhone?: string | null;
   mediaReviewRequirement?: string | null;
   minMediaToReview?: number | null;
+  reportedMediaHashBankId?: string | null;
 };
 
 const VALID_NCMEC_MEDIA_REVIEW_REQUIREMENTS = ['ALL', 'MINIMUM'] as const;
@@ -98,4 +99,26 @@ export function parseMediaReviewPolicy(input: NcmecOrgSettingsInputShape): {
     );
   }
   return { mediaReviewRequirement: requirement, minMediaToReview };
+}
+
+/** Returns the bank id to store, or null to clear it. Only checks the format;
+ * the resolver checks that the bank belongs to the org. */
+export function parseReportedMediaHashBankId(
+  input: NcmecOrgSettingsInputShape,
+): number | null {
+  const raw = input.reportedMediaHashBankId?.trim() ?? '';
+  if (raw === '') {
+    return null;
+  }
+  if (!/^\d+$/.test(raw)) {
+    throw userInputError('reportedMediaHashBankId must be a hash bank ID.');
+  }
+
+  const bankId = Number(raw);
+
+  if (!Number.isSafeInteger(bankId) || bankId > 2_147_483_647) {
+    throw userInputError('reportedMediaHashBankId must be a hash bank ID.');
+  }
+
+  return bankId;
 }

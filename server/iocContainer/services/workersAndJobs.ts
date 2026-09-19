@@ -5,6 +5,7 @@ import { makeRefreshUserScoresCacheJob } from '../../services/userStatisticsServ
 import { type Job, type Worker } from '../../workers_jobs/index.js';
 import makeItemProcessingWorker from '../../workers_jobs/ItemProcessingWorker.js';
 import makeRefreshMRTDecisionsMaterializedViewJob from '../../workers_jobs/RefreshMRTDecisionsMaterializedViewJob.js';
+import makeReportedMediaBankingWorker from '../../workers_jobs/ReportedMediaBankingWorker.js';
 import makeRetryFailedNcmecDecisionsJob from '../../workers_jobs/RetryFailedNcmecDecisionsJob.js';
 import makeRunUserRulesJob from '../../workers_jobs/RunUserRulesJob.js';
 import { type Dependencies } from '../index.js';
@@ -15,6 +16,7 @@ declare module '../index.js' {
     // NB: worker deps cannot be renamed
     // w/o breaking the kubernetes logic that starts them!
     ItemProcessingWorker: Worker;
+    ReportedMediaBankingWorker: Worker;
 
     // Jobs. Like workers, can't be renamed w/o breaking stuff.
     // The distinction between jobs and workers is that workers run continuously,
@@ -30,6 +32,11 @@ declare module '../index.js' {
 
 export function registerWorkersAndJobs(bottle: Bottle<Dependencies>) {
   register(bottle, 'ItemProcessingWorker', makeItemProcessingWorker);
+  register(
+    bottle,
+    'ReportedMediaBankingWorker',
+    makeReportedMediaBankingWorker,
+  );
   register(bottle, 'RunUserRulesJob', makeRunUserRulesJob);
   register(
     bottle,
