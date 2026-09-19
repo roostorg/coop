@@ -288,6 +288,10 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
     return this.actionOps.getActionsForItemType(opts);
   }
 
+  async getActionItemTypeIds(opts: { orgId: string }) {
+    return this.itemTypeOps.getActionItemTypeIds(opts);
+  }
+
   async getActionsForRuleId(opts: {
     orgId: string;
     ruleId: string;

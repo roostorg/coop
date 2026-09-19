@@ -92,6 +92,7 @@ export {
   type ActionParameterType,
   type RawActionParameterInput,
   parseStoredParameters,
+  serializeParameters,
   validateActionParameters,
 } from './modules/actionParametersValidation.js';
 export {
