@@ -19,7 +19,7 @@ At minimum, a production deployment should provide:
 
 - Scylla connectivity for item submission history.
 
-- Session and token secrets such as `SESSION_SECRET` and `GRAPHQL_OPAQUE_SCALAR_SECRET`.
+- Session secret (`SESSION_SECRET`) and other secrets.
 
 - A public UI origin such as `UI_URL` / `VITE_UI_URL` so generated links and browser-facing flows point at the correct host.
 

@@ -59,6 +59,7 @@ import { JOB_FRAGMENT } from './jobFragment';
 import ManualReviewJobDequeueErrorComponent from './ManualReviewJobDequeueErrorComponent';
 import MergedReportsComponent from './MergedReportsComponent';
 import ReportInfoComponent from './ReportInfoComponent';
+import { selectManualReviewJob } from './selectManualReviewJob';
 import ManualReviewJobContentView from './v2/ManualReviewJobContentView';
 import ManualReviewJobEmptyQueue from './v2/ManualReviewJobEmptyQueue';
 import { ManualReviewJobOtherItemsComponent } from './v2/ManualReviewJobOtherItemsComponent';
@@ -91,7 +92,7 @@ function actionHasParameters(
 gql`
   ${JOB_FRAGMENT}
   ${ITEM_TYPE_FRAGMENT}
-  query ManualReviewJobInfo($jobIds: [ID!]) {
+  query ManualReviewJobInfo($jobIds: [ID!], $lockToken: String) {
     myOrg {
       id
       policies {
@@ -164,7 +165,7 @@ gql`
         name
         pendingJobCount
         hiddenActionIds
-        jobs(ids: $jobIds) {
+        jobs(ids: $jobIds, lockToken: $lockToken) {
           ...JobFields
         }
       }
@@ -382,7 +383,10 @@ function ManualReviewJobReviewImpl(props: {
     loading,
     refetch: refetchJobInfo,
   } = useGQLManualReviewJobInfoQuery({
-    variables: { jobIds: closedJob ? [closedJob.id] : jobId ? [jobId] : [] },
+    variables: {
+      jobIds: closedJob ? [closedJob.id] : jobId ? [jobId] : [],
+      lockToken: closedJob ? undefined : lockToken,
+    },
     fetchPolicy: 'no-cache',
   });
 
@@ -727,13 +731,14 @@ function ManualReviewJobReviewImpl(props: {
       ),
   });
 
-  const job = closedJob
-    ? closedJob
-    : jobData
-      ? jobData.dequeueManualReviewJob?.job
-      : data?.me?.reviewableQueues
-          .find((queue) => queue.id === queueId)
-          ?.jobs.find((job) => job.id === jobId);
+  const queriedJob = data?.me?.reviewableQueues
+    .find((queue) => queue.id === queueId)
+    ?.jobs.find((job) => job.id === jobId);
+  const job = selectManualReviewJob({
+    closedJob,
+    queriedJob,
+    dequeuedJob: jobData?.dequeueManualReviewJob?.job,
+  });
   const pendingJobCount = jobData?.dequeueManualReviewJob
     ? jobData.dequeueManualReviewJob.numPendingJobs
     : data?.me?.reviewableQueues

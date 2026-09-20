@@ -14,6 +14,12 @@ services:
       - '127.0.0.1:6379:6379'
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'redis-cli ping | grep -qx PONG']
+      interval: 2s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
     deploy:
       resources:
         limits:
@@ -21,7 +27,7 @@ services:
 
   # Runs all migrations from scratch, after clearing the database(s).
   migrations:
-    image: node:24.20.0-bookworm-slim
+    image: node:24.21.0-bookworm-slim
     command: bash -c 'set -e
       npm i && ( [ "$CI" = "true" ] && npm run db:clean -- --env staging || true )
       && for db in api-server-pg scylla clickhouse; do npm run db:create -- --db "$$db" --env staging; npm run db:update -- --db "$$db" --env staging; done'
@@ -41,7 +47,7 @@ services:
         condition: service_healthy
 
   drop_dbs:
-    image: node:24.20.0-bookworm-slim
+    image: node:24.21.0-bookworm-slim
     command: bash -c 'npm i && npm run db:drop -- --env staging'
     working_dir: /src
     env_file: ./.env.githubci
@@ -123,7 +129,7 @@ services:
       migrations:
         condition: service_completed_successfully
       redis:
-        condition: service_started
+        condition: service_healthy
 
   backend:
     build:
@@ -188,3 +194,10 @@ volumes:
   scylla_data:
   redis_data:
   clickhouse_data:
+
+networks:
+  default:
+    # Scylla was automatically starting on both ipv4 and ipv6 causing it to
+    # crash due to an invalid number of arguments being passed to its
+    # entrypoint.
+    enable_ipv6: false

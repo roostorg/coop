@@ -17,11 +17,13 @@ import { cached, type Cached } from '../../utils/caching.js';
 const ROTATED_KEY_TTL_MS = 10_000;
 const recentlyRotatedPublicKeys = new Map<
   string,
-  { key: CryptoKey; expiresAt: number }
+  { key: crypto.webcrypto.CryptoKey; expiresAt: number }
 >();
 
 class SigningKeyPairService {
-  private fetchPrivateKey: Cached<(key: SigningKeyId) => Promise<CryptoKey>>;
+  private fetchPrivateKey: Cached<
+    (key: SigningKeyId) => Promise<crypto.webcrypto.CryptoKey>
+  >;
 
   constructor(private readonly store: SigningKeyPairStorage) {
     this.fetchPrivateKey = cached({
@@ -45,7 +47,7 @@ class SigningKeyPairService {
 
   /**
    * Generates and stores the private + public key for the org. Returns a
-   * CryptoKey object for the public key, which contains details that would be
+   * crypto.webcrypto.CryptoKey object for the public key, which contains details that would be
    * needed to actually verify a signature made using the corresponding private
    * key.
    *
@@ -107,7 +109,7 @@ class SigningKeyPairService {
         // doesn't actually mutate the input -- but the types for sign() are
         // slightly wrong, in that they don't promise that, so we just cast it
         // to the non-readonly-version and trust the function.
-        privateKey satisfies ReadonlyDeep<CryptoKey> as CryptoKey,
+        privateKey satisfies ReadonlyDeep<crypto.webcrypto.CryptoKey> as crypto.webcrypto.CryptoKey,
         data,
       ),
     };
@@ -120,9 +122,12 @@ class SigningKeyPairService {
 
 // Interface that storage implementations must satisfy
 export type SigningKeyPairStorage = {
-  storeKeyPair(keyId: SigningKeyId, keyPair: CryptoKeyPair): Promise<void>;
-  fetchPublicKey(keyId: SigningKeyId): Promise<CryptoKey>;
-  fetchPrivateKey(keyId: SigningKeyId): Promise<CryptoKey>;
+  storeKeyPair(
+    keyId: SigningKeyId,
+    keyPair: crypto.webcrypto.CryptoKeyPair,
+  ): Promise<void>;
+  fetchPublicKey(keyId: SigningKeyId): Promise<crypto.webcrypto.CryptoKey>;
+  fetchPrivateKey(keyId: SigningKeyId): Promise<crypto.webcrypto.CryptoKey>;
 };
 
 // Intentionally an object to support future extensions where each

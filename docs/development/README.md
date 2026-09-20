@@ -27,9 +27,9 @@ To get Coop running:
 
    ```
    0.40.4
-   Found '.nvmrc' with version <24.20.0>
-   v24.20.0 is already installed.
-   Now using node v24.20.0 (npm v11.19.0)
+   Found '.nvmrc' with version <24.21.0>
+   v24.21.0 is already installed.
+   Now using node v24.21.0 (npm v11.19.0)
    Docker version 29.4.3, build 055a478
    ```
 
@@ -76,17 +76,7 @@ To get Coop running:
    npm run db:update -- --env staging --db clickhouse
    ```
 
-6. **Copy static asset files** using the script in the `server/` folder:
-
-   ```sh
-   # coop/
-   cd server
-
-   # coop/server/
-   npm run copy-assets
-   ```
-
-7. **Create an organization and admin user** using the `create-org` script from the `server/` folder, providing the appropriate details.
+6. **Create an organization and admin user** using the `create-org` script from the `server/` folder, providing the appropriate details.
 
    For example:
 
@@ -103,7 +93,7 @@ To get Coop running:
 
    This will output your org ID and initial API key; copy them somewhere secure for safe keeping.
 
-8. Finally, **start the application**! See [Running the Application](local.md#running-the-application) for additional options, including how to start different components individually for debugging.
+7. Finally, **start the application**! See [Running the Application](local.md#running-the-application) for additional options, including how to start different components individually for debugging.
 
    Switch back to the project root folder if you're still in `server/`, then start the server and client:
 
