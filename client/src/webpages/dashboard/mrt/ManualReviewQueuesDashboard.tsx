@@ -182,6 +182,7 @@ type ColumnId =
   | 'description'
   | 'oldestTaskAge'
   | 'pendingJobCount'
+  | 'jobSortType'
   | 'startReviewing'
   | 'mutations'
   | 'deleteJobs'
@@ -196,6 +197,7 @@ const defaultColumnVisibility: Record<ColumnId, boolean> = {
   description: true,
   oldestTaskAge: true,
   pendingJobCount: true,
+  jobSortType: true,
   startReviewing: true,
   mutations: true,
   deleteJobs: true,
@@ -209,6 +211,7 @@ const columnLabels: Record<ColumnId, string> = {
   description: 'Description',
   oldestTaskAge: 'Oldest Task Age',
   pendingJobCount: 'Pending Jobs',
+  jobSortType: 'Sort Order',
   startReviewing: 'Start Reviewing',
   mutations: 'Actions',
   deleteJobs: 'Delete Jobs',
@@ -610,11 +613,13 @@ export default function ManualReviewQueuesDashboard() {
               sortFn: integerSort,
             }
           : undefined,
-        {
-          header: 'Sort Order',
-          accessorKey: 'jobSortType',
-          enableSorting: false,
-        },
+        columnVisibility.jobSortType
+          ? {
+              header: 'Sort Order',
+              accessorKey: 'jobSortType',
+              enableSorting: false,
+            }
+          : undefined,
         columnVisibility.startReviewing
           ? {
               header: '',

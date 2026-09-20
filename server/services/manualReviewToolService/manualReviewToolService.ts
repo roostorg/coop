@@ -1034,6 +1034,24 @@ export class ManualReviewToolService {
     // attacker-supplied input, so there's no timing channel to protect.
     // eslint-disable-next-line security/detect-possible-timing-attacks
     if (token == null) {
+      this.tracer.addSpan(
+        {
+          resource: 'mrtService',
+          operation: 'recomputeLockTimeout',
+          attributes: {
+            'mrtQueue.orgId': orgId,
+            'mrtQueue.queueId': queueId,
+          },
+        },
+        (span) => {
+          this.tracer.logSpanFailed(
+            span,
+            new Error(
+              `Priority recompute lock timed out for queue ${queueId}. Existing jobs keep their current priorities.`,
+            ),
+          );
+        },
+      );
       return;
     }
 

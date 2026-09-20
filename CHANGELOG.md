@@ -10,6 +10,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Added
 
+- Per-queue job sort order for manual review queues with support for sorting by number of reports ([#718](https://github.com/roostorg/coop/pull/718) by [@calebmcquaid](https://github.com/calebmcquaid), closes [#409](https://github.com/roostorg/coop/issues/409))
 - Manual Review Analytics with average handle time per moderator ([#1022](https://github.com/roostorg/coop/pull/1022) by [@juanmrad](https://github.com/juanmrad), closes [#380](https://github.com/roostorg/coop/issues/380))
 - Support for text-only NCMEC reports ([#866](https://github.com/roostorg/coop/pull/866), [#881](https://github.com/roostorg/coop/pull/881) by [@calebmcquaid](https://github.com/calebmcquaid), closes [#661](https://github.com/roostorg/coop/issues/661))
 - OpenAI `self-harm/intent` and `self-harm/instructions` signals for text and image ([#535](https://github.com/roostorg/coop/pull/535) by [@julietshen](https://github.com/julietshen))
