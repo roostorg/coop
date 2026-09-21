@@ -23,7 +23,7 @@ type ReportingRulePassRateQueryRow = Record<string, unknown> & {
 
 type ReportingRuleSampleRow = Record<string, unknown> & {
   date: string;
-  ts: string;
+  ts_iso: string;
   item_id: string;
   item_type_name: string;
   item_type_id: string;
@@ -97,7 +97,15 @@ export class ClickhouseReportingAnalyticsAdapter implements IReportingAnalyticsA
   async getReportingRulePassingContentSamples(
     input: ReportingRulePassingContentSampleInput,
   ): Promise<ReadonlyArray<ReportingRulePassingContentSample>> {
-    const { orgId, ruleId, itemIds, numSamples, filter } = input;
+    const {
+      orgId,
+      ruleId,
+      itemIds,
+      itemTypeIds,
+      executionTimestamp,
+      numSamples,
+      filter,
+    } = input;
 
     const conditions: string[] = [
       'org_id = ?',
@@ -110,6 +118,18 @@ export class ClickhouseReportingAnalyticsAdapter implements IReportingAnalyticsA
     if (itemIds && itemIds.length > 0) {
       conditions.push(`item_id IN (${itemIds.map(() => '?').join(', ')})`);
       params.push(...itemIds);
+    }
+
+    if (itemTypeIds && itemTypeIds.length > 0) {
+      conditions.push(
+        `item_type_id IN (${itemTypeIds.map(() => '?').join(', ')})`,
+      );
+      params.push(...itemTypeIds);
+    }
+
+    if (executionTimestamp) {
+      conditions.push('ts = parseDateTime64BestEffort(?)');
+      params.push(executionTimestamp.toISOString());
     }
 
     if (filter.type === 'latestVersion') {
@@ -133,7 +153,7 @@ export class ClickhouseReportingAnalyticsAdapter implements IReportingAnalyticsA
       `
         SELECT 
           ds AS date,
-          ts,
+          formatDateTime(ts, '%Y-%m-%dT%H:%i:%s.%fZ', 'UTC') AS ts_iso,
           item_id,
           item_type_name,
           item_type_id,
@@ -156,7 +176,7 @@ export class ClickhouseReportingAnalyticsAdapter implements IReportingAnalyticsA
 
     return rows.map((row) => ({
       date: new Date(`${row.date}T00:00:00.000Z`),
-      ts: new Date(row.ts),
+      ts: new Date(row.ts_iso),
       itemId: row.item_id,
       itemTypeName: row.item_type_name,
       itemTypeId: row.item_type_id,

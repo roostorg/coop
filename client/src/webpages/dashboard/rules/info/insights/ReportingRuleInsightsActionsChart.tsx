@@ -46,6 +46,7 @@ import RuleInsightsEmptyCard from './RuleInsightsEmptyCard';
 gql`
   query ReportingRulePassRateAnalytics($id: ID!) {
     reportingRule(id: $id) {
+      id
       insights {
         passRateData {
           date

@@ -384,6 +384,56 @@ const Query: GQLQueryResolvers = {
       throw e;
     }
   },
+  async getFullReportingRuleResultForItem(_, { input }, context) {
+    const user = context.getUser();
+    if (user == null) {
+      throw unauthenticatedError('Authenticated user required');
+    }
+
+    const { ruleId, item, lookback } = input;
+    try {
+      const rules = await context.services.ReportingService.getReportingRules({
+        orgId: user.orgId,
+      });
+      const rule = rules.find((candidate) => candidate.id === ruleId);
+      const executionTimestamp = input.date ? new Date(input.date) : undefined;
+      if (
+        rule == null ||
+        executionTimestamp == null ||
+        Number.isNaN(executionTimestamp.getTime())
+      ) {
+        throw makeNotFoundError('Item not found', { shouldErrorSpan: true });
+      }
+
+      const samples =
+        await context.services.ReportingService.getReportingRulePassingContentSamples(
+          {
+            ruleId,
+            orgId: user.orgId,
+            source: lookback === 'LATEST' ? 'latestVersion' : 'priorVersion',
+            itemIds: [item.id],
+            itemTypeIds: [item.typeId],
+            executionTimestamp,
+            numSamples: 1,
+          },
+        );
+      if (samples.length === 0) {
+        throw makeNotFoundError('Item not found', { shouldErrorSpan: true });
+      }
+      const sample = samples[0];
+
+      return gqlSuccessResult(
+        normalizeReportingRuleSample(sample, rule),
+        'ReportingRuleExecutionResult',
+      );
+    } catch (e) {
+      if (isCoopErrorOfType(e, 'NotFoundError')) {
+        return gqlErrorResult(e);
+      }
+
+      throw e;
+    }
+  },
 };
 
 const resolvers = {

@@ -12,6 +12,7 @@ import ReportingRuleInsights from './insights/ReportingRuleInsights';
 gql`
   query ReportingRuleInfo($id: ID!) {
     reportingRule(id: $id) {
+      id
       name
     }
   }
