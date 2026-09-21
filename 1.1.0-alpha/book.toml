@@ -1,0 +1,16 @@
+[book]
+title = "Coop Documentation"
+authors = ["ROOST"]
+language = "en"
+src = "."
+
+[build]
+build-dir = "./book"
+
+[output.html]
+site-url = "/coop/latest/"
+edit-url-template = "https://github.com/roostorg/coop/edit/main/docs/{path}"
+git-repository-url = "https://github.com/roostorg/coop"
+
+[output.html.print]
+enable = false
