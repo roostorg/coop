@@ -1,0 +1,89 @@
+.github/dependabot.yml
+  s_c96c0989b80885::t_9b14b631e0f803 6-7,12-22,24,32-34,49-60,240-264
+.github/workflows/zizmor.yml
+  s_c96c0989b80885::t_eab319be59bb11 32,34-35
+CHANGELOG.md
+  s_c96c0989b80885::t_aca459fd77cd07 21,29
+client/package-lock.json
+  s_c96c0989b80885::t_3de4ceddeac53e 49,53,79,81-82,85,92,2271-2273,2288-2290,2305-2307,2322-2324,2339-2341,2356-2358,2373-2375,2390-2392,2410-2412,2430-2432,2450-2452,2470-2472,2490-2492,2510-2512,2530-2532,2550-2552,2567-2569,2584-2586,2601-2603,2618-2620,2624,5438-5440,5442,5458-5460,5464,5503-5505,5510-5513,5526,5542-5544,5548-5551,5567-5569,5573-5574,5589-5591,5595-5596,5607-5609,5624-5626,5630-5632,5649-5651,5663-5665,5669-5672,5730-5732,5737-5739,5754-5756,5760,6321-6323,9403-9405,9423,9429,10079-10081,10085,10091,10094-10112,11442-11444,11488-11490,11493,11496,12050-12053,13490-13492
+client/package.json
+  s_c96c0989b80885::t_943ee8cddd2e5b 58,62,88,90-91,94,101
+client/src/webpages/dashboard/banks/location/LocationBankForm.tsx
+  s_c96c0989b80885::t_773c3b528707a5 6,184-196,340,344
+client/src/webpages/dashboard/banks/location/LocationBanksDashboard.tsx
+  s_c96c0989b80885::t_ae1c5562f3c2b5 50-52
+client/src/webpages/dashboard/item_types/ItemTypeForm.test.tsx
+  s_c96c0989b80885::t_2f0c9def05edd8 1-33
+client/src/webpages/dashboard/item_types/ItemTypeForm.tsx
+  s_c96c0989b80885::t_6a5abd952f4bb8 593,678-689
+client/src/webpages/dashboard/item_types/ItemTypeFormCustomField.test.tsx
+  s_c96c0989b80885::t_fc699d813f4c68 1-75
+client/src/webpages/dashboard/item_types/ItemTypeFormCustomField.tsx
+  s_c96c0989b80885::t_696297edf65d40 168,177,182,191
+client/src/webpages/dashboard/mrt/ManualReviewRecentDecisions.tsx
+  s_c96c0989b80885::t_9bf97de6484c3b 934-940
+client/src/webpages/dashboard/mrt/manual_review_job/ManualReviewJobReview.tsx
+  s_c96c0989b80885::t_f9591ecd737a74 62,734-741
+client/src/webpages/dashboard/mrt/manual_review_job/selectManualReviewJob.test.ts
+  s_c96c0989b80885::t_b45d5736cf79d0 1-45
+client/src/webpages/dashboard/mrt/manual_review_job/selectManualReviewJob.ts
+  s_c96c0989b80885::t_fd3b14a08cd882 1-11
+client/src/webpages/dashboard/rules/TextTokenInput.test.tsx
+  s_c96c0989b80885::t_bc640211697c50 1-88
+client/src/webpages/dashboard/rules/TextTokenInput.tsx
+  s_c96c0989b80885::t_2eac82da99b2bb 36-40,121-127
+db/package-lock.json
+  s_c96c0989b80885::t_eab76133060669 23,130-132,147-149,164-166,181-183,198-200,215-217,232-234,249-251,269-271,289-291,309-311,329-331,349-351,369-371,389-391,409-411,426-428,443-445,460-462,477-479,483,975-977,980,1320-1322,1340,1346,1457-1459,1463,1469,1472-1490,2047-2049
+db/package.json
+  s_c96c0989b80885::t_128405d3f5238f 33-34,38
+docs/development/deployment.md
+  s_c96c0989b80885::t_2a1a0e24516f5e 22
+migrator/package-lock.json
+  s_c96c0989b80885::t_6141f62bef49bf 78-80,95-97,112-114,129-131,146-148,163-165,180-182,197-199,217-219,237-239,257-259,277-279,297-299,317-319,337-339,357-359,374-376,391-393,408-410,425-427,431,769-772,799-802,804,1098-1100,1118,1124,1214-1216,1220,1226,1229-1247,1616-1618,1620,1835-1837,1842-1844,1849-1851,1856-1858,1863-1865,1870-1872,1877-1879,1884-1886,1891-1893,1898-1900,1905-1907,1912-1914,1919-1921,1926-1928,1933-1935,1940-1942,1947-1949,1954-1956,1961-1963,1968-1970,2178-2180,2206-2208,2234,2411-2413,2420,2426,2487-2489,2492-2511,2731-2733
+migrator/package.json
+  s_c96c0989b80885::t_1971586851cc67 43-44
+package-lock.json
+  s_c96c0989b80885::t_53b62c8a85f99e 23,2300-2302
+package.json
+  s_c96c0989b80885::t_f2671162337695 45
+server/.env.example
+  s_c96c0989b80885::t_f972b4b9b782b8 85,140-142
+server/api.ts
+  s_c96c0989b80885::t_0b4b57a24cd566 30,89-90
+server/graphql/datasources/OrgApi.ts
+  s_c96c0989b80885::t_b6e39d3093edee 169
+server/graphql/resolvers.ts
+  s_c96c0989b80885::t_e77d09f97f29f0 43
+server/graphql/services.ts
+  s_c96c0989b80885::t_26f28c78e503a2 1-39
+server/iocContainer/index.ts
+  s_c96c0989b80885::t_0e88649b3a0636 110,365,788,802,805,807
+server/package-lock.json
+  s_c96c0989b80885::t_77f072d94516f1 92,479-481,484,495-497,500-503,517-519,522-523,536-538,564-566,569,580-582,585,598-610,622-624,627-628,639-641,644-649,661-663,666,677-679,682-684,695-697,700-701,712-714,717,729-731,734,763-765,768-769,2452-2454,2460-2472,2476-2478,2492-2494,2508-2510,2524-2526,2540-2542,2556-2558,2572-2574,2591-2593,2610-2612,2629-2631,2648-2650,2664-2666,2680-2682,11468-11470,11473,12775-12777,12780,13395-13397,15159-15161,17614-17616,20821-20823
+server/package.json
+  s_c96c0989b80885::t_263913d0e7d908 110,162-163
+server/scylla/noOpScylla.test.ts
+  s_c96c0989b80885::t_b3d58e12fb0e1c 8,19
+server/scylla/noOpScylla.ts
+  s_c96c0989b80885::t_bb228fe94ea1e3 5-6,27
+server/services/signingKeyPairService/postgresSigningKeyPairStorage.ts
+  s_c96c0989b80885::t_eb03c1d3b92970 30,63-65,111-113,118-120
+server/services/signingKeyPairService/signingKeyPairService.ts
+  s_c96c0989b80885::t_dd951b8d41b657 20,24-26,50,112,125-130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b504a0bbf9608f967523c47fa72b279939252343",
+  "prompts": {},
+  "sessions": {
+    "s_c96c0989b80885": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0755bd9c-4e4f-46fb-a5c7-7b0ea379a3e1",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
