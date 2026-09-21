@@ -118,7 +118,7 @@ generates:
         RuleInsights: ../graphql/datasources/ruleKyselyPersistence.js#GraphQLRuleParent
         Notification: ../services/notificationsService/notificationsService.js#Notification
         Signal: ../services/signalsService/index.js#Signal
-        ManualReviewJobPayload: ../services/manualReviewToolService/index.js#ManualReviewJobPayload
+        ManualReviewJobPayload: ./types.js#ManualReviewJobPayloadForGQL
         ThreadManualReviewJobPayload: ../services/manualReviewToolService/index.js#ThreadManualReviewJobPayload
         ContentManualReviewJobPayload: ../services/manualReviewToolService/index.js#ContentManualReviewJobPayload
         UserManualReviewJobPayload: ../services/manualReviewToolService/index.js#UserManualReviewJobPayload

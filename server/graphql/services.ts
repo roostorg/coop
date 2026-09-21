@@ -12,6 +12,7 @@ import { safePick } from '../utils/misc.js';
 export function makeGqlServices(deps: Dependencies) {
   return safePick(deps, [
     'ApiKeyService',
+    'ContentAccessService',
     'DataWarehouse',
     'DerivedFieldsService',
     'getItemTypeEventuallyConsistent',

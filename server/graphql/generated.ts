@@ -30,7 +30,6 @@ import type {
   ContentAppealReviewJobPayload,
   ContentManualReviewJobPayload,
   ManualReviewJobOrAppeal,
-  ManualReviewJobPayload,
   ManualReviewQueue,
   NcmecManualReviewJobPayload,
   ThreadAppealReviewJobPayload,
@@ -61,7 +60,10 @@ import type { Signal } from '../services/signalsService/index.js';
 import type { NonEmptyString } from '../utils/typescript-types.js';
 import type { LocationBankWithoutFullPlacesAPIResponse } from './datasources/LocationBankApi.js';
 import type { Context } from './resolvers.js';
-import type { ItemSubmissionForGQL } from './types.js';
+import type {
+  ItemSubmissionForGQL,
+  ManualReviewJobPayloadForGQL,
+} from './types.js';
 
 export type Maybe<T> =
   T extends Promise<infer U> ? Promise<U | null> : T | null;
@@ -6198,7 +6200,7 @@ export type GQLResolversTypes = {
     GQLResolversUnionTypes<GQLResolversTypes>['ManualReviewJobEnqueueSourceInfo']
   >;
   ManualReviewJobKind: GQLManualReviewJobKind;
-  ManualReviewJobPayload: ResolverTypeWrapper<ManualReviewJobPayload>;
+  ManualReviewJobPayload: ResolverTypeWrapper<ManualReviewJobPayloadForGQL>;
   ManualReviewJobWithDecisions: ResolverTypeWrapper<
     Omit<GQLManualReviewJobWithDecisions, 'decision' | 'job'> & {
       decision: GQLResolversTypes['ManualReviewDecision'];
@@ -6955,7 +6957,7 @@ export type GQLResolversParentTypes = {
   ManualReviewJob: ManualReviewJobOrAppeal;
   ManualReviewJobComment: ManualReviewJobComment;
   ManualReviewJobEnqueueSourceInfo: GQLResolversUnionTypes<GQLResolversParentTypes>['ManualReviewJobEnqueueSourceInfo'];
-  ManualReviewJobPayload: ManualReviewJobPayload;
+  ManualReviewJobPayload: ManualReviewJobPayloadForGQL;
   ManualReviewJobWithDecisions: Omit<
     GQLManualReviewJobWithDecisions,
     'decision' | 'job'
