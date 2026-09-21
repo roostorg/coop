@@ -1,4 +1,6 @@
+import express from 'express';
 import _ from 'lodash';
+import supertest from 'supertest';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import {
@@ -9,7 +11,7 @@ import {
 } from '../../services/moderationConfigService/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
-import getActions from './getActions.js';
+import getActions, { type GetActionsOutput } from './getActions.js';
 
 const { sortBy } = _;
 
@@ -153,9 +155,15 @@ describe('GET actions', () => {
             itemTypeIds: sortBy(
               BUILT_IN_ACTIONS.find(
                 (builtIn) => builtIn.actionType === action.actionType,
-              )!.appliesToAllItemsOfKind.map(
-                (kind) => itemTypesByKind.get(kind)!.id,
-              ),
+              )!.appliesToAllItemsOfKind.map((kind) => {
+                const itemType = itemTypesByKind.get(kind);
+                if (!itemType) {
+                  throw new Error(
+                    `Missing item type fixture for kind: ${kind}`,
+                  );
+                }
+                return itemType.id;
+              }),
             ),
           })),
         ]),
@@ -243,35 +251,51 @@ describe('GET actions', () => {
 describe('getActions read scheduling', () => {
   test('starts the assignments read before the actions read completes', async () => {
     let finishActions!: (actions: []) => void;
-    const read = jest.fn().mockReturnValue(
-      new Promise<[]>((resolve) => {
-        finishActions = resolve;
-      }),
+    const actions = new Promise<[]>((resolve) => {
+      finishActions = resolve;
+    });
+    let signalStarted!: () => void;
+    const started = new Promise<void>((resolve) => {
+      signalStarted = resolve;
+    });
+    const read = jest.fn<Dependencies['ModerationConfigService']['getActions']>(
+      async () => {
+        signalStarted();
+        return actions;
+      },
     );
-    const readAssignments = jest.fn().mockResolvedValue(new Map());
+    const readAssignments = jest
+      .fn<Dependencies['ModerationConfigService']['getActionItemTypeIds']>()
+      .mockResolvedValue(new Map());
     const handler = getActions({
       ModerationConfigService: {
         getActions: read,
         getActionItemTypeIds: readAssignments,
       },
-    } as unknown as Dependencies);
-    const json = jest.fn();
-    const status = jest.fn().mockReturnValue({ json });
-    const pending = handler(
-      { orgId: 'org-1' } as unknown as Parameters<typeof handler>[0],
-      { status } as unknown as Parameters<typeof handler>[1],
-      jest.fn(),
+    });
+    const app = express();
+    app.get<Record<string, string>, GetActionsOutput, never>(
+      '/',
+      (req, res, next) => {
+        // Mimic the API-key middleware attaching the organization to the request.
+        // eslint-disable-next-line functional/immutable-data
+        const request = Object.assign(req, { orgId: 'org-1' });
+        return handler(request, res, next);
+      },
     );
+    const pending = supertest(app)
+      .get('/')
+      .expect(200)
+      .expect({ actions: [] })
+      .then((response) => response);
 
     try {
+      await started;
       expect(read).toHaveBeenCalledWith({ orgId: 'org-1' });
       expect(readAssignments).toHaveBeenCalledWith({ orgId: 'org-1' });
-      expect(json).not.toHaveBeenCalled();
     } finally {
       finishActions([]);
       await pending;
     }
-    expect(status).toHaveBeenCalledWith(200);
-    expect(json).toHaveBeenCalledWith({ actions: [] });
   });
 });

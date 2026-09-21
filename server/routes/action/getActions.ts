@@ -24,7 +24,12 @@ export type GetActionsOutput = {
 
 export default function getActions({
   ModerationConfigService,
-}: Dependencies): RequestHandlerWithBodies<never, GetActionsOutput> {
+}: {
+  ModerationConfigService: Pick<
+    Dependencies['ModerationConfigService'],
+    'getActions' | 'getActionItemTypeIds'
+  >;
+}): RequestHandlerWithBodies<never, GetActionsOutput> {
   return async (req, res, next) => {
     if (!hasOrgId(req)) {
       return next(
