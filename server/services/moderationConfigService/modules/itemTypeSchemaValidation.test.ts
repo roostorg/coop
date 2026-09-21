@@ -251,6 +251,21 @@ describe('assertBackwardCompatibleItemSchema', () => {
     ).not.toThrow();
   });
 
+  test('treats omitted and null scalar containers as the same shape', () => {
+    const omitted = schema({
+      name: 'field',
+      type: 'STRING',
+      required: false,
+    } as unknown as Field);
+    const explicitNull = schema(scalar('field'));
+    expect(() =>
+      assertBackwardCompatibleItemSchema(explicitNull, omitted),
+    ).not.toThrow();
+    expect(() =>
+      assertBackwardCompatibleItemSchema(omitted, explicitNull),
+    ).not.toThrow();
+  });
+
   test.each([
     [
       'an existing field is removed',
