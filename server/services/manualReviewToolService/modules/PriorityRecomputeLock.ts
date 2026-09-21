@@ -16,6 +16,17 @@ end
 `;
 
 /**
+ * Extends the lock TTL only if we still own it.
+ */
+const RENEW_IF_OWNED = `
+if redis.call("GET", KEYS[1]) == ARGV[1] then
+  return redis.call("PEXPIRE", KEYS[1], ARGV[2])
+else
+  return 0
+end
+`;
+
+/**
  * How long a held lock survives without being released.
  */
 export const RECOMPUTE_LOCK_TTL_MS = 5 * 60 * 1000;
@@ -93,5 +104,23 @@ export default class PriorityRecomputeLock {
       token,
     );
     return released === 1;
+  }
+
+  /** Extends the lock TTL if we still own it; returns false if lost. */
+  async renew(opts: {
+    orgId: string;
+    queueId: string;
+    token: string;
+    ttlMs?: number;
+  }): Promise<boolean> {
+    const { orgId, queueId, token, ttlMs = RECOMPUTE_LOCK_TTL_MS } = opts;
+    const renewed = await this.redis.eval(
+      RENEW_IF_OWNED,
+      1,
+      this.#lockKey(orgId, queueId),
+      token,
+      ttlMs,
+    );
+    return renewed === 1;
   }
 }

@@ -76,7 +76,9 @@ import JobRouting, {
   type UpdateRoutingRuleInput,
 } from './modules/JobRouting.js';
 import ManualReviewToolSettings from './modules/ManualReviewToolSettings.js';
-import PriorityRecomputeLock from './modules/PriorityRecomputeLock.js';
+import PriorityRecomputeLock, {
+  RECOMPUTE_LOCK_TTL_MS,
+} from './modules/PriorityRecomputeLock.js';
 import QueueOperations, {
   type ManualReviewQueue,
 } from './modules/QueueOperations.js';
@@ -1063,30 +1065,44 @@ export class ManualReviewToolService {
     }
 
     try {
-      const queue =
-        await this.queueOps.getQueueForOrgAndDangerouslyBypassPermissioning({
+      // Renew the lock periodically so large sweeps don't outlive the TTL.
+      const renewalInterval = setInterval(
+        () => {
+          this.priorityRecomputeLock
+            .renew({ orgId, queueId, token })
+            .catch(() => {});
+        },
+        Math.floor(RECOMPUTE_LOCK_TTL_MS / 2),
+      );
+
+      try {
+        const queue =
+          await this.queueOps.getQueueForOrgAndDangerouslyBypassPermissioning({
+            orgId,
+            queueId,
+          });
+        // Deleted while we waited for the lock.
+        if (queue === undefined) {
+          return;
+        }
+        const sortType = queue.jobSortType;
+
+        await this.queueOps.recomputePrioritiesForQueue({
           orgId,
           queueId,
+          getPriorities: async (itemIds) =>
+            getJobPrioritiesForItems({
+              orgId,
+              itemIds,
+              sortType,
+              deps: {
+                getNumTimesReportedForItems: this.getNumTimesReportedForItems(),
+              },
+            }),
         });
-      // Deleted while we waited for the lock.
-      if (queue === undefined) {
-        return;
+      } finally {
+        clearInterval(renewalInterval);
       }
-      const sortType = queue.jobSortType;
-
-      await this.queueOps.recomputePrioritiesForQueue({
-        orgId,
-        queueId,
-        getPriorities: async (itemIds) =>
-          getJobPrioritiesForItems({
-            orgId,
-            itemIds,
-            sortType,
-            deps: {
-              getNumTimesReportedForItems: this.getNumTimesReportedForItems(),
-            },
-          }),
-      });
     } finally {
       await this.priorityRecomputeLock.release({ orgId, queueId, token });
     }

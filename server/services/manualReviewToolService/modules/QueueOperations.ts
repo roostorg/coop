@@ -1109,7 +1109,7 @@ export default class QueueOperations {
       );
       if (jobs.length === 0) break;
       for (const job of jobs) {
-        if (job?.id != null) {
+        if (job.id != null) {
           const item = (job.data as ManualReviewJob).payload.item;
           // Legacy jobs use `id` instead of `itemId`.
           const itemId =
@@ -1137,6 +1137,11 @@ export default class QueueOperations {
       const bullJob = await queue.getJob(bullId);
       // Dequeued or removed since the snapshot — nothing to re-stamp.
       if (!bullJob) continue;
+      // Only re-prioritize jobs still waiting for a worker. Active jobs are
+      // already being worked on; completed/failed are terminal.
+      const state = await bullJob.getState();
+      if (state !== 'waiting' && state !== 'prioritized' && state !== 'delayed')
+        continue;
       await bullJob.changePriority({ priority });
     }
   }
@@ -1183,7 +1188,7 @@ export default class QueueOperations {
         if (snapshotIds.length >= maxJobs) {
           break;
         }
-        const id = legacy?.data?.id;
+        const id = legacy.data?.id;
         if (id != null) {
           snapshotIds.push(id);
         }
