@@ -181,8 +181,13 @@ export default function ReportingRuleInsightsSamplesTable(props: {
   const [lookback, setLookback] = useState<LookbackVersion>(
     LookbackVersion.LATEST,
   );
+  const [detailViewData, setDetailViewData] = useState<DetailViewData>({
+    visible: false,
+    item: undefined,
+  });
 
   function updateLookback(value: LookbackVersion) {
+    setDetailViewData({ visible: false, item: undefined });
     setLookback(value);
     if (
       value === LookbackVersion.PRIOR &&
@@ -194,10 +199,6 @@ export default function ReportingRuleInsightsSamplesTable(props: {
     }
   }
 
-  const [detailViewData, setDetailViewData] = useState<DetailViewData>({
-    visible: false,
-    item: undefined,
-  });
   const [videoPlayerUrl, setVideoPlayerUrl] = useState<string | null>(null);
 
   const allSignals = useMemo(() => {

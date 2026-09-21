@@ -76,7 +76,7 @@ describe('reporting rule sample details (integration)', () => {
     }
   }, 30_000);
 
-  test('returns the selected report execution rather than another execution for the same item', async () => {
+  test('returns the selected report execution, or the newest one when no timestamp is provided', async () => {
     if (!harness) throw new Error('harness was not initialized');
 
     const ruleVersion = new Date();
@@ -124,8 +124,7 @@ describe('reporting rule sample details (integration)', () => {
     });
     expect(login.body?.data?.login?.__typename).toBe('LoginSuccessResponse');
 
-    const response = await harness.request.post('/api/v1/graphql').send({
-      query: `query($input: GetFullResultForItemInput!) {
+    const query = `query($input: GetFullResultForItemInput!) {
         getFullReportingRuleResultForItem(input: $input) {
           ... on ReportingRuleExecutionResult {
             itemId
@@ -137,7 +136,9 @@ describe('reporting rule sample details (integration)', () => {
             title
           }
         }
-      }`,
+      }`;
+    const response = await harness.request.post('/api/v1/graphql').send({
+      query,
       variables: {
         input: {
           ruleId,
@@ -155,6 +156,29 @@ describe('reporting rule sample details (integration)', () => {
       itemData: jsonStringify({ selection: 'expected' }),
       ts: selectedAt.toISOString(),
     });
+
+    const responseWithoutTimestamp = await harness.request
+      .post('/api/v1/graphql')
+      .send({
+        query,
+        variables: {
+          input: {
+            ruleId,
+            item: { id: itemId, typeId: itemTypeId },
+            lookback: 'LATEST',
+          },
+        },
+      });
+
+    expect(responseWithoutTimestamp.body.errors).toBeUndefined();
+    expect(
+      responseWithoutTimestamp.body.data.getFullReportingRuleResultForItem,
+    ).toEqual({
+      itemId,
+      itemTypeId,
+      itemData: jsonStringify({ selection: 'newer-decoy' }),
+      ts: newerAt.toISOString(),
+    });
   }, 60_000);
 });
 
@@ -168,10 +192,6 @@ async function insertExecution(opts: {
   executedAt: Date;
   itemData: object;
 }) {
-  const q = (value: string) => `'${value.replaceAll("'", "''")}'`;
-  const dateTime = (value: Date) =>
-    q(value.toISOString().replace('T', ' ').replace(/Z$/, ''));
-
   await opts.harness.deps.DataWarehouse.query(
     `INSERT INTO REPORTING_SERVICE.REPORTING_RULE_EXECUTIONS
       (rule_name, rule_id, rule_version, rule_environment, org_id,
@@ -179,14 +199,32 @@ async function insertExecution(opts: {
        item_id, item_type_name, item_type_id, item_type_kind, item_type_schema,
        item_type_schema_field_roles, item_type_version, item_type_schema_variant)
      VALUES (
-       'Integration test rule', ${q(opts.ruleId)}, ${dateTime(opts.ruleVersion)},
-       'LIVE', ${q(opts.orgId)}, 'integration-test',
-       '{"conjunction":"AND","conditions":[],"result":{"outcome":"PASSED"}}',
-       1, ${dateTime(opts.executedAt)}, toDate(${dateTime(opts.executedAt)}), [],
-       ${q(jsonStringify(opts.itemData))}, ${q(opts.itemId)}, 'User',
-       ${q(opts.itemTypeId)}, 'USER', '{}', '{}', '1', 'original'
+       ?, ?, parseDateTime64BestEffort(?), ?, ?, ?, ?, ?,
+       parseDateTime64BestEffort(?), toDate(parseDateTime64BestEffort(?)),
+       ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
      )`,
     opts.harness.deps.Tracer,
-    [],
+    [
+      'Integration test rule',
+      opts.ruleId,
+      opts.ruleVersion.toISOString(),
+      'LIVE',
+      opts.orgId,
+      'integration-test',
+      '{"conjunction":"AND","conditions":[],"result":{"outcome":"PASSED"}}',
+      1,
+      opts.executedAt.toISOString(),
+      opts.executedAt.toISOString(),
+      [],
+      jsonStringify(opts.itemData),
+      opts.itemId,
+      'User',
+      opts.itemTypeId,
+      'USER',
+      '{}',
+      '{}',
+      '1',
+      'original',
+    ],
   );
 }

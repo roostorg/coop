@@ -399,8 +399,8 @@ const Query: GQLQueryResolvers = {
       const executionTimestamp = input.date ? new Date(input.date) : undefined;
       if (
         rule == null ||
-        executionTimestamp == null ||
-        Number.isNaN(executionTimestamp.getTime())
+        (executionTimestamp != null &&
+          Number.isNaN(executionTimestamp.getTime()))
       ) {
         throw makeNotFoundError('Item not found', { shouldErrorSpan: true });
       }
