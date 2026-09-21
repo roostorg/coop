@@ -1,0 +1,21 @@
+server/graphql/modules/user.resolver.test.ts
+  s_c96c0989b80885::t_ab2ab422698ad4 116-139
+server/graphql/modules/manualReviewTool.resolver.test.ts
+  s_c96c0989b80885::t_c3be214c1baf03 34,82,327-337,351-389
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "40cfa8c03b637e06c3dcc1ee9e76a5e5cdf1bcc5",
+  "prompts": {},
+  "sessions": {
+    "s_c96c0989b80885": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0755bd9c-4e4f-46fb-a5c7-7b0ea379a3e1",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
