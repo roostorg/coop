@@ -15,7 +15,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Optional semver version tag to publish (e.g. 1.0.0), for backfilling a release. Leave blank for an SHA-only build; does not move :latest.'
+        description: 'Optional semver version tag to publish (e.g. 1.0.0 or 1.1.0-alpha), for backfilling a release. Leave blank for an SHA-only build; does not move :latest.'
         required: false
         type: string
 
@@ -56,8 +56,8 @@ jobs:
         env:
           VERSION: ${{ github.event.inputs.version }}
         run: |
-          if ! printf '%s' "$VERSION" | grep -Eq '^v?[0-9]+\.[0-9]+\.[0-9]+$'; then
-            echo "::error::Invalid version input. Expected semver like 1.2.3 or v1.2.3."
+          if ! printf '%s' "$VERSION" | grep -Eq '^v?[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "::error::Invalid version input. Expected semver like 1.2.3, v1.2.3, or 1.2.3-alpha."
             exit 1
           fi
 
