@@ -18,7 +18,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Changed
 
-- Scylla is now optional via `ITEM_INVESTIGATION_AND_STRIKES_ENABLED` ([#918](https://github.com/roostorg/coop/pull/918) by [@sunilatlas](https://github.com/sunilatlas))
+- Scylla is now optional via `SCYLLA_ENABLED` ([#918](https://github.com/roostorg/coop/pull/918) by [@sunilatlas](https://github.com/sunilatlas), [#1268](https://github.com/roostorg/coop/pull/1268) by [@thisismissem](https://github.com/thisismissem))
 - Settings "Other" tab renamed to "Partial Items" and its settings relocated ([#965](https://github.com/roostorg/coop/pull/965) by [@golden-fox07](https://github.com/golden-fox07))
 - Queue deletion is refused while routing rules still reference the queue ([#808](https://github.com/roostorg/coop/pull/808) by [@reitblatt](https://github.com/reitblatt))
 - Long text fields in the review console collapse behind a "Read more" control ([#903](https://github.com/roostorg/coop/pull/903) by [@taobojlen](https://github.com/taobojlen))
@@ -26,6 +26,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Removed
 
+- Unused `GRAPHQL_OPAQUE_SCALAR_SECRET` and `LAUNCHDARKLY_SECRET` environment variables ([#1246](https://github.com/roostorg/coop/pull/1246) by [@ThisIsMissEm](https://github.com/ThisIsMissEm))
 - Google Cloud Translation API, the `ENGLISH_TRANSLATION` derived field, and `GOOGLE_TRANSLATE_API_KEY` ([#1045](https://github.com/roostorg/coop/pull/1045) by [@julietshen](https://github.com/julietshen))
 - `IMAGE_SIMILARITY_SCORE` and `IMAGE_EXACT_MATCH` signal types ([#1043](https://github.com/roostorg/coop/pull/1043) by [@julietshen](https://github.com/julietshen), closes [#686](https://github.com/roostorg/coop/issues/686))
 

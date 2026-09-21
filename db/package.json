@@ -30,11 +30,12 @@
   "overrides": {
     "ajv": "~8.18.0",
     "fast-uri": "^3.1.4",
-    "uuid": "^14.0.0"
+    "uuid": "^14.0.0",
+    "adm-zip": "^0.6.1"
   },
   "devDependencies": {
     "@types/pg": "^8.23.1",
-    "knip": "^6.34.0",
+    "knip": "^6.35.1",
     "typescript": "^6.0.3"
   }
 }
