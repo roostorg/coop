@@ -32,6 +32,7 @@ import {
 } from './types/itemTypes.js';
 import type { PolicyType } from './types/policies.js';
 import { type PlainRuleWithLatestVersion } from './types/rules.js';
+import type { UserPenaltySeverity } from './types/shared.js';
 
 export type ModerationConfigErrorType =
   | 'AttemptingToDeleteDefaultUserType'
@@ -354,6 +355,7 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
       policyText: string | null;
       enforcementGuidelines: string | null;
       policyType: PolicyType | null;
+      penalty?: UserPenaltySeverity | null;
     };
     invokedBy: Invoker;
   }): Promise<Policy> {
@@ -371,6 +373,7 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
       policyType?: PolicyType | null;
       userStrikeCount?: number | null;
       applyUserStrikeCountConfigToChildren?: boolean | null;
+      penalty?: UserPenaltySeverity | null;
     };
     invokedBy: Invoker;
   }): Promise<Policy> {

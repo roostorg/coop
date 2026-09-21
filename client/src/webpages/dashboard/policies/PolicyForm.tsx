@@ -1,6 +1,6 @@
 import { Button } from '@/coop-ui/Button';
 import { treeFromList } from '@/utils/tree';
-import { Input } from 'antd';
+import { Input, Select } from 'antd';
 import {
   Check as CheckmarkFilled,
   Plus as PlusFilled,
@@ -21,8 +21,12 @@ import {
   useGQLUpdatePolicyMutation,
   type GQLPolicy,
 } from '../../../graphql/generated';
+import { titleCaseEnumString } from '../../../utils/string';
+import { UserPenaltySeverityOrder } from '../../../utils/userPenalty';
 import MarkdownTextInput from './MarkdownTextInput';
 import { Policy } from './PoliciesDashboard';
+
+const { Option } = Select;
 
 export type PolicyInputModalInfo = {
   onClose: () => void;
@@ -39,6 +43,9 @@ export default function PolicyForm() {
   const navigate = useNavigate();
   const [policyName, setPolicyName] = useState<string | undefined>(undefined);
   const [policyText, setPolicyText] = useState<string | undefined>(undefined);
+  const [policyPenalty, setPolicyPenalty] = useState<GQLUserPenaltySeverity>(
+    GQLUserPenaltySeverity.None,
+  );
   const [parent, setParent] = useState<
     { id: string; name: string } | undefined
   >(undefined);
@@ -51,7 +58,10 @@ export default function PolicyForm() {
   const [showEnforcementGuidelines, setShowEnforcementGuidelines] =
     useState<boolean>(false);
   const [existingPolicy, setExistingPolicy] = useState<
-    | Pick<GQLPolicy, 'id' | 'name' | 'enforcementGuidelines' | 'policyText'>
+    | Pick<
+        GQLPolicy,
+        'id' | 'name' | 'enforcementGuidelines' | 'policyText' | 'penalty'
+      >
     | undefined
   >(undefined);
   const { data, loading } = useGQLPoliciesQuery();
@@ -85,6 +95,7 @@ export default function PolicyForm() {
     if (existingPolicy) {
       setPolicyName(existingPolicy.name);
       setPolicyText(existingPolicy.policyText ?? undefined);
+      setPolicyPenalty(existingPolicy.penalty);
       setEnforcementGuidelines(
         existingPolicy.enforcementGuidelines ?? undefined,
       );
@@ -137,6 +148,21 @@ export default function PolicyForm() {
           value={policyName}
           onChange={(event) => setPolicyName(event.target.value)}
         />
+      </div>
+      <div className="flex flex-col items-start gap-2">
+        <div className="font-semibold">Penalty</div>
+        <Select
+          className="w-40"
+          aria-label="Penalty"
+          value={policyPenalty}
+          onChange={(value: GQLUserPenaltySeverity) => setPolicyPenalty(value)}
+        >
+          {UserPenaltySeverityOrder.map((severity) => (
+            <Option key={severity} value={severity}>
+              {titleCaseEnumString(severity)}
+            </Option>
+          ))}
+        </Select>
       </div>
     </div>
   );
@@ -228,6 +254,7 @@ export default function PolicyForm() {
                   existingPolicy.enforcementGuidelines ?? undefined,
                 );
                 setPolicyText(existingPolicy.policyText ?? undefined);
+                setPolicyPenalty(existingPolicy.penalty);
               }}
             >
               <TrashCanFilled className="w-6 h-6 mr-2" />
@@ -253,6 +280,7 @@ export default function PolicyForm() {
                       enforcementGuidelines,
                       name: policyName,
                       parentId: parent?.id ?? undefined,
+                      penalty: policyPenalty,
                     },
                   },
                   onCompleted: () => setShowSuccess(true),
@@ -268,6 +296,7 @@ export default function PolicyForm() {
                         enforcementGuidelines,
                         name: policyName,
                         parentId: parent?.id ?? undefined,
+                        penalty: policyPenalty,
                       },
                     ],
                   },

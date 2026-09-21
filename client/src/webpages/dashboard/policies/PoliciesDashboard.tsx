@@ -25,7 +25,9 @@ import {
   useGQLPoliciesWithModelsQuery,
 } from '../../../graphql/generated';
 import { userHasPermissions } from '../../../routing/permissions';
+import { titleCaseEnumString } from '../../../utils/string';
 import { Tree, treeFromList, TreeNode } from '../../../utils/tree';
+import { getSeverityColor } from '../../../utils/userPenalty';
 import { ModalInfo } from '../types/ModalInfo';
 
 export type Policy = {
@@ -52,6 +54,7 @@ gql`
     policyType
     userStrikeCount
     applyUserStrikeCountConfigToChildren
+    penalty
   }
 
   query Policies {
@@ -218,6 +221,13 @@ export default function PoliciesDashboard() {
               <div className="flex items-center gap-6 px-6 pt-6 pb-3">
                 <div className="text-base font-bold text-start">
                   {policy.value?.name}
+                </div>
+                <div
+                  className={`px-2 py-0.5 text-xs font-medium border rounded ${getSeverityColor(
+                    policy.value.penalty,
+                  )}`}
+                >
+                  {titleCaseEnumString(policy.value.penalty)}
                 </div>
                 <div className="flex items-center gap-2 text-slate-400">
                   ID: <CopyTextComponent value={policy.value.id} />

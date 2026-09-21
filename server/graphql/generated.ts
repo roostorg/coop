@@ -318,6 +318,7 @@ export type GQLAddPolicyInput = {
   readonly name: Scalars['String']['input'];
   readonly parentId?: InputMaybe<Scalars['ID']['input']>;
   readonly parentName?: InputMaybe<Scalars['String']['input']>;
+  readonly penalty?: InputMaybe<GQLUserPenaltySeverity>;
   readonly policyText?: InputMaybe<Scalars['String']['input']>;
   readonly policyType?: InputMaybe<GQLPolicyType>;
 };
@@ -3485,6 +3486,7 @@ export type GQLPolicy = {
   readonly id: Scalars['ID']['output'];
   readonly name: Scalars['String']['output'];
   readonly parentId?: Maybe<Scalars['ID']['output']>;
+  readonly penalty: GQLUserPenaltySeverity;
   readonly policyText?: Maybe<Scalars['String']['output']>;
   readonly policyType?: Maybe<GQLPolicyType>;
   readonly userStrikeCount?: Maybe<Scalars['Int']['output']>;
@@ -4961,6 +4963,7 @@ export type GQLUpdatePolicyInput = {
   readonly id: Scalars['ID']['input'];
   readonly name: Scalars['String']['input'];
   readonly parentId?: InputMaybe<Scalars['ID']['input']>;
+  readonly penalty?: InputMaybe<GQLUserPenaltySeverity>;
   readonly policyText?: InputMaybe<Scalars['String']['input']>;
   readonly policyType?: InputMaybe<GQLPolicyType>;
   readonly userStrikeCount?: InputMaybe<Scalars['Int']['input']>;
@@ -12443,6 +12446,11 @@ export type GQLPolicyResolvers<
   id?: Resolver<GQLResolversTypes['ID'], ParentType, ContextType>;
   name?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   parentId?: Resolver<Maybe<GQLResolversTypes['ID']>, ParentType, ContextType>;
+  penalty?: Resolver<
+    GQLResolversTypes['UserPenaltySeverity'],
+    ParentType,
+    ContextType
+  >;
   policyText?: Resolver<
     Maybe<GQLResolversTypes['String']>,
     ParentType,
