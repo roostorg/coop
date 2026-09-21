@@ -1,15 +1,22 @@
-import { type Kysely } from 'kysely';
+import { type Kysely, type Transaction } from 'kysely';
 
+import { type ModerationConfigServicePg } from '../../moderationConfigService/index.js';
 import { type ManualReviewToolServicePg } from '../dbTypes.js';
 
 export default class JobRendering {
   constructor(readonly pgQuery: Kysely<ManualReviewToolServicePg>) {}
 
-  async getHiddenFieldsForItemType(opts: {
-    orgId: string;
-    itemTypeId: string;
-  }) {
-    const res = await this.pgQuery
+  async getHiddenFieldsForItemType(
+    opts: {
+      orgId: string;
+      itemTypeId: string;
+    },
+    trx?: Transaction<ModerationConfigServicePg>,
+  ) {
+    const pgQuery = trx
+      ? trx.$extendTables<ManualReviewToolServicePg>()
+      : this.pgQuery.$extendTables<ModerationConfigServicePg>();
+    const res = await pgQuery
       .selectFrom('manual_review_tool.manual_review_hidden_item_fields')
       .select(['hidden_fields'])
       .where('org_id', '=', opts.orgId)
@@ -19,12 +26,18 @@ export default class JobRendering {
     return res?.hidden_fields ?? [];
   }
 
-  async setHiddenFieldsForItemType(opts: {
-    orgId: string;
-    itemTypeId: string;
-    hiddenFields: readonly string[];
-  }) {
-    return this.pgQuery
+  async setHiddenFieldsForItemType(
+    opts: {
+      orgId: string;
+      itemTypeId: string;
+      hiddenFields: readonly string[];
+    },
+    trx?: Transaction<ModerationConfigServicePg>,
+  ) {
+    const pgQuery = trx
+      ? trx.$extendTables<ManualReviewToolServicePg>()
+      : this.pgQuery.$extendTables<ModerationConfigServicePg>();
+    return pgQuery
       .insertInto('manual_review_tool.manual_review_hidden_item_fields')
       .values({
         org_id: opts.orgId,
