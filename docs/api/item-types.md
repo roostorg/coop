@@ -1,6 +1,6 @@
 # Item Types API
 
-Fetch your organization's current item schemas and field roles.
+Manage your organization's item types.
 
 ## Create and update
 
@@ -25,6 +25,9 @@ Create requires `kind`, `name`, a non-empty `schema`, and
 by PATCH. PATCH leaves omitted properties unchanged, replaces arrays, and
 treats a supplied `schemaFieldRoles` object as the complete role mapping.
 `hiddenFields` may be written but is not included in this API's response.
+
+Existing fields cannot be renamed, removed, or change type. Optional fields
+cannot become required; new fields on an existing item type must be optional.
 
 ## Endpoint
 
