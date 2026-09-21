@@ -393,9 +393,10 @@ describe('configuration write REST routes', () => {
 
   it('keeps POST /actions mapped to submitAction rather than createAction', async () => {
     const { app, service } = harness();
-    await auth(request(app).post('/api/v1/actions/'))
+    const response = await auth(request(app).post('/api/v1/actions/'))
       .send({ actionId: action.id, itemId: 'post-1', itemTypeId: item.id })
-      .expect(500);
+      .expect(400);
+    expect(response.body.errors[0].title).toBe('Invalid Action');
     expect(service.getActions).toHaveBeenCalledWith({
       orgId,
       ids: [action.id],
