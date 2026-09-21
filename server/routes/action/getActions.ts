@@ -32,10 +32,10 @@ export default function getActions({
       );
     }
     const { orgId } = req;
-    const actions = await ModerationConfigService.getActions({ orgId });
-    const itemTypeIds = await ModerationConfigService.getActionItemTypeIds({
-      orgId,
-    });
+    const [actions, itemTypeIds] = await Promise.all([
+      ModerationConfigService.getActions({ orgId }),
+      ModerationConfigService.getActionItemTypeIds({ orgId }),
+    ]);
     const output = actions.map((action) => ({
       // Explicitly allowlist metadata: webhook URLs, headers, and bodies may
       // contain credentials and must never be exposed by this read API.

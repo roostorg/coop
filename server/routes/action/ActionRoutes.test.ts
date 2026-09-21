@@ -1,8 +1,15 @@
 import _ from 'lodash';
 
-import { type ItemSchema } from '../../services/moderationConfigService/index.js';
+import { type Dependencies } from '../../iocContainer/index.js';
+import {
+  BUILT_IN_ACTIONS,
+  type ItemSchema,
+  type ItemType,
+  type ItemTypeKind,
+} from '../../services/moderationConfigService/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
+import getActions from './getActions.js';
 
 const { sortBy } = _;
 
@@ -109,7 +116,10 @@ describe('GET actions', () => {
       expect(read).toHaveBeenCalledTimes(1);
       expect(readAssignments).toHaveBeenCalledTimes(1);
       expect(Object.keys(response.body)).toEqual(['actions']);
-      expect(response.body.actions).toHaveLength(5);
+      expect(response.body.actions).toHaveLength(builtIns.length + 2);
+      const itemTypesByKind = new Map<ItemTypeKind, ItemType>(
+        [content, thread, user].map((itemType) => [itemType.kind, itemType]),
+      );
       expect(response.body.actions).toEqual(
         expect.arrayContaining([
           {
@@ -141,11 +151,11 @@ describe('GET actions', () => {
             penalty: action.penalty,
             parameters: [],
             itemTypeIds: sortBy(
-              action.actionType === 'ENQUEUE_TO_MRT'
-                ? [content.id, thread.id, user.id]
-                : action.actionType === 'ENQUEUE_AUTHOR_TO_MRT'
-                  ? [content.id]
-                  : [content.id, user.id],
+              BUILT_IN_ACTIONS.find(
+                (builtIn) => builtIn.actionType === action.actionType,
+              )!.appliesToAllItemsOfKind.map(
+                (kind) => itemTypesByKind.get(kind)!.id,
+              ),
             ),
           })),
         ]),
@@ -228,4 +238,40 @@ describe('GET actions', () => {
       expect(response.body).toEqual({ actions: [] });
     },
   );
+});
+
+describe('getActions read scheduling', () => {
+  test('starts the assignments read before the actions read completes', async () => {
+    let finishActions!: (actions: []) => void;
+    const read = jest.fn().mockReturnValue(
+      new Promise<[]>((resolve) => {
+        finishActions = resolve;
+      }),
+    );
+    const readAssignments = jest.fn().mockResolvedValue(new Map());
+    const handler = getActions({
+      ModerationConfigService: {
+        getActions: read,
+        getActionItemTypeIds: readAssignments,
+      },
+    } as unknown as Dependencies);
+    const json = jest.fn();
+    const status = jest.fn().mockReturnValue({ json });
+    const pending = handler(
+      { orgId: 'org-1' } as unknown as Parameters<typeof handler>[0],
+      { status } as unknown as Parameters<typeof handler>[1],
+      jest.fn(),
+    );
+
+    try {
+      expect(read).toHaveBeenCalledWith({ orgId: 'org-1' });
+      expect(readAssignments).toHaveBeenCalledWith({ orgId: 'org-1' });
+      expect(json).not.toHaveBeenCalled();
+    } finally {
+      finishActions([]);
+      await pending;
+    }
+    expect(status).toHaveBeenCalledWith(200);
+    expect(json).toHaveBeenCalledWith({ actions: [] });
+  });
 });
