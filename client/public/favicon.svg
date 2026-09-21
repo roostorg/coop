@@ -1,14 +1,11 @@
-<svg viewBox="0 0 64 70" xmlns="http://www.w3.org/2000/svg">
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg viewBox="0 0 64 64" version="1.1" width="64" height="64" xmlns="http://www.w3.org/2000/svg" xmlns:svg="http://www.w3.org/2000/svg">
   <style>
-    path {
-      fill: black;
-    }
+    path { fill: black; }
 
     @media (prefers-color-scheme: dark) {
-      path {
-        fill: white;
-      }
+      path { fill: white; }
     }
   </style>
-  <path d="M52 22.6318V60.5H38V50.5H26V60.5H12V22.6318L32 10.5L52 22.6318ZM15 57.5H23V50.5H15V57.5ZM41 57.5H49V50.5H41V57.5ZM15 24.3203V47.5H23V32.5H41V47.5H49V24.3203L32 14.0088L15 24.3203ZM26 47.5H38V35.5H26V47.5Z" />
+  <path d="M 52,19.1318 V 57 H 38 V 47 H 26 V 57 H 12 V 19.1318 L 32,7 Z M 15,54 h 8 v -7 h -8 z m 26,0 h 8 V 47 H 41 Z M 15,20.8203 V 44 h 8 V 29 h 18 v 15 h 8 V 20.8203 L 32,10.5088 Z M 26,44 H 38 V 32 H 26 Z" />
 </svg>
