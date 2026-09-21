@@ -12,7 +12,7 @@ const Query = resolvers.Query as Record<
   ResolverFn
 >;
 const Mutation = resolvers.Mutation as Record<
-  'dequeueManualReviewJob',
+  'dequeueManualReviewJob' | 'submitManualReviewDecision',
   ResolverFn
 >;
 const ManualReviewQueue = resolvers.ManualReviewQueue as Record<
@@ -54,6 +54,7 @@ function makeCtx(opts: {
   });
   const getTotalPendingJobCountForQueues = jest.fn(async () => 7);
   const dequeueNextJob = jest.fn(async () => null);
+  const submitDecision = jest.fn(async () => ({ warnings: [] }));
   const getAllJobsForQueue = jest.fn(async () => []);
   const getJobsForQueue = jest.fn(async () => []);
   const getExistingJobsForItem = jest.fn(async () => []);
@@ -86,6 +87,7 @@ function makeCtx(opts: {
         getQueueForOrgAndDangerouslyBypassPermissioning,
         getTotalPendingJobCountForQueues,
         dequeueNextJob,
+        submitDecision,
         getAllJobsForQueue,
         getJobsForQueue,
         getExistingJobsForItem,
@@ -108,6 +110,7 @@ function makeCtx(opts: {
     getQueueForOrgAndDangerouslyBypassPermissioning,
     getTotalPendingJobCountForQueues,
     dequeueNextJob,
+    submitDecision,
     getAllJobsForQueue,
     getJobsForQueue,
     getExistingJobsForItem,
@@ -315,6 +318,22 @@ describe('MRT queue/job resolvers are membership-scoped', () => {
         Mutation.dequeueManualReviewJob({}, { queueId: 'q-1' }, ctx),
       ).rejects.toThrow('User required.');
       expect(getReviewableQueuesForUser).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Mutation.submitManualReviewDecision', () => {
+    it('rejects a decision after queue access is revoked', async () => {
+      const { ctx, submitDecision } = makeCtx({
+        reviewableQueueIds: [],
+      });
+      await expect(
+        Mutation.submitManualReviewDecision(
+          {},
+          { input: { queueId: 'q-revoked' } },
+          ctx,
+        ),
+      ).rejects.toThrow('User does not have access to this queue');
+      expect(submitDecision).not.toHaveBeenCalled();
     });
   });
 

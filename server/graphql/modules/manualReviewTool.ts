@@ -1,5 +1,4 @@
 /* eslint-disable max-lines */
-import DataLoader from 'dataloader';
 import _ from 'lodash';
 
 import { itemSubmissionWithTypeIdentifierToItemSubmission } from '../../services/itemProcessingService/index.js';
@@ -35,7 +34,6 @@ import {
   type GQLUserAppealManualReviewJobPayloadResolvers,
   type GQLUserManualReviewJobPayloadResolvers,
 } from '../generated.js';
-import { type Context } from '../resolvers.js';
 import { formatItemSubmissionForGQL } from '../types.js';
 import {
   forbiddenError,
@@ -44,6 +42,7 @@ import {
 } from '../utils/errors.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 import { oneOfInputToTaggedUnion } from '../utils/inputHelpers.js';
+import { assertQueueIsReviewable } from '../utils/manualReviewQueueAuthorization.js';
 
 const { omit, sumBy } = _;
 
@@ -1758,64 +1757,6 @@ const NcmecManualReviewJobPayload: GQLNcmecManualReviewJobPayloadResolvers = {
   },
 };
 
-const queueReviewabilityLoaders = new WeakMap<
-  Context,
-  DataLoader<string, boolean>
->();
-
-function getQueueReviewabilityLoader(context: Context) {
-  const existing = queueReviewabilityLoaders.get(context);
-  if (existing != null) {
-    return existing;
-  }
-
-  const user = context.getUser();
-  if (user == null) {
-    throw unauthenticatedError('User required.');
-  }
-
-  const loader = new DataLoader<string, boolean>(
-    async (queueIds) => {
-      const uniqueQueueIds = [...new Set(queueIds)];
-      const reviewableQueues =
-        await context.services.ManualReviewToolService.getReviewableQueuesForUser(
-          {
-            invoker: {
-              userId: user.id,
-              permissions: user.getPermissions(),
-              orgId: user.orgId,
-            },
-            queueIds: uniqueQueueIds,
-          },
-        );
-      const reviewableQueueIds = new Set(
-        reviewableQueues.map((queue) => queue.id),
-      );
-      return queueIds.map((queueId) => reviewableQueueIds.has(queueId));
-    },
-    { cache: false },
-  );
-  queueReviewabilityLoaders.set(context, loader);
-  return loader;
-}
-
-async function assertQueueIsReviewable(
-  queue: { id: string; orgId: string },
-  context: Context,
-) {
-  const user = context.getUser();
-  if (user == null) {
-    throw unauthenticatedError('User required.');
-  }
-  if (
-    user.orgId !== queue.orgId ||
-    !(await getQueueReviewabilityLoader(context).load(queue.id))
-  ) {
-    throw forbiddenError('User does not have access to this queue');
-  }
-  return user;
-}
-
 const ManualReviewQueue: GQLManualReviewQueueResolvers = {
   async jobs(queue, { ids: jobIds, limit, lockToken }, context) {
     const user = await assertQueueIsReviewable(queue, context);
@@ -2441,6 +2382,8 @@ const Mutation: GQLMutationResolvers = {
       decisionReason,
       reportHistory,
     } = params.input;
+
+    await assertQueueIsReviewable({ id: queueId, orgId }, context);
 
     const decisionPayloads = reportedItemDecisionComponents.map(
       (reportedItemDecisionComponent) => {
