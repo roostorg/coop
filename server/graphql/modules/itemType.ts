@@ -548,6 +548,7 @@ async function resolveItemData(
   _: unknown,
   context: Context,
 ) {
+  if (!context.services.ContentAccessService.enabled) return item.data;
   const type = await getItemTypeFromItemTypeOrSelector(item.type, context);
   await beforeContentAccess(context, type.orgId, {
     resourceType: 'item',

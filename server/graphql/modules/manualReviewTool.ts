@@ -1861,6 +1861,8 @@ const ManualReviewQueue: GQLManualReviewQueueResolvers = {
 
 const ManualReviewDecision: GQLManualReviewDecisionResolvers = {
   async decisionReason(decision, _, context) {
+    if (!context.services.ContentAccessService.enabled)
+      return decision.decisionReason ?? null;
     const user = context.getUser();
     if (user == null) throw unauthenticatedError('Authenticated user required');
     if (decision.decisionReason == null) return null;
@@ -1876,6 +1878,8 @@ const ManualReviewDecision: GQLManualReviewDecisionResolvers = {
 
 const ManualReviewJobComment: GQLManualReviewJobCommentResolvers = {
   async commentText(comment, _, context) {
+    if (!context.services.ContentAccessService.enabled)
+      return comment.commentText;
     const user = context.getUser();
     if (user == null) throw unauthenticatedError('Authenticated user required');
     // CommentOperations scopes these records to the authenticated organization.

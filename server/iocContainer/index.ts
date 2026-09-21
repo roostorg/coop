@@ -100,9 +100,10 @@ import {
   type ApiKeyService,
 } from '../services/apiKeyService/index.js';
 import { type CombinedPg } from '../services/combinedDbTypes.js';
-import ContentAccessService, {
-  getRegisteredContentAccessExtension,
+import {
+  makeContentAccessService,
   type ContentAccessExtension,
+  type default as ContentAccessService,
 } from '../services/contentAccessService.js';
 import {
   makeDerivedFieldsService,
@@ -941,12 +942,8 @@ export default async function getBottle(
       ),
   );
 
-  bottle.factory(
-    'ContentAccessService',
-    () =>
-      new ContentAccessService(
-        extensions.contentAccess ?? getRegisteredContentAccessExtension(),
-      ),
+  bottle.factory('ContentAccessService', (container) =>
+    makeContentAccessService(extensions.contentAccess, container.Tracer),
   );
 
   bottle.factory(

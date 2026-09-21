@@ -8,19 +8,27 @@ rules and do not persist audit events.
 
 ## Configure before startup
 
-Pass a `contentAccess` extension to `getBottle`, or register it from a startup
-module before the dependency container initializes:
+Pass a `contentAccess` extension to `getBottle`, or register it before the dependency
+container initializes. For a startup module located at `server/content-access-startup.ts`
+(compiled alongside `services/` in `server/transpiled/`):
 
 ```ts
 import {
   registerContentAccessExtension,
   type ContentAccessExtension,
-} from './server/services/contentAccessService.js';
+} from './services/contentAccessService.js';
 
 // Supplied by the deployment. These are not built-in storage/policy services.
 declare const extension: ContentAccessExtension;
 registerContentAccessExtension(extension);
 ```
+
+Object literals and class instances are supported; callbacks keep their original
+`this` receiver. The container captures the callbacks when it creates the service.
+Explicit `getBottle({ contentAccess: ... })` configuration takes precedence over a
+registered extension, including `{}` to disable it. The latest active registration
+wins; its cleanup function removes only that registration and is safe to call
+repeatedly or out of order. Cleanup affects future containers, not existing ones.
 
 The extension has two optional async callbacks:
 
@@ -72,6 +80,23 @@ configured audit callback completed. It does not prove successful delivery,
 video playback, reading, or a submitted decision. Other response fields may
 still fail after the event is written.
 
+## Failure handling and diagnostics
+
+Denials use GraphQL `FORBIDDEN`; unavailable policy/audit dependencies return
+`INTERNAL_SERVER_ERROR` with `Content access verification is unavailable.` The
+production non-null schema is unchanged. A denied `payload`, item `data` or
+`commentText` therefore nulls the nearest nullable ancestor, potentially an entire
+job list or the response's `data`. Clients must handle GraphQL errors; this API
+does not promise partial redaction or preserve job metadata in a failing subtree.
+
+Existing Coop tracing records separate `authorize:ContentAccessService` and
+`record:ContentAccessService` spans when those callbacks run. Failures record only
+a sanitized exception and the stage, field, resource type and request ID. Raw
+callback exception text, content and actor/resource identifiers are not recorded.
+Use the request ID to correlate with deployment-owned diagnostics; a callback
+requiring deeper diagnosis must sanitize its own logs. No spans, audit calls or
+extra item-type hydration are added when both callbacks are absent.
+
 ## Boundaries
 
 This is not a complete restricted-administrator role. It adds no roles,
@@ -96,10 +121,15 @@ cd server
 npm run typecheck
 npm run test:prepush -- --runInBand --coverage=false \
   services/contentAccessService.test.ts \
+  services/contentAccessService.tracing.test.ts \
   graphql/modules/contentAccess.resolver.test.ts
 ```
 
-The GraphQL tests use the production field resolvers with fixture root fields.
-They exercise denial, audit failures, aliases, item versions and tenant checks
-without a database. Full deployment validation must also cover real root
-queries, parent authorization and the configured policy/audit dependencies.
+The GraphQL tests reuse production SDL/object types and field resolvers with
+fixture root data sources, executing through Apollo and its production formatter.
+They exercise real null propagation, denial audit metadata, sanitized failures,
+aliases, item versions, tenant checks and the no-extension compatibility path.
+Service tests cover class callbacks, the container factory, every cleanup ordering
+for three registrations and sanitized tracing. Full deployment validation must
+still cover real root queries, parent authorization and configured policy/audit
+dependencies.

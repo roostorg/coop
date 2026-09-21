@@ -1,27 +1,41 @@
+import { ApolloServer } from '@apollo/server';
 import { makeExecutableSchema } from '@graphql-tools/schema';
-import { graphql, GraphQLScalarType } from 'graphql';
+import { MapperKind, mapSchema } from '@graphql-tools/utils';
+import { GraphQLScalarType } from 'graphql';
 
 import ContentAccessService, {
   type ContentAccessEvent,
   type ContentAccessExtension,
 } from '../../services/contentAccessService.js';
+import typeDefs from '../schema.js';
+import { authSchemaWrapper } from '../utils/authorization.js';
+import { formatGraphQLError } from '../utils/formatError.js';
 import { resolvers as itemResolvers } from './itemType.js';
 import { resolvers as reviewResolvers } from './manualReviewTool.js';
 
 const secret = { videoUrl: 'https://media.example/private?signature=secret' };
-const job = { id: 'job', orgId: 'org', payload: secret };
 const item = {
   id: 'item',
   type: { id: 'type', name: 'Video', orgId: 'org' },
   submissionId: 'version-1',
   data: secret,
 };
+const comment = { id: 'comment', commentText: 'sensitive comment' };
+const payload = {
+  __typename: 'ContentManualReviewJobPayload',
+  item,
+  reportedForReason: 'sensitive payload',
+};
+const job = { id: 'job', orgId: 'org', payload, comments: [comment] };
+const selectPayload =
+  'payload { ... on ContentManualReviewJobPayload { reportedForReason } ... on ContentAppealManualReviewJobPayload { appealReason } }';
 
-// Use the production field resolvers with fixture root fields; no external stores.
+// Keep production object/union types and nullability; only root data sources are fixtures.
 const schema = makeExecutableSchema({
-  typeDefs: `
-    scalar JSONObject
-    type Query {
+  typeDefs: [
+    typeDefs,
+    `
+    extend type Query {
       active: ManualReviewJob
       preview: ManualReviewJob
       history: ManualReviewJob
@@ -35,14 +49,14 @@ const schema = makeExecutableSchema({
       threadItem: ThreadItem
       comment: ManualReviewJobComment
       decision: ManualReviewDecision
+      noReason: ManualReviewDecision
+      queue: ManualReviewQueue
+      requiredQueue: ManualReviewQueue!
+      healthy: String!
+      unexpectedFailure: String
     }
-    type ManualReviewJob { id: ID! payload: JSONObject }
-    type ContentItem { id: ID! data: JSONObject }
-    type UserItem { id: ID! data: JSONObject }
-    type ThreadItem { id: ID! data: JSONObject }
-    type ManualReviewJobComment { id: ID! commentText: String }
-    type ManualReviewDecision { id: ID! decisionReason: String }
   `,
+  ],
   resolvers: {
     JSONObject: new GraphQLScalarType({
       name: 'JSONObject',
@@ -52,7 +66,13 @@ const schema = makeExecutableSchema({
       active: () => job,
       preview: () => job,
       history: () => job,
-      appeal: () => ({ ...job, payload: { appealId: 'appeal', ...secret } }),
+      appeal: () => ({
+        ...job,
+        payload: {
+          __typename: 'ContentAppealManualReviewJobPayload',
+          appealReason: 'appeal',
+        },
+      }),
       foreignJob: () => ({ ...job, orgId: 'other-org' }),
       item: () => item,
       oldItem: () => ({ ...item, submissionId: 'version-0' }),
@@ -63,8 +83,15 @@ const schema = makeExecutableSchema({
       }),
       userItem: () => item,
       threadItem: () => item,
-      comment: () => ({ id: 'comment', commentText: 'sensitive comment' }),
+      comment: () => comment,
       decision: () => ({ id: 'decision', decisionReason: 'sensitive reason' }),
+      noReason: () => ({ id: 'decision' }),
+      queue: () => ({ jobs: [job, { ...job, id: 'second-job' }] }),
+      requiredQueue: () => ({ jobs: [job] }),
+      healthy: () => 'ok',
+      unexpectedFailure: () => {
+        throw new Error('private database password');
+      },
     },
     ManualReviewJob: { payload: reviewResolvers.ManualReviewJob.payload },
     ContentItem: { data: itemResolvers.ContentItem.data },
@@ -84,10 +111,11 @@ function makeContext(
   authenticated = true,
 ) {
   return {
-    getUser: () =>
+    getUser: jest.fn(() =>
       authenticated
         ? { id: 'reviewer', orgId: 'org', role: 'ADMIN' }
         : undefined,
+    ),
     services: {
       ContentAccessService: new ContentAccessService(extension),
       getItemTypeEventuallyConsistent: jest.fn(async () => item.type),
@@ -95,29 +123,65 @@ function makeContext(
   };
 }
 
-async function execute(source: string, contextValue = makeContext()) {
-  return graphql({ schema, source, contextValue });
+const apollo = new ApolloServer<ReturnType<typeof makeContext>>({
+  schema,
+  formatError: formatGraphQLError,
+  includeStacktraceInErrorResponses: false,
+});
+beforeAll(async () => apollo.start());
+afterAll(async () => apollo.stop());
+async function execute(query: string, contextValue = makeContext()) {
+  const response = await apollo.executeOperation({ query }, { contextValue });
+  if (response.body.kind !== 'single')
+    throw new Error('Expected single GraphQL response');
+  return response.body.singleResult;
 }
 
-describe('content access GraphQL response fields', () => {
+describe('content access with production GraphQL types and Apollo formatter', () => {
+  it('retains production root authentication when the extension is disabled', async () => {
+    const protectedSchema = mapSchema(schema, {
+      [MapperKind.QUERY_ROOT_FIELD]: (field, _, _typeName, currentSchema) =>
+        authSchemaWrapper(field, currentSchema),
+    });
+    const server = new ApolloServer<ReturnType<typeof makeContext>>({
+      schema: protectedSchema,
+      formatError: formatGraphQLError,
+    });
+    try {
+      const response = await server.executeOperation(
+        { query: `{ active { ${selectPayload} } }` },
+        {
+          contextValue: makeContext({}, false),
+        },
+      );
+      if (response.body.kind !== 'single')
+        throw new Error('Expected single response');
+      expect(response.body.singleResult.data).toEqual({ active: null });
+      expect(response.body.singleResult.errors?.[0].extensions?.code).toBe(
+        'UNAUTHENTICATED',
+      );
+    } finally {
+      await server.stop();
+    }
+  });
   it.each(['active', 'preview', 'history', 'appeal'])(
     'denies %s payloads even for an administrator',
     async (field) => {
       const record = jest.fn(async (_event: ContentAccessEvent) => {});
       const result = await execute(
-        `{ ${field} { id payload } }`,
-        makeContext({
-          authorize: async () => false,
-          record,
-        }),
+        `{ ${field} { id ${selectPayload} } }`,
+        makeContext({ authorize: async () => false, record }),
       );
-      expect(result.data?.[field]).toEqual({ id: 'job', payload: null });
-      expect(result.errors?.[0].extensions.code).toBe('FORBIDDEN');
+      expect(result.data?.[field]).toBeNull();
+      expect(result.errors?.[0].extensions?.code).toBe('FORBIDDEN');
+      expect(result.errors?.[0].path).toEqual([field, 'payload']);
       expect(record).toHaveBeenCalledWith(
         expect.objectContaining({
           actorId: 'reviewer',
           orgId: 'org',
           resourceId: 'job',
+          resourceType: 'review_job',
+          field: 'payload',
           outcome: 'denied',
         }),
       );
@@ -125,55 +189,130 @@ describe('content access GraphQL response fields', () => {
   );
 
   it.each(['item', 'userItem', 'threadItem', 'selectorItem'])(
-    'denies %s data independently of the review payload path',
+    'denies and audits %s data',
     async (field) => {
+      const record = jest.fn(async (_event: ContentAccessEvent) => {});
       const result = await execute(
         `{ ${field} { data } }`,
-        makeContext({ authorize: async () => false }),
+        makeContext({ authorize: async () => false, record }),
       );
-      expect(result.data?.[field]).toEqual({ data: null });
-      expect(result.errors?.[0].extensions.code).toBe('FORBIDDEN');
+      expect(result.data?.[field]).toBeNull();
+      expect(result.errors?.[0].extensions?.code).toBe('FORBIDDEN');
+      expect(record).toHaveBeenCalledWith(
+        expect.objectContaining({
+          actorId: 'reviewer',
+          orgId: 'org',
+          resourceType: 'item',
+          resourceId: 'item',
+          itemTypeId: 'type',
+          submissionId: 'version-1',
+          field: 'data',
+          outcome: 'denied',
+        }),
+      );
     },
   );
 
   it.each([
-    ['comment', 'commentText'],
-    ['decision', 'decisionReason'],
-  ])('denies %s free text', async (field, text) => {
+    ['comment', 'commentText', 'review_comment'],
+    ['decision', 'decisionReason', 'review_decision'],
+  ])('denies and audits %s text', async (field, text, resourceType) => {
+    const record = jest.fn(async (_event: ContentAccessEvent) => {});
     const result = await execute(
       `{ ${field} { ${text} } }`,
-      makeContext({ authorize: async () => false }),
+      makeContext({ authorize: async () => false, record }),
     );
-    expect(result.data?.[field]).toEqual({ [text]: null });
-    expect(result.errors?.[0].extensions.code).toBe('FORBIDDEN');
+    expect(result.data?.[field]).toEqual(
+      field === 'comment' ? null : { [text]: null },
+    );
+    expect(result.errors?.[0].extensions?.code).toBe('FORBIDDEN');
+    expect(record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorId: 'reviewer',
+        orgId: 'org',
+        resourceId: field,
+        resourceType,
+        field: text,
+        outcome: 'denied',
+      }),
+    );
   });
 
-  it('preserves payloads with no extension and resolves type selectors', async () => {
+  it.each(['payload', 'commentText'])(
+    'propagates denied %s through non-null job/list chains',
+    async (field) => {
+      const context = makeContext({
+        authorize: async (request) => request.field !== field,
+      });
+      const selection =
+        field === 'payload' ? selectPayload : 'comments { commentText }';
+      const result = await execute(
+        `{ queue { jobs { id ${selection} } } healthy }`,
+        context,
+      );
+      expect(result.data).toEqual({ queue: null, healthy: 'ok' });
+      expect(result.errors?.[0].extensions?.code).toBe('FORBIDDEN');
+      const root = await execute(
+        `{ requiredQueue { jobs { ${selection} } } healthy }`,
+        makeContext({ authorize: async (request) => request.field !== field }),
+      );
+      expect(root.data).toBeNull();
+      expect(root.errors?.[0].extensions?.code).toBe('FORBIDDEN');
+    },
+  );
+
+  it('preserves default output without adding hydration or auth work to fields', async () => {
+    const context = makeContext({}, false);
     const result = await execute(
-      '{ active { payload } selectorItem { data } }',
+      `{ active { ${selectPayload} } selectorItem { data } comment { commentText } decision { decisionReason } }`,
+      context,
     );
     expect(result.errors).toBeUndefined();
     expect(result.data).toEqual({
-      active: { payload: secret },
+      active: { payload: { reportedForReason: 'sensitive payload' } },
       selectorItem: { data: secret },
+      comment: { commentText: 'sensitive comment' },
+      decision: { decisionReason: 'sensitive reason' },
     });
+    expect(context.getUser).not.toHaveBeenCalled();
+    expect(
+      context.services.getItemTypeEventuallyConsistent,
+    ).not.toHaveBeenCalled();
+    // Production root authorization remains responsible for unauthenticated requests.
   });
 
-  it('does not require content access for job identifiers', async () => {
+  it('hydrates selectors and records exact versions when enabled', async () => {
+    const record = jest.fn(async (_event: ContentAccessEvent) => {});
+    const context = makeContext({ record });
+    const result = await execute(
+      '{ selectorItem { data } oldItem { data } }',
+      context,
+    );
+    expect(result.errors).toBeUndefined();
+    expect(
+      context.services.getItemTypeEventuallyConsistent,
+    ).toHaveBeenCalledTimes(1);
+    expect(record).toHaveBeenCalledTimes(2);
+    expect(
+      new Set(record.mock.calls.map(([event]) => event.submissionId)),
+    ).toEqual(new Set(['version-1', 'version-0']));
+  });
+
+  it('does not require content access for job identifiers or absent reasons', async () => {
     const authorize = jest.fn(async () => false);
     const result = await execute(
-      '{ active { id } }',
+      '{ active { id } noReason { decisionReason } }',
       makeContext({ authorize }),
     );
     expect(result.errors).toBeUndefined();
     expect(authorize).not.toHaveBeenCalled();
   });
 
-  it('shares policy and audit checks across aliases, not across requests', async () => {
+  it('coalesces aliases within a context, not across requests', async () => {
     const authorize = jest.fn(async () => true);
     const record = jest.fn(async (_event: ContentAccessEvent) => {});
     const extension = { authorize, record };
-    const source = '{ a: active { payload } b: history { payload } }';
+    const source = `{ a: active { ${selectPayload} } b: history { ${selectPayload} } }`;
     expect(
       (await execute(source, makeContext(extension))).errors,
     ).toBeUndefined();
@@ -189,55 +328,71 @@ describe('content access GraphQL response fields', () => {
     expect(record.mock.calls[0][0]).not.toHaveProperty('payload');
   });
 
-  it('does not merge different item submissions into one audit record', async () => {
-    const record = jest.fn(async (_event: ContentAccessEvent) => {});
-    const result = await execute(
-      '{ item { data } oldItem { data } }',
-      makeContext({ record }),
-    );
-    expect(result.errors).toBeUndefined();
-    expect(record).toHaveBeenCalledTimes(2);
-    expect(
-      new Set(record.mock.calls.map(([event]) => event.submissionId)),
-    ).toEqual(new Set(['version-1', 'version-0']));
-  });
-
-  it('rejects unauthenticated access without invoking external callbacks', async () => {
+  it('rejects unauthenticated field access before callbacks when enabled', async () => {
     const record = jest.fn(async () => {});
     const result = await execute(
-      '{ active { payload } }',
+      `{ active { ${selectPayload} } }`,
       makeContext({ record }, false),
     );
-    expect(result.errors?.[0].extensions.code).toBe('UNAUTHENTICATED');
+    expect(result.errors?.[0].extensions?.code).toBe('UNAUTHENTICATED');
     expect(record).not.toHaveBeenCalled();
   });
 
-  it('rejects cross-organization jobs and items before external callbacks', async () => {
+  it('rejects cross-organization jobs and items before callbacks', async () => {
     const record = jest.fn(async () => {});
     const result = await execute(
-      '{ foreignJob { payload } foreignItem { data } }',
+      `{ foreignJob { ${selectPayload} } foreignItem { data } }`,
       makeContext({ record }),
     );
     expect(result.errors).toHaveLength(2);
     expect(
-      result.errors?.every((error) => error.extensions.code === 'FORBIDDEN'),
+      result.errors?.every((error) => error.extensions?.code === 'FORBIDDEN'),
     ).toBe(true);
     expect(record).not.toHaveBeenCalled();
   });
 
-  it('fails closed on audit persistence errors and shares the rejection across aliases', async () => {
-    const record = jest.fn(async () => {
-      throw new Error('secret media URL');
-    });
-    const result = await execute(
-      '{ a: active { payload } b: active { payload } }',
-      makeContext({ record }),
-    );
-    expect(result.data).toEqual({ a: { payload: null }, b: { payload: null } });
-    expect(record).toHaveBeenCalledTimes(1);
-    expect(result.errors?.map((error) => error.message)).toEqual([
-      'Content access verification is unavailable.',
-      'Content access verification is unavailable.',
-    ]);
+  it.each(['authorize', 'record'] as const)(
+    'returns a safe client error when %s fails',
+    async (stage) => {
+      const callback = jest.fn(async () => {
+        throw new Error('secret media URL');
+      });
+      const result = await execute(
+        `{ a: active { ${selectPayload} } b: active { ${selectPayload} } }`,
+        makeContext({ [stage]: callback }),
+      );
+      expect(result.data).toEqual({ a: null, b: null });
+      expect(callback).toHaveBeenCalledTimes(1);
+      expect(
+        result.errors?.map((error) => ({
+          message: error.message,
+          code: error.extensions?.code,
+        })),
+      ).toEqual([
+        {
+          message: 'Content access verification is unavailable.',
+          code: 'INTERNAL_SERVER_ERROR',
+        },
+        {
+          message: 'Content access verification is unavailable.',
+          code: 'INTERNAL_SERVER_ERROR',
+        },
+      ]);
+    },
+  );
+
+  it('still sanitizes unrelated unexpected errors through the production formatter', async () => {
+    const log = jest.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const result = await execute('{ unexpectedFailure }');
+      expect(result.errors?.[0].message).toBe(
+        process.env.EXPOSE_SENSITIVE_IMPLEMENTATION_DETAILS_IN_ERRORS === 'true'
+          ? 'Error: private database password'
+          : 'Unknown error',
+      );
+      expect(result.errors?.[0].extensions?.code).toBe('INTERNAL_SERVER_ERROR');
+    } finally {
+      log.mockRestore();
+    }
   });
 });

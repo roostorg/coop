@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { GraphQLError } from 'graphql';
 
 import {
   ContentAccessError,
@@ -22,6 +23,7 @@ export async function beforeContentAccess(
   resourceOrgId: string,
   resource: ContentAccessResource,
 ) {
+  if (!context.services.ContentAccessService.enabled) return;
   const user = context.getUser();
   if (!user) throw unauthenticatedError('Authenticated user required');
   if (resourceOrgId !== user.orgId) {
@@ -54,8 +56,12 @@ export async function beforeContentAccess(
   try {
     await check;
   } catch (error) {
-    if (error instanceof ContentAccessError && error.reason === 'denied') {
-      throw forbiddenError('Content access denied.');
+    if (error instanceof ContentAccessError) {
+      if (error.reason === 'denied')
+        throw forbiddenError('Content access denied.');
+      throw new GraphQLError('Content access verification is unavailable.', {
+        extensions: { code: 'INTERNAL_SERVER_ERROR' },
+      });
     }
     throw error;
   }

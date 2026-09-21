@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
+import { type default as SafeTracer } from '../utils/SafeTracer.js';
+
 export type ContentAccessResource = Readonly<{
   resourceType: 'review_job' | 'item' | 'review_comment' | 'review_decision';
   resourceId: string;
@@ -28,20 +30,31 @@ export type ContentAccessExtension = Readonly<{
   record?: (event: ContentAccessEvent) => Promise<void>;
 }>;
 
-let registeredExtension: ContentAccessExtension | undefined;
+const registrations = new Map<symbol, ContentAccessExtension>();
 
 export function registerContentAccessExtension(
   extension: ContentAccessExtension,
 ) {
-  const previous = registeredExtension;
-  registeredExtension = extension;
+  const id = Symbol();
+  registrations.set(id, extension);
   return () => {
-    if (registeredExtension === extension) registeredExtension = previous;
+    registrations.delete(id);
   };
 }
 
 export function getRegisteredContentAccessExtension() {
-  return registeredExtension;
+  return [...registrations.values()].at(-1);
+}
+
+// Shared by the dependency container and its wiring tests.
+export function makeContentAccessService(
+  extension?: ContentAccessExtension,
+  tracer?: SafeTracer,
+) {
+  return new ContentAccessService(
+    extension ?? getRegisteredContentAccessExtension(),
+    tracer,
+  );
 }
 
 export class ContentAccessError extends Error {
@@ -58,11 +71,56 @@ export class ContentAccessError extends Error {
 export default class ContentAccessService {
   private readonly extension: ContentAccessExtension;
 
-  constructor(extension: ContentAccessExtension = {}) {
-    this.extension = Object.freeze({ ...extension });
+  constructor(
+    extension: ContentAccessExtension = {},
+    private readonly tracer?: SafeTracer,
+  ) {
+    // Preserve prototype methods and their original receiver, including private fields.
+    this.extension = Object.freeze({
+      authorize: extension.authorize?.bind(extension),
+      record: extension.record?.bind(extension),
+    });
+  }
+
+  get enabled() {
+    return (
+      this.extension.authorize !== undefined ||
+      this.extension.record !== undefined
+    );
+  }
+
+  private async invoke<T>(
+    stage: 'authorize' | 'record',
+    request: ContentAccessRequest,
+    callback: () => Promise<T>,
+  ): Promise<T> {
+    const run = async () => {
+      try {
+        return await callback();
+      } catch {
+        // Sanitize before SafeTracer sees the failure; raw exceptions may contain secrets.
+        throw new ContentAccessError('unavailable');
+      }
+    };
+    return this.tracer
+      ? this.tracer.addSpan(
+          {
+            resource: 'ContentAccessService',
+            operation: stage,
+            attributes: {
+              'content_access.stage': stage,
+              'content_access.resource_type': request.resourceType,
+              'content_access.field': request.field,
+              'content_access.request_id': request.requestId,
+            },
+          },
+          run,
+        )
+      : run();
   }
 
   async beforeAccess(request: ContentAccessRequest): Promise<void> {
+    if (!this.enabled) return;
     // Reconstruct the metadata so callers cannot accidentally pass content to a sink.
     const metadata: ContentAccessRequest = Object.freeze({
       orgId: request.orgId,
@@ -78,22 +136,20 @@ export default class ContentAccessService {
         : { submissionId: request.submissionId }),
       field: request.field,
     });
-    let allowed: boolean;
-    try {
-      allowed =
-        this.extension.authorize === undefined ||
-        (await this.extension.authorize(metadata)) === true;
-      await this.extension.record?.(
-        Object.freeze({
-          ...metadata,
-          eventId: randomUUID(),
-          occurredAt: new Date().toISOString(),
-          outcome: allowed ? 'authorized' : 'denied',
-        }),
-      );
-    } catch {
-      // Do not expose callback errors, which can contain credentials or content.
-      throw new ContentAccessError('unavailable');
+    const { authorize, record } = this.extension;
+    const allowed =
+      authorize === undefined ||
+      (await this.invoke('authorize', metadata, async () =>
+        authorize(metadata),
+      )) === true;
+    if (record) {
+      const event: ContentAccessEvent = Object.freeze({
+        ...metadata,
+        eventId: randomUUID(),
+        occurredAt: new Date().toISOString(),
+        outcome: allowed ? 'authorized' : 'denied',
+      });
+      await this.invoke('record', metadata, async () => record(event));
     }
     if (!allowed) throw new ContentAccessError('denied');
   }

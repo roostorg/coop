@@ -1,6 +1,7 @@
 import ContentAccessService, {
   ContentAccessError,
   getRegisteredContentAccessExtension,
+  makeContentAccessService,
   registerContentAccessExtension,
   type ContentAccessEvent,
   type ContentAccessRequest,
@@ -106,12 +107,127 @@ describe('content access extension', () => {
     expect(record).not.toHaveBeenCalled();
   });
 
-  it('supports a startup extension and unregisters it', () => {
+  it('uses registered callbacks through the container factory and restores prior state', async () => {
     const before = getRegisteredContentAccessExtension();
-    const extension = { record: jest.fn(async () => {}) };
+    const extension = {
+      authorize: jest.fn(async () => false),
+      record: jest.fn(async () => {}),
+    };
     const unregister = registerContentAccessExtension(extension);
-    expect(getRegisteredContentAccessExtension()).toBe(extension);
-    unregister();
+    try {
+      expect(getRegisteredContentAccessExtension()).toBe(extension);
+      await expect(
+        makeContentAccessService().beforeAccess(request),
+      ).rejects.toEqual(new ContentAccessError('denied'));
+      expect(extension.authorize).toHaveBeenCalledWith(request);
+      expect(extension.record).toHaveBeenCalledWith(
+        expect.objectContaining({ outcome: 'denied' }),
+      );
+      await expect(
+        makeContentAccessService({}).beforeAccess(request),
+      ).resolves.toBeUndefined();
+      expect(extension.authorize).toHaveBeenCalledTimes(1);
+    } finally {
+      unregister();
+    }
     expect(getRegisteredContentAccessExtension()).toBe(before);
+  });
+
+  it.each([true, false])(
+    'preserves class callbacks with private state (allow=%s)',
+    async (allowed) => {
+      class Extension {
+        #allowed = allowed;
+        #events: ContentAccessEvent[] = [];
+        calls = 0;
+        async authorize() {
+          this.calls++;
+          return this.#allowed;
+        }
+        async record(event: ContentAccessEvent) {
+          this.#events.push(event);
+        }
+        get events() {
+          return this.#events;
+        }
+      }
+      const extension = new Extension();
+      const service = new ContentAccessService(extension);
+      expect(service.enabled).toBe(true);
+      if (allowed)
+        await expect(service.beforeAccess(request)).resolves.toBeUndefined();
+      else
+        await expect(service.beforeAccess(request)).rejects.toEqual(
+          new ContentAccessError('denied'),
+        );
+      expect(extension.calls).toBe(1);
+      expect(extension.events).toEqual([
+        expect.objectContaining({
+          ...request,
+          outcome: allowed ? 'authorized' : 'denied',
+        }),
+      ]);
+    },
+  );
+
+  it('blocks access when a class-based audit sink fails', async () => {
+    class Extension {
+      #secret = 'private sink failure';
+      async record() {
+        throw new Error(this.#secret);
+      }
+    }
+    await expect(
+      new ContentAccessService(new Extension()).beforeAccess(request),
+    ).rejects.toEqual(new ContentAccessError('unavailable'));
+  });
+
+  it.each([
+    [0, 1, 2],
+    [2, 1, 0],
+    [1, 2, 0],
+    [0, 2, 1],
+    [1, 0, 2],
+    [2, 0, 1],
+  ])(
+    'never revives removed registrations (order %s, %s, %s)',
+    (...order: number[]) => {
+      const before = getRegisteredContentAccessExtension();
+      const entries = [{}, {}, {}];
+      const cleanup = entries.map(registerContentAccessExtension);
+      let active = [0, 1, 2];
+      try {
+        for (const index of order) {
+          cleanup[index]();
+          cleanup[index]();
+          active = active.filter((entry) => entry !== index);
+          const latest = active.at(-1);
+          expect(getRegisteredContentAccessExtension()).toBe(
+            latest === undefined ? before : entries[latest],
+          );
+        }
+      } finally {
+        cleanup.forEach((remove) => {
+          remove();
+        });
+      }
+      expect(getRegisteredContentAccessExtension()).toBe(before);
+    },
+  );
+
+  it('tracks independent registrations of the same extension object', () => {
+    const before = getRegisteredContentAccessExtension();
+    const extension = {};
+    const first = registerContentAccessExtension(extension);
+    const second = registerContentAccessExtension(extension);
+    try {
+      first();
+      expect(getRegisteredContentAccessExtension()).toBe(extension);
+      second();
+      expect(getRegisteredContentAccessExtension()).toBe(before);
+    } finally {
+      first();
+      second();
+    }
   });
 });
