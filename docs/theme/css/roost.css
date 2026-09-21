@@ -103,7 +103,6 @@ html:not(.js) {
 }
 
 .roost #mdbook-theme-toggle {
-  x-display: none;
 }
 
 .roost #mdbook-searchbar {
