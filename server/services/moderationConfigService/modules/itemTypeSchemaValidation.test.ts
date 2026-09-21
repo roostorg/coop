@@ -68,10 +68,16 @@ const expectDomainError = (
 };
 
 describe('assertValidItemSchema', () => {
-  test('accepts unique field names', () => {
-    expect(() =>
-      assertValidItemSchema(schema(scalar('one'), scalar('two'))),
-    ).not.toThrow();
+  test.each([
+    ['scalar with null container', scalar('scalar')],
+    [
+      'scalar with omitted container',
+      { name: 'scalar', type: 'STRING', required: false } as unknown as Field,
+    ],
+    ['ARRAY with scalar value and null key', array('array')],
+    ['MAP with scalar key and value', map('map')],
+  ])('accepts a valid %s', (_description, field) => {
+    expect(() => assertValidItemSchema(schema(field))).not.toThrow();
   });
 
   test('rejects duplicate field names as invalid schema', () => {
@@ -83,6 +89,60 @@ describe('assertValidItemSchema', () => {
         status: 400,
         type: ErrorType.InvalidUserInput,
         field: 'duplicate',
+      },
+    );
+  });
+
+  test.each([
+    [
+      'MAP with an omitted key scalar type',
+      {
+        name: 'invalidMap',
+        type: 'MAP',
+        required: false,
+        container: { containerType: 'MAP', valueScalarType: 'STRING' },
+      },
+    ],
+    [
+      'MAP with an invalid key scalar type',
+      {
+        ...map('invalidMap'),
+        container: { ...map('invalidMap').container, keyScalarType: 'MAP' },
+      },
+    ],
+    [
+      'MAP with an invalid value scalar type',
+      {
+        ...map('invalidMap'),
+        container: { ...map('invalidMap').container, valueScalarType: 'MAP' },
+      },
+    ],
+    [
+      'ARRAY with a non-null key scalar type',
+      {
+        ...array('invalidArray'),
+        container: {
+          ...array('invalidArray').container,
+          keyScalarType: 'STRING',
+        },
+      },
+    ],
+    [
+      'field and container type mismatch',
+      { ...map('mismatch'), type: 'ARRAY' },
+    ],
+    [
+      'scalar with a container',
+      { ...scalar('scalar'), container: map('map').container },
+    ],
+  ])('rejects a %s as invalid schema', (_description, field) => {
+    expectDomainError(
+      () => assertValidItemSchema(schema(field as unknown as Field)),
+      {
+        name: 'InvalidItemTypeSchemaError',
+        status: 400,
+        type: ErrorType.InvalidUserInput,
+        field: field.name,
       },
     );
   });
@@ -241,28 +301,6 @@ describe('assertBackwardCompatibleItemSchema', () => {
       'field',
     ],
     [
-      'an existing container definition is missing',
-      schema(array('field')),
-      schema({
-        name: 'field',
-        type: 'ARRAY',
-        required: false,
-        container: null,
-      } as unknown as Field),
-      'field',
-    ],
-    [
-      'a container definition is added to an existing malformed field',
-      schema({
-        name: 'field',
-        type: 'ARRAY',
-        required: false,
-        container: null,
-      } as unknown as Field),
-      schema(array('field')),
-      'field',
-    ],
-    [
       'a new required field is added',
       current,
       schema(...current, scalar('newRequired', true)),
@@ -285,6 +323,42 @@ describe('assertBackwardCompatibleItemSchema', () => {
       },
     );
   });
+
+  test.each([
+    [
+      'proposed container definition is missing',
+      schema(array('field')),
+      schema({
+        name: 'field',
+        type: 'ARRAY',
+        required: false,
+        container: null,
+      } as unknown as Field),
+    ],
+    [
+      'current container definition is missing',
+      schema({
+        name: 'field',
+        type: 'ARRAY',
+        required: false,
+        container: null,
+      } as unknown as Field),
+      schema(array('field')),
+    ],
+  ])(
+    'rejects when the %s as invalid schema',
+    (_description, oldSchema, proposed) => {
+      expectDomainError(
+        () => assertBackwardCompatibleItemSchema(oldSchema, proposed),
+        {
+          name: 'InvalidItemTypeSchemaError',
+          status: 400,
+          type: ErrorType.InvalidUserInput,
+          field: 'field',
+        },
+      );
+    },
+  );
 });
 
 describe('assertHiddenFieldsExist', () => {
