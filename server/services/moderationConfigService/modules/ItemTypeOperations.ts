@@ -1,5 +1,5 @@
 /* eslint-disable max-lines */
-import { sql, type Kysely, type Selection } from 'kysely';
+import { sql, type Kysely, type Selection, type Transaction } from 'kysely';
 import { type ReadonlyDeep } from 'type-fest';
 import { uid } from 'uid';
 
@@ -131,6 +131,32 @@ export default class ItemTypeOperations {
   private async invalidateLatestItemTypesCache(orgId: string): Promise<void> {
     // `cached()` always attaches invalidate; the type keeps it optional for other producers.
     await this.latestItemTypesCache.invalidate!(orgId);
+  }
+
+  // Pass trx to every participating service call. The callback can be retried.
+  async withItemTypeTransaction<T extends ReadonlyDeep<ItemType>>(
+    orgId: string,
+    run: (trx: Transaction<ModerationConfigServicePg>) => Promise<T>,
+  ): Promise<T> {
+    const result = await this.transactionWithRetry(run);
+    await this.invalidateLatestItemTypesCache(orgId);
+    return result;
+  }
+
+  private async readAfterWrite(
+    orgId: string,
+    trx?: Transaction<ModerationConfigServicePg>,
+  ): Promise<readonly ReadonlyDeep<ItemType>[]> {
+    if (trx) {
+      const rows = await getItemTypeVersionsBaseQuery({
+        orgId,
+        currentVersionsOnly: true,
+        pgQuery: trx,
+      }).execute();
+      return rows.map((row) => dbResultToItemType(row, 'original'));
+    }
+    await this.invalidateLatestItemTypesCache(orgId);
+    return this.latestItemTypesCache(orgId, { maxAge: 0 });
   }
 
   async getItemTypes(opts: {
@@ -273,8 +299,9 @@ export default class ItemTypeOperations {
         ipAddress?: string | null;
       };
     },
+    trx?: Transaction<ModerationConfigServicePg>,
   ) {
-    const { id: contentItemTypeId } = await this.pgQuery
+    const { id: contentItemTypeId } = await (trx ?? this.pgQuery)
       .insertInto('public.item_types')
       .values({
         id: uid(),
@@ -294,8 +321,7 @@ export default class ItemTypeOperations {
       .returning('id')
       .executeTakeFirstOrThrow();
 
-    await this.invalidateLatestItemTypesCache(orgId);
-    return (await this.latestItemTypesCache(orgId, { maxAge: 0 })).find(
+    return (await this.readAfterWrite(orgId, trx)).find(
       (it): it is ReadonlyDeep<ContentItemType> =>
         it.kind === 'CONTENT' && it.id === contentItemTypeId,
     )!;
@@ -318,8 +344,9 @@ export default class ItemTypeOperations {
         ipAddress?: string | null;
       };
     },
+    trx?: Transaction<ModerationConfigServicePg>,
   ) {
-    const { id: contentItemTypeId } = await this.pgQuery
+    const { id: contentItemTypeId } = await (trx ?? this.pgQuery)
       .updateTable('public.item_types')
       .set(
         removeUndefinedKeys({
@@ -354,8 +381,7 @@ export default class ItemTypeOperations {
       .returning('id')
       .executeTakeFirstOrThrow();
 
-    await this.invalidateLatestItemTypesCache(orgId);
-    return (await this.latestItemTypesCache(orgId, { maxAge: 0 })).find(
+    return (await this.readAfterWrite(orgId, trx)).find(
       (it): it is ReadonlyDeep<ContentItemType> =>
         it.kind === 'CONTENT' && it.id === contentItemTypeId,
     )!;
@@ -375,8 +401,9 @@ export default class ItemTypeOperations {
         ipAddress?: string | null;
       };
     },
+    trx?: Transaction<ModerationConfigServicePg>,
   ): Promise<ThreadItemType> {
-    const { id: threadItemTypeId } = await this.pgQuery
+    const { id: threadItemTypeId } = await (trx ?? this.pgQuery)
       .insertInto('public.item_types')
       .values({
         id: uid(),
@@ -394,8 +421,7 @@ export default class ItemTypeOperations {
       .returning('id')
       .executeTakeFirstOrThrow();
 
-    await this.invalidateLatestItemTypesCache(orgId);
-    return (await this.latestItemTypesCache(orgId, { maxAge: 0 })).find(
+    return (await this.readAfterWrite(orgId, trx)).find(
       (it): it is ReadonlyDeep<ThreadItemType> =>
         it.kind === 'THREAD' && it.id === threadItemTypeId,
     )!;
@@ -416,8 +442,9 @@ export default class ItemTypeOperations {
         ipAddress?: string | null;
       };
     },
+    trx?: Transaction<ModerationConfigServicePg>,
   ) {
-    const { id: threadItemTypeId } = await this.pgQuery
+    const { id: threadItemTypeId } = await (trx ?? this.pgQuery)
       .updateTable('public.item_types')
       .set(
         removeUndefinedKeys({
@@ -446,8 +473,7 @@ export default class ItemTypeOperations {
       .returning('id')
       .executeTakeFirstOrThrow();
 
-    await this.invalidateLatestItemTypesCache(orgId);
-    return (await this.latestItemTypesCache(orgId, { maxAge: 0 })).find(
+    return (await this.readAfterWrite(orgId, trx)).find(
       (it): it is ReadonlyDeep<ThreadItemType> =>
         it.kind === 'THREAD' && it.id === threadItemTypeId,
     )!;
@@ -469,8 +495,9 @@ export default class ItemTypeOperations {
         email?: string | null;
       };
     },
+    trx?: Transaction<ModerationConfigServicePg>,
   ) {
-    const { id: userItemTypeId } = await this.pgQuery
+    const { id: userItemTypeId } = await (trx ?? this.pgQuery)
       .insertInto('public.item_types')
       .values({
         id: uid(),
@@ -490,8 +517,7 @@ export default class ItemTypeOperations {
       .returning('id')
       .executeTakeFirstOrThrow();
 
-    await this.invalidateLatestItemTypesCache(orgId);
-    return (await this.latestItemTypesCache(orgId, { maxAge: 0 })).find(
+    return (await this.readAfterWrite(orgId, trx)).find(
       (it): it is ReadonlyDeep<UserItemType> =>
         it.kind === 'USER' && it.id === userItemTypeId,
     )!;
@@ -514,8 +540,9 @@ export default class ItemTypeOperations {
         email?: string | null;
       };
     },
+    trx?: Transaction<ModerationConfigServicePg>,
   ): Promise<UserItemType> {
-    const { id: userItemTypeId } = await this.pgQuery
+    const { id: userItemTypeId } = await (trx ?? this.pgQuery)
       .updateTable('public.item_types')
       .set(
         removeUndefinedKeys({
@@ -548,8 +575,7 @@ export default class ItemTypeOperations {
       .returning('id')
       .executeTakeFirstOrThrow();
 
-    await this.invalidateLatestItemTypesCache(orgId);
-    return (await this.latestItemTypesCache(orgId, { maxAge: 0 })).find(
+    return (await this.readAfterWrite(orgId, trx)).find(
       (it): it is ReadonlyDeep<UserItemType> =>
         it.kind === 'USER' && it.id === userItemTypeId,
     )!;
