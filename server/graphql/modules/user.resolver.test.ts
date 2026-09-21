@@ -113,6 +113,30 @@ describe('user resolvers', () => {
       ) => Promise<unknown>;
     };
 
+    it('rejects unauthenticated favorite queue reads', async () => {
+      const { ctx, getFavoriteQueuesForUser } = makeCtx({ user: null });
+      await expect(
+        User.favoriteMRTQueues({ id: 'caller-1', orgId: 'org-1' }, {}, ctx),
+      ).rejects.toThrow('User required.');
+      expect(getFavoriteQueuesForUser).not.toHaveBeenCalled();
+    });
+
+    it('rejects unauthenticated favorite queue writes', async () => {
+      const { ctx, addFavoriteQueueForUser } = makeCtx({ user: null });
+      await expect(
+        Mutation.addFavoriteMRTQueue({}, { queueId: 'q-allowed' }, ctx),
+      ).rejects.toThrow('User required.');
+      expect(addFavoriteQueueForUser).not.toHaveBeenCalled();
+    });
+
+    it('rejects unauthenticated reviewable queue reads', async () => {
+      const { ctx, getReviewableQueuesForUser } = makeCtx({ user: null });
+      await expect(
+        User.reviewableQueues({}, { queueIds: null }, ctx),
+      ).rejects.toThrow('Authenticated user required');
+      expect(getReviewableQueuesForUser).not.toHaveBeenCalled();
+    });
+
     it("filters the caller's stale favorites through their reviewable queues", async () => {
       const { ctx, getFavoriteQueuesForUser, getReviewableQueuesForUser } =
         makeCtx();

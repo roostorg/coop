@@ -31,6 +31,7 @@ function makeCtx(opts: {
     id: string;
     orgId: string;
     permissions: readonly UserPermission[];
+    email?: string;
   } | null;
 }) {
   const user =
@@ -78,6 +79,7 @@ function makeCtx(opts: {
         : {
             id: user.id,
             orgId: user.orgId,
+            email: user.email ?? 'user@example.com',
             getPermissions: () => user.permissions,
           },
     services: {
@@ -322,6 +324,17 @@ describe('MRT queue/job resolvers are membership-scoped', () => {
   });
 
   describe('Mutation.submitManualReviewDecision', () => {
+    it('throws when there is no authenticated user', async () => {
+      const { ctx, submitDecision } = makeCtx({
+        reviewableQueueIds: [],
+        user: null,
+      });
+      await expect(
+        Mutation.submitManualReviewDecision({}, { input: {} }, ctx),
+      ).rejects.toThrow('User required.');
+      expect(submitDecision).not.toHaveBeenCalled();
+    });
+
     it('rejects a decision after queue access is revoked', async () => {
       const { ctx, submitDecision } = makeCtx({
         reviewableQueueIds: [],
@@ -334,6 +347,45 @@ describe('MRT queue/job resolvers are membership-scoped', () => {
         ),
       ).rejects.toThrow('User does not have access to this queue');
       expect(submitDecision).not.toHaveBeenCalled();
+    });
+
+    it('submits a decision for a queue the caller can review', async () => {
+      const { ctx, submitDecision } = makeCtx({
+        reviewableQueueIds: ['q-1'],
+      });
+      await expect(
+        Mutation.submitManualReviewDecision(
+          {},
+          {
+            input: {
+              queueId: 'q-1',
+              jobId: 'job-1',
+              lockToken: 'lock-1',
+              reportedItemDecisionComponents: [{ ignore: { _: true } }],
+              relatedItemActions: [],
+              reportHistory: [],
+              decisionReason: null,
+            },
+          },
+          ctx,
+        ),
+      ).resolves.toEqual({
+        __typename: 'SubmitDecisionSuccessResponse',
+        success: true,
+        warnings: [],
+      });
+      expect(submitDecision).toHaveBeenCalledWith({
+        reportHistory: [],
+        queueId: 'q-1',
+        jobId: 'job-1',
+        lockToken: 'lock-1',
+        decisionComponents: [{ type: 'IGNORE' }],
+        relatedActions: [],
+        reviewerId: 'user-1',
+        reviewerEmail: 'user@example.com',
+        orgId: 'org-1',
+        decisionReason: undefined,
+      });
     });
   });
 
