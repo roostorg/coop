@@ -320,5 +320,15 @@ describe('Org resolvers', () => {
       );
       expect(getReviewableQueuesForUser).not.toHaveBeenCalled();
     });
+
+    it('throws when there is no authenticated user', async () => {
+      const { ctx, getReviewableQueuesForUser } = makeCtx({
+        callerOrgId: null,
+      });
+      await expect(Org.mrtQueues(orgParent, {}, ctx)).rejects.toThrow(
+        'User required',
+      );
+      expect(getReviewableQueuesForUser).not.toHaveBeenCalled();
+    });
   });
 });
