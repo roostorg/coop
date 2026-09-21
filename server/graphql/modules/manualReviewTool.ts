@@ -1,4 +1,5 @@
 /* eslint-disable max-lines */
+import DataLoader from 'dataloader';
 import _ from 'lodash';
 
 import { itemSubmissionWithTypeIdentifierToItemSubmission } from '../../services/itemProcessingService/index.js';
@@ -1757,6 +1758,47 @@ const NcmecManualReviewJobPayload: GQLNcmecManualReviewJobPayloadResolvers = {
   },
 };
 
+const queueReviewabilityLoaders = new WeakMap<
+  Context,
+  DataLoader<string, boolean>
+>();
+
+function getQueueReviewabilityLoader(context: Context) {
+  const existing = queueReviewabilityLoaders.get(context);
+  if (existing != null) {
+    return existing;
+  }
+
+  const user = context.getUser();
+  if (user == null) {
+    throw unauthenticatedError('User required.');
+  }
+
+  const loader = new DataLoader<string, boolean>(
+    async (queueIds) => {
+      const uniqueQueueIds = [...new Set(queueIds)];
+      const reviewableQueues =
+        await context.services.ManualReviewToolService.getReviewableQueuesForUser(
+          {
+            invoker: {
+              userId: user.id,
+              permissions: user.getPermissions(),
+              orgId: user.orgId,
+            },
+            queueIds: uniqueQueueIds,
+          },
+        );
+      const reviewableQueueIds = new Set(
+        reviewableQueues.map((queue) => queue.id),
+      );
+      return queueIds.map((queueId) => reviewableQueueIds.has(queueId));
+    },
+    { cache: false },
+  );
+  queueReviewabilityLoaders.set(context, loader);
+  return loader;
+}
+
 async function assertQueueIsReviewable(
   queue: { id: string; orgId: string },
   context: Context,
@@ -1765,20 +1807,10 @@ async function assertQueueIsReviewable(
   if (user == null) {
     throw unauthenticatedError('User required.');
   }
-  if (user.orgId !== queue.orgId) {
-    throw forbiddenError('User does not have access to this queue');
-  }
-
-  const reviewableQueues =
-    await context.services.ManualReviewToolService.getReviewableQueuesForUser({
-      invoker: {
-        userId: user.id,
-        permissions: user.getPermissions(),
-        orgId: user.orgId,
-      },
-      queueIds: [queue.id],
-    });
-  if (reviewableQueues.length === 0) {
+  if (
+    user.orgId !== queue.orgId ||
+    !(await getQueueReviewabilityLoader(context).load(queue.id))
+  ) {
     throw forbiddenError('User does not have access to this queue');
   }
   return user;
@@ -2246,9 +2278,10 @@ const Query: GQLQueryResolvers = {
             permissions: user.getPermissions(),
             orgId: user.orgId,
           },
+          queueIds: [id],
         },
       );
-    return reviewableQueues.find((queue) => queue.id === id) ?? null;
+    return reviewableQueues[0] ?? null;
   },
   async getCommentsForJob(_: unknown, { jobId }, context) {
     const user = context.getUser();

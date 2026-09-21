@@ -188,10 +188,8 @@ describe('QueueOperations', () => {
     },
   );
 
-  // queues via *Dangerously*BypassPermissioning helpers with no permission or
-  // membership check, so any authenticated user could read (and dequeue/lock)
-  // every queue in the org, including CSAM/NCMEC queues. They now call
-  // getReviewableQueuesForUser instead; these lock in its filtering.
+  // These operations previously bypassed queue permissions, allowing any
+  // authenticated user to read and dequeue jobs from every queue in the org.
   testWithQueueAndActions()(
     'getReviewableQueuesForUser excludes a queue the user is not a member of',
     async ({ org, queue, mrtService, deps }) => {

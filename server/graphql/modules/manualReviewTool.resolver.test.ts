@@ -164,19 +164,39 @@ describe('MRT queue/job resolvers are membership-scoped', () => {
 
   describe('Query.manualReviewQueue', () => {
     it('returns a queue the caller can review', async () => {
-      const { ctx } = makeCtx({ reviewableQueueIds: ['q-1', 'q-2'] });
+      const { ctx, getReviewableQueuesForUser } = makeCtx({
+        reviewableQueueIds: ['q-1', 'q-2'],
+      });
       await expect(
         Query.manualReviewQueue({}, { id: 'q-2' }, ctx),
       ).resolves.toMatchObject({ id: 'q-2' });
+      expect(getReviewableQueuesForUser).toHaveBeenCalledWith({
+        invoker: {
+          userId: 'user-1',
+          permissions: [UserPermission.VIEW_MRT],
+          orgId: 'org-1',
+        },
+        queueIds: ['q-2'],
+      });
     });
 
     it('returns null for a queue the caller is not a member of', async () => {
-      const { ctx, getQueueForOrgAndDangerouslyBypassPermissioning } = makeCtx({
-        reviewableQueueIds: ['q-1'],
-      });
+      const {
+        ctx,
+        getReviewableQueuesForUser,
+        getQueueForOrgAndDangerouslyBypassPermissioning,
+      } = makeCtx({ reviewableQueueIds: ['q-1'] });
       await expect(
         Query.manualReviewQueue({}, { id: 'q-forbidden' }, ctx),
       ).resolves.toBeNull();
+      expect(getReviewableQueuesForUser).toHaveBeenCalledWith({
+        invoker: {
+          userId: 'user-1',
+          permissions: [UserPermission.VIEW_MRT],
+          orgId: 'org-1',
+        },
+        queueIds: ['q-forbidden'],
+      });
       expect(
         getQueueForOrgAndDangerouslyBypassPermissioning,
       ).not.toHaveBeenCalled();
@@ -390,6 +410,77 @@ describe('MRT queue/job resolvers are membership-scoped', () => {
           ctx,
         ),
       ).rejects.toThrow('User does not have access to this queue');
+      expect(getOldestJobCreatedAt).not.toHaveBeenCalled();
+    });
+
+    it('batches queue authorization across concurrent fields', async () => {
+      const { ctx, getReviewableQueuesForUser } = makeCtx({
+        reviewableQueueIds: ['q-1', 'q-2'],
+      });
+
+      await Promise.all([
+        ManualReviewQueue.jobs({ orgId: 'org-1', id: 'q-1' }, jobsArgs, ctx),
+        ManualReviewQueue.pendingJobCount(
+          { orgId: 'org-1', id: 'q-1' },
+          {},
+          ctx,
+        ),
+        ManualReviewQueue.oldestJobCreatedAt(
+          { orgId: 'org-1', id: 'q-2' },
+          {},
+          ctx,
+        ),
+      ]);
+
+      expect(getReviewableQueuesForUser).toHaveBeenCalledTimes(1);
+      expect(getReviewableQueuesForUser).toHaveBeenCalledWith({
+        invoker: {
+          userId: 'user-1',
+          permissions: [UserPermission.VIEW_MRT],
+          orgId: 'org-1',
+        },
+        queueIds: ['q-1', 'q-2'],
+      });
+    });
+
+    it('preserves allowed and denied results within one authorization batch', async () => {
+      const {
+        ctx,
+        getReviewableQueuesForUser,
+        getPendingJobCount,
+        getOldestJobCreatedAt,
+      } = makeCtx({ reviewableQueueIds: ['q-allowed'] });
+
+      const results = await Promise.allSettled([
+        ManualReviewQueue.pendingJobCount(
+          { orgId: 'org-1', id: 'q-allowed' },
+          {},
+          ctx,
+        ),
+        ManualReviewQueue.oldestJobCreatedAt(
+          { orgId: 'org-1', id: 'q-denied' },
+          {},
+          ctx,
+        ),
+      ]);
+
+      expect(results[0]).toMatchObject({ status: 'fulfilled', value: 3 });
+      expect(results[1]).toMatchObject({
+        status: 'rejected',
+        reason: expect.objectContaining({
+          message: 'User does not have access to this queue',
+        }),
+      });
+      expect(getReviewableQueuesForUser).toHaveBeenCalledTimes(1);
+      expect(getReviewableQueuesForUser).toHaveBeenCalledWith({
+        invoker: {
+          userId: 'user-1',
+          permissions: [UserPermission.VIEW_MRT],
+          orgId: 'org-1',
+        },
+        queueIds: ['q-allowed', 'q-denied'],
+      });
+      expect(getPendingJobCount).toHaveBeenCalled();
       expect(getOldestJobCreatedAt).not.toHaveBeenCalled();
     });
 
