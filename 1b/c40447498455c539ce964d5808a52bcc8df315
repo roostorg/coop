@@ -1,0 +1,35 @@
+server/graphql/modules/manualReviewTool.ts
+  s_c96c0989b80885::t_37f12c908d7d4a 45
+  s_c96c0989b80885::t_44003eaced6014 2386-2387
+server/graphql/modules/user.ts
+  s_c96c0989b80885::t_164e237b8bd016 466
+  s_c96c0989b80885::t_0407ba3e0cf7c3 13
+  s_c96c0989b80885::t_441a20ef1627bd 268-271
+  s_c96c0989b80885::t_273187d11c1181 420-423,425-450
+  s_c96c0989b80885::t_87ba2f1eb0e58d 424
+server/graphql/modules/manualReviewTool.resolver.test.ts
+  s_c96c0989b80885::t_38da4b214d779d 15,57,90,113,324-336
+  s_c96c0989b80885::t_41c21a5fcdc864 337-339
+server/graphql/utils/manualReviewQueueAuthorization.ts
+  s_c96c0989b80885::t_9a3af0ad5bb0e5 1-62
+server/graphql/modules/user.resolver.test.ts
+  s_c96c0989b80885::t_6e7eec10b1a8a4 164-211,217-225,227-234,236-240,242-251,264-299
+  s_c96c0989b80885::t_13759b7c8994ae 212-216
+  s_c96c0989b80885::t_f1c683d12df292 226,235,241,252-263
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1bc40447498455c539ce964d5808a52bcc8df315",
+  "prompts": {},
+  "sessions": {
+    "s_c96c0989b80885": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "0755bd9c-4e4f-46fb-a5c7-7b0ea379a3e1",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
