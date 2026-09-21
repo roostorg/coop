@@ -194,12 +194,6 @@ export function assertBackwardCompatibleItemSchema(
     if (currentField.type !== proposedField.type) {
       throwIncompatible(currentField.name, 'cannot change type');
     }
-    if (
-      (currentField.container === null) !==
-      (proposedField.container === null)
-    ) {
-      throwIncompatible(currentField.name, 'cannot change container shape');
-    }
     if (currentField.container && proposedField.container) {
       if (
         currentField.container.containerType !==
