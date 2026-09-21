@@ -34,7 +34,7 @@
             const path_to_root = "../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "../searchindex-e9bcc153.js";
+            window.path_to_searchindex_js = "../searchindex-f82558af.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-33b43635.js"></script>
@@ -178,6 +178,25 @@
                     <main>
                         <h1 id="handling-actions"><a class="header" href="#handling-actions">Handling Actions</a></h1>
 <p>When Coop triggers an Action—whether through an automated rule, a moderator’s decision in the Review Console, or a user crossing a User Strike threshold—it sends a POST request to the callback URL you configured for that Action. Your server receives this request and performs the corresponding operation.</p>
+<h2 id="list-actions"><a class="header" href="#list-actions">List actions</a></h2>
+<pre><code class="language-http">GET /api/v1/actions/
+</code></pre>
+<p>Returns your organization’s custom and built-in actions:</p>
+<pre><code class="language-json">{
+  "actions": [
+    {
+      "id": "action-id",
+      "name": "Remove post",
+      "description": null,
+      "actionType": "CUSTOM_ACTION",
+      "applyUserStrikes": false,
+      "penalty": "NONE",
+      "itemTypeIds": ["item-type-id"],
+      "parameters": []
+    }
+  ]
+}
+</code></pre>
 <h2 id="setting-up-your-callback-endpoint"><a class="header" href="#setting-up-your-callback-endpoint">Setting up your callback endpoint</a></h2>
 <p>For each Action you define in Coop, provide a publicly accessible callback URL and any authentication headers your endpoint requires (e.g. an API key Coop should send). Coop includes these headers on every outgoing request to that endpoint.</p>
 <p>To verify that an incoming request actually came from Coop, check the <code>Coop-Signature</code> header. See <a href="../development/api-auth.html#verifying-incoming-requests-from-coop">API Keys &amp; Authentication</a> for the signature verification algorithm and a code example.</p>
