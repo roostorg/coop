@@ -1198,23 +1198,20 @@ export class ManualReviewToolService {
     return this.queueOps.getOldestJobCreatedAt(opts);
   }
 
-  async getHiddenFieldsForItemType(opts: {
-    orgId: string;
-    itemTypeId: string;
-  }) {
-    return this.jobRendering.getHiddenFieldsForItemType(opts);
+  async getHiddenFieldsForItemType(
+    ...args: Parameters<JobRendering['getHiddenFieldsForItemType']>
+  ) {
+    return this.jobRendering.getHiddenFieldsForItemType(...args);
   }
 
   async getIgnoreCallbackForOrg(orgId: string) {
     return this.jobDecisioning.getIgnoreCallbackForOrg(orgId);
   }
 
-  async setHiddenFieldsForItemType(opts: {
-    orgId: string;
-    itemTypeId: string;
-    hiddenFields: readonly string[];
-  }) {
-    return this.jobRendering.setHiddenFieldsForItemType(opts);
+  async setHiddenFieldsForItemType(
+    ...args: Parameters<JobRendering['setHiddenFieldsForItemType']>
+  ) {
+    return this.jobRendering.setHiddenFieldsForItemType(...args);
   }
 
   async getUsersWhoCanSeeQueue(opts: {
