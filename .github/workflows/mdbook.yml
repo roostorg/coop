@@ -111,7 +111,8 @@ jobs:
 
           # Deploy the versioned docs
           rm -rf "_gh-pages/${DEPLOY_PATH}"
-          cp -r docs/book "_gh-pages/${DEPLOY_PATH}"
+          cp --recursive docs/book/markdown/. docs/book/html/
+          cp -r docs/book/html "_gh-pages/${DEPLOY_PATH}"
 
           # Regenerate the root version index
           (cd _gh-pages && tree -d -L 1 -H . -T "Coop Documentation" -o index.html --noreport)
