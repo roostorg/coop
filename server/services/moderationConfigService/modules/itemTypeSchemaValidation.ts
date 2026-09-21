@@ -1,3 +1,9 @@
+import {
+  ContainerTypes,
+  isContainerType,
+  ScalarTypes,
+} from '@roostorg/coop-types';
+
 import { type ModerationConfigServicePg } from '../dbTypes.js';
 import {
   makeInvalidItemTypeHiddenFieldsError,
@@ -139,6 +145,7 @@ function assertValidRoleDependencies(
 }
 
 export function assertValidItemSchema(schema: ItemSchema): void {
+  const scalarTypes = new Set<unknown>(Object.values(ScalarTypes));
   const fieldNames = new Set<string>();
   for (const field of schema) {
     if (fieldNames.has(field.name)) {
@@ -148,6 +155,24 @@ export function assertValidItemSchema(schema: ItemSchema): void {
       });
     }
     fieldNames.add(field.name);
+
+    if (isContainerType(field.type)) {
+      const container = field.container;
+      const hasValidKey =
+        field.type === ContainerTypes.MAP
+          ? scalarTypes.has(container?.keyScalarType)
+          : container?.keyScalarType === null;
+      if (
+        container == null ||
+        container.containerType !== field.type ||
+        !hasValidKey ||
+        !scalarTypes.has(container.valueScalarType)
+      ) {
+        throwInvalidSchema(field.name, 'has an invalid container definition');
+      }
+    } else if (!scalarTypes.has(field.type) || field.container != null) {
+      throwInvalidSchema(field.name, 'has an invalid scalar definition');
+    }
   }
 }
 
@@ -219,6 +244,13 @@ export function assertHiddenFieldsExist(
 
 function throwIncompatible(fieldName: string, reason: string): never {
   throw makeItemTypeSchemaIncompatibleError({
+    shouldErrorSpan: false,
+    detail: `Field "${fieldName}" ${reason}.`,
+  });
+}
+
+function throwInvalidSchema(fieldName: string, reason: string): never {
+  throw makeInvalidItemTypeSchemaError({
     shouldErrorSpan: false,
     detail: `Field "${fieldName}" ${reason}.`,
   });
