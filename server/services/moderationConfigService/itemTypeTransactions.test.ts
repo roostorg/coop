@@ -106,6 +106,8 @@ describe.each([
         schema,
         schemaFieldRoles: {},
       });
+      // Populate the cache before the write locks the item-type materialized view.
+      await config.getItemTypes({ orgId });
       const failure = new Error('Abort combined update');
 
       await expect(
