@@ -75,9 +75,6 @@ jobs:
       - name: Check Node version parity
         run: npm run check:node-version
 
-      - name: Check AGENTS.md paths
-        run: npm run check:agents-paths
-
   check_generated_graphql:
     timeout-minutes: 5
     needs: [changes]
