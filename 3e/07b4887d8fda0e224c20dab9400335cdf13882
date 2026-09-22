@@ -1,0 +1,53 @@
+server/services/manualReviewToolService/modules/PriorityRecomputeLock.test.ts
+  s_8b2a28360a1bdd::t_eb64a47eafc3ee 156-174
+server/graphql/modules/manualReviewTool.ts
+  s_8b2a28360a1bdd::t_eb64a47eafc3ee 45,1905-1911
+server/services/manualReviewToolService/modules/QueueOperations.priorities.test.ts
+  s_8b2a28360a1bdd::t_eb64a47eafc3ee 205-285
+client/src/webpages/dashboard/components/table/sort.tsx
+  s_8b2a28360a1bdd::t_eb64a47eafc3ee 39-51
+server/services/manualReviewToolService/modules/PriorityRecomputeLock.ts
+  s_8b2a28360a1bdd::t_eb64a47eafc3ee 63-77,82,85-87
+CHANGELOG.md
+  s_357d32e2c92aa5::t_521977a3959a09 11-14
+server/graphql/modules/manualReviewTool.resolver.test.ts
+  s_8b2a28360a1bdd::t_eb64a47eafc3ee 27-30,78-82,111-114,138-139,144-219
+client/src/webpages/dashboard/mrt/ManualReviewQueueJobsPreview.tsx
+  s_357d32e2c92aa5::t_2376e934d2e8f3 16-19
+  s_8b2a28360a1bdd::t_eb64a47eafc3ee 171,215
+  s_357d32e2c92aa5::t_5ba85e482088f8 42
+  s_357d32e2c92aa5::t_63515b3c1e23bd 243-247,255
+server/services/manualReviewToolService/manualReviewToolService.ts
+  s_8b2a28360a1bdd::t_eb64a47eafc3ee 516-517,521,525,554-588,1104,1106-1139,1166-1171,1176-1178
+  s_8b2a28360a1bdd::t_f07236ea98c97e 1179
+server/services/manualReviewToolService/modules/QueueOperations.ts
+  s_8b2a28360a1bdd::t_eb64a47eafc3ee 1057-1061,1063-1070,1117-1137,1140-1148,1150-1153,1157-1158
+client/src/graphql/generated.ts
+  s_357d32e2c92aa5::t_1885c544f5d7ce 10072,33328
+client/src/webpages/dashboard/components/table/sort.test.tsx
+  s_357d32e2c92aa5::t_2850cbbaa6bb2b 1-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3e07b4887d8fda0e224c20dab9400335cdf13882",
+  "prompts": {},
+  "sessions": {
+    "s_357d32e2c92aa5": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "3318d8e2-acee-4d81-a6b5-61ca9e838d19",
+        "model": "grok-4.6"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    },
+    "s_8b2a28360a1bdd": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "f0f98f33-8304-486a-8b50-7a25faabf2c9",
+        "model": "claude-opus-4-6"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
