@@ -41,7 +41,6 @@ import {
 } from '../types/itemTypes.js';
 import {
   assertBackwardCompatibleItemSchema,
-  assertHiddenFieldsExist,
   assertValidItemSchema,
   assertValidItemTypeFieldRoles,
   mergeItemTypeRoleColumns,
@@ -76,7 +75,6 @@ type ItemTypeDbResult = Selection<
   (typeof itemTypeDbSelection)[number]
 >;
 
-export type ItemTypeHiddenFields = readonly string[];
 const itemTypeRoleColumnNames = [
   'display_name_field',
   'creator_id_field',
@@ -157,56 +155,38 @@ export default class ItemTypeOperations {
     await this.latestItemTypesCache.invalidate!(orgId);
   }
 
+  // Pass trx to every participating service call. The callback can be retried.
+  async withItemTypeTransaction<T extends ReadonlyDeep<ItemType>>(
+    orgId: string,
+    run: (trx: Transaction<ModerationConfigServicePg>) => Promise<T>,
+  ): Promise<T> {
+    const result = await this.transactionWithRetry(run);
+    await this.invalidateLatestItemTypesCache(orgId);
+    return result;
+  }
+
+  private async readAfterWrite(
+    orgId: string,
+    trx?: Transaction<ModerationConfigServicePg>,
+  ): Promise<readonly ReadonlyDeep<ItemType>[]> {
+    if (trx) {
+      const rows = await getItemTypeVersionsBaseQuery({
+        orgId,
+        currentVersionsOnly: true,
+        pgQuery: trx,
+      }).execute();
+      return rows.map((row) => dbResultToItemType(row, 'original'));
+    }
+    await this.invalidateLatestItemTypesCache(orgId);
+    return this.latestItemTypesCache(orgId, { maxAge: 0 });
+  }
+
   async getItemTypes(opts: {
     orgId: string;
     directives?: ConsumerDirectives;
   }): Promise<readonly ReadonlyDeep<ItemType>[]> {
     const { orgId, directives } = opts;
     return this.latestItemTypesCache(orgId, directives);
-  }
-
-  async getHiddenFieldsForItemType(opts: {
-    orgId: string;
-    itemTypeId: string;
-  }): Promise<ItemTypeHiddenFields> {
-    const row = await this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_hidden_item_fields')
-      .select('hidden_fields')
-      .where('org_id', '=', opts.orgId)
-      .where('item_type_id', '=', opts.itemTypeId)
-      .executeTakeFirst();
-    return row?.hidden_fields ?? [];
-  }
-
-  async setHiddenFieldsForItemType(opts: {
-    orgId: string;
-    itemTypeId: string;
-    hiddenFields: readonly string[];
-  }): Promise<void> {
-    await this.transactionWithRetry(async (trx) => {
-      const itemType = await trx
-        .selectFrom('public.item_types')
-        .select('fields')
-        .where('id', '=', opts.itemTypeId)
-        .where('org_id', '=', opts.orgId)
-        .forUpdate()
-        .executeTakeFirst();
-      if (itemType === undefined) {
-        if (opts.hiddenFields.length === 0) {
-          await trx
-            .deleteFrom('manual_review_tool.manual_review_hidden_item_fields')
-            .where('org_id', '=', opts.orgId)
-            .where('item_type_id', '=', opts.itemTypeId)
-            .execute();
-          return;
-        }
-        throw makeNotFoundError('Item type not found', {
-          shouldErrorSpan: false,
-        });
-      }
-      assertHiddenFieldsExist(itemType.fields, opts.hiddenFields);
-      await this.setHiddenFields(trx, opts);
-    });
   }
 
   async getItemType(opts: {
@@ -340,18 +320,24 @@ export default class ItemTypeOperations {
         isDeleted?: string | null;
         ipAddress?: string | null;
       };
-      hiddenFields?: readonly string[] | null;
     },
+    trx?: Transaction<ModerationConfigServicePg>,
   ) {
-    return this.createItemType<ContentItemType>(orgId, 'CONTENT', input, {
-      creator_id_field: input.schemaFieldRoles.creatorId,
-      thread_id_field: input.schemaFieldRoles.threadId,
-      parent_id_field: input.schemaFieldRoles.parentId,
-      created_at_field: input.schemaFieldRoles.createdAt,
-      display_name_field: input.schemaFieldRoles.displayName,
-      is_deleted_field: input.schemaFieldRoles.isDeleted,
-      ip_address_field: input.schemaFieldRoles.ipAddress,
-    });
+    return this.createItemType<ContentItemType>(
+      orgId,
+      'CONTENT',
+      input,
+      {
+        creator_id_field: input.schemaFieldRoles.creatorId,
+        thread_id_field: input.schemaFieldRoles.threadId,
+        parent_id_field: input.schemaFieldRoles.parentId,
+        created_at_field: input.schemaFieldRoles.createdAt,
+        display_name_field: input.schemaFieldRoles.displayName,
+        is_deleted_field: input.schemaFieldRoles.isDeleted,
+        ip_address_field: input.schemaFieldRoles.ipAddress,
+      },
+      trx,
+    );
   }
 
   async updateContentType(
@@ -370,8 +356,8 @@ export default class ItemTypeOperations {
         isDeleted?: string | null;
         ipAddress?: string | null;
       };
-      hiddenFields?: readonly string[] | null;
     },
+    trx?: Transaction<ModerationConfigServicePg>,
   ) {
     return this.updateItemType<ContentItemType>(
       orgId,
@@ -402,6 +388,7 @@ export default class ItemTypeOperations {
               input.schemaFieldRoles.ipAddress,
             ),
           },
+      trx,
     );
   }
 
@@ -418,16 +405,22 @@ export default class ItemTypeOperations {
         isDeleted?: string | null;
         ipAddress?: string | null;
       };
-      hiddenFields?: readonly string[] | null;
     },
+    trx?: Transaction<ModerationConfigServicePg>,
   ): Promise<ThreadItemType> {
-    return this.createItemType<ThreadItemType>(orgId, 'THREAD', input, {
-      created_at_field: input.schemaFieldRoles.createdAt,
-      display_name_field: input.schemaFieldRoles.displayName,
-      creator_id_field: input.schemaFieldRoles.creatorId,
-      is_deleted_field: input.schemaFieldRoles.isDeleted,
-      ip_address_field: input.schemaFieldRoles.ipAddress,
-    });
+    return this.createItemType<ThreadItemType>(
+      orgId,
+      'THREAD',
+      input,
+      {
+        created_at_field: input.schemaFieldRoles.createdAt,
+        display_name_field: input.schemaFieldRoles.displayName,
+        creator_id_field: input.schemaFieldRoles.creatorId,
+        is_deleted_field: input.schemaFieldRoles.isDeleted,
+        ip_address_field: input.schemaFieldRoles.ipAddress,
+      },
+      trx,
+    );
   }
 
   async updateThreadType(
@@ -444,8 +437,8 @@ export default class ItemTypeOperations {
         isDeleted?: string | null;
         ipAddress?: string | null;
       };
-      hiddenFields?: readonly string[] | null;
     },
+    trx?: Transaction<ModerationConfigServicePg>,
   ) {
     return this.updateItemType<ThreadItemType>(
       orgId,
@@ -470,6 +463,7 @@ export default class ItemTypeOperations {
               input.schemaFieldRoles.ipAddress,
             ),
           },
+      trx,
     );
   }
 
@@ -488,18 +482,24 @@ export default class ItemTypeOperations {
         ipAddress?: string | null;
         email?: string | null;
       };
-      hiddenFields?: readonly string[] | null;
     },
+    trx?: Transaction<ModerationConfigServicePg>,
   ) {
-    return this.createItemType<UserItemType>(orgId, 'USER', input, {
-      profile_icon_field: input.schemaFieldRoles.profileIcon,
-      background_image_field: input.schemaFieldRoles.backgroundImage,
-      created_at_field: input.schemaFieldRoles.createdAt,
-      display_name_field: input.schemaFieldRoles.displayName,
-      is_deleted_field: input.schemaFieldRoles.isDeleted,
-      ip_address_field: input.schemaFieldRoles.ipAddress,
-      email_field: input.schemaFieldRoles.email,
-    });
+    return this.createItemType<UserItemType>(
+      orgId,
+      'USER',
+      input,
+      {
+        profile_icon_field: input.schemaFieldRoles.profileIcon,
+        background_image_field: input.schemaFieldRoles.backgroundImage,
+        created_at_field: input.schemaFieldRoles.createdAt,
+        display_name_field: input.schemaFieldRoles.displayName,
+        is_deleted_field: input.schemaFieldRoles.isDeleted,
+        ip_address_field: input.schemaFieldRoles.ipAddress,
+        email_field: input.schemaFieldRoles.email,
+      },
+      trx,
+    );
   }
 
   async updateUserType(
@@ -518,8 +518,8 @@ export default class ItemTypeOperations {
         ipAddress?: string | null;
         email?: string | null;
       };
-      hiddenFields?: readonly string[] | null;
     },
+    trx?: Transaction<ModerationConfigServicePg>,
   ): Promise<UserItemType> {
     return this.updateItemType<UserItemType>(
       orgId,
@@ -550,6 +550,7 @@ export default class ItemTypeOperations {
               input.schemaFieldRoles.email,
             ),
           },
+      trx,
     );
   }
 
@@ -560,38 +561,38 @@ export default class ItemTypeOperations {
       name: string;
       schema: ItemSchema;
       description?: string | null;
-      hiddenFields?: readonly string[] | null;
     },
     roleColumns: ItemTypeRoleColumns,
+    trx?: Transaction<ModerationConfigServicePg>,
   ): Promise<T> {
     const itemTypeId = uid();
+    const create = async (query: Transaction<ModerationConfigServicePg>) => {
+      assertValidItemSchema(input.schema);
+      assertValidItemTypeFieldRoles(input.schema, kind, roleColumns);
+      await query
+        .insertInto('public.item_types')
+        .values({
+          id: itemTypeId,
+          name: input.name,
+          description: input.description,
+          org_id: orgId,
+          kind,
+          fields: input.schema,
+          ...roleColumns,
+        })
+        .execute();
+      return (await this.readAfterWrite(orgId, query)).find(
+        (itemType): itemType is T =>
+          itemType.kind === kind && itemType.id === itemTypeId,
+      )!;
+    };
     try {
-      await this.transactionWithRetry(async (trx) => {
-        assertValidItemSchema(input.schema);
-        assertValidItemTypeFieldRoles(input.schema, kind, roleColumns);
-        assertHiddenFieldsExist(input.schema, input.hiddenFields ?? []);
-        await trx
-          .insertInto('public.item_types')
-          .values({
-            id: itemTypeId,
-            name: input.name,
-            description: input.description,
-            org_id: orgId,
-            kind,
-            fields: input.schema,
-            ...roleColumns,
-          })
-          .execute();
-        await this.setHiddenFields(trx, {
-          orgId,
-          itemTypeId,
-          hiddenFields: input.hiddenFields ?? [],
-        });
-      });
+      return trx
+        ? await create(trx)
+        : await this.withItemTypeTransaction(orgId, create);
     } catch (error) {
       this.rethrowItemTypeNameConflict(error);
     }
-    return this.reloadAfterWrite<T>(orgId, itemTypeId, kind);
   }
 
   private async updateItemType<T extends ItemType>(
@@ -602,110 +603,59 @@ export default class ItemTypeOperations {
       name?: string;
       schema?: ItemSchema;
       description?: string | null;
-      hiddenFields?: readonly string[] | null;
     },
     roleColumns: ItemTypeRoleColumns,
+    trx?: Transaction<ModerationConfigServicePg>,
   ): Promise<T> {
-    let itemTypeId: string;
+    const update = async (query: Transaction<ModerationConfigServicePg>) => {
+      const current = await query
+        .selectFrom('public.item_types')
+        .select(['id', 'fields', ...itemTypeRoleColumnNames])
+        .where('id', '=', input.id)
+        .where('org_id', '=', orgId)
+        .where('kind', '=', kind)
+        .forUpdate()
+        .executeTakeFirst();
+      if (current === undefined) {
+        throw makeNotFoundError('Item type not found', {
+          shouldErrorSpan: false,
+        });
+      }
+      const proposedSchema = input.schema ?? current.fields;
+      assertValidItemSchema(proposedSchema);
+      assertBackwardCompatibleItemSchema(current.fields, proposedSchema);
+      const proposedRoleColumns = mergeItemTypeRoleColumns(
+        current,
+        roleColumns,
+      );
+      assertValidItemTypeFieldRoles(proposedSchema, kind, proposedRoleColumns);
+      const updated = await query
+        .updateTable('public.item_types')
+        .set(
+          removeUndefinedKeys({
+            name: input.name,
+            description: replaceEmptyStringWithNull(input.description),
+            fields: proposedSchema,
+            ...roleColumns,
+          }),
+        )
+        .where('id', '=', current.id)
+        .where('org_id', '=', orgId)
+        .where('kind', '=', kind)
+        .returning('id')
+        .executeTakeFirstOrThrow();
+      return (await this.readAfterWrite(orgId, query)).find(
+        (itemType): itemType is T =>
+          itemType.kind === kind && itemType.id === updated.id,
+      )!;
+    };
     try {
-      itemTypeId = await this.transactionWithRetry(async (trx) => {
-        const current = await trx
-          .selectFrom('public.item_types')
-          .select(['id', 'fields', ...itemTypeRoleColumnNames])
-          .where('id', '=', input.id)
-          .where('org_id', '=', orgId)
-          .where('kind', '=', kind)
-          .forUpdate()
-          .executeTakeFirst();
-        if (current === undefined) {
-          throw makeNotFoundError('Item type not found', {
-            shouldErrorSpan: false,
-          });
-        }
-        const proposedSchema = input.schema ?? current.fields;
-        assertValidItemSchema(proposedSchema);
-        assertBackwardCompatibleItemSchema(current.fields, proposedSchema);
-        const proposedRoleColumns = mergeItemTypeRoleColumns(
-          current,
-          roleColumns,
-        );
-        assertValidItemTypeFieldRoles(
-          proposedSchema,
-          kind,
-          proposedRoleColumns,
-        );
-        const existingHiddenFields = await this.getHiddenFields(
-          trx,
-          orgId,
-          current.id,
-        );
-        const proposedHiddenFields = input.hiddenFields ?? existingHiddenFields;
-        assertHiddenFieldsExist(proposedSchema, proposedHiddenFields);
-        if (input.hiddenFields != null) {
-          await this.setHiddenFields(trx, {
-            orgId,
-            itemTypeId: current.id,
-            hiddenFields: input.hiddenFields,
-          });
-        }
-        const updated = await trx
-          .updateTable('public.item_types')
-          .set(
-            removeUndefinedKeys({
-              name: input.name,
-              description: replaceEmptyStringWithNull(input.description),
-              fields: proposedSchema,
-              ...roleColumns,
-            }),
-          )
-          .where('id', '=', current.id)
-          .where('org_id', '=', orgId)
-          .where('kind', '=', kind)
-          .returning('id')
-          .executeTakeFirstOrThrow();
-        return updated.id;
-      });
+      return trx
+        ? await update(trx)
+        : await this.withItemTypeTransaction(orgId, update);
     } catch (error) {
       this.rethrowItemTypeNameConflict(error);
     }
-    return this.reloadAfterWrite<T>(orgId, itemTypeId, kind);
-  }
-
-  private async getHiddenFields(
-    query: Transaction<ModerationConfigServicePg>,
-    orgId: string,
-    itemTypeId: string,
-  ) {
-    const row = await query
-      .selectFrom('manual_review_tool.manual_review_hidden_item_fields')
-      .select('hidden_fields')
-      .where('org_id', '=', orgId)
-      .where('item_type_id', '=', itemTypeId)
-      .executeTakeFirst();
-    return row?.hidden_fields ?? [];
-  }
-
-  private async setHiddenFields(
-    query: Transaction<ModerationConfigServicePg>,
-    opts: {
-      orgId: string;
-      itemTypeId: string;
-      hiddenFields: readonly string[];
-    },
-  ) {
-    await query
-      .insertInto('manual_review_tool.manual_review_hidden_item_fields')
-      .values({
-        org_id: opts.orgId,
-        item_type_id: opts.itemTypeId,
-        hidden_fields: [...opts.hiddenFields],
-      })
-      .onConflict((oc) =>
-        oc
-          .columns(['org_id', 'item_type_id'])
-          .doUpdateSet({ hidden_fields: [...opts.hiddenFields] }),
-      )
-      .execute();
   }
 
   private rethrowItemTypeNameConflict(error: unknown): never {
@@ -723,24 +673,6 @@ export default class ItemTypeOperations {
       throw makeItemTypeNameAlreadyExistsError({ shouldErrorSpan: false });
     }
     throw error;
-  }
-
-  private async reloadAfterWrite<T extends ItemType>(
-    orgId: string,
-    itemTypeId: string,
-    kind: ItemTypeKind,
-  ): Promise<T> {
-    await this.invalidateLatestItemTypesCache(orgId);
-    const itemType = (
-      await this.latestItemTypesCache(orgId, { maxAge: 0 })
-    ).find(
-      (itemType): itemType is T =>
-        itemType.kind === kind && itemType.id === itemTypeId,
-    );
-    if (itemType === undefined) {
-      throw new Error('Committed item type missing after cache reload');
-    }
-    return itemType;
   }
 
   /**
