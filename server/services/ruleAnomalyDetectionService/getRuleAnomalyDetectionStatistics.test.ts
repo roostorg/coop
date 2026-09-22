@@ -1,3 +1,5 @@
+import { vi } from 'vitest';
+
 import { type Dependencies } from '../../iocContainer/index.js';
 import { type MockedFn } from '../../test/mockHelpers/jestMocks.js';
 import makeGetRuleAnomalyDetectionStatistics from './getRuleAnomalyDetectionStatistics.js';
@@ -35,15 +37,15 @@ describe('getRuleAnomalyDetectionStatistics', () => {
 
     // Scope of this is just the test suite, so mutation should be ok.
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- jest.fn() defaults to a generic call signature; cast lets us use the typed "queryMock" declared above.
-    queryMock = jest.fn() as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- vi.fn() defaults to a generic call signature; cast lets us use the typed "queryMock" declared above.
+    queryMock = vi.fn() as any;
     queryMock.mockResolvedValue(queryResult);
 
     const dataWarehouseMock = {
       query: queryMock,
-      transaction: jest.fn(),
-      start: jest.fn(),
-      close: jest.fn(),
+      transaction: vi.fn(),
+      start: vi.fn(),
+      close: vi.fn(),
       getProvider: () => 'clickhouse' as const,
     };
 

@@ -1,4 +1,5 @@
 import React from 'react';
+import { vi } from 'vitest';
 
 import '@testing-library/jest-dom';
 import '@testing-library/jest-dom/extend-expect';
@@ -35,7 +36,7 @@ describe('DateRangePicker', () => {
   });
 
   it('should call onUpdate with the correct value when date is selected', async () => {
-    const onUpdateMock = jest.fn();
+    const onUpdateMock = vi.fn();
     render(
       <DateRangePicker
         initialDateFrom="2023-01-01"

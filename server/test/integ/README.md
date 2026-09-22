@@ -27,7 +27,7 @@ cd server && npm run test:integ
 | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | `setupIntegrationServer.ts` | Boots the real IoC container, starts the express app and `ItemProcessingWorker` inline, returns a `supertest` agent + shutdown handle. |
 | `wait.ts`                   | Polling helpers — `waitForItemInScylla`, `waitForItemInClickHouse`, generic `waitFor`.                                                 |
-| `*.integ.test.ts`           | The tests themselves. Picked up by `jest.integ.config.cjs`, excluded from the unit `jest.config.cjs`.                                  |
+| `*.integ.test.ts`           | The tests themselves. Picked up by `vitest.integ.config.ts`, excluded from the unit `vitest.config.ts`.                                |
 
 Fixture helpers (`createOrg`, `createContentItemTypes`, ...) live in
 `server/test/fixtureHelpers/` and are shared with unit tests.

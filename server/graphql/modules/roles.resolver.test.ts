@@ -1,3 +1,5 @@
+import { vi, type Mock } from 'vitest';
+
 import {
   UserPermission,
   UserRole,
@@ -11,18 +13,18 @@ import { resolvers } from './roles.js';
 // sanitized input.
 
 type RoleApiMock = {
-  listRolesForOrg: jest.Mock;
-  getPermissionGroups: jest.Mock;
-  updateRolePermissions: jest.Mock;
-  renameRole: jest.Mock;
+  listRolesForOrg: Mock;
+  getPermissionGroups: Mock;
+  updateRolePermissions: Mock;
+  renameRole: Mock;
 };
 
 function makeCtx(permissions: readonly UserPermission[]) {
   const roleAPI: RoleApiMock = {
-    listRolesForOrg: jest.fn(async () => []),
-    getPermissionGroups: jest.fn(() => []),
-    updateRolePermissions: jest.fn(async () => stubRoleParent()),
-    renameRole: jest.fn(async () => stubRoleParent()),
+    listRolesForOrg: vi.fn(async () => []),
+    getPermissionGroups: vi.fn(() => []),
+    updateRolePermissions: vi.fn(async () => stubRoleParent()),
+    renameRole: vi.fn(async () => stubRoleParent()),
   };
   const ctx = {
     getUser: () => ({

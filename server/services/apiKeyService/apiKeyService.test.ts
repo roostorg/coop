@@ -1,4 +1,5 @@
 import type { Kysely } from 'kysely';
+import { vi, type Mock } from 'vitest';
 
 import { makeTestWithFixture } from '../../test/utils.js';
 import { type CombinedPg } from '../combinedDbTypes.js';
@@ -6,10 +7,10 @@ import ApiKeyService from './apiKeyService.js';
 
 // Mock Kysely database
 const mockDb = {
-  insertInto: jest.fn(),
-  selectFrom: jest.fn(),
-  updateTable: jest.fn(),
-  deleteFrom: jest.fn(),
+  insertInto: vi.fn(),
+  selectFrom: vi.fn(),
+  updateTable: vi.fn(),
+  deleteFrom: vi.fn(),
 } as unknown as Kysely<CombinedPg>;
 
 describe('ApiKeyService', () => {
@@ -21,7 +22,7 @@ describe('ApiKeyService', () => {
   });
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('#createApiKey', () => {
@@ -30,9 +31,9 @@ describe('ApiKeyService', () => {
       async ({ sut }) => {
         // Mock the database operations
         const mockInsert = {
-          values: jest.fn().mockReturnThis(),
-          returningAll: jest.fn().mockReturnThis(),
-          executeTakeFirstOrThrow: jest.fn().mockResolvedValue({
+          values: vi.fn().mockReturnThis(),
+          returningAll: vi.fn().mockReturnThis(),
+          executeTakeFirstOrThrow: vi.fn().mockResolvedValue({
             id: 'key-123',
             org_id: fakeOrg.id,
             key_hash: 'hashed-key',
@@ -47,13 +48,13 @@ describe('ApiKeyService', () => {
         };
 
         const mockUpdate = {
-          set: jest.fn().mockReturnThis(),
-          where: jest.fn().mockReturnThis(),
-          execute: jest.fn().mockResolvedValue([]),
+          set: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          execute: vi.fn().mockResolvedValue([]),
         };
 
-        (mockDb.insertInto as jest.Mock).mockReturnValue(mockInsert);
-        (mockDb.updateTable as jest.Mock).mockReturnValue(mockUpdate);
+        (mockDb.insertInto as Mock).mockReturnValue(mockInsert);
+        (mockDb.updateTable as Mock).mockReturnValue(mockUpdate);
 
         const res = await sut.createApiKey(
           fakeOrg.id,
@@ -76,9 +77,9 @@ describe('ApiKeyService', () => {
       'should retrieve the active key for an org',
       async ({ sut }) => {
         const mockSelect = {
-          selectAll: jest.fn().mockReturnThis(),
-          where: jest.fn().mockReturnThis(),
-          executeTakeFirst: jest.fn().mockResolvedValue({
+          selectAll: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          executeTakeFirst: vi.fn().mockResolvedValue({
             id: 'key-123',
             org_id: fakeOrg.id,
             key_hash: 'hashed-key',
@@ -92,7 +93,7 @@ describe('ApiKeyService', () => {
           }),
         };
 
-        (mockDb.selectFrom as jest.Mock).mockReturnValue(mockSelect);
+        (mockDb.selectFrom as Mock).mockReturnValue(mockSelect);
 
         const result = await sut.getActiveApiKeyForOrg(fakeOrg.id);
 
@@ -106,12 +107,12 @@ describe('ApiKeyService', () => {
       'should return null if no active key exists',
       async ({ sut }) => {
         const mockSelect = {
-          selectAll: jest.fn().mockReturnThis(),
-          where: jest.fn().mockReturnThis(),
-          executeTakeFirst: jest.fn().mockResolvedValue(undefined),
+          selectAll: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          executeTakeFirst: vi.fn().mockResolvedValue(undefined),
         };
 
-        (mockDb.selectFrom as jest.Mock).mockReturnValue(mockSelect);
+        (mockDb.selectFrom as Mock).mockReturnValue(mockSelect);
 
         const result = await sut.getActiveApiKeyForOrg(fakeOrg.id);
 
@@ -125,22 +126,22 @@ describe('ApiKeyService', () => {
       'should validate a key and return org ID',
       async ({ sut }) => {
         const mockSelect = {
-          select: jest.fn().mockReturnThis(),
-          where: jest.fn().mockReturnThis(),
-          executeTakeFirst: jest.fn().mockResolvedValue({
+          select: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          executeTakeFirst: vi.fn().mockResolvedValue({
             org_id: fakeOrg.id,
             last_used_at: new Date(),
           }),
         };
 
         const mockUpdate = {
-          set: jest.fn().mockReturnThis(),
-          where: jest.fn().mockReturnThis(),
-          execute: jest.fn().mockResolvedValue([]),
+          set: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          execute: vi.fn().mockResolvedValue([]),
         };
 
-        (mockDb.selectFrom as jest.Mock).mockReturnValue(mockSelect);
-        (mockDb.updateTable as jest.Mock).mockReturnValue(mockUpdate);
+        (mockDb.selectFrom as Mock).mockReturnValue(mockSelect);
+        (mockDb.updateTable as Mock).mockReturnValue(mockUpdate);
 
         const result = await sut.validateApiKey('test-key');
 
@@ -150,12 +151,12 @@ describe('ApiKeyService', () => {
 
     testWithFixtures('should return null for invalid key', async ({ sut }) => {
       const mockSelect = {
-        select: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        executeTakeFirst: jest.fn().mockResolvedValue(undefined),
+        select: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        executeTakeFirst: vi.fn().mockResolvedValue(undefined),
       };
 
-      (mockDb.selectFrom as jest.Mock).mockReturnValue(mockSelect);
+      (mockDb.selectFrom as Mock).mockReturnValue(mockSelect);
 
       const result = await sut.validateApiKey('invalid-key');
 

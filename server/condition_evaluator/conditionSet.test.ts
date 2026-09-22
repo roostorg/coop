@@ -1,6 +1,7 @@
 import fc from 'fast-check';
 import _ from 'lodash';
 import type { ReadonlyDeep } from 'type-fest';
+import { vi } from 'vitest';
 
 import {
   ConditionCompletionOutcome,
@@ -34,7 +35,7 @@ const { AND, OR, XOR } = ConditionConjunction;
 describe('Condition Evaluation', () => {
   describe('getConditionSetResults', () => {
     test('should run conditions in cost order, skipping unnecessary ones', async () => {
-      const stubRunLeafCondition = jest.fn(
+      const stubRunLeafCondition = vi.fn(
         async (_it: ReadonlyDeep<LeafCondition>) => ({
           outcome: ConditionCompletionOutcome.PASSED,
         }),
@@ -89,7 +90,7 @@ describe('Condition Evaluation', () => {
                 // a full RuleEvaluationContext / SafeTracer is unnecessary.
                 /* eslint-disable @typescript-eslint/no-explicit-any */
                 { getSignalCost } as any,
-                jest.fn() as any,
+                vi.fn() as any,
                 /* eslint-enable @typescript-eslint/no-explicit-any */
                 stubRunLeafCondition,
               );

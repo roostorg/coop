@@ -285,6 +285,7 @@ const correctnessRules = {
         '**/test/**',
         '**/e2e/**',
         '**/*.{spec,test}.{ts,tsx,js}',
+        '**/vitest*.config.ts',
         '.storybook/**',
         '**/*.stories.tsx',
         '**/bin/**',

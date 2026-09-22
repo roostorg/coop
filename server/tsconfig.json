@@ -18,6 +18,7 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "allowJs": true,
+    "types": ["node", "vitest/globals"],
     "skipLibCheck": true,
     "sourceMap": true
   },

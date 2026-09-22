@@ -2,6 +2,7 @@ import { faker } from '@faker-js/faker';
 import { Kysely } from 'kysely';
 import { type UnionToIntersection } from 'type-fest';
 import { uid } from 'uid';
+import { vi } from 'vitest';
 
 import getBottle from '../../iocContainer/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
@@ -42,7 +43,7 @@ type Sut = ConstructorParameters<typeof ModerationConfigService>[0];
 function makeSuts(primary: Sut, replica: Sut) {
   const kyselyShouldBeUnused = new Kysely<ModerationConfigServicePg>({
     dialect: makeMockPgDialect(
-      jest.fn<MockPgExecute>().mockImplementation(async () => {
+      vi.fn<MockPgExecute>().mockImplementation(async () => {
         throw new Error('Did not expect this kysely instance to be used!');
       }),
     ),

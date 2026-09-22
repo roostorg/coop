@@ -85,13 +85,13 @@ Client: http://localhost:3000 · Server: http://localhost:8080
 
 ## Testing
 
-Integration tests spin up services via docker compose. Unit tests run in-process.
+Both packages use Vitest. Server tests need the local backing services and migrations; client tests run in-process with jsdom.
 
 ```bash
 # Run all tests (via docker compose)
 docker compose run --rm test
 
-# Server unit tests (no Docker)
+# Server unit tests (backing services must already be running)
 (cd server && npm test)
 
 # Client unit tests (no Docker)

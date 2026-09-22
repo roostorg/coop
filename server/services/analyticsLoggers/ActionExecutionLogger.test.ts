@@ -1,3 +1,5 @@
+import { vi, type Mock } from 'vitest';
+
 import { type Dependencies } from '../../iocContainer/index.js';
 import { type ActionExecutionData } from '../../rule_engine/ActionPublisher.js';
 import { type AnalyticsSchema } from '../../storage/dataWarehouse/IDataWarehouseAnalytics.js';
@@ -9,12 +11,12 @@ const asJsonOf = (s: string) => s as JsonOf<unknown>;
 
 type BulkWrite = Dependencies['DataWarehouseAnalytics']['bulkWrite'];
 // Same `as unknown as` pattern used in `test/setupMockedServer.ts` for the
-// shared analytics mock — `jest.fn(async () => {})` returns a generic Mock
+// shared analytics mock — `vi.fn(async () => {})` returns a generic Mock
 // that doesn't structurally satisfy the typed `bulkWrite` overload signature.
-type BulkWriteMock = jest.MockedFunction<BulkWrite>;
+type BulkWriteMock = Mock<BulkWrite>;
 
 function makeLogger() {
-  const bulkWrite = jest.fn(async () => {}) as unknown as BulkWriteMock;
+  const bulkWrite = vi.fn(async () => {}) as unknown as BulkWriteMock;
   const logger = new ActionExecutionLogger({ bulkWrite });
   return { logger, bulkWrite };
 }

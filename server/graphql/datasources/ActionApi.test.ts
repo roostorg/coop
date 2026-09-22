@@ -1,14 +1,16 @@
+import { vi, type Mock } from 'vitest';
+
 import ActionAPI from './ActionApi.js';
 
 type ActionAPICtor = new (
-  actionPublisher: { publishActions: jest.Mock },
+  actionPublisher: { publishActions: Mock },
   moderationConfigService: {
-    getActions: jest.Mock;
-    getPoliciesByIds: jest.Mock;
+    getActions: Mock;
+    getPoliciesByIds: Mock;
   },
   tracer: unknown,
-  itemInvestigationService: { getItemByIdentifier: jest.Mock },
-  getItemTypeEventuallyConsistent: jest.Mock,
+  itemInvestigationService: { getItemByIdentifier: Mock },
+  getItemTypeEventuallyConsistent: Mock,
 ) => InstanceType<typeof ActionAPI>;
 
 function makeApi(overrides?: { action?: Record<string, unknown> }) {
@@ -41,16 +43,16 @@ function makeApi(overrides?: { action?: Record<string, unknown> }) {
     ],
   };
 
-  const publishActions = jest.fn().mockResolvedValue([]);
-  const getActions = jest.fn().mockResolvedValue([action]);
-  const getPoliciesByIds = jest.fn().mockResolvedValue([]);
-  const getItemByIdentifier = jest.fn().mockResolvedValue({
+  const publishActions = vi.fn().mockResolvedValue([]);
+  const getActions = vi.fn().mockResolvedValue([action]);
+  const getPoliciesByIds = vi.fn().mockResolvedValue([]);
+  const getItemByIdentifier = vi.fn().mockResolvedValue({
     latestSubmission: {
       itemId: 'item-1',
       itemType: { id: 'type-1', kind: 'CONTENT', name: 'Social Post' },
     },
   });
-  const getItemTypeEventuallyConsistent = jest.fn().mockResolvedValue({
+  const getItemTypeEventuallyConsistent = vi.fn().mockResolvedValue({
     id: 'type-1',
     kind: 'CONTENT',
     name: 'Social Post',

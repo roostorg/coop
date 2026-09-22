@@ -1,4 +1,5 @@
 import { type Kysely } from 'kysely';
+import { vi } from 'vitest';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import {
@@ -22,25 +23,25 @@ function makeUserAPIForGuardTest(kyselyPg: Dependencies['KyselyPg']) {
 // changePassword only touches the injected Kysely instance (for the user
 // update + session deletion); the other constructor deps are unused here.
 function makeMockKyselyPg() {
-  const updateExecuteTakeFirst = jest.fn();
+  const updateExecuteTakeFirst = vi.fn();
   const updateBuilder = {
-    set: jest.fn().mockReturnThis(),
-    where: jest.fn().mockReturnThis(),
-    returning: jest.fn().mockReturnThis(),
+    set: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
+    returning: vi.fn().mockReturnThis(),
     executeTakeFirst: updateExecuteTakeFirst,
   };
 
-  const deleteWhere = jest.fn();
-  const deleteBuilder = { where: deleteWhere, execute: jest.fn() };
+  const deleteWhere = vi.fn();
+  const deleteBuilder = { where: deleteWhere, execute: vi.fn() };
   deleteWhere.mockReturnValue(deleteBuilder);
   deleteBuilder.execute.mockResolvedValue([]);
 
-  const updateTable = jest.fn().mockReturnValue(updateBuilder);
-  const deleteFrom = jest.fn().mockReturnValue(deleteBuilder);
+  const updateTable = vi.fn().mockReturnValue(updateBuilder);
+  const deleteFrom = vi.fn().mockReturnValue(deleteBuilder);
 
   // changePassword runs inside makeKyselyTransactionWithRetry, which calls
   // `kysely.transaction().execute(cb)`. Run the callback against this same mock.
-  const transaction = jest.fn().mockReturnValue({
+  const transaction = vi.fn().mockReturnValue({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test trx stub
     execute: (cb: (trx: any) => unknown) => cb(kyselyPg),
   });
@@ -58,7 +59,7 @@ describe('UserAPI', () => {
     const testWithFixtures = makeTestWithFixture(() => ({}));
 
     beforeEach(() => {
-      jest.clearAllMocks();
+      vi.clearAllMocks();
     });
 
     testWithFixtures(
@@ -146,7 +147,7 @@ describe('UserAPI', () => {
 
   describe('#signUp', () => {
     beforeEach(() => {
-      jest.clearAllMocks();
+      vi.clearAllMocks();
     });
 
     it('rejects a password shorter than the minimum', async () => {

@@ -1,3 +1,5 @@
+import { vi, type Mock } from 'vitest';
+
 import {
   type Dependencies,
   type PublicInterface,
@@ -23,17 +25,17 @@ function makeMockKyselyForRules(
   }>,
   orgRows: Array<{ id: string; on_call_alert_email: string | null }>,
 ) {
-  const updateExecute = jest.fn().mockResolvedValue(undefined);
+  const updateExecute = vi.fn().mockResolvedValue(undefined);
   const mockDb = {
-    selectFrom: jest.fn((table: string) => {
+    selectFrom: vi.fn((table: string) => {
       const chain: {
-        select: jest.Mock;
-        where: jest.Mock;
-        execute: jest.Mock;
+        select: Mock;
+        where: Mock;
+        execute: Mock;
       } = {
-        select: jest.fn(),
-        where: jest.fn(),
-        execute: jest.fn(),
+        select: vi.fn(),
+        where: vi.fn(),
+        execute: vi.fn(),
       };
       chain.select.mockReturnValue(chain);
       chain.where.mockReturnValue(chain);
@@ -55,9 +57,9 @@ function makeMockKyselyForRules(
       });
       return chain;
     }),
-    updateTable: jest.fn(() => ({
-      set: jest.fn().mockReturnValue({
-        where: jest.fn().mockReturnValue({
+    updateTable: vi.fn(() => ({
+      set: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
           execute: updateExecute,
         }),
       }),
@@ -183,8 +185,8 @@ describe('Detect Rule Anomalies', () => {
           };
 
         const mockNotificationsService = {
-          createNotifications: jest.fn(),
-          getNotificationsForUser: jest.fn(),
+          createNotifications: vi.fn(),
+          getNotificationsForUser: vi.fn(),
         } as unknown as Mocked<
           PublicInterface<NotificationsService>,
           'createNotifications'
@@ -216,7 +218,7 @@ describe('Detect Rule Anomalies', () => {
           mockKysely as unknown as Dependencies['KyselyPg'],
           mockNotificationsService,
           mockGetCurrentPeriodRuleAlarmStatuses,
-          jest.fn<() => Promise<void>>(),
+          vi.fn<() => Promise<void>>(),
         );
         await worker.run();
 

@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import { vi } from 'vitest';
 
 import { createBodySchemaValidator } from './bodySchemaValidation.js';
 import { CoopError } from './errors.js';
@@ -20,12 +21,12 @@ function invoke(
 ) {
   const req: Partial<Request> = { body };
   const res: Partial<Response> = {};
-  const next = jest.fn();
+  const next = vi.fn();
   middleware(req as Request, res as Response, next);
   return { next };
 }
 
-function firstNextArg(next: ReturnType<typeof jest.fn>): unknown {
+function firstNextArg(next: ReturnType<typeof vi.fn>): unknown {
   return next.mock.calls[0]?.[0];
 }
 

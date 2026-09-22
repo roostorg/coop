@@ -1,3 +1,5 @@
+import { vi } from 'vitest';
+
 import {
   UserPermission,
   UserRole,
@@ -7,8 +9,8 @@ import { resolvers } from './retroaction.js';
 describe('retroaction resolvers', () => {
   describe('Mutation.runRetroaction', () => {
     it('does not call getRuleByIdAndOrg when the user lacks RUN_RETROACTION', async () => {
-      const getRuleByIdAndOrg = jest.fn();
-      const runRetroaction = jest.fn();
+      const getRuleByIdAndOrg = vi.fn();
+      const runRetroaction = vi.fn();
 
       const ctx = {
         getUser: () => ({
