@@ -42,6 +42,7 @@ import {
 } from '../utils/errors.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 import { oneOfInputToTaggedUnion } from '../utils/inputHelpers.js';
+import { getManualReviewJobReportCountLoader } from '../utils/manualReviewJobReportCounts.js';
 import { assertQueueIsReviewable } from '../utils/manualReviewQueueAuthorization.js';
 
 const { omit, sumBy } = _;
@@ -1901,10 +1902,13 @@ const ManualReviewJob: GQLManualReviewJobResolvers = {
       throw new Error('No user found on context');
     }
 
-    return context.services.ReportingService.getNumTimesReported({
-      orgId: user.orgId,
-      itemId: job.payload.item.itemId,
-    });
+    const item = job.payload.item;
+    const itemId =
+      'itemId' in item ? item.itemId : (item as { id?: string }).id;
+    if (typeof itemId !== 'string' || itemId === '') {
+      return 0;
+    }
+    return getManualReviewJobReportCountLoader(context).load(itemId);
   },
 };
 

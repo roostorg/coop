@@ -153,5 +153,24 @@ describe('PriorityRecomputeLock', () => {
       });
       expect(other).not.toBeNull();
     });
+
+    test('returns on timeout when Redis never answers acquire', async () => {
+      const hangingRedis = {
+        set: async () => new Promise<never>(() => {}),
+        eval: async () => 0,
+      } as unknown as IORedis.Redis;
+      const hangingLock = new PriorityRecomputeLock(hangingRedis);
+      const startedAt = Date.now();
+
+      const token = await hangingLock.acquireWaiting({
+        orgId,
+        queueId,
+        timeoutMs: 60,
+        pollIntervalMs: 10,
+      });
+
+      expect(token).toBeNull();
+      expect(Date.now() - startedAt).toBeLessThan(200);
+    });
   });
 });

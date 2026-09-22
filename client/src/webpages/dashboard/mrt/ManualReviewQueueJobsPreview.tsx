@@ -13,7 +13,10 @@ import {
 import { integerSort, stringSort } from '../components/table/sort';
 import Table, { TableRow } from '../components/table/Table';
 
-import { useGQLManualReviewQueueJobsPreviewQuery } from '../../../graphql/generated';
+import {
+  GQLJobSortType,
+  useGQLManualReviewQueueJobsPreviewQuery,
+} from '../../../graphql/generated';
 import { filterNullOrUndefined } from '../../../utils/collections';
 import { getPrimaryContentFields } from '../../../utils/itemUtils';
 import { ITEM_FRAGMENT } from '../item_types/ItemTypesDashboard';
@@ -36,6 +39,7 @@ gql`
         name
         description
         pendingJobCount
+        jobSortType
         jobs {
           id
           createdAt
@@ -164,7 +168,7 @@ export default function ManualReviewQueueJobsPreview() {
             return {
               jobId: jobData.id,
               createdAt: jobData.createdAt,
-              numReports: (jobData.numTimesReported ?? 0).toLocaleString('en'),
+              numReports: jobData.numTimesReported ?? 0,
               itemId: jobData.payload.item.id,
               itemData: jobData.payload.item.data,
               itemType: jobData.payload.item.type,
@@ -208,7 +212,7 @@ export default function ManualReviewQueueJobsPreview() {
               ))}
             </div>
           ),
-          numReports: <div>{values.numReports}</div>,
+          numReports: <div>{values.numReports.toLocaleString('en')}</div>,
           createdAt: (
             <div>{safeFormat(values.createdAt, 'MM/dd/yy hh:mm a')}</div>
           ),
@@ -236,6 +240,11 @@ export default function ManualReviewQueueJobsPreview() {
     return `/dashboard/manual_review/queues/review/${queueId}/${row.original.jobId}/1`;
   };
 
+  const initialSortBy =
+    queue.jobSortType === GQLJobSortType.NumReports
+      ? [{ id: 'numReports', desc: true }]
+      : [{ id: 'createdAt', desc: false }];
+
   return (
     <div>
       <DashboardHeader title={`Jobs in ${queue.name}`} />
@@ -243,7 +252,7 @@ export default function ManualReviewQueueJobsPreview() {
         rowLinkTo={rowLinkTo}
         columns={columns}
         data={tableData}
-        initialSortBy={[{ id: 'numReports', desc: true }]}
+        initialSortBy={initialSortBy}
       />
     </div>
   );

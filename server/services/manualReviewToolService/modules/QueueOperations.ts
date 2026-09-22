@@ -1054,10 +1054,21 @@ export default class QueueOperations {
     if (!job || job.data.id !== jobId) {
       return undefined;
     }
-    if (priority != null) {
-      await job.changePriority({ priority });
-    }
+    // Merge reports first so a later priority restamp failure can't drop
+    // the payload update. `changePriority` is only safe on waiting jobs;
+    // applying it to an active (reviewer-held) job can reinsert the id
+    // into `prioritized` while the lock is still held.
     await job.updateData(data);
+    if (priority != null) {
+      try {
+        const state = await job.getState();
+        if (state === 'waiting' || state === 'prioritized') {
+          await job.changePriority({ priority });
+        }
+      } catch {
+        // Data is already saved; a later sweep can restamp priority.
+      }
+    }
 
     // Because the `data` arg above is a ManualReviewJob, we know the stored
     // data for this particular job won't be in the legacy format.
@@ -1103,31 +1114,49 @@ export default class QueueOperations {
       createdAtMs: number;
       itemId: string;
     }> = [];
-    let start = 0;
-    while (true) {
-      // Priority-enqueued jobs live in BullMQ's 'prioritized' state, not
-      // 'waiting'.
-      const jobs = await queue.getJobs(
-        ['waiting', 'prioritized', 'delayed', 'active'],
-        start,
-        start + batchSize - 1,
-      );
-      if (jobs.length === 0) break;
-      for (const job of jobs) {
-        if (job.id != null) {
+    const seen = new Set<string>();
+    // Two offset passes. A concurrent dequeue during the first pass
+    // compacting the list can skip a job at the page boundary; the
+    // second pass (with a seen-set) picks those up at their new index
+    // without re-stamping jobs we already captured. Always-from-0 paging
+    // would never look past the first page on a read-only snapshot.
+    for (let pass = 0; pass < 2; pass++) {
+      let start = 0;
+      while (true) {
+        // Priority-enqueued jobs live in BullMQ's 'prioritized' state, not
+        // 'waiting'.
+        const jobs = await queue.getJobs(
+          ['waiting', 'prioritized', 'delayed', 'active'],
+          start,
+          start + batchSize - 1,
+        );
+        if (jobs.length === 0) break;
+        for (const job of jobs) {
+          if (job.id == null || seen.has(job.id)) continue;
+          const bullId = job.id;
+          seen.add(bullId);
           const item = (job.data as ManualReviewJob).payload.item;
           // Legacy jobs use `id` instead of `itemId`.
-          const itemId =
-            'itemId' in item ? item.itemId : (item as { id: string }).id;
+          const itemWithLegacyId = item as { itemId?: string; id?: string };
+          const itemId = itemWithLegacyId.itemId ?? itemWithLegacyId.id;
+          if (itemId == null) continue;
+          // Bull-managed arrival order is the FIFO tie-break key. Fall back
+          // to application data for jobs without a Bull timestamp.
+          const createdAtMs =
+            typeof job.timestamp === 'number' && Number.isFinite(job.timestamp)
+              ? job.timestamp
+              : new Date(job.data.createdAt).getTime();
           pending.push({
-            bullId: job.id,
-            createdAtMs: new Date(job.data.createdAt).getTime(),
+            bullId,
+            createdAtMs: Number.isFinite(createdAtMs)
+              ? createdAtMs
+              : Number.MAX_SAFE_INTEGER,
             itemId,
           });
         }
+        if (jobs.length < batchSize) break;
+        start += batchSize;
       }
-      if (jobs.length < batchSize) break;
-      start += batchSize;
     }
 
     pending.sort((a, b) => a.createdAtMs - b.createdAtMs);

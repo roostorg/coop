@@ -10069,6 +10069,7 @@ export type GQLManualReviewQueueJobsPreviewQuery = {
       readonly name: string;
       readonly description?: string | null;
       readonly pendingJobCount: number;
+      readonly jobSortType: GQLJobSortType;
       readonly jobs: ReadonlyArray<{
         readonly __typename: 'ManualReviewJob';
         readonly id: string;
@@ -33324,6 +33325,7 @@ export const GQLManualReviewQueueJobsPreviewDocument = gql`
         name
         description
         pendingJobCount
+        jobSortType
         jobs {
           id
           createdAt

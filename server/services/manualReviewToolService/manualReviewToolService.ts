@@ -513,14 +513,16 @@ export class ManualReviewToolService {
               await this.queueOps.getQueueForOrgAndDangerouslyBypassPermissioning(
                 { orgId: input.orgId, queueId: targetQueueForNewJob },
               );
+            const sortTypeUsedForPriority =
+              targetQueue?.jobSortType ?? JobSortType.FIFO;
             const priority = await getJobPriorityForItem({
               orgId: input.orgId,
               item: input.payload.item,
-              sortType: targetQueue?.jobSortType ?? JobSortType.FIFO,
+              sortType: sortTypeUsedForPriority,
               deps: { getNumTimesReported: this.getNumTimesReported() },
             });
 
-            const job = existingJobInSameQueue
+            let job = existingJobInSameQueue
               ? await this.queueOps.updateJobForQueue({
                   orgId: input.orgId,
                   queueId: targetQueueForNewJob,
@@ -547,6 +549,41 @@ export class ManualReviewToolService {
               // between when we looked up the existing job and did the update.
               // Just do nothing
               return;
+            }
+
+            // The queue can change sort mode between the initial read and the
+            // BullMQ write. Re-read once after the write and restamp this job
+            // if that happened; otherwise this enqueue could miss the sweep's
+            // snapshot and retain the old mode indefinitely.
+            const queueAfterEnqueue =
+              await this.queueOps.getQueueForOrgAndDangerouslyBypassPermissioning(
+                { orgId: input.orgId, queueId: targetQueueForNewJob },
+              );
+            if (
+              queueAfterEnqueue !== undefined &&
+              queueAfterEnqueue.jobSortType !== sortTypeUsedForPriority
+            ) {
+              const priorityAfterSortChange = await getJobPriorityForItem({
+                orgId: input.orgId,
+                item: input.payload.item,
+                sortType: queueAfterEnqueue.jobSortType,
+                deps: { getNumTimesReported: this.getNumTimesReported() },
+              });
+              // Enqueue uses `undefined` for FIFO so new jobs stay on `wait`.
+              // A job that was already stamped needs an explicit 0 to leave
+              // `prioritized`; otherwise the restamp would be a no-op.
+              const updatedJob = await this.queueOps.updateJobForQueue({
+                orgId: input.orgId,
+                queueId: targetQueueForNewJob,
+                jobId: job.id,
+                data: job,
+                priority: priorityAfterSortChange ?? 0,
+              });
+              if (!updatedJob) {
+                // The job may have disappeared between the two writes.
+                return;
+              }
+              job = updatedJob;
             }
 
             // log job creation/enqueue to postgres
@@ -1064,17 +1101,42 @@ export class ManualReviewToolService {
       return;
     }
 
+    let lostLease = false;
     try {
-      // Renew the lock periodically so large sweeps don't outlive the TTL.
-      const renewalInterval = setInterval(
-        () => {
-          this.priorityRecomputeLock
-            .renew({ orgId, queueId, token })
-            .catch(() => {});
-        },
-        Math.floor(RECOMPUTE_LOCK_TTL_MS / 2),
-      );
-
+      const lease = { renewFailed: false, stopped: false };
+      const waiter: { wake?: () => void } = {};
+      const heartbeat = (async () => {
+        while (!lease.renewFailed && !lease.stopped) {
+          await new Promise<void>((resolve) => {
+            const timeout = setTimeout(
+              resolve,
+              Math.floor(RECOMPUTE_LOCK_TTL_MS / 2),
+            );
+            waiter.wake = () => {
+              clearTimeout(timeout);
+              resolve();
+            };
+          });
+          waiter.wake = undefined;
+          // The sweep's finally sets these while this heartbeat is sleeping.
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+          if (lease.renewFailed || lease.stopped) {
+            return;
+          }
+          try {
+            const renewed = await this.priorityRecomputeLock.renew({
+              orgId,
+              queueId,
+              token,
+            });
+            if (!renewed) {
+              lease.renewFailed = true;
+            }
+          } catch {
+            lease.renewFailed = true;
+          }
+        }
+      })();
       try {
         const queue =
           await this.queueOps.getQueueForOrgAndDangerouslyBypassPermissioning({
@@ -1101,10 +1163,19 @@ export class ManualReviewToolService {
             }),
         });
       } finally {
-        clearInterval(renewalInterval);
+        lease.stopped = true;
+        waiter.wake?.();
+        await heartbeat;
+      }
+      if (lease.renewFailed) {
+        lostLease = true;
       }
     } finally {
       await this.priorityRecomputeLock.release({ orgId, queueId, token });
+    }
+    if (lostLease) {
+      this.#scheduleQueuePriorityRecompute(opts);
+      throw new Error('Lost priority recompute lease');
     }
   }
 

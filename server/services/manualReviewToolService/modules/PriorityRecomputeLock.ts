@@ -60,15 +60,31 @@ export default class PriorityRecomputeLock {
     } = opts;
     const deadline = Date.now() + timeoutMs;
     for (;;) {
-      const token = await this.acquire(acquireOpts);
+      const remainingMs = deadline - Date.now();
+      if (remainingMs <= 0) {
+        return null;
+      }
+      let timeout: ReturnType<typeof setTimeout> | undefined;
+      const token = await Promise.race([
+        this.acquire(acquireOpts),
+        new Promise<null>((resolve) => {
+          timeout = setTimeout(() => resolve(null), remainingMs);
+        }),
+      ]).finally(() => {
+        if (timeout !== undefined) {
+          clearTimeout(timeout);
+        }
+      });
       // eslint-disable-next-line security/detect-possible-timing-attacks
       if (token != null) {
         return token;
       }
-      if (Date.now() + pollIntervalMs > deadline) {
+      if (Date.now() >= deadline) {
         return null;
       }
-      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+      await new Promise((resolve) =>
+        setTimeout(resolve, Math.min(pollIntervalMs, deadline - Date.now())),
+      );
     }
   }
 

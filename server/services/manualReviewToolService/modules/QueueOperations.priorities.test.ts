@@ -203,6 +203,87 @@ describe('QueueOperations job priorities', () => {
   );
 
   testWithQueue()(
+    'recomputePrioritiesForQueue uses Bull arrival order for FIFO ties',
+    async ({ org, queue, mrtService }) => {
+      const queueOps = mrtService['queueOps'];
+      const itemTypeId = uid();
+      const payloadFor = makePayloadFor(itemTypeId);
+
+      await queueOps.addJob({
+        orgId: org.id,
+        queueId: queue.id,
+        enqueueSourceInfo: { kind: 'REPORT' },
+        priority: 2000,
+        jobPayload: {
+          createdAt: new Date('2026-01-02T00:00:00.000Z'),
+          policyIds: [],
+          payload: payloadFor('item-A'),
+        },
+      });
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      await queueOps.addJob({
+        orgId: org.id,
+        queueId: queue.id,
+        enqueueSourceInfo: { kind: 'REPORT' },
+        priority: 1000,
+        jobPayload: {
+          createdAt: new Date('2026-01-01T00:00:00.000Z'),
+          policyIds: [],
+          payload: payloadFor('item-B'),
+        },
+      });
+
+      await queueOps.recomputePrioritiesForQueue({
+        orgId: org.id,
+        queueId: queue.id,
+        getPriorities: async () =>
+          new Map([
+            ['item-A', 1000],
+            ['item-B', 1000],
+          ]),
+      });
+
+      const first = await queueOps.dequeueNextJobWithLock({
+        orgId: org.id,
+        queueId: queue.id,
+        lockToken: 'reviewer-arrival-order',
+      });
+      expect(first?.job.payload.item.itemId).toBe('item-A');
+    },
+  );
+
+  testWithQueue()(
+    'updateJobForQueue updates active jobs without changing priority',
+    async ({ org, queue, mrtService }) => {
+      const queueOps = mrtService['queueOps'];
+      const payload = makePayloadFor(uid())('item-active');
+      await queueOps.addJob({
+        orgId: org.id,
+        queueId: queue.id,
+        enqueueSourceInfo: { kind: 'REPORT' },
+        priority: 1000,
+        jobPayload: { policyIds: [], payload },
+      });
+
+      const claimed = await queueOps.dequeueNextJobWithLock({
+        orgId: org.id,
+        queueId: queue.id,
+        lockToken: 'reviewer-active',
+      });
+      expect(claimed).not.toBeNull();
+
+      const updated = await queueOps.updateJobForQueue({
+        orgId: org.id,
+        queueId: queue.id,
+        jobId: claimed!.job.id,
+        data: claimed!.job,
+        priority: 2000,
+      });
+      expect(updated?.id).toBe(claimed!.job.id);
+    },
+  );
+
+  testWithQueue()(
     'updateManualReviewQueue recomputes job priorities when the sort type changes',
     async ({ org, queue, user, mrtService }) => {
       const queueOps = mrtService['queueOps'];
