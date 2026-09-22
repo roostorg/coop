@@ -34,7 +34,7 @@ export function disableConsoleLogging() {
 }
 
 /**
- * Boots the Express app against real Postgres (ClickHouse/analytics mocked),
+ * Boots the Express app against real Postgres (analytics and queues mocked),
  * inside a transaction that `rollback()` discards so tests need no cleanup.
  * Only Postgres is rolled back. Usually used via
  * `makeTransactionalTestWithFixture`.
@@ -116,6 +116,24 @@ export async function getBottleContainerWithIOMocks(
     flushPendingWrites: jest.fn(async () => {}),
     close: jest.fn(async () => {}),
   } as unknown as jest.Mocked<IDataWarehouseAnalytics>;
+
+  // This harness does not run item-processing workers. Keep queue I/O mocked
+  // too, avoiding real Redis connections and the writers' 1.5s drain delay on
+  // every shutdown. The integration harness still uses the real queues.
+  for (const name of [
+    'itemSubmissionQueueBulkWrite',
+    'itemSubmissionRetryQueueBulkWrite',
+  ] as const) {
+    bottle.value(
+      name,
+      Object.assign(
+        jest.fn(async () => ({ error: false, results: [] })),
+        {
+          close: jest.fn(async () => {}),
+        },
+      ),
+    );
+  }
 
   bottle.value('DataWarehouse', dataWarehouseMock);
   bottle.value('DataWarehouseAnalytics', analyticsMock);

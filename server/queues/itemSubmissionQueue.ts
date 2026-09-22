@@ -22,7 +22,6 @@ function makeItemSubmissionBulkWrite(
   const queue = new Queue(queueName, { connection: redis });
 
   const batchTimeout = 500;
-  let hasReceivedItems = false;
 
   const loader: DataLoader<ItemSubmissionMessageValue, void> = new DataLoader(
     async (data) =>
@@ -41,7 +40,6 @@ function makeItemSubmissionBulkWrite(
     items: readonly ItemSubmissionMessageValue[],
     skipBatch: boolean = false,
   ) {
-    hasReceivedItems ||= items.length > 0;
     if (skipBatch) {
       try {
         await bulkWrite(queue, items);
@@ -65,11 +63,7 @@ function makeItemSubmissionBulkWrite(
   }
 
   itemSubmissionBulkWrite.close = async () => {
-    // An unused writer has no batches to drain, including when the app was
-    // started only to serve requests that do not enqueue item submissions.
-    if (hasReceivedItems) {
-      await sleep(batchTimeout + 1000);
-    }
+    await sleep(batchTimeout + 1000);
     await queue.close();
   };
 
