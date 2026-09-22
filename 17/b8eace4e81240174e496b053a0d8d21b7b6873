@@ -1,0 +1,34 @@
+server/iocContainer/index.ts
+  s_c326e294acd5e8::t_049887595df9ed 1045
+server/services/manualReviewToolService/modules/JobDecisioning.ts
+  s_c326e294acd5e8::t_42785576cc8210 95-101
+  s_c326e294acd5e8::t_5e913ffb60830b 352-377,390,396-403,407-431
+  s_c326e294acd5e8::t_e03658c9b7872d 404-406
+  s_c326e294acd5e8::t_42e1c9ecd54590 380-382
+client/src/webpages/dashboard/mrt/manual_review_job/v2/ContentRelatedItemComponent.tsx
+  s_c326e294acd5e8::t_f25097bc2eab69 219-221
+  s_c326e294acd5e8::t_e13fea83ffaacc 374-376,387-390,392
+  s_c326e294acd5e8::t_6fd175588b0656 180-182,187
+  s_c326e294acd5e8::t_dd6a0fb6810d0a 351-365
+  s_c326e294acd5e8::t_1956e51672b294 242
+client/src/webpages/dashboard/mrt/manual_review_job/v2/ContentRelatedItemComponent.test.tsx
+  s_c326e294acd5e8::t_a465e880405e77 295-296
+server/services/manualReviewToolService/modules/JobDecisioning.test.ts
+  s_c326e294acd5e8::t_1f1bc510e066d5 150,157,163-203
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "17b8eace4e81240174e496b053a0d8d21b7b6873",
+  "prompts": {},
+  "sessions": {
+    "s_c326e294acd5e8": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "f0bd2855-2af0-4ab3-8e7e-63ab896e5865",
+        "model": "grok-4.6"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
