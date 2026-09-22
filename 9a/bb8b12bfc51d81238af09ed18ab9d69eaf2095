@@ -1,0 +1,128 @@
+CHANGELOG.md
+  h_228f5682388812 11-12,16,55,322-323
+.github/workflows/mdbook.yml
+  h_228f5682388812 114-118
+.github/workflows/publish-docker.yaml
+  h_228f5682388812 18,59-60
+AGENTS.md
+  h_228f5682388812 26,37
+client/public/favicon.svg
+  h_228f5682388812 1-2,4,7,10
+client/src/webpages/dashboard/mrt/manual_review_job/v2/ContentRelatedItemComponent.tsx
+  h_228f5682388812 4-5,14,18,31-32,36-48
+client/src/webpages/dashboard/mrt/manual_review_job/v2/user/ManualReviewJobLatestSubmissionsWithThreadComponent.tsx
+  h_228f5682388812 265
+client/src/webpages/dashboard/rules/TextTokenInput.test.tsx
+  h_228f5682388812 1-88
+client/src/webpages/dashboard/rules/TextTokenInput.tsx
+  h_228f5682388812 36-40,121-127
+docs/api/README.md
+  h_228f5682388812 14-21
+docs/api/actions.md
+  h_228f5682388812 5-29
+docs/api/item-types.md
+  h_228f5682388812 1-41
+docs/api/policies.md
+  h_228f5682388812 19-29,36-48
+docs/book.toml
+  h_228f5682388812 3-4,12-15,22-23
+docs/theme/css/content.css
+  h_228f5682388812 1-122
+docs/theme/css/roost-hljs.css
+  h_228f5682388812 1-199
+docs/theme/css/roost.css
+  h_228f5682388812 1-151
+docs/theme/favicon.svg
+  h_228f5682388812 1-11
+docs/theme/fonts/fonts.css
+  h_228f5682388812 10
+docs/theme/head.hbs
+  h_228f5682388812 1-5
+docs/theme/images/logo.svg
+  h_228f5682388812 1-56
+docs/theme/index.hbs
+  h_228f5682388812 1-375
+docs/theme/js/share.js
+  h_228f5682388812 1-183
+server/api.ts
+  h_228f5682388812 30,216
+server/bin/run-worker-or-job.ts
+  h_228f5682388812 4-8,10-26,30
+server/globals.ts
+  h_228f5682388812 1-36
+server/graphql/modules/manualReviewTool.resolver.test.ts
+  h_228f5682388812 1-658
+server/graphql/modules/manualReviewTool.ts
+  h_228f5682388812 45,1770-1771,1816-1817,1825-1826,1835,1848,1858,2123-2131,2136,2222-2231,2233,2251-2261,2266,2340-2354,2394-2395
+server/graphql/modules/org.resolver.test.ts
+  h_228f5682388812 249-333
+server/graphql/modules/org.ts
+  h_228f5682388812 403-406,409
+server/graphql/modules/user.resolver.test.ts
+  h_228f5682388812 54-213
+server/graphql/modules/user.ts
+  h_228f5682388812 11,265-268,380-410,426
+server/graphql/resolvers.ts
+  h_228f5682388812 43
+server/graphql/services.ts
+  h_228f5682388812 1-39
+server/graphql/utils/manualReviewQueueAuthorization.ts
+  h_228f5682388812 1-62
+server/iocContainer/index.ts
+  h_228f5682388812 110,365
+server/iocContainer/services/workersAndJobs.ts
+  h_228f5682388812 5-9,15,20,35-38,40-58
+server/knip.json
+  h_228f5682388812 3
+server/package-lock.json
+  h_228f5682388812 90,11436-11442
+server/package.json
+  h_228f5682388812 108,150
+server/routes/action/ActionRoutes.test.ts
+  h_228f5682388812 1-301
+server/routes/action/ActionRoutes.ts
+  h_228f5682388812 9,34-37
+server/routes/action/getActions.ts
+  h_228f5682388812 1-64
+server/routes/index.ts
+  h_228f5682388812 5,24
+server/routes/item_types/ItemTypeRoutes.test.ts
+  h_228f5682388812 1-107
+server/routes/item_types/ItemTypeRoutes.ts
+  h_228f5682388812 1-14
+server/routes/item_types/getItemTypes.ts
+  h_228f5682388812 1-30
+server/routes/policies/PoliciesRoutes.test.ts
+  h_228f5682388812 1,5-9,11-22,24-29,31-38,40-41,43-45,47-55,58-78
+server/routes/policies/PoliciesRoutes.ts
+  h_228f5682388812 1,8
+server/routes/policies/getPolicies.ts
+  h_228f5682388812 31-38
+server/services/manualReviewToolService/manualReviewToolService.ts
+  h_228f5682388812 1217,1469
+server/services/manualReviewToolService/modules/QueueOperations.test.ts
+  h_228f5682388812 191-349
+server/services/manualReviewToolService/modules/QueueOperations.ts
+  h_228f5682388812 614-618,624-625,627,635,1826,1828-1831,1841
+server/services/moderationConfigService/index.ts
+  h_228f5682388812 55-56,97
+server/services/moderationConfigService/moderationConfigService.ts
+  h_228f5682388812 291-294
+server/services/moderationConfigService/modules/ItemTypeOperations.ts
+  h_228f5682388812 606-632
+server/services/moderationConfigService/types/policies.ts
+  h_228f5682388812 31
+server/test/fixtureHelpers/createMrtQueue.ts
+  h_228f5682388812 8,10,13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9abb8b12bfc51d81238af09ed18ab9d69eaf2095",
+  "prompts": {},
+  "humans": {
+    "h_228f5682388812": {
+      "author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
