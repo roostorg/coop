@@ -807,21 +807,30 @@ const Mutation: GQLMutationResolvers = {
     }
 
     const contentItemType =
-      await context.services.ModerationConfigService.createContentType(orgId, {
-        ...params.input,
-        schemaFieldRoles: fieldRoles,
-        schema: fields,
-      });
-
-    if (hiddenFields && hiddenFields.length > 0) {
-      await context.services.ManualReviewToolService.setHiddenFieldsForItemType(
-        {
-          orgId,
-          itemTypeId: contentItemType.id,
-          hiddenFields,
+      await context.services.ModerationConfigService.withItemTypeTransaction(
+        orgId,
+        async (trx) => {
+          const itemType =
+            await context.services.ModerationConfigService.createContentType(
+              orgId,
+              {
+                ...params.input,
+                schemaFieldRoles: fieldRoles,
+                schema: fields,
+              },
+              trx,
+            );
+          await context.services.ManualReviewToolService.setHiddenFieldsForItemType(
+            {
+              orgId,
+              itemTypeId: itemType.id,
+              hiddenFields: hiddenFields ?? [],
+            },
+            trx,
+          );
+          return itemType;
         },
       );
-    }
 
     return gqlSuccessResult(
       contentItemType,
@@ -848,26 +857,30 @@ const Mutation: GQLMutationResolvers = {
     }
 
     const contentItemType =
-      await context.services.ModerationConfigService.updateContentType(
-        user.orgId,
-        {
-          id,
-          description,
-          name: name ?? undefined,
-          schemaFieldRoles: fieldRoles ?? {},
-          schema: fields,
+      await context.services.ModerationConfigService.withItemTypeTransaction(
+        orgId,
+        async (trx) => {
+          const itemType =
+            await context.services.ModerationConfigService.updateContentType(
+              orgId,
+              {
+                id,
+                description,
+                name: name ?? undefined,
+                schemaFieldRoles: fieldRoles ?? {},
+                schema: fields,
+              },
+              trx,
+            );
+          if (hiddenFields != null) {
+            await context.services.ManualReviewToolService.setHiddenFieldsForItemType(
+              { orgId, itemTypeId: itemType.id, hiddenFields },
+              trx,
+            );
+          }
+          return itemType;
         },
       );
-
-    if (hiddenFields && hiddenFields.length > 0) {
-      await context.services.ManualReviewToolService.setHiddenFieldsForItemType(
-        {
-          orgId,
-          itemTypeId: contentItemType.id,
-          hiddenFields,
-        },
-      );
-    }
 
     return gqlSuccessResult(
       contentItemType,
@@ -892,21 +905,30 @@ const Mutation: GQLMutationResolvers = {
     }
 
     const threadItemType =
-      await context.services.ModerationConfigService.createThreadType(orgId, {
-        ...params.input,
-        schemaFieldRoles: fieldRoles,
-        schema: fields,
-      });
-
-    if (hiddenFields && hiddenFields.length > 0) {
-      await context.services.ManualReviewToolService.setHiddenFieldsForItemType(
-        {
-          orgId,
-          itemTypeId: threadItemType.id,
-          hiddenFields,
+      await context.services.ModerationConfigService.withItemTypeTransaction(
+        orgId,
+        async (trx) => {
+          const itemType =
+            await context.services.ModerationConfigService.createThreadType(
+              orgId,
+              {
+                ...params.input,
+                schemaFieldRoles: fieldRoles,
+                schema: fields,
+              },
+              trx,
+            );
+          await context.services.ManualReviewToolService.setHiddenFieldsForItemType(
+            {
+              orgId,
+              itemTypeId: itemType.id,
+              hiddenFields: hiddenFields ?? [],
+            },
+            trx,
+          );
+          return itemType;
         },
       );
-    }
 
     return gqlSuccessResult(threadItemType, 'MutateThreadTypeSuccessResponse');
   },
@@ -931,26 +953,30 @@ const Mutation: GQLMutationResolvers = {
     }
 
     const threadItemType =
-      await context.services.ModerationConfigService.updateThreadType(
-        user.orgId,
-        {
-          id,
-          description,
-          name: name ?? undefined,
-          schemaFieldRoles: fieldRoles ?? {},
-          schema: fields,
+      await context.services.ModerationConfigService.withItemTypeTransaction(
+        orgId,
+        async (trx) => {
+          const itemType =
+            await context.services.ModerationConfigService.updateThreadType(
+              orgId,
+              {
+                id,
+                description,
+                name: name ?? undefined,
+                schemaFieldRoles: fieldRoles ?? {},
+                schema: fields,
+              },
+              trx,
+            );
+          if (hiddenFields != null) {
+            await context.services.ManualReviewToolService.setHiddenFieldsForItemType(
+              { orgId, itemTypeId: itemType.id, hiddenFields },
+              trx,
+            );
+          }
+          return itemType;
         },
       );
-
-    if (hiddenFields && hiddenFields.length > 0) {
-      await context.services.ManualReviewToolService.setHiddenFieldsForItemType(
-        {
-          orgId,
-          itemTypeId: threadItemType.id,
-          hiddenFields,
-        },
-      );
-    }
 
     return gqlSuccessResult(threadItemType, 'MutateThreadTypeSuccessResponse');
   },
@@ -972,24 +998,30 @@ const Mutation: GQLMutationResolvers = {
     }
 
     const userItemType =
-      await context.services.ModerationConfigService.createUserType(
-        user.orgId,
-        {
-          ...params.input,
-          schemaFieldRoles: fieldRoles,
-          schema: fields,
+      await context.services.ModerationConfigService.withItemTypeTransaction(
+        orgId,
+        async (trx) => {
+          const itemType =
+            await context.services.ModerationConfigService.createUserType(
+              orgId,
+              {
+                ...params.input,
+                schemaFieldRoles: fieldRoles,
+                schema: fields,
+              },
+              trx,
+            );
+          await context.services.ManualReviewToolService.setHiddenFieldsForItemType(
+            {
+              orgId,
+              itemTypeId: itemType.id,
+              hiddenFields: hiddenFields ?? [],
+            },
+            trx,
+          );
+          return itemType;
         },
       );
-
-    if (hiddenFields && hiddenFields.length > 0) {
-      await context.services.ManualReviewToolService.setHiddenFieldsForItemType(
-        {
-          orgId,
-          itemTypeId: userItemType.id,
-          hiddenFields,
-        },
-      );
-    }
 
     return gqlSuccessResult(userItemType, 'MutateUserTypeSuccessResponse');
   },
@@ -1012,26 +1044,30 @@ const Mutation: GQLMutationResolvers = {
       }
     }
     const contentItemType =
-      await context.services.ModerationConfigService.updateUserType(
-        user.orgId,
-        {
-          id,
-          description,
-          name: name ?? undefined,
-          schemaFieldRoles: fieldRoles ?? {},
-          schema: fields,
+      await context.services.ModerationConfigService.withItemTypeTransaction(
+        orgId,
+        async (trx) => {
+          const itemType =
+            await context.services.ModerationConfigService.updateUserType(
+              orgId,
+              {
+                id,
+                description,
+                name: name ?? undefined,
+                schemaFieldRoles: fieldRoles ?? {},
+                schema: fields,
+              },
+              trx,
+            );
+          if (hiddenFields != null) {
+            await context.services.ManualReviewToolService.setHiddenFieldsForItemType(
+              { orgId, itemTypeId: itemType.id, hiddenFields },
+              trx,
+            );
+          }
+          return itemType;
         },
       );
-
-    if (hiddenFields && hiddenFields.length > 0) {
-      await context.services.ManualReviewToolService.setHiddenFieldsForItemType(
-        {
-          orgId,
-          itemTypeId: contentItemType.id,
-          hiddenFields,
-        },
-      );
-    }
 
     return gqlSuccessResult(contentItemType, 'MutateUserTypeSuccessResponse');
   },
