@@ -1,0 +1,21 @@
+AGENTS.md
+  s_03c50934d855da::t_b99affbefbfdf6 37
+.github/copilot-instructions.md
+  s_03c50934d855da::t_adf8f54273817a 29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d4866fddf291eb0b40d905353abad5920fc3b1cf",
+  "prompts": {},
+  "sessions": {
+    "s_03c50934d855da": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "5a0bfc67-204c-4eee-8af9-a632fad3d25f",
+        "model": "grok-4.6"
+      },
+      "human_author": null
+    }
+  }
+}
