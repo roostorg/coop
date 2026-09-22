@@ -8,6 +8,10 @@ For more information about each release including git tags and artifacts, see [R
 
 ## [Unreleased]
 
+### Fixed
+
+- Completed manual reviews no longer reappear when no next job is available; refreshed content stays tied to the active job.
+
 ## [1.1.0-alpha] - 2026-09-21
 
 ### Added
