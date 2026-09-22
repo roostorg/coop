@@ -5,7 +5,11 @@ import { type JsonObject, type ReadonlyDeep } from 'type-fest';
 import { type ConsumerDirectives } from '../../lib/cache/index.js';
 import type { Invoker } from '../userManagementService/index.js';
 import { type ModerationConfigServicePg } from './dbTypes.js';
-import { type LocationBankErrorType, type RuleErrorType } from './errors.js';
+import {
+  type ItemTypeErrorType,
+  type LocationBankErrorType,
+  type RuleErrorType,
+} from './errors.js';
 import { type Action, type CustomAction, type Policy } from './index.js';
 import ActionOperations, {
   type ActionErrorType,
@@ -34,6 +38,7 @@ import { type PlainRuleWithLatestVersion } from './types/rules.js';
 
 export type ModerationConfigErrorType =
   | 'AttemptingToDeleteDefaultUserType'
+  | ItemTypeErrorType
   | ActionErrorType
   | PolicyErrorType
   | UserStrikeThresholdErrorType
