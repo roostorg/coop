@@ -16,8 +16,8 @@ fi
 
 while IFS= read -r span; do
   [[ "$span" != */* ]] && continue # Must contain a slash
-  [[ "$span" == /* || "$span" == @* ]] && continue # No leading Slash
-  [[ "$span" == *"://"* ]] && continue # No leading '@'
+  [[ "$span" == /* || "$span" == @* ]] && continue # No leading Slash or '@'
+  [[ "$span" == *"://"* ]] && continue # No URL's
   [[ "$span" == *" "* ]] && continue # No Spaces
   [[ "$span" == *"*"* || "$span" == *"<"* || "$span" == *">"* ]] && continue #No glob/placehold chars
   [[ "$span" == actions/* ]] && continue  # GitHub Action refs, not repo paths
