@@ -399,9 +399,11 @@ function ManualReviewJobReviewImpl(props: {
     onCompleted: (data) => {
       // Here, we update the URL to include the queue ID, job ID, and lock
       // token. That way, users are able to send around the URL to others.
-      // In case we can't find the required job, we can just fail silently.
       const { dequeueManualReviewJob } = data;
       if (dequeueManualReviewJob == null) {
+        if (jobId != null) {
+          navigate('/dashboard/manual_review/queues', { replace: true });
+        }
         return;
       }
 
@@ -736,8 +738,12 @@ function ManualReviewJobReviewImpl(props: {
     ?.jobs.find((job) => job.id === jobId);
   const job = selectManualReviewJob({
     closedJob,
+    currentJobId: jobId,
     queriedJob,
-    dequeuedJob: jobData?.dequeueManualReviewJob?.job,
+    dequeuedJob:
+      jobData?.dequeueManualReviewJob === null
+        ? null
+        : jobData?.dequeueManualReviewJob?.job,
   });
   const pendingJobCount = jobData?.dequeueManualReviewJob
     ? jobData.dequeueManualReviewJob.numPendingJobs
