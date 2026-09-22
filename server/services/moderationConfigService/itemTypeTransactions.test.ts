@@ -162,3 +162,54 @@ describe.each([
     },
   );
 });
+
+describe('standalone hidden-field writes', () => {
+  testWithOrg(
+    'validates item ownership and schema while allowing post-delete cleanup',
+    async ({ deps, orgId }) => {
+      const item = await deps.ModerationConfigService.createContentType(orgId, {
+        name: 'Hidden field validation',
+        schema,
+        schemaFieldRoles: {},
+      });
+
+      await expect(
+        deps.ManualReviewToolService.setHiddenFieldsForItemType({
+          orgId,
+          itemTypeId: item.id,
+          hiddenFields: ['missing'],
+        }),
+      ).rejects.toMatchObject({ name: 'InvalidItemTypeHiddenFieldsError' });
+      await expect(
+        deps.ManualReviewToolService.setHiddenFieldsForItemType({
+          orgId: 'another-org',
+          itemTypeId: item.id,
+          hiddenFields: ['title'],
+        }),
+      ).rejects.toMatchObject({ name: 'NotFoundError' });
+
+      await deps.ManualReviewToolService.setHiddenFieldsForItemType({
+        orgId,
+        itemTypeId: item.id,
+        hiddenFields: ['title'],
+      });
+      await deps.ModerationConfigService.deleteItemType({
+        orgId,
+        itemTypeId: item.id,
+      });
+      await expect(
+        deps.ManualReviewToolService.setHiddenFieldsForItemType({
+          orgId,
+          itemTypeId: item.id,
+          hiddenFields: [],
+        }),
+      ).resolves.toBeDefined();
+      await expect(
+        deps.ManualReviewToolService.getHiddenFieldsForItemType({
+          orgId,
+          itemTypeId: item.id,
+        }),
+      ).resolves.toEqual([]);
+    },
+  );
+});
