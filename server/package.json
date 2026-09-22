@@ -105,6 +105,7 @@
     "@types/graphql-depth-limit": "^1.1.6",
     "@types/jest": "^29.2.4",
     "@types/js-yaml": "^4.0.5",
+    "@types/latlon-geohash": "^2.0.4",
     "@types/lodash": "^4.14.179",
     "@types/morgan": "^1.9.3",
     "@types/node": "^24.13.5",
@@ -146,9 +147,8 @@
     "classNameTemplate": "{classname}",
     "titleTemplate": "{title}"
   },
-  "//": "Use an override to remove the @types/restify dependency, b/c it conflicts w/ pino-http. And a fork of retry-axios that has fixed type defs for TS's new module resolution algorithm. Also pin @types/express to v5 across the dep tree so transitive deps (e.g. @node-saml/passport-saml) don't drag in v4 types alongside our v5 types.",
+  "//": "Use a fork of retry-axios that has fixed type defs for TS's new module resolution algorithm. Also pin @types/express to v5 across the dep tree so transitive deps (e.g. @node-saml/passport-saml) don't drag in v4 types alongside our v5 types.",
   "overrides": {
-    "@types/restify": "npm:pino@8.6.0",
     "@types/express": "$@types/express",
     "@googlemaps/google-maps-services-js@^3.3.16": {
       "retry-axios": "npm:@ethanresnick/retry-axios@2.6.1"

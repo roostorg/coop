@@ -107,6 +107,7 @@ import {
 import makeHmaService, {
   HashBankService,
   type HashBank,
+  type HmaService,
 } from '../services/hmaService/index.js';
 import { ItemInvestigationService } from '../services/itemInvestigationService/index.js';
 import {
@@ -361,6 +362,7 @@ export interface Dependencies {
   ReportingRuleExecutionLogger: ReportingRuleExecutionLogger;
 
   // Core business logic services
+  HMAHashBankService: HmaService;
   ActionPublisher: ActionPublisher;
   RuleEngine: RuleEngine;
   RuleEvaluator: RuleEvaluator;
