@@ -92,11 +92,13 @@ export function sanitizeRelatedActionParameterPayloads(
         continue;
       }
       const action = actionsById.get(actionId);
-      const spec = parseStoredParameters(
-        action?.actionType === 'CUSTOM_ACTION'
-          ? action.customMrtApiParams
-          : null,
-      );
+      if (action?.actionType !== 'CUSTOM_ACTION') {
+        continue;
+      }
+      const spec = parseStoredParameters(action.customMrtApiParams);
+      if (spec.length === 0) {
+        continue;
+      }
       const raw =
         relatedAction.actionIdsToMrtApiParamDecisionPayload?.[actionId];
       const validated = validateActionParameterValues(spec, raw ?? null);
@@ -347,14 +349,37 @@ export default class JobDecisioning {
         throw makeSubmittedJobActionNotFoundError({ shouldErrorSpan: true });
       }
 
+      const validActionIds = new Set(validActions.map((action) => action.id));
+      const relatedActionIds = relatedActionsToPublish.flatMap(
+        (relatedAction) =>
+          relatedAction.actionIds.filter((actionId) => actionId.length > 0),
+      );
+      if (relatedActionIds.some((actionId) => !validActionIds.has(actionId))) {
+        throw makeSubmittedJobActionNotFoundError({ shouldErrorSpan: true });
+      }
+
+      if (relatedActionsToPublish.length > 0) {
+        const actionItemTypeIds =
+          await this.moderationConfigService.getActionItemTypeIds({ orgId });
+        const relatedActionTargetsUnsupportedType =
+          relatedActionsToPublish.some((relatedAction) =>
+            relatedAction.actionIds
+              .filter((actionId) => actionId.length > 0)
+              .some((actionId) => {
+                const supportedTypeIds = actionItemTypeIds.get(actionId) ?? [];
+                return !supportedTypeIds.includes(relatedAction.itemTypeId);
+              }),
+          );
+        if (relatedActionTargetsUnsupportedType) {
+          throw makeSubmittedJobActionNotFoundError({ shouldErrorSpan: true });
+        }
+      }
+
       // Enforce `requires_policy_for_decisions` server-side. The MRT UI already
       // disables submit when this is on, but API/script callers can bypass that.
-      // Only check the flag when there's actually a policy-less decision to
-      // enforce against, so the common path avoids the extra DB hit. The check
-      // only fires for CUSTOM_ACTION decisions, so it applies even on NCMEC
-      // jobs that mix in a CUSTOM_ACTION (e.g. issuing a strike alongside an
-      // NCMEC ignore or report). Related item actions are included so a
-      // policy-less additional-item action cannot bypass the org setting.
+      // Related item actions are included so a policy-less or unknown-policy
+      // additional-item action cannot bypass the org setting. The flag is also
+      // read when related actions are present so fake policy IDs can be rejected.
       const hasEmptyPolicyCustomAction =
         customActionDecisions.some(
           (decision) => decision.policies.length === 0,
@@ -362,15 +387,48 @@ export default class JobDecisioning {
         relatedActionsToPublish.some(
           (relatedAction) => relatedAction.policyIds.length === 0,
         );
-      if (hasEmptyPolicyCustomAction) {
+      if (hasEmptyPolicyCustomAction || relatedActionsToPublish.length > 0) {
         const requiresPolicy =
           await this.manualReviewToolSettings.getRequiresPolicyForDecisions(
             orgId,
           );
         if (requiresPolicy) {
-          throw makeMissingRequiredPolicyForDecisionError({
-            shouldErrorSpan: true,
-          });
+          if (hasEmptyPolicyCustomAction) {
+            throw makeMissingRequiredPolicyForDecisionError({
+              shouldErrorSpan: true,
+            });
+          }
+          const relatedPolicyIds = [
+            ...new Set(
+              relatedActionsToPublish.flatMap((relatedAction) =>
+                relatedAction.policyIds.filter(
+                  (policyId) => policyId.length > 0,
+                ),
+              ),
+            ),
+          ];
+          const foundPolicies =
+            relatedPolicyIds.length === 0
+              ? []
+              : await this.moderationConfigService.getPoliciesByIds({
+                  orgId,
+                  ids: relatedPolicyIds,
+                });
+          const foundPolicyIds = new Set(
+            foundPolicies.map((policy) => policy.id),
+          );
+          const relatedHasUnknownPolicy = relatedActionsToPublish.some(
+            (relatedAction) =>
+              relatedAction.policyIds.some(
+                (policyId) =>
+                  policyId.length === 0 || !foundPolicyIds.has(policyId),
+              ),
+          );
+          if (relatedHasUnknownPolicy) {
+            throw makeMissingRequiredPolicyForDecisionError({
+              shouldErrorSpan: true,
+            });
+          }
         }
       }
 

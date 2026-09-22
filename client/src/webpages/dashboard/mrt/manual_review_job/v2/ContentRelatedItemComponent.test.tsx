@@ -292,6 +292,8 @@ describe('ContentRelatedItemComponent', () => {
     fireEvent.click(screen.getByText('Hide Content'));
     expect(onEnqueueAction).not.toHaveBeenCalled();
     expect(screen.getByText('Select policy')).toBeInTheDocument();
+    expect(screen.queryByText('Select an action')).not.toBeInTheDocument();
+    expect(screen.queryByText('Add another action')).not.toBeInTheDocument();
     await openPolicySelect('Select policy');
     await waitFor(() => {
       expect(screen.getByText('Spam')).toBeInTheDocument();

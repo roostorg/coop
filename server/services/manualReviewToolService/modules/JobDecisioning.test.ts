@@ -147,20 +147,60 @@ describe('sanitizeRelatedActionParameterPayloads', () => {
     ).toEqual([relatedAction]);
   });
 
-  test('rejects unknown or invalid parameter values', () => {
+  test('rejects unknown parameter keys', () => {
     expect(() =>
       sanitizeRelatedActionParameterPayloads(
         [
           {
             ...relatedAction,
             actionIdsToMrtApiParamDecisionPayload: {
-              enqueue_human: { queue: 'not-an-option', extra: true },
+              enqueue_human: { queue: 'priority', extra: true },
             },
           },
         ],
         [parameterizedAction],
       ),
-    ).toThrow(/Unknown parameter|Invalid action parameter/i);
+    ).toThrow(/Unknown parameter/i);
+  });
+
+  test('rejects invalid option values', () => {
+    expect(() =>
+      sanitizeRelatedActionParameterPayloads(
+        [
+          {
+            ...relatedAction,
+            actionIdsToMrtApiParamDecisionPayload: {
+              enqueue_human: { queue: 'not-an-option' },
+            },
+          },
+        ],
+        [parameterizedAction],
+      ),
+    ).toThrow(/not one of the allowed option values/i);
+  });
+
+  test('drops payloads for missing or non-custom actions', () => {
+    expect(
+      sanitizeRelatedActionParameterPayloads(
+        [
+          {
+            ...relatedAction,
+            actionIds: ['missing_action'],
+            actionIdsToMrtApiParamDecisionPayload: {
+              missing_action: { queue: 'priority' },
+            },
+          },
+        ],
+        [parameterizedAction],
+      ),
+    ).toEqual([
+      {
+        actionIds: ['missing_action'],
+        itemIds: ['post_2'],
+        itemTypeId: 'content',
+        policyIds: ['policy_abuse'],
+      },
+    ]);
   });
 
   test('drops empty payloads when the action has no parameters', () => {

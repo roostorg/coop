@@ -1042,7 +1042,7 @@ export default async function getBottle(
             'submissionId' in item && !('itemType' in item)
               ? itemSubmissionWithTypeIdentifierToItemSubmission(item, itemType)
               : item;
-          actionPublisher
+          return actionPublisher
             .publishActions(
               nonNullActionsWithCustomMrtParams.map((action) => ({
                 // we can cast to non-undefined (!) because we know that

@@ -177,11 +177,14 @@ function ContentItemRelatedActionsPicker(props: {
   const [pendingAction, setPendingAction] = useState<ContentAction | null>(
     null,
   );
+  const [pendingPolicyIds, setPendingPolicyIds] = useState<readonly string[]>(
+    [],
+  );
 
   const activeActions = relatedActionsTargetingContentItem(
     relatedActions,
     item,
-  );
+  ).filter((enqueued) => enqueued.action.id !== pendingAction?.id);
   const activeActionIds = new Set(activeActions.map((it) => it.action.id));
   const actionsAvailableToAdd = applicableActions.filter(
     (action) =>
@@ -213,7 +216,9 @@ function ContentItemRelatedActionsPicker(props: {
       <div className="text-sm font-semibold text-slate-800">
         Take Action on This Item
       </div>
-      {actionsAvailableToAdd.length > 0 ? (
+      {actionsAvailableToAdd.length > 0 &&
+      (pendingAction == null ||
+        (allowMoreThanOnePolicySelection && pendingPolicyIds.length > 0)) ? (
         <Select
           className="w-full max-w-sm"
           placeholder={
@@ -234,6 +239,7 @@ function ContentItemRelatedActionsPicker(props: {
             }
             if (requirePolicySelectionToEnqueueAction) {
               setPendingAction(action);
+              setPendingPolicyIds([]);
               return;
             }
             enqueue(action, []);
@@ -342,7 +348,21 @@ function ContentItemRelatedActionsPicker(props: {
                   type="button"
                   aria-label={`Remove ${pendingAction.name}`}
                   className="flex items-center shrink-0 bg-transparent border-none p-0 cursor-pointer"
-                  onClick={() => setPendingAction(null)}
+                  onClick={() => {
+                    if (pendingPolicyIds.length > 0) {
+                      onRemoveAction?.(
+                        relatedActionForContentItem({
+                          item,
+                          displayName,
+                          action: pendingAction,
+                          selectedPolicyIds: pendingPolicyIds,
+                          allPolicies,
+                        }),
+                      );
+                    }
+                    setPendingAction(null);
+                    setPendingPolicyIds([]);
+                  }}
                 >
                   <X className="w-4 h-4 p-0.5 rounded-full bg-slate-400/70 hover:bg-slate-400/50 text-slate-200" />
                 </button>
@@ -351,7 +371,9 @@ function ContentItemRelatedActionsPicker(props: {
                 className="w-full"
                 policies={allPolicies}
                 selectedPolicyIds={
-                  allowMoreThanOnePolicySelection ? [] : undefined
+                  allowMoreThanOnePolicySelection
+                    ? pendingPolicyIds
+                    : pendingPolicyIds[0]
                 }
                 onChange={(policyIds) => {
                   const selected = arrayFromArrayOrSingleItem(policyIds);
@@ -362,7 +384,12 @@ function ContentItemRelatedActionsPicker(props: {
                     return;
                   }
                   enqueue(pendingAction, policyIds);
+                  if (allowMoreThanOnePolicySelection) {
+                    setPendingPolicyIds(selected);
+                    return;
+                  }
                   setPendingAction(null);
+                  setPendingPolicyIds([]);
                 }}
                 multiple={allowMoreThanOnePolicySelection}
               />
