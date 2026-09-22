@@ -15,14 +15,15 @@ if [[ ! -f "$file" ]]; then
 fi
 
 while IFS= read -r span; do
-  [[ "$span" != */* ]] && continue
-  [[ "$span" == /* || "$span" == @* ]] && continue
-  [[ "$span" == *"://"* ]] && continue
-  [[ "$span" == *" "* ]] && continue
-  [[ "$span" == *"*"* || "$span" == *"<"* || "$span" == *">"* ]] && continue
+  [[ "$span" != */* ]] && continue # Must contain a slash
+  [[ "$span" == /* || "$span" == @* ]] && continue # No leading Slash
+  [[ "$span" == *"://"* ]] && continue # No leading '@'
+  [[ "$span" == *" "* ]] && continue # No Spaces
+  [[ "$span" == *"*"* || "$span" == *"<"* || "$span" == *">"* ]] && continue #No glob/placehold chars
   [[ "$span" == actions/* ]] && continue  # GitHub Action refs, not repo paths
-  path=${span%/}
-  [[ -z "$path" ]] && continue
+  path=${span%/} # Strips trailing slash
+  [[ -z "$path" ]] && continue # Skip if path empty (lone '/')
+  
   if [[ ! -e "$path" ]]; then
     echo "$file references $span which does not exist" >&2
     failed=1
