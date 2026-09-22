@@ -1662,6 +1662,12 @@ export type GQLItemAction = {
   readonly itemId: Scalars['ID']['output'];
   readonly itemTypeId: Scalars['ID']['output'];
   readonly jobId?: Maybe<Scalars['ID']['output']>;
+  /**
+   * Moderator-supplied parameter values this action ran with, keyed by the
+   * parameter's `name`. Empty when the action takes no parameters or the
+   * execution predates parameter capture.
+   */
+  readonly parameters: Scalars['JSONObject']['output'];
   readonly policies: ReadonlyArray<Scalars['String']['output']>;
   readonly ruleIds: ReadonlyArray<Scalars['ID']['output']>;
   readonly ts: Scalars['DateTime']['output'];
@@ -2325,6 +2331,7 @@ export type GQLManualReviewQueue = {
 export type GQLManualReviewQueueJobsArgs = {
   ids?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
   limit?: InputMaybe<Scalars['Int']['input']>;
+  lockToken?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type GQLManualReviewQueueNameExistsError = GQLError & {
@@ -4115,10 +4122,8 @@ export type GQLRole = {
   readonly __typename?: 'Role';
   readonly description?: Maybe<Scalars['String']['output']>;
   readonly displayName: Scalars['String']['output'];
-  /** Persisted public.roles.id, or null when the row is materialized lazily on first save. */
-  readonly id?: Maybe<Scalars['ID']['output']>;
-  /** True when permissions/metadata come from the static fallback rather than public.roles. */
-  readonly isFallback: Scalars['Boolean']['output'];
+  /** Persisted public.roles.id. */
+  readonly id: Scalars['ID']['output'];
   readonly isSystem: Scalars['Boolean']['output'];
   /** Stable role identifier (matches UserRole). */
   readonly key: GQLUserRole;
@@ -5086,7 +5091,6 @@ export type GQLUser = {
   readonly notifications: GQLUserNotifications;
   readonly orgId: Scalars['ID']['output'];
   readonly permissions: ReadonlyArray<GQLUserPermission>;
-  readonly readMeJWT?: Maybe<Scalars['String']['output']>;
   readonly rejectedByAdmin?: Maybe<Scalars['Boolean']['output']>;
   readonly reviewableQueues: ReadonlyArray<GQLManualReviewQueue>;
   readonly role?: Maybe<GQLUserRole>;
@@ -9710,6 +9714,11 @@ export type GQLItemActionResolvers<
   itemId?: Resolver<GQLResolversTypes['ID'], ParentType, ContextType>;
   itemTypeId?: Resolver<GQLResolversTypes['ID'], ParentType, ContextType>;
   jobId?: Resolver<Maybe<GQLResolversTypes['ID']>, ParentType, ContextType>;
+  parameters?: Resolver<
+    GQLResolversTypes['JSONObject'],
+    ParentType,
+    ContextType
+  >;
   policies?: Resolver<
     ReadonlyArray<GQLResolversTypes['String']>,
     ParentType,
@@ -13364,8 +13373,7 @@ export type GQLRoleResolvers<
     ContextType
   >;
   displayName?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
-  id?: Resolver<Maybe<GQLResolversTypes['ID']>, ParentType, ContextType>;
-  isFallback?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
+  id?: Resolver<GQLResolversTypes['ID'], ParentType, ContextType>;
   isSystem?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
   key?: Resolver<GQLResolversTypes['UserRole'], ParentType, ContextType>;
   permissions?: Resolver<
@@ -14672,11 +14680,6 @@ export type GQLUserResolvers<
   orgId?: Resolver<GQLResolversTypes['ID'], ParentType, ContextType>;
   permissions?: Resolver<
     ReadonlyArray<GQLResolversTypes['UserPermission']>,
-    ParentType,
-    ContextType
-  >;
-  readMeJWT?: Resolver<
-    Maybe<GQLResolversTypes['String']>,
     ParentType,
     ContextType
   >;

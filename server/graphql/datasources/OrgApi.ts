@@ -166,7 +166,7 @@ class OrgAPI {
    * (e.g. org created before this feature), we create and persist one once.
    */
   async getPublicSigningKeyPem(orgId: string) {
-    let key: CryptoKey;
+    let key: crypto.webcrypto.CryptoKey;
     try {
       key =
         await this.signingKeyPairService.getSignatureVerificationInfo(orgId);

@@ -10,7 +10,6 @@ import {
 import IORedis, { type Cluster } from 'ioredis';
 import { Kysely, PostgresDialect } from 'kysely';
 import _ from 'lodash';
-import { DynamicPool } from 'node-worker-threads-pool';
 import pLimit from 'p-limit';
 import pg from 'pg';
 import Cursor from 'pg-cursor';
@@ -109,6 +108,7 @@ import {
 import makeHmaService, {
   HashBankService,
   type HashBank,
+  type HmaService,
 } from '../services/hmaService/index.js';
 import { ItemInvestigationService } from '../services/itemInvestigationService/index.js';
 import {
@@ -116,6 +116,10 @@ import {
   type ItemSubmissionWithTypeIdentifier,
   type NormalizedItemData,
 } from '../services/itemProcessingService/index.js';
+import {
+  getRegisteredManualReviewContentResolver,
+  type ManualReviewContentResolver,
+} from '../services/manualReviewContentResolver.js';
 import {
   actionableRelatedActions,
   isReportJob,
@@ -236,7 +240,6 @@ import {
   toCorrelationId,
   type CorrelationId,
 } from '../utils/correlationIds.js';
-import { getUsableCoreCount } from '../utils/cpu-helpers.js';
 import { jsonStringify, type JsonOf } from '../utils/encoding.js';
 import { logErrorJson, logJson } from '../utils/logging.js';
 import { __throw, assertUnreachable } from '../utils/misc.js';
@@ -362,6 +365,7 @@ export interface Dependencies {
   ReportingRuleExecutionLogger: ReportingRuleExecutionLogger;
 
   // Core business logic services
+  HMAHashBankService: HmaService;
   ActionPublisher: ActionPublisher;
   RuleEngine: RuleEngine;
   RuleEvaluator: RuleEvaluator;
@@ -371,6 +375,7 @@ export interface Dependencies {
   NotificationsService: PublicInterface<NotificationsService>;
   PlacesApiService: PlacesApiService;
   ReportingService: ReportingService;
+  ManualReviewContentResolver: ManualReviewContentResolver;
   ManualReviewToolService: ManualReviewToolService;
   SignalsService: SignalsService;
   ItemInvestigationService: ItemInvestigationService;
@@ -435,7 +440,6 @@ export interface Dependencies {
   S3StoreObjectFactory: S3StoreObjectFactory;
   sendEmail: SendEmail;
   closeSharedResourcesForShutdown: () => Promise<void>;
-  GlobalWorkerPool: DynamicPool;
   Tracer: SafeTracer;
   Meter: CoopMeter;
   KeyValueStore: StringNumberKeyValueStore;
@@ -465,7 +469,11 @@ export function getPgConnectionParams(): pg.ClientConfig {
  * This export is a function, not a container object, so that you can create
  * copies of the container as needed for selective rebinding.
  */
-export default async function getBottle() {
+export default async function getBottle(
+  extensions: {
+    manualReviewContentResolver?: ManualReviewContentResolver;
+  } = {},
+) {
   // Pool / client tuning shared by both Kysely pools. Defaults preserve our
   // pre-Kysely behavior; env var names are generic.
   const getPgPoolTuning = () => {
@@ -780,9 +788,7 @@ export default async function getBottle() {
             executionContext,
           );
         },
-        itemInvestigationAndStrikesEnabled(
-          process.env.ITEM_INVESTIGATION_AND_STRIKES_ENABLED,
-        ),
+        itemInvestigationAndStrikesEnabled(process.env.SCYLLA_ENABLED),
       ),
   );
 
@@ -796,18 +802,12 @@ export default async function getBottle() {
   bottle.factory('Scylla', () => {
     // Scylla backs the item-investigation and user-strike features. Operators
     // who don't need those (and don't want to run a Scylla cluster) can set
-    // `ITEM_INVESTIGATION_AND_STRIKES_ENABLED=false` to swap in a no-op that
+    // `SCYLLA_ENABLED=false` to swap in a no-op that
     // drops writes and returns empty reads, so no `SCYLLA_*` connection env
     // vars are required. Defaults to enabled to preserve existing behaviour.
-    if (
-      !itemInvestigationAndStrikesEnabled(
-        process.env.ITEM_INVESTIGATION_AND_STRIKES_ENABLED,
-      )
-    ) {
+    if (!itemInvestigationAndStrikesEnabled(process.env.SCYLLA_ENABLED)) {
       // eslint-disable-next-line no-restricted-syntax
-      logJson(
-        'scylla.disabled ITEM_INVESTIGATION_AND_STRIKES_ENABLED=false; using no-op Scylla',
-      );
+      logJson('scylla.disabled SCYLLA_ENABLED=false; using no-op Scylla');
       return new NoOpScylla();
     }
 
@@ -936,6 +936,13 @@ export default async function getBottle() {
         container.KyselyPgReadReplica,
         async (_) => {},
       ),
+  );
+
+  bottle.factory(
+    'ManualReviewContentResolver',
+    () =>
+      extensions.manualReviewContentResolver ??
+      getRegisteredManualReviewContentResolver(),
   );
 
   bottle.factory('ManualReviewToolService', (container) => {
@@ -1542,6 +1549,7 @@ export default async function getBottle() {
       // on ManualReviewToolService.
       async (params) =>
         container.NcmecService.getUserHasExistingNcmecReport(params),
+      container.ManualReviewContentResolver,
     );
   });
 
@@ -1705,17 +1713,6 @@ export default async function getBottle() {
   bottle.factory('sendEmail', makeSendEmail);
   register(bottle, 'KeyValueStore', makeKeyValueStore);
 
-  // Here, we make sure that our thread pool has at least one core. We also
-  // set the maximum number of to be the number of usable cores minus one
-  // so that we don't accidentally contend for resources with the main
-  // thread. It's possible we'll need to increase this to use all cores
-  // in an instance where the main thread is empty, but that should be
-  // pretty rare, and we can monitor to see if it's necessary
-  bottle.factory(
-    'GlobalWorkerPool',
-    () => new DynamicPool(Math.max(1, Math.floor(getUsableCoreCount()) - 1)),
-  );
-
   // NB: for now, we only expose the SafeTracer instance through bottle,
   // because we want all tracing to go through its helper functions.
   bottle.factory('Tracer', () => {
@@ -1808,7 +1805,6 @@ export default async function getBottle() {
             'getUserStrikeTTLInDaysEventuallyConsistent',
             'ManualReviewToolService',
             'SigningKeyPairService',
-            'GlobalWorkerPool',
             'SignalsService',
             'ModerationConfigService',
             'OrgSettingsService',

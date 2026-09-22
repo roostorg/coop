@@ -135,6 +135,60 @@ describe('Manual Review Tool Service', () => {
     },
   );
 
+  testWithQueue(
+    'verifies the persisted reviewer lock',
+    async ({ mrtService, org, user, queue }) => {
+      const jobPayload = makeDummyMrtJobPayload();
+      await mrtService['queueOps']['addJob']({
+        jobPayload,
+        orgId: org.id,
+        queueId: queue.id,
+        enqueueSourceInfo: { kind: 'REPORT' },
+      });
+      const claimed = await mrtService.dequeueNextJob({
+        orgId: org.id,
+        queueId: queue.id,
+        userId: user.id,
+      });
+      if (!claimed) throw new Error('expected a claimed job');
+
+      await expect(
+        mrtService['queueOps'].extendJobLock({
+          orgId: org.id,
+          queueId: queue.id,
+          jobId: claimed.job.id,
+          lockToken: claimed.lockToken,
+          isAppealsQueue: false,
+        }),
+      ).resolves.toBe(true);
+      await expect(
+        mrtService['queueOps'].extendJobLock({
+          orgId: org.id,
+          queueId: queue.id,
+          jobId: claimed.job.id,
+          lockToken: uuidv1(),
+          isAppealsQueue: false,
+        }),
+      ).resolves.toBe(false);
+
+      await mrtService.releaseJobLock({
+        orgId: org.id,
+        queueId: queue.id,
+        jobId: claimed.job.id,
+        lockToken: claimed.lockToken,
+      });
+      await expect(
+        mrtService['queueOps'].extendJobLock({
+          orgId: org.id,
+          queueId: queue.id,
+          jobId: claimed.job.id,
+          lockToken: claimed.lockToken,
+          isAppealsQueue: false,
+        }),
+      ).resolves.toBe(false);
+    },
+  );
+
   // TODO: rework when we rework the MRT error handling
   testWithService.skip(
     'MRT throws for submitting a job that has already been moved to completed',

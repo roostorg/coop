@@ -1,5 +1,3 @@
-import jwt from 'jsonwebtoken';
-
 import { UserPermission } from '../../services/userManagementService/index.js';
 import {
   type GQLGetDecisionCountSettings,
@@ -10,6 +8,7 @@ import {
 } from '../generated.js';
 import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
 import { gqlSuccessResult } from '../utils/gqlResult.js';
+import { assertQueueIsReviewable } from '../utils/manualReviewQueueAuthorization.js';
 
 const typeDefs = /* GraphQL */ `
   enum UserRole {
@@ -69,7 +68,6 @@ const typeDefs = /* GraphQL */ `
     # Extra wrapper types here are so that we can eventually turn notifications
     # into a proper Connection in a non-breaking way if we ever need pagination.
     notifications: UserNotifications!
-    readMeJWT: String
     favoriteRules: [Rule!]!
     favoriteMRTQueues: [ManualReviewQueue!]!
     interfacePreferences: UserInterfacePreferences!
@@ -264,6 +262,10 @@ const Mutation: GQLMutationResolvers = {
     if (user == null) {
       throw unauthenticatedError('User required.');
     }
+    await assertQueueIsReviewable(
+      { id: params.queueId, orgId: user.orgId },
+      context,
+    );
     await context.services.ManualReviewToolService.addFavoriteQueueForUser({
       userId: user.id,
       orgId: user.orgId,
@@ -351,43 +353,6 @@ const User: GQLUserResolvers = {
     const notifications = await api.getNotificationsForUser(user.id);
     return { edges: notifications.map((it) => ({ node: it })) };
   },
-  async readMeJWT(user, __, { dataSources, getUser }) {
-    try {
-      const authedUser = getUser();
-      if (!authedUser || user.id !== authedUser.id) {
-        throw forbiddenError('Must be signed in as this user to read JWT.');
-      }
-
-      const { email, firstName, lastName, orgId } = user;
-      const name = `${firstName} ${lastName}`;
-
-      // The ReadMe JWT can include the org's API key and webhook signing key
-      // so docs can prefill them — but only for users who are already
-      // entitled to see those secrets via the normal MANAGE_ORG-gated
-      // surfaces. Otherwise, decoding the JWT would leak org secrets to any
-      // authenticated user.
-      const canSeeOrgSecrets = authedUser
-        .getPermissions()
-        .includes(UserPermission.MANAGE_ORG);
-      let apiKey: string | null = null;
-      let publicSigningKey: string | null = null;
-      if (canSeeOrgSecrets) {
-        const [apiKeyRes, signingKey] = await Promise.all([
-          dataSources.orgAPI.getActivatedApiKeyForOrg(orgId),
-          dataSources.orgAPI.getPublicSigningKeyPem(orgId),
-        ]);
-        apiKey = apiKeyRes === false ? null : apiKeyRes.key;
-        publicSigningKey = signingKey;
-      }
-
-      return jwt.sign(
-        { name, email, apiKey, publicSigningKey },
-        process.env.READ_ME_JWT_SECRET!,
-      );
-    } catch (e) {
-      return null;
-    }
-  },
   async favoriteRules(user, _, context) {
     return context.dataSources.userAPI.getFavoriteRules(user.id, user.orgId);
   },
@@ -412,10 +377,37 @@ const User: GQLUserResolvers = {
     };
   },
   async favoriteMRTQueues(user, _, context) {
-    return context.services.ManualReviewToolService.getFavoriteQueuesForUser({
-      userId: user.id,
-      orgId: user.orgId,
-    });
+    const caller = context.getUser();
+    if (caller == null) {
+      throw unauthenticatedError('User required.');
+    }
+    if (caller.id !== user.id || caller.orgId !== user.orgId) {
+      throw forbiddenError('User does not have access to these queues');
+    }
+
+    const favorites =
+      await context.services.ManualReviewToolService.getFavoriteQueuesForUser({
+        userId: user.id,
+        orgId: user.orgId,
+      });
+    if (favorites.length === 0) {
+      return [];
+    }
+    const reviewableQueues =
+      await context.services.ManualReviewToolService.getReviewableQueuesForUser(
+        {
+          invoker: {
+            userId: caller.id,
+            permissions: caller.getPermissions(),
+            orgId: caller.orgId,
+          },
+          queueIds: favorites.map((queue) => queue.id),
+        },
+      );
+    const reviewableQueueIds = new Set(
+      reviewableQueues.map((queue) => queue.id),
+    );
+    return favorites.filter((queue) => reviewableQueueIds.has(queue.id));
   },
   async reviewableQueues(_, { queueIds }, context) {
     const user = context.getUser();
@@ -431,12 +423,9 @@ const User: GQLUserResolvers = {
             permissions: user.getPermissions(),
             orgId: user.orgId,
           },
+          queueIds: queueIds ?? undefined,
         },
       );
-
-    if (queueIds) {
-      return queues.filter((it) => queueIds.includes(it.id));
-    }
 
     return queues;
   },

@@ -43,8 +43,19 @@ import {
 } from '../utils/errors.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 import { oneOfInputToTaggedUnion } from '../utils/inputHelpers.js';
+import { assertQueueIsReviewable } from '../utils/manualReviewQueueAuthorization.js';
 
 const { omit, sumBy } = _;
+
+export const MAX_MANUAL_REVIEW_JOB_IDS = 10;
+
+export function assertManualReviewJobIdsWithinLimit(jobIds: readonly string[]) {
+  if (jobIds.length > MAX_MANUAL_REVIEW_JOB_IDS) {
+    throw userInputError(
+      `At most ${MAX_MANUAL_REVIEW_JOB_IDS} job IDs may be requested.`,
+    );
+  }
+}
 
 const typeDefs = /* GraphQL */ `
   enum MrtClearReportsDisposition {
@@ -64,7 +75,7 @@ const typeDefs = /* GraphQL */ `
     description: String
     orgId: ID!
     isDefaultQueue: Boolean!
-    jobs(ids: [ID!], limit: Int): [ManualReviewJob!]!
+    jobs(ids: [ID!], limit: Int, lockToken: String): [ManualReviewJob!]!
     pendingJobCount: Int!
     oldestJobCreatedAt: DateTime
     explicitlyAssignedReviewers: [User!]!
@@ -1748,7 +1759,9 @@ const NcmecManualReviewJobPayload: GQLNcmecManualReviewJobPayloadResolvers = {
 };
 
 const ManualReviewQueue: GQLManualReviewQueueResolvers = {
-  async jobs(queue, { ids: jobIds, limit }, context) {
+  async jobs(queue, { ids: jobIds, limit, lockToken }, context) {
+    const user = await assertQueueIsReviewable(queue, context);
+
     const { orgId, id: queueId } = queue;
 
     if (jobIds == null) {
@@ -1758,20 +1771,43 @@ const ManualReviewQueue: GQLManualReviewQueueResolvers = {
         limit: limit ?? undefined,
       });
     }
+    assertManualReviewJobIdsWithinLimit(jobIds);
+
     // Empty array means "filter to no IDs" -> result is always []. Short-circuit
     // so we don't open a Bull/Redis queue handle per reviewable queue on every
     // MRT page load before a job has been dequeued.
     if (jobIds.length === 0) {
       return [];
     }
-    return context.services.ManualReviewToolService.getJobsForQueue({
-      orgId,
-      queueId,
-      jobIds,
-      isAppealsQueue: queue.isAppealsQueue,
-    });
+
+    const jobs = await context.services.ManualReviewToolService.getJobsForQueue(
+      {
+        orgId,
+        queueId,
+        jobIds,
+        isAppealsQueue: queue.isAppealsQueue,
+      },
+    );
+    if (lockToken == null) {
+      return jobs;
+    }
+
+    return Promise.all(
+      jobs.map(async (job) =>
+        context.services.ManualReviewToolService.resolveContentForReview({
+          job,
+          queueId,
+          reviewerId: user.id,
+          reviewerOrgId: user.orgId,
+          lockToken,
+          isAppealsQueue: queue.isAppealsQueue,
+        }),
+      ),
+    );
   },
   async pendingJobCount(queue, _, context) {
+    await assertQueueIsReviewable(queue, context);
+
     const { orgId, id: queueId } = queue;
     return context.services.ManualReviewToolService.getPendingJobCount({
       orgId,
@@ -1779,6 +1815,8 @@ const ManualReviewQueue: GQLManualReviewQueueResolvers = {
     });
   },
   async oldestJobCreatedAt(queue, _, context) {
+    await assertQueueIsReviewable(queue, context);
+
     const { orgId, id: queueId } = queue;
     return context.services.ManualReviewToolService.getOldestJobCreatedAt({
       orgId,
@@ -1787,10 +1825,7 @@ const ManualReviewQueue: GQLManualReviewQueueResolvers = {
     });
   },
   async explicitlyAssignedReviewers(queue, _, context) {
-    const user = context.getUser();
-    if (user == null) {
-      throw unauthenticatedError('User required.');
-    }
+    const user = await assertQueueIsReviewable(queue, context);
     const { id: userId, orgId } = user;
 
     const userIds = (
@@ -1803,10 +1838,7 @@ const ManualReviewQueue: GQLManualReviewQueueResolvers = {
     return context.dataSources.userAPI.getGraphQLUsersFromIds(userIds);
   },
   async hiddenActionIds(queue, _, context) {
-    const user = context.getUser();
-    if (user == null) {
-      throw unauthenticatedError('User required.');
-    }
+    const user = await assertQueueIsReviewable(queue, context);
     const { orgId } = user;
     const { id: queueId } = queue;
 
@@ -1816,10 +1848,7 @@ const ManualReviewQueue: GQLManualReviewQueueResolvers = {
     });
   },
   async clearReportsTriggerActionIds(queue, _, context) {
-    const user = context.getUser();
-    if (user == null) {
-      throw unauthenticatedError('User required.');
-    }
+    const user = await assertQueueIsReviewable(queue, context);
     return context.services.ManualReviewToolService.getClearReportsTriggerActionsForQueue(
       {
         orgId: user.orgId,
@@ -2084,14 +2113,20 @@ const Query: GQLQueryResolvers = {
     if (user == null) {
       throw unauthenticatedError('Authenticated user required');
     }
-    const allQueues =
-      await context.services.ManualReviewToolService.getAllQueuesForOrgAndDangerouslyBypassPermissioning(
-        { orgId: user.orgId },
+    const reviewableQueues =
+      await context.services.ManualReviewToolService.getReviewableQueuesForUser(
+        {
+          invoker: {
+            userId: user.id,
+            permissions: user.getPermissions(),
+            orgId: user.orgId,
+          },
+        },
       );
 
     return context.services.ManualReviewToolService.getTotalPendingJobCountForQueues(
       user.orgId,
-      allQueues.map((q) => q.id),
+      reviewableQueues.map((q) => q.id),
     );
   },
 
@@ -2177,11 +2212,18 @@ const Query: GQLQueryResolvers = {
       throw unauthenticatedError('User required.');
     }
 
-    const queue =
-      await context.services.ManualReviewToolService.getQueueForOrgAndDangerouslyBypassPermissioning(
-        { orgId: user.orgId, queueId: id },
+    const reviewableQueues =
+      await context.services.ManualReviewToolService.getReviewableQueuesForUser(
+        {
+          invoker: {
+            userId: user.id,
+            permissions: user.getPermissions(),
+            orgId: user.orgId,
+          },
+          queueIds: [id],
+        },
       );
-    return queue ?? null;
+    return reviewableQueues[0] ?? null;
   },
   async getCommentsForJob(_: unknown, { jobId }, context) {
     const user = context.getUser();
@@ -2199,10 +2241,22 @@ const Query: GQLQueryResolvers = {
       throw unauthenticatedError('Authenticated user required');
     }
 
+    const reviewableQueues =
+      await context.services.ManualReviewToolService.getReviewableQueuesForUser(
+        {
+          invoker: {
+            userId: user.id,
+            permissions: user.getPermissions(),
+            orgId: user.orgId,
+          },
+        },
+      );
+
     return context.services.ManualReviewToolService.getExistingJobsForItem({
       orgId: user.orgId,
       itemId: params.itemId,
       itemTypeId: params.itemTypeId,
+      queueIds: reviewableQueues.map((queue) => queue.id),
     });
   },
   async getDecisionsTable(_, params, context) {
@@ -2276,6 +2330,21 @@ const Mutation: GQLMutationResolvers = {
       throw unauthenticatedError('User required.');
     }
 
+    const reviewableQueues =
+      await context.services.ManualReviewToolService.getReviewableQueuesForUser(
+        {
+          invoker: {
+            userId: user.id,
+            permissions: user.getPermissions(),
+            orgId: user.orgId,
+          },
+          queueIds: [queueId],
+        },
+      );
+    if (reviewableQueues.length === 0) {
+      throw forbiddenError('User does not have access to this queue');
+    }
+
     const { id: userId, orgId } = user;
     const nextJob =
       await context.services.ManualReviewToolService.dequeueNextJob({
@@ -2314,6 +2383,8 @@ const Mutation: GQLMutationResolvers = {
       decisionReason,
       reportHistory,
     } = params.input;
+
+    await assertQueueIsReviewable({ id: queueId, orgId }, context);
 
     const decisionPayloads = reportedItemDecisionComponents.map(
       (reportedItemDecisionComponent) => {

@@ -1,5 +1,3 @@
-import jwt from 'jsonwebtoken';
-
 import { UserPermission } from '../../services/userManagementService/index.js';
 import { resolvers } from './user.js';
 
@@ -54,111 +52,163 @@ describe('user resolvers', () => {
     });
   });
 
-  describe('User.readMeJWT does not leak org secrets to non-admins', () => {
-    const TEST_JWT_SECRET = 'test-readme-jwt-secret';
-    let originalSecret: string | undefined;
+  describe('MRT favorites respect the caller queue access', () => {
+    const caller = {
+      id: 'caller-1',
+      orgId: 'org-1',
+      getPermissions: () => [UserPermission.VIEW_MRT],
+    };
+    const favoriteQueues = [
+      { id: 'q-allowed', orgId: 'org-1', name: 'Allowed' },
+      { id: 'q-denied', orgId: 'org-1', name: 'Denied' },
+    ];
 
-    beforeAll(() => {
-      originalSecret = process.env.READ_ME_JWT_SECRET;
-      process.env.READ_ME_JWT_SECRET = TEST_JWT_SECRET;
-    });
-    afterAll(() => {
-      if (originalSecret == null) {
-        delete process.env.READ_ME_JWT_SECRET;
-      } else {
-        process.env.READ_ME_JWT_SECRET = originalSecret;
-      }
-    });
-
-    function makeReadMeCtx(permissions: readonly UserPermission[]) {
-      const getActivatedApiKeyForOrg = jest.fn(async () => ({
-        key: 'org-api-key-SHOULD-NEVER-LEAK',
-      }));
-      const getPublicSigningKeyPem = jest.fn(async () => 'SIGNING_KEY_PEM');
+    function makeCtx(opts?: { reviewableQueueIds?: string[]; user?: null }) {
+      const reviewableQueueIds = opts?.reviewableQueueIds ?? ['q-allowed'];
+      const getFavoriteQueuesForUser = jest.fn(async () => favoriteQueues);
+      const getReviewableQueuesForUser = jest.fn(
+        async ({ queueIds }: { queueIds?: readonly string[] }) =>
+          favoriteQueues.filter(
+            (queue) =>
+              reviewableQueueIds.includes(queue.id) &&
+              (queueIds == null || queueIds.includes(queue.id)),
+          ),
+      );
+      const addFavoriteQueueForUser = jest.fn(async () => undefined);
       const ctx = {
-        getUser: () => ({
-          id: 'user-1',
-          orgId: 'org-1',
-          getPermissions: () => permissions,
-        }),
-        dataSources: {
-          orgAPI: { getActivatedApiKeyForOrg, getPublicSigningKeyPem },
+        getUser: () => (opts?.user === null ? null : caller),
+        services: {
+          ManualReviewToolService: {
+            getFavoriteQueuesForUser,
+            getReviewableQueuesForUser,
+            addFavoriteQueueForUser,
+          },
         },
       };
-      return { ctx, getActivatedApiKeyForOrg, getPublicSigningKeyPem };
+      return {
+        ctx,
+        getFavoriteQueuesForUser,
+        getReviewableQueuesForUser,
+        addFavoriteQueueForUser,
+      };
     }
-
-    const userParent = {
-      id: 'user-1',
-      orgId: 'org-1',
-      email: 't@example.com',
-      firstName: 'Test',
-      lastName: 'User',
-    };
 
     const User = resolvers.User as {
-      readMeJWT: (
-        parent: typeof userParent,
+      favoriteMRTQueues: (
+        parent: { id: string; orgId: string },
         args: unknown,
         ctx: unknown,
-      ) => Promise<string | null>;
+      ) => Promise<unknown>;
+      reviewableQueues: (
+        parent: unknown,
+        args: { queueIds?: string[] | null },
+        ctx: unknown,
+      ) => Promise<unknown>;
+    };
+    const Mutation = resolvers.Mutation as {
+      addFavoriteMRTQueue: (
+        parent: unknown,
+        args: { queueId: string },
+        ctx: unknown,
+      ) => Promise<unknown>;
     };
 
-    // Narrow the resolver's `Promise<string | null>` to a string and decode
-    // the JWT in one place so individual tests stay focused on the assertions
-    // that matter to them. Throws (and fails the test) if the resolver
-    // unexpectedly returns null or jwt.verify yields a string payload.
-    async function decodeReadMeJWT(
-      token: string | null,
-    ): Promise<jwt.JwtPayload> {
-      expect(token).not.toBeNull();
-      if (token == null) {
-        throw new Error('readMeJWT returned null');
-      }
-      const decoded = jwt.verify(token, TEST_JWT_SECRET);
-      if (typeof decoded === 'string') {
-        throw new Error('readMeJWT decoded to a string payload');
-      }
-      return decoded;
-    }
-
-    it('returns a JWT with null apiKey/publicSigningKey for non-MANAGE_ORG callers', async () => {
-      const { ctx, getActivatedApiKeyForOrg, getPublicSigningKeyPem } =
-        makeReadMeCtx([UserPermission.VIEW_MRT]);
-      const payload = await decodeReadMeJWT(
-        await User.readMeJWT(userParent, {}, ctx),
-      );
-      expect(payload.apiKey).toBeNull();
-      expect(payload.publicSigningKey).toBeNull();
-      expect(payload.email).toBe('t@example.com');
-      // The data sources should never be hit when the caller has no claim
-      // to the org secrets — protects against perf-cost amplification too.
-      expect(getActivatedApiKeyForOrg).not.toHaveBeenCalled();
-      expect(getPublicSigningKeyPem).not.toHaveBeenCalled();
+    it('rejects unauthenticated favorite queue reads', async () => {
+      const { ctx, getFavoriteQueuesForUser } = makeCtx({ user: null });
+      await expect(
+        User.favoriteMRTQueues({ id: 'caller-1', orgId: 'org-1' }, {}, ctx),
+      ).rejects.toThrow('User required.');
+      expect(getFavoriteQueuesForUser).not.toHaveBeenCalled();
     });
 
-    it('embeds org secrets in the JWT for MANAGE_ORG callers', async () => {
-      const { ctx, getActivatedApiKeyForOrg, getPublicSigningKeyPem } =
-        makeReadMeCtx([UserPermission.MANAGE_ORG]);
-      const payload = await decodeReadMeJWT(
-        await User.readMeJWT(userParent, {}, ctx),
-      );
-      expect(payload.apiKey).toBe('org-api-key-SHOULD-NEVER-LEAK');
-      expect(payload.publicSigningKey).toBe('SIGNING_KEY_PEM');
-      expect(getActivatedApiKeyForOrg).toHaveBeenCalledWith('org-1');
-      expect(getPublicSigningKeyPem).toHaveBeenCalledWith('org-1');
+    it('rejects unauthenticated favorite queue writes', async () => {
+      const { ctx, addFavoriteQueueForUser } = makeCtx({ user: null });
+      await expect(
+        Mutation.addFavoriteMRTQueue({}, { queueId: 'q-allowed' }, ctx),
+      ).rejects.toThrow('User required.');
+      expect(addFavoriteQueueForUser).not.toHaveBeenCalled();
     });
 
-    it('returns null and skips the orgAPI when the parent user does not match the authenticated user', async () => {
-      // The identity guard must short-circuit before any secret lookup —
-      // otherwise a privileged user could query readMeJWT against another
-      // user's parent and surface their org secrets in the resulting JWT.
-      const { ctx, getActivatedApiKeyForOrg, getPublicSigningKeyPem } =
-        makeReadMeCtx([UserPermission.MANAGE_ORG]);
-      const otherUser = { ...userParent, id: 'different-user' };
-      await expect(User.readMeJWT(otherUser, {}, ctx)).resolves.toBeNull();
-      expect(getActivatedApiKeyForOrg).not.toHaveBeenCalled();
-      expect(getPublicSigningKeyPem).not.toHaveBeenCalled();
+    it('rejects unauthenticated reviewable queue reads', async () => {
+      const { ctx, getReviewableQueuesForUser } = makeCtx({ user: null });
+      await expect(
+        User.reviewableQueues({}, { queueIds: null }, ctx),
+      ).rejects.toThrow('Authenticated user required');
+      expect(getReviewableQueuesForUser).not.toHaveBeenCalled();
+    });
+
+    it("filters the caller's stale favorites through their reviewable queues", async () => {
+      const { ctx, getFavoriteQueuesForUser, getReviewableQueuesForUser } =
+        makeCtx();
+
+      await expect(
+        User.favoriteMRTQueues({ id: 'caller-1', orgId: 'org-1' }, {}, ctx),
+      ).resolves.toEqual([favoriteQueues[0]]);
+      expect(getFavoriteQueuesForUser).toHaveBeenCalledWith({
+        userId: 'caller-1',
+        orgId: 'org-1',
+      });
+      expect(getReviewableQueuesForUser).toHaveBeenCalledWith({
+        invoker: {
+          userId: 'caller-1',
+          permissions: [UserPermission.VIEW_MRT],
+          orgId: 'org-1',
+        },
+        queueIds: ['q-allowed', 'q-denied'],
+      });
+    });
+
+    it("rejects another user's favorites", async () => {
+      const { ctx, getFavoriteQueuesForUser } = makeCtx();
+      await expect(
+        User.favoriteMRTQueues({ id: 'other-user', orgId: 'org-1' }, {}, ctx),
+      ).rejects.toThrow('User does not have access to these queues');
+      expect(getFavoriteQueuesForUser).not.toHaveBeenCalled();
+    });
+
+    it('rejects favorites from another organization', async () => {
+      const { ctx, getFavoriteQueuesForUser } = makeCtx();
+      await expect(
+        User.favoriteMRTQueues({ id: 'other-user', orgId: 'org-2' }, {}, ctx),
+      ).rejects.toThrow('User does not have access to these queues');
+      expect(getFavoriteQueuesForUser).not.toHaveBeenCalled();
+    });
+
+    it('rejects favoriting a queue the caller cannot review', async () => {
+      const { ctx, addFavoriteQueueForUser } = makeCtx();
+      await expect(
+        Mutation.addFavoriteMRTQueue({}, { queueId: 'q-denied' }, ctx),
+      ).rejects.toThrow('User does not have access to this queue');
+      expect(addFavoriteQueueForUser).not.toHaveBeenCalled();
+    });
+
+    it('allows favoriting a queue the caller can review', async () => {
+      const { ctx, addFavoriteQueueForUser } = makeCtx();
+      await expect(
+        Mutation.addFavoriteMRTQueue({}, { queueId: 'q-allowed' }, ctx),
+      ).resolves.toBeDefined();
+      expect(addFavoriteQueueForUser).toHaveBeenCalledWith({
+        userId: 'caller-1',
+        orgId: 'org-1',
+        queueId: 'q-allowed',
+      });
+    });
+
+    it('passes requested queue IDs into the reviewable queue lookup', async () => {
+      const { ctx, getReviewableQueuesForUser } = makeCtx({
+        reviewableQueueIds: ['q-allowed', 'q-denied'],
+      });
+      await expect(
+        User.reviewableQueues({}, { queueIds: ['q-allowed'] }, ctx),
+      ).resolves.toEqual([favoriteQueues[0]]);
+      expect(getReviewableQueuesForUser).toHaveBeenCalledWith({
+        invoker: {
+          userId: 'caller-1',
+          permissions: [UserPermission.VIEW_MRT],
+          orgId: 'org-1',
+        },
+        queueIds: ['q-allowed'],
+      });
     });
   });
 });

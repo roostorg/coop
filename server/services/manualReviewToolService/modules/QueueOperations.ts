@@ -117,6 +117,8 @@ export type QueueOperationsErrorType =
 // scaling by orgId, so you need the orgId to find the queue.
 type QueueKey = { orgId: string; queueId: string };
 
+const MANUAL_REVIEW_LOCK_DURATION_MS = 600_000;
+
 /**
  * This class handles everything that MRT does directly with queues: CRUDing
  * them, enqueuing and dequeueing jobs on a given queue, looking up jobs within
@@ -594,16 +596,20 @@ export default class QueueOperations {
     return queue.id;
   }
 
-  async getReviewableQueuesForUser(opts: { invoker: Invoker }) {
-    const { invoker } = opts;
+  async getReviewableQueuesForUser(opts: {
+    invoker: Invoker;
+    queueIds?: readonly string[];
+  }) {
+    const { invoker, queueIds } = opts;
     const { userId, permissions, orgId } = invoker;
 
-    const canSeeQueues = permissions.includes(UserPermission.VIEW_MRT);
     const bypassQueuePermissions = permissions.includes(
       UserPermission.EDIT_MRT_QUEUES,
     );
+    const canSeeQueues =
+      permissions.includes(UserPermission.VIEW_MRT) || bypassQueuePermissions;
 
-    if (!canSeeQueues) {
+    if (!canSeeQueues || queueIds?.length === 0) {
       return [];
     }
 
@@ -611,6 +617,7 @@ export default class QueueOperations {
       .selectFrom('manual_review_tool.manual_review_queues')
       .select(PgQueueSelection)
       .where('org_id', '=', orgId)
+      .$if(queueIds != null, (query) => query.where('id', 'in', queueIds ?? []))
       .$if(!bypassQueuePermissions, (query) =>
         query.where(
           'id',
@@ -956,6 +963,31 @@ export default class QueueOperations {
     );
 
     return filterNullOrUndefined(jobs).map((job) => job.data);
+  }
+
+  async extendJobLock(opts: {
+    orgId: string;
+    queueId: string;
+    jobId: JobId;
+    lockToken: string;
+    isAppealsQueue: boolean;
+  }) {
+    const { orgId, queueId, jobId, lockToken, isAppealsQueue } = opts;
+    if (isAppealsQueue) {
+      const queue = await this.#getBullAppealQueue(orgId, queueId);
+      const job = await this.#getAppealJob(jobId, queue);
+      if (!job) return false;
+      return (
+        (await job.extendLock(lockToken, MANUAL_REVIEW_LOCK_DURATION_MS)) === 1
+      );
+    }
+
+    const queue = await this.#getBullQueue(orgId, queueId);
+    const job = await this.#getJob(jobId, queue);
+    if (!job) return false;
+    return (
+      (await job.extendLock(lockToken, MANUAL_REVIEW_LOCK_DURATION_MS)) === 1
+    );
   }
 
   async getAllJobsForQueue(opts: {
@@ -1696,8 +1728,12 @@ export default class QueueOperations {
     orgId: string;
     itemId: string;
     itemTypeId: string;
+    queueIds: string[];
   }) {
-    const { orgId, itemId, itemTypeId } = opts;
+    const { orgId, itemId, itemTypeId, queueIds } = opts;
+    if (queueIds.length === 0) {
+      return [];
+    }
     // Check postgres for creations within the last 7 days so we don't have to
     // search every bull queue for every item.
     const recentJobCreationQueues = await this.pgQuery
@@ -1707,6 +1743,7 @@ export default class QueueOperations {
       .where('item_id', '=', itemId)
       .where('item_type_id', '=', itemTypeId)
       .where('created_at', '>=', new Date(Date.now() - WEEK_MS))
+      .where('queue_id', 'in', queueIds)
       .execute();
     const jobsWithQueue = await Promise.all(
       recentJobCreationQueues.map(async (rows) => {
@@ -1916,7 +1953,7 @@ export async function getBullWorker<JobData = unknown>(
     },
     {
       connection: redisConnection,
-      lockDuration: 600000,
+      lockDuration: MANUAL_REVIEW_LOCK_DURATION_MS,
       prefix: getPrefix(orgId),
       autorun: false,
       // A job is put into stalled when a user claims it and then doesn't action

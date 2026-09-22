@@ -4,10 +4,9 @@
   "description": "",
   "type": "module",
   "scripts": {
-    "build": "tsc && npm run copy-assets",
-    "copy-assets": "copyfiles \"lib/**/*.lua\" transpiled/",
-    "start": "npm run copy-assets && tsc-watch --onSuccess \"node --trace-warnings --env-file-if-exists=.env ./transpiled/bin/www.js\"",
-    "start:trace": "npm run copy-assets && tsc-watch --onSuccess \"node --trace-warnings --env-file-if-exists=.env --require ../nodejs-instrumentation/transpiled/autoinstrumentation.js ./transpiled/bin/www.js\"",
+    "build": "tsc",
+    "start": "tsc-watch --onSuccess \"node --trace-warnings --env-file-if-exists=.env ./transpiled/bin/www.js\"",
+    "start:trace": "tsc-watch --onSuccess \"node --trace-warnings --env-file-if-exists=.env --require ../nodejs-instrumentation/transpiled/autoinstrumentation.js ./transpiled/bin/www.js\"",
     "test": "npm run test:local",
     "test:local": "NODE_OPTIONS=\"--no-warnings --loader ts-node/esm\" node --env-file-if-exists=.env node_modules/.bin/jest --watch --detectOpenHandles",
     "test:prepush": "NODE_OPTIONS=\"--no-warnings --loader ts-node/esm\" node --env-file-if-exists=.env node_modules/.bin/jest --detectOpenHandles --no-cache --forceExit",
@@ -31,7 +30,6 @@
     "@apollo/server": "^5.5.0",
     "@as-integrations/express5": "^1.1.2",
     "@aws-sdk/client-s3": "^3.1017.0",
-    "@aws-sdk/client-secrets-manager": "^3.1017.0",
     "@aws-sdk/client-ses": "^3.1017.0",
     "@clickhouse/client": "^1.13.0",
     "@ethanresnick/bottlejs": "^2.0.4",
@@ -67,18 +65,15 @@
     "graphql-scalars": "^1.19.0",
     "helmet": "^8.1.0",
     "ioredis": "^5.2.4",
-    "jsonwebtoken": "^9.0.3",
     "kysely": "^0.29.5",
     "latlon-geohash": "^2.0.0",
     "lodash": "^4.18.1",
     "lru_map": "^0.4.1",
-    "node-worker-threads-pool": "^1.5.1",
     "normalize-text": "^2.4.1",
     "p-limit": "^4.0.0",
     "passport": "^0.7.0",
     "pg": "^8.20.0",
     "pg-cursor": "^2.7.4",
-    "pipeline-segment": "^0.0.6",
     "safe-stable-stringify": "^2.4.2",
     "size-limited-map": "^2.0.0",
     "stream-to-async-iterator": "^1.0.0",
@@ -110,10 +105,10 @@
     "@types/graphql-depth-limit": "^1.1.6",
     "@types/jest": "^29.2.4",
     "@types/js-yaml": "^4.0.5",
-    "@types/jsonwebtoken": "^9.0.10",
+    "@types/latlon-geohash": "^2.0.4",
     "@types/lodash": "^4.14.179",
     "@types/morgan": "^1.9.3",
-    "@types/node": "^18.11.9",
+    "@types/node": "^24.13.5",
     "@types/passport": "^1.0.7",
     "@types/pg": "^8.23.1",
     "@types/pg-cursor": "^2.7.0",
@@ -122,7 +117,6 @@
     "@types/yargs": "^17.0.32",
     "@typescript-eslint/eslint-plugin": "^8.57.2",
     "@typescript-eslint/parser": "^8.57.2",
-    "copyfiles": "^2.4.1",
     "eslint": "^9.39.4",
     "eslint-import-resolver-typescript": "^3.6.0",
     "eslint-plugin-functional": "^9.0.4",
@@ -153,9 +147,8 @@
     "classNameTemplate": "{classname}",
     "titleTemplate": "{title}"
   },
-  "//": "Use an override to remove the @types/restify dependency, b/c it conflicts w/ pino-http. And a fork of retry-axios that has fixed type defs for TS's new module resolution algorithm. Also pin @types/express to v5 across the dep tree so transitive deps (e.g. @node-saml/passport-saml) don't drag in v4 types alongside our v5 types.",
+  "//": "Use a fork of retry-axios that has fixed type defs for TS's new module resolution algorithm. Also pin @types/express to v5 across the dep tree so transitive deps (e.g. @node-saml/passport-saml) don't drag in v4 types alongside our v5 types.",
   "overrides": {
-    "@types/restify": "npm:pino@8.6.0",
     "@types/express": "$@types/express",
     "@googlemaps/google-maps-services-js@^3.3.16": {
       "retry-axios": "npm:@ethanresnick/retry-axios@2.6.1"
@@ -166,6 +159,7 @@
     "fast-uri": "^3.1.6",
     "protobufjs": "^7.6.3",
     "@protobufjs/utf8": "^1.1.1",
-    "decode-uri-component": "^0.5.0"
+    "decode-uri-component": "^0.5.0",
+    "adm-zip": "^0.6.1"
   }
 }

@@ -590,7 +590,7 @@ export default function ItemTypeForm() {
             onClick={() =>
               setCustomFields([
                 ...customFields,
-                getDefaultEmptyField(customFields.length),
+                getDefaultEmptyField(nextFieldIndex(customFields)),
               ])
             }
           >
@@ -673,6 +673,18 @@ export default function ItemTypeForm() {
       {modal}
     </div>
   );
+}
+
+/**
+ * Next unused field index. Deliberately not `customFields.length`:
+ * `onClickDelete` removes a field by filtering on `index` without
+ * re-indexing the rest, so a new field taking `length` can collide with an
+ * existing index — producing duplicate React keys and duplicate
+ * Required/Hidden checkbox DOM ids (the bug this file's ids are meant to
+ * avoid).
+ */
+export function nextFieldIndex(fields: readonly FieldState[]): number {
+  return fields.reduce((max, field) => Math.max(max, field.index), -1) + 1;
 }
 
 function getDefaultEmptyField(index: number): FieldState {

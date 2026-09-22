@@ -22,11 +22,8 @@ import makeRuleAPI, {
 import makeUserAPI, {
   type UserAPI,
 } from '../../graphql/datasources/UserApi.js';
-import { type HmaService } from '../../services/hmaService/index.js';
 import { type Dependencies } from '../index.js';
 import { register } from '../utils.js';
-
-// HMA service will be registered in main IoC container to avoid circular dependencies
 
 declare module '../index.js' {
   interface Dependencies {
@@ -40,7 +37,6 @@ declare module '../index.js' {
     RuleAPIDataSource: RuleAPI;
     UserAPIDataSource: UserAPI;
     DataSources: DataSources;
-    HMAHashBankService: HmaService;
   }
 }
 
@@ -56,8 +52,6 @@ export function registerGqlDataSources(bottle: Bottle<Dependencies>) {
   register(bottle, 'RoleAPIDataSource', makeRoleAPI);
   register(bottle, 'RuleAPIDataSource', makeRuleAPI);
   register(bottle, 'UserAPIDataSource', makeUserAPI);
-
-  // HMA Service will be registered in main IoC container
 
   // Master dataSource service. Exists so that we can easily propagate the type
   // of this whole dataSources object to all the places we need to reference the
