@@ -1,0 +1,72 @@
+CHANGELOG.md
+  s_c326e294acd5e8::t_dd5e780eea6eb2 13
+client/src/webpages/dashboard/mrt/manual_review_job/v2/ContentRelatedItemComponent.test.tsx
+  s_c326e294acd5e8::t_639ac03898072f 282-294,296-331,333-351
+  s_c326e294acd5e8::t_8c5b673c872f9b 242
+  s_c326e294acd5e8::t_efb17d017a896d 147-149
+  s_c326e294acd5e8::t_b9491b40852c03 255-257
+  s_c326e294acd5e8::t_640d0e71cc4e5e 64-67
+  s_c326e294acd5e8::t_034f2c908bd440 146,150-151
+  s_c326e294acd5e8::t_e218e580261b5d 295
+  s_c326e294acd5e8::t_144843dff2fe2b 332
+server/graphql/modules/manualReviewTool.ts
+  s_c326e294acd5e8::t_5719bdea103d95 2416-2418
+server/services/manualReviewToolService/modules/JobDecisioning.ts
+  s_c326e294acd5e8::t_504595aac5211c 327-340,356-364,376-380
+  s_c326e294acd5e8::t_20309cbeda92d8 81-85,89,104
+  s_c326e294acd5e8::t_4656496471751a 100-101
+  s_c326e294acd5e8::t_40bad3ea639c5c 439
+  s_c326e294acd5e8::t_7a60aec4ba8c12 564
+  s_c326e294acd5e8::t_d9ac8757601efc 79-80,86-88,90-99,102-103,105-106,115-117
+  s_c326e294acd5e8::t_6dee0e305e4be4 18-19
+  s_c326e294acd5e8::t_afe982597f4c1b 107-114
+server/iocContainer/index.ts
+  s_c326e294acd5e8::t_09424ceac650ba 1421,1423-1424,1434,1490-1491
+  s_c326e294acd5e8::t_521e6d309ffd75 14,1425-1428,1430-1433,1436-1450,1452-1473,1475-1477,1479-1485,1487-1489
+  s_c326e294acd5e8::t_01ce5ddc0d7535 1506-1507
+server/services/manualReviewToolService/manualReviewToolService.test.ts
+  s_c326e294acd5e8::t_9d8ac74f7242e1 810-874
+  s_c326e294acd5e8::t_e9e54f3bca1764 809
+client/src/webpages/dashboard/mrt/manual_review_job/v2/threads/ManualReviewJobThreadComponent.tsx
+  s_c326e294acd5e8::t_cf6833963a3423 496-499,514-519
+  s_c326e294acd5e8::t_301dd788c388d1 477-478,480-482,485-491
+  s_c326e294acd5e8::t_2761b03a8504e3 606-609,611-612
+  s_c326e294acd5e8::t_4656496471751a 613-624,626
+  s_c326e294acd5e8::t_5688b8e485a588 574-580
+  s_c326e294acd5e8::t_af4a67b2072a4a 537-540
+  s_c326e294acd5e8::t_5f70282a303b7e 583-586,592-597
+client/src/webpages/dashboard/mrt/manual_review_job/v2/user/ManualReviewJobLatestSubmissionsWithThreadComponent.tsx
+  s_c326e294acd5e8::t_6f99d1112033c2 273
+client/src/webpages/dashboard/mrt/manual_review_job/ManualReviewJobReview.tsx
+  s_c326e294acd5e8::t_0584b60da0cbb0 363-365,367,370-378
+  s_c326e294acd5e8::t_72547282e6841f 379
+client/src/webpages/dashboard/mrt/manual_review_job/v2/ContentRelatedItemComponent.tsx
+  s_c326e294acd5e8::t_feca34052c9445 427
+  s_c326e294acd5e8::t_fe5d17f07870a2 464-466
+  s_c326e294acd5e8::t_fb64ac4f41de4e 10
+  s_c326e294acd5e8::t_e2e533a6a2c105 332-370
+  s_c326e294acd5e8::t_180c3020e0374b 213-248
+  s_c326e294acd5e8::t_cbe6cceb11152b 161,173,177-180,187-188
+  s_c326e294acd5e8::t_a64cec15d68581 249
+server/services/manualReviewToolService/modules/JobDecisioning.test.ts
+  s_c326e294acd5e8::t_0e4a3965db26c9 129
+  s_c326e294acd5e8::t_ece94a75f5c712 112-128,130-184,186-197
+  s_c326e294acd5e8::t_32a1c04cb10a15 185
+  s_c326e294acd5e8::t_5180f4c7f2a334 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bff5f6f1dfaed2f146f3b8635489e8445d20cd9d",
+  "prompts": {},
+  "sessions": {
+    "s_c326e294acd5e8": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "f0bd2855-2af0-4ab3-8e7e-63ab896e5865",
+        "model": "grok-4.6"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
