@@ -1,8 +1,8 @@
-export { rawItemSubmissionSchema, RawItemSubmission } from './types.js';
+export type { RawItemSubmission } from './types.js';
+export { rawItemSubmissionSchema } from './types.js';
+export type { ItemSubmission, SubmissionId } from './makeItemSubmission.js';
 export {
   rawItemSubmissionToItemSubmission,
-  ItemSubmission,
-  SubmissionId,
   submissionDataToItemSubmission,
   makeSubmissionId,
 } from './makeItemSubmission.js';
@@ -17,8 +17,8 @@ export {
   getFieldValueOrValues,
   getFieldValueForRole,
 } from './extractItemDataValues.js';
+export type { ItemSubmissionWithTypeIdentifier } from './makeItemSubmissionWithTypeIdentifier.js';
 export {
-  ItemSubmissionWithTypeIdentifier,
   itemSubmissionWithTypeIdentifierToItemSubmission,
   itemSubmissionToItemSubmissionWithTypeIdentifier,
 } from './makeItemSubmissionWithTypeIdentifier.js';

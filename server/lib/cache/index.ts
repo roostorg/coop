@@ -19,6 +19,6 @@ export {
   resultVariantKey,
   variantMatchesRequest,
   requestVariantKeyForVaryKeys,
-  VariantKey,
-  VaryKeys,
+  type VariantKey,
+  type VaryKeys,
 } from './utils/varyHelpers.js';

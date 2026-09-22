@@ -1,1 +1,2 @@
-export { default, SendEmail, CoopEmailAddress } from './sendEmailService.js';
+export type { SendEmail } from './sendEmailService.js';
+export { default, CoopEmailAddress } from './sendEmailService.js';
