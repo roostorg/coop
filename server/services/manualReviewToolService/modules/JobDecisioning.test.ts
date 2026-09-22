@@ -2,6 +2,7 @@ import {
   actionableRelatedActions,
   parseItemCreatedAt,
   relatedActionPublishPayloads,
+  sanitizeRelatedActionParameterPayloads,
 } from './JobDecisioning.js';
 
 describe('parseItemCreatedAt', () => {
@@ -98,6 +99,92 @@ describe('actionableRelatedActions', () => {
           policyIds: ['policy_spam'],
         },
       ]),
+    ).toEqual([
+      {
+        actionIds: ['hide_content'],
+        itemIds: ['post_1'],
+        itemTypeId: 'content',
+        policyIds: ['policy_spam'],
+      },
+    ]);
+  });
+});
+
+describe('sanitizeRelatedActionParameterPayloads', () => {
+  const parameterizedAction = {
+    id: 'enqueue_human',
+    actionType: 'CUSTOM_ACTION',
+    customMrtApiParams: [
+      {
+        name: 'queue',
+        displayName: 'Queue',
+        type: 'SELECT',
+        required: true,
+        options: [
+          { value: 'priority', label: 'Priority' },
+          { value: 'default', label: 'Default' },
+        ],
+      },
+    ],
+  };
+
+  const relatedAction = {
+    actionIds: ['enqueue_human'],
+    itemIds: ['post_2'],
+    itemTypeId: 'content',
+    policyIds: ['policy_abuse'],
+    actionIdsToMrtApiParamDecisionPayload: {
+      enqueue_human: { queue: 'priority' },
+    },
+  };
+
+  test('keeps values that match the action parameter spec', () => {
+    expect(
+      sanitizeRelatedActionParameterPayloads(
+        [relatedAction],
+        [parameterizedAction],
+      ),
+    ).toEqual([relatedAction]);
+  });
+
+  test('rejects unknown or invalid parameter values', () => {
+    expect(() =>
+      sanitizeRelatedActionParameterPayloads(
+        [
+          {
+            ...relatedAction,
+            actionIdsToMrtApiParamDecisionPayload: {
+              enqueue_human: { queue: 'not-an-option', extra: true },
+            },
+          },
+        ],
+        [parameterizedAction],
+      ),
+    ).toThrow(/Unknown parameter|Invalid action parameter/i);
+  });
+
+  test('drops empty payloads when the action has no parameters', () => {
+    expect(
+      sanitizeRelatedActionParameterPayloads(
+        [
+          {
+            actionIds: ['hide_content'],
+            itemIds: ['post_1'],
+            itemTypeId: 'content',
+            policyIds: ['policy_spam'],
+            actionIdsToMrtApiParamDecisionPayload: {
+              hide_content: {},
+            },
+          },
+        ],
+        [
+          {
+            id: 'hide_content',
+            actionType: 'CUSTOM_ACTION',
+            customMrtApiParams: null,
+          },
+        ],
+      ),
     ).toEqual([
       {
         actionIds: ['hide_content'],

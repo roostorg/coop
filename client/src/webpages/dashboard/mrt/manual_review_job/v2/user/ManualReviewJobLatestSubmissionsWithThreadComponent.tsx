@@ -270,7 +270,7 @@ export default function ManualReviewJobLatestSubmissionsWithThreadComponent(prop
           }}
           unblurAllMedia={unblurAllMedia}
           title={`${item.itemTypeName}`}
-          key={item.itemId}
+          key={`${item.itemTypeId}:${item.itemId}`}
           allActions={allActions}
           allPolicies={allPolicies}
           relatedActions={relatedActions}

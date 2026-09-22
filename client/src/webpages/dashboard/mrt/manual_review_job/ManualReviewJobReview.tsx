@@ -360,19 +360,22 @@ function ManualReviewJobReviewImpl(props: {
             prev: ManualReviewJobEnqueuedActionData[],
           ) => ManualReviewJobEnqueuedActionData[]),
     ) => {
-      selectedRelatedActionsSetter((prev) => {
-        const next = typeof actions === 'function' ? actions(prev) : actions;
-        actionStore?.setActions(
-          next.map((it) => ({
-            itemId: it.target.identifier.itemId,
-            action: it.action,
-          })),
-        );
-        return next;
-      });
+      selectedRelatedActionsSetter((prev) =>
+        typeof actions === 'function' ? actions(prev) : actions,
+      );
     },
-    [actionStore],
+    [],
   );
+
+  const setStoreActions = actionStore?.setActions;
+  useEffect(() => {
+    setStoreActions?.(
+      selectedRelatedActions.map((it) => ({
+        itemId: it.target.identifier.itemId,
+        action: it.action,
+      })),
+    );
+  }, [setStoreActions, selectedRelatedActions]);
 
   const removeRelatedAction = (action: ManualReviewJobEnqueuedActionData) => {
     setSelectedRelatedActions((prev) =>

@@ -2413,6 +2413,9 @@ const Mutation: GQLMutationResolvers = {
       ) {
         return gqlErrorResult(e);
       }
+      if (isCoopErrorOfType(e, 'BadRequestError')) {
+        throw userInputError(e.detail ?? e.title);
+      }
 
       throw e;
     }

@@ -61,7 +61,10 @@ const banUserAction = {
   itemTypes: [{ id: userTypeId, name: 'User' }],
 };
 
-const policies = [{ id: 'policy_spam', name: 'Spam' }];
+const policies = [
+  { id: 'policy_spam', name: 'Spam' },
+  { id: 'policy_abuse', name: 'Abuse' },
+];
 
 const hideEnqueued = relatedActionForContentItem({
   item,
@@ -138,6 +141,12 @@ async function openActionSelect() {
   await waitFor(() => {
     expect(screen.getByText('Hide Content')).toBeInTheDocument();
   });
+}
+
+async function openPolicySelect(currentLabel: string) {
+  fireEvent.mouseDown(
+    screen.queryByTitle(currentLabel) ?? screen.getByText(currentLabel),
+  );
 }
 
 describe('summarizeActionParameterValues', () => {
@@ -230,6 +239,7 @@ describe('ContentRelatedItemComponent', () => {
     await waitFor(() => {
       expect(screen.getByText('hello world')).toBeInTheDocument();
     });
+    expect(screen.getByText('Take Action on This Item')).toBeInTheDocument();
     expect(screen.getByText('Select an action')).toBeInTheDocument();
     await openActionSelect();
     expect(screen.getByText('Delete')).toBeInTheDocument();
@@ -242,6 +252,9 @@ describe('ContentRelatedItemComponent', () => {
       expect(screen.getByText('hello world')).toBeInTheDocument();
     });
     expect(screen.queryByText('Select an action')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Take Action on This Item'),
+    ).not.toBeInTheDocument();
   });
 
   it('enqueues a selected action and shows it as active', async () => {
@@ -263,6 +276,76 @@ describe('ContentRelatedItemComponent', () => {
         identifier: { itemId: 'post_1', itemTypeId: contentTypeId },
         displayName: 'Post (post_1)',
       },
+    });
+  });
+
+  it('does not enqueue an action until a required policy is selected', async () => {
+    const onEnqueueAction = vi.fn();
+    renderContentItem({
+      onEnqueueAction,
+      requirePolicySelectionToEnqueueAction: true,
+    });
+    await waitFor(() => {
+      expect(screen.getByText('Select an action')).toBeInTheDocument();
+    });
+    await openActionSelect();
+    fireEvent.click(screen.getByText('Hide Content'));
+    expect(onEnqueueAction).not.toHaveBeenCalled();
+    expect(screen.getByText('Select policy')).toBeInTheDocument();
+    await openPolicySelect('Select policy');
+    await waitFor(() => {
+      expect(screen.getByText('Spam')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText('Spam'));
+    expect(onEnqueueAction).toHaveBeenCalledWith({
+      action: {
+        id: 'hide_content',
+        name: 'Hide Content',
+        penalty: GQLUserPenaltySeverity.High,
+      },
+      policies: [{ id: 'policy_spam', name: 'Spam' }],
+      target: {
+        identifier: { itemId: 'post_1', itemTypeId: contentTypeId },
+        displayName: 'Post (post_1)',
+      },
+    });
+  });
+
+  it('re-enqueues a queued action when the reviewer changes its policy', async () => {
+    const onEnqueueAction = vi.fn();
+    renderContentItem({
+      relatedActions: [
+        relatedActionForContentItem({
+          item,
+          displayName: 'Post (post_1)',
+          action: hideContentAction,
+          selectedPolicyIds: 'policy_spam',
+          allPolicies: policies,
+          customMrtApiParamDecisionPayload: { queue: 'priority' },
+        }),
+      ],
+      onEnqueueAction,
+    });
+    await waitFor(() => {
+      expect(screen.getByText('hello world')).toBeInTheDocument();
+    });
+    fireEvent.mouseDown(screen.getByTitle('Spam'));
+    await waitFor(() => {
+      expect(screen.getByText('Abuse')).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByText('Abuse'));
+    expect(onEnqueueAction).toHaveBeenCalledWith({
+      action: {
+        id: 'hide_content',
+        name: 'Hide Content',
+        penalty: GQLUserPenaltySeverity.High,
+      },
+      policies: [{ id: 'policy_abuse', name: 'Abuse' }],
+      target: {
+        identifier: { itemId: 'post_1', itemTypeId: contentTypeId },
+        displayName: 'Post (post_1)',
+      },
+      customMrtApiParamDecisionPayload: { queue: 'priority' },
     });
   });
 

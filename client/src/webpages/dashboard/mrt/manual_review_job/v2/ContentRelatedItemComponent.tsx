@@ -7,6 +7,7 @@ import { arrayFromArrayOrSingleItem } from '@/utils/collections';
 import { ItemTypeFieldFieldData } from '@/webpages/dashboard/item_types/itemTypeUtils';
 import { Select, Tooltip } from 'antd';
 import { Pencil, X } from 'lucide-react';
+import { useState } from 'react';
 import { JsonObject } from 'type-fest';
 
 import { selectFilterByLabelOption } from '@/webpages/dashboard/components/antDesignUtils';
@@ -157,6 +158,7 @@ function ContentItemRelatedActionsPicker(props: {
   onEnqueueAction: (action: ManualReviewJobEnqueuedActionData) => void;
   onRemoveAction?: (action: ManualReviewJobEnqueuedActionData) => void;
   onEditParameters?: (action: ManualReviewJobEnqueuedActionData) => void;
+  requirePolicySelectionToEnqueueAction: boolean;
   allowMoreThanOnePolicySelection: boolean;
 }) {
   const {
@@ -168,8 +170,13 @@ function ContentItemRelatedActionsPicker(props: {
     onEnqueueAction,
     onRemoveAction,
     onEditParameters,
+    requirePolicySelectionToEnqueueAction,
     allowMoreThanOnePolicySelection,
   } = props;
+
+  const [pendingAction, setPendingAction] = useState<ContentAction | null>(
+    null,
+  );
 
   const activeActions = relatedActionsTargetingContentItem(
     relatedActions,
@@ -177,7 +184,8 @@ function ContentItemRelatedActionsPicker(props: {
   );
   const activeActionIds = new Set(activeActions.map((it) => it.action.id));
   const actionsAvailableToAdd = applicableActions.filter(
-    (action) => !activeActionIds.has(action.id),
+    (action) =>
+      !activeActionIds.has(action.id) && action.id !== pendingAction?.id,
   );
 
   const enqueue = (
@@ -202,7 +210,43 @@ function ContentItemRelatedActionsPicker(props: {
 
   return (
     <div className="flex flex-col items-start w-full pr-4 gap-2">
-      {activeActions.length > 0 ? (
+      <div className="text-sm font-semibold text-slate-800">
+        Take Action on This Item
+      </div>
+      {actionsAvailableToAdd.length > 0 ? (
+        <Select
+          className="w-full max-w-sm"
+          placeholder={
+            activeActions.length > 0 || pendingAction
+              ? 'Add another action'
+              : 'Select an action'
+          }
+          value={undefined}
+          dropdownMatchSelectWidth={false}
+          showSearch
+          filterOption={selectFilterByLabelOption}
+          onChange={(actionId: string) => {
+            const action = actionsAvailableToAdd.find(
+              (it) => it.id === actionId,
+            );
+            if (!action) {
+              return;
+            }
+            if (requirePolicySelectionToEnqueueAction) {
+              setPendingAction(action);
+              return;
+            }
+            enqueue(action, []);
+          }}
+        >
+          {actionsAvailableToAdd.map((action) => (
+            <Option key={action.id} value={action.id} label={action.name}>
+              {action.name}
+            </Option>
+          ))}
+        </Select>
+      ) : null}
+      {activeActions.length > 0 || pendingAction ? (
         <div className="flex flex-row flex-wrap items-stretch gap-2 w-full">
           {activeActions.map((enqueued) => {
             const actionMeta = applicableActions.find(
@@ -285,33 +329,46 @@ function ContentItemRelatedActionsPicker(props: {
               </div>
             );
           })}
+          {pendingAction ? (
+            <div
+              key={`pending:${pendingAction.id}`}
+              className="flex flex-col gap-1.5 w-60 shrink-0 px-3 py-2 bg-sky-50 border border-solid border-sky-200 rounded-md"
+            >
+              <div className="flex flex-row items-center gap-2 min-w-0">
+                <div className="font-semibold text-sky-700 truncate min-w-0 flex-1">
+                  {pendingAction.name}
+                </div>
+                <button
+                  type="button"
+                  aria-label={`Remove ${pendingAction.name}`}
+                  className="flex items-center shrink-0 bg-transparent border-none p-0 cursor-pointer"
+                  onClick={() => setPendingAction(null)}
+                >
+                  <X className="w-4 h-4 p-0.5 rounded-full bg-slate-400/70 hover:bg-slate-400/50 text-slate-200" />
+                </button>
+              </div>
+              <PolicyDropdown
+                className="w-full"
+                policies={allPolicies}
+                selectedPolicyIds={
+                  allowMoreThanOnePolicySelection ? [] : undefined
+                }
+                onChange={(policyIds) => {
+                  const selected = arrayFromArrayOrSingleItem(policyIds);
+                  if (
+                    requirePolicySelectionToEnqueueAction &&
+                    selected.length === 0
+                  ) {
+                    return;
+                  }
+                  enqueue(pendingAction, policyIds);
+                  setPendingAction(null);
+                }}
+                multiple={allowMoreThanOnePolicySelection}
+              />
+            </div>
+          ) : null}
         </div>
-      ) : null}
-      {actionsAvailableToAdd.length > 0 ? (
-        <Select
-          className="w-full max-w-sm"
-          placeholder={
-            activeActions.length > 0 ? 'Add another action' : 'Select an action'
-          }
-          value={undefined}
-          dropdownMatchSelectWidth={false}
-          showSearch
-          filterOption={selectFilterByLabelOption}
-          onChange={(actionId: string) => {
-            const action = actionsAvailableToAdd.find(
-              (it) => it.id === actionId,
-            );
-            if (action) {
-              enqueue(action, []);
-            }
-          }}
-        >
-          {actionsAvailableToAdd.map((action) => (
-            <Option key={action.id} value={action.id} label={action.name}>
-              {action.name}
-            </Option>
-          ))}
-        </Select>
       ) : null}
     </div>
   );
@@ -367,6 +424,7 @@ export default function ContentRelatedItemComponent(
     onRemoveAction,
     onEditParameters,
     isActionable = false,
+    requirePolicySelectionToEnqueueAction,
     allowMoreThanOnePolicySelection,
   } = props;
 
@@ -403,6 +461,9 @@ export default function ContentRelatedItemComponent(
             onEnqueueAction={onEnqueueAction}
             onRemoveAction={onRemoveAction}
             onEditParameters={onEditParameters}
+            requirePolicySelectionToEnqueueAction={
+              requirePolicySelectionToEnqueueAction
+            }
             allowMoreThanOnePolicySelection={allowMoreThanOnePolicySelection}
           />
         ) : null}

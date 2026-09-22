@@ -474,29 +474,29 @@ export function ManualReviewJobThreadComponent(props: {
                 Action on all authors of selected messages above
               </div>
               <ManualReviewJobRelatedActionsButtonPanel
-                actions={allActions.filter((it) => {
-                  const allSelectedItemTypeIds = filterNullOrUndefined(
+                actions={allActions.filter((action) => {
+                  const selectedAuthors = filterNullOrUndefined(
                     uniq(
-                      selectedMessages.map((message) => {
-                        const messageCreator = getFieldValueForRole(
-                          message,
-                          'creatorId',
-                        );
-                        return messageCreator?.typeId;
-                      }),
+                      selectedMessages.map((message) =>
+                        getFieldValueForRole(message, 'creatorId'),
+                      ),
                     ),
                   );
-                  return it.itemTypes.some((itemType) =>
-                    allSelectedItemTypeIds.includes(itemType.id),
+                  return (
+                    selectedAuthors.length > 0 &&
+                    selectedAuthors.every((author) =>
+                      action.itemTypes.some(
+                        (itemType) => itemType.id === author.typeId,
+                      ),
+                    )
                   );
                 })}
                 allPolicies={allPolicies}
                 selectedPolicyIds={(action) => {
-                  const messageAuthorIds = uniq(
-                    filterNullOrUndefined(
-                      selectedMessages.map(
-                        (message) =>
-                          getFieldValueForRole(message, 'creatorId')?.id,
+                  const selectedAuthors = filterNullOrUndefined(
+                    uniq(
+                      selectedMessages.map((message) =>
+                        getFieldValueForRole(message, 'creatorId'),
                       ),
                     ),
                   );
@@ -511,8 +511,12 @@ export function ManualReviewJobThreadComponent(props: {
                     .filter(
                       (relatedAction) =>
                         relatedAction.action.id === action.id &&
-                        messageAuthorIds.includes(
-                          relatedAction.target.identifier.itemId,
+                        selectedAuthors.some(
+                          (author) =>
+                            author.id ===
+                              relatedAction.target.identifier.itemId &&
+                            author.typeId ===
+                              relatedAction.target.identifier.itemTypeId,
                         ),
                     )
                     .flatMap((relatedAction) =>
@@ -529,6 +533,10 @@ export function ManualReviewJobThreadComponent(props: {
                       selectedMessages.map((message) =>
                         getFieldValueForRole(message, 'creatorId'),
                       ),
+                    ),
+                  ).filter((author) =>
+                    action.itemTypes.some(
+                      (itemType) => itemType.id === author.typeId,
                     ),
                   );
 
@@ -563,26 +571,30 @@ export function ManualReviewJobThreadComponent(props: {
                 Action on all selected messages above
               </div>
               <ManualReviewJobRelatedActionsButtonPanel
-                actions={allActions.filter((it) => {
-                  const allSelectedItemTypeIds = filterNullOrUndefined(
-                    uniq(selectedMessages.map((message) => message.type.id)),
-                  );
-                  return it.itemTypes.some((itemType) =>
-                    allSelectedItemTypeIds.includes(itemType.id),
-                  );
-                })}
+                actions={allActions.filter((action) =>
+                  selectedMessages.every((message) =>
+                    action.itemTypes.some(
+                      (itemType) => itemType.id === message.type.id,
+                    ),
+                  ),
+                )}
                 allPolicies={allPolicies}
                 selectedPolicyIds={(action) => {
-                  const selectedItemIds = uniq(
-                    selectedMessages.map((message) => message.id),
-                  );
+                  const selectedItems = selectedMessages.map((message) => ({
+                    id: message.id,
+                    typeId: message.type.id,
+                  }));
 
                   return relatedActions
                     .filter(
                       (relatedAction) =>
                         relatedAction.action.id === action.id &&
-                        selectedItemIds.includes(
-                          relatedAction.target.identifier.itemId,
+                        selectedItems.some(
+                          (selectedItem) =>
+                            selectedItem.id ===
+                              relatedAction.target.identifier.itemId &&
+                            selectedItem.typeId ===
+                              relatedAction.target.identifier.itemTypeId,
                         ),
                     )
                     .flatMap((relatedAction) =>
@@ -591,21 +603,27 @@ export function ManualReviewJobThreadComponent(props: {
                 }}
                 onChangeSelectedPolicies={(action, selectedPolicyIds) => {
                   onEnqueueActions(
-                    selectedMessages.map((message) => ({
-                      action,
-                      policies: allPolicies.filter((policy) =>
-                        arrayFromArrayOrSingleItem(selectedPolicyIds).includes(
-                          policy.id,
+                    selectedMessages
+                      .filter((message) =>
+                        action.itemTypes.some(
+                          (itemType) => itemType.id === message.type.id,
                         ),
-                      ),
-                      target: {
-                        identifier: {
-                          itemId: message.id,
-                          itemTypeId: message.type.id,
+                      )
+                      .map((message) => ({
+                        action,
+                        policies: allPolicies.filter((policy) =>
+                          arrayFromArrayOrSingleItem(
+                            selectedPolicyIds,
+                          ).includes(policy.id),
+                        ),
+                        target: {
+                          identifier: {
+                            itemId: message.id,
+                            itemTypeId: message.type.id,
+                          },
+                          displayName: message.id,
                         },
-                        displayName: message.id,
-                      },
-                    })),
+                      })),
                   );
                 }}
                 requirePolicySelection={requirePolicySelectionToEnqueueAction}

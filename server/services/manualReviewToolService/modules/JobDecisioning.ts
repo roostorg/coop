@@ -15,6 +15,8 @@ import { assertUnreachable } from '../../../utils/misc.js';
 import { isValidDate } from '../../../utils/time.js';
 import { isNonEmptyString } from '../../../utils/typescript-types.js';
 import { getFieldValueForRole } from '../../itemProcessingService/index.js';
+import { parseStoredParameters } from '../../moderationConfigService/modules/actionParametersValidation.js';
+import { validateActionParameterValues } from '../../moderationConfigService/modules/actionParameterValueValidation.js';
 import { type NCMECMediaReport } from '../../ncmecService/ncmecReporting.js';
 import {
   type ClearReportsDisposition,
@@ -72,6 +74,45 @@ export function actionableRelatedActions(
       relatedAction.itemIds.some((id) => id.length > 0) &&
       relatedAction.itemTypeId.length > 0,
   );
+}
+
+export function sanitizeRelatedActionParameterPayloads(
+  relatedActions: readonly ManualReviewDecisionRelatedAction[],
+  actions: readonly {
+    id: string;
+    actionType: string;
+    customMrtApiParams?: unknown;
+  }[],
+): ManualReviewDecisionRelatedAction[] {
+  const actionsById = new Map(actions.map((action) => [action.id, action]));
+  return relatedActions.map((relatedAction) => {
+    const validatedPayloads: Record<string, JsonObject> = {};
+    for (const actionId of relatedAction.actionIds) {
+      if (actionId.length === 0) {
+        continue;
+      }
+      const action = actionsById.get(actionId);
+      const spec = parseStoredParameters(
+        action?.actionType === 'CUSTOM_ACTION'
+          ? action.customMrtApiParams
+          : null,
+      );
+      const raw =
+        relatedAction.actionIdsToMrtApiParamDecisionPayload?.[actionId];
+      const validated = validateActionParameterValues(spec, raw ?? null);
+      if (Object.keys(validated).length > 0) {
+        validatedPayloads[actionId] = validated as JsonObject;
+      }
+    }
+    const { actionIdsToMrtApiParamDecisionPayload: _dropped, ...rest } =
+      relatedAction;
+    return Object.keys(validatedPayloads).length > 0
+      ? {
+          ...relatedAction,
+          actionIdsToMrtApiParamDecisionPayload: validatedPayloads,
+        }
+      : rest;
+  });
 }
 
 export type NCMECReportedContentInThread = {
@@ -283,10 +324,20 @@ export default class JobDecisioning {
     const customActionDecisions = decisions.flatMap((decision) =>
       decision.type === 'CUSTOM_ACTION' ? [decision] : [],
     );
-    if (customActionDecisions.length > 0) {
-      const allActionIds = customActionDecisions.flatMap((decision) =>
-        decision.actions.map((action) => action.id),
-      );
+    const relatedActionsToPublish = actionableRelatedActions(relatedActions);
+    let sanitizedRelatedActions = relatedActionsToPublish;
+    if (
+      customActionDecisions.length > 0 ||
+      relatedActionsToPublish.length > 0
+    ) {
+      const allActionIds = [
+        ...customActionDecisions.flatMap((decision) =>
+          decision.actions.map((action) => action.id),
+        ),
+        ...relatedActionsToPublish.flatMap(
+          (relatedAction) => relatedAction.actionIds,
+        ),
+      ];
       const validActions = await this.getCustomActionsByIds({
         ids: allActionIds,
         orgId,
@@ -302,10 +353,15 @@ export default class JobDecisioning {
       // enforce against, so the common path avoids the extra DB hit. The check
       // only fires for CUSTOM_ACTION decisions, so it applies even on NCMEC
       // jobs that mix in a CUSTOM_ACTION (e.g. issuing a strike alongside an
-      // NCMEC ignore or report).
-      const hasEmptyPolicyCustomAction = customActionDecisions.some(
-        (decision) => decision.policies.length === 0,
-      );
+      // NCMEC ignore or report). Related item actions are included so a
+      // policy-less additional-item action cannot bypass the org setting.
+      const hasEmptyPolicyCustomAction =
+        customActionDecisions.some(
+          (decision) => decision.policies.length === 0,
+        ) ||
+        relatedActionsToPublish.some(
+          (relatedAction) => relatedAction.policyIds.length === 0,
+        );
       if (hasEmptyPolicyCustomAction) {
         const requiresPolicy =
           await this.manualReviewToolSettings.getRequiresPolicyForDecisions(
@@ -317,6 +373,11 @@ export default class JobDecisioning {
           });
         }
       }
+
+      sanitizedRelatedActions = sanitizeRelatedActionParameterPayloads(
+        relatedActionsToPublish,
+        validActions,
+      );
     }
 
     // Enforce the "require decision reason" settings server-side. The MRT UI
@@ -375,7 +436,7 @@ export default class JobDecisioning {
         reviewerId,
         orgId,
         decisionComponents: decisions,
-        relatedActions,
+        relatedActions: sanitizedRelatedActions,
         enqueueSourceInfo: job.enqueueSourceInfo,
         decisionReason,
       });
@@ -500,7 +561,7 @@ export default class JobDecisioning {
       // TODO: use proper publishing to a durable queue and retry
       this.onRecordDecision({
         decisionComponents,
-        relatedActions,
+        relatedActions: sanitizedRelatedActions,
         job,
         queueId,
         reviewerId,
