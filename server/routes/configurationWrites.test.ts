@@ -59,6 +59,7 @@ const action = {
 } as const;
 
 function harness() {
+  const trx = { transaction: 'item-type' };
   const service = {
     createContentType: jest.fn().mockResolvedValue(item),
     createThreadType: jest.fn().mockResolvedValue(item),
@@ -76,6 +77,15 @@ function harness() {
       .fn()
       .mockResolvedValue(new Map([[action.id, [item.id]]])),
     getActions: jest.fn().mockResolvedValue([]),
+    withItemTypeTransaction: jest
+      .fn()
+      .mockImplementation(
+        async (_orgId: string, run: (transaction: unknown) => unknown) =>
+          run(trx),
+      ),
+  };
+  const manualReviewTool = {
+    setHiddenFieldsForItemType: jest.fn().mockResolvedValue(undefined),
   };
   const apiKeys = {
     validateApiKey: jest
@@ -87,6 +97,7 @@ function harness() {
   const deps = {
     ApiKeyService: apiKeys,
     ModerationConfigService: service,
+    ManualReviewToolService: manualReviewTool,
   } as unknown as Dependencies;
   const app = express();
   app.use(express.json());
@@ -106,7 +117,7 @@ function harness() {
     const safe = sanitizeError(error);
     res.status(safe.status).json({ errors: [safe] });
   }) satisfies ErrorRequestHandler);
-  return { app, service, apiKeys };
+  return { app, service, manualReviewTool, apiKeys, trx };
 }
 
 // Supertest's chainable Test is thenable, but awaiting it would execute the request.
@@ -116,7 +127,7 @@ const auth = (testRequest: request.Test) =>
 
 describe('configuration write REST routes', () => {
   it('creates an item type and returns only its public representation', async () => {
-    const { app, service } = harness();
+    const { app, service, manualReviewTool, trx } = harness();
     const response = await auth(request(app).post('/api/v1/item_types/'))
       .send({
         kind: 'CONTENT',
@@ -127,41 +138,131 @@ describe('configuration write REST routes', () => {
       .expect(201);
 
     expect(response.body).toEqual(publicItem);
-    expect(service.createContentType).toHaveBeenCalledWith(orgId, {
-      name: 'Post',
-      description: null,
-      schema: [field],
-      schemaFieldRoles: { displayName: 'title' },
-      hiddenFields: [],
-    });
+    expect(service.withItemTypeTransaction).toHaveBeenCalledWith(
+      orgId,
+      expect.any(Function),
+    );
+    expect(service.createContentType).toHaveBeenCalledWith(
+      orgId,
+      {
+        name: 'Post',
+        description: null,
+        schema: [field],
+        schemaFieldRoles: { displayName: 'title' },
+      },
+      trx,
+    );
+    expect(manualReviewTool.setHiddenFieldsForItemType).toHaveBeenCalledWith(
+      { orgId, itemTypeId: item.id, hiddenFields: [] },
+      trx,
+    );
   });
 
+  it.each([
+    ['CONTENT', 'createContentType'],
+    ['THREAD', 'createThreadType'],
+    ['USER', 'createUserType'],
+  ] as const)(
+    'creates a %s item type and its hidden fields in the same transaction',
+    async (kind, method) => {
+      const { app, service, manualReviewTool, trx } = harness();
+      await auth(request(app).post('/api/v1/item_types/'))
+        .send({
+          kind,
+          name: 'Post',
+          schema: [field],
+          schemaFieldRoles: {},
+          hiddenFields: ['title'],
+        })
+        .expect(201);
+
+      expect(service[method]).toHaveBeenCalledWith(
+        orgId,
+        expect.not.objectContaining({ hiddenFields: expect.anything() }),
+        trx,
+      );
+      expect(manualReviewTool.setHiddenFieldsForItemType).toHaveBeenCalledWith(
+        { orgId, itemTypeId: item.id, hiddenFields: ['title'] },
+        trx,
+      );
+    },
+  );
+
   it('patches an item type, omitting roles or completely clearing supplied roles', async () => {
-    const { app, service } = harness();
+    const { app, service, manualReviewTool, trx } = harness();
     await auth(request(app).patch(`/api/v1/item_types/${item.id}`))
       .send({ name: 'Renamed', hiddenFields: [] })
       .expect(200, publicItem);
-    expect(service.updateContentType).toHaveBeenLastCalledWith(orgId, {
-      id: item.id,
-      name: 'Renamed',
-      hiddenFields: [],
-    });
+    expect(service.updateContentType).toHaveBeenLastCalledWith(
+      orgId,
+      { id: item.id, name: 'Renamed' },
+      trx,
+    );
+    expect(manualReviewTool.setHiddenFieldsForItemType).toHaveBeenCalledWith(
+      { orgId, itemTypeId: item.id, hiddenFields: [] },
+      trx,
+    );
 
     await auth(request(app).patch(`/api/v1/item_types/${item.id}`))
       .send({ schemaFieldRoles: {} })
       .expect(200);
-    expect(service.updateContentType).toHaveBeenLastCalledWith(orgId, {
-      id: item.id,
-      schemaFieldRoles: {
-        displayName: null,
-        createdAt: null,
-        creatorId: null,
-        isDeleted: null,
-        ipAddress: null,
-        parentId: null,
-        threadId: null,
+    expect(service.updateContentType).toHaveBeenLastCalledWith(
+      orgId,
+      {
+        id: item.id,
+        schemaFieldRoles: {
+          displayName: null,
+          createdAt: null,
+          creatorId: null,
+          isDeleted: null,
+          ipAddress: null,
+          parentId: null,
+          threadId: null,
+        },
       },
-    });
+      trx,
+    );
+    expect(manualReviewTool.setHiddenFieldsForItemType).toHaveBeenCalledTimes(
+      1,
+    );
+  });
+
+  it.each([
+    ['THREAD', 'updateThreadType'],
+    ['USER', 'updateUserType'],
+  ] as const)(
+    'patches a %s item type and its hidden fields in the same transaction',
+    async (kind, method) => {
+      const { app, service, manualReviewTool, trx } = harness();
+      service.getItemType.mockResolvedValueOnce({ ...item, kind });
+
+      await auth(request(app).patch(`/api/v1/item_types/${item.id}`))
+        .send({ hiddenFields: ['title'] })
+        .expect(200);
+
+      expect(service[method]).toHaveBeenCalledWith(orgId, { id: item.id }, trx);
+      expect(manualReviewTool.setHiddenFieldsForItemType).toHaveBeenCalledWith(
+        { orgId, itemTypeId: item.id, hiddenFields: ['title'] },
+        trx,
+      );
+    },
+  );
+
+  it('propagates hidden-field setter errors from an item-type transaction', async () => {
+    const { app, manualReviewTool } = harness();
+    manualReviewTool.setHiddenFieldsForItemType.mockRejectedValueOnce(
+      new Error('hidden field failure'),
+    );
+
+    await auth(request(app).post('/api/v1/item_types/'))
+      .send({
+        kind: 'CONTENT',
+        name: 'Post',
+        schema: [field],
+        schemaFieldRoles: {},
+        hiddenFields: ['title'],
+      })
+      .expect(500);
   });
 
   it('creates a policy with the API-key actor and exact public output', async () => {
