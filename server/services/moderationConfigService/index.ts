@@ -1,4 +1,5 @@
-export type {
+export {
+  ItemTypeKind,
   ItemSchema,
   ItemTypeSchemaVariant,
   ItemType,
@@ -13,10 +14,15 @@ export type {
   ItemTypeSelector,
   FieldRoleToScalarType,
 } from './types/itemTypes.js';
-export { ItemTypeKind } from './types/itemTypes.js';
 
-export type {
+export {
+  RuleType,
+  RuleStatus,
+  RuleAlarmStatus,
   ConditionInput,
+  CoopInput,
+  ValueComparator,
+  ConditionConjunction,
   Condition,
   ConditionSet,
   LeafCondition,
@@ -24,18 +30,12 @@ export type {
   PlainRuleWithLatestVersion,
   RuleLatestVersionRow,
   RuleWithLatestVersion,
-} from './types/rules.js';
-export {
-  RuleType,
-  RuleStatus,
-  RuleAlarmStatus,
-  CoopInput,
-  ValueComparator,
-  ConditionConjunction,
   computeRuleStatusFromRow,
 } from './types/rules.js';
 
-export type {
+export {
+  ConditionCompletionOutcome,
+  ConditionFailureOutcome,
   ConditionOutcome,
   ConditionCompletionMetadata,
   ConditionFailureMetadata,
@@ -44,44 +44,41 @@ export type {
   ConditionSetWithResult,
   LeafConditionWithResult,
 } from './types/conditionResults.js';
-export {
-  ConditionCompletionOutcome,
-  ConditionFailureOutcome,
-} from './types/conditionResults.js';
 
-export type {
+export {
   Action,
+  ActionType,
   CustomAction,
   EnqueueToMrtAction,
 } from './types/actions.js';
-export { ActionType } from './types/actions.js';
 
 export { BUILT_IN_ACTIONS } from './modules/ActionOperations.js';
 
-export type { Policy } from './types/policies.js';
-export { PolicyType } from './types/policies.js';
+export { Policy, PolicyType } from './types/policies.js';
 
 export { UserPenaltySeverity } from './types/shared.js';
 
-export type { LocationArea, LocationGeometry } from './types/locationArea.js';
+export { LocationArea, LocationGeometry } from './types/locationArea.js';
 
-export type { MatchingValues } from './types/matchingValues.js';
 export {
   MatchingValueType,
+  MatchingValues,
   getMatchingValuesType,
   isLocationArea,
 } from './types/matchingValues.js';
 
-export type { TaggedItemData } from './types/itemTypeFields.js';
 export {
+  TaggedItemData,
   isTaggedItemData,
   isTextValue,
   isTranscribableType,
   isTranscribableValue,
 } from './types/itemTypeFields.js';
 
-export type { ModerationConfigErrorType } from './moderationConfigService.js';
-export { ModerationConfigService } from './moderationConfigService.js';
+export {
+  ModerationConfigService,
+  ModerationConfigErrorType,
+} from './moderationConfigService.js';
 
 export {
   makeRuleNameExistsError,

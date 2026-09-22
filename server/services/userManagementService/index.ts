@@ -1,4 +1,4 @@
-export type { UserManagementPg } from './dbTypes.js';
+export { UserManagementPg } from './dbTypes.js';
 export { MIN_PASSWORD_LENGTH } from './constants.js';
 export {
   default as makeUserManagementService,
@@ -10,8 +10,8 @@ export {
   passwordNeedsRehash,
 } from './utils.js';
 export { deleteSessionsForUser } from './sessionPersistence.js';
-export type { Invoker } from './permissioning.js';
 export {
+  Invoker,
   UserPermission,
   UserPermissionsForRole,
   UserRole,

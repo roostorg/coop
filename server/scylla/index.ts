@@ -1,10 +1,11 @@
 export { default as Scylla } from './scylla.js';
 
-export type {
+export {
   ScyllaItemIdentifier,
+  ScyllaNilItemIdentifier,
   ScyllaRealItemIdentifier,
+  isRealItemIdentifier,
 } from './types.js';
-export { ScyllaNilItemIdentifier, isRealItemIdentifier } from './types.js';
 
 export {
   scyllaItemIdentifierToItemIdentifier,
