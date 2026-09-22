@@ -4,7 +4,7 @@
 
 **Goal:** Add globally enforced item-type safeguards before REST create/update operations, stacked above read API PR #1144.
 
-**Architecture:** ModerationConfigService owns validation and atomic persistence. GraphQL and REST call that service; the item-type editor prevents unsupported edits. Keep ownership refactoring separate from behavior changes.
+**Architecture:** ModerationConfigService owns item types; ManualReviewToolService owns hidden-field configuration. GraphQL and REST compose both services in one database transaction. Keep transaction preparation separate from behavior changes.
 
 **Tech Stack:** TypeScript, Kysely/PostgreSQL, GraphQL, Express, React, Jest, Vitest.
 
@@ -17,12 +17,12 @@
 - Regenerate GraphQL output; never hand-edit it. Keep docs concise.
 - Review the earlier local implementation as reference, not as the source of current files.
 
-## 1. Hidden-field ownership refactor
+## 1. Shared transaction preparation
 
-- [x] Move hidden-field persistence from ManualReviewToolService to ModerationConfigService, retaining existing semantics.
-- [x] Route GraphQL reads/writes through the new owner; preserve nonempty-only mutation writes in this layer.
-- [x] Recover resolver and persistence regression coverage. Run in-process resolver tests and server typecheck.
-- [x] Commit on `refactor/configuration-hidden-fields` above `add-configuration-read-api`.
+- [x] Keep hidden-field persistence in ManualReviewToolService and accept an optional transaction in both services.
+- [x] Read pending item-type changes through the transaction; invalidate the local cache after commit.
+- [x] Test commit, rollback, and cache isolation with separate database connections.
+- [x] Replace PR #1271 on `refactor/configuration-hidden-fields`, based on `main` after #1144 merged.
 
 ## 2. Item-type service safeguards
 
@@ -39,7 +39,7 @@ Files: `server/services/moderationConfigService/{errors.ts,index.ts,moderationCo
 
 Files: `server/graphql/modules/itemType{.ts,.resolver.test.ts}`, generated GraphQL outputs, and `client/src/webpages/dashboard/item_types/ItemTypeForm*.tsx` with focused tests.
 
-- [x] Pass hidden fields in the same service mutation instead of a second write; expose useful domain errors through existing GraphQL error patterns.
+- [x] Pass the same transaction to item-type and hidden-field writes; expose useful domain errors through existing GraphQL error patterns.
 - [x] Lock persisted field names/types/containers and deletion; prevent optional-to-required changes and new required fields on existing types. Keep roles and visibility editable without changing persisted types.
 - [x] Regenerate GraphQL and run resolver/component checks. Inspect rendered affected controls and error handling where practical.
 - [x] Add a concise changelog entry and commit above the service layer.
@@ -54,7 +54,7 @@ Files: existing route owners under `server/routes/{policies,item_types,action}`,
 - [x] Test output/status/error contracts, organization isolation, partial updates, and immutable fields. Return public resource objects without organization IDs or credentials.
 - [x] Update concise API docs and changelog; run focused tests, lint, typecheck and generated-output checks.
 - [x] Commit above the safety layers.
-- [ ] Publish and link the resulting PRs after resolving the cross-fork limitation.
+- [x] Publish and link PRs #1271–#1275 in GitHub stack #1276.
 
 ## Publishing and verification limits
 
@@ -63,13 +63,12 @@ The read API branch and PR #1144 remain untouched. The new local chain is
 `safety/item-type-editor` → `safety/configuration-relations` →
 `feat/configuration-write-api`. Separate safety layers keep individual diffs reviewable.
 
-GitHub stacks do not support cross-fork PRs. Publishing needs a repository
-decision; do not move or recreate PR #1144. Add changelog PR links once the new
-PRs exist. Database-backed tests remain unexecuted to avoid shared services;
-the HTTP tests use actual middleware and handlers with stubbed services.
+All five draft PRs use branches in `roostorg/coop`. Database-backed service tests
+use isolated local services; HTTP tests use actual middleware and handlers with
+stubbed services.
 
-Final checks: 155 focused server tests, 11 client tests, server typecheck,
+Original implementation checks: 155 focused server tests, 11 client tests, server typecheck,
 client typechecks/build, and both package linters passed (existing warnings).
 GraphQL regeneration produces no diff. The isolated field-component preview
 was rendered and inspected. Full authenticated UI and database concurrency
-tests have not been run.
+tests were not run in that initial verification.
