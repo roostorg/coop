@@ -1,3 +1,5 @@
+import { vi } from 'vitest';
+
 import { UserPermission } from '../../services/userManagementService/index.js';
 import { resolvers } from './manualReviewTool.js';
 
@@ -39,38 +41,38 @@ function makeCtx(opts: {
       ? { id: 'user-1', orgId: 'org-1', permissions: [UserPermission.VIEW_MRT] }
       : opts.user;
 
-  const getReviewableQueuesForUser = jest.fn(
+  const getReviewableQueuesForUser = vi.fn(
     async ({ queueIds }: { queueIds?: readonly string[] }) =>
       opts.reviewableQueueIds
         .filter((id) => queueIds == null || queueIds.includes(id))
         .map((id) => ({ id, orgId: 'org-1', name: id })),
   );
-  const getAllQueuesForOrgAndDangerouslyBypassPermissioning = jest.fn(
+  const getAllQueuesForOrgAndDangerouslyBypassPermissioning = vi.fn(
     async () => {
       throw new Error('resolver must not bypass permissioning (#1150)');
     },
   );
-  const getQueueForOrgAndDangerouslyBypassPermissioning = jest.fn(async () => {
+  const getQueueForOrgAndDangerouslyBypassPermissioning = vi.fn(async () => {
     throw new Error('resolver must not bypass permissioning');
   });
-  const getTotalPendingJobCountForQueues = jest.fn(async () => 7);
-  const dequeueNextJob = jest.fn(async () => null);
-  const submitDecision = jest.fn(async () => ({ warnings: [] }));
-  const getAllJobsForQueue = jest.fn(async () => []);
-  const getJobsForQueue = jest.fn(async () => []);
-  const getExistingJobsForItem = jest.fn(async () => []);
-  const getPendingJobCount = jest.fn(async () => 3);
-  const getOldestJobCreatedAt = jest.fn(async () => new Date(0));
-  const getUsersWhoCanSeeQueue = jest.fn(
+  const getTotalPendingJobCountForQueues = vi.fn(async () => 7);
+  const dequeueNextJob = vi.fn(async () => null);
+  const submitDecision = vi.fn(async () => ({ warnings: [] }));
+  const getAllJobsForQueue = vi.fn(async () => []);
+  const getJobsForQueue = vi.fn(async () => []);
+  const getExistingJobsForItem = vi.fn(async () => []);
+  const getPendingJobCount = vi.fn(async () => 3);
+  const getOldestJobCreatedAt = vi.fn(async () => new Date(0));
+  const getUsersWhoCanSeeQueue = vi.fn(
     async (): Promise<{ userId: string }[]> => [],
   );
-  const getHiddenActionsForQueue = jest.fn(async (): Promise<string[]> => [
+  const getHiddenActionsForQueue = vi.fn(async (): Promise<string[]> => [
     'action-1',
   ]);
-  const getClearReportsTriggerActionsForQueue = jest.fn(
+  const getClearReportsTriggerActionsForQueue = vi.fn(
     async (): Promise<string[]> => [],
   );
-  const getGraphQLUsersFromIds = jest.fn(async (): Promise<unknown[]> => []);
+  const getGraphQLUsersFromIds = vi.fn(async (): Promise<unknown[]> => []);
 
   const ctx = {
     getUser: () =>

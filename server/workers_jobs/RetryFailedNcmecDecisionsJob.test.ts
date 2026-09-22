@@ -1,4 +1,5 @@
 import { v1 as uuidv1 } from 'uuid';
+import { vi, type Mock } from 'vitest';
 
 import {
   makeSubmissionId,
@@ -97,36 +98,35 @@ function makeUserItemType(id: string) {
  * given test throw, so unexpected calls surface as failures. */
 function makeDeps(
   overrides: Partial<{
-    submitReport: jest.Mock;
-    publishActions: jest.Mock;
-    getNCMECActionsToRunAndPolicies: jest.Mock;
+    submitReport: Mock;
+    publishActions: Mock;
+    getNCMECActionsToRunAndPolicies: Mock;
     decisions: NcmecDecisionRow[];
   }> = {},
 ) {
   const ncmecService = {
-    submitReport: overrides.submitReport ?? jest.fn(async () => 'SUCCESS'),
-    getUsersWithNcmecDecision: jest.fn(async () => []),
-    getNcmecErrorsForJobIds: jest.fn(async () => []),
-    insertOrUpdateNcmecReportError: jest.fn(async () => undefined),
+    submitReport: overrides.submitReport ?? vi.fn(async () => 'SUCCESS'),
+    getUsersWithNcmecDecision: vi.fn(async () => []),
+    getNcmecErrorsForJobIds: vi.fn(async () => []),
+    insertOrUpdateNcmecReportError: vi.fn(async () => undefined),
     getNCMECActionsToRunAndPolicies:
-      overrides.getNCMECActionsToRunAndPolicies ??
-      jest.fn(async () => undefined),
+      overrides.getNCMECActionsToRunAndPolicies ?? vi.fn(async () => undefined),
   };
   const manualReviewToolService = {
-    getNcmecDecisions: jest.fn(async () => overrides.decisions ?? []),
+    getNcmecDecisions: vi.fn(async () => overrides.decisions ?? []),
   };
-  const getItemTypeEventuallyConsistent = jest.fn(async () =>
+  const getItemTypeEventuallyConsistent = vi.fn(async () =>
     makeUserItemType('user-type-1'),
   );
   const actionPublisher = {
-    publishActions: overrides.publishActions ?? jest.fn(async () => []),
+    publishActions: overrides.publishActions ?? vi.fn(async () => []),
   };
   const moderationConfigService = {
-    getActions: jest.fn(async () => []),
-    getPolicies: jest.fn(async () => []),
+    getActions: vi.fn(async () => []),
+    getPolicies: vi.fn(async () => []),
   };
   const userManagementService = {
-    getUsersForOrg: jest.fn(async () => []),
+    getUsersForOrg: vi.fn(async () => []),
   };
   return {
     ncmecService,
@@ -162,7 +162,7 @@ describe('RetryFailedNcmecDecisionsJob', () => {
       decisions: [makeNcmecDecisionRow(ORG_ID)],
     });
     const job = makeRetryFailedNcmecDecisionsJob(
-      jest.fn() as never, // closeSharedResourcesForShutdown (unused by run)
+      vi.fn() as never, // closeSharedResourcesForShutdown (unused by run)
       deps.manualReviewToolService as never,
       deps.ncmecService as never,
       deps.getItemTypeEventuallyConsistent as never,
@@ -184,7 +184,7 @@ describe('RetryFailedNcmecDecisionsJob', () => {
       decisions: [makeNcmecDecisionRow(ORG_ID)],
     });
     const job = makeRetryFailedNcmecDecisionsJob(
-      jest.fn() as never,
+      vi.fn() as never,
       deps.manualReviewToolService as never,
       deps.ncmecService as never,
       deps.getItemTypeEventuallyConsistent as never,
@@ -206,7 +206,7 @@ describe('RetryFailedNcmecDecisionsJob', () => {
       decisions: [makeNcmecDecisionRow(ORG_ID)],
     });
     const job = makeRetryFailedNcmecDecisionsJob(
-      jest.fn() as never,
+      vi.fn() as never,
       deps.manualReviewToolService as never,
       deps.ncmecService as never,
       deps.getItemTypeEventuallyConsistent as never,
@@ -229,13 +229,13 @@ describe('RetryFailedNcmecDecisionsJob', () => {
       // Simulate an org that has actions configured to run on NCMEC report
       // creation. In production mode these would publish; in test mode they
       // must be suppressed.
-      getNCMECActionsToRunAndPolicies: jest.fn(async () => ({
+      getNCMECActionsToRunAndPolicies: vi.fn(async () => ({
         actionsToRunIds: ['action-1'],
         policyIds: ['policy-1'],
       })),
     });
     const job = makeRetryFailedNcmecDecisionsJob(
-      jest.fn() as never,
+      vi.fn() as never,
       deps.manualReviewToolService as never,
       deps.ncmecService as never,
       deps.getItemTypeEventuallyConsistent as never,
@@ -254,13 +254,13 @@ describe('RetryFailedNcmecDecisionsJob', () => {
     process.env.NCMEC_ENV = 'production';
     const deps = makeDeps({
       decisions: [makeNcmecDecisionRow(ORG_ID)],
-      getNCMECActionsToRunAndPolicies: jest.fn(async () => ({
+      getNCMECActionsToRunAndPolicies: vi.fn(async () => ({
         actionsToRunIds: ['action-1'],
         policyIds: ['policy-1'],
       })),
     });
     const job = makeRetryFailedNcmecDecisionsJob(
-      jest.fn() as never,
+      vi.fn() as never,
       deps.manualReviewToolService as never,
       deps.ncmecService as never,
       deps.getItemTypeEventuallyConsistent as never,

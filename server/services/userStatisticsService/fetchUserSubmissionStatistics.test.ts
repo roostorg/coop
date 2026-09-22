@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import { Kysely } from 'kysely';
+import { vi } from 'vitest';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import { type MockedFn } from '../../test/mockHelpers/jestMocks.js';
@@ -19,7 +20,7 @@ describe('fetchUserSubmissionStatistics', () => {
     // it's local to the test suite. Consider using the `makeTestWithFixture`
     // helper instead to make a local copy of this state for each test.
 
-    warehouseMock = jest.fn(async (_it) => Promise.resolve({ rows: [] }));
+    warehouseMock = vi.fn(async (_it) => Promise.resolve({ rows: [] }));
 
     // This mutation is safe (while we're not running tests concurrently) as
     // it's local to the test suite. Consider using the `makeTestWithFixture`
@@ -30,7 +31,7 @@ describe('fetchUserSubmissionStatistics', () => {
     });
     const dialectMock: Dependencies['DataWarehouseDialect'] = {
       getKyselyInstance: () => kysely,
-      destroy: jest.fn(async () => {}),
+      destroy: vi.fn(async () => {}),
     };
 
     sut = makeFetchUserSubmissionStatistics(dialectMock);

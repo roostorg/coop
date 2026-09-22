@@ -1,5 +1,6 @@
 import { SendEmailCommand, type SESClient } from '@aws-sdk/client-ses';
 import sgMail from '@sendgrid/mail';
+import { vi } from 'vitest';
 
 import makeSendEmail, {
   CoopEmailAddress,
@@ -9,9 +10,7 @@ import makeSendEmail, {
 } from './sendEmailService.js';
 
 function makeMockClient() {
-  const mockSend = jest
-    .fn()
-    .mockResolvedValue({ MessageId: 'test-message-id' });
+  const mockSend = vi.fn().mockResolvedValue({ MessageId: 'test-message-id' });
   const mockClient = { send: mockSend } as unknown as SESClient;
   return { mockSend, mockClient };
 }
@@ -126,7 +125,7 @@ describe('sendEmailService', () => {
     });
 
     it('should log the error when SES fails', async () => {
-      const consoleSpy = jest
+      const consoleSpy = vi
         .spyOn(console, 'error')
         .mockImplementation(() => {});
       const { mockSend, mockClient } = makeMockClient();
@@ -152,8 +151,8 @@ describe('sendEmailService', () => {
 
   describe('SendGrid backend', () => {
     it('reports successful and failed delivery attempts', async () => {
-      const sendSpy = jest.spyOn(sgMail, 'send');
-      const consoleSpy = jest
+      const sendSpy = vi.spyOn(sgMail, 'send');
+      const consoleSpy = vi
         .spyOn(console, 'error')
         .mockImplementation(() => {});
       const sendEmail = makeSendEmailViaSendGrid('SG.test-key');
@@ -181,9 +180,7 @@ describe('sendEmailService', () => {
     it('prints the email and reports successful delivery', async () => {
       const previousNodeEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = 'development';
-      const consoleSpy = jest
-        .spyOn(console, 'log')
-        .mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
       try {
         const sendEmail = makeSendEmailViaConsole();
@@ -214,9 +211,7 @@ describe('sendEmailService', () => {
       const previousNodeEnv = process.env.NODE_ENV;
       process.env.EMAIL_TRANSPORT = 'console';
       process.env.NODE_ENV = 'development';
-      const consoleSpy = jest
-        .spyOn(console, 'log')
-        .mockImplementation(() => {});
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
       try {
         const sendEmail = makeSendEmail();

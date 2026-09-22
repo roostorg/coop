@@ -1,3 +1,5 @@
+import { vi, type Mock } from 'vitest';
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { HashBank } from '../../../services/hmaService/index.js';
 import { resolvers } from './resolvers.js';
@@ -13,14 +15,14 @@ const MOCK_BANK: HashBank = {
   updated_at: new Date(),
 };
 
-function makeContext(overrides: Record<string, jest.Mock> = {}) {
+function makeContext(overrides: Record<string, Mock> = {}) {
   return {
     getUser: () => ({ orgId: 'org1' }),
     services: {
       HMAHashBankService: {
-        createBank: jest.fn().mockResolvedValue(MOCK_BANK),
-        setExchangeCredentials: jest.fn().mockResolvedValue(undefined),
-        getExchangeForBank: jest.fn().mockResolvedValue(null),
+        createBank: vi.fn().mockResolvedValue(MOCK_BANK),
+        setExchangeCredentials: vi.fn().mockResolvedValue(undefined),
+        getExchangeForBank: vi.fn().mockResolvedValue(null),
         ...overrides,
       },
     },
@@ -90,8 +92,8 @@ describe('hashBanks resolvers', () => {
 
     it('returns success with warning when credentials fail', async () => {
       const ctx = makeContext({
-        createBank: jest.fn().mockResolvedValue(MOCK_BANK),
-        setExchangeCredentials: jest
+        createBank: vi.fn().mockResolvedValue(MOCK_BANK),
+        setExchangeCredentials: vi
           .fn()
           .mockRejectedValue(new Error('cred error')),
       });
@@ -164,7 +166,7 @@ describe('hashBanks resolvers', () => {
         last_fetch_succeeded: true,
       };
       const ctx = makeContext({
-        getExchangeForBank: jest.fn().mockResolvedValue(exchangeInfo),
+        getExchangeForBank: vi.fn().mockResolvedValue(exchangeInfo),
       });
 
       const result = await (resolvers as any).HashBank.exchange(

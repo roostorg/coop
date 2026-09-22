@@ -21,7 +21,7 @@ describe('parseItemCreatedAt', () => {
   });
 
   test.each([null, undefined, ''])(
-    'returns null for empty value %p',
+    'returns null for empty value %j',
     (value) => {
       expect(parseItemCreatedAt(value)).toBeNull();
     },
@@ -32,7 +32,7 @@ describe('parseItemCreatedAt', () => {
   // serialization and failed the entire decision insert, surfacing as
   // "Job submission failed" in the reviewer UI.
   test.each(['   ', 'not-a-date', 'garbage', '2026-99-99T99:99:99Z'])(
-    'returns null for unparseable value %p instead of an Invalid Date',
+    'returns null for unparseable value %j instead of an Invalid Date',
     (value) => {
       expect(parseItemCreatedAt(value)).toBeNull();
     },

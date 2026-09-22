@@ -1,4 +1,3 @@
-/// <reference types="jest" />
 /**
  * Integration test for #340: rule changes take effect.
  *

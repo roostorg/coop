@@ -1,3 +1,5 @@
+import { vi } from 'vitest';
+
 import { jsonParse } from '../../../../../../utils/encoding.js';
 import { type FetchHTTP } from '../../../../../networkingService/index.js';
 import { getOpenAiModerationScores } from './openAIModerationUtils.js';
@@ -12,7 +14,7 @@ import { getOpenAiModerationScores } from './openAIModerationUtils.js';
 describe('getOpenAiModerationScores request body shape', () => {
   function makeFetchHTTPCapturing() {
     let captured: { url: string; body: unknown } = { url: '', body: {} };
-    const fetchHTTP = jest
+    const fetchHTTP = vi
       .fn()
       .mockImplementation(async (req: { url: string; body: string }) => {
         captured = { url: req.url, body: jsonParse(req.body as never) };

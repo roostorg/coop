@@ -61,6 +61,7 @@ export default defineConfig(({ mode }) => {
     },
     test: {
       globals: true,
+      clearMocks: false,
       environment: 'jsdom',
       setupFiles: './src/setupTests.ts',
       typecheck: {
