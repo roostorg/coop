@@ -1,0 +1,282 @@
+CHANGELOG.md
+  s_c326e294acd5e8::t_bd8d9e748f37c9 14
+  s_c326e294acd5e8::t_20ac5c1dd71eaf 15-17
+.github/dependabot.yml
+  s_c326e294acd5e8::t_1c72c88b3a627b 6-7,12-22,24,32-34,49-60,240-264
+.github/workflows/agentscan.yml
+  s_c326e294acd5e8::t_b84db9e9d464ff 21
+.github/workflows/apply_pr_checks.yaml
+  s_c326e294acd5e8::t_f06f0d4ed1c4d1 27,30,59,64,84,89,110,117,202,253,284,310,315,334,339
+.github/workflows/e2e.yaml
+  s_c326e294acd5e8::t_d24395375eb734 26,29,50,54,78,132,152
+.github/workflows/license-check.yml
+  s_c326e294acd5e8::t_dc6a9a12c6af62 36,39
+.github/workflows/mdbook.yml
+  s_c326e294acd5e8::t_20670bb0851f22 48,114-118
+.github/workflows/publish-db-migrator.yaml
+  s_c326e294acd5e8::t_c110b75d14539d 19,24
+.github/workflows/publish-docker.yaml
+  s_c326e294acd5e8::t_3a11d0e2e32691 18,59-60,64,68,99,103,105,107,113,119,145,149,151,153,159,165,191,195,197,199,205,211
+.github/workflows/publish-types.yaml
+  s_c326e294acd5e8::t_e56c3872da50f4 19,24
+.github/workflows/zizmor.yml
+  s_c326e294acd5e8::t_c2d5382ab75111 27,32,34-35
+.nvmrc
+  s_c326e294acd5e8::t_7fd19961b896b4 1
+AGENTS.md
+  s_c326e294acd5e8::t_1215edff6d9f5b 158
+Dockerfile
+  s_c326e294acd5e8::t_655762bbf04830 10,21
+client/Dockerfile
+  s_c326e294acd5e8::t_fd8558ff749f15 1
+client/package-lock.json
+  s_c326e294acd5e8::t_d85d7a81699cd1 16-19,49,53,67-68,76,79,81-82,85,92-93,1255-1257,1330-1332,1342,1934-1936,1946-1948,1951-1955,1966-1968,1971,1979-1981,1992-1994,2007-2009,2012-2014,2024-2026,2029,2041-2043,2047,2059-2061,2064-2066,2077-2079,2083,2095-2097,2100-2102,2113-2115,2118-2119,2129-2131,2134-2139,2161-2163,2166,2177-2179,2182-2184,2195-2197,2200-2201,2211-2213,2216-2217,2228-2230,2233-2235,2246-2248,2251-2252,2271-2273,2288-2290,2305-2307,2322-2324,2339-2341,2356-2358,2373-2375,2390-2392,2410-2412,2430-2432,2450-2452,2470-2472,2490-2492,2510-2512,2530-2532,2550-2552,2567-2569,2584-2586,2601-2603,2618-2620,2624,5306-5308,5438-5440,5442,5458-5460,5464,5503-5505,5510-5513,5526,5542-5544,5548-5551,5567-5569,5573-5574,5589-5591,5595-5596,5607-5609,5624-5626,5630-5632,5649-5651,5663-5665,5669-5672,5730-5732,5737-5739,5754-5756,5760,6321-6323,6341-6342,6390-6392,6457-6459,6477-6481,6570-6572,7135-7137,9403-9405,9423,9429,9856-9858,10079-10081,10085,10091,10094-10112,10364-10366,10383,11442-11444,11488-11490,11493,11496,12050-12053,13490-13492,13564-13566
+client/package.json
+  s_c326e294acd5e8::t_a76c317b2b22e8 25-28,58,62,76-77,85,88,90-91,94,101-102
+client/public/favicon.svg
+  s_c326e294acd5e8::t_d33f45cd259887 1-2,4,7,10
+client/src/graphql/generated.ts
+  s_c326e294acd5e8::t_7acb4cb51e0339 1597-1602,2266,4057-4058,8299,12373,24918,25118,25136,32231,34891,34964,34988
+client/src/webpages/dashboard/banks/location/LocationBankForm.tsx
+  s_c326e294acd5e8::t_cf75c8e50f5827 6,184-196,340,344
+client/src/webpages/dashboard/banks/location/LocationBanksDashboard.tsx
+  s_c326e294acd5e8::t_54caf870acf5ef 50-52
+client/src/webpages/dashboard/investigation/InvestigationTag.tsx
+  s_c326e294acd5e8::t_381d8773e1189b 1-33,37-67,71-107
+client/src/webpages/dashboard/item_types/ItemTypeForm.test.tsx
+  s_c326e294acd5e8::t_677f4d2f96f1b6 1-33
+client/src/webpages/dashboard/item_types/ItemTypeForm.tsx
+  s_c326e294acd5e8::t_39461a0b035567 593,678-689
+client/src/webpages/dashboard/item_types/ItemTypeFormCustomField.test.tsx
+  s_c326e294acd5e8::t_2407de17e09394 1-75
+client/src/webpages/dashboard/item_types/ItemTypeFormCustomField.tsx
+  s_c326e294acd5e8::t_df7dff6dd4f610 168,177,182,191
+client/src/webpages/dashboard/items/ItemActionHistory.tsx
+  s_c326e294acd5e8::t_b58ef64e433102 43,113-123,239-246,257,283,299-303
+client/src/webpages/dashboard/mrt/ManualReviewRecentDecisions.tsx
+  s_c326e294acd5e8::t_5649b575d6e7d6 934-940
+client/src/webpages/dashboard/mrt/manual_review_job/ManualReviewJobReview.tsx
+  s_c326e294acd5e8::t_ff2fc28f6e1b05 66,99,172,409-412,757-764
+client/src/webpages/dashboard/mrt/manual_review_job/selectManualReviewJob.test.ts
+  s_c326e294acd5e8::t_2671f73eff1ed7 1-45
+client/src/webpages/dashboard/mrt/manual_review_job/selectManualReviewJob.ts
+  s_c326e294acd5e8::t_297a02d4cee01b 1-11
+client/src/webpages/dashboard/rules/TextTokenInput.test.tsx
+  s_c326e294acd5e8::t_7c38dcfeee3a4c 1-88
+client/src/webpages/dashboard/rules/TextTokenInput.tsx
+  s_c326e294acd5e8::t_69244ae6519b5d 36-40,121-127
+db/Dockerfile
+  s_c326e294acd5e8::t_8d61847c8fb3ef 1,16
+db/package-lock.json
+  s_c326e294acd5e8::t_f240c966af657f 23,130-132,147-149,164-166,181-183,198-200,215-217,232-234,249-251,269-271,289-291,309-311,329-331,349-351,369-371,389-391,409-411,426-428,443-445,460-462,477-479,483,975-977,980,1320-1322,1340,1346,1457-1459,1463,1469,1472-1490,2047-2049
+db/package.json
+  s_c326e294acd5e8::t_1036d88fcecea6 33-34,38
+db/src/scripts/api-server-pg/2026.08.25T15.56.25.remove_legacy_role_columns.sql
+  s_c326e294acd5e8::t_f41de294afe096 1-77
+db/src/scripts/api-server-pg/2026.09.09T13.49.16.add_mrt_decisions_org_created_id_index.sql
+  s_c326e294acd5e8::t_ce6570227fcd07 1-2
+db/src/scripts/api-server-pg/2026.09.09T13.50.00.drop_duplicate_mrt_decisions_created_at_index.sql
+  s_c326e294acd5e8::t_80b6cdaa029dc8 1
+docker-compose.yaml
+  s_c326e294acd5e8::t_cac7772c8a86dc 17-22,30,50,132,197-203
+docs/api/README.md
+  s_c326e294acd5e8::t_8764768de504a8 14-21
+docs/api/actions.md
+  s_c326e294acd5e8::t_533c391048761a 5-29
+docs/api/item-types.md
+  s_c326e294acd5e8::t_0210682811ee95 1-41
+docs/api/policies.md
+  s_c326e294acd5e8::t_e0953ed294d565 19-29,36-48
+docs/book.toml
+  s_c326e294acd5e8::t_56a1ac16d96bd4 3-4,12-15,22-23
+docs/development/README.md
+  s_c326e294acd5e8::t_8fe4bba1969c96 30-32,79,96
+docs/development/deployment.md
+  s_c326e294acd5e8::t_b5cc5fd7eb19b0 22
+docs/development/docker.md
+  s_c326e294acd5e8::t_3f8a8caf78009e 84-85,87
+docs/theme/css/content.css
+  s_c326e294acd5e8::t_3379aae43c26ea 1-122
+docs/theme/css/roost-hljs.css
+  s_c326e294acd5e8::t_b187bddcced753 1-199
+docs/theme/css/roost.css
+  s_c326e294acd5e8::t_ce93feb7ca6ad0 1-151
+docs/theme/favicon.svg
+  s_c326e294acd5e8::t_ef44a067895e66 1-11
+docs/theme/fonts/fonts.css
+  s_c326e294acd5e8::t_4c6c6fd27de43c 10
+docs/theme/head.hbs
+  s_c326e294acd5e8::t_8fa3a8975f220f 1-5
+docs/theme/images/logo.svg
+  s_c326e294acd5e8::t_d6dd1b30ad2a75 1-56
+docs/theme/index.hbs
+  s_c326e294acd5e8::t_56013c4311168d 1-375
+docs/theme/js/share.js
+  s_c326e294acd5e8::t_e281d43e03eaf9 1-183
+migrator/package-lock.json
+  s_c326e294acd5e8::t_94f668dd4d5150 78-80,95-97,112-114,129-131,146-148,163-165,180-182,197-199,217-219,237-239,257-259,277-279,297-299,317-319,337-339,357-359,374-376,391-393,408-410,425-427,431,769-772,799-802,804,1098-1100,1118,1124,1214-1216,1220,1226,1229-1247,1616-1618,1620,1835-1837,1842-1844,1849-1851,1856-1858,1863-1865,1870-1872,1877-1879,1884-1886,1891-1893,1898-1900,1905-1907,1912-1914,1919-1921,1926-1928,1933-1935,1940-1942,1947-1949,1954-1956,1961-1963,1968-1970,2178-2180,2206-2208,2234,2411-2413,2420,2426,2487-2489,2492-2511,2731-2733
+migrator/package.json
+  s_c326e294acd5e8::t_23d50a1c9bf027 43-44
+nodejs-instrumentation/Dockerfile
+  s_c326e294acd5e8::t_9538328af3a7be 12
+nodejs-instrumentation/package-lock.json
+  s_c326e294acd5e8::t_31b33ce2f6bf5a 13-15,19-21,24,107-109,119-170,172,183-185,188,199-201,211-213,226-228,231-234,244-246,249-251,261-263,266-268,278-280,283-285,295-297,300-304,314-316,319-321,331-333,336-338,349-351,354-357,367-369,372-374,384-386,389-391,401-403,406-408,419-421,424,436-438,442,453-455,458,471-473,477,488-490,493-495,505-507,510,521-523,527,539-541,544,555-557,560,570-572,575,585-587,591,602-604,608,618-620,623,633-635,638,648-650,653,664-666,670,681-683,686,697-699,702-703,715-717,720,732-734,737,748-750,753,764-766,770,781-783,786,796-798,801,813-815,818,829-831,835,846-848,851-852,862-864,867,879-881,884,895-897,900,911-913,916-917,928-930,933-935,945-947,951,965-967,970,972,983-985,988,1000-1002,1006,1017-1019,1022,1033-1035,1038,1040,1050-1052,1055,1065-1067,1070-1071,1081-1083,1087,1098-1100,1103-1104,1114-1116,1119-1120,1130-1132,1136-1138,1148-1150,1153-1158,1180-1182,1185,1195-1197,1200,1219-1221,1235-1237,1252-1254,1269-1271,1285-1287,1302-1304,1307,1318-1320,1323-1325,1336-1338,1341-1342,1352-1382,1393-1395,1398-1399,1410-1412,1415-1417,1428-1430,1433-1435,1469-1471,1474,1493-1495,1517-1519,1561-1563,2145-2147,2436-2438
+nodejs-instrumentation/package.json
+  s_c326e294acd5e8::t_e7cf7ce4406aa4 14-16,20-22,25
+package-lock.json
+  s_c326e294acd5e8::t_dd3be5b17adcf9 23,2300-2302
+package.json
+  s_c326e294acd5e8::t_b40e771cd073cc 45
+server/.env.example
+  s_c326e294acd5e8::t_617632987fe6d7 85,140-142
+server/api.test.ts
+  s_c326e294acd5e8::t_c66f8f5f80aefb 1-45
+server/api.ts
+  s_c326e294acd5e8::t_aa3f895037d215 25,30,62,89-90,216
+server/bin/run-worker-or-job.ts
+  s_c326e294acd5e8::t_a66db2349ce8ae 4-8,10-26,30
+server/e2e/fixtures/coop.ts
+  s_c326e294acd5e8::t_6da580b52d6dd1 26,42-44,60,96-102,105
+server/globals.ts
+  s_c326e294acd5e8::t_f6d2ca7a92ce10 1-36
+server/graphql/datasources/OrgApi.test.ts
+  s_c326e294acd5e8::t_5e75351ad26a17 9,22,248
+server/graphql/datasources/OrgApi.ts
+  s_c326e294acd5e8::t_491180c15ac2b8 169
+server/graphql/datasources/rolePersistence.test.ts
+  s_c326e294acd5e8::t_e5970bcc79d74a 10-15,191-350
+server/graphql/datasources/rolePersistence.ts
+  s_c326e294acd5e8::t_b4a2095e354ad2 52,54,72,84,113-118,122,126,128,130-134,142,144-157,159,163,175,210,228,239,260
+server/graphql/datasources/userKyselyPersistence.test.ts
+  s_c326e294acd5e8::t_a73d9f25c479c1 8,46,71-80,96-101,112-115,117-119,137-143,155-171,314-339,343-360
+server/graphql/datasources/userKyselyPersistence.ts
+  s_c326e294acd5e8::t_f5509e16fb442b 14-15,19,26-27,73,91-100,117,144,159,175,190,209,224,284,317,364
+server/graphql/datasources/userKyselyPersistenceFindByEmailAndOrg.test.ts
+  s_c326e294acd5e8::t_552a0cd55077d8 7,36
+server/graphql/generated.ts
+  s_c326e294acd5e8::t_33f23894500231 1665-1670,2334,4125-4126,9717-9721,13376
+server/graphql/modules/investigation.resolver.test.ts
+  s_c326e294acd5e8::t_1f0b091cd62930 13,252-432
+server/graphql/modules/investigation.ts
+  s_c326e294acd5e8::t_18ca37fdf70ebd 5,11-14,144-149,702-704,709-725,727,729-747,751-792
+server/graphql/modules/manualReviewTool.resolver.test.ts
+  s_c326e294acd5e8::t_73957fa6912f44 1-658
+server/graphql/modules/manualReviewTool.test.ts
+  s_c326e294acd5e8::t_b60c5484da566c 1-22
+server/graphql/modules/manualReviewTool.ts
+  s_c326e294acd5e8::t_e2be96f056b315 46,50-59,78,1762-1764,1774-1775,1782-1806,1809-1810,1818-1819,1828,1841,1851,2116-2124,2129,2215-2224,2226,2244-2254,2259,2333-2347,2387-2388
+server/graphql/modules/org.resolver.test.ts
+  s_c326e294acd5e8::t_200ec207318861 249-333
+server/graphql/modules/org.ts
+  s_c326e294acd5e8::t_440728fc3f4de8 403-406,409
+server/graphql/modules/roles.ts
+  s_c326e294acd5e8::t_3304b1eef6b6f9 18-19
+server/graphql/modules/user.resolver.test.ts
+  s_c326e294acd5e8::t_95d8136a784310 55-64,66-77,79-85,88-93,97-98,101-113,116-122,124-129,132-137,140-211
+server/graphql/modules/user.ts
+  s_c326e294acd5e8::t_a3893a9c0ea437 11,265-268,380-410,426
+server/graphql/resolvers.ts
+  s_c326e294acd5e8::t_11208c3f24db0b 43
+server/graphql/services.ts
+  s_c326e294acd5e8::t_3e86a25f2a3030 1-39
+server/graphql/utils/manualReviewQueueAuthorization.ts
+  s_c326e294acd5e8::t_da153792cffbe7 1-62
+server/graphql/utils/resolveSamlUser.test.ts
+  s_c326e294acd5e8::t_6f621429894428 10,44
+server/iocContainer/services/workersAndJobs.ts
+  s_c326e294acd5e8::t_ce5e2c9de290de 5-9,15,20,35-38,40-58
+server/knip.json
+  s_c326e294acd5e8::t_575b3958ae01f9 3
+server/package-lock.json
+  s_c326e294acd5e8::t_4cd5b00be4f4d5 90,93,480-482,485,496-498,501-504,518-520,523-524,537-539,565-567,570,581-583,586,599-611,623-625,628-629,640-642,645-650,662-664,667,678-680,683-685,696-698,701-702,713-715,718,730-732,735,764-766,769-770,1459-1461,1534-1536,1546,1647-1649,2453-2455,2461-2473,2477-2479,2493-2495,2509-2511,2525-2527,2541-2543,2557-2559,2573-2575,2592-2594,2611-2613,2630-2632,2649-2651,2665-2667,2681-2683,2831-2833,2848-2850,2865-2867,2882-2884,2899-2901,2916-2918,2933-2935,2950-2952,2970-2972,2990-2992,3010-3012,3030-3032,3050-3052,3070-3072,3090-3092,3110-3112,3127-3129,3144-3146,3161-3163,3178-3180,3184,3527-3529,3533,11436-11439,11441,11476-11478,11481,11613-11615,11620-11623,11642-11644,11648-11649,11660-11662,11674-11676,11680,11728-11730,11734-11737,11753-11755,11759-11760,11771-11773,11785-11787,11791-11794,11813-11815,11819,11896-11898,11902-11903,11918-11920,11950-11952,11967-11969,11973-11975,11992-11994,12006-12008,12012-12015,12034-12036,12040,12186-12188,12193-12195,12210-12212,12216-12217,12228-12230,12242-12244,12248-12251,12270-12272,12276,12783-12785,12788,13403-13405,15167-15169,17622-17624,17642,17648,18345-18347,18351,18357,18360-18378,18852-18854,18858,18868-18870,20620-20622,20626-20629,20644-20646,20658-20660,20664-20667,20686-20688,20692,20791-20793,20820-20822,20829-20831
+server/package.json
+  s_c326e294acd5e8::t_456b044b383c0a 7-9,108,111,150,162-163
+server/plugins/warehouse/queries/ClickhouseActionExecutionsAdapter.test.ts
+  s_c326e294acd5e8::t_f914ede0cf39df 348-435
+server/plugins/warehouse/queries/ClickhouseActionExecutionsAdapter.ts
+  s_c326e294acd5e8::t_a43a553e2d23d1 1-2,31,42-47,64,99,308-332
+server/plugins/warehouse/queries/IActionExecutionsAdapter.ts
+  s_c326e294acd5e8::t_a4597ef9a25b0a 1-2,13-19
+server/routes/action/ActionRoutes.test.ts
+  s_c326e294acd5e8::t_3ffdd164b89b06 1-301
+server/routes/action/ActionRoutes.ts
+  s_c326e294acd5e8::t_ff2a471fb040fa 9,34-37
+server/routes/action/getActions.ts
+  s_c326e294acd5e8::t_a6ad364f3db3c5 1,3-11,13-23,25-64
+server/routes/index.ts
+  s_c326e294acd5e8::t_3fd1fd6004231e 5,24
+server/routes/item_types/ItemTypeRoutes.test.ts
+  s_c326e294acd5e8::t_e3337315883dab 1-107
+server/routes/item_types/ItemTypeRoutes.ts
+  s_c326e294acd5e8::t_e2be74085f45e1 1-14
+server/routes/item_types/getItemTypes.ts
+  s_c326e294acd5e8::t_f1ad13a7897baa 1,3-7,9-11,13-20,22-30
+server/routes/policies/PoliciesRoutes.test.ts
+  s_c326e294acd5e8::t_5575daaff8899c 1,5-9,11-22,24-29,31-38,40-41,43-45,47-55,58-78
+server/routes/policies/PoliciesRoutes.ts
+  s_c326e294acd5e8::t_b61a2b3591155a 1,8
+server/routes/policies/getPolicies.ts
+  s_c326e294acd5e8::t_d0097bfdf54f3e 31-38
+server/scylla/noOpScylla.test.ts
+  s_c326e294acd5e8::t_49ba78faf2cd33 8,19
+server/scylla/noOpScylla.ts
+  s_c326e294acd5e8::t_5a8c359b293a7a 5-6,27
+server/services/coreAppTables.ts
+  s_c326e294acd5e8::t_83f7a3efbbcf9b 31
+server/services/itemInvestigationService/itemInvestigationService.ts
+  s_c326e294acd5e8::t_43cc4e96977780 1122-1126,1158
+server/services/manualReviewContentResolver.test.ts
+  s_c326e294acd5e8::t_6551bb5944e458 1,3-5,7-15,17-23,25-29,32-41,43-54,56-66,68,70,72-79,81-82,84-94,96-110,112-114,116-119,121-134,136-138,140-157
+server/services/manualReviewContentResolver.ts
+  s_c326e294acd5e8::t_f61b9e7c8cc75b 1-79
+server/services/manualReviewToolService/manualReviewToolService.test.ts
+  s_c326e294acd5e8::t_656bb83e4ebc85 138-191
+server/services/manualReviewToolService/manualReviewToolService.ts
+  s_c326e294acd5e8::t_04c405c9d03176 24-28,48,339,1035,1103-1157,1266-1275,1287
+server/services/manualReviewToolService/modules/DecisionAnalytics.test.ts
+  s_c326e294acd5e8::t_71c3fe6de5d690 1-236
+server/services/manualReviewToolService/modules/DecisionAnalytics.ts
+  s_c326e294acd5e8::t_68101891b4dae3 2,37-40,281-286,289-290,293,303-351,355-366,368-382,387-408,410-441,443,446-483,619-654
+server/services/manualReviewToolService/modules/QueueOperations.test.ts
+  s_c326e294acd5e8::t_29058c0bd84685 191-349
+server/services/manualReviewToolService/modules/QueueOperations.ts
+  s_c326e294acd5e8::t_9208ea7273bb95 120-121,599-603,609-610,612,620,968-992,1731,1733-1736,1746,1956
+server/services/moderationConfigService/index.ts
+  s_c326e294acd5e8::t_bc472d1b2b9bdd 55-56,97
+server/services/moderationConfigService/moderationConfigService.ts
+  s_c326e294acd5e8::t_de225daf2ffc12 291-294
+server/services/moderationConfigService/modules/ItemTypeOperations.ts
+  s_c326e294acd5e8::t_afa3d75befae60 606-632
+server/services/moderationConfigService/types/policies.ts
+  s_c326e294acd5e8::t_0d8cd9469de081 31
+server/services/signingKeyPairService/postgresSigningKeyPairStorage.ts
+  s_c326e294acd5e8::t_5ea81486078780 30,63-65,111-113,118-120
+server/services/signingKeyPairService/signingKeyPairService.ts
+  s_c326e294acd5e8::t_0b17ec45d6c49b 20,24-26,50,112,125-130
+server/services/userManagementService/dbTypes.ts
+  s_c326e294acd5e8::t_f8a1d8d1a5f788 74
+server/services/userManagementService/rolePersistence.test.ts
+  s_c326e294acd5e8::t_7def4a5b6a0c01 1-159
+server/services/userManagementService/userManagementService.ts
+  s_c326e294acd5e8::t_b3a588fb2f37e2 37,44-45,95-106,139,151-163,344,524-528,530-534,536-538
+server/test/fixtureHelpers/createMrtQueue.ts
+  s_c326e294acd5e8::t_390f3c425cc89c 8,10,13
+server/test/fixtureHelpers/createUser.ts
+  s_c326e294acd5e8::t_4a91bd72eaafaf 5-6,42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "516f3b7d0fca287cbbc310135108f6c868ee1543",
+  "prompts": {},
+  "sessions": {
+    "s_c326e294acd5e8": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "f0bd2855-2af0-4ab3-8e7e-63ab896e5865",
+        "model": "grok-4.6"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
