@@ -22,6 +22,7 @@ import {
   RuleStatus,
   RuleType,
   type ConditionSet,
+  type ItemSchema,
   type Policy,
 } from './index.js';
 import { ModerationConfigService } from './moderationConfigService.js';
@@ -30,6 +31,32 @@ import { PolicyType } from './types/policies.js';
 type TestDeps = MockedServer['deps'];
 
 type Sut = ConstructorParameters<typeof ModerationConfigService>[0];
+
+type ItemTypeMutationMethod =
+  | 'createContentType'
+  | 'updateContentType'
+  | 'createThreadType'
+  | 'updateThreadType'
+  | 'createUserType'
+  | 'updateUserType';
+
+async function mutateItemTypeAndHiddenFields<T extends ItemTypeMutationMethod>(
+  config: ModerationConfigService,
+  deps: Pick<TestDeps, 'ManualReviewToolService'>,
+  orgId: string,
+  method: T,
+  input: Parameters<ModerationConfigService[T]>[1],
+  hiddenFields: readonly string[],
+) {
+  return config.withItemTypeTransaction(orgId, async (trx) => {
+    const item = await config[method](orgId, input as never, trx);
+    await deps.ManualReviewToolService.setHiddenFieldsForItemType(
+      { orgId, itemTypeId: item.id, hiddenFields },
+      trx,
+    );
+    return item;
+  });
+}
 
 // We test the moderationConfigService as a black box: every test gets a fresh
 // org and seeds data only through the public methods, then verifies it can read
@@ -193,6 +220,508 @@ describe('ModerationConfigService', () => {
   });
 
   describe('ItemType-Returning methods', () => {
+    describe('hidden fields', () => {
+      testWithOrg(
+        'persists hidden fields and isolates them by organization',
+        async ({ sutWithPrimary, deps, org }) => {
+          const manualReviewTool = deps.ManualReviewToolService;
+          const itemType = await sutWithPrimary.createContentType(org.id, {
+            schema: [
+              { ...dummySchema[0], name: 'internalNote' },
+              { ...dummySchema[0], name: 'email' },
+            ],
+            description: null,
+            name: 'Content Item Type',
+            schemaFieldRoles: {},
+          });
+
+          await expect(
+            manualReviewTool.getHiddenFieldsForItemType({
+              orgId: org.id,
+              itemTypeId: itemType.id,
+            }),
+          ).resolves.toEqual([]);
+
+          await manualReviewTool.setHiddenFieldsForItemType({
+            orgId: org.id,
+            itemTypeId: itemType.id,
+            hiddenFields: ['internalNote', 'email'],
+          });
+          await expect(
+            manualReviewTool.getHiddenFieldsForItemType({
+              orgId: org.id,
+              itemTypeId: itemType.id,
+            }),
+          ).resolves.toEqual(['internalNote', 'email']);
+
+          await manualReviewTool.setHiddenFieldsForItemType({
+            orgId: org.id,
+            itemTypeId: itemType.id,
+            hiddenFields: ['internalNote'],
+          });
+          await expect(
+            manualReviewTool.getHiddenFieldsForItemType({
+              orgId: org.id,
+              itemTypeId: itemType.id,
+            }),
+          ).resolves.toEqual(['internalNote']);
+
+          const { org: otherOrg } = await createOrg(
+            {
+              KyselyPg: deps.KyselyPg,
+              ModerationConfigService: deps.ModerationConfigService,
+              ApiKeyService: deps.ApiKeyService,
+            },
+            uid(),
+          );
+          await expect(
+            manualReviewTool.getHiddenFieldsForItemType({
+              orgId: otherOrg.id,
+              itemTypeId: itemType.id,
+            }),
+          ).resolves.toEqual([]);
+          await expect(
+            manualReviewTool.setHiddenFieldsForItemType({
+              orgId: otherOrg.id,
+              itemTypeId: itemType.id,
+              hiddenFields: ['email'],
+            }),
+          ).rejects.toMatchObject({ name: 'NotFoundError' });
+          await expect(
+            manualReviewTool.getHiddenFieldsForItemType({
+              orgId: org.id,
+              itemTypeId: itemType.id,
+            }),
+          ).resolves.toEqual(['internalNote']);
+
+          await manualReviewTool.setHiddenFieldsForItemType({
+            orgId: org.id,
+            itemTypeId: itemType.id,
+            hiddenFields: [],
+          });
+          await expect(
+            manualReviewTool.getHiddenFieldsForItemType({
+              orgId: org.id,
+              itemTypeId: itemType.id,
+            }),
+          ).resolves.toEqual([]);
+        },
+      );
+    });
+
+    describe('atomic item type configuration mutations', () => {
+      const schema = [
+        { name: 'required', type: 'STRING', required: true, container: null },
+        { name: 'optional', type: 'STRING', required: false, container: null },
+      ] as const;
+
+      testWithOrg(
+        'create stores supplied hidden fields and defaults omitted hidden fields to empty',
+        async ({ sutWithPrimary, deps, org }) => {
+          const content = await mutateItemTypeAndHiddenFields(
+            sutWithPrimary,
+            deps,
+            org.id,
+            'createContentType',
+            {
+              name: 'hidden content',
+              schema,
+              schemaFieldRoles: {},
+            },
+            ['optional'],
+          );
+          const thread = await sutWithPrimary.createThreadType(org.id, {
+            name: 'plain thread',
+            schema,
+            schemaFieldRoles: {},
+          });
+          await expect(
+            deps.ManualReviewToolService.getHiddenFieldsForItemType({
+              orgId: org.id,
+              itemTypeId: content.id,
+            }),
+          ).resolves.toEqual(['optional']);
+          await expect(
+            deps.ManualReviewToolService.getHiddenFieldsForItemType({
+              orgId: org.id,
+              itemTypeId: thread.id,
+            }),
+          ).resolves.toEqual([]);
+        },
+      );
+
+      testWithOrg(
+        'update with omitted hiddenFields leaves them unchanged',
+        async ({ sutWithPrimary, deps, org }) => {
+          const item = await mutateItemTypeAndHiddenFields(
+            sutWithPrimary,
+            deps,
+            org.id,
+            'createUserType',
+            {
+              name: 'user hidden',
+              schema,
+              schemaFieldRoles: {},
+            },
+            ['optional'],
+          );
+          await sutWithPrimary.updateUserType(org.id, {
+            id: item.id,
+            description: 'changed',
+          });
+          await expect(
+            deps.ManualReviewToolService.getHiddenFieldsForItemType({
+              orgId: org.id,
+              itemTypeId: item.id,
+            }),
+          ).resolves.toEqual(['optional']);
+        },
+      );
+
+      testWithOrg(
+        'update with an empty hiddenFields list clears it',
+        async ({ sutWithPrimary, deps, org }) => {
+          const item = await mutateItemTypeAndHiddenFields(
+            sutWithPrimary,
+            deps,
+            org.id,
+            'createThreadType',
+            {
+              name: 'thread hidden',
+              schema,
+              schemaFieldRoles: {},
+            },
+            ['optional'],
+          );
+          await mutateItemTypeAndHiddenFields(
+            sutWithPrimary,
+            deps,
+            org.id,
+            'updateThreadType',
+            { id: item.id },
+            [],
+          );
+          await expect(
+            deps.ManualReviewToolService.getHiddenFieldsForItemType({
+              orgId: org.id,
+              itemTypeId: item.id,
+            }),
+          ).resolves.toEqual([]);
+        },
+      );
+
+      testWithOrg(
+        'update can add an optional field and relax a required field',
+        async ({ sutWithPrimary, org }) => {
+          const item = await sutWithPrimary.createContentType(org.id, {
+            name: 'evolving',
+            schema,
+            schemaFieldRoles: {},
+          });
+          const updated = await sutWithPrimary.updateContentType(org.id, {
+            id: item.id,
+            schema: [
+              { ...schema[0], required: false },
+              schema[1],
+              {
+                name: 'added',
+                type: 'BOOLEAN',
+                required: false,
+                container: null,
+              },
+            ],
+          });
+          expect(updated.schema).toHaveLength(3);
+          expect(updated.schema[0].required).toBe(false);
+        },
+      );
+
+      testWithOrg(
+        'rejects rename, removal, type, container, and requiredness violations and leaves the source row unchanged',
+        async ({ sutWithPrimary, org }) => {
+          const cases: readonly [string, ItemSchema][] = [
+            ['rename', [{ ...schema[0], name: 'renamed' }, schema[1]]],
+            ['removal', [schema[0]]],
+            ['type', [{ ...schema[0], type: 'BOOLEAN' }, schema[1]]],
+            [
+              'container',
+              [
+                {
+                  ...schema[0],
+                  type: 'ARRAY',
+                  container: {
+                    containerType: 'ARRAY',
+                    valueScalarType: 'STRING',
+                    keyScalarType: null,
+                  },
+                },
+                schema[1],
+              ],
+            ],
+            ['requiredness', [schema[0], { ...schema[1], required: true }]],
+          ];
+          for (const [_case, proposed] of cases) {
+            const item = await sutWithPrimary.createContentType(org.id, {
+              name: `invalid ${_case}`,
+              schema,
+              schemaFieldRoles: {},
+            });
+            await expect(
+              sutWithPrimary.updateContentType(org.id, {
+                id: item.id,
+                schema: proposed,
+              }),
+            ).rejects.toMatchObject({
+              name: 'ItemTypeSchemaIncompatibleError',
+            });
+            await expect(
+              sutWithPrimary.getItemType({
+                orgId: org.id,
+                itemTypeSelector: { id: item.id },
+                directives: { maxAge: 0 },
+              }),
+            ).resolves.toMatchObject({ schema });
+          }
+        },
+      );
+
+      testWithOrg(
+        'rejects hidden fields absent from the proposed schema without changing either store',
+        async ({ sutWithPrimary, deps, org }) => {
+          const item = await mutateItemTypeAndHiddenFields(
+            sutWithPrimary,
+            deps,
+            org.id,
+            'createUserType',
+            {
+              name: 'invalid hidden',
+              schema,
+              schemaFieldRoles: {},
+            },
+            ['optional'],
+          );
+          await expect(
+            mutateItemTypeAndHiddenFields(
+              sutWithPrimary,
+              deps,
+              org.id,
+              'updateUserType',
+              { id: item.id, description: 'bad' },
+              ['missing'],
+            ),
+          ).rejects.toMatchObject({ name: 'InvalidItemTypeHiddenFieldsError' });
+          await expect(
+            sutWithPrimary.getItemType({
+              orgId: org.id,
+              itemTypeSelector: { id: item.id },
+              directives: { maxAge: 0 },
+            }),
+          ).resolves.toMatchObject({ description: null, schema });
+          await expect(
+            deps.ManualReviewToolService.getHiddenFieldsForItemType({
+              orgId: org.id,
+              itemTypeId: item.id,
+            }),
+          ).resolves.toEqual(['optional']);
+        },
+      );
+
+      testWithOrg(
+        'wrong-org updates use not-found and do not reveal or mutate the row',
+        async ({ sutWithPrimary, deps, org }) => {
+          const item = await sutWithPrimary.createThreadType(org.id, {
+            name: 'private thread',
+            schema,
+            schemaFieldRoles: {},
+          });
+          const { org: otherOrg } = await createOrg(
+            {
+              KyselyPg: deps.KyselyPg,
+              ModerationConfigService: deps.ModerationConfigService,
+              ApiKeyService: deps.ApiKeyService,
+            },
+            uid(),
+          );
+          await expect(
+            sutWithPrimary.updateThreadType(otherOrg.id, {
+              id: item.id,
+              name: 'stolen',
+            }),
+          ).rejects.toMatchObject({
+            type: expect.arrayContaining([ErrorType.NotFound]),
+          });
+          await expect(
+            sutWithPrimary.getItemType({
+              orgId: org.id,
+              itemTypeSelector: { id: item.id },
+              directives: { maxAge: 0 },
+            }),
+          ).resolves.toMatchObject({ name: 'private thread' });
+        },
+      );
+
+      testWithOrg(
+        'kind is immutable because update inputs do not accept it',
+        async ({ sutWithPrimary, org }) => {
+          const item = await sutWithPrimary.createContentType(org.id, {
+            name: 'content forever',
+            schema,
+            schemaFieldRoles: {},
+          });
+          const updated = await sutWithPrimary.updateContentType(org.id, {
+            id: item.id,
+            description: 'still content',
+            // @ts-expect-error kind is intentionally absent from update inputs.
+            kind: 'USER',
+          });
+          expect(updated.kind).toBe('CONTENT');
+        },
+      );
+
+      testWithOrg(
+        'rolls hidden-field writes back when the item-type name update conflicts',
+        async ({ sutWithPrimary, deps, org }) => {
+          const a = await mutateItemTypeAndHiddenFields(
+            sutWithPrimary,
+            deps,
+            org.id,
+            'createContentType',
+            { name: 'A', schema, schemaFieldRoles: {} },
+            ['optional'],
+          );
+          await sutWithPrimary.createContentType(org.id, {
+            name: 'B',
+            schema,
+            schemaFieldRoles: {},
+          });
+          await expect(
+            mutateItemTypeAndHiddenFields(
+              sutWithPrimary,
+              deps,
+              org.id,
+              'updateContentType',
+              { id: a.id, name: 'B' },
+              ['required'],
+            ),
+          ).rejects.toMatchObject({ name: 'ItemTypeNameAlreadyExistsError' });
+          await expect(
+            deps.ManualReviewToolService.getHiddenFieldsForItemType({
+              orgId: org.id,
+              itemTypeId: a.id,
+            }),
+          ).resolves.toEqual(['optional']);
+        },
+      );
+
+      testWithOrg(
+        'role patches preserve omitted and undefined keys and clear null keys for every kind',
+        async ({ sutWithPrimary, org }) => {
+          for (const kind of ['CONTENT', 'THREAD', 'USER'] as const) {
+            if (kind === 'CONTENT') {
+              const item = await sutWithPrimary.createContentType(org.id, {
+                name: 'role content',
+                schema: [
+                  ...schema,
+                  {
+                    name: 'related',
+                    type: 'RELATED_ITEM',
+                    required: false,
+                    container: null,
+                  },
+                ],
+                schemaFieldRoles: {
+                  creatorId: 'related',
+                  displayName: 'required',
+                },
+              });
+              const preserved = await sutWithPrimary.updateContentType(org.id, {
+                id: item.id,
+                name: 'renamed role content',
+              });
+              expect(preserved.schemaFieldRoles).toMatchObject({
+                creatorId: 'related',
+                displayName: 'required',
+              });
+              const patched = await sutWithPrimary.updateContentType(org.id, {
+                id: item.id,
+                schemaFieldRoles: { creatorId: undefined, displayName: null },
+              });
+              expect(patched.schemaFieldRoles).toMatchObject({
+                creatorId: 'related',
+                displayName: undefined,
+              });
+            } else if (kind === 'THREAD') {
+              const item = await sutWithPrimary.createThreadType(org.id, {
+                name: 'role thread',
+                schema: [
+                  ...schema,
+                  {
+                    name: 'related',
+                    type: 'RELATED_ITEM',
+                    required: false,
+                    container: null,
+                  },
+                ],
+                schemaFieldRoles: {
+                  creatorId: 'related',
+                  displayName: 'required',
+                },
+              });
+              const preserved = await sutWithPrimary.updateThreadType(org.id, {
+                id: item.id,
+                name: 'renamed role thread',
+              });
+              expect(preserved.schemaFieldRoles).toMatchObject({
+                creatorId: 'related',
+                displayName: 'required',
+              });
+              const patched = await sutWithPrimary.updateThreadType(org.id, {
+                id: item.id,
+                schemaFieldRoles: { creatorId: undefined, displayName: null },
+              });
+              expect(patched.schemaFieldRoles).toMatchObject({
+                creatorId: 'related',
+                displayName: undefined,
+              });
+            } else {
+              const item = await sutWithPrimary.createUserType(org.id, {
+                name: 'role user',
+                schema: [
+                  ...schema,
+                  {
+                    name: 'image',
+                    type: 'IMAGE',
+                    required: false,
+                    container: null,
+                  },
+                ],
+                schemaFieldRoles: {
+                  profileIcon: 'image',
+                  displayName: 'required',
+                },
+              });
+              const preserved = await sutWithPrimary.updateUserType(org.id, {
+                id: item.id,
+                name: 'renamed role user',
+              });
+              expect(preserved.schemaFieldRoles).toMatchObject({
+                profileIcon: 'image',
+                displayName: 'required',
+              });
+              const patched = await sutWithPrimary.updateUserType(org.id, {
+                id: item.id,
+                schemaFieldRoles: { profileIcon: undefined, displayName: null },
+              });
+              expect(patched.schemaFieldRoles).toMatchObject({
+                profileIcon: 'image',
+                displayName: undefined,
+              });
+            }
+          }
+        },
+      );
+    });
+
     describe('Creation methods', () => {
       describe('#createContentType', () => {
         testWithOrg(
