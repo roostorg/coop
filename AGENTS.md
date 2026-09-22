@@ -34,7 +34,7 @@ Reference files: `README.md` (getting started), `server/bin/README.md` (utility 
 
   After step 3, run `npm run generate` from the repo root to refresh the codegen output.
 
-- **Data model:** Use Knex query builder for Postgres; ClickHouse via raw SQL in `server/storage/dataWarehouse/ClickhouseAdapter.ts`; Scylla via Cassandra driver.
+- **Data model:** Use Kysely query builder for Postgres; ClickHouse via raw SQL in `server/storage/dataWarehouse/ClickhouseAdapter.ts`; Scylla via Cassandra driver.
 - **Dependency injection:** Server uses BottleJS DI (wired in `server/iocContainer/`). Register services in `iocContainer`, don't export singletons from service files. Consumers receive dependencies via DI rather than importing directly. Bypassing `iocContainer` will work at runtime but breaks test mocking patterns.
 
 ## Build and run
