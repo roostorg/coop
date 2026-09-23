@@ -959,11 +959,11 @@ function toHmaNote(note: string | undefined): string | undefined {
   if (!note?.trim()) {
     return undefined;
   }
-  // HMA counts code points (Python len), not UTF-16 units.
-  if ([...note].length > 255) {
-    throw new Error('note must be 255 characters or less');
-  }
-  return note;
+  // HMA counts code points (Python len), not UTF-16 units, and rejects
+  // anything longer. Getting the hash in matters more than the full note, so
+  // cut it instead of failing the whole add.
+  const codePoints = [...note];
+  return codePoints.length > 255 ? codePoints.slice(0, 255).join('') : note;
 }
 
 export default inject(['fetchHTTP', 'KyselyPg'], HmaService);

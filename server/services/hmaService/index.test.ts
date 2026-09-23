@@ -527,34 +527,39 @@ describe('HmaService', () => {
         expect(jsonParse(fetchHTTP.mock.calls[0][0].body)).toEqual({ note });
       });
 
-      it('rejects a note longer than 255 characters before calling HMA', async () => {
+      it('cuts a note longer than 255 characters instead of failing the add', async () => {
         const { fetchHTTP, svc } = makeOkService();
 
-        await expect(
-          svc.addContentToBank('COOP_ORG1_BANK', {
-            ...URL_OPTIONS,
-            note: 'a'.repeat(256),
-          }),
-        ).rejects.toThrow('note must be 255 characters or less');
-        expect(fetchHTTP).not.toHaveBeenCalled();
+        await svc.addContentToBank('COOP_ORG1_BANK', {
+          ...URL_OPTIONS,
+          note: 'a'.repeat(256),
+        });
+
+        expect(jsonParse(fetchHTTP.mock.calls[0][0].body)).toEqual({
+          note: 'a'.repeat(255),
+        });
       });
 
-      it('counts characters like HMA does, so 255 emoji are accepted and 256 are not', async () => {
+      it('counts characters like HMA does, so 255 emoji go through whole', async () => {
         const { fetchHTTP, svc } = makeOkService();
 
         await svc.addContentToBank('COOP_ORG1_BANK', {
           ...URL_OPTIONS,
           note: '🚩'.repeat(255),
         });
-        expect(fetchHTTP).toHaveBeenCalledTimes(1);
+        expect(jsonParse(fetchHTTP.mock.calls[0][0].body)).toEqual({
+          note: '🚩'.repeat(255),
+        });
 
-        await expect(
-          svc.addContentToBank('COOP_ORG1_BANK', {
-            ...URL_OPTIONS,
-            note: '🚩'.repeat(256),
-          }),
-        ).rejects.toThrow('note must be 255 characters or less');
-        expect(fetchHTTP).toHaveBeenCalledTimes(1);
+        await svc.addContentToBank('COOP_ORG1_BANK', {
+          ...URL_OPTIONS,
+          note: '🚩'.repeat(256),
+        });
+        // Cut by code point, so the last emoji is dropped whole rather than
+        // leaving half a surrogate pair behind.
+        expect(jsonParse(fetchHTTP.mock.calls[1][0].body)).toEqual({
+          note: '🚩'.repeat(255),
+        });
       });
 
       it('appends the note to the form data on file uploads', async () => {
