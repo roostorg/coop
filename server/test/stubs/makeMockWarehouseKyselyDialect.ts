@@ -15,8 +15,7 @@ import {
   type QueryResult,
   type TransactionSettings,
 } from 'kysely';
-
-import { type MockedFn } from '../mockHelpers/jestMocks.js';
+import { type Mock } from 'vitest';
 
 type WarehouseDriverConfig = {
   acquireConnection(): Promise<DatabaseConnection>;
@@ -120,7 +119,7 @@ export type WarehouseExecute = (
 ) => Promise<QueryResult<unknown>>;
 
 export function makeMockWarehouseDialect(
-  executeMockFn: MockedFn<WarehouseExecute>,
+  executeMockFn: Mock<WarehouseExecute>,
 ) {
   async function* emptyStream(): AsyncIterableIterator<never> {
     throw new Error('not supported');

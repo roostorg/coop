@@ -1,4 +1,4 @@
-import { vi, type Mock } from 'vitest';
+import { vi, type Mock, type Mocked } from 'vitest';
 
 import {
   type Dependencies,
@@ -10,7 +10,6 @@ import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import createRule from '../../test/fixtureHelpers/createRule.js';
 import createUser from '../../test/fixtureHelpers/createUser.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
-import { type Mocked } from '../../test/mockHelpers/jestMocks.js';
 import { RuleAlarmStatus } from '../moderationConfigService/index.js';
 import DetectRulePassRateAnomaliesJob from './detectRulePassRateAnomaliesJob.js';
 
@@ -184,13 +183,12 @@ describe('Detect Rule Anomalies', () => {
             return newAlarmStatusByRule;
           };
 
-        const mockNotificationsService = {
+        const mockNotificationsService: Mocked<
+          PublicInterface<NotificationsService>
+        > = {
           createNotifications: vi.fn(),
           getNotificationsForUser: vi.fn(),
-        } as unknown as Mocked<
-          PublicInterface<NotificationsService>,
-          'createNotifications'
-        >;
+        };
 
         const mockKysely = makeMockKyselyForRules(mockDummyRules, [
           { id: org.id, on_call_alert_email: null },
