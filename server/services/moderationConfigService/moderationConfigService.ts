@@ -1,4 +1,4 @@
-import { type Kysely, type Transaction } from 'kysely';
+import { type Kysely } from 'kysely';
 import _ from 'lodash';
 import { type JsonObject, type ReadonlyDeep } from 'type-fest';
 
@@ -50,7 +50,7 @@ export type ModerationConfigErrorType =
 // for us that every ModerationConfigService method returns one of our public
 // types.
 type ReturnsModerationConfigTypes = {
-  [K in keyof ModerationConfigService]: ReturnType<
+  [K in Exclude<keyof ModerationConfigService, 'forTransaction'>]: ReturnType<
     ModerationConfigService[K]
   > extends ArrayOrPromiseOf<void | ItemType | Action | Policy | boolean>
     ? ModerationConfigService[K]
@@ -82,8 +82,8 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
   private readonly ruleReadOps: RuleReadOperations;
 
   constructor(
-    pgQuery: Kysely<ModerationConfigServicePg>,
-    pgQueryReplica: Kysely<ModerationConfigServicePg>,
+    private readonly pgQuery: Kysely<ModerationConfigServicePg>,
+    private readonly pgQueryReplica: Kysely<ModerationConfigServicePg>,
     private readonly onDeletePolicyId: (opts: {
       policyId: string;
       orgId: string;
@@ -108,11 +108,14 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
     return this.itemTypeOps.getItemTypes(opts);
   }
 
-  async withItemTypeTransaction<T extends ReadonlyDeep<ItemType>>(
-    orgId: string,
-    run: (trx: Transaction<ModerationConfigServicePg>) => Promise<T>,
-  ): Promise<T> {
-    return this.itemTypeOps.withItemTypeTransaction(orgId, run);
+  // The shared connection contains every service's tables; this facade narrows it.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  forTransaction(trx: Kysely<any>) {
+    return new ModerationConfigService(trx, trx, this.onDeletePolicyId);
+  }
+
+  async invalidateLatestItemTypesCache(orgId: string): Promise<void> {
+    return this.itemTypeOps.invalidateLatestItemTypesCache(orgId);
   }
 
   async getItemType(opts: {
