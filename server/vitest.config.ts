@@ -18,7 +18,6 @@ export default defineConfig({
       '**/*.integ.test.ts',
     ],
     coverage: {
-      enabled: true,
       provider: 'v8',
       reportsDirectory: 'coverage',
       exclude: ['node_modules/**', 'test/**'],
