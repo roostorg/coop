@@ -2,13 +2,13 @@
   "name": "nodejs-instrumentation",
   "version": "1.1.0",
   "description": "",
-  "main": "transpiled/autoinstrumentation.js",
+  "private": true,
   "scripts": {
     "build": "tsc",
-    "clean": "rm -rf transpiled *.tsbuildinfo"
+    "clean": "rm -rf build *.tsbuildinfo"
   },
   "author": "Roostorg",
-  "license": "ISC",
+  "license": "Apache-2.0",
   "dependencies": {
     "@opentelemetry/api": "^1.9.0",
     "@opentelemetry/auto-instrumentations-node": "^0.80.0",

@@ -16,7 +16,7 @@
     "knip": "knip"
   },
   "author": "Roostorg",
-  "license": "ISC",
+  "license": "Apache-2.0",
   "dependencies": {
     "@apollo/client": "^3.14.1",
     "@googlemaps/js-api-loader": "^1.16.10",

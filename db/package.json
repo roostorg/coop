@@ -16,7 +16,7 @@
     "knip": "knip"
   },
   "author": "Roostorg",
-  "license": "ISC",
+  "license": "Apache-2.0",
   "dependencies": {
     "@clickhouse/client": "^1.23.1",
     "@roostorg/db-migrator": "^1.1.1",

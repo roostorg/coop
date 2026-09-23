@@ -122,7 +122,7 @@ module.exports = {
   // `/e2e/` holds Playwright specs (their own runner); never run them under jest.
   testPathIgnorePatterns: [
     '/node_modules/',
-    '/transpiled/',
+    '/build/',
     '/e2e/',
     '.integ.test.ts$',
   ],

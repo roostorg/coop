@@ -23,7 +23,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends dumb-init && rm -rf /var/lib/apt/lists/*
 COPY --from=build_backend ["/app/package.json", "/app/package-lock.json", "./"]
 RUN npm ci --omit=dev
-COPY --from=build_backend /app/transpiled ./
+COPY --from=build_backend /app/build ./
 
 # See https://github.com/Yelp/dumb-init
 ENTRYPOINT ["/usr/bin/dumb-init", "--"]

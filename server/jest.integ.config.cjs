@@ -121,7 +121,7 @@ module.exports = {
   // An array of regexp pattern strings that are matched against all test paths, matched tests are skipped
   // We ignore integration tests here, as they should only be run explicitly.
   // `/e2e/` holds Playwright specs (their own runner); never run them under jest.
-  testPathIgnorePatterns: ['/node_modules/', '/transpiled/', '/e2e/'],
+  testPathIgnorePatterns: ['/node_modules/', '/build/', '/e2e/'],
 
   // This option allows the use of a custom results processor
   // testResultsProcessor: undefined,

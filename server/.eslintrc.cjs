@@ -392,7 +392,7 @@ module.exports = {
     '*.d.ts',
     '.eslintrc.cjs',
     '.eslintformat.js',
-    'transpiled/',
+    'build/',
     'coverage/',
   ],
   plugins: [

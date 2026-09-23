@@ -11,9 +11,9 @@
 #   used and must be availabe in the image.
 FROM node:24.21.0 AS build
 
-WORKDIR /operator-build
+WORKDIR /autoinstrumentation
 
-COPY package*.json .
+COPY ["package.json", "package-lock.json", "./"]
 
 RUN --mount=type=cache,target=/root/.npm npm ci --prefer-offline
 
@@ -25,8 +25,9 @@ RUN npm prune --omit=dev
 
 FROM busybox:1.38.0
 
-COPY --from=build /operator-build/node_modules /autoinstrumentation/node_modules
-COPY --from=build /operator-build/transpiled/ /autoinstrumentation
+COPY --from=build /autoinstrumentation/node_modules /autoinstrumentation/node_modules
+COPY --from=build /autoinstrumentation/build/ /autoinstrumentation
+COPY --from=build /autoinstrumentation/package*.json /autoinstrumentation/
 
 RUN chmod -R go+r /autoinstrumentation
 
