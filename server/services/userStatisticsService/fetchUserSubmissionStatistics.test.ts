@@ -1,9 +1,8 @@
 import { randomUUID } from 'crypto';
 import { Kysely } from 'kysely';
-import { vi } from 'vitest';
+import { vi, type Mock } from 'vitest';
 
 import { type Dependencies } from '../../iocContainer/index.js';
-import { type MockedFn } from '../../test/mockHelpers/jestMocks.js';
 import {
   makeMockWarehouseDialect,
   type WarehouseExecute,
@@ -12,7 +11,7 @@ import { safePick } from '../../utils/misc.js';
 import { makeFetchUserSubmissionStatistics } from './fetchUserSubmissionStatistics.js';
 
 describe('fetchUserSubmissionStatistics', () => {
-  let warehouseMock: MockedFn<WarehouseExecute>;
+  let warehouseMock: Mock<WarehouseExecute>;
   let sut: ReturnType<typeof makeFetchUserSubmissionStatistics>;
 
   beforeEach(() => {
