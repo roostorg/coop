@@ -1,4 +1,14 @@
 {
+  // The config editors resolve every file through, so it owns the whole tree
+  // and carries Vitest's globals. Production code is checked *without* them by
+  // tsconfig.build.json, which is what `npm run build`, `npm start` and
+  // `npm run typecheck` compile.
+  //
+  // The split is one-directional on purpose: this file is permissive so no file
+  // ever falls outside a project (a file an editor can't place lands in an
+  // inferred project, where `describe` is unknown), and tsconfig.build.json is
+  // the strict one. The cost is that a test-only global used in production code
+  // looks fine in the editor and fails at `npm run typecheck` instead.
   "compilerOptions": {
     "target": "ES2022",
     "module": "NodeNext",
@@ -18,6 +28,10 @@
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
     "allowJs": true,
+    // `vitest.config.ts` sets `globals: true`, so test files use `describe`,
+    // `it` and `expect` without importing them. tsconfig.build.json drops
+    // `vitest/globals` from this list, so production code that reaches for one
+    // fails `npm run typecheck`.
     "types": ["node", "vitest/globals"],
     "skipLibCheck": true,
     "sourceMap": true
@@ -25,8 +39,17 @@
   // https://stackoverflow.com/questions/51610583/ts-node-ignores-d-ts-files-while-tsc-successfully-compiles-the-project
   "files": ["decs.d.ts"],
   "include": ["./**/*.ts", "./**/*.cts", "./**/*.mts"],
+  // The `ts-node/esm` loader scripts in package.json resolve this file, which is
+  // why it must own `decs.d.ts` (via `files`) and `globals.ts` / `ts-reset.ts`
+  // (via `include`): nothing imports those, so they enter a program only by
+  // being named here.
   "ts-node": {
     "files": true
   },
-  "exclude": ["node_modules", "package.json", "package-lock.json"]
+  "exclude": [
+    "node_modules",
+    "package.json",
+    "package-lock.json",
+    "transpiled/**/*"
+  ]
 }

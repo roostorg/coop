@@ -1,0 +1,38 @@
+{
+  // Production compilation unit: what `npm run build` emits, what `npm start`
+  // watches, and the first thing `npm run typecheck` checks.
+  //
+  // It differs from tsconfig.json in exactly two ways: Vitest's globals are not
+  // in scope, and test files are not compiled. Together those stop a test-only
+  // global (`describe`, `it`, `expect`, ...) type-checking inside production
+  // code, and stop test code being emitted into `transpiled/` and shipped in
+  // the server image.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  // `include` and `files` are inherited, so `decs.d.ts`, `globals.ts` and
+  // `ts-reset.ts` still reach this program. Only `exclude` is overridden.
+  //
+  // Note this cannot stop production code *importing* a test helper: excluding
+  // a path only prevents it being a compilation root, never prevents it being
+  // pulled in through an import edge. The `no-restricted-imports` override in
+  // .eslintrc.cjs enforces that half.
+  "exclude": [
+    "node_modules",
+    "package.json",
+    "package-lock.json",
+    // Mirrors the `include` pattern in vitest.config.ts, which collects both
+    // `*.test.ts` and `*.spec.ts`. Keep the two in step.
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "**/__tests__/**/*",
+    // Test harness, fixtures and stubs.
+    "test/**/*",
+    // Playwright suite. Its specs import Playwright's own `test`, but
+    // `e2e/fixtures/coop.ts` imports `test/fixtureHelpers/*`, which reaches
+    // `test/utils.ts` and its use of Vitest's `it`.
+    "e2e/**/*",
+    "transpiled/**/*"
+  ]
+}

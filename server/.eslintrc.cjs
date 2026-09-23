@@ -385,6 +385,9 @@ module.exports = {
   extends: ['plugin:security/recommended'],
   parser: '@typescript-eslint/parser',
   parserOptions: {
+    // tsconfig.json alone: it owns every file, so nothing falls outside a
+    // project. Adding tsconfig.build.json would only duplicate production files
+    // across two programs.
     project: './tsconfig.json',
     sourceType: 'module',
     tsconfigRootDir: __dirname,
