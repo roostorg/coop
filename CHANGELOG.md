@@ -8,6 +8,10 @@ For more information about each release including git tags and artifacts, see [R
 
 ## [Unreleased]
 
+### Added
+
+- Setting to add media from accepted NCMEC reports to a hash bank ([#1208](https://github.com/roostorg/coop/pull/1208) by [@maarkN](https://github.com/maarkN), closes [#196](https://github.com/roostorg/coop/issues/196))
+
 ## [1.1.0-alpha] - 2026-09-21
 
 ### Added

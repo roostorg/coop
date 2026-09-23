@@ -3221,6 +3221,7 @@ export type GQLNcmecOrgSettings = {
   readonly ncmecAdditionalInfoEndpoint?: Maybe<Scalars['String']['output']>;
   readonly ncmecPreservationEndpoint?: Maybe<Scalars['String']['output']>;
   readonly password: Scalars['String']['output'];
+  readonly reportedMediaHashBankId?: Maybe<Scalars['ID']['output']>;
   readonly termsOfService?: Maybe<Scalars['String']['output']>;
   readonly username: Scalars['String']['output'];
 };
@@ -3241,6 +3242,7 @@ export type GQLNcmecOrgSettingsInput = {
   readonly ncmecAdditionalInfoEndpoint?: InputMaybe<Scalars['String']['input']>;
   readonly ncmecPreservationEndpoint?: InputMaybe<Scalars['String']['input']>;
   readonly password: Scalars['String']['input'];
+  readonly reportedMediaHashBankId?: InputMaybe<Scalars['ID']['input']>;
   readonly termsOfService?: InputMaybe<Scalars['String']['input']>;
   readonly username: Scalars['String']['input'];
 };
@@ -11876,6 +11878,11 @@ export type GQLNcmecOrgSettingsResolvers<
     ContextType
   >;
   password?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  reportedMediaHashBankId?: Resolver<
+    Maybe<GQLResolversTypes['ID']>,
+    ParentType,
+    ContextType
+  >;
   termsOfService?: Resolver<
     Maybe<GQLResolversTypes['String']>,
     ParentType,

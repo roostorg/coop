@@ -17,15 +17,21 @@ const VALID_INPUT = {
 
 function makeCtx(permissions: readonly UserPermission[]) {
   const updateNcmecOrgSettings = jest.fn(async () => undefined);
+  const getBankById = jest.fn(async (orgId: string, id: number) =>
+    orgId === 'org-1' && id === 42 ? { id: 42, org_id: 'org-1' } : null,
+  );
   const ctx = {
     getUser: () => ({
       id: 'user-1',
       orgId: 'org-1',
       getPermissions: () => permissions,
     }),
-    services: { NcmecService: { updateNcmecOrgSettings } },
+    services: {
+      NcmecService: { updateNcmecOrgSettings },
+      HMAHashBankService: { getBankById },
+    },
   };
-  return { ctx, updateNcmecOrgSettings };
+  return { ctx, updateNcmecOrgSettings, getBankById };
 }
 
 describe('updateNcmecOrgSettings media review policy', () => {
@@ -137,6 +143,109 @@ describe('updateNcmecOrgSettings media review policy', () => {
         ctx,
       ),
     ).rejects.toThrow('mediaReviewRequirement');
+    expect(updateNcmecOrgSettings).not.toHaveBeenCalled();
+  });
+});
+
+describe('updateNcmecOrgSettings reported media hash bank', () => {
+  it('persists a bank that belongs to the org', async () => {
+    const { ctx, updateNcmecOrgSettings, getBankById } = makeCtx([
+      UserPermission.MANAGE_ORG,
+    ]);
+    await Mutation.updateNcmecOrgSettings(
+      {},
+      { input: { ...VALID_INPUT, reportedMediaHashBankId: '42' } },
+      ctx,
+    );
+    expect(getBankById).toHaveBeenCalledWith('org-1', 42);
+    expect(updateNcmecOrgSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ reportedMediaHashBankId: 42 }),
+    );
+  });
+
+  it('clears the bank when none is supplied', async () => {
+    const { ctx, updateNcmecOrgSettings, getBankById } = makeCtx([
+      UserPermission.MANAGE_ORG,
+    ]);
+    await Mutation.updateNcmecOrgSettings(
+      {},
+      { input: { ...VALID_INPUT, reportedMediaHashBankId: null } },
+      ctx,
+    );
+    expect(getBankById).not.toHaveBeenCalled();
+    expect(updateNcmecOrgSettings).toHaveBeenCalledWith(
+      expect.objectContaining({ reportedMediaHashBankId: null }),
+    );
+  });
+
+  it('looks the bank up only within the user org, so a bank from another org reads as missing', async () => {
+    const { ctx, updateNcmecOrgSettings, getBankById } = makeCtx([
+      UserPermission.MANAGE_ORG,
+    ]);
+    const errorFor = async (id: string) =>
+      Mutation.updateNcmecOrgSettings(
+        {},
+        { input: { ...VALID_INPUT, reportedMediaHashBankId: id } },
+        ctx,
+      ).then(
+        () => undefined,
+        (e: Error) => e.message,
+      );
+
+    const otherOrgBankMessage = await errorFor('7');
+    const missingBankMessage = await errorFor('999');
+
+    expect(getBankById.mock.calls).toEqual([
+      ['org-1', 7],
+      ['org-1', 999],
+    ]);
+    expect(otherOrgBankMessage).toBe('Selected hash bank was not found.');
+    expect(missingBankMessage).toBe(otherOrgBankMessage);
+    expect(updateNcmecOrgSettings).not.toHaveBeenCalled();
+  });
+
+  it('rejects bank id 0 as not found', async () => {
+    const { ctx, updateNcmecOrgSettings, getBankById } = makeCtx([
+      UserPermission.MANAGE_ORG,
+    ]);
+    await expect(
+      Mutation.updateNcmecOrgSettings(
+        {},
+        { input: { ...VALID_INPUT, reportedMediaHashBankId: '0' } },
+        ctx,
+      ),
+    ).rejects.toThrow('Selected hash bank was not found.');
+    expect(getBankById).toHaveBeenCalledWith('org-1', 0);
+    expect(updateNcmecOrgSettings).not.toHaveBeenCalled();
+  });
+
+  it('rejects a bank id above the Postgres integer range before looking it up', async () => {
+    const { ctx, updateNcmecOrgSettings, getBankById } = makeCtx([
+      UserPermission.MANAGE_ORG,
+    ]);
+    await expect(
+      Mutation.updateNcmecOrgSettings(
+        {},
+        { input: { ...VALID_INPUT, reportedMediaHashBankId: '2147483648' } },
+        ctx,
+      ),
+    ).rejects.toThrow('reportedMediaHashBankId must be a hash bank ID.');
+    expect(getBankById).not.toHaveBeenCalled();
+    expect(updateNcmecOrgSettings).not.toHaveBeenCalled();
+  });
+
+  it('rejects a non-numeric bank id', async () => {
+    const { ctx, updateNcmecOrgSettings, getBankById } = makeCtx([
+      UserPermission.MANAGE_ORG,
+    ]);
+    await expect(
+      Mutation.updateNcmecOrgSettings(
+        {},
+        { input: { ...VALID_INPUT, reportedMediaHashBankId: '4x2' } },
+        ctx,
+      ),
+    ).rejects.toThrow('reportedMediaHashBankId');
+    expect(getBankById).not.toHaveBeenCalled();
     expect(updateNcmecOrgSettings).not.toHaveBeenCalled();
   });
 });
