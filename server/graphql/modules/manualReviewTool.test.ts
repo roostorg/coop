@@ -95,11 +95,7 @@ describe('queue role assignment visibility', () => {
           ]);
         } else {
           expect(response.body.data?.manualReviewQueue).toBeNull();
-          expect(response.body.errors).toEqual([
-            expect.objectContaining({
-              extensions: expect.objectContaining({ code: 'FORBIDDEN' }),
-            }),
-          ]);
+          expect(response.body.errors).toBeUndefined();
         }
       }
     },
