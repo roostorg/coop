@@ -18,27 +18,41 @@ type ResolverFn = (
 ) => unknown;
 
 const makeContext = () => {
-  const ModerationConfigService = {
+  const transactionConfig = {
     createContentType: jest.fn().mockResolvedValue(itemType),
     createThreadType: jest.fn().mockResolvedValue(itemType),
     createUserType: jest.fn().mockResolvedValue(itemType),
     updateContentType: jest.fn().mockResolvedValue(itemType),
     updateThreadType: jest.fn().mockResolvedValue(itemType),
     updateUserType: jest.fn().mockResolvedValue(itemType),
-    withItemTypeTransaction: jest.fn(
-      async (_orgId: string, run: (transaction: object) => unknown) => run(trx),
-    ),
+  };
+  const transactionReview = {
+    setHiddenFieldsForItemType: jest.fn().mockResolvedValue(undefined),
+  };
+  const ModerationConfigService = {
+    forTransaction: jest.fn().mockReturnValue(transactionConfig),
+    invalidateLatestItemTypesCache: jest.fn().mockResolvedValue(undefined),
   };
   const ManualReviewToolService = {
-    setHiddenFieldsForItemType: jest.fn().mockResolvedValue(undefined),
+    forTransaction: jest.fn().mockReturnValue(transactionReview),
+  };
+  const KyselyPg = {
+    transaction: () => ({
+      execute: (run: (transaction: object) => unknown) => run(trx),
+    }),
   };
   return {
     context: {
       getUser: () => ({ orgId }),
-      services: { ModerationConfigService, ManualReviewToolService },
+      services: {
+        KyselyPg,
+        ModerationConfigService,
+        ManualReviewToolService,
+      },
     } as unknown as Context,
     ModerationConfigService,
-    ManualReviewToolService,
+    ManualReviewToolService: transactionReview,
+    transactionConfig,
   };
 };
 
@@ -68,8 +82,12 @@ describe('item type configuration mutations', () => {
   it.each(variants)(
     '%s creates the item type and hidden fields in one transaction',
     async (createResolver, createService) => {
-      const { context, ModerationConfigService, ManualReviewToolService } =
-        makeContext();
+      const {
+        context,
+        ModerationConfigService,
+        ManualReviewToolService,
+        transactionConfig,
+      } = makeContext();
       await callMutation(
         createResolver,
         {
@@ -80,17 +98,17 @@ describe('item type configuration mutations', () => {
         },
         context,
       );
-      expect(
-        ModerationConfigService.withItemTypeTransaction,
-      ).toHaveBeenCalledWith(orgId, expect.any(Function));
-      expect(ModerationConfigService[createService]).toHaveBeenCalledWith(
+      expect(ModerationConfigService.forTransaction).toHaveBeenCalledWith(trx);
+      expect(transactionConfig[createService]).toHaveBeenCalledWith(
         orgId,
         expect.any(Object),
-        trx,
       );
       expect(
         ManualReviewToolService.setHiddenFieldsForItemType,
-      ).toHaveBeenCalledWith({ orgId, itemTypeId, hiddenFields }, trx);
+      ).toHaveBeenCalledWith({ orgId, itemTypeId, hiddenFields });
+      expect(
+        ModerationConfigService.invalidateLatestItemTypesCache,
+      ).toHaveBeenCalledWith(orgId);
     },
   );
 
@@ -109,7 +127,7 @@ describe('item type configuration mutations', () => {
       );
       expect(
         ManualReviewToolService.setHiddenFieldsForItemType,
-      ).toHaveBeenCalledWith({ orgId, itemTypeId, hiddenFields: [] }, trx);
+      ).toHaveBeenCalledWith({ orgId, itemTypeId, hiddenFields: [] });
     },
   );
 
@@ -130,7 +148,7 @@ describe('item type configuration mutations', () => {
       );
       expect(
         second.ManualReviewToolService.setHiddenFieldsForItemType,
-      ).toHaveBeenCalledWith({ orgId, itemTypeId, hiddenFields: [] }, trx);
+      ).toHaveBeenCalledWith({ orgId, itemTypeId, hiddenFields: [] });
     },
   );
 });

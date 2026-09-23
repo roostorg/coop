@@ -1,4 +1,4 @@
-import { type Kysely, type Transaction } from 'kysely';
+import { type Kysely } from 'kysely';
 
 import { makeNotFoundError } from '../../../utils/errors.js';
 import { makeKyselyTransactionWithRetry } from '../../../utils/kyselyTransactionWithRetry.js';
@@ -9,19 +9,13 @@ import { type ManualReviewToolServicePg } from '../dbTypes.js';
 type JobRenderingPg = ManualReviewToolServicePg & ModerationConfigServicePg;
 
 export default class JobRendering {
-  constructor(readonly pgQuery: Kysely<ManualReviewToolServicePg>) {}
+  constructor(readonly pgQuery: Kysely<JobRenderingPg>) {}
 
-  async getHiddenFieldsForItemType(
-    opts: {
-      orgId: string;
-      itemTypeId: string;
-    },
-    trx?: Transaction<ModerationConfigServicePg>,
-  ) {
-    const pgQuery = trx
-      ? trx.$extendTables<ManualReviewToolServicePg>()
-      : this.pgQuery.$extendTables<ModerationConfigServicePg>();
-    const res = await pgQuery
+  async getHiddenFieldsForItemType(opts: {
+    orgId: string;
+    itemTypeId: string;
+  }) {
+    const res = await this.pgQuery
       .selectFrom('manual_review_tool.manual_review_hidden_item_fields')
       .select(['hidden_fields'])
       .where('org_id', '=', opts.orgId)
@@ -31,15 +25,12 @@ export default class JobRendering {
     return res?.hidden_fields ?? [];
   }
 
-  async setHiddenFieldsForItemType(
-    opts: {
-      orgId: string;
-      itemTypeId: string;
-      hiddenFields: readonly string[];
-    },
-    trx?: Transaction<ModerationConfigServicePg>,
-  ) {
-    const setHiddenFields = async (query: Transaction<JobRenderingPg>) => {
+  async setHiddenFieldsForItemType(opts: {
+    orgId: string;
+    itemTypeId: string;
+    hiddenFields: readonly string[];
+  }) {
+    const setHiddenFields = async (query: Kysely<JobRenderingPg>) => {
       const itemType = await query
         .selectFrom('public.item_types')
         .select('fields')
@@ -78,10 +69,8 @@ export default class JobRendering {
         .execute();
     };
 
-    return trx
-      ? setHiddenFields(trx.$extendTables<ManualReviewToolServicePg>())
-      : makeKyselyTransactionWithRetry(
-          this.pgQuery.$extendTables<ModerationConfigServicePg>(),
-        )(setHiddenFields);
+    return this.pgQuery.isTransaction
+      ? setHiddenFields(this.pgQuery)
+      : makeKyselyTransactionWithRetry(this.pgQuery)(setHiddenFields);
   }
 }
