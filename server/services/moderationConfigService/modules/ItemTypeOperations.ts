@@ -1,5 +1,5 @@
 /* eslint-disable max-lines */
-import { sql, type Kysely, type Selection, type Transaction } from 'kysely';
+import { sql, type Kysely, type Selection } from 'kysely';
 import { type ReadonlyDeep } from 'type-fest';
 import { uid } from 'uid';
 
@@ -150,35 +150,9 @@ export default class ItemTypeOperations {
   }
 
   /** Drop cached latest item types for this org after a DB write (MV + in-memory cache can disagree). */
-  private async invalidateLatestItemTypesCache(orgId: string): Promise<void> {
+  async invalidateLatestItemTypesCache(orgId: string): Promise<void> {
     // `cached()` always attaches invalidate; the type keeps it optional for other producers.
     await this.latestItemTypesCache.invalidate!(orgId);
-  }
-
-  // Pass trx to every participating service call. The callback can be retried.
-  async withItemTypeTransaction<T extends ReadonlyDeep<ItemType>>(
-    orgId: string,
-    run: (trx: Transaction<ModerationConfigServicePg>) => Promise<T>,
-  ): Promise<T> {
-    const result = await this.transactionWithRetry(run);
-    await this.invalidateLatestItemTypesCache(orgId);
-    return result;
-  }
-
-  private async readAfterWrite(
-    orgId: string,
-    trx?: Transaction<ModerationConfigServicePg>,
-  ): Promise<readonly ReadonlyDeep<ItemType>[]> {
-    if (trx) {
-      const rows = await getItemTypeVersionsBaseQuery({
-        orgId,
-        currentVersionsOnly: true,
-        pgQuery: trx,
-      }).execute();
-      return rows.map((row) => dbResultToItemType(row, 'original'));
-    }
-    await this.invalidateLatestItemTypesCache(orgId);
-    return this.latestItemTypesCache(orgId, { maxAge: 0 });
   }
 
   async getItemTypes(opts: {
@@ -321,23 +295,16 @@ export default class ItemTypeOperations {
         ipAddress?: string | null;
       };
     },
-    trx?: Transaction<ModerationConfigServicePg>,
   ) {
-    return this.createItemType<ContentItemType>(
-      orgId,
-      'CONTENT',
-      input,
-      {
-        creator_id_field: input.schemaFieldRoles.creatorId,
-        thread_id_field: input.schemaFieldRoles.threadId,
-        parent_id_field: input.schemaFieldRoles.parentId,
-        created_at_field: input.schemaFieldRoles.createdAt,
-        display_name_field: input.schemaFieldRoles.displayName,
-        is_deleted_field: input.schemaFieldRoles.isDeleted,
-        ip_address_field: input.schemaFieldRoles.ipAddress,
-      },
-      trx,
-    );
+    return this.createItemType<ContentItemType>(orgId, 'CONTENT', input, {
+      creator_id_field: input.schemaFieldRoles.creatorId,
+      thread_id_field: input.schemaFieldRoles.threadId,
+      parent_id_field: input.schemaFieldRoles.parentId,
+      created_at_field: input.schemaFieldRoles.createdAt,
+      display_name_field: input.schemaFieldRoles.displayName,
+      is_deleted_field: input.schemaFieldRoles.isDeleted,
+      ip_address_field: input.schemaFieldRoles.ipAddress,
+    });
   }
 
   async updateContentType(
@@ -357,7 +324,6 @@ export default class ItemTypeOperations {
         ipAddress?: string | null;
       };
     },
-    trx?: Transaction<ModerationConfigServicePg>,
   ) {
     return this.updateItemType<ContentItemType>(
       orgId,
@@ -388,7 +354,6 @@ export default class ItemTypeOperations {
               input.schemaFieldRoles.ipAddress,
             ),
           },
-      trx,
     );
   }
 
@@ -406,21 +371,14 @@ export default class ItemTypeOperations {
         ipAddress?: string | null;
       };
     },
-    trx?: Transaction<ModerationConfigServicePg>,
   ): Promise<ThreadItemType> {
-    return this.createItemType<ThreadItemType>(
-      orgId,
-      'THREAD',
-      input,
-      {
-        created_at_field: input.schemaFieldRoles.createdAt,
-        display_name_field: input.schemaFieldRoles.displayName,
-        creator_id_field: input.schemaFieldRoles.creatorId,
-        is_deleted_field: input.schemaFieldRoles.isDeleted,
-        ip_address_field: input.schemaFieldRoles.ipAddress,
-      },
-      trx,
-    );
+    return this.createItemType<ThreadItemType>(orgId, 'THREAD', input, {
+      created_at_field: input.schemaFieldRoles.createdAt,
+      display_name_field: input.schemaFieldRoles.displayName,
+      creator_id_field: input.schemaFieldRoles.creatorId,
+      is_deleted_field: input.schemaFieldRoles.isDeleted,
+      ip_address_field: input.schemaFieldRoles.ipAddress,
+    });
   }
 
   async updateThreadType(
@@ -438,7 +396,6 @@ export default class ItemTypeOperations {
         ipAddress?: string | null;
       };
     },
-    trx?: Transaction<ModerationConfigServicePg>,
   ) {
     return this.updateItemType<ThreadItemType>(
       orgId,
@@ -463,7 +420,6 @@ export default class ItemTypeOperations {
               input.schemaFieldRoles.ipAddress,
             ),
           },
-      trx,
     );
   }
 
@@ -483,23 +439,16 @@ export default class ItemTypeOperations {
         email?: string | null;
       };
     },
-    trx?: Transaction<ModerationConfigServicePg>,
   ) {
-    return this.createItemType<UserItemType>(
-      orgId,
-      'USER',
-      input,
-      {
-        profile_icon_field: input.schemaFieldRoles.profileIcon,
-        background_image_field: input.schemaFieldRoles.backgroundImage,
-        created_at_field: input.schemaFieldRoles.createdAt,
-        display_name_field: input.schemaFieldRoles.displayName,
-        is_deleted_field: input.schemaFieldRoles.isDeleted,
-        ip_address_field: input.schemaFieldRoles.ipAddress,
-        email_field: input.schemaFieldRoles.email,
-      },
-      trx,
-    );
+    return this.createItemType<UserItemType>(orgId, 'USER', input, {
+      profile_icon_field: input.schemaFieldRoles.profileIcon,
+      background_image_field: input.schemaFieldRoles.backgroundImage,
+      created_at_field: input.schemaFieldRoles.createdAt,
+      display_name_field: input.schemaFieldRoles.displayName,
+      is_deleted_field: input.schemaFieldRoles.isDeleted,
+      ip_address_field: input.schemaFieldRoles.ipAddress,
+      email_field: input.schemaFieldRoles.email,
+    });
   }
 
   async updateUserType(
@@ -519,7 +468,6 @@ export default class ItemTypeOperations {
         email?: string | null;
       };
     },
-    trx?: Transaction<ModerationConfigServicePg>,
   ): Promise<UserItemType> {
     return this.updateItemType<UserItemType>(
       orgId,
@@ -550,7 +498,6 @@ export default class ItemTypeOperations {
               input.schemaFieldRoles.email,
             ),
           },
-      trx,
     );
   }
 
@@ -563,10 +510,9 @@ export default class ItemTypeOperations {
       description?: string | null;
     },
     roleColumns: ItemTypeRoleColumns,
-    trx?: Transaction<ModerationConfigServicePg>,
   ): Promise<T> {
     const itemTypeId = uid();
-    const create = async (query: Transaction<ModerationConfigServicePg>) => {
+    const create = async (query: Kysely<ModerationConfigServicePg>) => {
       assertValidItemSchema(input.schema);
       assertValidItemTypeFieldRoles(input.schema, kind, roleColumns);
       await query
@@ -581,15 +527,27 @@ export default class ItemTypeOperations {
           ...roleColumns,
         })
         .execute();
-      return (await this.readAfterWrite(orgId, query)).find(
-        (itemType): itemType is T =>
-          itemType.kind === kind && itemType.id === itemTypeId,
-      )!;
+      const rows = await getItemTypeVersionsBaseQuery({
+        orgId,
+        currentVersionsOnly: true,
+        pgQuery: query,
+      }).execute();
+      return rows
+        .map((row) => dbResultToItemType(row, 'original'))
+        .find(
+          (itemType): itemType is T =>
+            itemType.kind === kind && itemType.id === itemTypeId,
+        )!;
     };
     try {
-      return trx
-        ? await create(trx)
-        : await this.withItemTypeTransaction(orgId, create);
+      const result = this.pgQuery.isTransaction
+        ? await create(this.pgQuery)
+        : await this.transactionWithRetry(create);
+      await this.invalidateLatestItemTypesCache(orgId);
+      if (!this.pgQuery.isTransaction) {
+        await this.latestItemTypesCache(orgId, { maxAge: 0 });
+      }
+      return result;
     } catch (error) {
       this.rethrowItemTypeNameConflict(error);
     }
@@ -605,9 +563,8 @@ export default class ItemTypeOperations {
       description?: string | null;
     },
     roleColumns: ItemTypeRoleColumns,
-    trx?: Transaction<ModerationConfigServicePg>,
   ): Promise<T> {
-    const update = async (query: Transaction<ModerationConfigServicePg>) => {
+    const update = async (query: Kysely<ModerationConfigServicePg>) => {
       const current = await query
         .selectFrom('public.item_types')
         .select(['id', 'fields', ...itemTypeRoleColumnNames])
@@ -644,15 +601,27 @@ export default class ItemTypeOperations {
         .where('kind', '=', kind)
         .returning('id')
         .executeTakeFirstOrThrow();
-      return (await this.readAfterWrite(orgId, query)).find(
-        (itemType): itemType is T =>
-          itemType.kind === kind && itemType.id === updated.id,
-      )!;
+      const rows = await getItemTypeVersionsBaseQuery({
+        orgId,
+        currentVersionsOnly: true,
+        pgQuery: query,
+      }).execute();
+      return rows
+        .map((row) => dbResultToItemType(row, 'original'))
+        .find(
+          (itemType): itemType is T =>
+            itemType.kind === kind && itemType.id === updated.id,
+        )!;
     };
     try {
-      return trx
-        ? await update(trx)
-        : await this.withItemTypeTransaction(orgId, update);
+      const result = this.pgQuery.isTransaction
+        ? await update(this.pgQuery)
+        : await this.transactionWithRetry(update);
+      await this.invalidateLatestItemTypesCache(orgId);
+      if (!this.pgQuery.isTransaction) {
+        await this.latestItemTypesCache(orgId, { maxAge: 0 });
+      }
+      return result;
     } catch (error) {
       this.rethrowItemTypeNameConflict(error);
     }
