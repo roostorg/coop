@@ -26,5 +26,6 @@ export default defineConfig({
       exclude: ['node_modules/**', 'test/**'],
       reporter: ['json', 'text', 'lcov', 'clover'],
     },
+    onConsoleLog: () => false,
   },
 });
