@@ -1,8 +1,9 @@
-import { type Kysely } from 'kysely';
+import { type Kysely, type Transaction } from 'kysely';
 import _ from 'lodash';
 import { type JsonObject, type ReadonlyDeep } from 'type-fest';
 
 import { type ConsumerDirectives } from '../../lib/cache/index.js';
+import { type CombinedPg } from '../combinedDbTypes.js';
 import type { Invoker } from '../userManagementService/index.js';
 import { type ModerationConfigServicePg } from './dbTypes.js';
 import {
@@ -82,8 +83,8 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
   private readonly ruleReadOps: RuleReadOperations;
 
   constructor(
-    private readonly pgQuery: Kysely<ModerationConfigServicePg>,
-    private readonly pgQueryReplica: Kysely<ModerationConfigServicePg>,
+    pgQuery: Kysely<ModerationConfigServicePg>,
+    pgQueryReplica: Kysely<ModerationConfigServicePg>,
     private readonly onDeletePolicyId: (opts: {
       policyId: string;
       orgId: string;
@@ -108,10 +109,9 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
     return this.itemTypeOps.getItemTypes(opts);
   }
 
-  // The shared connection contains every service's tables; this facade narrows it.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  forTransaction(trx: Kysely<any>) {
-    return new ModerationConfigService(trx, trx, this.onDeletePolicyId);
+  forTransaction(trx: Transaction<CombinedPg>) {
+    const query = trx.$pickTables<keyof ModerationConfigServicePg>();
+    return new ModerationConfigService(query, query, this.onDeletePolicyId);
   }
 
   async invalidateLatestItemTypesCache(orgId: string): Promise<void> {
