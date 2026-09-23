@@ -42,6 +42,7 @@ import {
 } from '../utils/errors.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 import { oneOfInputToTaggedUnion } from '../utils/inputHelpers.js';
+import { getManualReviewJobReportCountLoader } from '../utils/manualReviewJobReportCounts.js';
 import { assertQueueIsReviewable } from '../utils/manualReviewQueueAuthorization.js';
 
 const { omit, sumBy } = _;
@@ -57,6 +58,11 @@ export function assertManualReviewJobIdsWithinLimit(jobIds: readonly string[]) {
 }
 
 const typeDefs = /* GraphQL */ `
+  enum JobSortType {
+    FIFO
+    NUM_REPORTS
+  }
+
   enum MrtClearReportsDisposition {
     AUTOMATIC_CLOSE
     IGNORE
@@ -81,6 +87,7 @@ const typeDefs = /* GraphQL */ `
     hiddenActionIds: [ID!]!
     isAppealsQueue: Boolean!
     autoCloseJobs: Boolean!
+    jobSortType: JobSortType!
     clearReportsDisposition: MrtClearReportsDisposition
     clearReportsScope: MrtClearReportsScope!
     clearReportsTriggerActionIds: [ID!]!
@@ -435,6 +442,7 @@ const typeDefs = /* GraphQL */ `
     hiddenActionIds: [ID!]!
     isAppealsQueue: Boolean!
     autoCloseJobs: Boolean!
+    jobSortType: JobSortType
     clearReportsDisposition: MrtClearReportsDisposition
     clearReportsScope: MrtClearReportsScope
     clearReportsTriggerActionIds: [ID!]
@@ -448,6 +456,7 @@ const typeDefs = /* GraphQL */ `
     actionIdsToHide: [ID!]!
     actionIdsToUnhide: [ID!]!
     autoCloseJobs: Boolean!
+    jobSortType: JobSortType
     clearReportsDisposition: MrtClearReportsDisposition
     clearReportsScope: MrtClearReportsScope
     clearReportsTriggerActionIds: [ID!]
@@ -1893,10 +1902,13 @@ const ManualReviewJob: GQLManualReviewJobResolvers = {
       throw new Error('No user found on context');
     }
 
-    return context.services.ReportingService.getNumTimesReported({
-      orgId: user.orgId,
-      itemId: job.payload.item.itemId,
-    });
+    const item = job.payload.item;
+    const itemId =
+      'itemId' in item ? item.itemId : (item as { id?: string }).id;
+    if (typeof itemId !== 'string' || itemId === '') {
+      return 0;
+    }
+    return getManualReviewJobReportCountLoader(context).load(itemId);
   },
 };
 
@@ -2487,6 +2499,7 @@ const Mutation: GQLMutationResolvers = {
       hiddenActionIds,
       isAppealsQueue,
       autoCloseJobs,
+      jobSortType,
       clearReportsDisposition,
       clearReportsScope,
       clearReportsTriggerActionIds,
@@ -2503,6 +2516,7 @@ const Mutation: GQLMutationResolvers = {
           hiddenActionIds,
           isAppealsQueue,
           autoCloseJobs,
+          jobSortType: jobSortType ?? undefined,
           clearReportsDisposition,
           clearReportsScope: clearReportsScope ?? undefined,
           clearReportsTriggerActionIds:
@@ -2544,6 +2558,7 @@ const Mutation: GQLMutationResolvers = {
       actionIdsToHide,
       actionIdsToUnhide,
       autoCloseJobs,
+      jobSortType,
       clearReportsDisposition,
       clearReportsScope,
       clearReportsTriggerActionIds,
@@ -2561,6 +2576,7 @@ const Mutation: GQLMutationResolvers = {
           actionIdsToHide,
           actionIdsToUnhide,
           autoCloseJobs,
+          jobSortType: jobSortType ?? undefined,
           clearReportsDisposition,
           clearReportsScope: clearReportsScope ?? undefined,
           clearReportsTriggerActionIds:

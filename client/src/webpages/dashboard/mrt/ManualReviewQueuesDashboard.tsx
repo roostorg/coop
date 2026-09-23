@@ -1,3 +1,4 @@
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
 import { gql } from '@apollo/client';
 import Button from 'antd/lib/button';
 import Checkbox from 'antd/lib/checkbox';
@@ -5,6 +6,7 @@ import Input from 'antd/lib/input';
 import {
   ChevronsRight as AngleDoubleRight,
   LayoutGrid as GridAlt,
+  Info,
   Star,
   Star as StarFilled,
   MousePointerClick as TapFilled,
@@ -66,6 +68,7 @@ gql`
         oldestJobCreatedAt
         isDefaultQueue
         isAppealsQueue
+        jobSortType
       }
     }
   }
@@ -179,6 +182,7 @@ type ColumnId =
   | 'description'
   | 'oldestTaskAge'
   | 'pendingJobCount'
+  | 'jobSortType'
   | 'startReviewing'
   | 'mutations'
   | 'deleteJobs'
@@ -193,6 +197,7 @@ const defaultColumnVisibility: Record<ColumnId, boolean> = {
   description: true,
   oldestTaskAge: true,
   pendingJobCount: true,
+  jobSortType: true,
   startReviewing: true,
   mutations: true,
   deleteJobs: true,
@@ -206,6 +211,7 @@ const columnLabels: Record<ColumnId, string> = {
   description: 'Description',
   oldestTaskAge: 'Oldest Task Age',
   pendingJobCount: 'Pending Jobs',
+  jobSortType: 'Sort Order',
   startReviewing: 'Start Reviewing',
   mutations: 'Actions',
   deleteJobs: 'Delete Jobs',
@@ -607,6 +613,13 @@ export default function ManualReviewQueuesDashboard() {
               sortFn: integerSort,
             }
           : undefined,
+        columnVisibility.jobSortType
+          ? {
+              header: 'Sort Order',
+              accessorKey: 'jobSortType',
+              enableSorting: false,
+            }
+          : undefined,
         columnVisibility.startReviewing
           ? {
               header: '',
@@ -657,6 +670,7 @@ export default function ManualReviewQueuesDashboard() {
                 pendingJobCount,
                 isDefaultQueue,
                 oldestJobCreatedAt,
+                jobSortType,
               }) => {
                 const rulesForQueue =
                   routingRules?.filter((it) => it.destinationQueue.id === id) ??
@@ -669,6 +683,19 @@ export default function ManualReviewQueuesDashboard() {
                   startReviewing: startReviewing(id, pendingJobCount),
                   pendingJobCount: pendingJobCount.toLocaleString('en'),
                   oldestJobCreatedAt,
+                  jobSortType:
+                    jobSortType === 'NUM_REPORTS'
+                      ? 'Most reported first'
+                      : 'First in, first out',
+                  // Jobs on a sorted queue live in BullMQ's prioritized set,
+                  // which is ordered by priority rather than arrival, so
+                  // there's no cheap way to find the oldest one. Flag it so
+                  // the column can explain itself instead of showing a bare
+                  // "N/A" that looks like the queue is empty.
+                  oldestAgeUnavailable:
+                    pendingJobCount > 0 &&
+                    jobSortType !== 'FIFO' &&
+                    oldestJobCreatedAt == null,
                   mutations: (
                     <RowMutations
                       canEdit={userHasPermissions(data.me?.permissions, [
@@ -830,12 +857,26 @@ export default function ManualReviewQueuesDashboard() {
               </div>
             ),
             description: <div>{values.description}</div>,
-            oldestTaskAge: (
+            oldestTaskAge: values.oldestAgeUnavailable ? (
+              <Tooltip delayDuration={0}>
+                <TooltipTrigger
+                  aria-label="Why is this unavailable?"
+                  className="flex items-center justify-between w-full text-gray-500 cursor-help"
+                >
+                  —
+                  <Info className="w-3.5 h-3.5 shrink-0" aria-hidden />
+                </TooltipTrigger>
+                <TooltipContent>
+                  Not tracked for queues with a custom sort order.
+                </TooltipContent>
+              </Tooltip>
+            ) : (
               <div className={getAgeColorClass(values.oldestJobCreatedAt)}>
                 {formatTimeAgo(values.oldestJobCreatedAt)}
               </div>
             ),
             pendingJobCount: <div>{values.pendingJobCount}</div>,
+            jobSortType: <div>{values.jobSortType}</div>,
             startReviewing: (
               <div className="ContentTypesDashboard-type-name">
                 {values.startReviewing}

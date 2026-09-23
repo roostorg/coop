@@ -24,6 +24,10 @@ const ManualReviewQueue = resolvers.ManualReviewQueue as Record<
   | 'clearReportsTriggerActionIds',
   ResolverFn
 >;
+const ManualReviewJob = resolvers.ManualReviewJob as Record<
+  'numTimesReported',
+  ResolverFn
+>;
 
 function makeCtx(opts: {
   reviewableQueueIds: string[];
@@ -71,6 +75,11 @@ function makeCtx(opts: {
     async (): Promise<string[]> => [],
   );
   const getGraphQLUsersFromIds = jest.fn(async (): Promise<unknown[]> => []);
+  const getNumTimesReported = jest.fn(async () => 0);
+  const getNumTimesReportedForItems = jest.fn(
+    async ({ itemIds }: { itemIds: readonly string[] }) =>
+      new Map(itemIds.map((itemId) => [itemId, 0] as const)),
+  );
 
   const ctx = {
     getUser: () =>
@@ -99,6 +108,10 @@ function makeCtx(opts: {
         getHiddenActionsForQueue,
         getClearReportsTriggerActionsForQueue,
       },
+      ReportingService: {
+        getNumTimesReported,
+        getNumTimesReportedForItems,
+      },
     },
     dataSources: {
       userAPI: { getGraphQLUsersFromIds },
@@ -122,10 +135,88 @@ function makeCtx(opts: {
     getHiddenActionsForQueue,
     getClearReportsTriggerActionsForQueue,
     getGraphQLUsersFromIds,
+    getNumTimesReported,
+    getNumTimesReportedForItems,
   };
 }
 
 describe('MRT queue/job resolvers are membership-scoped', () => {
+  describe('ManualReviewJob.numTimesReported', () => {
+    const makeJob = (item: Record<string, string>) => ({
+      payload: { item },
+    });
+
+    it('requires an authenticated user', async () => {
+      const { ctx, getNumTimesReportedForItems } = makeCtx({
+        reviewableQueueIds: [],
+        user: null,
+      });
+
+      await expect(
+        ManualReviewJob.numTimesReported(
+          makeJob({ itemId: 'item-1' }),
+          {},
+          ctx,
+        ),
+      ).rejects.toThrow('No user found on context');
+      expect(getNumTimesReportedForItems).not.toHaveBeenCalled();
+    });
+
+    it('batches report counts for jobs resolved in one tick', async () => {
+      const { ctx, getNumTimesReported, getNumTimesReportedForItems } = makeCtx(
+        { reviewableQueueIds: [] },
+      );
+
+      await expect(
+        Promise.all(
+          ['item-1', 'item-2', 'item-3'].map(async (itemId) =>
+            ManualReviewJob.numTimesReported(makeJob({ itemId }), {}, ctx),
+          ),
+        ),
+      ).resolves.toEqual([0, 0, 0]);
+
+      expect(getNumTimesReportedForItems).toHaveBeenCalledTimes(1);
+      expect(getNumTimesReportedForItems).toHaveBeenCalledWith({
+        orgId: 'org-1',
+        itemIds: ['item-1', 'item-2', 'item-3'],
+      });
+      expect(getNumTimesReported).not.toHaveBeenCalled();
+    });
+
+    it('returns zero when an item is omitted from the batched counts', async () => {
+      const { ctx, getNumTimesReportedForItems } = makeCtx({
+        reviewableQueueIds: [],
+      });
+      getNumTimesReportedForItems.mockResolvedValue(new Map());
+
+      await expect(
+        ManualReviewJob.numTimesReported(
+          makeJob({ itemId: 'item-without-reports' }),
+          {},
+          ctx,
+        ),
+      ).resolves.toBe(0);
+    });
+
+    it('batches legacy jobs that store item.id instead of itemId', async () => {
+      const { ctx, getNumTimesReportedForItems } = makeCtx({
+        reviewableQueueIds: [],
+      });
+
+      await expect(
+        ManualReviewJob.numTimesReported(
+          makeJob({ id: 'legacy-item' }),
+          {},
+          ctx,
+        ),
+      ).resolves.toBe(0);
+      expect(getNumTimesReportedForItems).toHaveBeenCalledWith({
+        orgId: 'org-1',
+        itemIds: ['legacy-item'],
+      });
+    });
+  });
+
   describe('Query.getTotalPendingJobsCount', () => {
     it('counts only the queues the caller can review, never all org queues', async () => {
       const {

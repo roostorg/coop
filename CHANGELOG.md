@@ -8,6 +8,10 @@ For more information about each release including git tags and artifacts, see [R
 
 ## [Unreleased]
 
+### Added
+
+- Per-queue job sort order for manual review queues with support for sorting by number of reports ([#718](https://github.com/roostorg/coop/pull/718) by [@calebmcquaid](https://github.com/calebmcquaid), closes [#670](https://github.com/roostorg/coop/issues/670))
+
 ## [1.1.0-alpha] - 2026-09-21
 
 ### Added
