@@ -128,7 +128,7 @@ export default class ItemTypeOperations {
   }
 
   /** Drop cached latest item types for this org after a DB write (MV + in-memory cache can disagree). */
-  private async invalidateLatestItemTypesCache(orgId: string): Promise<void> {
+  async invalidateLatestItemTypesCache(orgId: string): Promise<void> {
     // `cached()` always attaches invalidate; the type keeps it optional for other producers.
     await this.latestItemTypesCache.invalidate!(orgId);
   }

@@ -125,6 +125,11 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
     return this.itemTypeOps.getItemTypes(opts);
   }
 
+  /** Call on the long-lived service after a transaction-bound instance commits. */
+  async invalidateLatestItemTypesCache(orgId: string): Promise<void> {
+    await this.itemTypeOps.invalidateLatestItemTypesCache(orgId);
+  }
+
   async getItemType(opts: {
     orgId: string;
     itemTypeSelector: ItemTypeSelector;
