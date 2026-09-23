@@ -4,6 +4,7 @@ export default defineConfig({
   test: {
     globals: true,
     clearMocks: true,
+    isolate: false,
     // Match native Node ESM imports of CommonJS dependencies.
     deps: { interopDefault: false },
     sequence: { hooks: 'list' },
