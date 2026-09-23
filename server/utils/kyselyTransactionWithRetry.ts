@@ -1,4 +1,4 @@
-import { Transaction, type IsolationLevel, type Kysely } from 'kysely';
+import { type IsolationLevel, type Kysely, type Transaction } from 'kysely';
 
 import { safeGet } from './misc.js';
 
@@ -14,9 +14,6 @@ type TransactionWithRetryOptions = {
  * Wraps `kysely.transaction().execute(callback)` and retries (up to 3
  * attempts) on Postgres serialization failures (SQLSTATE `40001`). Other
  * errors propagate. Optionally accepts `{ isolationLevel }` as a first arg.
- *
- * An injected transaction is reused without committing or retrying it. Set
- * isolation on the outer transaction; nested calls cannot change it.
  *
  * Callbacks must be retry-safe: on a 40001 the whole callback is re-run,
  * including any non-database side effects (HTTP calls, queue publishes, etc.)
@@ -42,13 +39,6 @@ export function makeKyselyTransactionWithRetry<T>(kysely: Kysely<T>) {
       typeof optionsOrCallback === 'function'
         ? [{}, optionsOrCallback]
         : [optionsOrCallback, maybeCallback!];
-
-    if (kysely instanceof Transaction) {
-      if (options.isolationLevel !== undefined) {
-        throw new Error('Isolation level must be set on the outer transaction');
-      }
-      return callback(kysely);
-    }
 
     let remainingTries = 3;
     let lastError: unknown;
