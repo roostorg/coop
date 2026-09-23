@@ -78,62 +78,48 @@ const callMutation = async (
   );
 };
 
-describe('item type configuration mutations', () => {
-  it.each(variants)(
-    '%s creates the item type and hidden fields in one transaction',
-    async (createResolver, createService) => {
-      const {
-        context,
-        ModerationConfigService,
-        ManualReviewToolService,
-        transactionConfig,
-      } = makeContext();
-      await callMutation(
-        createResolver,
-        {
-          name: 'type name',
-          fields: [{ name: 'id', type: ScalarTypes.STRING, required: true }],
-          fieldRoles: {},
-          hiddenFields,
-        },
-        context,
-      );
-      expect(ModerationConfigService.forTransaction).toHaveBeenCalledWith(trx);
-      expect(transactionConfig[createService]).toHaveBeenCalledWith(
-        orgId,
-        expect.any(Object),
-      );
-      expect(
-        ManualReviewToolService.setHiddenFieldsForItemType,
-      ).toHaveBeenCalledWith({ orgId, itemTypeId, hiddenFields });
-      expect(
-        ModerationConfigService.invalidateLatestItemTypesCache,
-      ).toHaveBeenCalledWith(orgId);
-    },
-  );
+describe.each(variants)(
+  '%s / %s / %s',
+  (createResolver, createService, updateResolver) => {
+    it.each([
+      { fields: hiddenFields, expected: ['email'] },
+      { fields: undefined, expected: [] },
+    ])(
+      'creates with hidden fields $fields and invalidates the cache',
+      async ({ fields, expected }) => {
+        const {
+          context,
+          ModerationConfigService,
+          ManualReviewToolService,
+          transactionConfig,
+        } = makeContext();
+        await callMutation(
+          createResolver,
+          {
+            name: 'type name',
+            fields: [{ name: 'id', type: ScalarTypes.STRING, required: true }],
+            fieldRoles: {},
+            hiddenFields: fields,
+          },
+          context,
+        );
+        expect(ModerationConfigService.forTransaction).toHaveBeenCalledWith(
+          trx,
+        );
+        expect(transactionConfig[createService]).toHaveBeenCalledWith(
+          orgId,
+          expect.any(Object),
+        );
+        expect(
+          ManualReviewToolService.setHiddenFieldsForItemType,
+        ).toHaveBeenCalledWith({ orgId, itemTypeId, hiddenFields: expected });
+        expect(
+          ModerationConfigService.invalidateLatestItemTypesCache,
+        ).toHaveBeenCalledWith(orgId);
+      },
+    );
 
-  it.each(variants)(
-    '%s defaults omitted hidden fields to an empty list',
-    async (createResolver) => {
-      const { context, ManualReviewToolService } = makeContext();
-      await callMutation(
-        createResolver,
-        {
-          name: 'type name',
-          fields: [{ name: 'id', type: ScalarTypes.STRING, required: true }],
-          fieldRoles: {},
-        },
-        context,
-      );
-      expect(
-        ManualReviewToolService.setHiddenFieldsForItemType,
-      ).toHaveBeenCalledWith({ orgId, itemTypeId, hiddenFields: [] });
-    },
-  );
-
-  it.each(variants)(
-    '%s preserves omitted hidden fields and clears an explicit empty list',
-    async (_createResolver, _createService, updateResolver) => {
+    it('preserves omitted hidden fields and clears an explicit empty list', async () => {
       const first = makeContext();
       await callMutation(updateResolver, { id: itemTypeId }, first.context);
       expect(
@@ -149,6 +135,6 @@ describe('item type configuration mutations', () => {
       expect(
         second.ManualReviewToolService.setHiddenFieldsForItemType,
       ).toHaveBeenCalledWith({ orgId, itemTypeId, hiddenFields: [] });
-    },
-  );
-});
+    });
+  },
+);
