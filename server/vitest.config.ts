@@ -5,6 +5,9 @@ export default defineConfig({
     globals: true,
     clearMocks: true,
     isolate: false,
+    // prevent parallel running of tests, as our tests don't currently support
+    // parallel runs due to deadlocks:
+    fileParallelism: false,
     // Match native Node ESM imports of CommonJS dependencies.
     deps: { interopDefault: false },
     sequence: { hooks: 'list' },
