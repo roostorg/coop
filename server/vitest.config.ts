@@ -24,7 +24,7 @@ export default defineConfig({
       provider: 'v8',
       reportsDirectory: 'coverage',
       exclude: ['node_modules/**', 'test/**'],
-      reporter: ['json', 'text', 'lcov', 'clover'],
+      reporter: ['json', 'text'],
     },
     onConsoleLog: () => false,
   },
