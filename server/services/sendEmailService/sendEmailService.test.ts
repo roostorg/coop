@@ -125,7 +125,7 @@ describe('sendEmailService', () => {
     });
 
     it('should log the error when SES fails', async () => {
-      const consoleSpy = vi
+      using consoleSpy = vi
         .spyOn(console, 'error')
         .mockImplementation(() => {});
       const { mockSend, mockClient } = makeMockClient();
@@ -145,16 +145,12 @@ describe('sendEmailService', () => {
         'Failed to send email:',
         'MessageRejected',
       );
-      consoleSpy.mockRestore();
     });
   });
 
   describe('SendGrid backend', () => {
     it('reports successful and failed delivery attempts', async () => {
-      const sendSpy = vi.spyOn(sgMail, 'send');
-      const consoleSpy = vi
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
+      using sendSpy = vi.spyOn(sgMail, 'send');
       const sendEmail = makeSendEmailViaSendGrid('SG.test-key');
       const msg: Message = {
         to: 'test_user@example.com',
@@ -163,16 +159,11 @@ describe('sendEmailService', () => {
         text: 'Test body',
       };
 
-      try {
-        sendSpy.mockResolvedValueOnce([] as never);
-        await expect(sendEmail(msg)).resolves.toBe(true);
+      sendSpy.mockResolvedValueOnce([] as never);
+      await expect(sendEmail(msg)).resolves.toBe(true);
 
-        sendSpy.mockRejectedValueOnce(new Error('SendGrid error'));
-        await expect(sendEmail(msg)).resolves.toBe(false);
-      } finally {
-        sendSpy.mockRestore();
-        consoleSpy.mockRestore();
-      }
+      sendSpy.mockRejectedValueOnce(new Error('SendGrid error'));
+      await expect(sendEmail(msg)).resolves.toBe(false);
     });
   });
 
@@ -180,7 +171,9 @@ describe('sendEmailService', () => {
     it('prints the email and reports successful delivery', async () => {
       const previousNodeEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = 'development';
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      using consoleSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
 
       try {
         const sendEmail = makeSendEmailViaConsole();
@@ -202,7 +195,6 @@ describe('sendEmailService', () => {
         } else {
           process.env.NODE_ENV = previousNodeEnv;
         }
-        consoleSpy.mockRestore();
       }
     });
 
@@ -211,7 +203,9 @@ describe('sendEmailService', () => {
       const previousNodeEnv = process.env.NODE_ENV;
       process.env.EMAIL_TRANSPORT = 'console';
       process.env.NODE_ENV = 'development';
-      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+      using consoleSpy = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {});
 
       try {
         const sendEmail = makeSendEmail();
@@ -235,7 +229,6 @@ describe('sendEmailService', () => {
         } else {
           process.env.NODE_ENV = previousNodeEnv;
         }
-        consoleSpy.mockRestore();
       }
     });
 
