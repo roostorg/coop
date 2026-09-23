@@ -118,25 +118,41 @@ After the iframe loads, and whenever a reviewer changes their overlay settings, 
 
 The existing OpenTelemetry meter exports optional manual-review instruments:
 
-- `coop-api.manual_review.events.counter` with `event` and `queue_id`. Events
-  distinguish successful enqueue operations, acquired claims, stored claim/skip
-  records, newly stored decisions, content-resolution outcomes and missing timing
-  samples. Enqueue calls can deduplicate; they are not unique job counts. A
-  stored decision is not proof that its downstream action completed.
-- `coop-api.manual_review.duration_ms.histogram` with `phase=claim_elapsed` or
-  `total_to_decision`, plus queue, item type, decision type and automatic flag.
-  Claim elapsed includes idle time. Automatic closes have no human claim sample.
-  Invalid/missing timestamps emit availability events instead of zero durations.
+- `coop-api.manual_review.events.counter` always carries `event` and `queue_id`.
+  Enqueue-call and content-resolution events also carry `item_type_id`; decisions
+  and `timing_unavailable_*` events carry `item_type_id`, `decision_type`, and
+  `automatic`. Claims, skips, collection failures and removed-queue events carry
+  no other attributes. `enqueue_call_succeeded` and `appeal_enqueue_call_succeeded`
+  count successful calls, including deduplicated adds, not unique insertions.
+  A stored decision is not proof that its downstream action completed.
+- `coop-api.manual_review.duration_ms.histogram` carries `phase=claim_elapsed` or
+  `total_to_decision`, `queue_id`, `item_type_id`, `decision_type`, and `automatic`.
+  Claim elapsed includes idle time. Automatic closes and swept dispositions have
+  no human claim sample; directly reviewed decisions with missing/invalid claim
+  timestamps still emit availability events instead of zero durations.
 - `coop-api.manual_review.snapshot.gauge` with `kind`. Set
   `MANUAL_REVIEW_METRICS_ORG_ID` on the server to opt in to that organization's
   snapshots. Without this setting, no polling takes place. The default meter
   remains a no-op unless the deployment registers an OpenTelemetry provider.
 
 Snapshot collection uses the existing queue service and public BullMQ APIs,
-about once a minute after the preceding cycle completes. Reads are bounded to
-50 queues and 1,000 ready-job timestamps per queue. No media is fetched or job
+about once a minute after the preceding cycle settles. The SQL list is limited to
+51 rows; finding more than 50 rejects that cycle without sampling any queue.
+Each queue reads at most 1,000 ready-job timestamps. No media is fetched or job
 lock acquired. BullMQ may hydrate queued payloads internally; only numeric
 aggregates and static queue identifiers leave the snapshot helper.
+
+A 20-second deadline covers the entire cycle, including the queue list. Expiry
+records `collection_failed_timeout` and `success=0`, prevents further reads and
+discards late results. Shared database/Redis calls cannot be force-cancelled;
+an in-flight read must settle before the next cycle is scheduled. A permanently
+stalled read therefore leaves the collector failed, rather than accumulating
+concurrent requests. Shutdown aborts scheduling and suppresses late emissions.
+
+`collection_failed_read`, `collection_failed_queue_limit`, and
+`collection_failed_timeout` count failures independently of the latest health
+gauge. They use `queue_id=all` and never carry raw errors, identifiers or URLs.
+A later success does not erase these historical failure counts.
 
 The `kind` values separate jobs by state, observed oldest-ready age, timestamp
 coverage, per-queue sample time and collection health/freshness. Query each kind
@@ -145,6 +161,15 @@ delayed jobs do not. Age starts at the BullMQ entry timestamp. Coverage means th
 bounded read passed its checks, not an atomic snapshot. Concurrent queue changes
 or partial reads can understate age. Failed collection leaves the last backlog
 sample unchanged; inspect health and advancing per-queue sample timestamps.
+
+Snapshots carry `kind` and `queue_id`; job-count samples also carry `state`.
+`present=1` means the queue appeared in the latest successful list. After a known
+queue disappears from a successful list, the collector emits `present=0`, clears
+its counts and age, sets coverage to 1 (no remaining jobs to inspect), advances
+its sample timestamp, and emits `queue_removed`. A failed/partial cycle never
+marks queues removed. Cleared series are tombstones, not existing empty queues;
+use `present` when listing queues. Exporter-retained samples from stopped
+replicas or previous processes still require freshness/retention checks.
 
 Counters are best-effort operational signals, not an audit ledger. Replica
 snapshots must not be summed. StatsD exporters may repeat stale gauges and

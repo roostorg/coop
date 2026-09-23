@@ -791,6 +791,7 @@ export default class JobDecisioning {
       job,
       assignedAt,
       isAutomaticClose,
+      recordClaimTiming: recordAssignedAt && !isAutomaticClose,
     });
   }
 
@@ -800,9 +801,16 @@ export default class JobDecisioning {
     job: ManualReviewJob | ManualReviewAppealJob;
     assignedAt: Date | null;
     isAutomaticClose: boolean;
+    recordClaimTiming: boolean;
   }): void {
-    const { decisionComponents, queueId, job, assignedAt, isAutomaticClose } =
-      opts;
+    const {
+      decisionComponents,
+      queueId,
+      job,
+      assignedAt,
+      isAutomaticClose,
+      recordClaimTiming,
+    } = opts;
 
     const attributes = {
       queue_id: queueId,
@@ -818,7 +826,7 @@ export default class JobDecisioning {
       recordedAt,
       attributes,
     );
-    if (!isAutomaticClose) {
+    if (recordClaimTiming) {
       this.metrics.duration(
         'claim_elapsed',
         assignedAt,

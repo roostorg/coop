@@ -85,7 +85,10 @@ import UserReportSweep, {
   type ClearOtherReportsResult,
 } from './modules/UserReportSweep.js';
 import { ManualReviewMetrics } from './utils/ManualReviewMetrics.js';
-import { startReviewMetricsPolling } from './utils/ReviewMetricsPolling.js';
+import {
+  ReviewMetricsQueueLimitError,
+  startReviewMetricsPolling,
+} from './utils/ReviewMetricsPolling.js';
 
 // An id that's unique across all jobs ever added to any queue (pending or not).
 // This is the id that's passed into the MRT Service by callers to identify a
@@ -354,29 +357,37 @@ export class ManualReviewToolService {
       meter,
     );
     if (meter && metricsOrgId) {
-      this.stopMetrics = startReviewMetricsPolling(this.metrics, async () => {
-        const queues =
-          await this.queueOps.getAllQueuesForOrgAndDangerouslyBypassPermissioning(
-            metricsOrgId,
-          );
-        if (queues.length > 50)
-          throw new Error('Review metrics queue limit exceeded');
-        const results = [];
-        const deadline = Date.now() + 20_000;
-        for (const queue of queues) {
-          if (Date.now() > deadline)
-            throw new Error('Review metrics collection deadline exceeded');
-          results.push({
-            queueId: queue.id,
-            snapshot: await this.queueOps.getMetricsSnapshot({
-              orgId: metricsOrgId,
+      this.stopMetrics = startReviewMetricsPolling(
+        this.metrics,
+        async (signal) => {
+          const queues =
+            await this.queueOps.getAllQueuesForOrgAndDangerouslyBypassPermissioning(
+              metricsOrgId,
+              51,
+            );
+          signal.throwIfAborted();
+          if (queues.length > 50)
+            throw new ReviewMetricsQueueLimitError(
+              'Review metrics queue limit exceeded',
+            );
+          const results = [];
+          for (const queue of queues) {
+            signal.throwIfAborted();
+            results.push({
               queueId: queue.id,
-              isAppealsQueue: queue.isAppealsQueue,
-            }),
-          });
-        }
-        return results;
-      });
+              snapshot: await this.queueOps.getMetricsSnapshot(
+                {
+                  orgId: metricsOrgId,
+                  queueId: queue.id,
+                  isAppealsQueue: queue.isAppealsQueue,
+                },
+                signal,
+              ),
+            });
+          }
+          return results;
+        },
+      );
     }
     this.jobEnrichment = new JobEnrichment(
       partialItemsService,

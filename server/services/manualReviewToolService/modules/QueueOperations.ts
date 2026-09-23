@@ -713,12 +713,15 @@ export default class QueueOperations {
       .execute();
   }
 
-  async getAllQueuesForOrgAndDangerouslyBypassPermissioning(orgId: string) {
-    return this.pgQuery
+  async getAllQueuesForOrgAndDangerouslyBypassPermissioning(
+    orgId: string,
+    limit?: number,
+  ) {
+    const query = this.pgQuery
       .selectFrom('manual_review_tool.manual_review_queues')
       .select(PgQueueSelection)
-      .where('org_id', '=', orgId)
-      .execute();
+      .where('org_id', '=', orgId);
+    return (limit === undefined ? query : query.limit(limit)).execute();
   }
 
   async getQueueForOrgAndDangerouslyBypassPermissioning(opts: {
@@ -879,7 +882,7 @@ export default class QueueOperations {
       { removeOnComplete: true, jobId: bullJobId },
     );
 
-    this.metrics.event('enqueue_succeeded', {
+    this.metrics.event('enqueue_call_succeeded', {
       queue_id: queueId,
       item_type_id: payload.item.itemTypeIdentifier.id,
     });
@@ -931,7 +934,7 @@ export default class QueueOperations {
       { removeOnComplete: true, jobId: bullJobId },
     );
 
-    this.metrics.event('appeal_enqueue_succeeded', {
+    this.metrics.event('appeal_enqueue_call_succeeded', {
       queue_id: queueId,
       item_type_id: payload.item.itemTypeIdentifier.id,
     });
@@ -1693,15 +1696,20 @@ export default class QueueOperations {
     return counts.reduce((sum, count) => sum + count, 0);
   }
 
-  async getMetricsSnapshot(opts: {
-    orgId: string;
-    queueId: string;
-    isAppealsQueue: boolean;
-  }) {
+  async getMetricsSnapshot(
+    opts: {
+      orgId: string;
+      queueId: string;
+      isAppealsQueue: boolean;
+    },
+    signal?: AbortSignal,
+  ) {
+    signal?.throwIfAborted();
     const queue = opts.isAppealsQueue
       ? await this.#getBullAppealQueue(opts.orgId, opts.queueId)
       : await this.#getBullQueue(opts.orgId, opts.queueId);
-    return createQueueSnapshot(queue);
+    signal?.throwIfAborted();
+    return createQueueSnapshot(queue, Date.now, signal);
   }
 
   async getOldestJobCreatedAt(opts: {

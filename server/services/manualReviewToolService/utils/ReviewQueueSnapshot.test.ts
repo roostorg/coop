@@ -81,6 +81,30 @@ describe('public API queue snapshots', () => {
     expect(result.complete).toBe(false);
     expect(result.oldestObservedAgeMs).toBe(900);
   });
+  it.each(['wait', 'prioritized'])(
+    'propagates a failed %s timestamp scan',
+    async (state) => {
+      const q = reader(counts(1, 1), [100], [200]);
+      jest.spyOn(q, 'getJobs').mockImplementation(async (...args) => {
+        if (args[0][0] === state) throw new Error('scan offline');
+        return [{ timestamp: 100 }];
+      });
+      await expect(createQueueSnapshot(q)).rejects.toThrow('scan offline');
+    },
+  );
+  it('does not issue more Redis commands after an in-flight read settles following cancellation', async () => {
+    const q = reader();
+    const controller = new AbortController();
+    jest.spyOn(q, 'getJobCounts').mockImplementationOnce(async () => {
+      controller.abort();
+      return counts();
+    });
+    await expect(
+      createQueueSnapshot(q, Date.now, controller.signal),
+    ).rejects.toThrow();
+    expect(q.getJobs).not.toHaveBeenCalled();
+    expect(q.getJobCounts).toHaveBeenCalledTimes(1);
+  });
   it('propagates failed reads and rejects invalid counts', async () => {
     const q = reader();
     jest.spyOn(q, 'getJobCounts').mockRejectedValueOnce(new Error('offline'));

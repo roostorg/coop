@@ -22,7 +22,10 @@ const job = {
   },
 };
 
-function setupDecision(execute: () => Promise<unknown>) {
+function setupDecision(
+  execute: () => Promise<unknown>,
+  assignedAt: Date | null = new Date(3000),
+) {
   const meter = new CoopMeter();
   const events = jest.spyOn(meter.manualReviewEventsCounter, 'add');
   const durations = jest.spyOn(meter.manualReviewDurationHistogram, 'record');
@@ -40,7 +43,7 @@ function setupDecision(execute: () => Promise<unknown>) {
       logSpanFailed: () => {},
     }),
     typed({}),
-    typed({ getLatestClaimedAt: async () => new Date(3000) }),
+    typed({ getLatestClaimedAt: async () => assignedAt }),
     async () => false,
     meter,
   ];
@@ -67,18 +70,25 @@ describe('actual review persistence metric boundaries', () => {
 
   it('records a decision only after insert resolves, even if subsequent queue removal fails', async () => {
     const before = Date.now();
-    let resolve!: () => void;
+    let insertResolve!: () => void;
     const stored = new Promise<void>((r) => {
-      resolve = r;
+      insertResolve = r;
     });
-    const f = setupDecision(async () => stored);
+    let signalInsertStarted!: () => void;
+    const insertStarted = new Promise<void>((resolve) => {
+      signalInsertStarted = resolve;
+    });
+    const f = setupDecision(async () => {
+      signalInsertStarted();
+      return stored;
+    });
     f.removeJob.mockRejectedValueOnce(new Error('redis unavailable'));
     const result = f.instance.submitDecision(f.input);
     const failure = expect(result).rejects.toThrow();
-    for (let i = 0; i < 8; i++) await Promise.resolve();
+    await insertStarted;
     expect(f.values).toHaveBeenCalled();
     expect(f.events).not.toHaveBeenCalled();
-    resolve();
+    insertResolve();
     await failure;
     expect(f.events).toHaveBeenCalledWith(
       1,
@@ -172,6 +182,86 @@ describe('actual review persistence metric boundaries', () => {
       executeTakeFirst.mockRejectedValueOnce(new Error('database unavailable'));
       await expect(run()).rejects.toThrow();
       expect(events).not.toHaveBeenCalled();
+    },
+  );
+
+  it('counts an unexpectedly missing claim time for a directly reviewed decision', async () => {
+    const f = setupDecision(async () => [], null);
+    await f.instance.submitDecision(f.input);
+    expect(f.events).toHaveBeenCalledWith(
+      1,
+      expect.objectContaining({ event: 'timing_unavailable_claim_elapsed' }),
+    );
+    expect(f.durations).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(['IGNORE', 'SAME_ACTION'] as const)(
+    'recordSweptJobDisposition emits metrics for %s disposition after insert',
+    async (disposition) => {
+      const meter = new CoopMeter();
+      const events = jest.spyOn(meter.manualReviewEventsCounter, 'add');
+      const durations = jest.spyOn(
+        meter.manualReviewDurationHistogram,
+        'record',
+      );
+      const values = jest.fn(() => ({ execute: async () => {} }));
+      const args: ConstructorParameters<typeof JobDecisioning> = [
+        typed({ getJobs: async () => [job], removeJob: async () => {} }),
+        typed({ insertInto: () => ({ values }) }),
+        typed(async () => []),
+        async () => {},
+        typed({ getItemType: async () => null }),
+        typed({
+          addSpan: (_: unknown, fn: (span: unknown) => unknown) =>
+            fn({ setAttribute: () => {} }),
+          logSpanFailed: () => {},
+        }),
+        typed({}),
+        typed({ getLatestClaimedAt: async () => new Date(3000) }),
+        async () => false,
+        meter,
+      ];
+      const instance = new JobDecisioning(...args);
+      const result = await instance.recordSweptJobDisposition(
+        typed({
+          orgId: 'org',
+          queueId: 'queue',
+          job,
+          disposition,
+          triggerCustomActions:
+            disposition === 'SAME_ACTION'
+              ? [
+                  {
+                    type: 'CUSTOM_ACTION',
+                    actions: [],
+                    policies: [],
+                    itemIds: [],
+                    itemTypeId: 'type',
+                    actionIdsToMrtApiParamDecisionPayload: {},
+                  },
+                ]
+              : [],
+          reviewerId: 'reviewer',
+          reviewerEmail: 'test@example.invalid',
+        }),
+      );
+      expect(result).toBe('logged');
+      expect(events).toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({
+          event: 'decision_stored',
+          queue_id: 'queue',
+          automatic: false,
+        }),
+      );
+      expect(events).not.toHaveBeenCalledWith(
+        1,
+        expect.objectContaining({ event: 'timing_unavailable_claim_elapsed' }),
+      );
+      expect(durations).toHaveBeenCalledTimes(1);
+      expect(durations.mock.calls[0][1]).toEqual(
+        expect.objectContaining({ phase: 'total_to_decision' }),
+      );
     },
   );
 });

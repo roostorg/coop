@@ -62,5 +62,25 @@ describe('native review metric semantics', () => {
       metrics.gauge('success', 1, { queue_id: 'all' }),
     ).not.toThrow();
   });
+  it('histogram throws do not affect review submission', () => {
+    jest
+      .spyOn(meter.manualReviewDurationHistogram, 'record')
+      .mockImplementation(() => {
+        throw new Error('histogram exporter failed');
+      });
+    expect(() =>
+      metrics.duration('claim_elapsed', new Date(1000), new Date(5000), attrs),
+    ).not.toThrow();
+  });
+  it('gauge throws do not affect review submission', () => {
+    jest
+      .spyOn(meter.manualReviewSnapshotGauge, 'record')
+      .mockImplementation(() => {
+        throw new Error('gauge exporter failed');
+      });
+    expect(() =>
+      metrics.gauge('queue_size', 42, { queue_id: 'test' }),
+    ).not.toThrow();
+  });
   afterEach(() => jest.restoreAllMocks());
 });

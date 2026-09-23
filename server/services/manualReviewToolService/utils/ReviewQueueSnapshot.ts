@@ -23,13 +23,22 @@ export type QueueReader = {
 
 export type QueueSnapshot = Awaited<ReturnType<typeof createQueueSnapshot>>;
 
-export async function createQueueSnapshot(queue: QueueReader, now = Date.now) {
+export async function createQueueSnapshot(
+  queue: QueueReader,
+  now = Date.now,
+  signal?: AbortSignal,
+) {
+  signal?.throwIfAborted();
   const before = await queue.getJobCounts(...reviewQueueStates);
+  signal?.throwIfAborted();
   const waiting = await queue.getJobs(['wait'], 0, 999, true);
+  signal?.throwIfAborted();
   const room = 1000 - waiting.length;
   const prioritized =
     room > 0 ? await queue.getJobs(['prioritized'], 0, room - 1, true) : [];
+  signal?.throwIfAborted();
   const counts = await queue.getJobCounts(...reviewQueueStates);
+  signal?.throwIfAborted();
   if (
     !reviewQueueStates.every(
       (state) => Number.isSafeInteger(counts[state]) && counts[state] >= 0,
