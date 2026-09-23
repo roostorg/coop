@@ -17,6 +17,7 @@ export function makeGqlServices(deps: Dependencies) {
     'getItemTypeEventuallyConsistent',
     'getEnabledRulesForItemTypeEventuallyConsistent',
     'ItemInvestigationService',
+    'KyselyPg',
     'ModerationConfigService',
     'ManualReviewToolService',
     'HMAHashBankService',

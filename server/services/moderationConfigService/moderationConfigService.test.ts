@@ -16,6 +16,7 @@ import {
 } from '../../test/stubs/KyselyPg.js';
 import { makeTestWithFixture } from '../../test/utils.js';
 import { ErrorType } from '../../utils/errors.js';
+import { makeKyselyTransactionWithRetry } from '../../utils/kyselyTransactionWithRetry.js';
 import { type Satisfies } from '../../utils/typescript-types.js';
 import { type ModerationConfigServicePg } from './dbTypes.js';
 import {
@@ -42,20 +43,27 @@ type ItemTypeMutationMethod =
 
 async function mutateItemTypeAndHiddenFields<T extends ItemTypeMutationMethod>(
   config: ModerationConfigService,
-  deps: Pick<TestDeps, 'ManualReviewToolService'>,
+  deps: Pick<TestDeps, 'KyselyPg' | 'ManualReviewToolService'>,
   orgId: string,
   method: T,
   input: Parameters<ModerationConfigService[T]>[1],
   hiddenFields: readonly string[],
 ) {
-  return config.withItemTypeTransaction(orgId, async (trx) => {
-    const item = await config[method](orgId, input as never, trx);
-    await deps.ManualReviewToolService.setHiddenFieldsForItemType(
-      { orgId, itemTypeId: item.id, hiddenFields },
-      trx,
-    );
-    return item;
-  });
+  const item = await makeKyselyTransactionWithRetry(deps.KyselyPg)(
+    async (trx) => {
+      const transactionConfig = config.forTransaction(trx);
+      const review = deps.ManualReviewToolService.forTransaction(trx);
+      const item = await transactionConfig[method](orgId, input as never);
+      await review.setHiddenFieldsForItemType({
+        orgId,
+        itemTypeId: item.id,
+        hiddenFields,
+      });
+      return item;
+    },
+  );
+  await config.invalidateLatestItemTypesCache(orgId);
+  return item;
 }
 
 // We test the moderationConfigService as a black box: every test gets a fresh
@@ -314,6 +322,87 @@ describe('ModerationConfigService', () => {
         { name: 'required', type: 'STRING', required: true, container: null },
         { name: 'optional', type: 'STRING', required: false, container: null },
       ] as const;
+
+      const testWithPooledConnections = makeTestWithFixture(async () => {
+        const { container } = await getBottle();
+        const fixture = await createOrg(container);
+        return {
+          deps: container,
+          org: fixture.org,
+          async cleanup() {
+            await fixture.cleanup();
+            await Promise.all([
+              container.KyselyPg.destroy(),
+              container.KyselyPgReadReplica.destroy(),
+            ]);
+          },
+        };
+      });
+
+      testWithPooledConnections(
+        'commits or rolls back item type and hidden fields together across pooled connections',
+        async ({ deps, org }) => {
+          const config = deps.ModerationConfigService;
+          const review = deps.ManualReviewToolService;
+          const item = await mutateItemTypeAndHiddenFields(
+            config,
+            deps,
+            org.id,
+            'createContentType',
+            { name: 'pooled update', schema, schemaFieldRoles: {} },
+            ['optional'],
+          );
+
+          await expect(
+            makeKyselyTransactionWithRetry(deps.KyselyPg)(async (trx) => {
+              await config.forTransaction(trx).updateContentType(org.id, {
+                id: item.id,
+                name: 'rolled back',
+              });
+              await review.forTransaction(trx).setHiddenFieldsForItemType({
+                orgId: org.id,
+                itemTypeId: item.id,
+                hiddenFields: ['required'],
+              });
+              throw new Error('abort combined update');
+            }),
+          ).rejects.toThrow('abort combined update');
+          expect(
+            await deps.KyselyPg.selectFrom('public.item_types')
+              .select('name')
+              .where('id', '=', item.id)
+              .executeTakeFirstOrThrow(),
+          ).toEqual({ name: 'pooled update' });
+          await expect(
+            review.getHiddenFieldsForItemType({
+              orgId: org.id,
+              itemTypeId: item.id,
+            }),
+          ).resolves.toEqual(['optional']);
+
+          const updated = await mutateItemTypeAndHiddenFields(
+            config,
+            deps,
+            org.id,
+            'updateContentType',
+            { id: item.id, name: 'committed' },
+            ['required'],
+          );
+          expect(updated.name).toBe('committed');
+          await expect(
+            config.getItemType({
+              orgId: org.id,
+              itemTypeSelector: { id: item.id },
+            }),
+          ).resolves.toMatchObject({ name: 'committed' });
+          await expect(
+            review.getHiddenFieldsForItemType({
+              orgId: org.id,
+              itemTypeId: item.id,
+            }),
+          ).resolves.toEqual(['required']);
+        },
+      );
 
       testWithOrg(
         'create stores supplied hidden fields and defaults omitted hidden fields to empty',

@@ -18,6 +18,7 @@ import {
 } from '../../services/moderationConfigService/index.js';
 import { filterNullOrUndefined } from '../../utils/collections.js';
 import { isCoopErrorOfType } from '../../utils/errors.js';
+import { makeKyselyTransactionWithRetry } from '../../utils/kyselyTransactionWithRetry.js';
 import { assertUnreachable } from '../../utils/misc.js';
 import { isNonEmptyArray } from '../../utils/typescript-types.js';
 import {
@@ -779,31 +780,28 @@ const Mutation: GQLMutationResolvers = {
       throw new Error('Empty fields for item type');
     }
 
-    const contentItemType =
-      await context.services.ModerationConfigService.withItemTypeTransaction(
+    const contentItemType = await makeKyselyTransactionWithRetry(
+      context.services.KyselyPg,
+    )(async (trx) => {
+      const config =
+        context.services.ModerationConfigService.forTransaction(trx);
+      const review =
+        context.services.ManualReviewToolService.forTransaction(trx);
+      const itemType = await config.createContentType(orgId, {
+        ...params.input,
+        schemaFieldRoles: fieldRoles,
+        schema: fields,
+      });
+      await review.setHiddenFieldsForItemType({
         orgId,
-        async (trx) => {
-          const itemType =
-            await context.services.ModerationConfigService.createContentType(
-              orgId,
-              {
-                ...params.input,
-                schemaFieldRoles: fieldRoles,
-                schema: fields,
-              },
-              trx,
-            );
-          await context.services.ManualReviewToolService.setHiddenFieldsForItemType(
-            {
-              orgId,
-              itemTypeId: itemType.id,
-              hiddenFields: hiddenFields ?? [],
-            },
-            trx,
-          );
-          return itemType;
-        },
-      );
+        itemTypeId: itemType.id,
+        hiddenFields: hiddenFields ?? [],
+      });
+      return itemType;
+    });
+    await context.services.ModerationConfigService.invalidateLatestItemTypesCache(
+      orgId,
+    );
 
     return gqlSuccessResult(
       contentItemType,
@@ -829,31 +827,32 @@ const Mutation: GQLMutationResolvers = {
       }
     }
 
-    const contentItemType =
-      await context.services.ModerationConfigService.withItemTypeTransaction(
-        orgId,
-        async (trx) => {
-          const itemType =
-            await context.services.ModerationConfigService.updateContentType(
-              orgId,
-              {
-                id,
-                description,
-                name: name ?? undefined,
-                schemaFieldRoles: fieldRoles ?? {},
-                schema: fields,
-              },
-              trx,
-            );
-          if (hiddenFields != null) {
-            await context.services.ManualReviewToolService.setHiddenFieldsForItemType(
-              { orgId, itemTypeId: itemType.id, hiddenFields },
-              trx,
-            );
-          }
-          return itemType;
-        },
-      );
+    const contentItemType = await makeKyselyTransactionWithRetry(
+      context.services.KyselyPg,
+    )(async (trx) => {
+      const config =
+        context.services.ModerationConfigService.forTransaction(trx);
+      const review =
+        context.services.ManualReviewToolService.forTransaction(trx);
+      const itemType = await config.updateContentType(orgId, {
+        id,
+        description,
+        name: name ?? undefined,
+        schemaFieldRoles: fieldRoles ?? {},
+        schema: fields,
+      });
+      if (hiddenFields != null) {
+        await review.setHiddenFieldsForItemType({
+          orgId,
+          itemTypeId: itemType.id,
+          hiddenFields,
+        });
+      }
+      return itemType;
+    });
+    await context.services.ModerationConfigService.invalidateLatestItemTypesCache(
+      orgId,
+    );
 
     return gqlSuccessResult(
       contentItemType,
@@ -877,31 +876,28 @@ const Mutation: GQLMutationResolvers = {
       throw new Error('Empty fields for item type');
     }
 
-    const threadItemType =
-      await context.services.ModerationConfigService.withItemTypeTransaction(
+    const threadItemType = await makeKyselyTransactionWithRetry(
+      context.services.KyselyPg,
+    )(async (trx) => {
+      const config =
+        context.services.ModerationConfigService.forTransaction(trx);
+      const review =
+        context.services.ManualReviewToolService.forTransaction(trx);
+      const itemType = await config.createThreadType(orgId, {
+        ...params.input,
+        schemaFieldRoles: fieldRoles,
+        schema: fields,
+      });
+      await review.setHiddenFieldsForItemType({
         orgId,
-        async (trx) => {
-          const itemType =
-            await context.services.ModerationConfigService.createThreadType(
-              orgId,
-              {
-                ...params.input,
-                schemaFieldRoles: fieldRoles,
-                schema: fields,
-              },
-              trx,
-            );
-          await context.services.ManualReviewToolService.setHiddenFieldsForItemType(
-            {
-              orgId,
-              itemTypeId: itemType.id,
-              hiddenFields: hiddenFields ?? [],
-            },
-            trx,
-          );
-          return itemType;
-        },
-      );
+        itemTypeId: itemType.id,
+        hiddenFields: hiddenFields ?? [],
+      });
+      return itemType;
+    });
+    await context.services.ModerationConfigService.invalidateLatestItemTypesCache(
+      orgId,
+    );
 
     return gqlSuccessResult(threadItemType, 'MutateThreadTypeSuccessResponse');
   },
@@ -925,31 +921,32 @@ const Mutation: GQLMutationResolvers = {
       }
     }
 
-    const threadItemType =
-      await context.services.ModerationConfigService.withItemTypeTransaction(
-        orgId,
-        async (trx) => {
-          const itemType =
-            await context.services.ModerationConfigService.updateThreadType(
-              orgId,
-              {
-                id,
-                description,
-                name: name ?? undefined,
-                schemaFieldRoles: fieldRoles ?? {},
-                schema: fields,
-              },
-              trx,
-            );
-          if (hiddenFields != null) {
-            await context.services.ManualReviewToolService.setHiddenFieldsForItemType(
-              { orgId, itemTypeId: itemType.id, hiddenFields },
-              trx,
-            );
-          }
-          return itemType;
-        },
-      );
+    const threadItemType = await makeKyselyTransactionWithRetry(
+      context.services.KyselyPg,
+    )(async (trx) => {
+      const config =
+        context.services.ModerationConfigService.forTransaction(trx);
+      const review =
+        context.services.ManualReviewToolService.forTransaction(trx);
+      const itemType = await config.updateThreadType(orgId, {
+        id,
+        description,
+        name: name ?? undefined,
+        schemaFieldRoles: fieldRoles ?? {},
+        schema: fields,
+      });
+      if (hiddenFields != null) {
+        await review.setHiddenFieldsForItemType({
+          orgId,
+          itemTypeId: itemType.id,
+          hiddenFields,
+        });
+      }
+      return itemType;
+    });
+    await context.services.ModerationConfigService.invalidateLatestItemTypesCache(
+      orgId,
+    );
 
     return gqlSuccessResult(threadItemType, 'MutateThreadTypeSuccessResponse');
   },
@@ -970,31 +967,28 @@ const Mutation: GQLMutationResolvers = {
       throw new Error('Empty fields for item type');
     }
 
-    const userItemType =
-      await context.services.ModerationConfigService.withItemTypeTransaction(
+    const userItemType = await makeKyselyTransactionWithRetry(
+      context.services.KyselyPg,
+    )(async (trx) => {
+      const config =
+        context.services.ModerationConfigService.forTransaction(trx);
+      const review =
+        context.services.ManualReviewToolService.forTransaction(trx);
+      const itemType = await config.createUserType(orgId, {
+        ...params.input,
+        schemaFieldRoles: fieldRoles,
+        schema: fields,
+      });
+      await review.setHiddenFieldsForItemType({
         orgId,
-        async (trx) => {
-          const itemType =
-            await context.services.ModerationConfigService.createUserType(
-              orgId,
-              {
-                ...params.input,
-                schemaFieldRoles: fieldRoles,
-                schema: fields,
-              },
-              trx,
-            );
-          await context.services.ManualReviewToolService.setHiddenFieldsForItemType(
-            {
-              orgId,
-              itemTypeId: itemType.id,
-              hiddenFields: hiddenFields ?? [],
-            },
-            trx,
-          );
-          return itemType;
-        },
-      );
+        itemTypeId: itemType.id,
+        hiddenFields: hiddenFields ?? [],
+      });
+      return itemType;
+    });
+    await context.services.ModerationConfigService.invalidateLatestItemTypesCache(
+      orgId,
+    );
 
     return gqlSuccessResult(userItemType, 'MutateUserTypeSuccessResponse');
   },
@@ -1016,31 +1010,32 @@ const Mutation: GQLMutationResolvers = {
         throw new Error('Empty fields for item type');
       }
     }
-    const contentItemType =
-      await context.services.ModerationConfigService.withItemTypeTransaction(
-        orgId,
-        async (trx) => {
-          const itemType =
-            await context.services.ModerationConfigService.updateUserType(
-              orgId,
-              {
-                id,
-                description,
-                name: name ?? undefined,
-                schemaFieldRoles: fieldRoles ?? {},
-                schema: fields,
-              },
-              trx,
-            );
-          if (hiddenFields != null) {
-            await context.services.ManualReviewToolService.setHiddenFieldsForItemType(
-              { orgId, itemTypeId: itemType.id, hiddenFields },
-              trx,
-            );
-          }
-          return itemType;
-        },
-      );
+    const contentItemType = await makeKyselyTransactionWithRetry(
+      context.services.KyselyPg,
+    )(async (trx) => {
+      const config =
+        context.services.ModerationConfigService.forTransaction(trx);
+      const review =
+        context.services.ManualReviewToolService.forTransaction(trx);
+      const itemType = await config.updateUserType(orgId, {
+        id,
+        description,
+        name: name ?? undefined,
+        schemaFieldRoles: fieldRoles ?? {},
+        schema: fields,
+      });
+      if (hiddenFields != null) {
+        await review.setHiddenFieldsForItemType({
+          orgId,
+          itemTypeId: itemType.id,
+          hiddenFields,
+        });
+      }
+      return itemType;
+    });
+    await context.services.ModerationConfigService.invalidateLatestItemTypesCache(
+      orgId,
+    );
 
     return gqlSuccessResult(contentItemType, 'MutateUserTypeSuccessResponse');
   },

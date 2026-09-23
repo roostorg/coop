@@ -26,7 +26,10 @@ import {
   resolveManualReviewContentSafely,
   type ManualReviewContentResolver,
 } from '../manualReviewContentResolver.js';
-import { type ModerationConfigService } from '../moderationConfigService/index.js';
+import {
+  type ModerationConfigService,
+  type ModerationConfigServicePg,
+} from '../moderationConfigService/index.js';
 import { type PartialItemsService } from '../partialItemsService/index.js';
 import {
   UserPermission,
@@ -376,7 +379,9 @@ export class ManualReviewToolService {
       this.claimOps,
       getUserHasExistingNcmecReport,
     );
-    this.jobRendering = new JobRendering(pgQuery);
+    this.jobRendering = new JobRendering(
+      pgQuery.$extendTables<ModerationConfigServicePg>(),
+    );
     this.decisionAnalytics = new DecisionAnalytics(pgQueryReadReplica);
     this.commentOps = new CommentOperations(pgQuery);
     this.skipOps = new SkipOperations(pgQuery);
@@ -389,6 +394,27 @@ export class ManualReviewToolService {
       this.jobDecisioning,
       moderationConfigService,
       this.tracer,
+    );
+  }
+
+  // The shared connection contains every service's tables; each module narrows it.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  forTransaction(trx: Kysely<any>) {
+    return new ManualReviewToolService(
+      this.redis,
+      this.ruleEvaluator,
+      this.routingRuleExecutionLogger,
+      trx,
+      trx,
+      this.userStatisticsService,
+      this.getCustomActionsByIds,
+      this.tracer,
+      this.moderationConfigService.forTransaction(trx),
+      this.partialItemsService,
+      this.onRecordDecision,
+      this.onEnqueue,
+      this.getUserHasExistingNcmecReport,
+      this.resolveManualReviewContent,
     );
   }
 
