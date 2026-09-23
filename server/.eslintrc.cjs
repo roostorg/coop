@@ -703,5 +703,43 @@ module.exports = {
         ],
       },
     },
+    {
+      // Production code must not import test-only code.
+      //
+      // tsconfig.build.json's `exclude` cannot enforce this by itself:
+      // excluding a path only stops it being a compilation *root*, never stops
+      // it being pulled into the program through an import edge. That is
+      // exactly how `test/propertyTestingHelpers.ts` came to be type-checked
+      // as production code and emitted into `transpiled/`.
+      //
+      // `excludedFiles` mirrors the test patterns in tsconfig.build.json's
+      // `exclude`. Keep the two in step.
+      files: ['./**/*.ts'],
+      excludedFiles: [
+        '**/*.test.ts',
+        '**/*.spec.ts',
+        '**/__tests__/**/*.ts',
+        'test/**/*.ts',
+        'e2e/**/*.ts',
+      ],
+      rules: {
+        '@typescript-eslint/no-restricted-imports': [
+          'error',
+          {
+            patterns: [
+              {
+                group: ['**/test/**', '**/e2e/**'],
+                message:
+                  'Production code must not import from test/ or e2e/. A test ' +
+                  'helper imported here is compiled into transpiled/ and ships ' +
+                  'in the server image, and drags its dev-only dependencies ' +
+                  'with it. Move the helper to the module it belongs to ' +
+                  '(e.g. utils/) and import it from there.',
+              },
+            ],
+          },
+        ],
+      },
+    },
   ],
 };
