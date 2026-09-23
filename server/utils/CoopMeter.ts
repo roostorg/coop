@@ -31,9 +31,20 @@ export class CoopMeter {
   // expect to be processed by the worker deployment
   public readonly itemsEnqueued: opentelemetry.Counter;
 
+  /**
+   * Metrics related to the Manual Review Tool (MRT) lifecycle
+   */
+  public readonly manualReviewEventsCounter: opentelemetry.Counter;
+  public readonly manualReviewDurationHistogram: opentelemetry.Histogram;
+
+  public readonly manualReviewSnapshotGauge: opentelemetry.Gauge;
+
   constructor() {
     const metricNamespace = 'coop-api';
     const myMeter = opentelemetry.metrics.getMeter('api-service-meter');
+    this.manualReviewSnapshotGauge = myMeter.createGauge(
+      `${metricNamespace}.manual_review.snapshot.gauge`,
+    );
 
     /**
      * Metrics related to user requests to the API
@@ -74,6 +85,16 @@ export class CoopMeter {
     );
     this.itemProcessingQueueDepth = myMeter.createHistogram(
       `${metricNamespace}.items.queue-depth.histogram`,
+    );
+
+    /**
+     * Metrics related to the Manual Review Tool
+     */
+    this.manualReviewEventsCounter = myMeter.createCounter(
+      `${metricNamespace}.manual_review.events.counter`,
+    );
+    this.manualReviewDurationHistogram = myMeter.createHistogram(
+      `${metricNamespace}.manual_review.duration_ms.histogram`,
     );
   }
 }

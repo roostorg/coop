@@ -65,6 +65,8 @@ import {
   type OriginJobInfo,
   type StoredManualReviewJob,
 } from '../manualReviewToolService.js';
+import { ManualReviewMetrics } from '../utils/ManualReviewMetrics.js';
+import { createQueueSnapshot } from '../utils/ReviewQueueSnapshot.js';
 
 export type ManualReviewQueue = {
   id: string;
@@ -163,6 +165,7 @@ export default class QueueOperations {
     Bind1<typeof getBullWorker<ManualReviewAppealJob>>
   >;
   private readonly transactionWithRetry: KyselyTransactionWithRetry<ManualReviewToolServicePg>;
+  private readonly metrics: ManualReviewMetrics;
 
   constructor(
     private readonly pgQuery: Kysely<ManualReviewToolServicePg>,
@@ -170,7 +173,9 @@ export default class QueueOperations {
     private readonly moderationConfigService: Dependencies['ModerationConfigService'],
     redis: RedisConnection,
     private readonly tracer: Dependencies['Tracer'],
+    meter?: Dependencies['Meter'],
   ) {
+    this.metrics = new ManualReviewMetrics(meter);
     this.transactionWithRetry = makeKyselyTransactionWithRetry(this.pgQuery);
     // Reassingment here is a hack to work around TS syntax limitations
     // with generic instantiation expressions.
@@ -874,6 +879,11 @@ export default class QueueOperations {
       { removeOnComplete: true, jobId: bullJobId },
     );
 
+    this.metrics.event('enqueue_succeeded', {
+      queue_id: queueId,
+      item_type_id: payload.item.itemTypeIdentifier.id,
+    });
+
     // Again, because new job data comes in in the non-legacy format, it's safe
     // to cast.
     return newJob.data satisfies StoredManualReviewJob as ManualReviewJob;
@@ -920,6 +930,11 @@ export default class QueueOperations {
       },
       { removeOnComplete: true, jobId: bullJobId },
     );
+
+    this.metrics.event('appeal_enqueue_succeeded', {
+      queue_id: queueId,
+      item_type_id: payload.item.itemTypeIdentifier.id,
+    });
 
     return newJob.data;
   }
@@ -1676,6 +1691,17 @@ export default class QueueOperations {
       ),
     );
     return counts.reduce((sum, count) => sum + count, 0);
+  }
+
+  async getMetricsSnapshot(opts: {
+    orgId: string;
+    queueId: string;
+    isAppealsQueue: boolean;
+  }) {
+    const queue = opts.isAppealsQueue
+      ? await this.#getBullAppealQueue(opts.orgId, opts.queueId)
+      : await this.#getBullQueue(opts.orgId, opts.queueId);
+    return createQueueSnapshot(queue);
   }
 
   async getOldestJobCreatedAt(opts: {

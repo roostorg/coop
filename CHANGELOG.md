@@ -8,6 +8,10 @@ For more information about each release including git tags and artifacts, see [R
 
 ## [Unreleased]
 
+### Added
+
+- Native OpenTelemetry manual-review lifecycle counters and elapsed-time histograms, plus opt-in queue snapshots.
+
 ## [1.1.0-alpha] - 2026-09-21
 
 ### Added

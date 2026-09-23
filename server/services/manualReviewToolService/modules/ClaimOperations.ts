@@ -1,12 +1,21 @@
 import { type Kysely } from 'kysely';
 
+import { type Dependencies } from '../../../iocContainer/index.js';
 import { makeNotFoundError } from '../../../utils/errors.js';
 import { isForeignKeyViolationError } from '../../../utils/kysely.js';
 import { type ManualReviewToolServicePg } from '../dbTypes.js';
 import { type JobId } from '../manualReviewToolService.js';
+import { ManualReviewMetrics } from '../utils/ManualReviewMetrics.js';
 
 export default class ClaimOperations {
-  constructor(private readonly pgQuery: Kysely<ManualReviewToolServicePg>) {}
+  private readonly metrics: ManualReviewMetrics;
+
+  constructor(
+    private readonly pgQuery: Kysely<ManualReviewToolServicePg>,
+    meter?: Dependencies['Meter'],
+  ) {
+    this.metrics = new ManualReviewMetrics(meter);
+  }
 
   async logClaim(opts: {
     orgId: string;
@@ -25,6 +34,10 @@ export default class ClaimOperations {
           user_id: userId,
         })
         .executeTakeFirst();
+
+      this.metrics.event('claim_recorded', {
+        queue_id: queueId,
+      });
     } catch (e) {
       if (isForeignKeyViolationError(e)) {
         throw makeNotFoundError('Queue not found', { shouldErrorSpan: true });

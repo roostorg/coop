@@ -28,6 +28,7 @@ import {
   type ManualReviewJobEnqueueSourceInfo,
   type ReportHistory,
 } from '../manualReviewToolService.js';
+import { ManualReviewMetrics } from '../utils/ManualReviewMetrics.js';
 import type ClaimOperations from './ClaimOperations.js';
 import type ManualReviewToolSettings from './ManualReviewToolSettings.js';
 import type QueueOperations from './QueueOperations.js';
@@ -187,6 +188,8 @@ export const NCMEC_ESCALATION_SKIP_WARNING =
   'NCMEC escalation was skipped: this user already has a submitted NCMEC report.';
 
 export default class JobDecisioning {
+  private readonly metrics: ManualReviewMetrics;
+
   constructor(
     private readonly queueOps: QueueOperations,
     private readonly pgQuery: Kysely<ManualReviewToolServicePg>,
@@ -201,7 +204,10 @@ export default class JobDecisioning {
       userId: string;
       userItemTypeId: string;
     }) => Promise<boolean>,
-  ) {}
+    meter?: Dependencies['Meter'],
+  ) {
+    this.metrics = new ManualReviewMetrics(meter);
+  }
 
   async submitDecision(opts: SubmitDecisionInput) {
     const {
@@ -758,7 +764,7 @@ export default class JobDecisioning {
             })
         : null;
 
-    return this.pgQuery
+    await this.pgQuery
       .insertInto('manual_review_tool.manual_review_decisions')
       .values({
         id,
@@ -777,6 +783,62 @@ export default class JobDecisioning {
         assigned_at: assignedAt,
       })
       .execute();
+
+    // Emit metrics after successful DB insert (to avoid duplicate/retry emissions)
+    this.#emitDecisionMetrics({
+      decisionComponents,
+      queueId,
+      job,
+      assignedAt,
+      isAutomaticClose,
+    });
+  }
+
+  #emitDecisionMetrics(opts: {
+    decisionComponents: ManualReviewDecisionComponent[];
+    queueId: string;
+    job: ManualReviewJob | ManualReviewAppealJob;
+    assignedAt: Date | null;
+    isAutomaticClose: boolean;
+  }): void {
+    const { decisionComponents, queueId, job, assignedAt, isAutomaticClose } =
+      opts;
+
+    const attributes = {
+      queue_id: queueId,
+      item_type_id: job.payload.item.itemTypeIdentifier.id,
+      decision_type: this.#getDecisionType(decisionComponents),
+      automatic: isAutomaticClose,
+    };
+    const recordedAt = new Date();
+    this.metrics.event('decision_stored', attributes);
+    this.metrics.duration(
+      'total_to_decision',
+      job.createdAt,
+      recordedAt,
+      attributes,
+    );
+    if (!isAutomaticClose) {
+      this.metrics.duration(
+        'claim_elapsed',
+        assignedAt,
+        recordedAt,
+        attributes,
+      );
+    }
+  }
+
+  #getDecisionType(components: ManualReviewDecisionComponent[]): string {
+    if (components.length === 0) {
+      return 'UNKNOWN';
+    }
+
+    if (components.length > 1) {
+      return 'multiple';
+    }
+
+    const component = components[0];
+    return component.type;
   }
 
   async getNcmecDecisions(opts: { startDate: Date; endDate: Date }) {

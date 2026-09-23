@@ -114,6 +114,44 @@ After the iframe loads, and whenever a reviewer changes their overlay settings, 
 
 `blur` ranges from `0` (none) to `6` (strongest); `grayscale` and `sepia` are simple on/off filters. Your proxy's page should listen for this message and apply the requested effects to the content it's displaying.
 
+## Manual-review telemetry
+
+The existing OpenTelemetry meter exports optional manual-review instruments:
+
+- `coop-api.manual_review.events.counter` with `event` and `queue_id`. Events
+  distinguish successful enqueue operations, acquired claims, stored claim/skip
+  records, newly stored decisions, content-resolution outcomes and missing timing
+  samples. Enqueue calls can deduplicate; they are not unique job counts. A
+  stored decision is not proof that its downstream action completed.
+- `coop-api.manual_review.duration_ms.histogram` with `phase=claim_elapsed` or
+  `total_to_decision`, plus queue, item type, decision type and automatic flag.
+  Claim elapsed includes idle time. Automatic closes have no human claim sample.
+  Invalid/missing timestamps emit availability events instead of zero durations.
+- `coop-api.manual_review.snapshot.gauge` with `kind`. Set
+  `MANUAL_REVIEW_METRICS_ORG_ID` on the server to opt in to that organization's
+  snapshots. Without this setting, no polling takes place. The default meter
+  remains a no-op unless the deployment registers an OpenTelemetry provider.
+
+Snapshot collection uses the existing queue service and public BullMQ APIs,
+about once a minute after the preceding cycle completes. Reads are bounded to
+50 queues and 1,000 ready-job timestamps per queue. No media is fetched or job
+lock acquired. BullMQ may hydrate queued payloads internally; only numeric
+aggregates and static queue identifiers leave the snapshot helper.
+
+The `kind` values separate jobs by state, observed oldest-ready age, timestamp
+coverage, per-queue sample time and collection health/freshness. Query each kind
+separately. Waiting and prioritized jobs contribute to age; active, paused and
+delayed jobs do not. Age starts at the BullMQ entry timestamp. Coverage means the
+bounded read passed its checks, not an atomic snapshot. Concurrent queue changes
+or partial reads can understate age. Failed collection leaves the last backlog
+sample unchanged; inspect health and advancing per-queue sample timestamps.
+
+Counters are best-effort operational signals, not an audit ledger. Replica
+snapshots must not be summed. StatsD exporters may repeat stale gauges and
+export non-mergeable per-host histogram percentiles. Configure privacy and
+cardinality controls in the deployment's provider. No content, reviewer, URL
+or free-text reason is added to metric attributes by this instrumentation.
+
 ## Historical reference
 
 For historical reference, AWS infrastructure code (CDK, Helm charts, Pulumi, CDKTF) that was previously used for production deployments is available in the [`0.1` tag](https://github.com/roostorg/coop/tree/0.1/.devops). That infrastructure code may have drifted from the current application architecture and is no longer maintained, but may serve as a reference for your own deployment.

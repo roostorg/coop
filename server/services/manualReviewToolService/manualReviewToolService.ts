@@ -84,6 +84,8 @@ import SkipOperations, {
 import UserReportSweep, {
   type ClearOtherReportsResult,
 } from './modules/UserReportSweep.js';
+import { ManualReviewMetrics } from './utils/ManualReviewMetrics.js';
+import { startReviewMetricsPolling } from './utils/ReviewMetricsPolling.js';
 
 // An id that's unique across all jobs ever added to any queue (pending or not).
 // This is the id that's passed into the MRT Service by callers to identify a
@@ -302,6 +304,8 @@ export type ManualReviewJobKind = ManualReviewJobPayload['kind'];
 
 export class ManualReviewToolService {
   private readonly queueOps: QueueOperations;
+  private readonly metrics: ManualReviewMetrics;
+  private readonly stopMetrics?: () => void;
   private readonly jobRendering: JobRendering;
   private readonly jobRouting: JobRouting;
   private readonly appealsJobRouting: AppealsJobRouting;
@@ -337,14 +341,43 @@ export class ManualReviewToolService {
       userItemTypeId: string;
     }) => Promise<boolean>,
     private readonly resolveManualReviewContent: ManualReviewContentResolver,
+    meter?: Dependencies['Meter'],
+    metricsOrgId?: string,
   ) {
+    this.metrics = new ManualReviewMetrics(meter);
     this.queueOps = new QueueOperations(
       pgQuery,
       pgQueryReadReplica,
       moderationConfigService,
       redis,
       tracer,
+      meter,
     );
+    if (meter && metricsOrgId) {
+      this.stopMetrics = startReviewMetricsPolling(this.metrics, async () => {
+        const queues =
+          await this.queueOps.getAllQueuesForOrgAndDangerouslyBypassPermissioning(
+            metricsOrgId,
+          );
+        if (queues.length > 50)
+          throw new Error('Review metrics queue limit exceeded');
+        const results = [];
+        const deadline = Date.now() + 20_000;
+        for (const queue of queues) {
+          if (Date.now() > deadline)
+            throw new Error('Review metrics collection deadline exceeded');
+          results.push({
+            queueId: queue.id,
+            snapshot: await this.queueOps.getMetricsSnapshot({
+              orgId: metricsOrgId,
+              queueId: queue.id,
+              isAppealsQueue: queue.isAppealsQueue,
+            }),
+          });
+        }
+        return results;
+      });
+    }
     this.jobEnrichment = new JobEnrichment(
       partialItemsService,
       userStatisticsService,
@@ -364,7 +397,7 @@ export class ManualReviewToolService {
       //routingRuleExecutionLogger,
     );
     this.manualReviewToolSettings = new ManualReviewToolSettings(pgQuery);
-    this.claimOps = new ClaimOperations(pgQuery);
+    this.claimOps = new ClaimOperations(pgQuery, meter);
     this.jobDecisioning = new JobDecisioning(
       this.queueOps,
       pgQuery,
@@ -375,11 +408,12 @@ export class ManualReviewToolService {
       this.manualReviewToolSettings,
       this.claimOps,
       getUserHasExistingNcmecReport,
+      meter,
     );
     this.jobRendering = new JobRendering(pgQuery);
     this.decisionAnalytics = new DecisionAnalytics(pgQueryReadReplica);
     this.commentOps = new CommentOperations(pgQuery);
-    this.skipOps = new SkipOperations(pgQuery);
+    this.skipOps = new SkipOperations(pgQuery, meter);
     this.reporterInvalidation = new ReporterInvalidation(
       this.queueOps,
       this.tracer,
@@ -1135,7 +1169,14 @@ export class ManualReviewToolService {
             }),
         });
         span.setAttribute('content.resolution_authorized', canResolve);
-        if (!canResolve) return opts.job;
+        const attributes = {
+          queue_id: opts.queueId,
+          item_type_id: opts.job.payload.item.itemTypeIdentifier.id,
+        };
+        if (!canResolve) {
+          this.metrics.event('content_resolution_not_authorized', attributes);
+          return opts.job;
+        }
 
         return resolveManualReviewContentSafely(
           {
@@ -1146,9 +1187,17 @@ export class ManualReviewToolService {
           },
           this.resolveManualReviewContent,
           {
-            onResolved: (count) =>
-              span.setAttribute('content.resolved_count', count),
-            onError: (error) => this.tracer.logSpanFailed(span, error),
+            onResolved: (count) => {
+              span.setAttribute('content.resolved_count', count);
+              this.metrics.event(
+                count > 0 ? 'content_resolved' : 'content_resolution_unchanged',
+                attributes,
+              );
+            },
+            onError: (error) => {
+              this.tracer.logSpanFailed(span, error);
+              this.metrics.event('content_resolution_failed', attributes);
+            },
           },
         );
       },
@@ -1422,6 +1471,7 @@ export class ManualReviewToolService {
     jobId: JobId;
   }) {
     const { orgId, queueId, userId, jobId } = opts;
+    this.metrics.event('claim_acquired', { queue_id: queueId });
     try {
       await this.claimOps.logClaim({
         orgId,
@@ -1640,6 +1690,7 @@ export class ManualReviewToolService {
   }
 
   async close() {
+    this.stopMetrics?.();
     return Promise.all([this.queueOps.close(), this.jobRouting.close()]);
   }
 }
