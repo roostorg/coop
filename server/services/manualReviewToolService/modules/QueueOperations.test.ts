@@ -188,6 +188,165 @@ describe('QueueOperations', () => {
     },
   );
 
+  // These operations previously bypassed queue permissions, allowing any
+  // authenticated user to read and dequeue jobs from every queue in the org.
+  testWithQueueAndActions()(
+    'getReviewableQueuesForUser excludes a queue the user is not a member of',
+    async ({ org, queue, mrtService, deps }) => {
+      const { user: outsider } = await createUser(deps.KyselyPg, org.id);
+      const reviewable = await mrtService.getReviewableQueuesForUser({
+        invoker: {
+          userId: outsider.id,
+          permissions: [UserPermission.VIEW_MRT],
+          orgId: org.id,
+        },
+      });
+      expect(reviewable.map((q) => q.id)).not.toContain(queue.id);
+    },
+  );
+
+  testWithQueueAndActions()(
+    'getReviewableQueuesForUser includes a queue the user is a member of',
+    async ({ org, queue, user, mrtService }) => {
+      const reviewable = await mrtService.getReviewableQueuesForUser({
+        invoker: {
+          userId: user.id,
+          permissions: [UserPermission.VIEW_MRT],
+          orgId: org.id,
+        },
+      });
+      expect(reviewable.map((q) => q.id)).toContain(queue.id);
+    },
+  );
+
+  testWithQueueAndActions()(
+    'getReviewableQueuesForUser returns nothing for a user without VIEW_MRT, even for a queue they are a member of',
+    async ({ org, user, mrtService }) => {
+      const reviewable = await mrtService.getReviewableQueuesForUser({
+        invoker: { userId: user.id, permissions: [], orgId: org.id },
+      });
+      expect(reviewable).toEqual([]);
+    },
+  );
+
+  testWithQueueAndActions()(
+    'getReviewableQueuesForUser lets EDIT_MRT_QUEUES holders view every queue',
+    async ({ org, queue, mrtService, deps }) => {
+      const { user: outsider } = await createUser(deps.KyselyPg, org.id);
+      const reviewable = await mrtService.getReviewableQueuesForUser({
+        invoker: {
+          userId: outsider.id,
+          permissions: [UserPermission.EDIT_MRT_QUEUES],
+          orgId: org.id,
+        },
+      });
+      expect(reviewable.map((q) => q.id)).toContain(queue.id);
+    },
+  );
+
+  testWithQueueAndActions()(
+    'getReviewableQueuesForUser filters requested queue IDs by reviewer access',
+    async ({ org, queue, user, mrtService, deps }) => {
+      const { user: outsider } = await createUser(deps.KyselyPg, org.id);
+      await expect(
+        mrtService.getReviewableQueuesForUser({
+          invoker: {
+            userId: outsider.id,
+            permissions: [UserPermission.VIEW_MRT],
+            orgId: org.id,
+          },
+          queueIds: [queue.id],
+        }),
+      ).resolves.toEqual([]);
+      await expect(
+        mrtService.getReviewableQueuesForUser({
+          invoker: {
+            userId: user.id,
+            permissions: [UserPermission.VIEW_MRT],
+            orgId: org.id,
+          },
+          queueIds: [queue.id],
+        }),
+      ).resolves.toEqual([expect.objectContaining({ id: queue.id })]);
+    },
+  );
+
+  testWithQueueAndActions()(
+    'getReviewableQueuesForUser lets a queue manager filter without membership',
+    async ({ org, queue, mrtService, deps }) => {
+      const { user: outsider } = await createUser(deps.KyselyPg, org.id);
+      await expect(
+        mrtService.getReviewableQueuesForUser({
+          invoker: {
+            userId: outsider.id,
+            permissions: [UserPermission.EDIT_MRT_QUEUES],
+            orgId: org.id,
+          },
+          queueIds: [queue.id],
+        }),
+      ).resolves.toEqual([expect.objectContaining({ id: queue.id })]);
+    },
+  );
+
+  testWithQueueAndActions()(
+    'getExistingJobsForItem is scoped to the given queue IDs',
+    async ({ org, queue, user, mrtService, kyselyPg }) => {
+      const jobPayload = makeDummyMrtJobPayload();
+      await mrtService['queueOps']['addJob']({
+        orgId: org.id,
+        queueId: queue.id,
+        enqueueSourceInfo: { kind: 'REPORT' },
+        jobPayload,
+      });
+      const itemId = jobPayload.payload.item.itemId;
+      const itemTypeId = jobPayload.payload.item.itemTypeIdentifier.id;
+      await kyselyPg
+        .insertInto('manual_review_tool.job_creations')
+        .values({
+          id: bullJobIdtoExternalJobId(
+            itemIdToBullJobId({ id: itemId, typeId: itemTypeId }),
+          ),
+          org_id: org.id,
+          item_id: itemId,
+          item_type_id: itemTypeId,
+          queue_id: queue.id,
+          created_at: new Date(),
+          enqueue_source_info: {},
+        })
+        .execute();
+
+      const inQueue = await mrtService.getExistingJobsForItem({
+        orgId: org.id,
+        itemId,
+        itemTypeId,
+        queueIds: [queue.id],
+      });
+      expect(inQueue.map((it) => it.queueId)).toEqual([queue.id]);
+
+      const { queue: otherQueue } = await createMrtQueue({
+        orgId: org.id,
+        mrtService,
+        userId: user.id,
+        name: `other-queue-${uid()}`,
+      });
+      const otherQueueOnly = await mrtService.getExistingJobsForItem({
+        orgId: org.id,
+        itemId,
+        itemTypeId,
+        queueIds: [otherQueue.id],
+      });
+      expect(otherQueueOnly).toEqual([]);
+
+      const noQueues = await mrtService.getExistingJobsForItem({
+        orgId: org.id,
+        itemId,
+        itemTypeId,
+        queueIds: [],
+      });
+      expect(noQueues).toEqual([]);
+    },
+  );
+
   // Regression: `deleteAllJobsFromQueue` is irreversible and used to accept
   // EDIT_MRT_QUEUES (held by moderator managers) -- that gap accidentally
   // cleared a production queue. It now requires MANAGE_ORG.

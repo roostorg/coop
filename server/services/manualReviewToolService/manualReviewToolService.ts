@@ -1032,6 +1032,7 @@ export class ManualReviewToolService {
    */
   async getReviewableQueuesForUser(opts: {
     invoker: Invoker;
+    queueIds?: readonly string[];
   }): Promise<ManualReviewQueue[]> {
     return this.queueOps.getReviewableQueuesForUser(opts);
   }
@@ -1283,6 +1284,7 @@ export class ManualReviewToolService {
     orgId: string;
     itemId: string;
     itemTypeId: string;
+    queueIds: string[];
   }) {
     return this.queueOps.getExistingJobsForItem(opts);
   }

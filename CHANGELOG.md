@@ -11,6 +11,12 @@ For more information about each release including git tags and artifacts, see [R
 ### Added
 
 - Setting to add media from accepted NCMEC reports to a hash bank ([#1208](https://github.com/roostorg/coop/pull/1208) by [@maarkN](https://github.com/maarkN), closes [#196](https://github.com/roostorg/coop/issues/196))
+
+## [1.1.0-alpha] - 2026-09-21
+
+### Added
+
+- REST configuration reads for policies, actions, and item types ([#1144](https://github.com/roostorg/coop/pull/1144) by [@taobojlen](https://github.com/taobojlen))
 - List parameters used in the action in the item action history view ([#1173](https://github.com/roostorg/coop/pull/1173) by [@maarkN](https://github.com/maarkN), closes [#833](https://github.com/roostorg/coop/issues/833))
 - Manual Review Analytics with average handle time per moderator ([#1022](https://github.com/roostorg/coop/pull/1022) by [@juanmrad](https://github.com/juanmrad), closes [#380](https://github.com/roostorg/coop/issues/380))
 - Support for text-only NCMEC reports ([#866](https://github.com/roostorg/coop/pull/866), [#881](https://github.com/roostorg/coop/pull/881) by [@calebmcquaid](https://github.com/calebmcquaid), closes [#661](https://github.com/roostorg/coop/issues/661))
@@ -19,7 +25,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Changed
 
-- Scylla is now optional via `ITEM_INVESTIGATION_AND_STRIKES_ENABLED` ([#918](https://github.com/roostorg/coop/pull/918) by [@sunilatlas](https://github.com/sunilatlas))
+- Scylla is now optional via `SCYLLA_ENABLED` ([#918](https://github.com/roostorg/coop/pull/918) by [@sunilatlas](https://github.com/sunilatlas), [#1268](https://github.com/roostorg/coop/pull/1268) by [@thisismissem](https://github.com/thisismissem))
 - Settings "Other" tab renamed to "Partial Items" and its settings relocated ([#965](https://github.com/roostorg/coop/pull/965) by [@golden-fox07](https://github.com/golden-fox07))
 - Queue deletion is refused while routing rules still reference the queue ([#808](https://github.com/roostorg/coop/pull/808) by [@reitblatt](https://github.com/reitblatt))
 - Long text fields in the review console collapse behind a "Read more" control ([#903](https://github.com/roostorg/coop/pull/903) by [@taobojlen](https://github.com/taobojlen))
@@ -49,6 +55,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Security
 
+- Review queue and job access control hardening ([#1151](https://github.com/roostorg/coop/pull/1151) by [@serendipty01](https://github.com/serendipty01) and [@cassidyjames](https://github.com/cassidyjames))
 - Passwords are hashed with Argon2id instead of bcrypt at cost factor 5 ([#901](https://github.com/roostorg/coop/pull/901) by [@serendipty01](https://github.com/serendipty01), closes [#900](https://github.com/roostorg/coop/issues/900))
 - Minimum password length raised to 15 and enforced server-side ([#1065](https://github.com/roostorg/coop/pull/1065), [#1094](https://github.com/roostorg/coop/pull/1094) by [@serendipty01](https://github.com/serendipty01))
 
@@ -315,7 +322,8 @@ We're developing Coop in the open and want to hear from you. Whether you're test
 
 This release was possible because of the efforts of contributors who worked through complex redesign, partners who believed in the vision of open source safety tools, and the broader trust and safety community who provided feedback and guidance. Thank you especially to @juanmrad, @pawiecz, @kbicevski, Sjoerd Simons, @emanueleaina, @dom-notion, @cassidyjames, @vinaysrao1, @wayjaywang, and @julietshen.
 
-[unreleased]: https://github.com/roostorg/coop/compare/1.0.2...HEAD
+[unreleased]: https://github.com/roostorg/coop/compare/1.1.0-alpha...HEAD
+[1.1.0-alpha]: https://github.com/roostorg/coop/compare/1.0.2...1.1.0-alpha
 [1.0.2]: https://github.com/roostorg/coop/compare/1.0.1...1.0.2
 [1.0.1]: https://github.com/roostorg/coop/compare/1.0.0...1.0.1
 [1.0.0]: https://github.com/roostorg/coop/compare/0.1...1.0.0

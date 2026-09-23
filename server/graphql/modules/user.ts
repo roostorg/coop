@@ -8,6 +8,7 @@ import {
 } from '../generated.js';
 import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
 import { gqlSuccessResult } from '../utils/gqlResult.js';
+import { assertQueueIsReviewable } from '../utils/manualReviewQueueAuthorization.js';
 
 const typeDefs = /* GraphQL */ `
   enum UserRole {
@@ -261,6 +262,10 @@ const Mutation: GQLMutationResolvers = {
     if (user == null) {
       throw unauthenticatedError('User required.');
     }
+    await assertQueueIsReviewable(
+      { id: params.queueId, orgId: user.orgId },
+      context,
+    );
     await context.services.ManualReviewToolService.addFavoriteQueueForUser({
       userId: user.id,
       orgId: user.orgId,
@@ -372,10 +377,37 @@ const User: GQLUserResolvers = {
     };
   },
   async favoriteMRTQueues(user, _, context) {
-    return context.services.ManualReviewToolService.getFavoriteQueuesForUser({
-      userId: user.id,
-      orgId: user.orgId,
-    });
+    const caller = context.getUser();
+    if (caller == null) {
+      throw unauthenticatedError('User required.');
+    }
+    if (caller.id !== user.id || caller.orgId !== user.orgId) {
+      throw forbiddenError('User does not have access to these queues');
+    }
+
+    const favorites =
+      await context.services.ManualReviewToolService.getFavoriteQueuesForUser({
+        userId: user.id,
+        orgId: user.orgId,
+      });
+    if (favorites.length === 0) {
+      return [];
+    }
+    const reviewableQueues =
+      await context.services.ManualReviewToolService.getReviewableQueuesForUser(
+        {
+          invoker: {
+            userId: caller.id,
+            permissions: caller.getPermissions(),
+            orgId: caller.orgId,
+          },
+          queueIds: favorites.map((queue) => queue.id),
+        },
+      );
+    const reviewableQueueIds = new Set(
+      reviewableQueues.map((queue) => queue.id),
+    );
+    return favorites.filter((queue) => reviewableQueueIds.has(queue.id));
   },
   async reviewableQueues(_, { queueIds }, context) {
     const user = context.getUser();
@@ -391,12 +423,9 @@ const User: GQLUserResolvers = {
             permissions: user.getPermissions(),
             orgId: user.orgId,
           },
+          queueIds: queueIds ?? undefined,
         },
       );
-
-    if (queueIds) {
-      return queues.filter((it) => queueIds.includes(it.id));
-    }
 
     return queues;
   },
