@@ -1,6 +1,7 @@
 import { type Dependencies } from '../../iocContainer/index.js';
 import { type ItemTypeKind } from '../../services/moderationConfigService/index.js';
 import { makeBadRequestError, makeNotFoundError } from '../../utils/errors.js';
+import { makeKyselyTransactionWithRetry } from '../../utils/kyselyTransactionWithRetry.js';
 import { assertUnreachable } from '../../utils/misc.js';
 import { type RequestHandlerWithBodies } from '../../utils/route-helpers.js';
 import {
@@ -56,9 +57,6 @@ async function createForKind(
     schema: NonNullable<ItemTypeWrite['schema']>;
     schemaFieldRoles: Record<string, string | null>;
   },
-  trx: Parameters<
-    Dependencies['ModerationConfigService']['createContentType']
-  >[2],
 ) {
   const { kind, hiddenFields: _hiddenFields, ...input } = body;
   const normalized = {
@@ -68,17 +66,18 @@ async function createForKind(
   };
   switch (kind) {
     case 'CONTENT':
-      return service.createContentType(orgId, normalized, trx);
+      return service.createContentType(orgId, normalized);
     case 'THREAD':
-      return service.createThreadType(orgId, normalized, trx);
+      return service.createThreadType(orgId, normalized);
     case 'USER':
-      return service.createUserType(orgId, normalized, trx);
+      return service.createUserType(orgId, normalized);
     default:
       return assertUnreachable(kind);
   }
 }
 
 export function createItemType({
+  KyselyPg,
   ModerationConfigService,
   ManualReviewToolService,
 }: Dependencies): RequestHandlerWithBodies<
@@ -93,31 +92,24 @@ export function createItemType({
       schema: NonNullable<ItemTypeWrite['schema']>;
       schemaFieldRoles: Record<string, string | null>;
     };
-    const item = await ModerationConfigService.withItemTypeTransaction(
-      orgId,
-      async (trx) => {
-        const created = await createForKind(
-          ModerationConfigService,
-          orgId,
-          body,
-          trx,
-        );
-        await ManualReviewToolService.setHiddenFieldsForItemType(
-          {
-            orgId,
-            itemTypeId: created.id,
-            hiddenFields: body.hiddenFields ?? [],
-          },
-          trx,
-        );
-        return created;
-      },
-    );
+    const item = await makeKyselyTransactionWithRetry(KyselyPg)(async (trx) => {
+      const config = ModerationConfigService.forTransaction(trx);
+      const review = ManualReviewToolService.forTransaction(trx);
+      const created = await createForKind(config, orgId, body);
+      await review.setHiddenFieldsForItemType({
+        orgId,
+        itemTypeId: created.id,
+        hiddenFields: body.hiddenFields ?? [],
+      });
+      return created;
+    });
+    await ModerationConfigService.invalidateLatestItemTypesCache(orgId);
     res.status(201).json(serializeItemType(item));
   };
 }
 
 export function patchItemType({
+  KyselyPg,
   ModerationConfigService,
   ManualReviewToolService,
 }: Dependencies): RequestHandlerWithBodies<
@@ -142,44 +134,33 @@ export function patchItemType({
         ? {}
         : { schemaFieldRoles: roles(current.kind, schemaFieldRoles, true) }),
     };
-    const item = await ModerationConfigService.withItemTypeTransaction(
-      orgId,
-      async (trx) => {
-        let updated;
-        switch (current.kind) {
-          case 'CONTENT':
-            updated = await ModerationConfigService.updateContentType(
-              orgId,
-              input,
-              trx,
-            );
-            break;
-          case 'THREAD':
-            updated = await ModerationConfigService.updateThreadType(
-              orgId,
-              input,
-              trx,
-            );
-            break;
-          case 'USER':
-            updated = await ModerationConfigService.updateUserType(
-              orgId,
-              input,
-              trx,
-            );
-            break;
-          default:
-            return assertUnreachable(current);
-        }
-        if (hiddenFields !== undefined) {
-          await ManualReviewToolService.setHiddenFieldsForItemType(
-            { orgId, itemTypeId: id, hiddenFields },
-            trx,
-          );
-        }
-        return updated;
-      },
-    );
+    const item = await makeKyselyTransactionWithRetry(KyselyPg)(async (trx) => {
+      const config = ModerationConfigService.forTransaction(trx);
+      const review = ManualReviewToolService.forTransaction(trx);
+      let updated;
+      switch (current.kind) {
+        case 'CONTENT':
+          updated = await config.updateContentType(orgId, input);
+          break;
+        case 'THREAD':
+          updated = await config.updateThreadType(orgId, input);
+          break;
+        case 'USER':
+          updated = await config.updateUserType(orgId, input);
+          break;
+        default:
+          return assertUnreachable(current);
+      }
+      if (hiddenFields !== undefined) {
+        await review.setHiddenFieldsForItemType({
+          orgId,
+          itemTypeId: id,
+          hiddenFields,
+        });
+      }
+      return updated;
+    });
+    await ModerationConfigService.invalidateLatestItemTypesCache(orgId);
     res.status(200).json(serializeItemType(item));
   };
 }
