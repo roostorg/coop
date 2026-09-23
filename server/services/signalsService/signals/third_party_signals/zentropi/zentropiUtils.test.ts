@@ -200,16 +200,13 @@ describe('zentropiUtils', () => {
         status: 404,
       }) as unknown as FetchHTTP;
 
-      try {
-        await getZentropiScores(mockFetchHTTP, {
+      await expect(
+        getZentropiScores(mockFetchHTTP, {
           text: 'test',
           apiKey: 'key',
           labelerVersionId: 'lv_bad',
-        });
-        throw new Error('Expected error to be thrown');
-      } catch (e) {
-        expect(isCoopErrorOfType(e, 'SignalPermanentError')).toBe(true);
-      }
+        }),
+      ).rejects.toSatisfy((e) => isCoopErrorOfType(e, 'SignalPermanentError'));
     });
 
     it('returns SignalPermanentError for 401', async () => {
@@ -218,16 +215,13 @@ describe('zentropiUtils', () => {
         status: 401,
       }) as unknown as FetchHTTP;
 
-      try {
-        await getZentropiScores(mockFetchHTTP, {
+      await expect(
+        getZentropiScores(mockFetchHTTP, {
           text: 'test',
           apiKey: 'bad-key',
           labelerVersionId: 'lv_123',
-        });
-        throw new Error('Expected error to be thrown');
-      } catch (e) {
-        expect(isCoopErrorOfType(e, 'SignalPermanentError')).toBe(true);
-      }
+        }),
+      ).rejects.toSatisfy((e) => isCoopErrorOfType(e, 'SignalPermanentError'));
     });
 
     it('throws transient error for 5xx', async () => {
@@ -245,15 +239,15 @@ describe('zentropiUtils', () => {
       ).rejects.toThrow('Zentropi API error: 500');
 
       // Verify it's NOT a SignalPermanentError
-      try {
-        await getZentropiScores(mockFetchHTTP, {
+      await expect(
+        getZentropiScores(mockFetchHTTP, {
           text: 'test',
           apiKey: 'key',
           labelerVersionId: 'lv_123',
-        });
-      } catch (e) {
-        expect(isCoopErrorOfType(e, 'SignalPermanentError')).toBe(false);
-      }
+        }),
+      ).rejects.not.toSatisfy((e) =>
+        isCoopErrorOfType(e, 'SignalPermanentError'),
+      );
     });
 
     it('returns parsed response on success', async () => {
