@@ -2,7 +2,7 @@
 
 import { SpanStatusCode } from '@opentelemetry/api';
 import { type ItemIdentifier } from '@roostorg/coop-types';
-import { type Kysely } from 'kysely';
+import { type Kysely, type Transaction } from 'kysely';
 import _ from 'lodash';
 import { type Opaque } from 'type-fest';
 
@@ -15,6 +15,7 @@ import {
 } from '../../utils/errors.js';
 import { isUniqueViolationError } from '../../utils/kysely.js';
 import type { OmitEach, ReplaceDeep } from '../../utils/typescript-types.js';
+import { type CombinedPg } from '../combinedDbTypes.js';
 import {
   getFieldValueForRole,
   getFieldValueOrValues,
@@ -397,15 +398,16 @@ export class ManualReviewToolService {
     );
   }
 
-  // The shared connection contains every service's tables; each module narrows it.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  forTransaction(trx: Kysely<any>) {
+  forTransaction(trx: Transaction<CombinedPg>) {
+    const query = trx
+      .$extendTables<ManualReviewToolServicePg>()
+      .$pickTables<keyof ManualReviewToolServicePg>();
     return new ManualReviewToolService(
       this.redis,
       this.ruleEvaluator,
       this.routingRuleExecutionLogger,
-      trx,
-      trx,
+      query,
+      query,
       this.userStatisticsService,
       this.getCustomActionsByIds,
       this.tracer,
