@@ -190,8 +190,10 @@ describe('AggregationSignal', () => {
       const actionsTriggered = await ruleResults.actionsTriggered;
       expect(actionsTriggered).toHaveLength(0);
 
-      expect(deps.AggregationsService.updateAggregation).toBeCalledTimes(1);
-      expect(deps.AggregationsService.updateAggregation).toBeCalledWith(
+      expect(deps.AggregationsService.updateAggregation).toHaveBeenCalledTimes(
+        1,
+      );
+      expect(deps.AggregationsService.updateAggregation).toHaveBeenCalledWith(
         expect.objectContaining({
           id: expect.any(String),
           aggregation: { type: 'COUNT' },
@@ -203,8 +205,10 @@ describe('AggregationSignal', () => {
         expect.any(SafeTracer),
       );
 
-      expect(deps.AggregationsService.evaluateAggregation).toBeCalledTimes(1);
-      expect(deps.AggregationsService.evaluateAggregation).toBeCalledWith(
+      expect(
+        deps.AggregationsService.evaluateAggregation,
+      ).toHaveBeenCalledTimes(1);
+      expect(deps.AggregationsService.evaluateAggregation).toHaveBeenCalledWith(
         expect.objectContaining({
           id: expect.any(String),
           aggregation: { type: 'COUNT' },
