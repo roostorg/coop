@@ -138,7 +138,7 @@ export default function ManualReviewJobThreadItemComponent(props: {
                 imageUrl={profileImage?.url}
                 magnifiedUrls={backgroundImage ? [backgroundImage.url] : []}
                 fallbackComponent={
-                  <UserAlt4 className="p-3 text-slate-500 w-11 h-11" />
+                  <UserAlt4 className="p-3 text-muted-foreground w-11 h-11" />
                 }
                 footerComponent={
                   <div className="flex gap-2">
@@ -206,7 +206,7 @@ export default function ManualReviewJobThreadItemComponent(props: {
               </div>
               <div className="flex flex-row">
                 {
-                  <div className="self-end pt-2 pr-2 text-slate-400">
+                  <div className="self-end pt-2 pr-2 text-muted-foreground">
                     <CopyTextComponent
                       displayValue={'ID: ' + threadItem.id}
                       value={threadItem.id}
@@ -214,7 +214,7 @@ export default function ManualReviewJobThreadItemComponent(props: {
                   </div>
                 }
                 {timestamp ? (
-                  <div className="self-end pt-2 text-slate-400">
+                  <div className="self-end pt-2 text-muted-foreground">
                     {new Date(timestamp).toLocaleString()}
                   </div>
                 ) : null}
@@ -222,7 +222,7 @@ export default function ManualReviewJobThreadItemComponent(props: {
             </div>
             <div className="flex flex-row items-center justify-between">
               <div className="flex flex-col w-full">
-                <div className="flex flex-row items-center justify-between rounded bg-slate-200 grow">
+                <div className="flex flex-row items-center justify-between rounded bg-border grow">
                   <FieldsComponent
                     fields={getPrimaryContentFields(
                       threadItem.type.baseFields,

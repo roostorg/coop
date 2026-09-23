@@ -717,8 +717,6 @@ const Org: GQLOrgResolvers = {
       // set by the org's admin. We can always add that ability later, but we're
       // leaving this empty for now.
       mrtChartConfigurations: [],
-      // Theme is a personal accessibility preference with no org-level
-      // default.
       themePreference: null,
     };
   },

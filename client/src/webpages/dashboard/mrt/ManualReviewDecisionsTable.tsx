@@ -228,7 +228,7 @@ export default function ManualReviewDecisionsTable(props: {
               onClick={() => setGroupByMenuVisible((visible) => !visible)}
               className="flex items-center px-2 py-1 border border-solid rounded cursor-pointer border-border hover:border-coop-blue"
             >
-              <div className="flex bg-slate-200 items-center py-0.5 px-2 font-medium text-muted-foreground rounded whitespace-nowrap">
+              <div className="flex bg-border items-center py-0.5 px-2 font-medium text-muted-foreground rounded whitespace-nowrap">
                 {groupBy === 'REVIEWER_ID' ? 'Reviewer' : 'Queue'}
               </div>
               {/*
@@ -242,12 +242,12 @@ export default function ManualReviewDecisionsTable(props: {
               the groupByMenuVisible state.
             */}
               <ChevronUp
-                className={`w-3 h-3 pl-2 text-slate-400 flex items-center ${
+                className={`w-3 h-3 pl-2 text-muted-foreground flex items-center ${
                   groupByMenuVisible ? 'visible' : 'hidden'
                 }`}
               />
               <ChevronDown
-                className={`w-3 h-3 pl-2 text-slate-400 flex items-center ${
+                className={`w-3 h-3 pl-2 text-muted-foreground flex items-center ${
                   groupByMenuVisible ? 'hidden' : 'visible'
                 }`}
               />

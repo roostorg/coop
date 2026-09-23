@@ -414,7 +414,7 @@ export default function OverviewCard(props: {
         <div
           className={`${
             change === 0
-              ? 'text-slate-600'
+              ? 'text-muted-foreground'
               : change < 0
                 ? 'text-red-600'
                 : 'text-green-600'
@@ -429,7 +429,7 @@ export default function OverviewCard(props: {
           )}
           {formatNumber(Math.abs(change))}%
         </div>
-        <div className="text-sm font-normal text-slate-400">
+        <div className="text-sm font-normal text-muted-foreground">
           vs. previous {formatDistance(timeWindow.end, timeWindow.start)}
         </div>
       </div>
@@ -470,7 +470,7 @@ export default function OverviewCard(props: {
         <div className="flex flex-col gap-1">
           <div className="flex items-end gap-2 text-lg">
             {formatNumber(percent)}%{' '}
-            <div className="text-base font-normal text-slate-400">
+            <div className="text-base font-normal text-muted-foreground">
               automated
             </div>
           </div>
@@ -482,7 +482,7 @@ export default function OverviewCard(props: {
               }}
             />
             <div
-              className="h-2 bg-gray-200 rounded-r-full"
+              className="h-2 bg-muted rounded-r-full"
               style={{
                 width: `${200 - (num / total) * 200}px`,
               }}
@@ -505,7 +505,7 @@ export default function OverviewCard(props: {
           className="flex justify-between w-full text-sm font-normal"
           key={value.name}
         >
-          <div className="text-slate-700">{value.name}</div>
+          <div className="text-foreground">{value.name}</div>
           {'link' in value ? (
             <Link
               className="no-underline flex items-center gap-1.5 hover:text-primary/70"
@@ -524,7 +524,7 @@ export default function OverviewCard(props: {
   );
 
   const errorComponent = (
-    <div className="py-4 text-sm text-slate-400">No data available.</div>
+    <div className="py-4 text-sm text-muted-foreground">No data available.</div>
   );
 
   const component = useMemo(() => {
@@ -582,7 +582,7 @@ export default function OverviewCard(props: {
           <Icon className={`flex w-6 h-6 ${iconColor}`} />
         </div>
         {hasError ? (
-          <div className="py-4 text-sm text-slate-400">
+          <div className="py-4 text-sm text-muted-foreground">
             Analytics data is temporarily unavailable.
           </div>
         ) : loading ? (

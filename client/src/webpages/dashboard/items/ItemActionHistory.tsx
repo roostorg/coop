@@ -307,7 +307,7 @@ export default function ItemActionHistory(props: {
                 {value.policies.map((policyName, index) => (
                   <div
                     key={index}
-                    className={`flex px-2 py-0.5 rounded font-semibold bg-slate-200 text-muted-foreground`}
+                    className={`flex px-2 py-0.5 rounded font-semibold bg-border text-muted-foreground`}
                   >
                     {policyName}
                   </div>

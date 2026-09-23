@@ -107,7 +107,7 @@ export default function ManualReviewDashboardInsightsGroupBy(props: {
             selectedGroupBy.map((option) => (
               <div
                 key={`groupByOptionPill-${option}`}
-                className="flex gap-1.5 bg-slate-200 items-center py-0.5 px-2 font-medium text-muted-foreground rounded whitespace-nowrap"
+                className="flex gap-1.5 bg-border items-center py-0.5 px-2 font-medium text-muted-foreground rounded whitespace-nowrap"
               >
                 {getDisplayNameForGroupByOption(option)}
                 <CloseButton
@@ -121,7 +121,9 @@ export default function ManualReviewDashboardInsightsGroupBy(props: {
               </div>
             ))
           ) : (
-            <div className="text-slate-400 whitespace-nowrap">Select one</div>
+            <div className="text-muted-foreground whitespace-nowrap">
+              Select one
+            </div>
           )}
           {/*
               We render both icons and toggle their visibility based on the groupByMenuVisible
@@ -134,12 +136,12 @@ export default function ManualReviewDashboardInsightsGroupBy(props: {
               the groupByMenuVisible state.
            */}
           <ChevronUp
-            className={`ml-2 w-3 h-3 text-slate-400 flex items-center ${
+            className={`ml-2 w-3 h-3 text-muted-foreground flex items-center ${
               groupByMenuVisible ? 'visible' : 'hidden'
             }`}
           />
           <ChevronDown
-            className={`ml-2 w-3 h-3 text-slate-400 flex items-center ${
+            className={`ml-2 w-3 h-3 text-muted-foreground flex items-center ${
               groupByMenuVisible ? 'hidden' : 'visible'
             }`}
           />

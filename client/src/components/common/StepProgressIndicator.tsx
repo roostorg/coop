@@ -27,7 +27,7 @@ function currentStepIcon() {
 
 function futureStepIcon() {
   return (
-    <MoreAlt className="w-6 h-6 p-1 text-gray-400 bg-white border border-gray-400 border-solid rounded-full" />
+    <MoreAlt className="w-6 h-6 p-1 text-muted-foreground bg-card border border-border border-solid rounded-full" />
   );
 }
 
@@ -72,8 +72,8 @@ export default function StepProgressIndicator(props: {
               index < currentStepIndex
                 ? 'text-coop-blue'
                 : index === currentStepIndex
-                  ? 'text-gray-600'
-                  : 'text-gray-400'
+                  ? 'text-muted-foreground'
+                  : 'text-muted-foreground'
             }`}
           >
             {step.name}
@@ -83,7 +83,7 @@ export default function StepProgressIndicator(props: {
     })
     .flatMap((step, index) =>
       index < steps.length - 1
-        ? [step, <div key={index} className={`h-px grow bg-gray-300 mx-3`} />]
+        ? [step, <div key={index} className={`h-px grow bg-border mx-3`} />]
         : [step],
     );
   return (

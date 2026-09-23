@@ -58,7 +58,7 @@ export default function OverviewTable(props: {
         return (
           <table className="w-full">
             <thead className="sticky top-0">
-              <tr className="font-bold bg-slate-50">
+              <tr className="font-bold bg-muted">
                 <th className="py-4 pl-3 text-left">Policy name</th>
                 <th className="px-1 py-4 text-left">Policy level</th>
                 <th className="py-4 pr-3 text-left">Actions</th>
@@ -77,7 +77,7 @@ export default function OverviewTable(props: {
                 return (
                   <tr
                     key={it.policyId}
-                    className={`${i % 2 === 0 ? 'bg-card' : 'bg-gray-50'}`}
+                    className={`${i % 2 === 0 ? 'bg-card' : 'bg-muted'}`}
                   >
                     <td className="py-2 pl-3 text-left">
                       {policy?.name ?? 'Unknown'}
@@ -97,7 +97,7 @@ export default function OverviewTable(props: {
 
   const emptyChart = (
     <div className="flex flex-col items-center justify-center gap-3 p-6 rounded bg-muted">
-      <div className="text-sm text-slate-400">
+      <div className="text-sm text-muted-foreground">
         No data available for the selected time period.
       </div>
     </div>
@@ -111,7 +111,7 @@ export default function OverviewTable(props: {
           <div className="flex justify-between gap-2 grow">
             <div className="flex flex-col text-start">
               <div className="pb-2 text-lg font-bold">{title}</div>
-              <div className="text-sm text-slate-400">
+              <div className="text-sm text-muted-foreground">
                 {loading || policiesLoading ? (
                   <ComponentLoading />
                 ) : (

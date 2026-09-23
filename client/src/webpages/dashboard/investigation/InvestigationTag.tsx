@@ -32,7 +32,7 @@ export default function InvestigationTag({
   const entries = Object.entries(parameters ?? {});
 
   return (
-    <div className="p-2 m-0.5 rounded-md border-solid border-gray-200 text-gray-500 bg-gray-50">
+    <div className="p-2 m-0.5 rounded-md border-solid border-border text-muted-foreground bg-muted">
       {title}
       {entries.length > 0 && (
         <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-1 text-xs">
@@ -46,7 +46,7 @@ export default function InvestigationTag({
             // its own line, so it can clamp without shoving the short entries
             // that share the row out of alignment.
             return formatted.length > INLINE_VALUE_MAX_CHARS ? (
-              <div key={name} className="w-full text-gray-400">
+              <div key={name} className="w-full text-muted-foreground">
                 {label}
                 {': '}
                 <CollapsibleText
@@ -56,7 +56,7 @@ export default function InvestigationTag({
                 />
               </div>
             ) : (
-              <span key={name} className="text-gray-400">
+              <span key={name} className="text-muted-foreground">
                 {label}
                 {': '}
                 <span>{formatted}</span>

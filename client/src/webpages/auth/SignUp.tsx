@@ -172,18 +172,18 @@ export default function SignUp() {
 
   if (tokenError || tokenErrorMessage || !token) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-muted">
         <Helmet>
           <title>Invalid Invitation | Coop</title>
         </Helmet>
-        <div className="w-full max-w-md p-8 bg-white rounded-lg shadow-md">
+        <div className="w-full max-w-md p-8 bg-card rounded-lg shadow-md">
           <div className="flex justify-center mb-6">
             <img src={LogoBlack} alt="Coop Logo" className="h-12" />
           </div>
           <h1 className="text-2xl font-bold text-center text-red-600 mb-4">
             Invalid or Expired Invitation
           </h1>
-          <p className="text-center text-gray-600 mb-6">
+          <p className="text-center text-muted-foreground mb-6">
             {tokenErrorMessage ??
               'This invitation link is invalid or has expired. Please contact your administrator for a new invitation.'}
           </p>
@@ -202,18 +202,18 @@ export default function SignUp() {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50">
+    <div className="flex flex-col items-center justify-center min-h-screen bg-muted">
       <Helmet>
         <title>Sign Up | Coop</title>
       </Helmet>
-      <div className="w-full max-w-md p-8 bg-white rounded-lg shadow-md">
+      <div className="w-full max-w-md p-8 bg-card rounded-lg shadow-md">
         <div className="flex justify-center mb-6">
           <img src={LogoBlack} alt="Coop Logo" className="h-12" />
         </div>
         <h1 className="text-2xl font-bold text-center mb-2">
           Complete Your Account
         </h1>
-        <p className="text-center text-gray-600 mb-6">
+        <p className="text-center text-muted-foreground mb-6">
           You've been invited to join as{' '}
           <span className="font-semibold">{tokenInfo.email}</span>
         </p>
@@ -226,7 +226,7 @@ export default function SignUp() {
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               First Name
             </label>
             <Input
@@ -238,7 +238,7 @@ export default function SignUp() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-foreground mb-1">
               Last Name
             </label>
             <Input
@@ -251,7 +251,7 @@ export default function SignUp() {
 
           {!tokenInfo.samlEnabled && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-foreground mb-1">
                 Password
               </label>
               <Input.Password
@@ -279,7 +279,7 @@ export default function SignUp() {
           </div>
         </div>
 
-        <div className="mt-6 text-center text-sm text-gray-600">
+        <div className="mt-6 text-center text-sm text-muted-foreground">
           Already have an account?{' '}
           <Link to="/login" className="text-blue-600 hover:text-blue-700">
             Log in

@@ -20,7 +20,7 @@ export default function ReportingRuleInsights(props: { ruleId: string }) {
         <div className="flex grow">
           <ReportingRuleInsightsActionsChart ruleId={ruleId} />
         </div>
-        <div className="flex h-px my-9 bg-slate-200" />
+        <div className="flex h-px my-9 bg-border" />
         <div className="flex grow">
           <ReportingRuleInsightsSamplesTable ruleId={ruleId} />
         </div>

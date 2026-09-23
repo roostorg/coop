@@ -436,7 +436,7 @@ export default function IntegrationConfigForm() {
       </Helmet>
       <div className="flex flex-col justify-between w-4/5 mb-4">
         <div className="flex items-center gap-3 mb-1">
-          <div className="w-12 h-12 rounded-full bg-slate-200 flex items-center justify-center shrink-0 overflow-hidden">
+          <div className="w-12 h-12 rounded-full bg-border flex items-center justify-center shrink-0 overflow-hidden">
             <img src={logo} alt="" className="w-full h-full object-contain" />
           </div>
           <div className="text-2xl font-bold">{`${formattedName} Integration`}</div>

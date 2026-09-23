@@ -175,7 +175,7 @@ export default function OverviewChart(props: {
 
   const emptyChart = (
     <div className="flex flex-col items-center justify-center gap-3 p-6 rounded bg-muted">
-      <div className="text-sm text-slate-400">
+      <div className="text-sm text-muted-foreground">
         No data available for the selected time period.
       </div>
     </div>
@@ -186,11 +186,11 @@ export default function OverviewChart(props: {
       const entries = props.payload?.filter((entry) => entry.type !== 'none');
       return (
         <div className="flex justify-center w-full">
-          <div className="flex flex-wrap justify-center max-w-[80%] px-4 py-2 overflow-auto rounded gap-x-3 gap-y-2 bg-gray-50 max-h-24">
+          <div className="flex flex-wrap justify-center max-w-[80%] px-4 py-2 overflow-auto rounded gap-x-3 gap-y-2 bg-muted max-h-24">
             {entries?.map((entry, index) => (
               <div
                 key={index}
-                className={`flex text-sm cursor-pointer text-zinc-500 hover:opacity-70 items-center gap-1.5 text-start ${
+                className={`flex text-sm cursor-pointer text-muted-foreground hover:opacity-70 items-center gap-1.5 text-start ${
                   hiddenLines.includes(entry.value)
                     ? 'opacity-30 hover:opacity-50'
                     : ''
@@ -234,7 +234,12 @@ export default function OverviewChart(props: {
     payload: { value: string };
   }) => {
     return (
-      <text x={x - 4} y={y + 16} fill="#71717a" className="pt-3 text-zinc-500">
+      <text
+        x={x - 4}
+        y={y + 16}
+        fill="#71717a"
+        className="pt-3 text-muted-foreground"
+      >
         {payload.value.slice(5)}
       </text>
     );
@@ -254,7 +259,7 @@ export default function OverviewChart(props: {
       x={x}
       y={y + 4}
       fill="#71717a"
-      className="pr-3 text-zinc-500"
+      className="pr-3 text-muted-foreground"
     >
       {truncateAndFormatLargeNumber(Number(payload.value))}
     </text>
@@ -286,7 +291,7 @@ export default function OverviewChart(props: {
                     <td className="pr-1 font-semibold text-primary text-end">
                       {it.value?.toLocaleString()}
                     </td>
-                    <td className="pl-1 font-medium text-slate-700">
+                    <td className="pl-1 font-medium text-foreground">
                       {it.name}
                     </td>
                   </tr>
@@ -429,7 +434,7 @@ export default function OverviewChart(props: {
           </div>
         </div>
         <div className="flex flex-col items-center justify-center gap-3 p-6 rounded bg-muted">
-          <div className="text-sm text-slate-400">
+          <div className="text-sm text-muted-foreground">
             Analytics data is temporarily unavailable.
           </div>
         </div>
@@ -447,7 +452,7 @@ export default function OverviewChart(props: {
           <div className="flex justify-between gap-2 grow">
             <div className="flex flex-col text-start">
               <div className="pb-2 text-lg font-bold">{title}</div>
-              <div className="text-sm text-slate-400">
+              <div className="text-sm text-muted-foreground">
                 {loading ? (
                   <ComponentLoading />
                 ) : (

@@ -606,7 +606,7 @@ export default function RulesDashboard() {
           initialGroupBy="ACTION_ID"
         />
       )}
-      <div className="flex h-px my-4 bg-slate-200" />
+      <div className="flex h-px my-4 bg-border" />
       {noRulesYet ? emptyDashboard : table}
       {deleteModal}
     </div>

@@ -552,7 +552,7 @@ export default function RuleForm() {
 
     return (
       <div
-        className="p-4 bg-card border border-gray-200 border-solid rounded-lg relative"
+        className="p-4 bg-card border border-border border-solid rounded-lg relative"
         key={`set_${conditionSetIndex}`}
       >
         {conditionSet.conditions.map((condition, conditionIndex) => (

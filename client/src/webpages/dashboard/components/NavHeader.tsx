@@ -17,7 +17,7 @@ export default function NavHeader(props: {
             <React.Fragment key={index}>
               <div
                 className={`cursor-pointer ${
-                  isLastButton ? 'text-primary' : 'text-gray-700'
+                  isLastButton ? 'text-primary' : 'text-foreground'
                 }`}
                 onClick={button.onClick}
               >

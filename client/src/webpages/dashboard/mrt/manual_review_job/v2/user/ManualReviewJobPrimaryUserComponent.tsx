@@ -159,7 +159,7 @@ export default function ManualReviewJobPrimaryUserComponent(props: {
     const backgroundImageUrl = getFieldValueForRole(user, 'backgroundImage');
 
     return (
-      <div className="flex flex-col items-start self-stretch p-4 my-6 bg-card border border-gray-200 border-solid rounded-lg space-y-2">
+      <div className="flex flex-col items-start self-stretch p-4 my-6 bg-card border border-border border-solid rounded-lg space-y-2">
         <div className="flex items-center gap-4">
           <ManualReviewJobMagnifyImageComponent
             itemIdentifier={{
@@ -170,7 +170,7 @@ export default function ManualReviewJobPrimaryUserComponent(props: {
             magnifiedUrls={backgroundImageUrl ? [backgroundImageUrl.url] : []}
             label={displayName}
             fallbackComponent={
-              <UserAlt4 className="p-3 text-slate-500 w-11 h-11" />
+              <UserAlt4 className="p-3 text-muted-foreground w-11 h-11" />
             }
           />
           {isReported ? (

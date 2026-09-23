@@ -121,7 +121,7 @@ export default function AppealsTab() {
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-4">
-        <div className="border-b border-gray-200 py-2">
+        <div className="border-b border-border py-2">
           <Heading size="2XL" weight="semibold">
             Appeals
           </Heading>
@@ -133,7 +133,7 @@ export default function AppealsTab() {
               <Text size="SM" weight="medium">
                 Enable Appeals
               </Text>
-              <Text className="text-[0.8125rem] text-gray-500 mt-[.31rem]">
+              <Text className="text-[0.8125rem] text-muted-foreground mt-[.31rem]">
                 Allows users to appeal moderation decisions
               </Text>
             </div>
@@ -148,7 +148,7 @@ export default function AppealsTab() {
               <Text size="SM" weight="medium">
                 Appeal Callback URL
               </Text>
-              <Text className="text-gray-500 mt-[.31rem] text-[0.8125rem]">
+              <Text className="text-muted-foreground mt-[.31rem] text-[0.8125rem]">
                 Webhook URL called when an appeal is submitted
               </Text>
             </div>
@@ -171,7 +171,7 @@ export default function AppealsTab() {
               <Text size="SM" weight="medium">
                 Appeal Callback Headers
               </Text>
-              <Text className="text-gray-500 text-[0.8125rem] mt-[.31rem]">
+              <Text className="text-muted-foreground text-[0.8125rem] mt-[.31rem]">
                 Custom headers sent with appeal webhook requests (JSON format)
               </Text>
             </div>
@@ -195,7 +195,7 @@ export default function AppealsTab() {
               <Text size="SM" weight="medium">
                 Appeal Callback Body
               </Text>
-              <Text className="text-[0.8125rem] text-gray-500 mt-[.31rem]">
+              <Text className="text-[0.8125rem] text-muted-foreground mt-[.31rem]">
                 Custom body template for appeal webhook requests
               </Text>
             </div>
@@ -216,7 +216,7 @@ export default function AppealsTab() {
         </div>
       </div>
 
-      <div className="flex justify-end border-t border-gray-200 pt-4">
+      <div className="flex justify-end border-t border-border pt-4">
         <Button
           disabled={
             !hasChanges ||

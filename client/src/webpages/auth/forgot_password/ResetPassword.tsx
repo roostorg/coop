@@ -157,7 +157,7 @@ export default function ResetPassword() {
   );
 
   return (
-    <div className="flex flex-col h-screen p-8 mb-0 bg-slate-100">
+    <div className="flex flex-col h-screen p-8 mb-0 bg-muted">
       <Helmet>
         <title>Reset Password</title>
       </Helmet>

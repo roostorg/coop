@@ -24,7 +24,7 @@ export default function ContentRelatedItemComponent(props: {
       }) as ItemTypeFieldFieldData,
   );
   return (
-    <div className="flex flex-col items-start justify-start w-full py-4 mt-8 space-y-2 bg-card border border-gray-200 border-solid rounded-lg">
+    <div className="flex flex-col items-start justify-start w-full py-4 mt-8 space-y-2 bg-card border border-border border-solid rounded-lg">
       <div className="flex flex-col w-full mx-4">
         <div className="text-lg font-semibold text-start">
           {/* TODO: make this title org-agnostic  */}

@@ -31,7 +31,6 @@ export type UserManagementPg = {
     moderator_safety_sepia: boolean | null;
     moderator_safety_blur_level: number | null;
     mrt_chart_configurations: MrtChartConfig[] | null;
-    // NULL means "follow the system color scheme" (see issue #365)
     theme_preference: ThemePreference | null;
   };
   // We use ColumnType in this table because all the moderator_safety columns

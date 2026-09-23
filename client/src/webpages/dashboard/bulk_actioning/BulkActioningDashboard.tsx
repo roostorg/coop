@@ -482,7 +482,7 @@ export default function BulkActioningDashboard() {
           {selectedActionsWithParams.map((action) => (
             <div
               key={action.id}
-              className="rounded-xl border border-gray-200 p-3"
+              className="rounded-xl border border-border p-3"
             >
               <div className="mb-2 text-sm font-semibold">
                 "{action.name}" details
@@ -506,7 +506,7 @@ export default function BulkActioningDashboard() {
         <div className="mt-6 flex flex-col">
           <label
             htmlFor="bulk-actioning-moderator-note"
-            className="mb-1 text-sm font-medium text-gray-700"
+            className="mb-1 text-sm font-medium text-foreground"
           >
             Note (optional)
           </label>
@@ -521,7 +521,7 @@ export default function BulkActioningDashboard() {
           />
         </div>
       )}
-      <div className="flex h-px mt-12 bg-slate-200 mb-9" />
+      <div className="flex h-px mt-12 bg-border mb-9" />
       <FormSectionHeader
         title="Policy"
         subtitle="Select the policies you would like to apply to this bulk actioning job."

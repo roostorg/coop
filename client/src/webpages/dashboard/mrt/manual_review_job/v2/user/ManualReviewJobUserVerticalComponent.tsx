@@ -25,14 +25,14 @@ export default function ManualReviewJobUserVerticalComponent(props: {
   const profilePicUrl = getFieldValueForRole(user, 'profileIcon');
 
   return (
-    <div className="flex flex-col p-6 ml-6 border border-gray-200 border-solid rounded-2xl">
+    <div className="flex flex-col p-6 ml-6 border border-border border-solid rounded-2xl">
       <div className="flex flex-row items-center justify-between gap-4">
         <ManualReviewJobMagnifyImageComponent
           imageUrl={profilePicUrl?.url}
           itemIdentifier={{ id: user.id, typeId: user.type.id }}
           label={displayName ? `${displayName} (${user.id})` : user.id}
           fallbackComponent={
-            <UserAlt4 className="p-3 text-slate-500 w-11 h-11" />
+            <UserAlt4 className="p-3 text-muted-foreground w-11 h-11" />
           }
         />
         <Button
@@ -50,7 +50,7 @@ export default function ManualReviewJobUserVerticalComponent(props: {
           Full History
         </Button>
       </div>
-      <div className="flex h-px my-4 bg-gray-200" />
+      <div className="flex h-px my-4 bg-muted" />
       <div className="flex flex-col gap-3">
         <FieldsComponent
           fields={user.type.baseFields

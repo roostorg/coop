@@ -15,7 +15,7 @@ function subcategoryOptionComponent(props: {
     >
       {label}
       {description ? (
-        <div className="overflow-hidden text-xs text-gray-400 overflow-ellipsis line-clamp-2">
+        <div className="overflow-hidden text-xs text-muted-foreground overflow-ellipsis line-clamp-2">
           {description}
         </div>
       ) : null}

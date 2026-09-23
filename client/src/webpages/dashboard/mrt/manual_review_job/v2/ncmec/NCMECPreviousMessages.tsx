@@ -135,7 +135,7 @@ export default function NCMECPreviousMessages(props: {
                 selectedThread &&
                 selectedThread.id === thread.id &&
                 selectedThread.typeId === thread.typeId
-                  ? 'bg-gray-200'
+                  ? 'bg-muted'
                   : ''
               }`}
               onClick={() => {
@@ -145,7 +145,7 @@ export default function NCMECPreviousMessages(props: {
             >
               {thread.id}
               {reportedMessagesInThread ? (
-                <span className="ml-2 text-xs text-gray-500">
+                <span className="ml-2 text-xs text-muted-foreground">
                   {reportedMessagesInThread.length} reported
                 </span>
               ) : undefined}

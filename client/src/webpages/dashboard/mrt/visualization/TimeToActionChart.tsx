@@ -158,7 +158,7 @@ export default function TimeToActionByQueueChart({
         .map((entry, index) => (
           <div
             key={index}
-            className="flex font-semibold cursor-pointer text-zinc-500 hover:opacity-70 items-center gap-1.5 text-start"
+            className="flex font-semibold cursor-pointer text-muted-foreground hover:opacity-70 items-center gap-1.5 text-start"
           >
             <div
               style={{
@@ -202,7 +202,7 @@ export default function TimeToActionByQueueChart({
                     <td className="pr-1 font-semibold text-primary text-end">
                       {it.value?.toLocaleString()}
                     </td>
-                    <td className="pl-1 font-medium text-slate-700">
+                    <td className="pl-1 font-medium text-foreground">
                       {it.name}
                     </td>
                   </tr>
@@ -217,8 +217,8 @@ export default function TimeToActionByQueueChart({
   };
 
   const emptyChart = (
-    <div className="flex flex-col items-center justify-center h-full gap-3 p-6 bg-indigo-100 rounded">
-      <div className="text-sm text-slate-400">
+    <div className="flex flex-col items-center justify-center h-full gap-3 p-6 bg-sidebar-active rounded">
+      <div className="text-sm text-muted-foreground">
         No data available for the selected time period.
       </div>
       <CoopButton
@@ -276,7 +276,7 @@ export default function TimeToActionByQueueChart({
 
   return (
     <div
-      className={`flex flex-col rounded-lg p-6 bg-white ${
+      className={`flex flex-col rounded-lg p-6 bg-card ${
         narrowMode ? 'flex flex-col justify-between grow' : 'w-full'
       } ${hideBorder ? '' : 'border border-solid border-border'}`}
     >

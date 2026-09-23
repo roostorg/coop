@@ -267,7 +267,7 @@ export default function ManualReviewJobRelatedUserComponent(props: {
               }
               label={userName}
               fallbackComponent={
-                <UserAlt4 className="p-3 text-slate-500 w-11 h-11" />
+                <UserAlt4 className="p-3 text-muted-foreground w-11 h-11" />
               }
             />
             {isReporter ? (
@@ -327,7 +327,7 @@ export default function ManualReviewJobRelatedUserComponent(props: {
             </div>
           )}
         </div>
-        <div className="flex flex-col self-stretch p-4 mb-2 border border-gray-200 border-solid rounded-md">
+        <div className="flex flex-col self-stretch p-4 mb-2 border border-border border-solid rounded-md">
           <div className="flex justify-start w-full">
             <FieldsComponent
               fields={[

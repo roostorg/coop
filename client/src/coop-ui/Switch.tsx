@@ -31,7 +31,7 @@ const Switch = React.forwardRef<
         'relative group inline-flex shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
         'disabled:cursor-not-allowed disabled:opacity-50',
-        'data-[state=checked]:bg-primary data-[state=unchecked]:bg-gray-200 dark:data-[state=unchecked]:bg-neutral-700',
+        'data-[state=checked]:bg-primary data-[state=unchecked]:bg-muted dark:data-[state=unchecked]:bg-neutral-700',
         currentSize.root,
         className,
       )}
@@ -47,7 +47,7 @@ const Switch = React.forwardRef<
         <X
           className={cn(
             currentSize.icon,
-            'text-gray-500',
+            'text-muted-foreground',
             'group-data-[state=checked]:text-white',
             'z-20 group-data-[state=checked]:z-0',
           )}
@@ -62,7 +62,7 @@ const Switch = React.forwardRef<
         <Check
           className={cn(
             currentSize.icon,
-            'text-gray-500',
+            'text-muted-foreground',
             'group-data-[state=checked]:text-indigo-500',
             'z-0 group-data-[state=checked]:z-20',
           )}

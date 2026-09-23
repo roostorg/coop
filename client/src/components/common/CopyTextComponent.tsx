@@ -57,7 +57,7 @@ export default function CopyTextComponent(props: {
           {typeof displayValue === 'string' ? (
             <span
               className={`font-normal ${
-                isError ? 'text-red-400' : 'text-slate-400'
+                isError ? 'text-red-400' : 'text-muted-foreground'
               } ${wrapText ? 'break-all min-w-0' : 'whitespace-nowrap'}`}
             >
               {displayValue}
@@ -68,7 +68,7 @@ export default function CopyTextComponent(props: {
           <CopyAlt
             className={`flex w-4 h-4 min-w-fit ${
               displayValue && displayValue !== '' ? 'ml-1' : ''
-            } ${isError ? 'text-red-400' : 'text-slate-400'}`}
+            } ${isError ? 'text-red-400' : 'text-muted-foreground'}`}
           />
         </div>
       </Tooltip>

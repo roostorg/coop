@@ -114,7 +114,7 @@ export default function RuleFormConditionLocationMatchingValues(props: {
     return (
       <div className="ml-3">
         <Button
-          className="!text-slate-500"
+          className="!text-muted-foreground"
           icon={<Plus className="w-4 h-4" />}
           onClick={() => setModalVisible(true)}
         >
@@ -129,7 +129,7 @@ export default function RuleFormConditionLocationMatchingValues(props: {
     <div>
       <div className="!mb-0 !pl-4 !align-middle flex flex-col items-start">
         <div className="pb-1 text-xs font-bold">Locations to Match</div>
-        <div className="flex flex-row flex-wrap py-[3px] px-2.5 border border-solid border-[#d9d9d9] cursor-text text-sm bg-white hover:border-primary focus:border-primary">
+        <div className="flex flex-row flex-wrap py-[3px] px-2.5 border border-solid border-[#d9d9d9] cursor-text text-sm bg-card hover:border-primary focus:border-primary">
           <div className="flex flex-wrap">
             {locationBanksOrLocations.map((location, idx) => {
               return (

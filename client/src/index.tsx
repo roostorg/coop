@@ -149,10 +149,6 @@ const root = createRoot(document.getElementById('root')!);
 root.render(
   <HelmetProvider>
     <ApolloProvider client={client}>
-      {/* defaultTheme is "light" (not "system") until the app-wide dark
-          restyle lands — otherwise every dark-OS user gets unconverted
-          components on day one. Users can still opt into System/Dark in
-          account settings. */}
       <ThemeProvider
         attribute="class"
         defaultTheme="light"

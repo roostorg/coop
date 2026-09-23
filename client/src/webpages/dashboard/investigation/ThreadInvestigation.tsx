@@ -114,7 +114,7 @@ function ThreadMessageItem(props: {
                   : undefined
               }
               fallbackComponent={
-                <UserAlt4 className="p-3 text-slate-500 w-11 h-11" />
+                <UserAlt4 className="p-3 text-muted-foreground w-11 h-11" />
               }
               itemIdentifier={{ id: message.id, typeId: message.type.id }}
             />
@@ -343,7 +343,7 @@ export default function ThreadInvestigation(props: {
           {threadComponentsOrLoading}
         </div>
       )}
-      <div className="w-px h-full mx-4 bg-gray-200" />
+      <div className="w-px h-full mx-4 bg-muted" />
       {selectedUser && (
         <div className="self-start">
           <ManualReviewJobUserVerticalComponent user={selectedUser} />

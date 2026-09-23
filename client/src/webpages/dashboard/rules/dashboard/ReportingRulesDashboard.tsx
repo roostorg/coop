@@ -406,7 +406,7 @@ export default function ReportingRulesDashboard() {
         rightComponent={noRulesYet ? null : createButton}
       />
       {/* {noRulesYet ? null : <ReportingRulesDashboardInsights />} */}
-      <div className="flex h-px my-4 bg-slate-200" />
+      <div className="flex h-px my-4 bg-border" />
       {noRulesYet ? emptyDashboard : table}
       {deleteModal}
     </div>

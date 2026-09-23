@@ -705,11 +705,11 @@ export default function NCMECReviewUser(
               {profilePicUrl ? (
                 <img
                   alt="profile pic"
-                  className="w-10 h-10 border-2 border-solid rounded-full border-slate-400 shrink-0"
+                  className="w-10 h-10 border-2 border-solid rounded-full border-border shrink-0"
                   src={profilePicUrl.url}
                 />
               ) : null}
-              <div className="ml-3 font-bold text-slate-700 break-all min-w-0 flex-1">
+              <div className="ml-3 font-bold text-foreground break-all min-w-0 flex-1">
                 {displayName ? `${displayName} (${item.id})` : item.id}
               </div>
             </div>
@@ -796,7 +796,7 @@ export default function NCMECReviewUser(
                 ) : (
                   <span />
                 )}
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-muted-foreground">
                   {escalateToHighPriority.length}/3000 characters
                 </span>
               </div>
@@ -816,7 +816,7 @@ export default function NCMECReviewUser(
             className="min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             rows={3}
           />
-          <span className="text-xs text-slate-500">
+          <span className="text-xs text-muted-foreground">
             {additionalInfo.length}/3000 characters
           </span>
         </div>
@@ -841,7 +841,7 @@ export default function NCMECReviewUser(
       ]}
     >
       <div className="flex flex-col w-full">
-        <div className="text-slate-700">
+        <div className="text-foreground">
           You are attempting to ignore this report, but you've already assigned
           categories to the following media. Do you want to remove those
           selected categories and ignore the report?
@@ -942,7 +942,7 @@ export default function NCMECReviewUser(
         }
       />
       <div className="flex items-center justify-between w-full gap-8 mb-2">
-        <div className="text-start text-slate-500 font-medium w-fit bg-slate-100 rounded-md p-1.5 flex items-center">
+        <div className="text-start text-muted-foreground font-medium w-fit bg-muted rounded-md p-1.5 flex items-center">
           <Lightbulb className="w-5 h-5 pr-2" />
           <div className="flex flex-col">
             <div className="text-sm pb-0.5 font-semibold">
@@ -982,10 +982,10 @@ export default function NCMECReviewUser(
                 isLabelSelectorInInspectedMediaVisible
               }
             />
-            <div className="flex flex-col gap-2 px-4 py-3 bg-slate-50 rounded-lg border border-slate-200">
+            <div className="flex flex-col gap-2 px-4 py-3 bg-muted rounded-lg border border-border">
               <label
                 htmlFor="ncmecIncidentTypePage"
-                className="text-sm font-semibold text-slate-700"
+                className="text-sm font-semibold text-foreground"
               >
                 Incident Type Category
               </label>
@@ -995,7 +995,7 @@ export default function NCMECReviewUser(
                 onChange={(e) =>
                   setIncidentType(e.target.value as GQLNcmecIncidentType)
                 }
-                className="flex h-10 w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex h-10 w-full rounded-md border border-border bg-card px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {NCMEC_INCIDENT_TYPE_OPTIONS.map(({ value, label }) => (
                   <option key={value} value={value}>
@@ -1003,7 +1003,7 @@ export default function NCMECReviewUser(
                   </option>
                 ))}
               </select>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 Select the primary incident type for this NCMEC report
               </p>
             </div>
@@ -1113,7 +1113,7 @@ export default function NCMECReviewUser(
           />
         </div>
       ) : selectedTab === 'MEDIA' ? (
-        <div className="w-full p-8 text-center text-slate-500">
+        <div className="w-full p-8 text-center text-muted-foreground">
           No media in this report.
         </div>
       ) : (

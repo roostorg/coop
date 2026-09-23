@@ -208,7 +208,7 @@ export default function CoopSelect<T extends string>(props: {
         isMenuVisible ? 'border-coop-blue' : 'border-border'
       } ${
         disabled
-          ? 'bg-slate-50 cursor-not-allowed'
+          ? 'bg-muted cursor-not-allowed'
           : 'bg-card hover:border-coop-blue cursor-text'
       }`}
       onClick={onClick}

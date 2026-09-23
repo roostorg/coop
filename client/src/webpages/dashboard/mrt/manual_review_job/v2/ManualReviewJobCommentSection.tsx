@@ -87,7 +87,7 @@ function ManualReviewJobComment(props: {
         <div className="flex items-center gap-2">
           <div
             className={`text-sm font-bold ${
-              isBeingDeleted ? 'text-gray-400' : 'text-gray-900'
+              isBeingDeleted ? 'text-muted-foreground' : 'text-foreground'
             }`}
           >
             {comment.author
@@ -96,7 +96,7 @@ function ManualReviewJobComment(props: {
           </div>
           <div
             className={`text-sm font-normal ${
-              isBeingDeleted ? 'text-gray-300' : 'text-gray-500'
+              isBeingDeleted ? 'text-gray-300' : 'text-muted-foreground'
             }`}
           >
             {safeFormatDistanceToNow(comment.createdAt)}
@@ -104,7 +104,7 @@ function ManualReviewJobComment(props: {
         </div>
         <div
           className={`pt-4 text-sm font-normal text-start ${
-            isBeingDeleted ? 'text-gray-300' : 'text-gray-500'
+            isBeingDeleted ? 'text-gray-300' : 'text-muted-foreground'
           }`}
         >
           {comment.commentText}
@@ -182,7 +182,7 @@ export default function ManualReviewJobCommentSection(props: {
   const commentsSection = (() => {
     if (!comments || comments.length === 0) {
       return (
-        <div className="text-gray-500 text-start">
+        <div className="text-muted-foreground text-start">
           Be the first to leave a comment
         </div>
       );

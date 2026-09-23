@@ -11,8 +11,10 @@ export default function ManualReviewJobEmptyQueue() {
         <div className="pb-10 text-gray-300 text-8xl">
           <CheckCircle className="w-24 h-24" />
         </div>
-        <div className="pb-4 text-3xl text-gray-500">No Jobs to Review</div>
-        <div className="pb-10 text-base text-gray-500">
+        <div className="pb-4 text-3xl text-muted-foreground">
+          No Jobs to Review
+        </div>
+        <div className="pb-10 text-base text-muted-foreground">
           You're all caught up! Great work getting through the jobs quickly.
           This queue is now empty.
         </div>

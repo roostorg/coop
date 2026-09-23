@@ -16,11 +16,6 @@ gql`
   }
 `;
 
-/**
- * Applies the signed-in user's persisted theme preference to next-themes.
- * Renders nothing; mount once inside the authenticated shell so it never
- * runs on the login/signup pages (those follow the system scheme).
- */
 export default function ThemeSync() {
   const { setTheme } = useTheme();
   const { data } = useGQLUserThemePreferenceQuery();

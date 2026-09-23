@@ -41,7 +41,7 @@ export default function NCMECMediaGallery(props: {
     onMediaError,
   } = props;
   return (
-    <div className="flex flex-wrap w-full overflow-y-scroll h-[576px] p-3 border border-solid border-gray-200 shadow rounded-md gap-3 mt-3">
+    <div className="flex flex-wrap w-full overflow-y-scroll h-[576px] p-3 border border-solid border-border shadow rounded-md gap-3 mt-3">
       {allMedia.map((it) => (
         <div
           key={`${it.contentItem.id}:${it.urlInfo.url}`}

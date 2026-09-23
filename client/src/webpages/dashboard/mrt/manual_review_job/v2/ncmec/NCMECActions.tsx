@@ -150,7 +150,7 @@ export default function NCMECActions(props: {
       case 'Move to Different Queue':
         return 'text-white bg-primary hover:bg-indigo-300';
       case 'Skip':
-        return 'text-muted-foreground bg-slate-200 hover:bg-slate-300';
+        return 'text-muted-foreground bg-border hover:bg-slate-300';
     }
   };
 

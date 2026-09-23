@@ -52,14 +52,14 @@ export default function ItemTypeRequestCodeSamples(props: {
   return (
     <div className="flex flex-col">
       <div className="relative">
-        <div className="flex flex-row items-center justify-between bg-slate-200">
+        <div className="flex flex-row items-center justify-between bg-border">
           <div className="flex flex-row items-center grow">
             {Object.values(RequestLanguages).map((language) => (
               <div
                 className={`px-3 py-2 cursor-pointer font-semibold h-full text-sm ${
                   language === selectedRequestLanguage
                     ? 'bg-primary/10'
-                    : 'bg-slate-200 hover:bg-slate-100'
+                    : 'bg-border hover:bg-muted'
                 }`}
                 key={language}
                 onClick={() => setSelectedRequestLanguage(language)}
@@ -77,10 +77,10 @@ export default function ItemTypeRequestCodeSamples(props: {
         </div>
       </div>
       <div className="relative overflow-y-scroll h-80">
-        <pre className="p-4 m-0 overflow-x-auto text-xs leading-relaxed text-gray-500 bg-white whitespace-pre-wrap">
+        <pre className="p-4 m-0 overflow-x-auto text-xs leading-relaxed text-muted-foreground bg-card whitespace-pre-wrap">
           <code>{requestCode}</code>
         </pre>
-        <div className="absolute z-10 p-1 border border-solid rounded-sm cursor-pointer top-2 right-2 text-slate-500 border-slate-400">
+        <div className="absolute z-10 p-1 border border-solid rounded-sm cursor-pointer top-2 right-2 text-muted-foreground border-border">
           <CopyTextComponent value={requestCode} displayValue="" />
         </div>
       </div>

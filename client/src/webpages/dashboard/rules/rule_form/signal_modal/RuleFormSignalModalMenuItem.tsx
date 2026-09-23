@@ -55,7 +55,7 @@ export default function RuleFormSignalModalMenuItem(props: {
   const item = (
     <div
       className={`flex flex-col rounded-lg border border-solid border-border p-4 w-60 cursor-pointer drop-shadow h-full ${
-        disabledInfo.disabled ? 'bg-gray-100' : 'bg-card hover:bg-sky-100'
+        disabledInfo.disabled ? 'bg-muted' : 'bg-card hover:bg-sky-100'
       }`}
       onClick={() => {
         if (!disabledInfo.disabled) {
@@ -68,12 +68,12 @@ export default function RuleFormSignalModalMenuItem(props: {
           {/* Every signal should be exactly 2 lines */}
           <div
             className={`font-semibold text-base pb-0.5 ${
-              disabledInfo.disabled ? 'text-gray-400' : ''
+              disabledInfo.disabled ? 'text-muted-foreground' : ''
             }`}
           >
             {signalDisplayName(signal)}
           </div>
-          <div className="font-semibold text-gray-400 pt-0.5 text-sm">
+          <div className="font-semibold text-muted-foreground pt-0.5 text-sm">
             {vendorName(signal)}
           </div>
         </div>
@@ -87,11 +87,11 @@ export default function RuleFormSignalModalMenuItem(props: {
       <div className="flex-1" />
       <div className="flex h-px my-4 bg-slate-300" />
       <div className="flex flex-row items-center justify-between">
-        <div className="min-w-0 overflow-hidden text-sm text-gray-400 text-ellipsis line-clamp-2">
+        <div className="min-w-0 overflow-hidden text-sm text-muted-foreground text-ellipsis line-clamp-2">
           {signal.description}
         </div>
         <ChevronRight
-          className="w-5 h-5 p-1 ml-2 rounded-full text-slate-400 hover:bg-slate-300 box-content shrink-0"
+          className="w-5 h-5 p-1 ml-2 rounded-full text-muted-foreground hover:bg-slate-300 box-content shrink-0"
           onClick={(event) => {
             event.stopPropagation();
             infoButtonTapped();

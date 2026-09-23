@@ -55,7 +55,7 @@ export default function ManageRolesTab() {
       <div className="flex flex-col gap-3">
         <div className="flex flex-col">
           <div className="text-xl font-bold">Roles Management</div>
-          <div className="text-sm text-gray-600 mt-1">
+          <div className="text-sm text-muted-foreground mt-1">
             Configure roles and the permissions they grant. Editing a role
             updates every user assigned to that role.
           </div>
@@ -78,7 +78,7 @@ export default function ManageRolesTab() {
           return (
             <div
               key={role.key}
-              className="border border-gray-200 rounded-lg p-4 flex flex-col gap-3 min-h-[160px]"
+              className="border border-border rounded-lg p-4 flex flex-col gap-3 min-h-[160px]"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="text-base font-semibold flex-1">
@@ -93,7 +93,7 @@ export default function ManageRolesTab() {
                   <PopoverTrigger asChild>
                     <button
                       type="button"
-                      className="text-gray-500 hover:text-gray-900 p-1 rounded hover:bg-gray-100"
+                      className="text-muted-foreground hover:text-foreground p-1 rounded hover:bg-muted"
                       aria-label={`Open ${roleLabel} role menu`}
                     >
                       <MoreHorizontal className="w-4 h-4" aria-hidden />
@@ -110,7 +110,7 @@ export default function ManageRolesTab() {
                         setOpenMenuKey(null);
                         setEditingRoleKey(role.key);
                       }}
-                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left rounded hover:bg-gray-100"
+                      className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left rounded hover:bg-muted"
                     >
                       <Pencil className="w-3.5 h-3.5" aria-hidden />
                       Edit Role
@@ -119,12 +119,12 @@ export default function ManageRolesTab() {
                 </Popover>
               </div>
               {role.description && (
-                <div className="text-sm text-gray-600 line-clamp-4">
+                <div className="text-sm text-muted-foreground line-clamp-4">
                   {role.description}
                 </div>
               )}
               <div className="flex-1" />
-              <div className="flex items-center gap-4 text-xs text-gray-500 pt-2 border-t border-gray-100">
+              <div className="flex items-center gap-4 text-xs text-muted-foreground pt-2 border-t border-gray-100">
                 <span className="inline-flex items-center gap-1.5">
                   <User className="w-3.5 h-3.5" aria-hidden />
                   {role.userCount} user{role.userCount === 1 ? '' : 's'}

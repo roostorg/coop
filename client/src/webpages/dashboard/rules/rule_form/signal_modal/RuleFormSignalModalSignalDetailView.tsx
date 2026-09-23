@@ -47,7 +47,7 @@ export default function RuleFormSignalModalSignalDetailView(props: {
     {
       label: 'Developer',
       value: (
-        <div className="items-center justify-center font-semibold text-gray-500">
+        <div className="items-center justify-center font-semibold text-muted-foreground">
           <img alt="logo" className="w-8 h-8 mr-2 rounded-full" src={logoSrc} />{' '}
           {integrationTitle}
         </div>
@@ -169,7 +169,7 @@ export default function RuleFormSignalModalSignalDetailView(props: {
               key={entry.label}
             >
               <div className="font-bold">{entry.label}</div>
-              <div className="mt-4 font-semibold text-gray-500">
+              <div className="mt-4 font-semibold text-muted-foreground">
                 {entry.value}
               </div>
             </div>

@@ -63,7 +63,7 @@ const ManualReviewCustomChartBuilder = ({
         </Radio.Group>
       </div>
     </div>
-    <div className="flex h-px mx-6 bg-slate-200" />
+    <div className="flex h-px mx-6 bg-border" />
     {chart.metric != null ? (
       <ManualReviewDashboardInsightsChart
         timeWindow={timeWindow}

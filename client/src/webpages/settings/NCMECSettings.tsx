@@ -324,7 +324,7 @@ export default function NCMECSettings() {
               placeholder="Your company name (e.g., 'Acme Corp')"
               required
             />
-            <Text size="XS" className="text-gray-500">
+            <Text size="XS" className="text-muted-foreground">
               Your organization name as it will appear in NCMEC reports
             </Text>
           </div>
@@ -343,7 +343,7 @@ export default function NCMECSettings() {
               placeholder="https://yourcompany.com/terms"
               required
             />
-            <Text size="XS" className="text-gray-500">
+            <Text size="XS" className="text-muted-foreground">
               URL to your Terms of Service or legal policies
             </Text>
           </div>
@@ -362,7 +362,7 @@ export default function NCMECSettings() {
               }
               placeholder="contact@yourcompany.com"
             />
-            <Text size="XS" className="text-gray-500">
+            <Text size="XS" className="text-muted-foreground">
               Required. Used as the reporter contact on every NCMEC report.
             </Text>
           </div>
@@ -382,7 +382,7 @@ export default function NCMECSettings() {
               className="min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               rows={3}
             />
-            <Text size="XS" className="text-gray-500">
+            <Text size="XS" className="text-muted-foreground">
               Optional TOS line included in the CyberTip reporter.{' '}
               {settings.termsOfService.length}/3000 characters.
             </Text>
@@ -392,7 +392,7 @@ export default function NCMECSettings() {
             <Label className="text-sm font-medium">
               Contact person (for law enforcement)
             </Label>
-            <Text size="XS" className="text-gray-500 mb-1">
+            <Text size="XS" className="text-muted-foreground mb-1">
               Person law enforcement can contact other than the reporting
               person. All fields optional.
             </Text>
@@ -477,7 +477,7 @@ export default function NCMECSettings() {
                 </SelectItem>
               </SelectContent>
             </Select>
-            <Text size="XS" className="text-gray-500">
+            <Text size="XS" className="text-muted-foreground">
               Controls how much media a reviewer must classify before they can
               send an NCMEC report. &quot;Review all media&quot; requires a
               decision on every item on the account (which can be hundreds);
@@ -513,7 +513,7 @@ export default function NCMECSettings() {
                   }}
                   placeholder="1"
                 />
-                <Text size="XS" className="text-gray-500">
+                <Text size="XS" className="text-muted-foreground">
                   Reviewers must classify at least this many media items (and
                   report at least one) before they can submit the report.
                 </Text>
@@ -566,7 +566,7 @@ export default function NCMECSettings() {
                 ))}
               </SelectContent>
             </Select>
-            <Text size="XS" className="text-gray-500">
+            <Text size="XS" className="text-muted-foreground">
               When reviewers choose &quot;Enqueue to NCMEC&quot;, jobs will be
               sent to this queue. Leave as &quot;Use org default queue&quot; to
               use the organization&apos;s default manual review queue.
@@ -604,7 +604,7 @@ export default function NCMECSettings() {
                 <SelectItem value="PEER_TO_PEER">Peer-to-peer</SelectItem>
               </SelectContent>
             </Select>
-            <Text size="XS" className="text-gray-500">
+            <Text size="XS" className="text-muted-foreground">
               Incident context (channel/medium) for CyberTip reports. When set,
               each report will include this in internetDetails. For &quot;Web
               page&quot;, the More Info URL above is used if set.
@@ -630,7 +630,7 @@ export default function NCMECSettings() {
               }
               placeholder="https://api.yourcompany.com/ncmec/preservation"
             />
-            <Text size="XS" className="text-gray-500">
+            <Text size="XS" className="text-muted-foreground">
               Optional: Webhook endpoint for NCMEC preservation requests after
               reporting
             </Text>
@@ -655,7 +655,7 @@ export default function NCMECSettings() {
               }
               placeholder="https://api.yourcompany.com/ncmec/additional-info"
             />
-            <Text size="XS" className="text-gray-500">
+            <Text size="XS" className="text-muted-foreground">
               Optional: Webhook endpoint for NCMEC additional information
               requests for the users and media in the report.
             </Text>
@@ -675,7 +675,7 @@ export default function NCMECSettings() {
         </div>
 
         {!isNCMECEnabled && (
-          <Text size="XS" className="mt-4 text-gray-600">
+          <Text size="XS" className="mt-4 text-muted-foreground">
             Note: Saving these settings will enable NCMEC reporting for your
             organization. Reporting will only work if the organization has a
             manual review queue and content is only reported if it is flagged

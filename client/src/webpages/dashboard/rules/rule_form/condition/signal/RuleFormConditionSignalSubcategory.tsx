@@ -34,7 +34,7 @@ export default function RuleFormConditionSignalSubcategory(props: {
       <Button
         className={`px-3 cursor-text ${
           condition.signal
-            ? '!text-black !hover:text-black !focus:text-black'
+            ? '!text-foreground !hover:text-foreground !focus:text-foreground'
             : '!text-[#bfbfbf] !hover:text-[#bfbfbf] !focus:text-[#bfbfbf]'
         }`}
         onClick={onClick}

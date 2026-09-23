@@ -156,13 +156,13 @@ export default function GooglePlaceInput(props: {
         value={place}
       />
       {placePredictions?.length > 0 && (
-        <div className="flex flex-col -mt-2 overflow-hidden border border-t-0 border-solid rounded-b-lg shadow border-slate-300">
+        <div className="flex flex-col -mt-2 overflow-hidden border border-t-0 border-solid rounded-b-lg shadow border-border">
           {/* This is used to make the side borders extend up into the input field */}
           <div className="h-2 -z-50" />
           {placePredictions.map((prediction) => (
             <div
               key={prediction.place_id}
-              className="p-2 text-slate-400 text-start cursor-pointer hover:bg-[#e9f6fe]"
+              className="p-2 text-muted-foreground text-start cursor-pointer hover:bg-accent"
               onClick={() => {
                 setPlace(prediction.description);
                 acceptPrediction(prediction);

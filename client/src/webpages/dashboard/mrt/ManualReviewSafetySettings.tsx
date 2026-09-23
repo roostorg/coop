@@ -124,7 +124,7 @@ export default function ManualReviewSafetySettings() {
       <div className="my-8 divider" />
       <div className="flex gap-8">
         <div className="flex flex-col justify-center">
-          <div className="mb-4 text-lg font-medium text-slate-700">
+          <div className="mb-4 text-lg font-medium text-foreground">
             My Safety Settings
           </div>
           <div className="flex items-center h-10 gap-2">

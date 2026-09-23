@@ -91,18 +91,18 @@ export default function Table<TData extends Record<string, any>>(
         )}
         {topRightComponent}
       </div>
-      <div className="w-full min-w-0 border border-gray-200 border-solid rounded-md">
+      <div className="w-full min-w-0 border border-border border-solid rounded-md">
         <div
           className={`min-w-0 overflow-x-auto overflow-y-auto rounded-md ${
             alwaysShowScrollbar ? 'scrollbar-show' : ''
           } ${customMaxHeight ?? 'max-h-[1200px]'}`}
         >
           <table className="w-full">
-            <thead className="sticky top-0 z-10 bg-slate-50">
+            <thead className="sticky top-0 z-10 bg-muted">
               {table.getHeaderGroups().map((headerGroup) => (
                 <tr key={headerGroup.id}>
                   {isCollapsed && collapsedColumnTitle ? (
-                    <th className="p-4 text-base font-bold text-gray-500 rounded-t-md text-start align-center">
+                    <th className="p-4 text-base font-bold text-muted-foreground rounded-t-md text-start align-center">
                       <div className="flex flex-row items-center justify-between flex-nowrap whitespace-nowrap">
                         {collapsedColumnTitle}
                       </div>
@@ -124,7 +124,7 @@ export default function Table<TData extends Record<string, any>>(
                         ) : sorted === 'asc' ? (
                           <SortAmountAsc className="bg-[#40ace920] w-6 h-6 p-1 text-primary rounded-full" />
                         ) : (
-                          <SortAmountDsc className="w-4 h-4 rounded-full text-gray-500" />
+                          <SortAmountDsc className="w-4 h-4 rounded-full text-muted-foreground" />
                         )
                       ) : null;
                       return (
@@ -145,7 +145,7 @@ export default function Table<TData extends Record<string, any>>(
                                   : 'none'
                               : undefined
                           }
-                          className={`align-center font-bold text-gray-500 text-start text-base !p-0 ${
+                          className={`align-center font-bold text-muted-foreground text-start text-base !p-0 ${
                             index === 0
                               ? 'rounded-tl-md'
                               : index === headerGroup.headers.length - 1
@@ -179,12 +179,12 @@ export default function Table<TData extends Record<string, any>>(
                 const cellWithWrapper = rowLinkTo ? (
                   <Link
                     to={rowLinkTo(row)}
-                    className="flex items-center px-4 py-2 text-black hover:text-black"
+                    className="flex items-center px-4 py-2 text-foreground hover:text-foreground"
                   >
                     {cell}
                   </Link>
                 ) : (
-                  <div className="flex items-center px-4 py-2 text-black hover:text-black">
+                  <div className="flex items-center px-4 py-2 text-foreground hover:text-foreground">
                     {cell}
                   </div>
                 );
@@ -194,18 +194,18 @@ export default function Table<TData extends Record<string, any>>(
                     className={
                       rowsAreSelectable || rowLinkTo !== undefined
                         ? selectedRow === rowIndex
-                          ? 'cursor-pointer bg-indigo-100 hover:bg-indigo-100 border border-solid border-indigo-200 group'
-                          : `cursor-pointer hover:bg-indigo-100 group ${
-                              rowIndex % 2 === 0 ? 'bg-card' : 'bg-slate-50'
+                          ? 'cursor-pointer bg-sidebar-active hover:bg-sidebar-active border border-solid border-border group'
+                          : `cursor-pointer hover:bg-sidebar-active group ${
+                              rowIndex % 2 === 0 ? 'bg-card' : 'bg-muted'
                             }`
                         : rowIndex % 2 === 0
                           ? 'bg-card'
-                          : 'bg-slate-50'
+                          : 'bg-muted'
                     }
                     onClick={() => selectRow(row, rowIndex)}
                   >
                     <td
-                      className={`text-start h-px border border-solid border-gray-200 border-b-0 border-x-0 border-t ${
+                      className={`text-start h-px border border-solid border-border border-b-0 border-x-0 border-t ${
                         rowIndex === rows.length - 1
                           ? 'rounded-b-md'
                           : 'rounded-b-none'
@@ -220,13 +220,13 @@ export default function Table<TData extends Record<string, any>>(
                     className={
                       rowsAreSelectable || rowLinkTo !== undefined
                         ? selectedRow === rowIndex
-                          ? 'cursor-pointer bg-indigo-100 hover:bg-indigo-100 border border-solid border-indigo-200 group'
-                          : `cursor-pointer hover:bg-indigo-100 group ${
-                              rowIndex % 2 === 0 ? 'bg-card' : 'bg-slate-50'
+                          ? 'cursor-pointer bg-sidebar-active hover:bg-sidebar-active border border-solid border-border group'
+                          : `cursor-pointer hover:bg-sidebar-active group ${
+                              rowIndex % 2 === 0 ? 'bg-card' : 'bg-muted'
                             }`
                         : rowIndex % 2 === 0
                           ? 'bg-card'
-                          : 'bg-slate-50'
+                          : 'bg-muted'
                     }
                     onClick={() => selectRow(row, rowIndex)}
                   >
@@ -234,7 +234,7 @@ export default function Table<TData extends Record<string, any>>(
                       const cellWithWrapper = rowLinkTo ? (
                         <Link
                           to={rowLinkTo(row)}
-                          className="flex items-center px-4 py-2 text-black hover:text-black"
+                          className="flex items-center px-4 py-2 text-foreground hover:text-foreground"
                         >
                           {flexRender(
                             cell.column.columnDef.cell,
@@ -242,7 +242,7 @@ export default function Table<TData extends Record<string, any>>(
                           )}
                         </Link>
                       ) : (
-                        <div className="flex items-center max-w-3xl px-4 py-2 overflow-hidden text-ellipsis text-black hover:text-black">
+                        <div className="flex items-center max-w-3xl px-4 py-2 overflow-hidden text-ellipsis text-foreground hover:text-foreground">
                           {flexRender(
                             cell.column.columnDef.cell,
                             cell.getContext(),
@@ -253,7 +253,7 @@ export default function Table<TData extends Record<string, any>>(
                       return (
                         <td
                           key={cell.id}
-                          className={`text-start h-px border border-solid border-gray-200 border-b-0 border-x-0 border-t text-base ${
+                          className={`text-start h-px border border-solid border-border border-b-0 border-x-0 border-t text-base ${
                             rowIndex === rows.length - 1 && index === 0
                               ? 'rounded-bl-md'
                               : 'rounded-bl-none'

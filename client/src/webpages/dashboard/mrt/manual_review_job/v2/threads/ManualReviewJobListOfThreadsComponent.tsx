@@ -145,7 +145,7 @@ export default function ManualReviewJobListOfThreadsComponent(props: {
           <div className="flex font-bold text-start">
             All Reported Threads for this User
           </div>
-          <div className="flex flex-col w-full overflow-auto border border-gray-200 border-solid rounded max-h-[800px] gap-2 p-2">
+          <div className="flex flex-col w-full overflow-auto border border-border border-solid rounded max-h-[800px] gap-2 p-2">
             {threadComponents}
           </div>
         </div>

@@ -239,7 +239,7 @@ function StrikeTTLForm(props: {
         </div>
 
         <div key={`TTL-Input`}>
-          <div className="flex flex-row items-start mt-4 space-x-12 text-slate-700 text-start">
+          <div className="flex flex-row items-start mt-4 space-x-12 text-foreground text-start">
             <div className="flex flex-col mr-12 gap-3">
               <div className="text-sm">User strikes stay on record for</div>
               <div className="flex flex-row items-center gap-2">
@@ -440,7 +440,7 @@ function EditableThreshold(props: {
 
   return (
     <div key={`threshold-input-${thresholdRule.threshold}`}>
-      <div className="flex flex-row items-start mt-4 space-x-12 text-slate-700 text-start">
+      <div className="flex flex-row items-start mt-4 space-x-12 text-foreground text-start">
         <div className="flex flex-col mr-12 gap-3">
           <div className="text-sm">User Strike Score</div>
           <div className="flex flex-row items-center">

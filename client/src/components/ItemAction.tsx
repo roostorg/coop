@@ -295,7 +295,7 @@ export default function ItemAction(props: {
               key={action.id}
               className="flex flex-row items-center gap-2 text-sm"
             >
-              <span className="text-gray-700">{action.name} details:</span>
+              <span className="text-foreground">{action.name} details:</span>
               <Button
                 type="link"
                 size="small"
@@ -318,7 +318,7 @@ export default function ItemAction(props: {
         <div className="mt-4 flex flex-col">
           <label
             htmlFor="item-action-moderator-note"
-            className="mb-1 text-sm font-medium text-gray-700"
+            className="mb-1 text-sm font-medium text-foreground"
           >
             Note (optional)
           </label>

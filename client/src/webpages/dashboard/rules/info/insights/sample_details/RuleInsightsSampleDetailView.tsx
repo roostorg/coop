@@ -71,11 +71,11 @@ export default function RuleInsightsSampleDetailView(props: {
   const { ruleId, itemIdentifier, lookback, onClose } = props;
 
   return (
-    <div className="flex flex-col p-4 ml-8 mr-4 border border-solid rounded-lg border-gray-200 bg-card grow max-w-[90%]">
+    <div className="flex flex-col p-4 ml-8 mr-4 border border-solid rounded-lg border-border bg-card grow max-w-[90%]">
       <div className="flex flex-row items-start justify-between mb-3">
         <div className="flex flex-col">
           <div className="text-lg font-semibold">Details</div>
-          <div className="text-base text-zinc-500">
+          <div className="text-base text-muted-foreground">
             Inspect how each condition was evaluated to understand why this
             content was caught by the rule.
           </div>

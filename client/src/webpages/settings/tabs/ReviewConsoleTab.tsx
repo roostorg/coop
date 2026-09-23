@@ -134,7 +134,7 @@ export default function ReviewConsoleTab() {
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-4">
-        <div className="border-b border-gray-200 py-2">
+        <div className="border-b border-border py-2">
           <Heading size="2XL" weight="semibold">
             Moderator Requirements
           </Heading>
@@ -145,7 +145,7 @@ export default function ReviewConsoleTab() {
               <Text size="SM" weight="medium">
                 Require Policy for Decisions
               </Text>
-              <Text className="text-gray-500 mt-[.31rem] text-[0.8125rem]">
+              <Text className="text-muted-foreground mt-[.31rem] text-[0.8125rem]">
                 Moderators must choose a policy when performing a job action
               </Text>
             </div>
@@ -159,7 +159,7 @@ export default function ReviewConsoleTab() {
               <Text size="SM" weight="medium">
                 Multiple Policies Per Action
               </Text>
-              <Text className="text-gray-500 mt-[.31rem] text-[0.8125rem]">
+              <Text className="text-muted-foreground mt-[.31rem] text-[0.8125rem]">
                 Allows job decisions to reference multiple policies
               </Text>
             </div>
@@ -171,7 +171,7 @@ export default function ReviewConsoleTab() {
                 <Text size="SM" weight="medium">
                   Require Decision Reason
                 </Text>
-                <Text className="text-gray-500 mt-[.31rem] text-[0.8125rem]">
+                <Text className="text-muted-foreground mt-[.31rem] text-[0.8125rem]">
                   Moderators must provide a written reason when completing a job
                 </Text>
               </div>
@@ -181,9 +181,9 @@ export default function ReviewConsoleTab() {
               />
             </div>
             {requireReasonAny ? (
-              <div className="ml-1 flex flex-col gap-3 border-l border-gray-200 pl-4">
+              <div className="ml-1 flex flex-col gap-3 border-l border-border pl-4">
                 <div className="flex items-center justify-between">
-                  <Text size="SM" className="text-gray-700">
+                  <Text size="SM" className="text-foreground">
                     When applying an action
                   </Text>
                   <Switch
@@ -192,7 +192,7 @@ export default function ReviewConsoleTab() {
                   />
                 </div>
                 <div className="flex items-center justify-between">
-                  <Text size="SM" className="text-gray-700">
+                  <Text size="SM" className="text-foreground">
                     When ignoring jobs
                   </Text>
                   <Switch
@@ -207,7 +207,7 @@ export default function ReviewConsoleTab() {
       </div>
 
       <div className="flex flex-col gap-4">
-        <div className="border-b border-gray-200 py-2">
+        <div className="border-b border-border py-2">
           <Heading size="2XL" weight="semibold">
             Queue Management
           </Heading>
@@ -218,7 +218,7 @@ export default function ReviewConsoleTab() {
               <Text size="SM" weight="medium">
                 Hide Skip Button for Non-Admins
               </Text>
-              <Text className="text-gray-500 mt-[.31rem] text-[0.8125rem]">
+              <Text className="text-muted-foreground mt-[.31rem] text-[0.8125rem]">
                 Non-admins must work jobs in order and may not skip a job
               </Text>
             </div>
@@ -229,7 +229,7 @@ export default function ReviewConsoleTab() {
               <Text size="SM" weight="medium">
                 Enable Preview Jobs View
               </Text>
-              <Text className="text-gray-500 mt-[.31rem] text-[0.8125rem]">
+              <Text className="text-muted-foreground mt-[.31rem] text-[0.8125rem]">
                 Anyone who can edit queues may preview a queue without claiming
                 a job
               </Text>
@@ -240,7 +240,7 @@ export default function ReviewConsoleTab() {
       </div>
 
       <div className="flex flex-col gap-4">
-        <div className="border-b border-gray-200 py-2">
+        <div className="border-b border-border py-2">
           <Heading size="2XL" weight="semibold">
             Webhooks
           </Heading>
@@ -251,7 +251,7 @@ export default function ReviewConsoleTab() {
               <Text size="SM" weight="medium">
                 Ignore Callback URL
               </Text>
-              <Text className="text-gray-500 mt-[.31rem] text-[0.8125rem]">
+              <Text className="text-muted-foreground mt-[.31rem] text-[0.8125rem]">
                 Where to send a webhook with item data when a job is ignored
               </Text>
             </div>
@@ -271,7 +271,7 @@ export default function ReviewConsoleTab() {
         </div>
       </div>
 
-      <div className="flex justify-end border-t border-gray-200 pt-4">
+      <div className="flex justify-end border-t border-border pt-4">
         <Button
           disabled={
             !hasChanges || saveLoading || !isValidUrl(ignoreCallbackUrl)

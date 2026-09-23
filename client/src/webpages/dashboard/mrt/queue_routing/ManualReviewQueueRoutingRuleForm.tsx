@@ -188,7 +188,7 @@ export default function ManualReviewQueueRoutingRuleForm(props: {
     );
     return (
       <div
-        className="p-4 rounded-lg bg-slate-50 relative"
+        className="p-4 rounded-lg bg-muted relative"
         key={`set_${conditionSetIndex}`}
       >
         {conditionSet.conditions.map((condition, conditionIndex) => (
@@ -303,7 +303,7 @@ export default function ManualReviewQueueRoutingRuleForm(props: {
       </div>
       {editing && (
         <div
-          className="flex flex-row self-start p-3 my-4 text-sm font-semibold border border-solid rounded-lg cursor-pointer text-muted-foreground hover:text-coop-blue hover:border-coop-blue focus:shadow-coop-light-blue focus:shadow-sm hover:bg-coop-lightblue border-slate-300"
+          className="flex flex-row self-start p-3 my-4 text-sm font-semibold border border-solid rounded-lg cursor-pointer text-muted-foreground hover:text-coop-blue hover:border-coop-blue focus:shadow-coop-light-blue focus:shadow-sm hover:bg-coop-lightblue border-border"
           onClick={() =>
             setTopLevelConditionSet(addConditionSet(rule.conditionSet))
           }

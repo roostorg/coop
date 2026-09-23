@@ -87,7 +87,7 @@ export default function OrganizationTab() {
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-4">
-        <div className="border-b border-gray-200 py-2">
+        <div className="border-b border-border py-2">
           <Heading size="2XL" weight="semibold">
             Organization Profile
           </Heading>
@@ -99,7 +99,7 @@ export default function OrganizationTab() {
               <Text size="SM" weight="medium">
                 Organization Name
               </Text>
-              <Text className="text-gray-500 mt-[.31rem] text-[0.8125rem]">
+              <Text className="text-muted-foreground mt-[.31rem] text-[0.8125rem]">
                 The display name for your organization
               </Text>
             </div>
@@ -118,7 +118,7 @@ export default function OrganizationTab() {
               <Text size="SM" weight="medium">
                 Organization Email
               </Text>
-              <Text className="text-gray-500 mt-[.31rem] text-[0.8125rem]">
+              <Text className="text-muted-foreground mt-[.31rem] text-[0.8125rem]">
                 Primary contact email for your organization
               </Text>
             </div>
@@ -138,7 +138,7 @@ export default function OrganizationTab() {
               <Text size="SM" weight="medium">
                 Website URL
               </Text>
-              <Text className="text-gray-500 mt-[.31rem] text-[0.8125rem]">
+              <Text className="text-muted-foreground mt-[.31rem] text-[0.8125rem]">
                 Your organization's website address
               </Text>
             </div>
@@ -158,7 +158,7 @@ export default function OrganizationTab() {
               <Text size="SM" weight="medium">
                 On-Call Alert Email
               </Text>
-              <Text className="text-gray-500 mt-[.31rem] text-[0.8125rem]">
+              <Text className="text-muted-foreground mt-[.31rem] text-[0.8125rem]">
                 Optional email for receiving urgent alerts
               </Text>
             </div>
@@ -174,7 +174,7 @@ export default function OrganizationTab() {
         </div>
       </div>
 
-      <div className="flex justify-end border-t border-gray-200 pt-4">
+      <div className="flex justify-end border-t border-border pt-4">
         <Button
           onClick={async () => {
             await updateOrgInfo({

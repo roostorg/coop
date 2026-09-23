@@ -64,7 +64,7 @@ export default function RuleActionParametersEditor({
 
   return (
     <div className="flex flex-col gap-2 mt-2">
-      <div className="text-sm font-medium text-slate-700">
+      <div className="text-sm font-medium text-foreground">
         Action parameters
       </div>
       {selectedParameterized.map((action) => {

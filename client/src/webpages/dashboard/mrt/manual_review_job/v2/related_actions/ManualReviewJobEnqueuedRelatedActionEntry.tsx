@@ -41,7 +41,7 @@ export default function ManualReviewJobEnqueuedRelatedActionEntry(props: {
           label={label}
           sublabel={sublabel}
           fallbackComponent={
-            <UserAlt4 className="p-3 text-slate-500 w-11 h-11" />
+            <UserAlt4 className="p-3 text-muted-foreground w-11 h-11" />
           }
           labelTruncationType="wrap"
         />
@@ -50,7 +50,7 @@ export default function ManualReviewJobEnqueuedRelatedActionEntry(props: {
             <button
               type="button"
               aria-label="Edit action details"
-              className="flex items-center justify-center w-5 h-5 text-slate-400 hover:text-slate-700 cursor-pointer bg-transparent border-none p-0"
+              className="flex items-center justify-center w-5 h-5 text-muted-foreground hover:text-foreground cursor-pointer bg-transparent border-none p-0"
               onClick={onEditParameters}
             >
               <Pencil className="w-3 h-3" />

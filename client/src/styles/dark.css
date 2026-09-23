@@ -1,25 +1,7 @@
-/* Dark-mode overrides for styles Coop does not own.
- *
- * `legacyStyles.css` @imports the full Ant Design v4 stylesheet, and it is
- * appended to <head> at runtime by useDynamicLegacyCSS, so it lands after the
- * bundled CSS and wins every source-order tie. antd v4 predates the v5
- * `darkAlgorithm`, so there is no supported way to ask it for dark tokens —
- * the surfaces have to be overridden here.
- *
- * Everything is scoped under `html.dark` (specificity 0,1,1+) so it outranks
- * antd's bare element/class selectors without a single !important, and is
- * inert in light mode.
- *
- * Colors resolve from the design tokens in Dashboard.css, which are sampled
- * from the issue #365 Figma.
- */
-
-/* antd's reset owns <body>. Take it back. */
 html.dark body {
   @apply bg-background text-foreground;
 }
 
-/* ---- Surfaces ------------------------------------------------------- */
 html.dark .ant-card,
 html.dark .ant-modal-content,
 html.dark .ant-modal-header,
@@ -45,7 +27,6 @@ html.dark .ant-modal-close-icon {
   @apply text-muted-foreground;
 }
 
-/* ---- Form controls -------------------------------------------------- */
 html.dark .ant-input,
 html.dark .ant-input-affix-wrapper,
 html.dark .ant-input-number,
@@ -66,7 +47,6 @@ html.dark .ant-select-clear {
   @apply text-muted-foreground;
 }
 
-/* The clear button paints an opaque chip over the arrow. */
 html.dark .ant-select-clear {
   @apply bg-background;
 }
@@ -75,7 +55,6 @@ html.dark .ant-select-selection-item {
   @apply text-foreground;
 }
 
-/* ---- Menu / dropdown items ------------------------------------------ */
 html.dark .ant-dropdown-menu-item,
 html.dark .ant-select-item {
   @apply text-foreground;
@@ -86,7 +65,8 @@ html.dark .ant-select-item-option-active:not(.ant-select-item-option-disabled) {
   @apply bg-accent;
 }
 
-html.dark .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+html.dark
+  .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
   @apply bg-accent text-foreground;
 }
 
@@ -95,7 +75,6 @@ html.dark .ant-select-item-option-disabled {
   @apply text-muted-foreground;
 }
 
-/* ---- Buttons -------------------------------------------------------- */
 html.dark .ant-btn-default,
 html.dark .ant-btn:not([class*='ant-btn-']) {
   @apply bg-card text-foreground border-border;
@@ -116,7 +95,6 @@ html.dark .ant-btn[disabled]:hover {
   @apply bg-muted text-muted-foreground border-border;
 }
 
-/* ---- Tables --------------------------------------------------------- */
 html.dark .ant-table,
 html.dark .ant-table-tbody > tr > td {
   @apply bg-card text-foreground;
@@ -135,7 +113,6 @@ html.dark .ant-table-tbody > tr.ant-table-row:hover > td {
   @apply bg-accent;
 }
 
-/* ---- Misc ----------------------------------------------------------- */
 html.dark .ant-divider {
   @apply border-border;
 }
@@ -157,27 +134,6 @@ html.dark .ant-tabs-top > .ant-tabs-nav::before {
   @apply border-border;
 }
 
-/* ---------------------------------------------------------------------------
- * Legacy palette bridge
- *
- * Coop predates the design tokens, so ~500 call sites still name raw Tailwind
- * palette steps (text-gray-500, bg-gray-100, border-gray-200, …) that only
- * make sense on a light background. Rather than churn every one of those
- * files in this PR, dark mode remaps them onto the token palette here.
- *
- * The `:where()` wrapper is load-bearing: it contributes zero specificity, so
- * each rule lands at (0,1,0) — enough to beat the plain utility it shadows
- * (dark.css is imported after the utilities), but LOWER than Tailwind's own
- * `dark:` variants, which compile to `.dark .dark\:x` at (0,2,0). That means
- * any component with an explicit dark: class still wins, and migrating a
- * component off the bridge is just a matter of adding one.
- *
- * This is a migration shim. As components move to semantic tokens
- * (bg-card / text-foreground / text-muted-foreground / border-border), the
- * corresponding selectors here should shrink and eventually go away.
- * ------------------------------------------------------------------------ */
-
-/* Body / strong text */
 .dark
   :where(
     .text-black,
@@ -191,12 +147,10 @@ html.dark .ant-tabs-top > .ant-tabs-nav::before {
   @apply text-foreground;
 }
 
-/* Secondary text */
 .dark :where(.text-gray-600, .text-gray-500, .text-slate-600, .text-zinc-500) {
   @apply text-muted-foreground;
 }
 
-/* Faint / disabled text */
 .dark
   :where(
     .text-gray-400,
@@ -205,12 +159,9 @@ html.dark .ant-tabs-top > .ant-tabs-nav::before {
     .text-slate-300,
     .text-zinc-400
   ) {
-  /* One step below --muted-foreground so the de-emphasis survives, but still
-     ~4.6:1 on --card, which 45% (the first pass) was not. */
   color: hsl(0 0% 56%);
 }
 
-/* Icon fills follow the text tiers */
 .dark :where(.fill-slate-500, .fill-slate-400) {
   fill: hsl(var(--muted-foreground));
 }
@@ -219,12 +170,10 @@ html.dark .ant-tabs-top > .ant-tabs-nav::before {
   fill: hsl(var(--foreground));
 }
 
-/* Raised surfaces */
 .dark :where(.bg-slate-50, .bg-gray-50) {
   @apply bg-card;
 }
 
-/* Recessed / filled surfaces — chips, wells, hover fills */
 .dark :where(.bg-gray-100, .bg-slate-200, .bg-gray-200) {
   @apply bg-muted;
 }
@@ -233,7 +182,6 @@ html.dark .ant-tabs-top > .ant-tabs-nav::before {
   @apply bg-secondary;
 }
 
-/* Hairlines */
 .dark
   :where(
     .border-gray-200,
@@ -243,20 +191,6 @@ html.dark .ant-tabs-top > .ant-tabs-nav::before {
   ) {
   @apply border-border;
 }
-
-/* ---------------------------------------------------------------------------
- * Semantic tints (banners, badges, inline validation)
- *
- * The same shape repeats across the app: a `bg-{hue}-50` panel with a
- * `border-{hue}-200` hairline and `text-{hue}-800` copy. Those steps are
- * built for a white page — on #121212 the panel reads as a bright slab and
- * the copy disappears into it. Dark mode inverts the ramp: deep tint behind,
- * light tint in front, so the hue still carries its meaning (red = error,
- * yellow = warning) at a legible contrast.
- *
- * Same `:where()` rule as the palette bridge above — an explicit dark:
- * variant on the component always wins.
- * ------------------------------------------------------------------------ */
 
 .dark :where(.bg-blue-50, .bg-blue-100) {
   @apply bg-blue-950;
@@ -558,16 +492,6 @@ html.dark .ant-tabs-top > .ant-tabs-nav::before {
   @apply text-teal-400;
 }
 
-/* ---------------------------------------------------------------------------
- * Brand ink
- *
- * `text-primary` / `fill-primary` appear ~80 times as link and accent colour.
- * --primary is picked to sit BEHIND white text, so as ink it only manages
- * 3.0:1 on the dark page. Swap in --primary-emphasis, which is the same hue
- * lifted to a readable lightness (and is what the Figma uses for the selected
- * sidebar label).
- * ------------------------------------------------------------------------ */
-
 .dark :where(.text-primary) {
   @apply text-primary-emphasis;
 }
@@ -575,10 +499,6 @@ html.dark .ant-tabs-top > .ant-tabs-nav::before {
 .dark :where(.fill-primary) {
   fill: hsl(var(--primary-emphasis));
 }
-
-/* ---------------------------------------------------------------------------
- * Hard-coded chrome in Dashboard.css that predates the tokens.
- * ------------------------------------------------------------------------ */
 
 .dark .divider {
   background-color: hsl(var(--border));
@@ -595,20 +515,6 @@ html.dark .ant-tabs-top > .ant-tabs-nav::before {
 .dark .scrollbar-show::-webkit-scrollbar-thumb:hover {
   background-color: rgb(255 255 255 / 0.45);
 }
-
-/* ---------------------------------------------------------------------------
- * coop-light* chips
- *
- * The `coop-light{hue}` fills are pastels meant to sit on a white page, always
- * paired with the matching `text-coop-{hue}` accent. On the dark page they
- * read as bright slabs. Dark mode re-derives each fill as a low-alpha wash of
- * its own accent, so the pairing stays legible and keeps its hue.
- *
- * `!important` here only matches the source: several call sites write
- * `!bg-coop-lightblue`, and a shim cannot out-specify an important
- * declaration without one. A component's own `dark:!bg-*` still wins, since
- * important declarations are still ranked by specificity.
- * ------------------------------------------------------------------------ */
 
 .dark :where(.bg-coop-lightblue, .\!bg-coop-lightblue) {
   background-color: rgb(106 169 246 / 0.18) !important;
@@ -642,21 +548,9 @@ html.dark .ant-tabs-top > .ant-tabs-nav::before {
   background-color: rgb(168 120 96 / 0.22) !important;
 }
 
-/* Hover pairs for the same chips. */
 .dark :where(.hover\:bg-coop-lightblue-hover:hover) {
   background-color: rgb(106 169 246 / 0.28) !important;
 }
-
-/* ---------------------------------------------------------------------------
- * Recharts
- *
- * Recharts paints its grid and axes with hard-coded light strokes — `#ccc` by
- * default, `#d4d4d8` where the charts pass it explicitly — emitted as SVG
- * presentation attributes. A CSS `stroke` declaration outranks a presentation
- * attribute, so the grid can be recoloured here without touching every chart.
- *
- * Series strokes/fills are deliberately NOT touched: those carry the data.
- * ------------------------------------------------------------------------ */
 
 .dark .recharts-cartesian-grid line,
 .dark .recharts-cartesian-grid path,
@@ -687,4 +581,44 @@ html.dark .ant-tabs-top > .ant-tabs-nav::before {
 
 .dark .recharts-tooltip-cursor {
   fill: hsl(var(--accent) / 0.4);
+}
+
+html.dark .ant-checkbox-wrapper,
+html.dark .ant-checkbox + span {
+  @apply text-foreground;
+}
+
+html.dark .ant-checkbox-inner {
+  @apply bg-card border-border;
+}
+
+html.dark .ant-checkbox-checked .ant-checkbox-inner {
+  @apply bg-primary border-primary;
+}
+
+html.dark .ant-checkbox-disabled .ant-checkbox-inner {
+  @apply bg-muted border-border;
+}
+
+html.dark .ant-checkbox-disabled + span {
+  @apply text-muted-foreground;
+}
+
+html.dark .ant-tooltip-inner,
+html.dark .ant-tooltip-arrow-content {
+  @apply bg-card text-foreground;
+}
+
+html.dark .ant-select-tree,
+html.dark .ant-select-tree-list,
+html.dark .ant-tree-select-dropdown {
+  @apply bg-card text-foreground;
+}
+
+html.dark .ant-select-tree-node-content-wrapper:hover {
+  @apply bg-accent;
+}
+
+html.dark .ant-select-tree-node-selected {
+  @apply bg-accent text-accent-foreground;
 }

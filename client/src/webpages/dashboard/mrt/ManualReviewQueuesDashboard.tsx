@@ -160,7 +160,7 @@ const formatTimeAgo = (date: string | Date | null | undefined): string => {
 
 // Get color class based on age
 const getAgeColorClass = (date: string | Date | null | undefined): string => {
-  if (!date) return 'text-gray-500';
+  if (!date) return 'text-muted-foreground';
 
   const now = new Date().getTime();
   const then = new Date(date).getTime();
@@ -343,7 +343,7 @@ export default function ManualReviewQueuesDashboard() {
     (id: string, pendingJobCount: number) => {
       return (
         <Button
-          className="flex items-center justify-center w-full p-4 text-sm text-gray-600 bg-card border border-gray-200 border-solid shadow-none cursor-pointer rounded-md drop-shadow-none hover:border-gray-200 focus:border-gray-200 hover:bg-gray-100 hover:text-gray-600 focus:text-gray-600"
+          className="flex items-center justify-center w-full p-4 text-sm text-muted-foreground bg-card border border-border border-solid shadow-none cursor-pointer rounded-md drop-shadow-none hover:border-border focus:border-border hover:bg-muted hover:text-muted-foreground focus:text-muted-foreground"
           onClick={() => navigate(`review/${id}`)}
           disabled={pendingJobCount === 0}
         >
@@ -732,7 +732,7 @@ export default function ManualReviewQueuesDashboard() {
                     ? {
                         deleteJobs: (
                           <Button
-                            className="flex items-center justify-center w-full p-4 text-sm text-gray-600 bg-card border border-gray-200 border-solid shadow-none cursor-pointer rounded-md drop-shadow-none hover:border-gray-200 focus:border-gray-200 hover:bg-gray-100 hover:text-gray-600 focus:text-gray-600"
+                            className="flex items-center justify-center w-full p-4 text-sm text-muted-foreground bg-card border border-border border-solid shadow-none cursor-pointer rounded-md drop-shadow-none hover:border-border focus:border-border hover:bg-muted hover:text-muted-foreground focus:text-muted-foreground"
                             onClick={(event) => {
                               event.stopPropagation();
                               setDeleteAllJobsModalInfo({
@@ -753,7 +753,7 @@ export default function ManualReviewQueuesDashboard() {
                     ? {
                         previewJobs: (
                           <Button
-                            className="flex items-center justify-center w-full p-4 text-sm text-gray-600 bg-card border border-gray-200 border-solid shadow-none cursor-pointer rounded-md drop-shadow-none hover:border-gray-200 focus:border-gray-200 hover:bg-gray-100 hover:text-gray-600 focus:text-gray-600"
+                            className="flex items-center justify-center w-full p-4 text-sm text-muted-foreground bg-card border border-border border-solid shadow-none cursor-pointer rounded-md drop-shadow-none hover:border-border focus:border-border hover:bg-muted hover:text-muted-foreground focus:text-muted-foreground"
                             onClick={() => navigate(`jobs/${id}`)}
                             disabled={pendingJobCount === 0}
                           >
@@ -865,7 +865,7 @@ export default function ManualReviewQueuesDashboard() {
       <Button
         className={`font-semibold text-base rounded ${
           visibleColumnsCount === Object.keys(columnLabels).length
-            ? 'bg-card text-gray-600 hover:bg-card hover:text-gray-600'
+            ? 'bg-card text-muted-foreground hover:bg-card hover:text-muted-foreground'
             : 'bg-gray-600 text-white border-none hover:bg-gray-500'
         }`}
         icon={<GridAlt className="inline-block w-4 h-4 mr-2" />}
@@ -874,7 +874,7 @@ export default function ManualReviewQueuesDashboard() {
         Columns
       </Button>
       {columnsMenuVisible && (
-        <div className="absolute left-0 z-20 flex flex-col mt-1 bg-card border border-solid border-gray-300 rounded shadow-md min-w-[240px]">
+        <div className="absolute left-0 z-20 flex flex-col mt-1 bg-card border border-solid border-border rounded shadow-md min-w-[240px]">
           <div className="px-4 py-4 text-base font-semibold">Show Columns</div>
           <div className="!p-0 !m-0 divider" />
           <div className="flex flex-col px-4 py-2">
@@ -942,7 +942,7 @@ export default function ManualReviewQueuesDashboard() {
               <div className="flex flex-col pb-2 text-3xl font-semibold text-slate-900">
                 {resolvedJobsCount?.getResolvedJobsForUser ?? 0}
               </div>
-              <div className="text-sm font-medium text-slate-400">
+              <div className="text-sm font-medium text-muted-foreground">
                 since yesterday
               </div>
             </div>
@@ -958,7 +958,7 @@ export default function ManualReviewQueuesDashboard() {
               <div className="flex flex-col pb-2 text-3xl font-semibold text-slate-900">
                 {getSkippedJobsForUser?.getSkippedJobsForUser ?? 0}
               </div>
-              <div className="text-sm font-medium text-slate-400">
+              <div className="text-sm font-medium text-muted-foreground">
                 since yesterday
               </div>
             </div>

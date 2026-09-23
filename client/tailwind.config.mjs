@@ -36,9 +36,6 @@ export default {
         primary: {
           DEFAULT: 'hsl(var(--primary))',
           foreground: 'hsl(var(--primary-foreground))',
-          // A primary you can set text in. --primary is tuned to sit behind
-          // white text; at 4.9:1 on white it is fine as ink on a light page,
-          // but only 3.0:1 on the dark page, so dark mode brightens it.
           emphasis: 'hsl(var(--primary-emphasis))',
         },
         secondary: {
@@ -65,7 +62,6 @@ export default {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
-        // Fill behind the selected sidebar nav item.
         'sidebar-active': 'hsl(var(--sidebar-active))',
         'coop-dark-purple': '#2f2745',
         'coop-dark-purple-hover': '#160e1a',

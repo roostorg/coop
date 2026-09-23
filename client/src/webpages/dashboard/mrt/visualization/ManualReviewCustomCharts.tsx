@@ -339,10 +339,10 @@ const ManualReviewCustomCharts = ({
           ),
         )}
         <div
-          className="flex items-center justify-center w-full rounded cursor-pointer bg-muted hover:bg-slate-200 aspect-square"
+          className="flex items-center justify-center w-full rounded cursor-pointer bg-muted hover:bg-border aspect-square"
           onClick={onAddChart}
         >
-          <PlusOutlined className="items-center text-2xl text-slate-400" />
+          <PlusOutlined className="items-center text-2xl text-muted-foreground" />
         </div>
       </div>
       {modal}

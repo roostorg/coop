@@ -145,14 +145,14 @@ export default function ReportInfoComponent(props: {
           {closedJobData?.rightComponent}
         </div>
         <div className="my-2 divider" />
-        <div className="flex flex-col items-start justify-between p-4 mt-2 mb-8 bg-white border border-gray-200 border-solid rounded-lg">
+        <div className="flex flex-col items-start justify-between p-4 mt-2 mb-8 bg-card border border-border border-solid rounded-lg">
           <table>
             <tbody>
               <tr>
                 <th className="py-1 pr-2 font-bold align-top text-start whitespace-nowrap">
                   {isAppeal ? 'Appeal ' : 'Report '}Received
                 </th>
-                <td className="py-1 align-top text-start text-slate-500">
+                <td className="py-1 align-top text-start text-muted-foreground">
                   {safeFormat(createdAt, 'MM/dd/yy hh:mm a')}
                 </td>
               </tr>
@@ -160,7 +160,7 @@ export default function ReportInfoComponent(props: {
                 <th className="py-1 mr-4 font-bold align-top text-start whitespace-nowrap">
                   {isAppeal ? 'Actioned ' : 'Reported '}Item
                 </th>
-                <td className="py-1 align-top text-start text-slate-500">
+                <td className="py-1 align-top text-start text-muted-foreground">
                   <div className="flex flex-wrap gap-x-2 gap-y-0 break-all">
                     <span className="whitespace-nowrap">
                       {reportedItem.type.name}:
@@ -178,7 +178,7 @@ export default function ReportInfoComponent(props: {
                   <th className="py-1 pr-4 font-bold align-top text-start whitespace-nowrap">
                     {isAppeal ? 'Appeal Created By' : 'Report Created By'}
                   </th>
-                  <td className="py-1 align-top text-start text-slate-500">
+                  <td className="py-1 align-top text-start text-muted-foreground">
                     {(() => {
                       const { enqueueSourceInfo } = payload;
                       switch (enqueueSourceInfo.__typename) {
@@ -251,7 +251,7 @@ export default function ReportInfoComponent(props: {
                     <th className="py-1 mr-4 font-bold align-top text-start whitespace-nowrap">
                       Reason
                     </th>
-                    <td className="py-1 align-top text-start text-slate-500">
+                    <td className="py-1 align-top text-start text-muted-foreground">
                       {latestReportReason.reason}
                     </td>
                   </tr>
@@ -261,7 +261,7 @@ export default function ReportInfoComponent(props: {
                   <th className="py-1 mr-4 font-bold align-top text-start whitespace-nowrap">
                     Reason for Appeal
                   </th>
-                  <td className="py-1 align-top text-start text-slate-500">
+                  <td className="py-1 align-top text-start text-muted-foreground">
                     {payload.appealReason}
                   </td>
                 </tr>
@@ -271,7 +271,7 @@ export default function ReportInfoComponent(props: {
                   <th className="py-1 mr-4 font-bold align-top text-start whitespace-nowrap">
                     Actions Taken
                   </th>
-                  <td className="py-1 align-top text-start text-slate-500">
+                  <td className="py-1 align-top text-start text-muted-foreground">
                     {actionsTaken.join(', ')}
                   </td>
                 </tr>
@@ -281,7 +281,7 @@ export default function ReportInfoComponent(props: {
                   <th className="py-1 mr-4 font-bold align-top text-start whitespace-nowrap">
                     Reported For
                   </th>
-                  <td className="py-1 align-top text-start text-slate-500">
+                  <td className="py-1 align-top text-start text-muted-foreground">
                     {policies
                       .filter((it) => policyIds.includes(it.id))
                       .map((it) => it.name)
@@ -295,7 +295,7 @@ export default function ReportInfoComponent(props: {
                     Report Count
                   </th>
                   <td>
-                    <div className="py-1 align-top text-start text-slate-500">
+                    <div className="py-1 align-top text-start text-muted-foreground">
                       {numTimesReported !== 1
                         ? `This ${reportedItem.type.name} has been reported ${numTimesReported} times`
                         : `This ${reportedItem.type.name} has been reported 1 time`}
@@ -305,7 +305,7 @@ export default function ReportInfoComponent(props: {
               ) : null}
             </tbody>
           </table>
-          <div className="w-full h-px my-2 bg-slate-200" />
+          <div className="w-full h-px my-2 bg-border" />
           <ManualReviewJobCommentSection jobId={jobId} userId={userId} />
         </div>
       </>

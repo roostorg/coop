@@ -343,7 +343,7 @@ export default function ItemInvestigation(props: {
                 {value.map((it) => (
                   <div
                     key={it.type.id}
-                    className="flex flex-col p-2 my-4 border border-gray-200 border-solid rounded-lg cursor-pointer text-start"
+                    className="flex flex-col p-2 my-4 border border-border border-solid rounded-lg cursor-pointer text-start"
                     onClick={() =>
                       setSelectedItem({
                         id: it.id,

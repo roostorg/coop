@@ -1095,7 +1095,7 @@ function ManualReviewJobReviewImpl(props: {
 
   const actionList = (
     <div
-      className="sticky flex flex-col border border-gray-200 border-solid rounded-md shrink-0"
+      className="sticky flex flex-col border border-border border-solid rounded-md shrink-0"
       data-testid="manual-review-decision-action-list"
     >
       {decisionActions
@@ -1145,10 +1145,10 @@ function ManualReviewJobReviewImpl(props: {
                 }
               >
                 <Dropdown
-                  className={`self-stretch text-start cursor-pointer text-gray-600 font-semibold p-3 ${
+                  className={`self-stretch text-start cursor-pointer text-muted-foreground font-semibold p-3 ${
                     selected
                       ? 'bg-sky-100 text-sky-600'
-                      : 'bg-white hover:bg-gray-100'
+                      : 'bg-card hover:bg-muted'
                   }`}
                   trigger={!selected ? ['click'] : []}
                   menu={{
@@ -1222,10 +1222,10 @@ function ManualReviewJobReviewImpl(props: {
             <div
               className={`self-stretch flex flex-row items-center justify-between text-start font-semibold p-3 ${
                 isNcmecDisabled
-                  ? 'cursor-not-allowed text-gray-400 bg-gray-50'
+                  ? 'cursor-not-allowed text-muted-foreground bg-muted'
                   : selected
                     ? 'cursor-pointer bg-sky-100 text-sky-600'
-                    : 'cursor-pointer text-gray-600 bg-white hover:bg-gray-100'
+                    : 'cursor-pointer text-muted-foreground bg-card hover:bg-muted'
               }`}
               key={key}
               onClick={() => {
@@ -1350,7 +1350,7 @@ function ManualReviewJobReviewImpl(props: {
       }}
       trigger={['click']}
     >
-      <Button className="flex flex-row bottom-0 w-2/3 !px-2 mb-2 hidden !border-slate-200 !hover:fill-[#40a9ff] !focus:fill-[#40a9ff]">
+      <Button className="flex flex-row bottom-0 w-2/3 !px-2 mb-2 hidden !border-border !hover:fill-[#40a9ff] !focus:fill-[#40a9ff]">
         <div className="flex flex-row items-center">
           <Sidebar1 className="w-3.5 h-3.5 mr-2" /> View Policy
         </div>
@@ -1362,7 +1362,7 @@ function ManualReviewJobReviewImpl(props: {
     org.hideSkipButtonForNonAdmins &&
     !userCanBypassSkipRestriction ? undefined : (
       <Button
-        className="bottom-0 w-1/3 !px-2 mb-2 overflow-hidden !border-slate-200 !hover:fill-[#40a9ff] !focus:fill-[#40a9ff]"
+        className="bottom-0 w-1/3 !px-2 mb-2 overflow-hidden !border-border !hover:fill-[#40a9ff] !focus:fill-[#40a9ff]"
         onClick={skipToNextJob}
         disabled={pendingJobCount === 0}
       >
@@ -1622,7 +1622,7 @@ function ManualReviewJobReviewImpl(props: {
                   </Option>
                 </Select>
               </div>
-              <div className="mt-2 font-medium text-gray-500 text-start">
+              <div className="mt-2 font-medium text-muted-foreground text-start">
                 Here, you can review jobs in the {queue.name} queue one at a
                 time and make decisions on each item.
               </div>
@@ -1653,7 +1653,7 @@ function ManualReviewJobReviewImpl(props: {
           <div className="my-2 divider" />
           {contentArea()}
         </div>
-        {!closedJob ? <div className="w-px h-full bg-gray-200" /> : null}
+        {!closedJob ? <div className="w-px h-full bg-muted" /> : null}
         {!closedJob ? (
           // Height subtracts the dashboard's py-8 (4rem) so the panel fits the
           // viewport; content scrolls while the Submit footer stays pinned.
@@ -1666,12 +1666,12 @@ function ManualReviewJobReviewImpl(props: {
                   {drawer}
                 </div>
                 {pendingJobCount != null && pendingJobCount > 0 ? (
-                  <div className="text-slate-400">
+                  <div className="text-muted-foreground">
                     {pendingJobCount} {pendingJobCount === 1 ? 'job' : 'jobs'}{' '}
                     remaining
                   </div>
                 ) : pendingJobCount === 0 ? (
-                  <div className="text-slate-400">No jobs remaining</div>
+                  <div className="text-muted-foreground">No jobs remaining</div>
                 ) : null}
               </div>
               <div className="my-4 divider" />
@@ -1783,7 +1783,7 @@ function ManualReviewJobReviewImpl(props: {
                 className={`flex w-full justify-center items-center rounded-md text-sm shadow-none drop-shadow-none p-2 font-semibold ${
                   canBeSubmitted
                     ? 'border-none text-white cursor-pointer bg-coop-blue hover:bg-coop-blue-hover focus:bg-coop-blue active:bg-coop-blue'
-                    : 'border border-solid border-gray-200 bg-gray-100 text-gray-300 cursor-not-allowed'
+                    : 'border border-solid border-border bg-muted text-gray-300 cursor-not-allowed'
                 }`}
                 onClick={() => {
                   if (canBeSubmitted) {

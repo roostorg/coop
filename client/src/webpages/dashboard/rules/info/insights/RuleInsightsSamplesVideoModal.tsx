@@ -15,14 +15,14 @@ export default function RuleInsightsSamplesVideoModal(props: {
     <CoopModal visible={true} onClose={onClose}>
       {videoError != null ? (
         <div className="flex items-start justify-center w-full h-full">
-          <div className="flex flex-col items-center justify-center p-12 text-zinc-500">
+          <div className="flex flex-col items-center justify-center p-12 text-muted-foreground">
             <div className="pb-8 text-neutral-300">
               <AlertCircle className="w-24 h-24" />
             </div>
-            <div className="pb-2 text-3xl max-w-s text-zinc-500">
+            <div className="pb-2 text-3xl max-w-s text-muted-foreground">
               Something Went Wrong
             </div>
-            <div className="pt-2 pb-10 text-base max-w-s text-zinc-500">
+            <div className="pt-2 pb-10 text-base max-w-s text-muted-foreground">
               We're having trouble playing this video.
             </div>
             <CoopButton title="Close" onClick={onClose} />

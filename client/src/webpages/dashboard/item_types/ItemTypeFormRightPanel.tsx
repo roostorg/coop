@@ -40,7 +40,7 @@ export default function ItemTypeFormRightPanel(props: {
         currentSelectedTab={activeTab}
       />
       {activeTab === 'Preview' && (
-        <div className="mx-4 mt-3 mb-6 text-sm text-gray-500">
+        <div className="mx-4 mt-3 mb-6 text-sm text-muted-foreground">
           {`Add Roles to your ${titleCaseEnumString(
             itemTypeKind,
           )} Item to better render the Item across Coop and

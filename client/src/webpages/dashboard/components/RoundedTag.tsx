@@ -17,7 +17,7 @@ export default function RoundedTag(
       case GQLRuleStatus.Background:
         return 'text-white bg-[#60a5fa]';
       case GQLRuleStatus.Draft:
-        return 'text-gray-800 bg-gray-100';
+        return 'text-foreground bg-muted';
       case GQLRuleStatus.Expired:
         return 'text-white bg-[#ef4444]';
       case GQLRuleStatus.Live:
@@ -48,7 +48,7 @@ export default function RoundedTag(
         props.environment,
       )}`;
     }
-    return 'text-gray-800 bg-gray-100';
+    return 'text-foreground bg-muted';
   })();
   return (
     <div

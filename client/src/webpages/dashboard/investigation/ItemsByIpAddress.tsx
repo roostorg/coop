@@ -84,7 +84,7 @@ export default function ItemsByIpAddress(props: {
                 to={`/dashboard/manual_review/investigation/?id=${encodeURIComponent(
                   item.id,
                 )}&typeId=${encodeURIComponent(item.type.id)}`}
-                className="flex flex-row items-center justify-between p-2 my-1 border border-gray-200 border-solid rounded-lg text-start hover:bg-gray-50"
+                className="flex flex-row items-center justify-between p-2 my-1 border border-border border-solid rounded-lg text-start hover:bg-muted"
               >
                 <div className="flex flex-col">
                   <div className="font-bold">{item.type.name}</div>

@@ -252,7 +252,7 @@ export function ManualReviewJobOtherItemsComponent(props: {
   return (
     <div className="flex flex-col items-start w-full gap-2 grow">
       <div
-        className="flex flex-col w-full overflow-auto border border-gray-200 border-solid rounded-lg max-h-[600px] gap-2 p-5 bg-card"
+        className="flex flex-col w-full overflow-auto border border-border border-solid rounded-lg max-h-[600px] gap-2 p-5 bg-card"
         ref={scrollViewRef}
       >
         {messagesComponent}

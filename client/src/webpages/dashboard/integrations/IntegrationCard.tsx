@@ -40,7 +40,7 @@ export default function IntegrationCard(props: {
       ]}
     >
       <div className="flex flex-col items-center max-w-md">
-        <div className="p-6 mb-6 rounded-full bg-slate-200 w-fit h-fit flex items-center justify-center">
+        <div className="p-6 mb-6 rounded-full bg-border w-fit h-fit flex items-center justify-center">
           {logo ? (
             <img src={logo} alt="" className="w-16 h-16 object-contain" />
           ) : null}
@@ -91,13 +91,13 @@ export default function IntegrationCard(props: {
 
   return (
     <>
-      <Wrapper className="relative flex flex-col items-center justify-center w-full h-full p-6 pt-12 pb-12 bg-card border border-solid rounded-3xl border-slate-300 transition-all duration-200 ease-out box-border hover:transform hover:-translate-y-1 hover:transition-all hover:duration-200 hover:ease-in hover:dashboard-border-primary/70 hover:cursor-pointer">
-        <div className="w-16 h-16 p-4 mb-6 rounded-full bg-slate-200 flex items-center justify-center overflow-hidden">
+      <Wrapper className="relative flex flex-col items-center justify-center w-full h-full p-6 pt-12 pb-12 bg-card border border-solid rounded-3xl border-border transition-all duration-200 ease-out box-border hover:transform hover:-translate-y-1 hover:transition-all hover:duration-200 hover:ease-in hover:dashboard-border-primary/70 hover:cursor-pointer">
+        <div className="w-16 h-16 p-4 mb-6 rounded-full bg-border flex items-center justify-center overflow-hidden">
           {logo ? (
             <img src={logo} alt="" className="w-full h-full object-contain" />
           ) : null}
         </div>
-        <div className="flex flex-col justify-start text-lg font-bold text-center text-slate-700">
+        <div className="flex flex-col justify-start text-lg font-bold text-center text-foreground">
           {title}
         </div>
       </Wrapper>

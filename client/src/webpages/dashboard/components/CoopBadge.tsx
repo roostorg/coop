@@ -29,7 +29,7 @@ export default function CoopBadge(props: {
       case 'soft-red':
         return 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300 fill-red-800';
       case 'soft-gray':
-        return 'bg-gray-100 text-gray-800 dark:bg-muted dark:text-foreground fill-gray-800';
+        return 'bg-muted text-foreground dark:bg-muted dark:text-foreground fill-gray-800';
       case 'soft-yellow':
         return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-300 fill-yellow-800';
       case 'soft-blue':

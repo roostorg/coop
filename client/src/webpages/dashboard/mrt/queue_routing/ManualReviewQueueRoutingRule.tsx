@@ -38,10 +38,10 @@ const IconButton = (props: {
 }) => {
   return (
     <div
-      className={`flex items-center justify-center w-8 h-8 p-1 border border-solid rounded-full border border-slate-200 ${
+      className={`flex items-center justify-center w-8 h-8 p-1 border border-solid rounded-full border border-border ${
         props.disabled
-          ? 'cursor-not-allowed bg-slate-200 text-slate-400 border-slate-300'
-          : 'cursor-pointer hover:bg-slate-200'
+          ? 'cursor-not-allowed bg-border text-muted-foreground border-border'
+          : 'cursor-pointer hover:bg-border'
       }`}
       onClick={props.onClick}
     >
@@ -63,12 +63,12 @@ export function ManualReviewQueueDefaultRoutingRule(props: {
 
   return (
     <div className="py-4">
-      <div className="flex flex-row items-center bg-white border border-solid rounded-md border-slate-200">
+      <div className="flex flex-row items-center bg-card border border-solid rounded-md border-border">
         {showHandle && (
           <>
             <Tooltip>
               <TooltipTrigger asChild>
-                <div className="flex items-center self-stretch justify-center pr-4 max-w-fit rounded-tl-md rounded-bl-md text-slate-300 bg-slate-100 cursor-not-allowed">
+                <div className="flex items-center self-stretch justify-center pr-4 max-w-fit rounded-tl-md rounded-bl-md text-slate-300 bg-muted cursor-not-allowed">
                   <GripVertical className="w-6 h-6 pl-4" />
                 </div>
               </TooltipTrigger>
@@ -78,7 +78,7 @@ export function ManualReviewQueueDefaultRoutingRule(props: {
               </TooltipContent>
             </Tooltip>
 
-            <div className="self-stretch w-px mr-4 bg-slate-200" />
+            <div className="self-stretch w-px mr-4 bg-border" />
           </>
         )}
         <div className="flex flex-col p-6 grow">
@@ -88,7 +88,7 @@ export function ManualReviewQueueDefaultRoutingRule(props: {
             </div>
             <div className="flex flex-row space-x-4">{buttonPanel}</div>
           </div>
-          <div className="text-slate-500">
+          <div className="text-muted-foreground">
             This rule is always last, and it will send all reports that reach it
             to your default queue.
           </div>
@@ -269,14 +269,14 @@ export default function ManualReviewQueueRoutingRule(props: {
           />
         </div>
       </div>
-      <div className="text-slate-500">
+      <div className="text-muted-foreground">
         {editableRule.description ?? 'No description provided'}
       </div>
       <div
-        className="flex flex-row items-center self-end cursor-pointer space-x-2 text-slate-500"
+        className="flex flex-row items-center self-end cursor-pointer space-x-2 text-muted-foreground"
         onClick={() => setState({ ...state, expanded: !state.expanded })}
       >
-        <span className="font-semibold text-slate-500">
+        <span className="font-semibold text-muted-foreground">
           {expanded ? 'Collapse' : 'Expand Rule'}
         </span>
         {expanded ? (
@@ -290,16 +290,16 @@ export default function ManualReviewQueueRoutingRule(props: {
 
   return (
     <div className="py-4">
-      <div className="flex flex-row items-center bg-white border border-solid rounded-md border-slate-200">
+      <div className="flex flex-row items-center bg-card border border-solid rounded-md border-border">
         {dragHandleProps && (
           <>
             <div
               {...dragHandleProps}
-              className="flex items-center self-stretch justify-center pr-4 max-w-fit text-slate-500 rounded-tl-md rounded-bl-md cursor-grab active:cursor-grabbing focus:cursor-grabbing"
+              className="flex items-center self-stretch justify-center pr-4 max-w-fit text-muted-foreground rounded-tl-md rounded-bl-md cursor-grab active:cursor-grabbing focus:cursor-grabbing"
             >
               <GripVertical className="w-6 h-6 pl-4" />
             </div>
-            <div className="self-stretch w-px mr-4 bg-slate-200" />
+            <div className="self-stretch w-px mr-4 bg-border" />
           </>
         )}
         <div className="flex flex-col p-6 overflow-hidden grow">

@@ -99,7 +99,7 @@ export default function SSOTab() {
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-4">
-        <div className="border-b border-gray-200 py-2">
+        <div className="border-b border-border py-2">
           <Heading size="2XL" weight="semibold">
             Single Sign-On (SSO)
           </Heading>
@@ -111,7 +111,7 @@ export default function SSOTab() {
               <Text size="SM" weight="medium">
                 Enable SAML/SSO
               </Text>
-              <Text className="text-gray-500 mt-[.31rem] text-[0.8125rem]">
+              <Text className="text-muted-foreground mt-[.31rem] text-[0.8125rem]">
                 Activates SAML authentication for the organization
               </Text>
             </div>
@@ -145,7 +145,7 @@ export default function SSOTab() {
               <Text size="SM" weight="medium">
                 SSO URL
               </Text>
-              <Text className="text-[0.8125rem] text-gray-500 mt-[.31rem]">
+              <Text className="text-[0.8125rem] text-muted-foreground mt-[.31rem]">
                 The SAML identity provider endpoint
               </Text>
             </div>
@@ -168,7 +168,7 @@ export default function SSOTab() {
               <Text size="SM" weight="medium">
                 SAML Certificate
               </Text>
-              <Text className="text-[0.8125rem] text-gray-500 mt-[.31rem]">
+              <Text className="text-[0.8125rem] text-muted-foreground mt-[.31rem]">
                 The SAML identity provider signing certificate
               </Text>
             </div>
@@ -184,7 +184,7 @@ export default function SSOTab() {
         </div>
       </div>
 
-      <div className="flex justify-end border-t border-gray-200 pt-4">
+      <div className="flex justify-end border-t border-border pt-4">
         <Button
           disabled={!hasChanges || ssoSaveLoading || credentialsInvalid}
           loading={ssoSaveLoading}

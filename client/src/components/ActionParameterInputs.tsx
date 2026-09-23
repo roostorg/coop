@@ -87,22 +87,24 @@ function ParameterInput({
   const label = (
     <label
       htmlFor={id}
-      className="mb-1 text-sm font-medium text-gray-700 inline-flex items-center"
+      className="mb-1 text-sm font-medium text-foreground inline-flex items-center"
     >
       {param.displayName}
       {param.required && <span className="ml-1 text-coop-alert-red">*</span>}
       {labelTooltip && (
         <Tooltip title={labelTooltip}>
-          <Info className="ml-1 w-4 h-4 text-gray-400" />
+          <Info className="ml-1 w-4 h-4 text-muted-foreground" />
         </Tooltip>
       )}
     </label>
   );
   const description = param.description ? (
-    <div className="mb-1 text-xs text-gray-500">{param.description}</div>
+    <div className="mb-1 text-xs text-muted-foreground">
+      {param.description}
+    </div>
   ) : null;
   const constraintHintBelow = constraints ? (
-    <div className="mt-1 text-xs text-gray-400">{constraints}</div>
+    <div className="mt-1 text-xs text-muted-foreground">{constraints}</div>
   ) : null;
 
   const inputElement = (() => {

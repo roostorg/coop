@@ -20,7 +20,7 @@ export default function RuleInsights(props: { ruleId: string }) {
         <div className="flex grow">
           <RuleInsightsActionsChart ruleId={ruleId} />
         </div>
-        <div className="flex h-px my-9 bg-slate-200" />
+        <div className="flex h-px my-9 bg-border" />
         <div className="flex grow">
           <RuleInsightsSamplesTable ruleId={ruleId} />
         </div>

@@ -16,8 +16,6 @@ import AwaitingApproval from './auth/AwaitingApproval';
 import RejectedByAdmin from './auth/RejectedByAdmin';
 
 import './dashboard/Dashboard.css';
-// Must come after Dashboard.css — it overrides the antd v4 surfaces that
-// legacyStyles.css pulls in. See the header comment in dark.css.
 import '../styles/dark.css';
 
 const Login = React.lazy(async () => import('./auth/Login'));

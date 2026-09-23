@@ -89,7 +89,7 @@ export default function PartialItemsTab() {
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-4">
-        <div className="border-b border-gray-200 py-2">
+        <div className="border-b border-border py-2">
           <Heading size="2XL" weight="semibold">
             Partial Items
           </Heading>
@@ -101,7 +101,7 @@ export default function PartialItemsTab() {
               <Text size="SM" weight="medium">
                 Partial Items Endpoint
               </Text>
-              <Text className="text-gray-500 mt-[.31rem] text-[0.8125rem]">
+              <Text className="text-muted-foreground mt-[.31rem] text-[0.8125rem]">
                 Endpoint for fetching additional item data
               </Text>
             </div>
@@ -124,7 +124,7 @@ export default function PartialItemsTab() {
               <Text size="SM" weight="medium">
                 Partial Items Request Headers
               </Text>
-              <Text className="text-gray-500 mt-[.31rem] text-[0.8125rem]">
+              <Text className="text-muted-foreground mt-[.31rem] text-[0.8125rem]">
                 Custom headers for partial items requests (JSON format)
               </Text>
             </div>
@@ -145,7 +145,7 @@ export default function PartialItemsTab() {
         </div>
       </div>
 
-      <div className="flex justify-end border-t border-gray-200 pt-4">
+      <div className="flex justify-end border-t border-border pt-4">
         <Button
           disabled={
             !hasChanges || saveLoading || !isHeadersValid || !isEndpointValid

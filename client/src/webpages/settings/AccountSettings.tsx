@@ -208,7 +208,6 @@ export default function AccountSettings() {
   const { setTheme } = useTheme();
   const { data: themePreferenceData } = useGQLUserThemePreferenceQuery();
   const [saveThemePreference] = useGQLSetThemePreferenceMutation();
-  // Light mirrors the app default for users who have never chosen a theme.
   const [themePreference, setThemePreference] = useState<GQLThemePreference>(
     GQLThemePreference.Light,
   );
@@ -221,8 +220,6 @@ export default function AccountSettings() {
     }
   }, [themePreferenceData?.me?.interfacePreferences?.themePreference]);
 
-  // Theme changes apply (and persist) immediately rather than waiting for
-  // the Save button, so the user gets instant feedback and can back out.
   const handleThemePreferenceChange = useCallback(
     (value: string) => {
       const preference = value as GQLThemePreference;

@@ -706,7 +706,7 @@ export default function Dashboard() {
   return (
     <div
       className={`flex w-full h-screen${
-        isUsingLegacyCSS ? '' : ' bg-slate-50 dark:bg-background'
+        isUsingLegacyCSS ? '' : ' bg-muted dark:bg-background'
       }`}
     >
       <Helmet>

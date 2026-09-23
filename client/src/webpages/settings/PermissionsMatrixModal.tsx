@@ -70,19 +70,21 @@ export default function PermissionsMatrixModal(props: {
             <DialogTitle className="text-2xl">Permissions Overview</DialogTitle>
             <DialogClose
               aria-label="Close"
-              className="text-gray-500 hover:text-gray-900 p-1 rounded hover:bg-gray-100"
+              className="text-muted-foreground hover:text-foreground p-1 rounded hover:bg-muted"
             >
               <X className="w-5 h-5" aria-hidden />
             </DialogClose>
           </div>
           <div className="px-6 pb-6 max-h-[70vh] overflow-y-auto">
-            <DialogDescription className="p-0 overflow-visible text-sm text-gray-600 dark:text-gray-600 mb-4">
+            <DialogDescription className="p-0 overflow-visible text-sm text-muted-foreground dark:text-gray-600 mb-4">
               Overview of which permissions are granted to each role. Changes to
               role permissions affect all users with that role.
             </DialogDescription>
 
             {loading && (
-              <div className="text-sm text-gray-500">Loading permissions…</div>
+              <div className="text-sm text-muted-foreground">
+                Loading permissions…
+              </div>
             )}
 
             {!loading &&
@@ -100,7 +102,7 @@ export default function PermissionsMatrixModal(props: {
                         ))}
                       </colgroup>
                       <thead>
-                        <tr className="border-b border-gray-200">
+                        <tr className="border-b border-border">
                           <th className="text-left py-2 pr-4 font-semibold align-bottom">
                             Permission
                           </th>
@@ -118,7 +120,7 @@ export default function PermissionsMatrixModal(props: {
                                       <div className="truncate">
                                         {roleLabel}
                                       </div>
-                                      <div className="text-xs text-gray-500 font-normal">
+                                      <div className="text-xs text-muted-foreground font-normal">
                                         {role.userCount} user
                                         {role.userCount === 1 ? '' : 's'}
                                       </div>
@@ -160,7 +162,7 @@ export default function PermissionsMatrixModal(props: {
                                       {p.label}
                                     </div>
                                     {p.description && (
-                                      <div className="text-xs text-gray-600 mt-1 line-clamp-2">
+                                      <div className="text-xs text-muted-foreground mt-1 line-clamp-2">
                                         {p.description}
                                       </div>
                                     )}

@@ -195,7 +195,7 @@ export default function PoliciesDashboard() {
   const renderPolicy = (policy: TreeNode<Policy>) => {
     const children = policy.children.length ? (
       <div className="flex items-stretch h-full pb-8">
-        <div className="flex w-px h-full mx-2 bg-slate-200" />
+        <div className="flex w-px h-full mx-2 bg-border" />
         <div className="flex flex-col justify-center w-full pl-8 mb-6">
           {policy.children.map((child, i) => (
             <div key={i} className="flex flex-col">
@@ -219,12 +219,12 @@ export default function PoliciesDashboard() {
                 <div className="text-base font-bold text-start">
                   {policy.value?.name}
                 </div>
-                <div className="flex items-center gap-2 text-slate-400">
+                <div className="flex items-center gap-2 text-muted-foreground">
                   ID: <CopyTextComponent value={policy.value.id} />
                 </div>
                 <div className="grow" />
               </div>
-              <div className="flex flex-col justify-between text-slate-700 text-start">
+              <div className="flex flex-col justify-between text-foreground text-start">
                 <div className="px-6">
                   {previewPolicyText ? (
                     <div className="max-two-lines">{previewPolicyText}</div>

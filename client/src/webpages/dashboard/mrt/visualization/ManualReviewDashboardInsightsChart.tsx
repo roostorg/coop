@@ -783,13 +783,13 @@ export default function ManualReviewDashboardInsightsChart(props: {
   const renderLegend = useCallback(
     (props: { payload?: Payload[] | undefined }) => {
       return (
-        <div className="flex flex-wrap p-1 overflow-auto border border-solid rounded gap-1 max-h-24 border-slate-200">
+        <div className="flex flex-wrap p-1 overflow-auto border border-solid rounded gap-1 max-h-24 border-border">
           {props.payload
             ?.filter((entry) => entry.type !== 'none')
             .map((entry, index) => (
               <div
                 key={index}
-                className={`flex font-semibold cursor-pointer text-zinc-500 hover:opacity-70 items-center gap-1.5 text-start ${
+                className={`flex font-semibold cursor-pointer text-muted-foreground hover:opacity-70 items-center gap-1.5 text-start ${
                   hiddenLines.includes(entry.value)
                     ? 'opacity-30 hover:opacity-50'
                     : ''
@@ -833,7 +833,12 @@ export default function ManualReviewDashboardInsightsChart(props: {
     payload: { value: string };
   }) => {
     return (
-      <text x={x - 4} y={y + 16} fill="#71717a" className="pt-3 text-zinc-500">
+      <text
+        x={x - 4}
+        y={y + 16}
+        fill="#71717a"
+        className="pt-3 text-muted-foreground"
+      >
         {payload.value.slice(5)}
       </text>
     );
@@ -853,7 +858,7 @@ export default function ManualReviewDashboardInsightsChart(props: {
       x={x}
       y={y + 4}
       fill="#71717a"
-      className="pr-3 text-zinc-500"
+      className="pr-3 text-muted-foreground"
     >
       {truncateAndFormatLargeNumber(Number(payload.value))}
     </text>
@@ -873,7 +878,7 @@ export default function ManualReviewDashboardInsightsChart(props: {
         'desc',
       );
       return (
-        <div className="flex flex-col max-w-sm overflow-x-scroll bg-white rounded-lg shadow text-start">
+        <div className="flex flex-col max-w-sm overflow-x-scroll bg-card rounded-lg shadow text-start">
           <div className="p-3 text-white rounded-tl-lg rounded-tr-lg bg-primary">
             {label}
           </div>
@@ -885,7 +890,7 @@ export default function ManualReviewDashboardInsightsChart(props: {
                     <td className="pr-1 font-semibold text-primary text-end">
                       {it.value?.toLocaleString()}
                     </td>
-                    <td className="pl-1 font-medium text-slate-700">
+                    <td className="pl-1 font-medium text-foreground">
                       {it.name}
                     </td>
                   </tr>
@@ -1089,8 +1094,8 @@ export default function ManualReviewDashboardInsightsChart(props: {
   };
 
   const emptyChart = (
-    <div className="flex flex-col items-center justify-center p-6 rounded gap-3 bg-slate-100">
-      <div className="text-sm text-slate-400">
+    <div className="flex flex-col items-center justify-center p-6 rounded gap-3 bg-muted">
+      <div className="text-sm text-muted-foreground">
         No data available for the selected time period.
       </div>
       <CoopButton
@@ -1177,7 +1182,7 @@ export default function ManualReviewDashboardInsightsChart(props: {
         className={`flex font-bold border border-solid cursor-pointer h-fit px-2 py-1.5 ${
           chartType === type
             ? 'border-primary bg-primary text-white'
-            : 'border-slate-200 text-slate-300 hover:bg-indigo-100'
+            : 'border-border text-slate-300 hover:bg-sidebar-active'
         } ${extraStyle}`}
         onClick={() => {
           if (chartType !== type) {
@@ -1220,7 +1225,7 @@ export default function ManualReviewDashboardInsightsChart(props: {
         className={`flex font-medium px-3 border border-solid cursor-pointer h-fit py-0.5 ${
           timeDivision === option
             ? 'border-primary bg-primary text-white'
-            : 'border-slate-200 text-slate-400 hover:bg-indigo-100'
+            : 'border-border text-muted-foreground hover:bg-sidebar-active'
         } ${extraStyle}`}
         onClick={() => {
           if (timeDivision !== option) {
@@ -1249,7 +1254,7 @@ export default function ManualReviewDashboardInsightsChart(props: {
     onClick?: () => void,
   ) => (
     <div
-      className="flex gap-2 items-center px-2 py-0.5 m-1 text-start rounded cursor-pointer text-slate-500 font-medium bg-white hover:bg-coop-lightblue-hover"
+      className="flex gap-2 items-center px-2 py-0.5 m-1 text-start rounded cursor-pointer text-muted-foreground font-medium bg-card hover:bg-coop-lightblue-hover"
       onClick={() => {
         if (onClick) {
           onClick();
@@ -1271,8 +1276,8 @@ export default function ManualReviewDashboardInsightsChart(props: {
     >
       <div
         className={`${
-          optionsVisible ? 'bg-slate-100' : ''
-        } hover:bg-slate-100 text-slate-500 px-1 cursor-pointer rounded w-fit`}
+          optionsVisible ? 'bg-muted' : ''
+        } hover:bg-muted text-muted-foreground px-1 cursor-pointer rounded w-fit`}
         onClick={() => {
           setOptionsVisible((prev) => !prev);
         }}
@@ -1280,7 +1285,7 @@ export default function ManualReviewDashboardInsightsChart(props: {
         <MoreHorizontal className="w-6 h-6 flex" />
       </div>
       <div
-        className={`absolute right-0 z-30 mt-2 bg-white border border-solid rounded-md shadow-lg border-slate-200 ${
+        className={`absolute right-0 z-30 mt-2 bg-card border border-solid rounded-md shadow-lg border-border ${
           optionsVisible ? 'visible' : 'hidden'
         }`}
       >
@@ -1305,9 +1310,9 @@ export default function ManualReviewDashboardInsightsChart(props: {
 
   return (
     <div
-      className={`flex flex-col rounded-lg p-6 bg-white ${
+      className={`flex flex-col rounded-lg p-6 bg-card ${
         narrowMode ? 'flex flex-col justify-between grow' : 'w-full'
-      } ${hideBorder ? '' : 'border border-solid border-slate-200'}`}
+      } ${hideBorder ? '' : 'border border-solid border-border'}`}
     >
       <div className="flex pb-6">
         <div
@@ -1317,7 +1322,7 @@ export default function ManualReviewDashboardInsightsChart(props: {
         >
           {title ? (
             <div className="flex flex-col text-start">
-              <div className="pb-2 text-base font-medium text-slate-500">
+              <div className="pb-2 text-base font-medium text-muted-foreground">
                 {title}
                 {!hideGroupBy &&
                 selectedGroupBy &&

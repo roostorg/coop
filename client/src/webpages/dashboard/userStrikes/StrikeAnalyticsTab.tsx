@@ -229,7 +229,7 @@ function RecentUserStrikeActionsTable() {
               {creatorIdentity.id}
             </Link>
           ) : (
-            <span className="text-gray-500">{values.itemId}</span>
+            <span className="text-muted-foreground">{values.itemId}</span>
           ),
           action: actionsById
             ? (actionsById[values.actionId] ?? 'Unknown')

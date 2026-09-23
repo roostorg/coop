@@ -131,12 +131,12 @@ export default function NCMECMediaViewer(props: {
     <div
       className={`flex flex-col justify-start items-start ${
         grayOutThumbnail
-          ? 'border border-solid border-gray-200 bg-gray-50 shadow rounded-md grow'
+          ? 'border border-solid border-border bg-muted shadow rounded-md grow'
           : ''
       } ${isInInspectedView ? '' : 'max-w-xs'}`}
     >
       {grayOutThumbnail ? (
-        <div className="flex items-center justify-center w-full h-full px-3 font-medium text-slate-700">
+        <div className="flex items-center justify-center w-full h-full px-3 font-medium text-foreground">
           {/* {isConfirmedCsam ? (
            <div className="relative self-start">
              <Tag
@@ -171,7 +171,7 @@ export default function NCMECMediaViewer(props: {
            </div>
          ) : null} */}
           {isInInspectedView ? null : (
-            <div className="absolute z-10 flex p-1 px-3 font-semibold rounded w-fit text-slate-800 top-3 bg-slate-300 right-3">
+            <div className="absolute z-10 flex p-1 px-3 font-semibold rounded w-fit text-foreground top-3 bg-slate-300 right-3">
               {index + 1}
             </div>
           )}

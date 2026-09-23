@@ -391,7 +391,7 @@ export default function RuleInsightsActionsChart(props: { ruleId: string }) {
 
   if (error) {
     return (
-      <div className="flex justify-between w-full p-4 bg-card border border-gray-200 border-solid rounded-lg text-start">
+      <div className="flex justify-between w-full p-4 bg-card border border-border border-solid rounded-lg text-start">
         <RuleInsightsEmptyCard
           icon={<TriangleAlert />}
           title="Analytics Unavailable"
@@ -402,12 +402,12 @@ export default function RuleInsightsActionsChart(props: { ruleId: string }) {
   }
 
   return (
-    <div className="flex justify-between w-full p-4 bg-card border border-gray-200 border-solid rounded-lg text-start">
+    <div className="flex justify-between w-full p-4 bg-card border border-border border-solid rounded-lg text-start">
       <div className="flex flex-col w-full">
         <div className="flex items-center justify-between pb-8 mr-4">
           <div className="flex h-full px-4 py-2 rounded-lg bg-muted">
             {chartSelection}
-            <div className="flex w-px h-full mx-4 my-1 bg-slate-200" />
+            <div className="flex w-px h-full mx-4 my-1 bg-border" />
             <div className="flex items-center justify-start">
               <DateRangePicker
                 initialDateFrom={timeWindow.start}

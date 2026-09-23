@@ -232,9 +232,9 @@ export default function ManualReviewRecentDecisionsFilter(props: {
           className="flex items-center px-3 py-1 bg-card border border-solid rounded cursor-pointer border-border hover:border-coop-blue whitespace-nowrap"
         >
           {numberOfSavedFilters === 0 ? (
-            <div className="text-slate-400">Select any</div>
+            <div className="text-muted-foreground">Select any</div>
           ) : (
-            <div className="flex p-1 bg-slate-200 items-center px-2 py-0.5 gap-1.5 font-medium text-muted-foreground">
+            <div className="flex p-1 bg-border items-center px-2 py-0.5 gap-1.5 font-medium text-muted-foreground">
               {numberOfSavedFilters > 1
                 ? `${numberOfSavedFilters} Filters`
                 : '1 Filter'}
@@ -253,12 +253,12 @@ export default function ManualReviewRecentDecisionsFilter(props: {
             something to do with dynamically choosing whether to render each icon because when
             we render both and just hide one of them, componentRef.current.contains() works. */}
           <ChevronUp
-            className={`ml-2 w-3 h-3 text-slate-400 flex items-center ${
+            className={`ml-2 w-3 h-3 text-muted-foreground flex items-center ${
               filterByMenuVisible ? '' : 'hidden'
             }`}
           />
           <ChevronDown
-            className={`ml-2 w-3 h-3 text-slate-400 flex items-center ${
+            className={`ml-2 w-3 h-3 text-muted-foreground flex items-center ${
               filterByMenuVisible ? 'hidden' : ''
             }`}
           />
@@ -266,7 +266,7 @@ export default function ManualReviewRecentDecisionsFilter(props: {
         {filterByMenuVisible && (
           <div className="flex flex-col bg-card absolute border border-solid rounded shadow mt-1 min-w-[240px] z-20 border-border right-0">
             <div className="flex items-center justify-between px-4 py-4">
-              <div className="flex items-center text-base font-semibold text-slate-700">
+              <div className="flex items-center text-base font-semibold text-foreground">
                 Filter
               </div>
               <CoopButton title="Save" size="small" onClick={onSaveClicked} />
@@ -296,9 +296,7 @@ export default function ManualReviewRecentDecisionsFilter(props: {
                   );
                 return (
                   <div
-                    className={`flex flex-col ${
-                      isExpanded ? 'bg-gray-100' : ''
-                    }`}
+                    className={`flex flex-col ${isExpanded ? 'bg-muted' : ''}`}
                     key={column}
                   >
                     <div
@@ -317,12 +315,12 @@ export default function ManualReviewRecentDecisionsFilter(props: {
                         something to do with dynamically choosing whether to render each icon because when
                         we render both and just hide one of them, componentRef.current.contains() works. */}
                       <ChevronUp
-                        className={`font-bold w-3 h-3 text-slate-400 ${
+                        className={`font-bold w-3 h-3 text-muted-foreground ${
                           isExpanded ? '' : 'hidden'
                         }`}
                       />
                       <ChevronDown
-                        className={`font-bold w-3 h-3 text-slate-400 ${
+                        className={`font-bold w-3 h-3 text-muted-foreground ${
                           isExpanded ? 'hidden' : ''
                         }`}
                       />

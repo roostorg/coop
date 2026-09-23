@@ -114,7 +114,9 @@ function DynamicSchemaFields({
                 {field.required && <span className="ml-1 text-red-500">*</span>}
               </label>
               {field.help && (
-                <span className="text-xs text-zinc-500">{field.help}</span>
+                <span className="text-xs text-muted-foreground">
+                  {field.help}
+                </span>
               )}
 
               {field.type === 'enum' && field.choices ? (
@@ -550,7 +552,7 @@ export default function HashBankForm() {
                     )}
                   </div>
                   {bank.exchange.last_fetch_time && (
-                    <span className="text-xs text-zinc-500">
+                    <span className="text-xs text-muted-foreground">
                       Last fetch:{' '}
                       {new Date(bank.exchange.last_fetch_time).toLocaleString()}
                       {bank.exchange.fetched_items != null && (
@@ -654,7 +656,7 @@ export default function HashBankForm() {
             }}
           />
         </div>
-        <div className="text-sm text-gray-500">
+        <div className="text-sm text-muted-foreground">
           0 = Fully disabled, 1 = Fully enabled
         </div>
       </div>
@@ -685,7 +687,7 @@ export default function HashBankForm() {
           </div>
 
           {selectedExchangeApi && schemaLoading && (
-            <div className="flex items-center gap-2 mt-4 text-sm text-zinc-500">
+            <div className="flex items-center gap-2 mt-4 text-sm text-muted-foreground">
               <div className="w-4 h-4 border-2 rounded-full border-zinc-400 border-t-transparent animate-spin" />
               Loading exchange configuration...
             </div>

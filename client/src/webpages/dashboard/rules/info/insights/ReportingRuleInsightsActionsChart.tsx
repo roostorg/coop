@@ -405,7 +405,7 @@ export default function ReportingRuleInsightsActionsChart(props: {
         <div className="flex items-center justify-between pb-8 mr-4">
           <div className="flex h-full px-4 py-2 rounded-lg bg-muted">
             {chartSelection}
-            <div className="flex w-px h-full mx-4 my-1 bg-slate-200" />
+            <div className="flex w-px h-full mx-4 my-1 bg-border" />
             {timeWindowSelection}
           </div>
           {totalActionedSubmissionsInTimeWindow === 0 ? null : (

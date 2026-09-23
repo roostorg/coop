@@ -243,7 +243,7 @@ export default function PolicyScoresTab() {
                     )}
                   </div>
                   {isTopLevel ? (
-                    <div className="flex items-center gap-2 text-slate-400">
+                    <div className="flex items-center gap-2 text-muted-foreground">
                       Top-level Policy
                     </div>
                   ) : null}
@@ -389,7 +389,7 @@ export default function PolicyScoresTab() {
   if (!policyList || policyList.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center w-full gap-4 py-16">
-        <div className="text-slate-400">No policies configured</div>
+        <div className="text-muted-foreground">No policies configured</div>
         <Button onClick={() => navigate('/dashboard/policies/form')}>
           Create Policy
         </Button>

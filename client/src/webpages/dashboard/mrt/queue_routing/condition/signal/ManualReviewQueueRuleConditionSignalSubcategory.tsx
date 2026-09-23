@@ -37,7 +37,7 @@ export default function ManualReviewQueueRuleConditionSignalSubcategory(props: {
       <Button
         className={`px-3 rounded-lg ${
           condition.signal
-            ? 'hover:text-black focus:text-black'
+            ? 'hover:text-foreground focus:text-foreground'
             : '!text-[#bfbfbf] !hover:text-[#bfbfbf] !focus:text-[#bfbfbf]'
         } ${editing ? 'cursor-pointer' : ''}`}
         disabled={!editing}

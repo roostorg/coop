@@ -126,7 +126,7 @@ export default function ManageUsersInviteUserSection() {
                   type="text"
                   readOnly
                   value={`${HOST_URL}/signup/${inviteToken}`}
-                  className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm font-mono bg-gray-50"
+                  className="flex-1 px-3 py-2 border border-border rounded text-sm font-mono bg-muted"
                   onClick={(e) => e.currentTarget.select()}
                 />
                 <CoopButton
@@ -136,7 +136,7 @@ export default function ManageUsersInviteUserSection() {
                   type={copySuccess ? 'primary' : 'secondary'}
                 />
               </div>
-              <div className="text-xs text-gray-600">
+              <div className="text-xs text-muted-foreground">
                 The link will expire in 2 weeks.
               </div>
             </div>

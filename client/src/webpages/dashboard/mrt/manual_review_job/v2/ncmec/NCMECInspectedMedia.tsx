@@ -184,7 +184,7 @@ export default function NCMECInspectedMedia(props: {
       >
         <ArrowLeft className="w-3 h-3 pr-1" /> Previous
       </div>
-      <div className="text-sm text-slate-500">{`${
+      <div className="text-sm text-muted-foreground">{`${
         index + 1
       } / ${totalLength}`}</div>
       <div
@@ -228,7 +228,7 @@ export default function NCMECInspectedMedia(props: {
           <div className="text-base font-bold pb-0.5">
             {threadInfo.type.name} Info{threadId ? ` (${threadId})` : ''}
           </div>
-          <div className="p-2 bg-white border border-gray-200 border-solid rounded-md">
+          <div className="p-2 bg-card border border-border border-solid rounded-md">
             <FieldsComponent
               fields={threadInfoFields}
               itemTypeId={threadInfo.type.id}
@@ -246,7 +246,7 @@ export default function NCMECInspectedMedia(props: {
   })();
   return (
     <div className="flex justify-between w-full">
-      <div className="flex flex-row w-full p-3 border border-gray-200 border-solid gap-6 rounded-md">
+      <div className="flex flex-row w-full p-3 border border-border border-solid gap-6 rounded-md">
         <div className="max-w-[60%] grow">
           <div className="flex flex-col w-fit">
             {navigationButtons}
@@ -276,7 +276,7 @@ export default function NCMECInspectedMedia(props: {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span>
-                      <Info className="w-4 h-4 flex items-center justify-center text-slate-500" />
+                      <Info className="w-4 h-4 flex items-center justify-center text-muted-foreground" />
                     </span>
                   </TooltipTrigger>
                   <TooltipContent side="bottom" align="start">
@@ -318,7 +318,7 @@ export default function NCMECInspectedMedia(props: {
                   {divider}
                   <div className="flex flex-col w-full gap-2 text-start">
                     <div className="text-base font-bold pb-0.5">Matched</div>
-                    <div className="w-full px-3 py-2 text-sm border border-gray-200 border-solid rounded-md bg-white min-h-[32px] flex items-center">
+                    <div className="w-full px-3 py-2 text-sm border border-border border-solid rounded-md bg-card min-h-[32px] flex items-center">
                       [ {matchedBanks.join(', ')} ]
                     </div>
                   </div>
@@ -328,7 +328,7 @@ export default function NCMECInspectedMedia(props: {
           </div>
           {divider}
           <div className="text-base font-bold pb-0.5">Media Info</div>
-          <div className="p-2 bg-white border border-gray-200 border-solid rounded-md">
+          <div className="p-2 bg-card border border-border border-solid rounded-md">
             <FieldsComponent
               fields={fieldData.filter((field) => {
                 return isContainerType(field.type)
@@ -356,12 +356,12 @@ export default function NCMECInspectedMedia(props: {
               label={displayName ? `${displayName} (${user.id})` : user.id}
               labelTruncationType="wrap"
               fallbackComponent={
-                <UserAlt4 className="p-3 text-slate-500 w-11 h-11" />
+                <UserAlt4 className="p-3 text-muted-foreground w-11 h-11" />
               }
               magnifiedUrls={backgroundImageUrl ? [backgroundImageUrl.url] : []}
             />
             <div
-              className="w-full font-medium cursor-pointer text-slate-500"
+              className="w-full font-medium cursor-pointer text-muted-foreground"
               onClick={() => setUserInfoVisible(!userInfoVisible)}
             >
               {userInfoVisible ? 'Hide' : 'See'} user info
@@ -373,7 +373,7 @@ export default function NCMECInspectedMedia(props: {
             </div>
           </div>
           {userInfoVisible ? (
-            <div className="flex-shrink p-2 overflow-hidden bg-white border border-gray-200 border-solid">
+            <div className="flex-shrink p-2 overflow-hidden bg-card border border-border border-solid">
               <FieldsComponent
                 fields={user.type.baseFields
                   .filter(

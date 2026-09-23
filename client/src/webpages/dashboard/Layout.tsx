@@ -15,7 +15,7 @@ const Layout = ({ sidebarSlot }: LayoutProps) => {
   const currentRouteHandle = matches[matches.length - 1]?.handle as RouteHandle;
 
   return (
-    <div className="flex w-full h-screen bg-slate-50">
+    <div className="flex w-full h-screen bg-muted">
       {sidebarSlot}
       <main className="flex flex-col flex-grow overflow-y-auto min-h-0">
         <div className="p-10">

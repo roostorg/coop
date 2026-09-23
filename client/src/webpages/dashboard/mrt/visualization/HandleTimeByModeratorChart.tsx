@@ -140,13 +140,13 @@ export default function HandleTimeByModeratorChart({
       })) ?? [];
 
   const renderLegend = ({ payload }: { payload?: Payload[] }) => (
-    <div className="flex flex-wrap gap-1 p-1 overflow-auto border border-solid rounded max-h-24 border-slate-200">
+    <div className="flex flex-wrap gap-1 p-1 overflow-auto border border-solid rounded max-h-24 border-border">
       {payload
         ?.filter((entry) => entry.type !== 'none')
         .map((entry, index) => (
           <div
             key={index}
-            className="flex font-semibold cursor-pointer text-zinc-500 hover:opacity-70 items-center gap-1.5 text-start"
+            className="flex font-semibold cursor-pointer text-muted-foreground hover:opacity-70 items-center gap-1.5 text-start"
           >
             <div
               style={{
@@ -178,7 +178,7 @@ export default function HandleTimeByModeratorChart({
         'desc',
       );
       return (
-        <div className="flex flex-col max-w-sm overflow-x-scroll bg-white rounded-lg shadow text-start">
+        <div className="flex flex-col max-w-sm overflow-x-scroll bg-card rounded-lg shadow text-start">
           <div className="p-3 text-white rounded-tl-lg rounded-tr-lg bg-primary">
             {label}
           </div>
@@ -190,7 +190,7 @@ export default function HandleTimeByModeratorChart({
                     <td className="pr-1 font-semibold text-primary text-end">
                       {it.value?.toLocaleString()}
                     </td>
-                    <td className="pl-1 font-medium text-slate-700">
+                    <td className="pl-1 font-medium text-foreground">
                       {it.name}
                     </td>
                   </tr>
@@ -205,8 +205,8 @@ export default function HandleTimeByModeratorChart({
   };
 
   const emptyChart = (
-    <div className="flex flex-col items-center justify-center h-full gap-3 p-6 bg-indigo-100 rounded">
-      <div className="text-sm text-slate-400">
+    <div className="flex flex-col items-center justify-center h-full gap-3 p-6 bg-sidebar-active rounded">
+      <div className="text-sm text-muted-foreground">
         No data available for the selected time period.
       </div>
     </div>
@@ -219,7 +219,7 @@ export default function HandleTimeByModeratorChart({
   ) => (
     <button
       type="button"
-      className="flex gap-2 items-center px-2 py-0.5 m-1 text-start rounded cursor-pointer text-slate-500 font-medium bg-white hover:bg-coop-lightblue-hover border-0 w-full"
+      className="flex gap-2 items-center px-2 py-0.5 m-1 text-start rounded cursor-pointer text-muted-foreground font-medium bg-card hover:bg-coop-lightblue-hover border-0 w-full"
       onClick={() => {
         onClick?.();
         setOptionsVisible(false);
@@ -242,8 +242,8 @@ export default function HandleTimeByModeratorChart({
         aria-expanded={optionsVisible}
         aria-haspopup="menu"
         className={`${
-          optionsVisible ? 'bg-slate-100' : ''
-        } hover:bg-slate-100 text-slate-500 px-1 cursor-pointer rounded w-fit border-0 bg-transparent`}
+          optionsVisible ? 'bg-muted' : ''
+        } hover:bg-muted text-muted-foreground px-1 cursor-pointer rounded w-fit border-0 bg-transparent`}
         onClick={() => setOptionsVisible((prev) => !prev)}
       >
         <MoreHorizontal className="flex w-6 h-6" />
@@ -252,7 +252,7 @@ export default function HandleTimeByModeratorChart({
         <div
           ref={optionsRef}
           role="menu"
-          className="absolute right-0 z-30 mt-2 bg-white border border-solid rounded-md shadow-lg border-slate-200"
+          className="absolute right-0 z-30 mt-2 bg-card border border-solid rounded-md shadow-lg border-border"
         >
           {onEdit &&
             optionButton('Edit', <Pencil className="w-4 h-4" />, onEdit)}
@@ -265,9 +265,9 @@ export default function HandleTimeByModeratorChart({
 
   return (
     <div
-      className={`flex flex-col rounded-lg p-6 bg-white ${
+      className={`flex flex-col rounded-lg p-6 bg-card ${
         narrowMode ? 'flex flex-col justify-between grow' : 'w-full'
-      } ${hideBorder ? '' : 'border border-solid border-slate-200'}`}
+      } ${hideBorder ? '' : 'border border-solid border-border'}`}
     >
       <div className="flex pb-6">
         <div
@@ -277,7 +277,7 @@ export default function HandleTimeByModeratorChart({
         >
           {title && (
             <div className="flex flex-col text-start">
-              <div className="pb-2 text-base font-medium text-slate-500">
+              <div className="pb-2 text-base font-medium text-muted-foreground">
                 {title}
                 {infoText && (
                   <AntTooltip

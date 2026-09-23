@@ -61,7 +61,7 @@ export function outcomeString(outcome?: GQLConditionOutcome, prefix?: string) {
         return 'ml-3 font-bold text-base text-teal-800';
       case GQLConditionOutcome.Inapplicable:
       case undefined:
-        return 'ml-3 font-bold text-base text-zinc-500';
+        return 'ml-3 font-bold text-base text-muted-foreground';
     }
   })(outcome);
   return (
@@ -80,7 +80,7 @@ export function outcomeIcon(outcome?: GQLConditionOutcome) {
     case GQLConditionOutcome.Inapplicable:
     case GQLConditionOutcome.Errored:
     case undefined:
-      return <MinusCircle className="w-4 h-4 text-zinc-500" />;
+      return <MinusCircle className="w-4 h-4 text-muted-foreground" />;
   }
 }
 
@@ -218,7 +218,7 @@ export function RuleInsightsSampleDetailResultsImpl(props: {
   const renderConditionSetConjunction = (conjunction: string) => {
     return (
       <div className="flex items-center justify-center m-4">
-        <div className="px-4 py-1 border border-solid rounded-lg border-zinc-500 text-zinc-500">
+        <div className="px-4 py-1 border border-solid rounded-lg border-zinc-500 text-muted-foreground">
           {conjunction}
         </div>
       </div>
@@ -327,7 +327,7 @@ export function RuleInsightsSampleDetailResultsImpl(props: {
     return (
       <div className="flex flex-col grow">
         <div
-          className={`px-4 pt-2 pb-4 my-2 rounded-xl bg-slate-50 grow ${
+          className={`px-4 pt-2 pb-4 my-2 rounded-xl bg-muted grow ${
             conditionSet.result?.outcome === GQLConditionOutcome.Passed
               ? 'border border-solid border-red-800'
               : conditionSet.result?.outcome === GQLConditionOutcome.Failed

@@ -195,7 +195,7 @@ export default function RuleTestModal(props: {
     >
       <div className="flex flex-col w-full gap-4">
         {selectedItemType ? (
-          <div className="font-medium text-gray-500">
+          <div className="font-medium text-muted-foreground">
             Fill in the fields below to test the rule with sample data
           </div>
         ) : null}

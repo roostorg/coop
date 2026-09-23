@@ -196,7 +196,7 @@ type TableRowComponentData = {
 function NotProvidedComponent() {
   return (
     <td className="flex flex-row pr-2 align-top text-start min-w-max">
-      <div className="overflow-auto text-gray-400 text-start">
+      <div className="overflow-auto text-muted-foreground text-start">
         Value not provided
       </div>
     </td>
@@ -211,7 +211,7 @@ function ContentFieldLabelComponent(props: { data: ItemTypeFieldFieldData }) {
       className={`mr-4 font-bold text-sm ${
         !data.required && data.value === undefined
           ? 'text-slate-300'
-          : 'text-slate-500'
+          : 'text-muted-foreground'
       }`}
     >
       {toHumanReadableLabel(data.name)}
@@ -274,7 +274,7 @@ function TableRowComponent(props: {
       return (
         <div className="flex flex-col whitespace-normal align-top text-start">
           {label ? (
-            <div className="pr-3 font-bold text-slate-500 whitespace-nowrap">
+            <div className="pr-3 font-bold text-muted-foreground whitespace-nowrap">
               {label}
             </div>
           ) : null}
@@ -293,7 +293,7 @@ function TableRowComponent(props: {
       return (
         <div className="flex flex-col whitespace-normal align-top text-start">
           {label ? (
-            <div className="pr-3 font-bold text-slate-500 whitespace-nowrap">
+            <div className="pr-3 font-bold text-muted-foreground whitespace-nowrap">
               {label}
             </div>
           ) : null}
@@ -307,7 +307,7 @@ function TableRowComponent(props: {
       return (
         <div className="flex flex-col whitespace-normal align-top text-start">
           {label ? (
-            <div className="pr-3 font-bold text-slate-500 whitespace-nowrap">
+            <div className="pr-3 font-bold text-muted-foreground whitespace-nowrap">
               {label}
             </div>
           ) : null}
@@ -378,7 +378,7 @@ function TableRowComponent(props: {
               {matchedBanks.map((bankName) => (
                 <span
                   key={bankName}
-                  className="inline-block px-2 py-0.5 text-s font-large bg-gray-200 rounded"
+                  className="inline-block px-2 py-0.5 text-s font-large bg-muted rounded"
                 >
                   {bankName}
                 </span>
@@ -626,8 +626,8 @@ function FieldComponent(props: {
             </div>
           ) : null}
           <div
-            className={`align-top rounded border-slate-200 text-start p-1.5 ${
-              transparentBackground ? '' : 'bg-slate-100'
+            className={`align-top rounded border-border text-start p-1.5 ${
+              transparentBackground ? '' : 'bg-muted'
             }`}
           >
             <TableRowComponent
@@ -787,8 +787,8 @@ function ContainerComponent(props: {
           data.container!.valueScalarType === 'MEDIA'
             ? 'flex overflow-x-scroll'
             : 'flex flex-col'
-        } border-slate-200 rounded p-1.5 ${
-          transparentBackground ? '' : 'bg-slate-100'
+        } border-border rounded p-1.5 ${
+          transparentBackground ? '' : 'bg-muted'
         } ${expanded ? 'max-h-96 overflow-y-auto' : 'overflow-y-hidden'}`}
       >
         {itemCollection}

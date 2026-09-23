@@ -114,7 +114,7 @@ export default function TableFilter<TData extends TableData>(props: {
           ref={buttonRef}
           className={`font-semibold text-base rounded ${
             activeFilters.length === 0
-              ? 'bg-white hover:bg-white hover:text-[#71717a] focus:bg-white focus:text-[#71717a]'
+              ? 'bg-card hover:bg-card hover:text-[#71717a] focus:bg-card focus:text-[#71717a]'
               : 'text-white bg-[#71717a] border-none focus:text-white focus:bg-[#71717a] focus:border-none hover:text-white hover:bg-[#a1a1aa] hover:border-none'
           }`}
           icon={
@@ -135,7 +135,7 @@ export default function TableFilter<TData extends TableData>(props: {
           {activeFilters.map((column, i) => (
             <div
               key={i}
-              className="flex items-center gap-1.5 p-2 ml-3 font-semibold text-gray-600 bg-gray-200 rounded"
+              className="flex items-center gap-1.5 p-2 ml-3 font-semibold text-muted-foreground bg-muted rounded"
             >
               {`${String(column.columnDef.header)}: ${column.getFilterValue()}`}
               <CloseButton onClose={() => removeFilter(column.id)} />
@@ -145,7 +145,7 @@ export default function TableFilter<TData extends TableData>(props: {
       </div>
       {menuVisible && (
         <div
-          className={`flex flex-col absolute bg-white border-solid border border-[#d4d4d8] rounded shadow-md mt-1 min-w-[320px] z-50 ${
+          className={`flex flex-col absolute bg-card border-solid border border-border rounded shadow-md mt-1 min-w-[320px] z-50 ${
             isButtonFloatedRight ? 'right-0' : 'left-0'
           }`}
         >
@@ -164,7 +164,7 @@ export default function TableFilter<TData extends TableData>(props: {
               const Renderer = column.columnDef.meta.filter;
               return (
                 <div
-                  className={`flex flex-col ${expanded ? 'bg-gray-100' : ''}`}
+                  className={`flex flex-col ${expanded ? 'bg-muted' : ''}`}
                   key={`${index}_column`}
                 >
                   <div
@@ -179,9 +179,9 @@ export default function TableFilter<TData extends TableData>(props: {
                       {label}
                     </div>
                     {expanded ? (
-                      <ChevronUp className="w-3 h-3 text-slate-400" />
+                      <ChevronUp className="w-3 h-3 text-muted-foreground" />
                     ) : (
-                      <ChevronDown className="w-3 h-3 text-slate-400" />
+                      <ChevronDown className="w-3 h-3 text-muted-foreground" />
                     )}
                   </div>
                   {expanded && (

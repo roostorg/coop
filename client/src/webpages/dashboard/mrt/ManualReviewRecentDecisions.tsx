@@ -644,7 +644,7 @@ export default function ManualReviewRecentDecisions() {
                 )}
               </div>
             ) : (
-              <div className="text-slate-400">—</div>
+              <div className="text-muted-foreground">—</div>
             ),
             decisionReason: value.decisionReason ? (
               <Tooltip title={value.decisionReason}>
@@ -658,7 +658,7 @@ export default function ManualReviewRecentDecisions() {
                 </div>
               </Tooltip>
             ) : (
-              <div className="text-slate-400">—</div>
+              <div className="text-muted-foreground">—</div>
             ),
             values: value,
           };
@@ -963,7 +963,7 @@ export default function ManualReviewRecentDecisions() {
       <Button
         className={`font-semibold text-base rounded ${
           visibleColumnsCount === Object.keys(columnLabels).length
-            ? 'bg-card text-gray-600 hover:bg-card hover:text-gray-600'
+            ? 'bg-card text-muted-foreground hover:bg-card hover:text-muted-foreground'
             : 'bg-gray-600 text-white border-none hover:bg-gray-500'
         }`}
         icon={
@@ -974,7 +974,7 @@ export default function ManualReviewRecentDecisions() {
         Columns
       </Button>
       {columnsMenuVisible && (
-        <div className="absolute left-0 z-20 flex flex-col mt-1 bg-card border border-solid border-gray-300 rounded shadow-md min-w-[240px]">
+        <div className="absolute left-0 z-20 flex flex-col mt-1 bg-card border border-solid border-border rounded shadow-md min-w-[240px]">
           <div className="px-4 py-4 text-base font-semibold">Show Columns</div>
           <div className="!p-0 !m-0 divider" />
           <div className="flex flex-col px-4 py-2">
@@ -1091,7 +1091,7 @@ export default function ManualReviewRecentDecisions() {
                     <div className="text-xs font-medium text-muted-foreground">
                       {getReviewerName(values.reviewerId)}
                     </div>
-                    <div className="text-xs text-slate-400 whitespace-nowrap">
+                    <div className="text-xs text-muted-foreground whitespace-nowrap">
                       {parseDatetimeToReadableStringInCurrentTimeZone(
                         values.createdAt,
                       )}
@@ -1104,12 +1104,12 @@ export default function ManualReviewRecentDecisions() {
             {decidedJobLoading || selectedDecision ? null : (
               <div className="flex justify-between w-full mb-10">
                 <ChevronLeft
-                  className="font-bold cursor-pointer w-7 text-slate-500"
+                  className="font-bold cursor-pointer w-7 text-muted-foreground"
                   onClick={() => handlePrevious()}
                 />
                 <span>Page {page + 1}</span>
                 <ChevronRight
-                  className="font-bold cursor-pointer w-7 text-slate-500"
+                  className="font-bold cursor-pointer w-7 text-muted-foreground"
                   onClick={() => handleNext()}
                 />
               </div>

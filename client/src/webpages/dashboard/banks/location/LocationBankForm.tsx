@@ -380,7 +380,7 @@ export default function LocationBankForm() {
         onChangeName={setBankName}
         onChangeDescription={setBankDescription}
       />
-      <div className="flex h-px mt-5 mb-9 bg-slate-200" />
+      <div className="flex h-px mt-5 mb-9 bg-border" />
       {matchingLocationsSection}
       {locationModal}
       {modal}

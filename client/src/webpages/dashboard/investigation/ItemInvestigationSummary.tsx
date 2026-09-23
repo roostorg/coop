@@ -134,7 +134,7 @@ export default function ItemInvestigationSummary(props: {
 
   const userComponentTemplate = (label: string, value: string) => (
     <div className="flex items-center my-1">
-      <div className="mr-2 font-semibold text-slate-700 shrink-0">
+      <div className="mr-2 font-semibold text-foreground shrink-0">
         {`${label}: `}
       </div>
       {userData ? (
@@ -234,14 +234,14 @@ export default function ItemInvestigationSummary(props: {
             ) : null}
           </div>
           <div className="flex items-center my-1 mt-4">
-            <div className="mr-2 font-semibold text-slate-700 shrink-0">
+            <div className="mr-2 font-semibold text-foreground shrink-0">
               Item Type:{' '}
             </div>
             {item.itemType.name}
           </div>
           {item.submissionTime && (
             <div className="flex items-center my-1">
-              <div className="mr-2 font-semibold text-slate-700 shrink-0">
+              <div className="mr-2 font-semibold text-foreground shrink-0">
                 Date Received:{' '}
               </div>
               {new Date(item.submissionTime).toLocaleDateString() +

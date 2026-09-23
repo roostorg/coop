@@ -251,7 +251,7 @@ export default function MergedReportsComponent(props: {
     [collapsed],
   );
   return (
-    <div className="flex flex-col w-full p-4 bg-card border border-gray-200 border-solid rounded-lg">
+    <div className="flex flex-col w-full p-4 bg-card border border-border border-solid rounded-lg">
       <div className="flex flex-row items-center justify-between text-lg">
         {numOtherReports}{' '}
         {numOtherReports === 1 ? 'other report' : 'other reports'}

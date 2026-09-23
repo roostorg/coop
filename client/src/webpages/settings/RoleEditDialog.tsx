@@ -199,13 +199,13 @@ export default function RoleEditDialog(props: {
         <div className="flex items-start justify-between px-6 pt-6 pb-2">
           <div className="flex flex-col">
             <DialogTitle className="text-2xl">Edit Role</DialogTitle>
-            <div className="text-sm text-gray-600 mt-1">
+            <div className="text-sm text-muted-foreground mt-1">
               Update the role name, description, and permissions.
             </div>
           </div>
           <DialogClose
             aria-label="Close"
-            className="text-gray-500 hover:text-gray-900 p-1 rounded hover:bg-gray-100"
+            className="text-muted-foreground hover:text-foreground p-1 rounded hover:bg-muted"
           >
             <X className="w-5 h-5" aria-hidden />
           </DialogClose>
@@ -275,20 +275,22 @@ export default function RoleEditDialog(props: {
           <div className="flex flex-col gap-2">
             <label className="text-sm font-semibold">
               Permissions <span className="text-red-600">*</span>{' '}
-              <span className="text-gray-500 font-normal">
+              <span className="text-muted-foreground font-normal">
                 ({permissions.size} selected)
               </span>
             </label>
             {groupsLoading && (
-              <div className="text-sm text-gray-500">Loading permissions…</div>
+              <div className="text-sm text-muted-foreground">
+                Loading permissions…
+              </div>
             )}
             {!groupsLoading && (
-              <div className="border border-gray-200 rounded-md p-4 max-h-[320px] overflow-y-auto flex flex-col gap-5">
+              <div className="border border-border rounded-md p-4 max-h-[320px] overflow-y-auto flex flex-col gap-5">
                 {groups.map((group) => (
                   <div key={group.key} className="flex flex-col gap-2">
                     <div className="text-sm font-semibold">{group.label}</div>
                     {group.description && (
-                      <div className="text-xs text-gray-600">
+                      <div className="text-xs text-muted-foreground">
                         {group.description}
                       </div>
                     )}
@@ -313,7 +315,7 @@ export default function RoleEditDialog(props: {
                                 {p.label}
                               </div>
                               {p.description && (
-                                <div className="text-xs text-gray-600">
+                                <div className="text-xs text-muted-foreground">
                                   {p.description}
                                 </div>
                               )}
@@ -334,7 +336,7 @@ export default function RoleEditDialog(props: {
             </div>
           )}
         </div>
-        <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-200">
+        <div className="flex justify-end gap-2 px-6 py-4 border-t border-border">
           <CoopButton
             title="Cancel"
             type="secondary"

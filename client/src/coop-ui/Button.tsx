@@ -14,7 +14,7 @@ const buttonVariants = cva(
         ghost: 'border border-transparent',
         soft: 'border border-transparent',
         white:
-          'border border-gray-200 bg-card hover:bg-gray-50 focus:bg-gray-50 dark:bg-card dark:border-border dark:hover:bg-accent dark:focus:bg-accent',
+          'border border-border bg-card hover:bg-gray-50 focus:bg-gray-50 dark:bg-card dark:border-border dark:hover:bg-accent dark:focus:bg-accent',
         link: 'border border-transparent hover:underline',
       },
       color: {
@@ -67,13 +67,13 @@ const buttonVariants = cva(
         variant: 'outline',
         color: 'gray',
         class:
-          'border-gray-600 text-gray-600 hover:bg-gray-50 hover:border-gray-800 hover:text-gray-800 focus:border-gray-800 focus:text-gray-800 dark:border-border dark:text-muted-foreground dark:hover:border-muted-foreground dark:hover:text-foreground dark:focus:border-muted-foreground dark:focus:text-foreground',
+          'border-gray-600 text-muted-foreground hover:bg-gray-50 hover:border-gray-800 hover:text-foreground focus:border-gray-800 focus:text-foreground dark:border-border dark:text-muted-foreground dark:hover:border-muted-foreground dark:hover:text-foreground dark:focus:border-muted-foreground dark:focus:text-foreground',
       },
       {
         variant: 'outline',
         color: 'indigo',
         class:
-          'border-indigo-600 text-indigo-600 hover:bg-indigo-50 hover:border-indigo-800 hover:text-indigo-800 focus:border-indigo-800 focus:text-indigo-800 dark:border-indigo-500 dark:text-indigo-500 dark:hover:border-indigo-700 dark:hover:text-indigo-700 dark:focus:border-indigo-700 dark:focus:text-indigo-700',
+          'border-indigo-600 text-indigo-600 hover:bg-sidebar-active hover:border-indigo-800 hover:text-indigo-800 focus:border-indigo-800 focus:text-indigo-800 dark:border-indigo-500 dark:text-indigo-500 dark:hover:border-indigo-700 dark:hover:text-indigo-700 dark:focus:border-indigo-700 dark:focus:text-indigo-700',
       },
       {
         variant: 'outline',
@@ -99,7 +99,7 @@ const buttonVariants = cva(
         variant: 'ghost',
         color: 'gray',
         class:
-          'text-gray-600 hover:bg-gray-100 hover:text-gray-800 focus:bg-gray-100 focus:text-gray-800 dark:text-muted-foreground dark:hover:bg-accent dark:hover:text-foreground dark:focus:bg-accent dark:focus:text-foreground',
+          'text-muted-foreground hover:bg-muted hover:text-foreground focus:bg-muted focus:text-foreground dark:text-muted-foreground dark:hover:bg-accent dark:hover:text-foreground dark:focus:bg-accent dark:focus:text-foreground',
       },
       {
         variant: 'ghost',
@@ -131,7 +131,7 @@ const buttonVariants = cva(
         variant: 'soft',
         color: 'gray',
         class:
-          'bg-gray-100 text-gray-900 hover:bg-gray-200 focus:bg-gray-200 dark:text-foreground dark:hover:bg-accent dark:focus:bg-accent',
+          'bg-muted text-foreground hover:bg-muted focus:bg-muted dark:text-foreground dark:hover:bg-accent dark:focus:bg-accent',
       },
       {
         variant: 'soft',
@@ -162,7 +162,7 @@ const buttonVariants = cva(
       {
         variant: 'white',
         color: 'gray',
-        class: 'text-gray-800 dark:text-white',
+        class: 'text-foreground dark:text-white',
       },
       {
         variant: 'white',
@@ -190,7 +190,7 @@ const buttonVariants = cva(
         variant: 'link',
         color: 'gray',
         class:
-          'text-gray-600 hover:text-gray-800 focus:text-gray-800 dark:text-muted-foreground dark:hover:text-foreground dark:focus:text-foreground',
+          'text-muted-foreground hover:text-foreground focus:text-foreground dark:text-muted-foreground dark:hover:text-foreground dark:focus:text-foreground',
       },
       {
         variant: 'link',

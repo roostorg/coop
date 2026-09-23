@@ -243,7 +243,7 @@ export default function ManualReviewJobLatestSubmissionsWithThreadComponent(prop
           allowMoreThanOnePolicySelection={allowMoreThanOnePolicySelection}
         />
         {i < threadHistories.length - 1 ? (
-          <div className="flex h-px my-4 bg-slate-200" />
+          <div className="flex h-px my-4 bg-border" />
         ) : null}
       </div>
     );

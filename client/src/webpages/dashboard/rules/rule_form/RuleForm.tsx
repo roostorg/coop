@@ -1194,7 +1194,7 @@ export default function RuleForm() {
 
     return (
       <div
-        className="p-4 bg-card border border-gray-200 border-solid rounded-lg relative"
+        className="p-4 bg-card border border-border border-solid rounded-lg relative"
         key={`set_${conditionSetIndex}`}
       >
         {conditionSet.conditions.map((condition, conditionIndex) => (
@@ -1783,7 +1783,7 @@ export default function RuleForm() {
                 ? format(state.expirationTime, "yyyy-MM-dd'T'HH:mm")
                 : ''
             }
-            className="mr-4 h-8 px-3 py-1 border border-solid border-slate-300 rounded-lg text-sm text-slate-700 focus:border-coop-blue focus:outline-none"
+            className="mr-4 h-8 px-3 py-1 border border-solid border-border rounded-lg text-sm text-foreground focus:border-coop-blue focus:outline-none"
             onChange={(e) =>
               dispatch({
                 type: RuleFormReducerActionType.UpdateExpirationTime,
@@ -1913,7 +1913,7 @@ export default function RuleForm() {
   );
 
   const advancedSettingsSection = (
-    <div className="flex flex-col p-4 mb-8 bg-card border border-gray-200 border-solid rounded-lg shadow">
+    <div className="flex flex-col p-4 mb-8 bg-card border border-border border-solid rounded-lg shadow">
       {advancedSettingsToggle}
       {state.advancedSettingsVisible && (
         <div className="p-3">

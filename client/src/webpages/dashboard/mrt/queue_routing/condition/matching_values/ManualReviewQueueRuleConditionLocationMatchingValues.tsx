@@ -111,7 +111,7 @@ export default function ManualReviewQueueRuleConditionLocationMatchingValues(pro
     return (
       <div className="ml-3">
         <Button
-          className="font-semibold rounded-lg text-primary hover:border hover:border-solid hover:border-slate-200 hover:bg-slate-100"
+          className="font-semibold rounded-lg text-primary hover:border hover:border-solid hover:border-border hover:bg-muted"
           icon={<Plus className="w-4 h-4" />}
           onClick={() => setModalVisible(true)}
         >
@@ -128,7 +128,7 @@ export default function ManualReviewQueueRuleConditionLocationMatchingValues(pro
         <div className="pb-1 text-sm font-bold whitespace-nowrap">
           Locations to Match
         </div>
-        <div className="flex flex-row flex-wrap py-[3px] px-[10px] rounded-lg border border-solid border-slate-200 cursor-text text-sm bg-white">
+        <div className="flex flex-row flex-wrap py-[3px] px-[10px] rounded-lg border border-solid border-border cursor-text text-sm bg-card">
           <div className="flex flex-wrap">
             {editing ? (
               <>

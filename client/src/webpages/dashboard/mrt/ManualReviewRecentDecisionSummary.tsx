@@ -180,30 +180,30 @@ export default function ManualReviewRecentDecisionSummary(props: {
         <div className="flex gap-8">
           <div className="flex flex-col gap-2">
             <div className="flex flex-col text-muted-foreground">
-              <div className="font-bold text-slate-700">Reviewer</div>
+              <div className="font-bold text-foreground">Reviewer</div>
               {getReviewerName(selectedDecision.reviewerId)}
             </div>
             <div className="flex flex-col text-muted-foreground">
-              <div className="font-bold text-slate-700">Queue</div>
+              <div className="font-bold text-foreground">Queue</div>
               {getQueueName(selectedDecision.queueId)}
             </div>
             {selectedDecision.decisionReason ? (
               <div className="flex flex-col text-muted-foreground">
-                <div className="font-bold text-slate-700">Decision Reason</div>
+                <div className="font-bold text-foreground">Decision Reason</div>
                 {selectedDecision.decisionReason}
               </div>
             ) : null}
           </div>
           <div className="flex flex-col gap-2">
             <div className="flex flex-col text-muted-foreground">
-              <div className="font-bold text-slate-700">Primary Decision</div>
+              <div className="font-bold text-foreground">Primary Decision</div>
               {selectedDecision.decisions.map((decision, index) => (
                 <Fragment key={index}>{actionPoliciesPair(decision)}</Fragment>
               ))}
             </div>
             {selectedDecision.relatedActions.length > 0 ? (
               <div className="flex flex-col text-muted-foreground">
-                <div className="font-bold text-slate-700">Related Actions</div>
+                <div className="font-bold text-foreground">Related Actions</div>
                 {selectedDecision.relatedActions.map((action, index) => (
                   <Fragment key={index}>{actionPoliciesPair(action)}</Fragment>
                 ))}

@@ -109,9 +109,11 @@ const ManualReviewDashboardInsightsCard = (
   };
 
   return (
-    <div className="flex justify-between p-4 bg-white border border-solid rounded border-slate-200 grow">
+    <div className="flex justify-between p-4 bg-card border border-solid rounded border-border grow">
       <div className="flex flex-col text-start">
-        <div className="pb-6 text-base font-medium text-slate-500">{title}</div>
+        <div className="pb-6 text-base font-medium text-muted-foreground">
+          {title}
+        </div>
         {loading ? (
           <div className="self-start">
             <ComponentLoading />
@@ -127,7 +129,7 @@ const ManualReviewDashboardInsightsCard = (
                 <div
                   className={`${
                     props.change === 0
-                      ? 'text-slate-600 bg-slate-100'
+                      ? 'text-muted-foreground bg-muted'
                       : (
                             props.lowerIsBetter
                               ? props.change > 0
@@ -144,7 +146,7 @@ const ManualReviewDashboardInsightsCard = (
                   )}
                   {formatNumber(props.change)}%
                 </div>
-                <div className="text-sm font-medium text-slate-500">
+                <div className="text-sm font-medium text-muted-foreground">
                   vs. previous {getTimeWindowDescription(timeWindow)}
                 </div>
               </div>
@@ -159,7 +161,9 @@ const ManualReviewDashboardInsightsCard = (
             ) : null}
           </div>
         ) : (
-          <div className="text-sm text-slate-400">No data available.</div>
+          <div className="text-sm text-muted-foreground">
+            No data available.
+          </div>
         )}
       </div>
       <div className="pl-2 rounded">{icon}</div>

@@ -450,7 +450,7 @@ export default function RulesDashboardInsights() {
         <span
           className={`font-semibold pl-0.5 cursor-pointer hover:opacity-70 ${
             hiddenCategories.includes(value)
-              ? 'text-slate-200'
+              ? 'text-muted-foreground'
               : 'text-muted-foreground'
           }`}
         >
@@ -495,7 +495,7 @@ export default function RulesDashboardInsights() {
               <div className="w-8 mr-2 font-semibold text-coop-blue text-end">
                 {it.value?.toLocaleString()}
               </div>
-              <div className="font-medium text-slate-700">{it.name}</div>
+              <div className="font-medium text-foreground">{it.name}</div>
             </div>
           ))}
         </div>
@@ -822,7 +822,7 @@ export default function RulesDashboardInsights() {
     <div className="relative self-center block float-left text-start">
       <div
         onClick={() => setGroupByMenuVisible(!groupByMenuVisible)}
-        className="rounded-lg border border-solid border-[#d4d4d8] bg-card text-black font-medium hover:opacity-70"
+        className="rounded-lg border border-solid border-[#d4d4d8] bg-card text-foreground font-medium hover:opacity-70"
       >
         Group by
         {groupByOption !== InsightsGroupByOption.NONE
@@ -861,7 +861,7 @@ export default function RulesDashboardInsights() {
         className={`flex justify-center items-center border-none rounded-full m-2 p-2 cursor-pointer w-9 h-9 ${
           chartType === type
             ? 'text-white bg-primary'
-            : 'bg-[#f6f6f6] text-black hover:bg-primary/20'
+            : 'bg-[#f6f6f6] text-foreground hover:bg-primary/20'
         }`}
         onClick={() => {
           if (chartType !== type) {
@@ -896,11 +896,11 @@ export default function RulesDashboardInsights() {
     <div className="flex">
       <div className="z-10 flex flex-col w-full pb-4">
         <div className="flex items-center">
-          <div className="flex px-4 py-2 rounded-lg bg-slate-50">
+          <div className="flex px-4 py-2 rounded-lg bg-muted">
             {chartSelection}
-            <div className="inline-block w-px mx-4 my-1 bg-slate-200" />
+            <div className="inline-block w-px mx-4 my-1 bg-border" />
             {lookbackSelection}
-            <div className="inline-block w-px mx-4 my-1 bg-slate-200" />
+            <div className="inline-block w-px mx-4 my-1 bg-border" />
             {groupBySelection}
           </div>
         </div>

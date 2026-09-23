@@ -21,7 +21,7 @@ export default function CoopRadioGroup(props: {
           <input
             id={option.value}
             type="radio"
-            className="shrink-0 mt-0.5 border-solid border-gray-200 rounded-full text-primary focus:ring-primary/50 disabled:opacity-50 disabled:pointer-events-none"
+            className="shrink-0 mt-0.5 border-solid border-border rounded-full text-primary focus:ring-primary/50 disabled:opacity-50 disabled:pointer-events-none"
             value={option.value}
             checked={option.value === checkedOptionValue}
             onChange={(event) => {
@@ -35,7 +35,7 @@ export default function CoopRadioGroup(props: {
           <label
             htmlFor={option.value}
             className={`font-medium ms-2 ${
-              option.disabled ? 'text-gray-300' : 'text-black'
+              option.disabled ? 'text-gray-300' : 'text-foreground'
             }`}
           >
             {option.label}

@@ -90,7 +90,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, State> {
       <div className="h-full w-full flex items-center justify-center">
         <div className="text-center w-[600px]">
           <Heading size="3XL">Something Went Wrong</Heading>
-          <Text className="text-gray-500 mt-2">
+          <Text className="text-muted-foreground mt-2">
             We're having trouble completing your request. Please go back and try
             again.
           </Text>

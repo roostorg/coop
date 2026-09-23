@@ -11,7 +11,7 @@ export default function CloseButton(props: {
   return (
     <div className="flex w-fit h-fit" onClick={onClose}>
       <X
-        className={`rounded-full bg-slate-400/70 hover:bg-slate-400/50 p-1 cursor-pointer text-slate-200 ${sizeClass}`}
+        className={`rounded-full bg-slate-400/70 hover:bg-slate-400/50 p-1 cursor-pointer text-muted-foreground ${sizeClass}`}
       />
     </div>
   );

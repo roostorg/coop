@@ -304,7 +304,9 @@ export default function ActionForm() {
   );
 
   const callbackSectionHeader = (content: string) => (
-    <div className="mt-4 mb-1 text-lg font-medium text-gray-900">{content}</div>
+    <div className="mt-4 mb-1 text-lg font-medium text-foreground">
+      {content}
+    </div>
   );
 
   const callbackUrlInput = (

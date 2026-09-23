@@ -56,10 +56,10 @@ function ItemTypeTooltipContent(props: {
         <tr className="h-2" />
         <tr>
           <td>
-            <div className="mr-2 text-gray-500">Name</div>
+            <div className="mr-2 text-muted-foreground">Name</div>
           </td>
           <td>
-            <div className={`${value ? 'text-black' : 'text-slate-300'}`}>
+            <div className={`${value ? 'text-foreground' : 'text-slate-300'}`}>
               {value ?? 'No field assigned'}
             </div>
           </td>
@@ -67,10 +67,10 @@ function ItemTypeTooltipContent(props: {
         <tr className="h-2" />
         <tr>
           <td>
-            <div className="mr-2 text-gray-500">Role</div>
+            <div className="mr-2 text-muted-foreground">Role</div>
           </td>
           <td>
-            <div className="text-black">
+            <div className="text-foreground">
               {getDisplayStringForRole(role, kind)}
             </div>
           </td>
@@ -159,8 +159,8 @@ function ContentTypePreview(props: { roles: ItemTypeRoles<'CONTENT'> }) {
             }`}
           />
         </ItemTypePreviewTooltip>
-        <div className="h-32 rounded-lg bg-slate-200" />
-        <div className="w-4/5 h-3 rounded-lg bg-slate-200 " />
+        <div className="h-32 rounded-lg bg-border" />
+        <div className="w-4/5 h-3 rounded-lg bg-border " />
         <ItemTypePreviewTooltip
           role={SchemaFieldRoles.CREATOR_ID}
           value={roles['creatorId']}
@@ -170,17 +170,17 @@ function ContentTypePreview(props: { roles: ItemTypeRoles<'CONTENT'> }) {
             className={`flex flex-row items-center gap-2 p-4 mt-4 border border-solid rounded-lg ${
               creatorId
                 ? 'border-blue-200 hover:border-blue-300'
-                : 'border-slate-300 hover:border-slate-400'
+                : 'border-border hover:border-border'
             }`}
           >
             <div
               className={`w-8 h-8 rounded-full ${
-                creatorId ? 'bg-blue-100' : 'bg-slate-200'
+                creatorId ? 'bg-blue-100' : 'bg-border'
               }`}
             />
             <div
               className={`h-3 rounded-lg ${
-                creatorId ? 'bg-blue-100' : 'bg-slate-200'
+                creatorId ? 'bg-blue-100' : 'bg-border'
               } grow`}
             />
           </div>
@@ -223,13 +223,13 @@ function ThreadTypePreview(props: { roles: ItemTypeRoles<'THREAD'> }) {
         />
       </ItemTypePreviewTooltip>
       <div className="flex flex-col items-stretch p-4 mt-4 border border-solid rounded-lg gap-2 border-border">
-        <div className="self-end w-1/6 h-3 rounded-lg bg-slate-200" />
-        <div className="h-3 rounded-lg bg-slate-200" />
-        <div className="h-32 rounded-lg bg-slate-200" />
-        <div className="w-4/5 h-3 rounded-lg bg-slate-200 " />
+        <div className="self-end w-1/6 h-3 rounded-lg bg-border" />
+        <div className="h-3 rounded-lg bg-border" />
+        <div className="h-32 rounded-lg bg-border" />
+        <div className="w-4/5 h-3 rounded-lg bg-border " />
         <div className="flex flex-row items-center p-4 mt-4 border border-solid rounded-lg gap-2 border-border">
-          <div className="w-8 h-8 rounded-full bg-slate-200" />
-          <div className="h-3 rounded-lg bg-slate-200 grow" />
+          <div className="w-8 h-8 rounded-full bg-border" />
+          <div className="h-3 rounded-lg bg-border grow" />
         </div>
       </div>
     </div>

@@ -33,7 +33,7 @@ export default function CoopModal({
   const backButton = (
     <div
       onClick={onBack}
-      className="flex flex-row items-center justify-center rounded-full cursor-pointer text-slate-400 hover:text-primary/70"
+      className="flex flex-row items-center justify-center rounded-full cursor-pointer text-muted-foreground hover:text-primary/70"
     >
       <LeftOutlined className="w-4 h-4" onClick={onBack} />
       {!title && (

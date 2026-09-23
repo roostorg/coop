@@ -68,7 +68,7 @@ export function optionWithTooltip(opts: {
         {description && (
           <Tooltip>
             <TooltipTrigger asChild>
-              <Info className="w-4 h-4 bg-transparent text-slate-500" />
+              <Info className="w-4 h-4 bg-transparent text-muted-foreground" />
             </TooltipTrigger>
             <TooltipContent side="right">{description}</TooltipContent>
           </Tooltip>

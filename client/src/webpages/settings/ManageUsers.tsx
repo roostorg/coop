@@ -581,7 +581,7 @@ export default function ManageUsers() {
               {/* Reset Password Section */}
               <div className="flex flex-col items-start">
                 <div className="text-xl font-bold mb-4">Reset Password</div>
-                <div className="mb-3 text-sm text-gray-600">
+                <div className="mb-3 text-sm text-muted-foreground">
                   Generate a password reset link for this user. An email will be
                   sent if email service is configured.
                 </div>
@@ -603,7 +603,7 @@ export default function ManageUsers() {
                         type="text"
                         readOnly
                         value={`${HOST_URL}/reset_password/${passwordResetToken}`}
-                        className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm font-mono bg-gray-50"
+                        className="flex-1 px-3 py-2 border border-border rounded text-sm font-mono bg-muted"
                         onClick={(e) => e.currentTarget.select()}
                       />
                       <CoopButton
@@ -613,7 +613,7 @@ export default function ManageUsers() {
                         type={copySuccess ? 'primary' : 'secondary'}
                       />
                     </div>
-                    <div className="text-xs text-gray-600">
+                    <div className="text-xs text-muted-foreground">
                       This link will expire in 1 hour.
                     </div>
                   </div>

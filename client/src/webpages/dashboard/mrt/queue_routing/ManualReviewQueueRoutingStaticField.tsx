@@ -22,7 +22,7 @@ export function ManualReviewQueueRoutingStaticTokenField(props: {
     >
       {props.tokens.map((token) => (
         <div
-          className={`p-1 rounded bg-slate-200 ${
+          className={`p-1 rounded bg-border ${
             Boolean(props.reducePadding) ? 'px-2 py-1' : 'px-3 py-2'
           }`}
           key={token}

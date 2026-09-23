@@ -131,7 +131,7 @@ function ParameterRow({
   const hasConstraints = isString || isNumber;
 
   return (
-    <div className="rounded-xl border border-gray-200 p-4">
+    <div className="rounded-xl border border-border p-4">
       <div className="grid grid-cols-1 gap-x-3 gap-y-3 md:grid-cols-12">
         <Field
           label="Name (key)"
@@ -463,7 +463,7 @@ function DefaultValueInput({
 
 function EmptyOptionsHint() {
   return (
-    <p className="text-sm text-gray-500">
+    <p className="text-sm text-muted-foreground">
       Add options below before picking a default.
     </p>
   );
@@ -508,11 +508,11 @@ function MultiSelectDropdown({
           id={id}
           disabled={disabled}
           className={cn(
-            'flex w-full items-center justify-between whitespace-nowrap rounded-lg border border-gray-200 bg-card px-4 py-3 text-sm font-normal transition-colors',
-            'hover:border-gray-300',
+            'flex w-full items-center justify-between whitespace-nowrap rounded-lg border border-border bg-card px-4 py-3 text-sm font-normal transition-colors',
+            'hover:border-border',
             'focus:z-10 focus:border-indigo-500 focus:shadow-focus-indigo focus:outline-none',
             'disabled:cursor-not-allowed disabled:opacity-50',
-            selectedLabels.length === 0 && 'text-gray-400',
+            selectedLabels.length === 0 && 'text-muted-foreground',
           )}
         >
           <span className="truncate">{summary}</span>
@@ -532,7 +532,7 @@ function MultiSelectDropdown({
               <Label
                 key={opt.value}
                 htmlFor={checkboxId}
-                className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm font-normal text-gray-700 hover:bg-gray-100"
+                className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 text-sm font-normal text-foreground hover:bg-muted"
               >
                 <Checkbox
                   id={checkboxId}
@@ -618,7 +618,7 @@ function Field({
   const alignment = align === 'start' ? 'items-start' : '';
   return (
     <div className={`flex flex-col gap-1.5 ${alignment} ${className ?? ''}`}>
-      <Label htmlFor={htmlFor} className="text-gray-700">
+      <Label htmlFor={htmlFor} className="text-foreground">
         {label}
       </Label>
       {children}

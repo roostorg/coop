@@ -16,6 +16,7 @@ import { Link, useLocation } from 'react-router-dom';
 import DashboardMenuButton from '@/webpages/dashboard/components/DashboardMenuButton';
 
 import LogoAndWordmarkPurple from '../images/LogoAndWordmarkPurple.png';
+import LogoAndWordmarkWhite from '../images/LogoAndWordmarkWhite.png';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- value consumed only via `typeof` for MenuItemName
 const MenuItemNames = makeEnumLike([
@@ -210,8 +211,8 @@ export default function Sidebar(props: SidebarProps) {
             <div
               className={`flex cursor-pointer w-min h-min p-[8px] rounded border-none ${
                 isFooterButtonSelected
-                  ? 'text-primary hover:text-primary bg-indigo-50 hover:bg-indigo-50'
-                  : 'text-black hover:text-black/70 bg-transparent hover:bg-gray-100'
+                  ? 'text-primary hover:text-primary bg-sidebar-active hover:bg-sidebar-active'
+                  : 'text-foreground hover:text-foreground/70 bg-transparent hover:bg-muted dark:text-foreground dark:hover:text-muted-foreground dark:hover:bg-accent'
               }`}
               onClick={() => {
                 onClick();
@@ -220,7 +221,7 @@ export default function Sidebar(props: SidebarProps) {
             >
               <Icon
                 style={{ width: '16px', height: '16px' }}
-                className="text-black"
+                className="text-foreground dark:text-foreground"
               />
             </div>
           ) : (
@@ -228,14 +229,14 @@ export default function Sidebar(props: SidebarProps) {
               to={url}
               className={`flex cursor-pointer w-min h-min p-[8px] rounded border-none ${
                 isFooterButtonSelected
-                  ? 'text-primary hover:text-primary bg-indigo-50 hover:bg-indigo-50'
-                  : 'text-black hover:text-black/70 bg-transparent hover:bg-gray-100'
+                  ? 'text-primary hover:text-primary bg-sidebar-active hover:bg-sidebar-active'
+                  : 'text-foreground hover:text-foreground/70 bg-transparent hover:bg-muted dark:text-foreground dark:hover:text-muted-foreground dark:hover:bg-accent'
               }`}
               onClick={() => setSelectedMenuItem(menuItemName)}
             >
               <Icon
                 style={{ width: '16px', height: '16px' }}
-                className="text-black"
+                className="text-foreground dark:text-foreground"
               />
             </Link>
           )}
@@ -257,8 +258,8 @@ export default function Sidebar(props: SidebarProps) {
   const settingsMenu = (
     <div
       className={cn(
-        'bg-slate-50 overflow-hidden',
-        'border border-t-0 border-gray-200 border-solid border-x-0',
+        'bg-muted dark:bg-background overflow-hidden',
+        'border border-t-0 border-border dark:border-border border-solid border-x-0',
         {
           'max-h-[1000px]': isSettingsMenuVisible,
           'max-h-0': !isSettingsMenuVisible,
@@ -276,7 +277,7 @@ export default function Sidebar(props: SidebarProps) {
             className={`flex text-start items-center rounded-lg my-[4px] cursor-pointer hover:text-primary ${
               selectedMenuItem === item.title
                 ? 'text-primary font-bold'
-                : 'text-black font-medium'
+                : 'text-foreground font-medium dark:text-foreground'
             } ${collapsed ? 'w-fit' : 'py-[6px] px-[8px]'}`}
             onClick={() => setSelectedMenuItem(item.title)}
           >
@@ -291,7 +292,7 @@ export default function Sidebar(props: SidebarProps) {
 
   return (
     <div
-      className={`relative flex flex-col justify-between bg-white ${
+      className={`relative flex flex-col justify-between bg-card dark:bg-background ${
         collapsed ? '' : 'min-w-[250px]'
       } text-[14px] leading-normal`}
     >
@@ -304,6 +305,14 @@ export default function Sidebar(props: SidebarProps) {
                 alt="Logo"
                 width="110"
                 height="29"
+                className="dark:hidden"
+              />
+              <img
+                src={LogoAndWordmarkWhite}
+                alt="Logo"
+                width="110"
+                height="29"
+                className="hidden dark:block"
               />
             </Link>
           )}
@@ -314,12 +323,12 @@ export default function Sidebar(props: SidebarProps) {
             {collapsed ? (
               <AngleDoubleRight
                 style={{ width: '16px', height: '16px' }}
-                className="text-black"
+                className="text-foreground dark:text-foreground"
               />
             ) : (
               <AngleDoubleLeft
                 style={{ width: '16px', height: '16px' }}
-                className="text-black"
+                className="text-foreground dark:text-foreground"
               />
             )}
           </div>
@@ -338,7 +347,7 @@ export default function Sidebar(props: SidebarProps) {
           </div>
         ) : null}
         {settingsMenu}
-        <div className="flex justify-center gap-[20px] p-[16px] bg-slate-50">
+        <div className="flex justify-center gap-[20px] p-[16px] bg-muted dark:bg-background">
           {!collapsed &&
             footerButton({
               icon: ExitFilled,
@@ -363,13 +372,13 @@ export default function Sidebar(props: SidebarProps) {
                     }}
                     className={`flex cursor-pointer w-min h-min p-[8px] rounded border-none ${
                       isSettingsSelected
-                        ? 'text-primary hover:text-primary bg-indigo-50 hover:bg-indigo-50'
-                        : 'text-black hover:text-black/70 bg-transparent hover:bg-gray-100'
+                        ? 'text-primary hover:text-primary bg-sidebar-active hover:bg-sidebar-active'
+                        : 'text-foreground hover:text-foreground/70 bg-transparent hover:bg-muted dark:text-foreground dark:hover:text-muted-foreground dark:hover:bg-accent'
                     }`}
                   >
                     <CogFilled
                       style={{ width: '16px', height: '16px' }}
-                      className="text-black"
+                      className="text-foreground dark:text-foreground"
                     />
                   </div>
                 </TooltipTrigger>

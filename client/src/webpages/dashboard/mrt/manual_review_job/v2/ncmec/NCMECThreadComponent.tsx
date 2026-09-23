@@ -204,7 +204,7 @@ export function NCMECThreadComponent(props: {
     <div className="mr-4">
       <div className="flex flex-col items-start w-full p-2 rounded gap-2 grow bg-coop-lightblue">
         <div
-          className="flex flex-col w-full border border-gray-200 border-solid rounded max-h-[600px] gap-2 p-2 bg-card overflow-scroll"
+          className="flex flex-col w-full border border-border border-solid rounded max-h-[600px] gap-2 p-2 bg-card overflow-scroll"
           ref={scrollViewRef}
         >
           {messagesComponent}

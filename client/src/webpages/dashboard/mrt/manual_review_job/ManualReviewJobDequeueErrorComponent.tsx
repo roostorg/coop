@@ -12,10 +12,10 @@ export default function ManualReviewJobDequeueErrorComponent() {
         <div className="pb-10 text-gray-300 text-8xl">
           <AlertCircle className="w-24 h-24" />
         </div>
-        <div className="pb-4 text-3xl text-gray-500">
+        <div className="pb-4 text-3xl text-muted-foreground">
           Error Dequeueing Next Job
         </div>
-        <div className="pb-10 text-base text-gray-500">
+        <div className="pb-10 text-base text-muted-foreground">
           There are jobs in your queue, but we were unable to dequeue one for
           you to review. Please try again later.
         </div>

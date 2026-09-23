@@ -60,7 +60,7 @@ export default function RuleFormConditionSignal(props: {
         <Button
           className={`px-3 cursor-text !flex !items-center ${
             condition.signal
-              ? '!text-black !hover:text-black !focus:text-black'
+              ? '!text-foreground !hover:text-foreground !focus:text-foreground'
               : '!text-[#bfbfbf] !hover:text-[#bfbfbf] !focus:text-[#bfbfbf]'
           }`}
           onClick={() =>

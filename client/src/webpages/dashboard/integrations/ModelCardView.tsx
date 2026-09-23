@@ -65,19 +65,22 @@ function ModelCardSectionBlock({
   const hasContent = hasSubsections ?? hasFields;
 
   return (
-    <div className="border-b border-zinc-200 last:border-b-0">
+    <div className="border-b border-border last:border-b-0">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between py-3 text-left font-semibold text-zinc-900 hover:bg-zinc-50 rounded"
+        className="flex w-full items-center justify-between py-3 text-left font-semibold text-zinc-900 hover:bg-muted rounded"
         aria-expanded={open}
       >
         {section.title}
         {hasContent ? (
           open ? (
-            <ChevronDown className="shrink-0 text-zinc-500" size={18} />
+            <ChevronDown className="shrink-0 text-muted-foreground" size={18} />
           ) : (
-            <ChevronRight className="shrink-0 text-zinc-500" size={18} />
+            <ChevronRight
+              className="shrink-0 text-muted-foreground"
+              size={18}
+            />
           )
         ) : null}
       </button>
@@ -110,7 +113,9 @@ export default function ModelCardView({ card }: ModelCardViewProps) {
         </span>
         <span className="text-sm text-zinc-600">{card.version}</span>
         {card.releaseDate != null && (
-          <span className="text-sm text-zinc-500">{card.releaseDate}</span>
+          <span className="text-sm text-muted-foreground">
+            {card.releaseDate}
+          </span>
         )}
       </div>
       <div className="flex flex-col">

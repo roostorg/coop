@@ -346,7 +346,7 @@ export default function ManualReviewDashboardInsightsFilterBy(props: {
       </div>
       <Tooltip>
         <TooltipTrigger asChild>
-          <Info className="w-4 h-4 pl-2 text-slate-500" />
+          <Info className="w-4 h-4 pl-2 text-muted-foreground" />
         </TooltipTrigger>
         <TooltipContent side="right">
           A “Primary Action" is the main decision associated with each job.
@@ -413,7 +413,7 @@ export default function ManualReviewDashboardInsightsFilterBy(props: {
 
   return (
     <div className="flex items-center self-center text-start">
-      <div className="pr-2 font-semibold text-slate-500 whitespace-nowrap">
+      <div className="pr-2 font-semibold text-muted-foreground whitespace-nowrap">
         Filter by
       </div>
       <div className="relative block" ref={componentRef}>
@@ -421,10 +421,10 @@ export default function ManualReviewDashboardInsightsFilterBy(props: {
           onClick={() => {
             setFilterByMenuVisible(!filterByMenuVisible);
           }}
-          className="flex items-center px-3 py-1 border border-solid rounded cursor-pointer border-slate-200 hover:border-coop-blue whitespace-nowrap"
+          className="flex items-center px-3 py-1 border border-solid rounded cursor-pointer border-border hover:border-coop-blue whitespace-nowrap"
         >
           {numberOfSavedFilters > 0 ? (
-            <div className="flex p-1 bg-slate-200 items-center px-2 py-0.5 gap-1.5 font-medium text-slate-500">
+            <div className="flex p-1 bg-border items-center px-2 py-0.5 gap-1.5 font-medium text-muted-foreground">
               {numberOfSavedFilters > 1
                 ? `${numberOfSavedFilters} Filters`
                 : '1 Filter'}
@@ -438,27 +438,27 @@ export default function ManualReviewDashboardInsightsFilterBy(props: {
               />
             </div>
           ) : (
-            <div className="text-slate-400">Select any</div>
+            <div className="text-muted-foreground">Select any</div>
           )}
           {/* If we do something like {filterByMenuVisible ? <ChevronUp /> : <ChevronDown />},
             then for some reason the componentRef.current.contains() doesn't work. I think it has
             something to do with dynamically choosing whether to render each icon because when
             we render both and just hide one of them, componentRef.current.contains() works. */}
           <ChevronUp
-            className={`ml-2 w-3 h-3 text-slate-400 flex items-center ${
+            className={`ml-2 w-3 h-3 text-muted-foreground flex items-center ${
               filterByMenuVisible ? '' : 'hidden'
             }`}
           />
           <ChevronDown
-            className={`ml-2 w-3 h-3 text-slate-400 flex items-center ${
+            className={`ml-2 w-3 h-3 text-muted-foreground flex items-center ${
               filterByMenuVisible ? 'hidden' : ''
             }`}
           />
         </div>
         {filterByMenuVisible && (
-          <div className="flex flex-col bg-white absolute border border-solid rounded shadow mt-1 min-w-[240px] z-20 border-slate-200 right-0">
+          <div className="flex flex-col bg-card absolute border border-solid rounded shadow mt-1 min-w-[240px] z-20 border-border right-0">
             <div className="flex items-center justify-between px-4 py-4">
-              <div className="flex items-center text-base font-semibold text-slate-700">
+              <div className="flex items-center text-base font-semibold text-foreground">
                 Filter
               </div>
               <CoopButton title="Save" size="small" onClick={onSave} />
@@ -497,7 +497,7 @@ export default function ManualReviewDashboardInsightsFilterBy(props: {
                   return (
                     <div
                       className={`flex flex-col ${
-                        isExpanded ? 'bg-gray-100' : ''
+                        isExpanded ? 'bg-muted' : ''
                       }`}
                       key={column}
                     >
@@ -507,7 +507,7 @@ export default function ManualReviewDashboardInsightsFilterBy(props: {
                         key={`${index}_column_cell`}
                       >
                         <div
-                          className="mr-2 font-medium text-slate-500 text-start"
+                          className="mr-2 font-medium text-muted-foreground text-start"
                           key={`${index}_column_name`}
                         >
                           {filterByColumnDisplayName(column)}
@@ -517,12 +517,12 @@ export default function ManualReviewDashboardInsightsFilterBy(props: {
                         something to do with dynamically choosing whether to render each icon because when
                         we render both and just hide one of them, componentRef.current.contains() works. */}
                         <ChevronUp
-                          className={`font-bold w-3 h-3 text-slate-400 ${
+                          className={`font-bold w-3 h-3 text-muted-foreground ${
                             isExpanded ? '' : 'hidden'
                           }`}
                         />
                         <ChevronDown
-                          className={`font-bold w-3 h-3 text-slate-400 ${
+                          className={`font-bold w-3 h-3 text-muted-foreground ${
                             isExpanded ? 'hidden' : ''
                           }`}
                         />

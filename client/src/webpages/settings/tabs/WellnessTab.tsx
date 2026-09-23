@@ -129,11 +129,11 @@ export default function WellnessTab() {
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-4">
-        <div className="border-b border-gray-200 py-2">
+        <div className="border-b border-border py-2">
           <Heading weight="semibold" size="2XL">
             Default Wellness Settings
           </Heading>
-          <Text size="SM" className="text-gray-500 mt-2">
+          <Text size="SM" className="text-muted-foreground mt-2">
             Configure your organization's default safety settings. When a new
             user joins your team and needs to use Coop, these settings will be
             applied by default to transform their safety and well-being. If a
@@ -214,7 +214,7 @@ export default function WellnessTab() {
         </div>
       </div>
 
-      <div className="flex justify-end border-t border-gray-200 pt-4">
+      <div className="flex justify-end border-t border-border pt-4">
         <Button
           disabled={!hasChanges || isSaving}
           loading={isSaving}

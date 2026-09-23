@@ -422,7 +422,7 @@ describe('Table behavior', () => {
     fireEvent.click(alphaRow);
     expect(onSelectRow).toHaveBeenCalledTimes(1);
     expect(onSelectRow.mock.calls[0][0].original.values.id).toBe('a');
-    expect(alphaRow.classList.contains('bg-indigo-100')).toBe(true);
+    expect(alphaRow.classList.contains('bg-sidebar-active')).toBe(true);
   });
 
   it('renders one collapsed summary cell per row instead of normal columns', () => {

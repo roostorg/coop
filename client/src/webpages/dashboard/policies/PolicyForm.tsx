@@ -201,7 +201,7 @@ export default function PolicyForm() {
       <Helmet>
         <title>{existingPolicyId ? 'Edit Policy' : 'Create Policy'}</title>
       </Helmet>
-      <div className="flex flex-row gap-4 mb-12 text-slate-600">
+      <div className="flex flex-row gap-4 mb-12 text-muted-foreground">
         Policies
         {pathToParentNode.map((node) => (
           <div key={node.value.id} className="flex flex-row gap-2">
@@ -210,7 +210,7 @@ export default function PolicyForm() {
           </div>
         ))}
         {existingPolicy && (
-          <div className="flex flex-row gap-4 text-black">
+          <div className="flex flex-row gap-4 text-foreground">
             <div>/</div>
             <div className="font-semibold">{existingPolicy.name}</div>
           </div>
@@ -282,7 +282,7 @@ export default function PolicyForm() {
           </Button>
         </div>
       </div>
-      <div className="flex items-center justify-between py-2 text-sm text-slate-400">
+      <div className="flex items-center justify-between py-2 text-sm text-muted-foreground">
         {parent
           ? `${existingPolicy ? 'Update' : 'Create'} Sub-Policy for ${
               parent.name

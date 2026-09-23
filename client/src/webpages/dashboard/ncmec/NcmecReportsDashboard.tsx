@@ -685,13 +685,13 @@ export default function NcmecReportsDashboard() {
         (failedNcmecSubmissions?.length ?? 0) === 0 ? (
         <div className="flex items-center justify-center w-full h-full">
           <div className="flex flex-col items-center justify-center p-12 mt-24">
-            <div className="pb-3 text-zinc-500 text-8xl">
+            <div className="pb-3 text-muted-foreground text-8xl">
               {<Scale className="w-24 h-24" />}
             </div>
-            <div className="pb-2 text-3xl text-zinc-500 max-w-100">
+            <div className="pb-2 text-3xl text-muted-foreground max-w-100">
               No NCMEC Reports
             </div>
-            <div className="pt-2 pb-10 text-base max-w-100 text-zinc-500">
+            <div className="pt-2 pb-10 text-base max-w-100 text-muted-foreground">
               There are no NCMEC reports to display. Click here to return to the
               Manual Review Tool.
             </div>
@@ -733,7 +733,7 @@ export default function NcmecReportsDashboard() {
                     className={`font-semibold text-base rounded ${
                       Object.values(columnVisibility).filter(Boolean).length ===
                       Object.keys(columnLabels).length
-                        ? 'bg-card text-gray-600 hover:bg-card hover:text-gray-600'
+                        ? 'bg-card text-muted-foreground hover:bg-card hover:text-muted-foreground'
                         : 'bg-gray-600 text-white border-none hover:bg-gray-500'
                     }`}
                     icon={<GridAlt className="inline-block w-4 h-4 mr-2" />}
@@ -742,7 +742,7 @@ export default function NcmecReportsDashboard() {
                     Columns
                   </Button>
                   {columnsMenuVisible && (
-                    <div className="absolute left-0 z-20 flex flex-col mt-1 bg-card border border-solid border-gray-300 rounded shadow-md min-w-[240px]">
+                    <div className="absolute left-0 z-20 flex flex-col mt-1 bg-card border border-solid border-border rounded shadow-md min-w-[240px]">
                       <div className="px-4 py-4 text-base font-semibold">
                         Show Columns
                       </div>
@@ -770,7 +770,7 @@ export default function NcmecReportsDashboard() {
             }
           />
           {searchId && tableData?.length === 0 ? (
-            <div className="flex items-center self-center justify-center h-full p-8 mt-8 text-base text-center rounded shadow w-fit bg-muted text-slate-600">
+            <div className="flex items-center self-center justify-center h-full p-8 mt-8 text-base text-center rounded shadow w-fit bg-muted text-muted-foreground">
               Don't see the report?{' '}
               <Button type="link" onClick={fetchReportById}>
                 Click here to search further back

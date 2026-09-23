@@ -11,7 +11,7 @@ export default function ItemTypeCodeSampleDropdown(props: {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <div className="flex flex-col text-sm font-semibold cursor-pointer select-none bg-slate-200">
+    <div className="flex flex-col text-sm font-semibold cursor-pointer select-none bg-border">
       <div
         className="flex flex-row px-2"
         onClick={() => setMenuOpen((prevMenuOpen) => !prevMenuOpen)}
@@ -30,7 +30,7 @@ export default function ItemTypeCodeSampleDropdown(props: {
           {Object.values(ApiRoutes).map((route, idx) => (
             <div
               className={`flex flex-row p-2 ${
-                route === selectedRoute ? '' : 'bg-slate-200 hover:bg-muted'
+                route === selectedRoute ? '' : 'bg-border hover:bg-muted'
               }`}
               key={idx}
               onClick={() => {

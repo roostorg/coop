@@ -28,7 +28,7 @@ export default function MarkdownTextInput(props: {
       ],
       editorProps: {
         attributes: {
-          class: `bg-card outline-none focus:outline-none w-full px-6 border-solid border inline-block mr-3 cursor-text py-4 border-border focus:border-border outline-0 placeholder-slate-300 text-slate-700 rounded min-h-48 max-h-96 overflow-y-scroll ${
+          class: `bg-card outline-none focus:outline-none w-full px-6 border-solid border inline-block mr-3 cursor-text py-4 border-border focus:border-border outline-0 placeholder-slate-300 text-foreground rounded min-h-48 max-h-96 overflow-y-scroll ${
             textSize === 'small' ? 'text-base px-3 py-2' : 'text-lg px-6 py-4'
           }`,
         },
@@ -64,8 +64,8 @@ export default function MarkdownTextInput(props: {
             textSize === 'small' ? 'text-base px-3 py-2' : 'text-lg px-6 py-4'
           } ${
             disabled
-              ? 'text-slate-400 cursor-wait'
-              : 'text-slate-700 cursor-default'
+              ? 'text-muted-foreground cursor-wait'
+              : 'text-foreground cursor-default'
           }`,
         },
       },
