@@ -1,7 +1,6 @@
 import { vi, type Mock } from 'vitest';
 
-/* eslint-disable max-lines -- scenarios share the `makeIsolatedPublisher`
- * harness; splitting would duplicate ~100 lines of setup. */
+ 
 /**
  * Unit tests for ActionPublisher to verify action execution logging behavior.
  *
@@ -1075,7 +1074,7 @@ describe('ActionPublisher', () => {
     });
 
     it('fails loudly when ENQUEUE_TO_NCMEC targets a CONTENT item with no submission and no inferable creator', async () => {
-      const consoleSpy = vi
+      using consoleSpy = vi
         .spyOn(console, 'error')
         .mockImplementation(() => {});
       const enqueueForHumanReviewIfApplicable = vi.fn();
@@ -1137,7 +1136,6 @@ describe('ActionPublisher', () => {
       expect(loggedLine).toEqual(
         expect.stringContaining('actionPublisher.publishAction.failed'),
       );
-      consoleSpy.mockRestore();
     });
   });
 });
