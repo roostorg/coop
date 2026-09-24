@@ -1,5 +1,6 @@
 import express, { type ErrorRequestHandler } from 'express';
 import request from 'supertest';
+import { vi } from 'vitest';
 
 import { type Dependencies } from '../iocContainer/index.js';
 import { makeItemTypeNameAlreadyExistsError } from '../services/moderationConfigService/index.js';
@@ -61,43 +62,43 @@ const action = {
 function harness() {
   const trx = { transaction: 'item-type' };
   const config = {
-    createContentType: jest.fn().mockResolvedValue(item),
-    createThreadType: jest.fn().mockResolvedValue(item),
-    createUserType: jest.fn().mockResolvedValue(item),
-    updateContentType: jest.fn().mockResolvedValue(item),
-    updateThreadType: jest.fn().mockResolvedValue(item),
-    updateUserType: jest.fn().mockResolvedValue(item),
+    createContentType: vi.fn().mockResolvedValue(item),
+    createThreadType: vi.fn().mockResolvedValue(item),
+    createUserType: vi.fn().mockResolvedValue(item),
+    updateContentType: vi.fn().mockResolvedValue(item),
+    updateThreadType: vi.fn().mockResolvedValue(item),
+    updateUserType: vi.fn().mockResolvedValue(item),
   };
   const review = {
-    setHiddenFieldsForItemType: jest.fn().mockResolvedValue(undefined),
+    setHiddenFieldsForItemType: vi.fn().mockResolvedValue(undefined),
   };
   const service = {
-    getItemType: jest.fn().mockResolvedValue(item),
-    createPolicy: jest.fn().mockResolvedValue(policy),
-    getPolicy: jest.fn().mockResolvedValue(policy),
-    updatePolicy: jest.fn().mockResolvedValue(policy),
-    createAction: jest.fn().mockResolvedValue(action),
-    updateCustomAction: jest.fn().mockResolvedValue(action),
-    getActionItemTypeIds: jest
+    getItemType: vi.fn().mockResolvedValue(item),
+    createPolicy: vi.fn().mockResolvedValue(policy),
+    getPolicy: vi.fn().mockResolvedValue(policy),
+    updatePolicy: vi.fn().mockResolvedValue(policy),
+    createAction: vi.fn().mockResolvedValue(action),
+    updateCustomAction: vi.fn().mockResolvedValue(action),
+    getActionItemTypeIds: vi
       .fn()
       .mockResolvedValue(new Map([[action.id, [item.id]]])),
-    getActions: jest.fn().mockResolvedValue([]),
-    forTransaction: jest.fn().mockReturnValue(config),
-    invalidateLatestItemTypesCache: jest.fn().mockResolvedValue(undefined),
+    getActions: vi.fn().mockResolvedValue([]),
+    forTransaction: vi.fn().mockReturnValue(config),
+    invalidateLatestItemTypesCache: vi.fn().mockResolvedValue(undefined),
   };
   const manualReviewTool = {
-    forTransaction: jest.fn().mockReturnValue(review),
+    forTransaction: vi.fn().mockReturnValue(review),
   };
-  const executeTransaction = jest
+  const executeTransaction = vi
     .fn()
     .mockImplementation(async (run: (transaction: unknown) => unknown) =>
       run(trx),
     );
   const kysely = {
-    transaction: jest.fn().mockReturnValue({ execute: executeTransaction }),
+    transaction: vi.fn().mockReturnValue({ execute: executeTransaction }),
   };
   const apiKeys = {
-    validateApiKey: jest
+    validateApiKey: vi
       .fn()
       .mockImplementation(async (key: string) =>
         key === apiKey ? orgId : null,
