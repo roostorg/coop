@@ -1,5 +1,6 @@
 import { ScalarTypes } from '@roostorg/coop-types';
 import { type GraphQLResolveInfo } from 'graphql';
+import { vi } from 'vitest';
 
 import {
   makeInvalidItemTypeHiddenFieldsError,
@@ -38,22 +39,22 @@ type ResolverFn = (
 
 const makeContext = () => {
   const transactionConfig = {
-    createContentType: jest.fn().mockResolvedValue(itemType),
-    createThreadType: jest.fn().mockResolvedValue(itemType),
-    createUserType: jest.fn().mockResolvedValue(itemType),
-    updateContentType: jest.fn().mockResolvedValue(itemType),
-    updateThreadType: jest.fn().mockResolvedValue(itemType),
-    updateUserType: jest.fn().mockResolvedValue(itemType),
+    createContentType: vi.fn().mockResolvedValue(itemType),
+    createThreadType: vi.fn().mockResolvedValue(itemType),
+    createUserType: vi.fn().mockResolvedValue(itemType),
+    updateContentType: vi.fn().mockResolvedValue(itemType),
+    updateThreadType: vi.fn().mockResolvedValue(itemType),
+    updateUserType: vi.fn().mockResolvedValue(itemType),
   };
   const transactionReview = {
-    setHiddenFieldsForItemType: jest.fn().mockResolvedValue(undefined),
+    setHiddenFieldsForItemType: vi.fn().mockResolvedValue(undefined),
   };
   const ModerationConfigService = {
-    forTransaction: jest.fn().mockReturnValue(transactionConfig),
-    invalidateLatestItemTypesCache: jest.fn().mockResolvedValue(undefined),
+    forTransaction: vi.fn().mockReturnValue(transactionConfig),
+    invalidateLatestItemTypesCache: vi.fn().mockResolvedValue(undefined),
   };
   const ManualReviewToolService = {
-    forTransaction: jest.fn().mockReturnValue(transactionReview),
+    forTransaction: vi.fn().mockReturnValue(transactionReview),
   };
   return {
     context: {
