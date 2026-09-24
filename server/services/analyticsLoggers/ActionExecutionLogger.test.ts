@@ -10,13 +10,10 @@ import { ActionExecutionLogger } from './ActionExecutionLogger.js';
 const asJsonOf = (s: string) => s as JsonOf<unknown>;
 
 type BulkWrite = Dependencies['DataWarehouseAnalytics']['bulkWrite'];
-// Same `as unknown as` pattern used in `test/setupMockedServer.ts` for the
-// shared analytics mock — `vi.fn(async () => {})` returns a generic Mock
-// that doesn't structurally satisfy the typed `bulkWrite` overload signature.
 type BulkWriteMock = Mock<BulkWrite>;
 
 function makeLogger() {
-  const bulkWrite = vi.fn(async () => {}) as unknown as BulkWriteMock;
+  const bulkWrite = vi.fn<BulkWrite>(async () => {});
   const logger = new ActionExecutionLogger({ bulkWrite });
   return { logger, bulkWrite };
 }

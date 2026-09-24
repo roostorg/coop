@@ -1,7 +1,7 @@
 import { ScalarTypes } from '@roostorg/coop-types';
 import { vi } from 'vitest';
 
-import { type CachedGetCredentials } from '../../../../signalAuthService/signalAuthService.js';
+import { type GetCredentials } from '../../../../signalAuthService/signalAuthService.js';
 import { Integration } from '../../../types/Integration.js';
 import { SignalType } from '../../../types/SignalType.js';
 import { type SignalInput } from '../../SignalBase.js';
@@ -15,15 +15,10 @@ type StringSignalInput = SignalInput<ScalarTypes['STRING']>;
 
 function makeCredentialGetter(
   apiKey: string | null = 'test-api-key',
-): CachedGetCredentials<'ZENTROPI'> {
-  return Object.assign(
-    vi
-      .fn()
-      .mockResolvedValue(
-        apiKey ? { apiKey } : undefined,
-      ) as unknown as CachedGetCredentials<'ZENTROPI'>,
-    { close: vi.fn().mockResolvedValue(undefined) },
-  );
+): GetCredentials<'ZENTROPI'> {
+  return vi
+    .fn<GetCredentials<'ZENTROPI'>>()
+    .mockResolvedValue(apiKey ? { apiKey } : undefined);
 }
 
 function makeInput(

@@ -143,12 +143,14 @@ describe('Content type schemas', () => {
       expect(coerce(url, [])).toBeInstanceOf(Error);
     });
 
-    test.each([[42], [true], [{}], [[]]])(
-      'rejects non-string input %j',
-      (value) => {
-        expect(coerce(value, [])).toBeInstanceOf(Error);
-      },
-    );
+    test.each([
+      { name: 'number', value: 42 },
+      { name: 'boolean', value: true },
+      { name: 'object', value: {} },
+      { name: 'array', value: [] },
+    ])('rejects non-string $name input', ({ value }) => {
+      expect(coerce(value, [])).toBeInstanceOf(Error);
+    });
 
     test('keeps the original URL casing in the returned object', () => {
       expect(coerce('https://example.com/cat.PNG?v=2', [])).toEqual({

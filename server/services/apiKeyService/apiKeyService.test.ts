@@ -1,166 +1,131 @@
-import type { Kysely } from 'kysely';
-import { vi, type Mock } from 'vitest';
+import crypto from 'node:crypto';
+import { Kysely } from 'kysely';
+import { vi } from 'vitest';
 
-import { makeTestWithFixture } from '../../test/utils.js';
+import {
+  makeMockPgDialect,
+  type MockPgExecute,
+} from '../../test/stubs/KyselyPg.js';
 import { type CombinedPg } from '../combinedDbTypes.js';
 import ApiKeyService from './apiKeyService.js';
 
-// Mock Kysely database
-const mockDb = {
-  insertInto: vi.fn(),
-  selectFrom: vi.fn(),
-  updateTable: vi.fn(),
-  deleteFrom: vi.fn(),
-} as unknown as Kysely<CombinedPg>;
-
 describe('ApiKeyService', () => {
-  const fakeOrg = { id: '1234', name: 'Random Org' };
+  const orgId = 'org-1234';
+  const row = {
+    id: 'key-123',
+    org_id: orgId,
+    key_hash: 'stored-hash',
+    name: 'Test Key',
+    description: 'Test Description',
+    is_active: true,
+    created_at: new Date('2026-01-01'),
+    updated_at: new Date('2026-01-01'),
+    last_used_at: null,
+    created_by: null,
+  };
 
-  const testWithFixtures = makeTestWithFixture(() => {
-    const sut = new ApiKeyService(mockDb);
-    return { sut };
-  });
+  let query: MockPgExecute;
+  let db: Kysely<CombinedPg>;
+  let sut: InstanceType<typeof ApiKeyService>;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    query = vi.fn<MockPgExecute>();
+    db = new Kysely<CombinedPg>({ dialect: makeMockPgDialect(query) });
+    sut = new ApiKeyService(db);
   });
 
-  describe('#createApiKey', () => {
-    testWithFixtures(
-      'should generate a key, store it, return it + the generated key id',
-      async ({ sut }) => {
-        // Mock the database operations
-        const mockInsert = {
-          values: vi.fn().mockReturnThis(),
-          returningAll: vi.fn().mockReturnThis(),
-          executeTakeFirstOrThrow: vi.fn().mockResolvedValue({
-            id: 'key-123',
-            org_id: fakeOrg.id,
-            key_hash: 'hashed-key',
-            name: 'Test Key',
-            description: 'Test Description',
-            is_active: true,
-            created_at: new Date(),
-            updated_at: new Date(),
-            last_used_at: null,
-            created_by: null,
-          }),
-        };
-
-        const mockUpdate = {
-          set: vi.fn().mockReturnThis(),
-          where: vi.fn().mockReturnThis(),
-          execute: vi.fn().mockResolvedValue([]),
-        };
-
-        (mockDb.insertInto as Mock).mockReturnValue(mockInsert);
-        (mockDb.updateTable as Mock).mockReturnValue(mockUpdate);
-
-        const res = await sut.createApiKey(
-          fakeOrg.id,
-          'Test Key',
-          'Test Description',
-          null,
-        );
-
-        // Verify the key was generated and stored
-        expect(res.apiKey).toBeDefined();
-        expect(typeof res.apiKey).toBe('string');
-        expect(res.record.id).toBe('key-123');
-        expect(res.record.orgId).toBe(fakeOrg.id);
-      },
-    );
+  afterEach(async () => {
+    await db.destroy();
   });
 
-  describe('#getActiveApiKeyForOrg', () => {
-    testWithFixtures(
-      'should retrieve the active key for an org',
-      async ({ sut }) => {
-        const mockSelect = {
-          selectAll: vi.fn().mockReturnThis(),
-          where: vi.fn().mockReturnThis(),
-          executeTakeFirst: vi.fn().mockResolvedValue({
-            id: 'key-123',
-            org_id: fakeOrg.id,
-            key_hash: 'hashed-key',
-            name: 'Test Key',
-            description: 'Test Description',
-            is_active: true,
-            created_at: new Date(),
-            updated_at: new Date(),
-            last_used_at: null,
-            created_by: null,
-          }),
-        };
+  it('deactivates old keys and stores a hashed new key', async () => {
+    query
+      .mockResolvedValueOnce({ rows: [], command: 'UPDATE', rowCount: 0 })
+      .mockImplementationOnce(async ({ parameters }) => ({
+        rows: [{ ...row, key_hash: parameters[1] }],
+        command: 'INSERT',
+        rowCount: 1,
+      }));
 
-        (mockDb.selectFrom as Mock).mockReturnValue(mockSelect);
-
-        const result = await sut.getActiveApiKeyForOrg(fakeOrg.id);
-
-        expect(result).toBeDefined();
-        expect(result?.id).toBe('key-123');
-        expect(result?.orgId).toBe(fakeOrg.id);
-      },
+    const result = await sut.createApiKey(
+      orgId,
+      'Test Key',
+      'Test Description',
+      null,
     );
+    const hash = crypto
+      .createHash('sha256')
+      .update(result.apiKey)
+      .digest('hex');
 
-    testWithFixtures(
-      'should return null if no active key exists',
-      async ({ sut }) => {
-        const mockSelect = {
-          selectAll: vi.fn().mockReturnThis(),
-          where: vi.fn().mockReturnThis(),
-          executeTakeFirst: vi.fn().mockResolvedValue(undefined),
-        };
-
-        (mockDb.selectFrom as Mock).mockReturnValue(mockSelect);
-
-        const result = await sut.getActiveApiKeyForOrg(fakeOrg.id);
-
-        expect(result).toBeNull();
-      },
-    );
-  });
-
-  describe('#validateApiKey', () => {
-    testWithFixtures(
-      'should validate a key and return org ID',
-      async ({ sut }) => {
-        const mockSelect = {
-          select: vi.fn().mockReturnThis(),
-          where: vi.fn().mockReturnThis(),
-          executeTakeFirst: vi.fn().mockResolvedValue({
-            org_id: fakeOrg.id,
-            last_used_at: new Date(),
-          }),
-        };
-
-        const mockUpdate = {
-          set: vi.fn().mockReturnThis(),
-          where: vi.fn().mockReturnThis(),
-          execute: vi.fn().mockResolvedValue([]),
-        };
-
-        (mockDb.selectFrom as Mock).mockReturnValue(mockSelect);
-        (mockDb.updateTable as Mock).mockReturnValue(mockUpdate);
-
-        const result = await sut.validateApiKey('test-key');
-
-        expect(result).toBe(fakeOrg.id);
-      },
-    );
-
-    testWithFixtures('should return null for invalid key', async ({ sut }) => {
-      const mockSelect = {
-        select: vi.fn().mockReturnThis(),
-        where: vi.fn().mockReturnThis(),
-        executeTakeFirst: vi.fn().mockResolvedValue(undefined),
-      };
-
-      (mockDb.selectFrom as Mock).mockReturnValue(mockSelect);
-
-      const result = await sut.validateApiKey('invalid-key');
-
-      expect(result).toBeNull();
+    expect(result.apiKey).toMatch(/^[a-f0-9]{64}$/);
+    expect(result.record).toMatchObject({
+      id: row.id,
+      orgId,
+      keyHash: hash,
+      name: row.name,
+      description: row.description,
     });
+    expect(query).toHaveBeenCalledTimes(2);
+    expect(query.mock.calls[0][0].sql).toContain('update "public"."api_keys"');
+    expect(query.mock.calls[0][0].parameters).toEqual([false, orgId]);
+    expect(query.mock.calls[1][0].sql).toContain(
+      'insert into "public"."api_keys"',
+    );
+    expect(query.mock.calls[1][0].parameters).toEqual([
+      orgId,
+      hash,
+      'Test Key',
+      'Test Description',
+      true,
+      null,
+    ]);
+  });
+
+  it('returns the active key for the requested organization', async () => {
+    query.mockResolvedValueOnce({
+      rows: [row],
+      command: 'SELECT',
+      rowCount: 1,
+    });
+
+    const result = await sut.getActiveApiKeyForOrg(orgId);
+
+    expect(result).toMatchObject({ id: row.id, orgId, keyHash: row.key_hash });
+    expect(query.mock.calls[0][0].sql).toContain(
+      'select * from "public"."api_keys"',
+    );
+    expect(query.mock.calls[0][0].parameters).toEqual([orgId, true]);
+  });
+
+  it('returns null when there is no active key', async () => {
+    query.mockResolvedValueOnce({ rows: [], command: 'SELECT', rowCount: 0 });
+
+    expect(await sut.getActiveApiKeyForOrg(orgId)).toBeNull();
+  });
+
+  it('validates a key by its hash and updates last-used time', async () => {
+    query
+      .mockResolvedValueOnce({
+        rows: [{ org_id: orgId, last_used_at: null }],
+        command: 'SELECT',
+        rowCount: 1,
+      })
+      .mockResolvedValueOnce({ rows: [], command: 'UPDATE', rowCount: 1 });
+
+    expect(await sut.validateApiKey('test-key')).toBe(orgId);
+
+    const hash = crypto.createHash('sha256').update('test-key').digest('hex');
+    expect(query).toHaveBeenCalledTimes(2);
+    expect(query.mock.calls[0][0].parameters).toEqual([hash, true]);
+    expect(query.mock.calls[1][0].sql).toContain('update "public"."api_keys"');
+    expect(query.mock.calls[1][0].parameters).toEqual([expect.any(Date), hash]);
+  });
+
+  it('does not update last-used time for an invalid key', async () => {
+    query.mockResolvedValueOnce({ rows: [], command: 'SELECT', rowCount: 0 });
+
+    expect(await sut.validateApiKey('invalid-key')).toBeNull();
+    expect(query).toHaveBeenCalledTimes(1);
   });
 });

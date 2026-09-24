@@ -8,7 +8,7 @@ import { safeGet } from '../../../../../../utils/misc.js';
 import type SafeTracer from '../../../../../../utils/SafeTracer.js';
 import { type Bind2 } from '../../../../../../utils/typescript-types.js';
 import { type FetchHTTP } from '../../../../../networkingService/index.js';
-import { type CachedGetCredentials } from '../../../../../signalAuthService/signalAuthService.js';
+import { type GetCredentials } from '../../../../../signalAuthService/signalAuthService.js';
 import { Integration } from '../../../../types/Integration.js';
 import { type RecommendedThresholds } from '../../../../types/RecommendedThresholds.js';
 import { SignalPricingStructure } from '../../../../types/SignalPricingStructure.js';
@@ -82,7 +82,7 @@ export function openAiModerationNeedsActionPenalties() {
 
 export async function openAiModerationGetDisabledInfo(
   orgId: string,
-  getOpenAiCredentials: CachedGetCredentials<'OPEN_AI'>,
+  getOpenAiCredentials: GetCredentials<'OPEN_AI'>,
 ): Promise<SignalDisabledInfo> {
   const credential = await getOpenAiCredentials(orgId);
   return !credential?.apiKey
@@ -125,7 +125,7 @@ function extractScoreOrThrow(
 }
 
 export async function runOpenAiModerationImpl(
-  getOpenAiCredentials: CachedGetCredentials<'OPEN_AI'>,
+  getOpenAiCredentials: GetCredentials<'OPEN_AI'>,
   input: SignalInput<ScalarTypes['STRING']>,
   getOpenAiModerationScores: FetchOpenAiModerationScores,
   modelName: OpenAiModelName,
@@ -166,7 +166,7 @@ export async function runOpenAiModerationImpl(
  * input's URL through with no buffering or base64 encoding on our side.
  */
 export async function runOpenAiModerationImageImpl(
-  getOpenAiCredentials: CachedGetCredentials<'OPEN_AI'>,
+  getOpenAiCredentials: GetCredentials<'OPEN_AI'>,
   input: SignalInput<ScalarTypes['IMAGE']>,
   getOpenAiModerationScores: FetchOpenAiModerationScores,
   modelName: OpenAiImageModelName,

@@ -3,7 +3,7 @@ import { vi } from 'vitest';
 
 import { isCoopErrorOfType } from '../../../../../utils/errors.js';
 import { type FetchHTTP } from '../../../../networkingService/index.js';
-import { type CachedGetCredentials } from '../../../../signalAuthService/signalAuthService.js';
+import { type GetCredentials } from '../../../../signalAuthService/signalAuthService.js';
 import { type SignalInput } from '../../SignalBase.js';
 import {
   getZentropiScores,
@@ -29,15 +29,10 @@ function makeInput(
 
 function makeCredentialGetter(
   apiKey: string | null = 'test-api-key',
-): CachedGetCredentials<'ZENTROPI'> {
-  return Object.assign(
-    vi
-      .fn()
-      .mockResolvedValue(
-        apiKey ? { apiKey } : undefined,
-      ) as unknown as CachedGetCredentials<'ZENTROPI'>,
-    { close: vi.fn().mockResolvedValue(undefined) },
-  );
+): GetCredentials<'ZENTROPI'> {
+  return vi
+    .fn<GetCredentials<'ZENTROPI'>>()
+    .mockResolvedValue(apiKey ? { apiKey } : undefined);
 }
 
 describe('zentropiUtils', () => {
