@@ -154,6 +154,16 @@ concurrent requests. Shutdown aborts scheduling and suppresses late emissions.
 gauge. They use `queue_id=all` and never carry raw errors, identifiers or URLs.
 A later success does not erase these historical failure counts.
 
+The standalone collector emits JSON logs with `event=manual_review.metrics.*`:
+`started`, `failed`, `sampled`, and `stopped`. A sample is logged on first success,
+recovery, a change in the number of incomplete queues, or queue removal; ordinary
+healthy cycles do not log. Failures log once per cycle with bounded
+`reason=read|queue_limit|timeout` and a consecutive-failure count. Timeout logs do
+not wait for a stalled read. Sample logs include queue counts and duration, not
+queue/org/reviewer identifiers, media, URLs or raw errors. `sampled` means a
+snapshot was collected, not that an external metrics backend ingested it.
+Logging failures are best-effort and do not interrupt collection.
+
 The `kind` values separate jobs by state, observed oldest-ready age, timestamp
 coverage, per-queue sample time and collection health/freshness. Query each kind
 separately. Waiting and prioritized jobs contribute to age; active, paused and

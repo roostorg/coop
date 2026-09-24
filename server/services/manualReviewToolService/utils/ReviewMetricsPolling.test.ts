@@ -1,3 +1,4 @@
+import { jsonParse, type JsonOf } from '../../../utils/encoding.js';
 import { ManualReviewMetrics } from './ManualReviewMetrics.js';
 import {
   ReviewMetricsQueueLimitError,
@@ -7,6 +8,12 @@ import {
   reviewQueueStates,
   type QueueSnapshot,
 } from './ReviewQueueSnapshot.js';
+
+function parseLog(value: unknown) {
+  return jsonParse(
+    String(value) as JsonOf<Record<string, string | number | boolean>>,
+  );
+}
 
 function deferred<T>() {
   let resolve!: (value: T) => void;
@@ -63,7 +70,89 @@ const row = (queueId = 'queue') => ({
 });
 
 describe('review metrics polling', () => {
+  let output: jest.SpyInstance;
+  beforeEach(() => {
+    output = jest.spyOn(console, 'log').mockImplementation(() => {});
+  });
   afterEach(() => jest.restoreAllMocks());
+
+  it('logs start, first sample, coverage changes, recovery and stop without content or healthy-cycle noise', async () => {
+    const c = clock();
+    const metrics = new ManualReviewMetrics();
+    const partial = {
+      ...row('private-queue'),
+      snapshot: { ...row().snapshot, complete: false },
+    };
+    const read = jest
+      .fn()
+      .mockResolvedValueOnce([row('private-queue')])
+      .mockResolvedValueOnce([row('private-queue')])
+      .mockResolvedValueOnce([partial])
+      .mockRejectedValueOnce(new Error('private URL and credentials'))
+      .mockRejectedValueOnce(new Error('private exception'))
+      .mockResolvedValueOnce([row('private-queue')])
+      .mockResolvedValueOnce([]);
+    const stop = startReviewMetricsPolling(metrics, read, 100, 20);
+    try {
+      await c.run(0);
+      const logsAfterFirstSample = output.mock.calls.length;
+      await c.run(100);
+      expect(output.mock.calls).toHaveLength(logsAfterFirstSample);
+      for (let i = 0; i < 5; i++) await c.run(100);
+      stop();
+      stop();
+      const text = output.mock.calls.map(([s]) => String(s));
+      const logs = text.map(parseLog);
+      expect(logs.map(({ event, reason }) => [event, reason])).toEqual([
+        ['manual_review.metrics.started', undefined],
+        ['manual_review.metrics.sampled', 'first_success'],
+        ['manual_review.metrics.sampled', 'coverage_changed'],
+        ['manual_review.metrics.failed', 'read'],
+        ['manual_review.metrics.failed', 'read'],
+        ['manual_review.metrics.sampled', 'recovered'],
+        ['manual_review.metrics.sampled', 'queues_removed'],
+        ['manual_review.metrics.stopped', undefined],
+      ]);
+      expect(logs[2]).toMatchObject({
+        level: 'WARN',
+        queue_count: 1,
+        incomplete_queue_count: 1,
+      });
+      expect(logs[4]).toMatchObject({
+        consecutive_failures: 2,
+        reason: 'read',
+      });
+      expect(logs[5]).toMatchObject({
+        level: 'INFO',
+        recovered_failures: 2,
+        queue_count: 1,
+        duration_ms: 0,
+      });
+      expect(logs[6]).toMatchObject({ queue_count: 0, removed_queue_count: 1 });
+      expect(text.join('')).not.toContain('private');
+    } finally {
+      stop();
+    }
+  });
+
+  it('does not let a throwing log sink break polling or shutdown', async () => {
+    const c = clock();
+    const metrics = new ManualReviewMetrics();
+    output.mockImplementation(() => {
+      throw new Error('stdout unavailable');
+    });
+    const gauge = jest.spyOn(metrics, 'gauge');
+    const stop = startReviewMetricsPolling(
+      metrics,
+      jest.fn().mockResolvedValue([]),
+      100,
+      20,
+    );
+    await c.run(0);
+    expect(gauge).toHaveBeenCalledWith('success', 1, { queue_id: 'all' });
+    expect(stop).not.toThrow();
+    expect(c.count()).toBe(0);
+  });
 
   it('clears every removed-queue gauge only after a complete successful list, and supports reappearance', async () => {
     const c = clock();
@@ -139,6 +228,19 @@ describe('review metrics polling', () => {
         if (settlement === 'resolve') pending.resolve([row()]);
         else pending.reject(new Error('late read rejection'));
         await run;
+        const logs = output.mock.calls.map(([s]) => parseLog(s));
+        expect(
+          logs.filter(({ event }) => event === 'manual_review.metrics.failed'),
+        ).toEqual([
+          expect.objectContaining({
+            reason: 'timeout',
+            consecutive_failures: 1,
+            duration_ms: 20,
+          }),
+        ]);
+        expect(
+          logs.some(({ event }) => event === 'manual_review.metrics.sampled'),
+        ).toBe(false);
         expect(event).toHaveBeenCalledTimes(1);
         expect(gauge).not.toHaveBeenCalledWith('success', 1, {
           queue_id: 'all',
@@ -208,12 +310,14 @@ describe('review metrics polling', () => {
       const stop = startReviewMetricsPolling(metrics, read, 100, 20);
       const run = c.run(0);
       stop();
+      output.mockClear();
       gauge.mockClear();
       expect(c.count()).toBe(0);
       if (settlement === 'resolve') pending.resolve([row()]);
       else pending.reject(new Error('offline'));
       await run;
       expect(gauge).not.toHaveBeenCalled();
+      expect(console.log).not.toHaveBeenCalled();
       expect(event).not.toHaveBeenCalled();
       expect(c.count()).toBe(0);
     },

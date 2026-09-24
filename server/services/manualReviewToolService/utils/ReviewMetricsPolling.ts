@@ -1,3 +1,4 @@
+import { logJson } from '../../../utils/logging.js';
 import { type ManualReviewMetrics } from './ManualReviewMetrics.js';
 import {
   reviewQueueStates,
@@ -20,18 +21,48 @@ export function startReviewMetricsPolling(
   let deadline: ReturnType<typeof setTimeout> | undefined;
   let controller: AbortController | undefined;
   let previousQueues = new Set<string>();
+  let consecutiveFailures = 0;
+  let previousIncompleteCount: number | undefined;
   const attributes = { queue_id: 'all' };
+  // This standalone background loop has no active request span.
+  const log = (
+    event: string,
+    fields: Readonly<Record<string, string | number | boolean>> = {},
+  ) => {
+    try {
+      // eslint-disable-next-line no-restricted-syntax -- Timer callbacks have no SafeTracer; emit only allow-listed scalar diagnostics.
+      logJson('Manual review metrics collector', {
+        event: `manual_review.metrics.${event}`,
+        ...fields,
+      });
+    } catch {
+      // Logging must not interrupt collection or shutdown.
+    }
+  };
+  log('started', {
+    level: 'INFO',
+    interval_ms: intervalMs,
+    timeout_ms: timeoutMs,
+  });
   const poll = async () => {
     if (stopped) return;
     controller = new AbortController();
     const signal = controller.signal;
-    const expiresAt = Date.now() + timeoutMs;
+    const startedAt = Date.now();
+    const expiresAt = startedAt + timeoutMs;
     let failed = false;
     const fail = (reason: 'timeout' | 'queue_limit' | 'read') => {
       if (stopped || failed) return;
       failed = true;
       metrics.gauge('success', 0, attributes);
       metrics.event(`collection_failed_${reason}`, attributes);
+      consecutiveFailures++;
+      log('failed', {
+        level: 'WARN',
+        reason,
+        consecutive_failures: consecutiveFailures,
+        duration_ms: Math.max(0, Date.now() - startedAt),
+      });
     };
     metrics.gauge('attempt_timestamp', Date.now() / 1000, attributes);
     deadline = setTimeout(() => {
@@ -72,6 +103,37 @@ export function startReviewMetricsPolling(
         metrics.gauge('sample_timestamp', snapshot.timestamp / 1000, tags);
         metrics.gauge('present', 1, tags);
       }
+      const incompleteQueues = results.filter(
+        ({ snapshot }) => !snapshot.complete,
+      ).length;
+      const removedQueues = [...previousQueues].filter(
+        (id) => !currentQueues.has(id),
+      ).length;
+      if (
+        consecutiveFailures > 0 ||
+        previousIncompleteCount === undefined ||
+        incompleteQueues !== previousIncompleteCount ||
+        removedQueues > 0
+      ) {
+        log('sampled', {
+          level: incompleteQueues > 0 ? 'WARN' : 'INFO',
+          reason:
+            consecutiveFailures > 0
+              ? 'recovered'
+              : previousIncompleteCount === undefined
+                ? 'first_success'
+                : incompleteQueues !== previousIncompleteCount
+                  ? 'coverage_changed'
+                  : 'queues_removed',
+          queue_count: results.length,
+          incomplete_queue_count: incompleteQueues,
+          removed_queue_count: removedQueues,
+          recovered_failures: consecutiveFailures,
+          duration_ms: Math.max(0, Date.now() - startedAt),
+        });
+      }
+      consecutiveFailures = 0;
+      previousIncompleteCount = incompleteQueues;
       previousQueues = currentQueues;
       metrics.gauge('queue_count', results.length, attributes);
       metrics.gauge('success', 1, attributes);
@@ -96,9 +158,11 @@ export function startReviewMetricsPolling(
   timer = setTimeout(poll, Math.random() * intervalMs);
   timer.unref();
   return () => {
+    if (stopped) return;
     stopped = true;
     controller?.abort();
     clearTimeout(timer);
     clearTimeout(deadline);
+    log('stopped', { level: 'INFO' });
   };
 }
