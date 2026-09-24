@@ -1,4 +1,5 @@
 import { type GraphQLResolveInfo } from 'graphql';
+import { vi } from 'vitest';
 
 import {
   makeBuiltInActionImmutableError,
@@ -15,7 +16,7 @@ describe.each(['createAction', 'updateAction'] as const)(
         shouldErrorSpan: false,
       });
       const actionAPI = {
-        [resolverName]: jest.fn().mockRejectedValue(error),
+        [resolverName]: vi.fn().mockRejectedValue(error),
       };
       const context = {
         getUser: () => ({ orgId: 'org-id' }),
@@ -59,7 +60,7 @@ describe.each(['createAction', 'updateAction'] as const)(
 describe('updateAction resolver', () => {
   it('maps immutable built-in actions into the GraphQL union', async () => {
     const actionAPI = {
-      updateAction: jest
+      updateAction: vi
         .fn()
         .mockRejectedValue(
           makeBuiltInActionImmutableError({ shouldErrorSpan: false }),
