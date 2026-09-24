@@ -1350,6 +1350,7 @@ export class ManualReviewToolService {
           queueId,
           userId,
           jobId: job.job.id,
+          itemTypeId: job.job.payload.item.itemTypeIdentifier.id,
         });
       }
       return job;
@@ -1373,6 +1374,7 @@ export class ManualReviewToolService {
           queueId,
           userId,
           jobId: job.job.id,
+          itemTypeId: job.job.payload.item.itemTypeIdentifier.id,
         });
         return job;
       }
@@ -1405,6 +1407,7 @@ export class ManualReviewToolService {
           queueId,
           userId,
           jobId: job.job.id,
+          itemTypeId: job.job.payload.item.itemTypeIdentifier.id,
         });
         return job;
       } else {
@@ -1444,10 +1447,12 @@ export class ManualReviewToolService {
     queueId: string;
     userId: string;
     jobId: JobId;
+    itemTypeId: string;
   }) {
-    const { orgId, queueId, userId, jobId } = opts;
+    const { orgId, queueId, userId, jobId, itemTypeId } = opts;
     this.meter?.recordManualReviewEvent('claim_acquired', {
       queue_id: queueId,
+      item_type_id: itemTypeId,
     });
     try {
       await this.claimOps.logClaim({

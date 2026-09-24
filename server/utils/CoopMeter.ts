@@ -1,5 +1,7 @@
 import opentelemetry from '@opentelemetry/api';
 
+import { logJson } from './logging.js';
+
 export class CoopMeter {
   /**
    * This counter is used to track item submissions that are run through the rule
@@ -96,14 +98,16 @@ export class CoopMeter {
     event: string,
     attributes?: Record<string, string | number | boolean>,
   ) {
+    let outcome = 'submitted';
     try {
       this.manualReviewEventsCounter.add(1, {
         event,
         ...attributes,
       });
     } catch {
-      /* Best-effort telemetry, not an audit ledger. */
+      outcome = 'error';
     }
+    this.logManualReviewTelemetry('counter', event, outcome);
   }
 
   recordManualReviewDuration(
@@ -123,13 +127,34 @@ export class CoopMeter {
       this.recordManualReviewEvent(`timing_unavailable_${phase}`, attributes);
       return;
     }
+    let outcome = 'submitted';
     try {
       this.manualReviewDurationHistogram.record(value, {
         phase,
         ...attributes,
       });
     } catch {
-      /* Best-effort telemetry. */
+      outcome = 'error';
+    }
+    this.logManualReviewTelemetry('histogram', phase, outcome);
+  }
+
+  private logManualReviewTelemetry(
+    instrument: string,
+    operation: string,
+    outcome: string,
+  ) {
+    try {
+      // eslint-disable-next-line no-restricted-syntax -- Meter has no SafeTracer dependency.
+      logJson({
+        event: 'manual_review.telemetry',
+        level: outcome === 'error' ? 'WARN' : 'INFO',
+        instrument,
+        operation,
+        outcome,
+      });
+    } catch {
+      /* Logging must not affect review operations. */
     }
   }
 }
