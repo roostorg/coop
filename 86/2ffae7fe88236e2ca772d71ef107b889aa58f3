@@ -1,0 +1,54 @@
+client/src/webpages/dashboard/mrt/manual_review_job/v2/related_actions/ManualReviewJobEnqueuedRelatedActionEntry.tsx
+  s_bf176cd2a0f4ea::t_6b96af8485515d 20,32
+  s_bf176cd2a0f4ea::t_11c885dfdedfb3 68-71
+client/src/webpages/dashboard/mrt/manual_review_job/v2/ManualReviewJobContentView.tsx
+  s_bf176cd2a0f4ea::t_d02aefa1fc0387 164
+client/src/webpages/dashboard/mrt/manual_review_job/v2/ContentRelatedItemComponent.test.tsx
+  s_bf176cd2a0f4ea::t_f453a0c103bd65 457,505
+  s_bf176cd2a0f4ea::t_ba3c7c1efe9bf2 478-497
+  s_bf176cd2a0f4ea::t_f3f4644f50d2e4 276,293,301-318
+  s_bf176cd2a0f4ea::t_ab94f7f286f2b6 319-320
+  s_bf176cd2a0f4ea::t_273b51e19193db 498-499
+server/services/manualReviewToolService/modules/JobDecisioning.test.ts
+  s_bf176cd2a0f4ea::t_b18363d5611785 5
+  s_bf176cd2a0f4ea::t_530464186c7dce 113,143,152,168,184,208
+server/services/manualReviewToolService/modules/JobDecisioning.ts
+  s_bf176cd2a0f4ea::t_918a7be788fcaf 283-306
+  s_bf176cd2a0f4ea::t_945d0600a1637c 516,641
+  s_bf176cd2a0f4ea::t_9889c4b0e382d0 412
+  s_bf176cd2a0f4ea::t_cfdd749386f87e 448-452
+  s_bf176cd2a0f4ea::t_98075eee5989ec 79
+  s_bf176cd2a0f4ea::t_eeb65b8d9f5c94 307-364
+  s_bf176cd2a0f4ea::t_d27e85fe2b3f38 443-446
+  s_bf176cd2a0f4ea::t_510b0e17eb362e 454
+client/src/webpages/dashboard/mrt/manual_review_job/v2/related_actions/ManualReviewJobEnqueuedRelatedActions.tsx
+  s_bf176cd2a0f4ea::t_a2b1c504dc977d 87
+  s_bf176cd2a0f4ea::t_f59df582fabea6 32,34-39
+server/services/manualReviewToolService/manualReviewToolService.test.ts
+  s_bf176cd2a0f4ea::t_0bc40efd236644 945-952,1002
+  s_bf176cd2a0f4ea::t_7bb6999499a782 114-119,127,130-137
+  s_bf176cd2a0f4ea::t_9e8d88b11ee79d 880,930,944,953-1001,1003,1007
+  s_bf176cd2a0f4ea::t_0b952a21c83991 5,1004-1006,1008-1009
+client/src/webpages/dashboard/mrt/manual_review_job/ManualReviewJobReview.tsx
+  s_bf176cd2a0f4ea::t_d02aefa1fc0387 1854-1899,1902-1917,1919,1921-1923,1928-1934,1936-1970,1973-2025
+  s_bf176cd2a0f4ea::t_72f675bec1d4e1 1757
+  s_bf176cd2a0f4ea::t_43b129682c3466 2026-2027
+  s_bf176cd2a0f4ea::t_95cd55c525bb95 666-675,696,699
+  s_bf176cd2a0f4ea::t_14d0abfb4b11c5 1842-1853
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "862ffae7fe88236e2ca772d71ef107b889aa58f3",
+  "prompts": {},
+  "sessions": {
+    "s_bf176cd2a0f4ea": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "9d7682ef-2fb5-476e-819d-ca457fe8e5b9",
+        "model": "grok-4.6"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
