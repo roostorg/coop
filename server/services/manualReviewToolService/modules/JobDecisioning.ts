@@ -15,6 +15,8 @@ import { assertUnreachable } from '../../../utils/misc.js';
 import { isValidDate } from '../../../utils/time.js';
 import { isNonEmptyString } from '../../../utils/typescript-types.js';
 import { getFieldValueForRole } from '../../itemProcessingService/index.js';
+import { parseStoredParameters } from '../../moderationConfigService/modules/actionParametersValidation.js';
+import { validateActionParameterValues } from '../../moderationConfigService/modules/actionParameterValueValidation.js';
 import { type NCMECMediaReport } from '../../ncmecService/ncmecReporting.js';
 import {
   type ClearReportsDisposition,
@@ -38,7 +40,82 @@ export type ManualReviewDecisionRelatedAction = {
   itemIds: readonly string[];
   itemTypeId: string;
   policyIds: readonly string[];
+  actionIdsToMrtApiParamDecisionPayload?: JsonObject;
 };
+
+export function relatedActionPublishPayloads(
+  relatedAction: ManualReviewDecisionRelatedAction,
+): {
+  actionId: string;
+  customMrtApiParamDecisionPayload?: Record<string, string | boolean | unknown>;
+}[] {
+  const payloads = relatedAction.actionIdsToMrtApiParamDecisionPayload;
+  return relatedAction.actionIds
+    .filter((actionId) => actionId.length > 0)
+    .map((actionId) => ({
+      actionId,
+      ...(payloads?.[actionId] != null
+        ? {
+            customMrtApiParamDecisionPayload: payloads[actionId] as Record<
+              string,
+              string | boolean | unknown
+            >,
+          }
+        : {}),
+    }));
+}
+
+export function actionableRelatedActions(
+  relatedActions: readonly ManualReviewDecisionRelatedAction[],
+): ManualReviewDecisionRelatedAction[] {
+  return relatedActions.filter(
+    (relatedAction) =>
+      relatedAction.actionIds.some((id) => id.length > 0) &&
+      relatedAction.itemIds.some((id) => id.length > 0) &&
+      relatedAction.itemTypeId.length > 0,
+  );
+}
+
+export function validateRelatedActionParameterPayloads(
+  relatedActions: readonly ManualReviewDecisionRelatedAction[],
+  actions: readonly {
+    id: string;
+    actionType: string;
+    customMrtApiParams?: unknown;
+  }[],
+): ManualReviewDecisionRelatedAction[] {
+  const actionsById = new Map(actions.map((action) => [action.id, action]));
+  return relatedActions.map((relatedAction) => {
+    const validatedPayloads: Record<string, JsonObject> = {};
+    for (const actionId of relatedAction.actionIds) {
+      if (actionId.length === 0) {
+        continue;
+      }
+      const action = actionsById.get(actionId);
+      if (action?.actionType !== 'CUSTOM_ACTION') {
+        continue;
+      }
+      const spec = parseStoredParameters(action.customMrtApiParams);
+      if (spec.length === 0) {
+        continue;
+      }
+      const raw =
+        relatedAction.actionIdsToMrtApiParamDecisionPayload?.[actionId];
+      const validated = validateActionParameterValues(spec, raw ?? null);
+      if (Object.keys(validated).length > 0) {
+        validatedPayloads[actionId] = validated as JsonObject;
+      }
+    }
+    const { actionIdsToMrtApiParamDecisionPayload: _dropped, ...rest } =
+      relatedAction;
+    return Object.keys(validatedPayloads).length > 0
+      ? {
+          ...relatedAction,
+          actionIdsToMrtApiParamDecisionPayload: validatedPayloads,
+        }
+      : rest;
+  });
+}
 
 export type NCMECReportedContentInThread = {
   contentId: string;
@@ -203,6 +280,88 @@ export default class JobDecisioning {
     }) => Promise<boolean>,
   ) {}
 
+  private async assertRelatedActionsSupportItemType(opts: {
+    orgId: string;
+    relatedActionsToPublish: readonly ManualReviewDecisionRelatedAction[];
+  }) {
+    const { orgId, relatedActionsToPublish } = opts;
+    if (relatedActionsToPublish.length === 0) {
+      return;
+    }
+    const actionItemTypeIds =
+      await this.moderationConfigService.getActionItemTypeIds({ orgId });
+    const relatedActionTargetsUnsupportedType = relatedActionsToPublish.some(
+      (relatedAction) =>
+        relatedAction.actionIds
+          .filter((actionId) => actionId.length > 0)
+          .some((actionId) => {
+            const supportedTypeIds = actionItemTypeIds.get(actionId) ?? [];
+            return !supportedTypeIds.includes(relatedAction.itemTypeId);
+          }),
+    );
+    if (relatedActionTargetsUnsupportedType) {
+      throw makeSubmittedJobActionNotFoundError({ shouldErrorSpan: true });
+    }
+  }
+
+  // Enforce `requires_policy_for_decisions` server-side. The MRT UI already
+  // disables submit when this is on, but API/script callers can bypass that.
+  // Empty related-item policies are only rejected when the org requires them.
+  // Unknown policy IDs are always rejected so the recorded decision cannot
+  // disagree with the published action.
+  private async assertSubmittedDecisionPolicies(opts: {
+    orgId: string;
+    customActionDecisions: readonly CustomActionDecisionComponent[];
+    relatedActionsToPublish: readonly ManualReviewDecisionRelatedAction[];
+  }) {
+    const { orgId, customActionDecisions, relatedActionsToPublish } = opts;
+    const hasEmptyPolicyCustomAction =
+      customActionDecisions.some(
+        (decision) => decision.policies.length === 0,
+      ) ||
+      relatedActionsToPublish.some(
+        (relatedAction) =>
+          relatedAction.policyIds.length === 0 ||
+          relatedAction.policyIds.some((policyId) => policyId.length === 0),
+      );
+    if (!hasEmptyPolicyCustomAction && relatedActionsToPublish.length === 0) {
+      return;
+    }
+    const requiresPolicy =
+      await this.manualReviewToolSettings.getRequiresPolicyForDecisions(orgId);
+    if (requiresPolicy && hasEmptyPolicyCustomAction) {
+      throw makeMissingRequiredPolicyForDecisionError({
+        shouldErrorSpan: true,
+      });
+    }
+    const relatedPolicyIds = [
+      ...new Set(
+        relatedActionsToPublish.flatMap((relatedAction) =>
+          relatedAction.policyIds.filter((policyId) => policyId.length > 0),
+        ),
+      ),
+    ];
+    const foundPolicies =
+      relatedPolicyIds.length === 0
+        ? []
+        : await this.moderationConfigService.getPoliciesByIds({
+            orgId,
+            ids: relatedPolicyIds,
+          });
+    const foundPolicyIds = new Set(foundPolicies.map((policy) => policy.id));
+    const relatedHasUnknownPolicy = relatedActionsToPublish.some(
+      (relatedAction) =>
+        relatedAction.policyIds.some(
+          (policyId) => policyId.length > 0 && !foundPolicyIds.has(policyId),
+        ),
+    );
+    if (relatedHasUnknownPolicy) {
+      throw makeMissingRequiredPolicyForDecisionError({
+        shouldErrorSpan: true,
+      });
+    }
+  }
+
   async submitDecision(opts: SubmitDecisionInput) {
     const {
       queueId,
@@ -249,10 +408,20 @@ export default class JobDecisioning {
     const customActionDecisions = decisions.flatMap((decision) =>
       decision.type === 'CUSTOM_ACTION' ? [decision] : [],
     );
-    if (customActionDecisions.length > 0) {
-      const allActionIds = customActionDecisions.flatMap((decision) =>
-        decision.actions.map((action) => action.id),
-      );
+    const relatedActionsToPublish = actionableRelatedActions(relatedActions);
+    let validatedRelatedActions = relatedActionsToPublish;
+    if (
+      customActionDecisions.length > 0 ||
+      relatedActionsToPublish.length > 0
+    ) {
+      const allActionIds = [
+        ...customActionDecisions.flatMap((decision) =>
+          decision.actions.map((action) => action.id),
+        ),
+        ...relatedActionsToPublish.flatMap(
+          (relatedAction) => relatedAction.actionIds,
+        ),
+      ];
       const validActions = await this.getCustomActionsByIds({
         ids: allActionIds,
         orgId,
@@ -262,27 +431,30 @@ export default class JobDecisioning {
         throw makeSubmittedJobActionNotFoundError({ shouldErrorSpan: true });
       }
 
-      // Enforce `requires_policy_for_decisions` server-side. The MRT UI already
-      // disables submit when this is on, but API/script callers can bypass that.
-      // Only check the flag when there's actually a policy-less decision to
-      // enforce against, so the common path avoids the extra DB hit. The check
-      // only fires for CUSTOM_ACTION decisions, so it applies even on NCMEC
-      // jobs that mix in a CUSTOM_ACTION (e.g. issuing a strike alongside an
-      // NCMEC ignore or report).
-      const hasEmptyPolicyCustomAction = customActionDecisions.some(
-        (decision) => decision.policies.length === 0,
+      const validActionIds = new Set(validActions.map((action) => action.id));
+      const relatedActionIds = relatedActionsToPublish.flatMap(
+        (relatedAction) =>
+          relatedAction.actionIds.filter((actionId) => actionId.length > 0),
       );
-      if (hasEmptyPolicyCustomAction) {
-        const requiresPolicy =
-          await this.manualReviewToolSettings.getRequiresPolicyForDecisions(
-            orgId,
-          );
-        if (requiresPolicy) {
-          throw makeMissingRequiredPolicyForDecisionError({
-            shouldErrorSpan: true,
-          });
-        }
+      if (relatedActionIds.some((actionId) => !validActionIds.has(actionId))) {
+        throw makeSubmittedJobActionNotFoundError({ shouldErrorSpan: true });
       }
+
+      await this.assertRelatedActionsSupportItemType({
+        orgId,
+        relatedActionsToPublish,
+      });
+
+      await this.assertSubmittedDecisionPolicies({
+        orgId,
+        customActionDecisions,
+        relatedActionsToPublish,
+      });
+
+      validatedRelatedActions = validateRelatedActionParameterPayloads(
+        relatedActionsToPublish,
+        validActions,
+      );
     }
 
     // Enforce the "require decision reason" settings server-side. The MRT UI
@@ -341,7 +513,7 @@ export default class JobDecisioning {
         reviewerId,
         orgId,
         decisionComponents: decisions,
-        relatedActions,
+        relatedActions: validatedRelatedActions,
         enqueueSourceInfo: job.enqueueSourceInfo,
         decisionReason,
       });
@@ -466,7 +638,7 @@ export default class JobDecisioning {
       // TODO: use proper publishing to a durable queue and retry
       this.onRecordDecision({
         decisionComponents,
-        relatedActions,
+        relatedActions: validatedRelatedActions,
         job,
         queueId,
         reviewerId,

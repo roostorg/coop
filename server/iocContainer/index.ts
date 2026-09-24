@@ -10,6 +10,7 @@ import {
 import IORedis, { type Cluster } from 'ioredis';
 import { Kysely, PostgresDialect } from 'kysely';
 import _ from 'lodash';
+import pLimit from 'p-limit';
 import pg from 'pg';
 import Cursor from 'pg-cursor';
 import { type JsonObject, type ReadonlyDeep } from 'type-fest';
@@ -120,8 +121,10 @@ import {
   type ManualReviewContentResolver,
 } from '../services/manualReviewContentResolver.js';
 import {
+  actionableRelatedActions,
   isReportJob,
   ManualReviewToolService,
+  relatedActionPublishPayloads,
   type ManualReviewAppealJobInput,
   type ManualReviewJobInput,
 } from '../services/manualReviewToolService/index.js';
@@ -1039,7 +1042,7 @@ export default async function getBottle(
             'submissionId' in item && !('itemType' in item)
               ? itemSubmissionWithTypeIdentifierToItemSubmission(item, itemType)
               : item;
-          actionPublisher
+          return actionPublisher
             .publishActions(
               nonNullActionsWithCustomMrtParams.map((action) => ({
                 // we can cast to non-undefined (!) because we know that
@@ -1408,43 +1411,91 @@ export default async function getBottle(
             }),
           );
 
-          // Publish any related actions
+          // Publish only related items the reviewer marked with an action.
+          // Lookup the latest submission so webhooks get full item data,
+          // falling back to the identifier if the item is not in investigation.
           const flattenedRelatedActions = relatedActions.flatMap((it) => {
-            return it.itemIds.map((itemId) => ({
-              ..._.omit(it, 'itemIds'),
-              itemId,
-            }));
-          });
-          await Promise.all(
-            flattenedRelatedActions.map(async (it) => {
-              const { actionIds, policyIds, itemId, itemTypeId } = it;
-              if (!isNonEmptyArray(actionIds)) {
-                return;
-              }
-
-              const itemType = await container.getItemTypeEventuallyConsistent({
-                orgId,
-                typeSelector: { id: itemTypeId },
-              });
-
-              if (!itemType) {
-                return;
-              }
-              const decisionActions = actionIds.map((actionId) => ({
-                actionId,
+            if (!isNonEmptyArray(it.actionIds)) {
+              return [];
+            }
+            return it.itemIds
+              .filter((itemId) => itemId.length > 0)
+              .map((itemId) => ({
+                ..._.omit(it, 'itemIds'),
+                itemId,
               }));
+          });
+          const relatedActionLimit = pLimit(10);
+          await Promise.all(
+            flattenedRelatedActions.map(async (it) =>
+              relatedActionLimit(async () => {
+                const { actionIds, policyIds, itemId, itemTypeId } = it;
+                if (!isNonEmptyArray(actionIds) || itemId.length === 0) {
+                  return;
+                }
 
-              if (isNonEmptyArray(decisionActions)) {
+                const itemType =
+                  await container.getItemTypeEventuallyConsistent({
+                    orgId,
+                    typeSelector: { id: itemTypeId },
+                  });
+
+                if (!itemType) {
+                  return;
+                }
+                const decisionActions = relatedActionPublishPayloads({
+                  actionIds,
+                  itemIds: [itemId],
+                  itemTypeId,
+                  policyIds,
+                  actionIdsToMrtApiParamDecisionPayload:
+                    it.actionIdsToMrtApiParamDecisionPayload,
+                });
+
+                if (!isNonEmptyArray(decisionActions)) {
+                  return;
+                }
+
+                const itemSubmission =
+                  await container.ItemInvestigationService.getItemByIdentifier({
+                    orgId,
+                    itemIdentifier: { id: itemId, typeId: itemTypeId },
+                    latestSubmissionOnly: true,
+                  })
+                    .then((result) => result?.latestSubmission)
+                    .catch((error: unknown) => {
+                      container.Tracer.addSpan(
+                        {
+                          resource: 'mrtService',
+                          operation: 'relatedAction.getItemByIdentifier',
+                        },
+                        (span) => {
+                          span.setAttribute('org.id', orgId);
+                          span.setAttribute('item.id', itemId);
+                          container.Tracer.logSpanFailed(span, error);
+                          return null;
+                        },
+                      );
+                      return undefined;
+                    });
+
                 await publishActions({
                   decisionActions,
                   policyIds,
                   orgId,
-                  item: { itemId, itemType },
+                  item: itemSubmission ?? {
+                    itemId,
+                    itemType: {
+                      id: itemType.id,
+                      kind: itemType.kind,
+                      name: itemType.name,
+                    },
+                  },
                   actorId: reviewerId,
                   actorEmail: reviewerEmail,
                 });
-              }
-            }),
+              }),
+            ),
           );
         } finally {
           if (!suppressUserReportSweep && isReportJob(job)) {
@@ -1453,15 +1504,15 @@ export default async function getBottle(
               ...decisionComponents.flatMap((decision) =>
                 decision.type === 'CUSTOM_ACTION' ? [decision] : [],
               ),
-              ...relatedActions
-                .filter((ra) => ra.actionIds.length > 0)
-                .map((ra) => ({
-                  type: 'CUSTOM_ACTION' as const,
-                  actions: ra.actionIds.map((id) => ({ id })),
-                  policies: ra.policyIds.map((id) => ({ id })),
-                  itemIds: [...ra.itemIds],
-                  itemTypeId: ra.itemTypeId,
-                })),
+              ...actionableRelatedActions(relatedActions).map((ra) => ({
+                type: 'CUSTOM_ACTION' as const,
+                actions: ra.actionIds.map((id) => ({ id })),
+                policies: ra.policyIds.map((id) => ({ id })),
+                itemIds: [...ra.itemIds],
+                itemTypeId: ra.itemTypeId,
+                actionIdsToMrtApiParamDecisionPayload:
+                  ra.actionIdsToMrtApiParamDecisionPayload,
+              })),
             ];
             if (customActions.length > 0) {
               container.ManualReviewToolService.maybeClearOtherReportsForUser({

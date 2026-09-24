@@ -8,6 +8,10 @@ For more information about each release including git tags and artifacts, see [R
 
 ## [Unreleased]
 
+### Added
+
+- Actions and policy selection on additional content items in the review console ([#1202](https://github.com/roostorg/coop/pull/1202) by [@juanmrad](https://github.com/juanmrad), closes [#581](https://github.com/roostorg/coop/issues/581))
+
 ## [1.1.0-alpha] - 2026-09-21
 
 ### Added

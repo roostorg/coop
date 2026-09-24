@@ -3,6 +3,7 @@ import { uid } from 'uid';
 import { v1 as uuidv1 } from 'uuid';
 import { vi } from 'vitest';
 
+import createContentItemTypes from '../../test/fixtureHelpers/createContentItemTypes.js';
 import createMrtQueue from '../../test/fixtureHelpers/createMrtQueue.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../test/fixtureHelpers/createUser.js';
@@ -111,6 +112,12 @@ describe('Manual Review Tool Service', () => {
       mrtService,
       userId: user.id,
     });
+    const { itemTypes } = await createContentItemTypes({
+      moderationConfigService: deps.ModerationConfigService,
+      orgId: org.id,
+      extra: {},
+    });
+    const contentItemTypeId = itemTypes[0].id;
     const action = await deps.ModerationConfigService.createAction(org.id, {
       name: `mrt-test-action-${uid()}`,
       description: null,
@@ -118,9 +125,17 @@ describe('Manual Review Tool Service', () => {
       callbackUrl: 'https://example.com',
       callbackUrlHeaders: null,
       callbackUrlBody: null,
+      itemTypeIds: [contentItemTypeId],
     });
 
-    return { mrtService, org, user, queue, actionId: action.id };
+    return {
+      mrtService,
+      org,
+      user,
+      queue,
+      actionId: action.id,
+      contentItemTypeId,
+    };
   });
 
   // Test that we can start the stalled jobs checker for manual job processing
@@ -851,6 +866,138 @@ describe('Manual Review Tool Service', () => {
               },
             ],
             relatedActions: [],
+            reviewerId,
+            reviewerEmail,
+            orgId: org.id,
+          }),
+        ).rejects.toThrow(
+          /requires every decision to include at least one policy/i,
+        );
+      },
+    );
+
+    testWithQueue(
+      'rejects a related action with no policies when the flag is on',
+      async ({ mrtService, deps, org, queue, actionId, contentItemTypeId }) => {
+        await setRequiresPolicyForDecisions(
+          mrtService,
+          deps.KyselyPg,
+          org.id,
+          true,
+        );
+
+        const reviewerId = uuidv1();
+        const reviewerEmail = 'test@test.com';
+        const jobPayload = makeDummyMrtJobPayload();
+        const itemId = jobPayload.payload.item.itemId;
+        const itemTypeId = jobPayload.payload.item.itemTypeIdentifier.id;
+
+        await mrtService['queueOps']['addJob']({
+          jobPayload,
+          orgId: org.id,
+          queueId: queue.id,
+          enqueueSourceInfo: { kind: 'REPORT' },
+        });
+
+        const dequeuedJob = await mrtService.dequeueNextJob({
+          orgId: org.id,
+          queueId: queue.id,
+          userId: reviewerId,
+        });
+
+        if (!dequeuedJob) {
+          throw new Error("should've returned a job");
+        }
+
+        await expect(
+          mrtService.submitDecision({
+            queueId: queue.id,
+            reportHistory: [],
+            jobId: dequeuedJob.job.id,
+            lockToken: dequeuedJob.lockToken,
+            decisionComponents: [
+              {
+                type: 'CUSTOM_ACTION',
+                actions: [{ id: actionId }],
+                policies: [{ id: uuidv1() }],
+                itemIds: [itemId],
+                itemTypeId,
+              },
+            ],
+            relatedActions: [
+              {
+                actionIds: [actionId],
+                itemIds: [uuidv1()],
+                itemTypeId: contentItemTypeId,
+                policyIds: [],
+              },
+            ],
+            reviewerId,
+            reviewerEmail,
+            orgId: org.id,
+          }),
+        ).rejects.toThrow(
+          /requires every decision to include at least one policy/i,
+        );
+      },
+    );
+
+    testWithQueue(
+      'rejects a related action with an unknown policy ID even when the flag is off',
+      async ({ mrtService, deps, org, queue, actionId, contentItemTypeId }) => {
+        await setRequiresPolicyForDecisions(
+          mrtService,
+          deps.KyselyPg,
+          org.id,
+          false,
+        );
+
+        const reviewerId = uuidv1();
+        const reviewerEmail = 'test@test.com';
+        const jobPayload = makeDummyMrtJobPayload();
+        const itemId = jobPayload.payload.item.itemId;
+        const itemTypeId = jobPayload.payload.item.itemTypeIdentifier.id;
+
+        await mrtService['queueOps']['addJob']({
+          jobPayload,
+          orgId: org.id,
+          queueId: queue.id,
+          enqueueSourceInfo: { kind: 'REPORT' },
+        });
+
+        const dequeuedJob = await mrtService.dequeueNextJob({
+          orgId: org.id,
+          queueId: queue.id,
+          userId: reviewerId,
+        });
+
+        if (!dequeuedJob) {
+          throw new Error("should've returned a job");
+        }
+
+        await expect(
+          mrtService.submitDecision({
+            queueId: queue.id,
+            reportHistory: [],
+            jobId: dequeuedJob.job.id,
+            lockToken: dequeuedJob.lockToken,
+            decisionComponents: [
+              {
+                type: 'CUSTOM_ACTION',
+                actions: [{ id: actionId }],
+                policies: [],
+                itemIds: [itemId],
+                itemTypeId,
+              },
+            ],
+            relatedActions: [
+              {
+                actionIds: [actionId],
+                itemIds: [uuidv1()],
+                itemTypeId: contentItemTypeId,
+                policyIds: [uuidv1()],
+              },
+            ],
             reviewerId,
             reviewerEmail,
             orgId: org.id,

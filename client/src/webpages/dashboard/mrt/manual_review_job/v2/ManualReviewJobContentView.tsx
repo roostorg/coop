@@ -18,6 +18,7 @@ import {
   ManualReviewJobAction,
   ManualReviewJobEnqueuedActionData,
 } from '../ManualReviewJobReview';
+import { AdditionalReportedContentItems } from './ContentRelatedItemComponent';
 import ManualReviewJobContentThreadHistory from './ManualReviewJobContentThreadHistory';
 import FieldsComponent from './ManualReviewJobFieldsComponent';
 import ManualReviewJobRelatedUserComponent from './user/ManualReviewJobRelatedUserComponent';
@@ -36,6 +37,8 @@ export default function ManualReviewJobContentView(props: {
   allPolicies: readonly { id: string; name: string }[];
   allItemTypes: readonly GQLItemType[];
   onEnqueueActions: (action: ManualReviewJobEnqueuedActionData[]) => void;
+  onRemoveAction?: (action: ManualReviewJobEnqueuedActionData) => void;
+  onEditParameters?: (action: ManualReviewJobEnqueuedActionData) => void;
   unblurAllMedia: boolean;
   parentRef: React.RefObject<HTMLDivElement | null>;
   reportedUserRef?: React.RefObject<HTMLDivElement | null>;
@@ -51,6 +54,8 @@ export default function ManualReviewJobContentView(props: {
     allPolicies,
     allItemTypes,
     onEnqueueActions,
+    onRemoveAction,
+    onEditParameters,
     unblurAllMedia,
     parentRef,
     reportedUserRef,
@@ -118,6 +123,8 @@ export default function ManualReviewJobContentView(props: {
           allItemTypes={allItemTypes}
           relatedActions={relatedActions}
           onEnqueueAction={(action) => onEnqueueActions([action])}
+          onRemoveAction={onRemoveAction}
+          onEditParameters={onEditParameters}
           unblurAllMedia={unblurAllMedia}
           setSelectedUser={setSecondaryRelatedUser}
           isReporter={false}
@@ -150,6 +157,24 @@ export default function ManualReviewJobContentView(props: {
       typeof payload.item.data.url === 'string' &&
       shouldDisplayInIframe(payload.item.data.url) ? (
         <IframeContentDisplayComponent contentUrl={payload.item.data.url} />
+      ) : null}
+      {'additionalContentItems' in payload ? (
+        <AdditionalReportedContentItems
+          items={payload.additionalContentItems}
+          excludeItems={[{ id: payload.item.id, typeId: payload.item.type.id }]}
+          unblurAllMedia={unblurAllMedia}
+          allActions={allActions}
+          allPolicies={allPolicies}
+          relatedActions={relatedActions}
+          onEnqueueAction={(action) => onEnqueueActions([action])}
+          onRemoveAction={onRemoveAction}
+          onEditParameters={onEditParameters}
+          isActionable={isActionable}
+          requirePolicySelectionToEnqueueAction={
+            requirePolicySelectionToEnqueueAction
+          }
+          allowMoreThanOnePolicySelection={allowMoreThanOnePolicySelection}
+        />
       ) : null}
       {!contentThread ? null : (
         <div className="my-6">
@@ -189,6 +214,8 @@ export default function ManualReviewJobContentView(props: {
           allItemTypes={allItemTypes}
           relatedActions={relatedActions}
           onEnqueueAction={(action) => onEnqueueActions([action])}
+          onRemoveAction={onRemoveAction}
+          onEditParameters={onEditParameters}
           setSelectedUser={setSecondaryRelatedUser}
           unblurAllMedia={unblurAllMedia}
           requirePolicySelectionToEnqueueAction={
