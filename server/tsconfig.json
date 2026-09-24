@@ -1,14 +1,6 @@
 {
-  // The config editors resolve every file through, so it owns the whole tree
-  // and carries Vitest's globals. Production code is checked *without* them by
-  // tsconfig.build.json, which is what `npm run build` and the first half of
-  // `npm run typecheck` compile. `npm start` uses this config instead.
-  //
-  // The split is one-directional on purpose: this file is permissive so no file
-  // ever falls outside a project (a file an editor can't place lands in an
-  // inferred project, where `describe` is unknown), and tsconfig.build.json is
-  // the strict one. The cost is that a test-only global used in production code
-  // looks fine in the editor and fails at `npm run typecheck` instead.
+  // Default config for editors, npm start, and tests. It includes Vitest globals.
+  // Production builds use tsconfig.build.json, which excludes tests and Vitest globals.
   "compilerOptions": {
     "target": "ES2022",
     "module": "NodeNext",
