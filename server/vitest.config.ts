@@ -26,7 +26,6 @@ export default defineConfig({
       exclude: ['node_modules/**', 'test/**'],
       reporter: ['json', 'text'],
     },
-    // Some passing tests intentionally log errors; retain logs when a test fails.
     silent: 'passed-only',
   },
 });
