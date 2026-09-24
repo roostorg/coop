@@ -184,6 +184,7 @@ describe('content access with production GraphQL types and Apollo formatter', ()
           field: 'payload',
           outcome: 'denied',
         }),
+        expect.any(AbortSignal),
       );
     },
   );
@@ -209,6 +210,7 @@ describe('content access with production GraphQL types and Apollo formatter', ()
           field: 'data',
           outcome: 'denied',
         }),
+        expect.any(AbortSignal),
       );
     },
   );
@@ -235,6 +237,7 @@ describe('content access with production GraphQL types and Apollo formatter', ()
         field: text,
         outcome: 'denied',
       }),
+      expect.any(AbortSignal),
     );
   });
 
@@ -378,6 +381,35 @@ describe('content access with production GraphQL types and Apollo formatter', ()
           code: 'INTERNAL_SERVER_ERROR',
         },
       ]);
+    },
+  );
+
+  it.each(['authorize', 'record'] as const)(
+    'returns a safe client error when %s never settles',
+    async (stage) => {
+      let signal: AbortSignal | undefined;
+      const callback = jest.fn(async (_, callbackSignal: AbortSignal) => {
+        signal = callbackSignal;
+        return new Promise<never>(() => {});
+      });
+      const result = await execute(
+        `{ a: active { ${selectPayload} } b: active { ${selectPayload} } }`,
+        makeContext({ timeoutMs: 10, [stage]: callback }),
+      );
+      expect(result.data).toEqual({ a: null, b: null });
+      expect(callback).toHaveBeenCalledTimes(1);
+      expect(signal?.aborted).toBe(true);
+      expect(
+        result.errors?.map((error) => ({
+          message: error.message,
+          code: error.extensions?.code,
+        })),
+      ).toEqual(
+        Array.from({ length: 2 }, () => ({
+          message: 'Content access verification is unavailable.',
+          code: 'INTERNAL_SERVER_ERROR',
+        })),
+      );
     },
   );
 

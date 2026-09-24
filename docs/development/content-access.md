@@ -28,21 +28,72 @@ Object literals and class instances are supported; callbacks keep their original
 Explicit `getBottle({ contentAccess: ... })` configuration takes precedence over a
 registered extension, including `{}` to disable it. The latest active registration
 wins; its cleanup function removes only that registration and is safe to call
-repeatedly or out of order. Cleanup affects future containers, not existing ones.
+repeatedly or out of order. Cleanup does not change already-created services.
+The container factory is lazy: if a container has not yet resolved this service,
+its first resolution sees the then-current registration, including any cleanup.
+Explicit `contentAccess` configuration does not depend on the registry.
 
 The extension has two optional async callbacks:
 
-- `authorize(request)` must resolve to `true` to allow the protected field.
+- `authorize(request, signal)` must resolve to `true` to allow the protected field.
   Any other result denies it. Omitting this callback adds no restriction.
-- `record(event)` must finish before the field is returned. A deployment that
-  requires durable audit evidence must await a durable write here, not enqueue
+- `record(event, signal)` must finish before the field is returned. A deployment
+  requiring durable audit evidence must await durable acknowledgement, not enqueue
   an unacknowledged background write or merely log to the console.
 
-A policy or sink exception blocks the field with a sanitized error. No fallback
-to the original content is allowed. Callback implementations must set bounded
-timeouts for their dependencies; the extension does not retry them. Missing
-required deployment configuration must fail startup rather than silently omit
-an extension.
+Each callback has a separate deadline: **5,000 ms** by default, configurable with
+`timeoutMs` on the extension (an integer from 1 to 2,147,483,647 milliseconds).
+The service rejects invalid configuration when instantiated. Set a limit below
+your request timeout; authorization followed by recording can take up to twice
+that limit. The limit bounds asynchronous waiting, not synchronous code that
+blocks the event loop.
+
+A callback exception or timeout blocks the field with the same sanitized
+`ContentAccessError('unavailable')`; there is no content fallback or retry.
+On timeout, the service aborts that callback's `signal` and rejects even if the
+callback ignores it. Existing one-argument callbacks remain compatible, but
+should propagate the signal and use their own dependency timeouts to stop work.
+Late success cannot grant access. Cancellation cannot undo a committed audit write
+or stop a dependency that ignores it, so a timed-out request can still have an
+audit record. Use the event ID for idempotency, not as proof of content delivery.
+Missing required deployment configuration must fail startup rather than silently
+omit an extension.
+
+For example, use configured service URLs (never URLs from submitted content),
+service credentials and dependency limits shorter than the outer deadline:
+
+```ts
+registerContentAccessExtension({
+  timeoutMs: 3_000,
+  async authorize(request, signal) {
+    const response = await fetch(policyServiceUrl, {
+      method: 'POST',
+      headers: serviceHeaders,
+      body: JSON.stringify(request),
+      signal: AbortSignal.any([signal, AbortSignal.timeout(2_000)]),
+    });
+    if (!response.ok) throw new Error('Policy service unavailable');
+    const result: unknown = await response.json();
+    return (
+      typeof result === 'object' &&
+      result !== null &&
+      'allowed' in result &&
+      result.allowed === true
+    );
+  },
+  async record(event, signal) {
+    await auditStore.persist(event, {
+      signal: AbortSignal.any([signal, AbortSignal.timeout(2_000)]),
+      idempotencyKey: event.eventId,
+    });
+  },
+});
+```
+
+`policyServiceUrl`, `serviceHeaders` and `auditStore` are deployment-owned. The
+store's `persist` contract must resolve only after durable acknowledgement and
+honor cancellation where supported. A `202 Accepted` response or local enqueue
+alone is not that acknowledgement. Do not log raw callback errors or payloads.
 
 The policy does not receive a client-supplied actor or role. Its `actorId` and
 `orgId` come from the authenticated session. Deployments may look up additional

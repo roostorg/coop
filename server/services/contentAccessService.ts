@@ -25,9 +25,14 @@ export type ContentAccessEvent = ContentAccessRequest &
   }>;
 
 export type ContentAccessExtension = Readonly<{
+  // Per callback; defaults to 5 seconds.
+  timeoutMs?: number;
   // An additional restriction, not a replacement for Coop's authorization.
-  authorize?: (request: ContentAccessRequest) => Promise<boolean>;
-  record?: (event: ContentAccessEvent) => Promise<void>;
+  authorize?: (
+    request: ContentAccessRequest,
+    signal: AbortSignal,
+  ) => Promise<boolean>;
+  record?: (event: ContentAccessEvent, signal: AbortSignal) => Promise<void>;
 }>;
 
 const registrations = new Map<symbol, ContentAccessExtension>();
@@ -70,11 +75,23 @@ export class ContentAccessError extends Error {
 
 export default class ContentAccessService {
   private readonly extension: ContentAccessExtension;
+  private readonly timeoutMs: number;
 
   constructor(
     extension: ContentAccessExtension = {},
     private readonly tracer?: SafeTracer,
   ) {
+    this.timeoutMs =
+      extension.timeoutMs === undefined ? 5_000 : extension.timeoutMs;
+    if (
+      !Number.isInteger(this.timeoutMs) ||
+      this.timeoutMs < 1 ||
+      this.timeoutMs > 2_147_483_647
+    ) {
+      throw new RangeError(
+        'Content access timeoutMs must be a positive 32-bit timer duration.',
+      );
+    }
     // Preserve prototype methods and their original receiver, including private fields.
     this.extension = Object.freeze({
       authorize: extension.authorize?.bind(extension),
@@ -92,14 +109,26 @@ export default class ContentAccessService {
   private async invoke<T>(
     stage: 'authorize' | 'record',
     request: ContentAccessRequest,
-    callback: () => Promise<T>,
+    callback: (signal: AbortSignal) => Promise<T>,
   ): Promise<T> {
     const run = async () => {
+      const controller = new AbortController();
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const deadline = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => {
+          const error = new ContentAccessError('unavailable');
+          // Reject first so an abort listener cannot resolve access after expiry.
+          reject(error);
+          controller.abort(error);
+        }, this.timeoutMs);
+      });
       try {
-        return await callback();
+        return await Promise.race([callback(controller.signal), deadline]);
       } catch {
         // Sanitize before SafeTracer sees the failure; raw exceptions may contain secrets.
         throw new ContentAccessError('unavailable');
+      } finally {
+        clearTimeout(timer);
       }
     };
     return this.tracer
@@ -139,8 +168,8 @@ export default class ContentAccessService {
     const { authorize, record } = this.extension;
     const allowed =
       authorize === undefined ||
-      (await this.invoke('authorize', metadata, async () =>
-        authorize(metadata),
+      (await this.invoke('authorize', metadata, async (signal) =>
+        authorize(metadata, signal),
       )) === true;
     if (record) {
       const event: ContentAccessEvent = Object.freeze({
@@ -149,7 +178,9 @@ export default class ContentAccessService {
         occurredAt: new Date().toISOString(),
         outcome: allowed ? 'authorized' : 'denied',
       });
-      await this.invoke('record', metadata, async () => record(event));
+      await this.invoke('record', metadata, async (signal) =>
+        record(event, signal),
+      );
     }
     if (!allowed) throw new ContentAccessError('denied');
   }

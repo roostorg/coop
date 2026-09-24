@@ -62,6 +62,7 @@ describe('content access extension', () => {
     ).rejects.toEqual(new ContentAccessError('denied'));
     expect(record).toHaveBeenCalledWith(
       expect.objectContaining({ outcome: 'denied' }),
+      expect.any(AbortSignal),
     );
   });
 
@@ -85,12 +86,160 @@ describe('content access extension', () => {
   });
 
   it('denies truthy values other than true from untyped extensions', async () => {
-    const authorize = (async () => 'allow') as unknown as (
-      input: ContentAccessRequest,
-    ) => Promise<boolean>;
+    const authorize = async (): Promise<boolean> => {
+      // @ts-expect-error -- Exercise invalid output from an untyped deployment callback.
+      return 'allow';
+    };
     await expect(
       new ContentAccessService({ authorize }).beforeAccess(request),
     ).rejects.toEqual(new ContentAccessError('denied'));
+  });
+
+  describe('callback deadlines', () => {
+    beforeEach(() => jest.useFakeTimers());
+    afterEach(() => {
+      jest.useRealTimers();
+      jest.restoreAllMocks();
+    });
+
+    it.each([0, -1, 1.5, NaN, Infinity, 2_147_483_648])(
+      'rejects invalid timeoutMs %s',
+      (timeoutMs) => {
+        expect(() => new ContentAccessService({ timeoutMs })).toThrow(
+          RangeError,
+        );
+      },
+    );
+
+    it.each([
+      ['authorize', undefined],
+      ['record', undefined],
+      ['authorize', 25],
+      ['record', 25],
+    ] as const)(
+      'bounds a never-settling %s callback (timeout=%s)',
+      async (stage, timeoutMs) => {
+        let signal: AbortSignal | undefined;
+        const record = jest.fn(async () => {});
+        const service = new ContentAccessService({
+          timeoutMs,
+          record,
+          [stage]: async (
+            _metadata: ContentAccessRequest,
+            callbackSignal: AbortSignal,
+          ) => {
+            signal = callbackSignal;
+            return new Promise<never>(() => {});
+          },
+        });
+        const rejected = expect(service.beforeAccess(request)).rejects.toEqual(
+          new ContentAccessError('unavailable'),
+        );
+        expect(signal).toBeInstanceOf(AbortSignal);
+        jest.advanceTimersByTime((timeoutMs ?? 5_000) - 1);
+        expect(signal?.aborted).toBe(false);
+        jest.advanceTimersByTime(1);
+        await rejected;
+        expect(signal?.aborted).toBe(true);
+        expect(signal?.reason).toEqual(new ContentAccessError('unavailable'));
+        if (stage === 'authorize') expect(record).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each(['resolve', 'reject'] as const)(
+      'fails closed if an abort listener tries to %s authorization',
+      async (onAbort) => {
+        const record = jest.fn(async () => {});
+        const service = new ContentAccessService({
+          timeoutMs: 25,
+          authorize: async (_, signal) =>
+            new Promise<boolean>((resolve, reject) => {
+              signal.addEventListener(
+                'abort',
+                () => {
+                  if (onAbort === 'resolve') resolve(true);
+                  else reject(new Error('private callback error'));
+                },
+                { once: true },
+              );
+            }),
+          record,
+        });
+        const rejected = expect(service.beforeAccess(request)).rejects.toEqual(
+          new ContentAccessError('unavailable'),
+        );
+        jest.advanceTimersByTime(25);
+        await rejected;
+        expect(record).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each(['authorize', 'record'] as const)(
+      'ignores late %s completion after its deadline',
+      async (stage) => {
+        let complete: (() => void) | undefined;
+        const pending = new Promise<void>((resolve) => {
+          complete = resolve;
+        });
+        const record = jest.fn(async () => {});
+        const service = new ContentAccessService({
+          timeoutMs: 25,
+          authorize:
+            stage === 'authorize'
+              ? async () => {
+                  await pending;
+                  return true;
+                }
+              : undefined,
+          record: stage === 'record' ? async () => pending : record,
+        });
+        const access = service.beforeAccess(request);
+        const rejected = expect(access).rejects.toEqual(
+          new ContentAccessError('unavailable'),
+        );
+        jest.advanceTimersByTime(25);
+        await rejected;
+        complete?.();
+        await expect(access).rejects.toEqual(
+          new ContentAccessError('unavailable'),
+        );
+        if (stage === 'authorize') expect(record).not.toHaveBeenCalled();
+      },
+    );
+
+    it('uses separate signals and clears timers after callbacks complete', async () => {
+      let signals: AbortSignal[] = [];
+      const clear = jest.spyOn(globalThis, 'clearTimeout');
+      const service = new ContentAccessService({
+        timeoutMs: 25,
+        authorize: async (_, signal) => {
+          signals = [...signals, signal];
+          return true;
+        },
+        record: async (_, signal) => {
+          signals = [...signals, signal];
+        },
+      });
+      await service.beforeAccess(request);
+      expect(signals).toHaveLength(2);
+      expect(signals[0]).not.toBe(signals[1]);
+      expect(clear).toHaveBeenCalledTimes(2);
+      jest.advanceTimersByTime(25);
+      expect(signals.every((signal) => !signal.aborted)).toBe(true);
+    });
+
+    it('clears timers after a synchronous callback failure', async () => {
+      const clear = jest.spyOn(globalThis, 'clearTimeout');
+      const service = new ContentAccessService({
+        authorize: () => {
+          throw new Error('private exception');
+        },
+      });
+      await expect(service.beforeAccess(request)).rejects.toEqual(
+        new ContentAccessError('unavailable'),
+      );
+      expect(clear).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('does not emit an authorized audit after a policy exception', async () => {
@@ -119,9 +268,13 @@ describe('content access extension', () => {
       await expect(
         makeContentAccessService().beforeAccess(request),
       ).rejects.toEqual(new ContentAccessError('denied'));
-      expect(extension.authorize).toHaveBeenCalledWith(request);
+      expect(extension.authorize).toHaveBeenCalledWith(
+        request,
+        expect.any(AbortSignal),
+      );
       expect(extension.record).toHaveBeenCalledWith(
         expect.objectContaining({ outcome: 'denied' }),
+        expect.any(AbortSignal),
       );
       await expect(
         makeContentAccessService({}).beforeAccess(request),
