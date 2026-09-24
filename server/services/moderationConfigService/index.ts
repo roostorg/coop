@@ -107,6 +107,7 @@ export {
   type ActionParameterOption,
   type ActionParameterType,
   type RawActionParameterInput,
+  parameterListSchema,
   parseStoredParameters,
   serializeParameters,
   validateActionParameters,
