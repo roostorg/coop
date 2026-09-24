@@ -14,6 +14,9 @@ export function parseJsonIdArray(
   try {
     const parsed = jsonParse(jsonString as JsonOf<unknown>);
     if (Array.isArray(parsed)) {
+      if (parsed.length === 0) {
+        return null;
+      }
       return parsed.filter(
         (item): item is { id: string } =>
           typeof item === 'object' &&

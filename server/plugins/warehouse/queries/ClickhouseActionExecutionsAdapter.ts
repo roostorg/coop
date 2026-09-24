@@ -33,6 +33,22 @@ import {
 
 const MODERATOR_ACTION_SOURCES = ['manual-action-run'];
 
+const MAX_PAGE_LIMIT = 200;
+
+function clampLimit(limit: number): number {
+  if (!Number.isFinite(limit)) {
+    throw new Error('ClickHouse page limit must be a finite number');
+  }
+  return Math.min(Math.max(Math.trunc(limit), 1), MAX_PAGE_LIMIT);
+}
+
+function clampOffset(offset: number): number {
+  if (!Number.isFinite(offset)) {
+    throw new Error('ClickHouse page offset must be a finite number');
+  }
+  return Math.max(Math.trunc(offset), 0);
+}
+
 export class ClickhouseActionExecutionsAdapter implements IActionExecutionsAdapter {
   constructor(
     private readonly warehouse: IDataWarehouse,
@@ -161,14 +177,16 @@ export class ClickhouseActionExecutionsAdapter implements IActionExecutionsAdapt
       params.push(itemId);
     }
 
+    params.push(clampLimit(limit));
+
     const sql = `
       SELECT
         correlation_id,
         max(ts) AS last_ts,
-        any(actor_id) AS actor_id,
-        any(item_type_id) AS item_type_id,
-        any(actor_note) AS actor_note,
-        any(policies) AS policies,
+        any(actor_id) AS group_actor_id,
+        any(item_type_id) AS group_item_type_id,
+        any(actor_note) AS group_actor_note,
+        any(policies) AS group_policies,
         groupUniqArray(action_id) AS action_ids,
         uniqExact(item_id) AS item_count,
         uniqExactIf(item_id, failed = 1) AS failed_count
@@ -177,7 +195,7 @@ export class ClickhouseActionExecutionsAdapter implements IActionExecutionsAdapt
       GROUP BY correlation_id
       ${having.length > 0 ? `HAVING ${having.join('\n        AND ')}` : ''}
       ORDER BY last_ts DESC, correlation_id DESC
-      LIMIT ${Number(limit)}
+      LIMIT ?
     `;
 
     const rows = await this.query<ClickhouseModeratorActionGroupRow>(
@@ -187,11 +205,11 @@ export class ClickhouseActionExecutionsAdapter implements IActionExecutionsAdapt
 
     return rows.map<ModeratorActionGroupRecord>((row) => ({
       correlationId: row.correlation_id,
-      actorId: row.actor_id ?? null,
-      itemTypeId: row.item_type_id ?? null,
+      actorId: row.group_actor_id ?? null,
+      itemTypeId: row.group_item_type_id ?? null,
       actionIds: row.action_ids ?? [],
-      policyIds: extractIds(parseJsonIdArray(row.policies)),
-      actorNote: row.actor_note ?? null,
+      policyIds: extractIds(parseJsonIdArray(row.group_policies)),
+      actorNote: row.group_actor_note ?? null,
       itemCount: Number(row.item_count) || 0,
       failedCount: Number(row.failed_count) || 0,
       occurredAt: parseClickhouseTimestamp(row.last_ts),
@@ -203,13 +221,7 @@ export class ClickhouseActionExecutionsAdapter implements IActionExecutionsAdapt
   ): Promise<ManualActionItemsResult> {
     const { orgId, correlationId, occurredAt, limit, offset } = input;
 
-    const sql = `
-      SELECT
-        item_id,
-        any(item_type_id) AS item_type_id,
-        max(failed) AS failed,
-        count() OVER () AS total_count
-      FROM (
+    const scan = `
         SELECT item_id, item_type_id, failed
         FROM analytics.ACTION_EXECUTIONS
         WHERE org_id = ?
@@ -217,27 +229,48 @@ export class ClickhouseActionExecutionsAdapter implements IActionExecutionsAdapt
           AND correlation_id = ?
           AND item_id IS NOT NULL
           AND action_source IN (${MODERATOR_ACTION_SOURCES.map(() => '?').join(', ')})
-      )
-      GROUP BY item_id
-      ORDER BY item_id ASC
-      LIMIT ${Number(limit)} OFFSET ${Number(offset)}
     `;
-
-    const rows = await this.query<ClickhouseManualActionItemRow>(sql, [
+    const scanParams: unknown[] = [
       orgId,
       getUtcDateOnlyString(occurredAt),
       correlationId,
       ...MODERATOR_ACTION_SOURCES,
+    ];
+
+    const sql = `
+      SELECT
+        item_id,
+        any(item_type_id) AS item_type_id,
+        max(failed) AS failed,
+        count() OVER () AS total_count
+      FROM (${scan})
+      GROUP BY item_id
+      ORDER BY item_id ASC
+      LIMIT ? OFFSET ?
+    `;
+
+    const rows = await this.query<ClickhouseManualActionItemRow>(sql, [
+      ...scanParams,
+      clampLimit(limit),
+      clampOffset(offset),
     ]);
 
-    return {
-      items: rows.map((row) => ({
-        itemId: row.item_id,
-        itemTypeId: row.item_type_id ?? null,
-        failed: Number(row.failed) === 1,
-      })),
-      totalCount: Number(rows[0]?.total_count ?? 0) || 0,
-    };
+    const items = rows.map((row) => ({
+      itemId: row.item_id,
+      itemTypeId: row.item_type_id ?? null,
+      failed: Number(row.failed) === 1,
+    }));
+
+    if (rows.length > 0) {
+      return { items, totalCount: Number(rows[0].total_count) || 0 };
+    }
+
+    const [totals] = await this.query<{ total_count: string | number }>(
+      `SELECT uniqExact(item_id) AS total_count FROM (${scan})`,
+      scanParams,
+    );
+
+    return { items, totalCount: Number(totals?.total_count ?? 0) || 0 };
   }
 
   async getRecentUserStrikeActions(

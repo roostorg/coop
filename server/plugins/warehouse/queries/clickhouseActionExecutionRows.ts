@@ -17,10 +17,10 @@ export interface ClickhouseActionExecutionRow {
 export interface ClickhouseModeratorActionGroupRow {
   correlation_id: string;
   last_ts: string;
-  actor_id: string | null;
-  item_type_id: string | null;
-  actor_note: string | null;
-  policies?: string | null;
+  group_actor_id: string | null;
+  group_item_type_id: string | null;
+  group_actor_note: string | null;
+  group_policies?: string | null;
   action_ids: string[] | null;
   // ClickHouse returns UInt64 aggregates as strings over the JSON interface.
   item_count: string | number;

@@ -263,10 +263,10 @@ describe('ClickhouseActionExecutionsAdapter.getRecentModeratorActions', () => {
   const groupRow = (overrides: Record<string, unknown> = {}) => ({
     correlation_id: 'manual-action-run:abc',
     last_ts: '2026-08-05 12:00:00.000',
-    actor_id: 'user-7',
-    item_type_id: 'post',
-    actor_note: 'spam sweep',
-    policies: '[{"id":"pol-1","name":"Spam"}]',
+    group_actor_id: 'user-7',
+    group_item_type_id: 'post',
+    group_actor_note: 'spam sweep',
+    group_policies: '[{"id":"pol-1","name":"Spam"}]',
     action_ids: ['act-1', 'act-2'],
     item_count: '3',
     failed_count: '0',
@@ -296,7 +296,7 @@ describe('ClickhouseActionExecutionsAdapter.getRecentModeratorActions', () => {
     ]);
   });
 
-  it('reports how many executions failed', async () => {
+  it('reports how many items failed', async () => {
     const { adapter } = makeAdapter([
       groupRow({ item_count: '500', failed_count: '3' }),
     ]);
@@ -413,6 +413,24 @@ describe('ClickhouseActionExecutionsAdapter.getRecentModeratorActions', () => {
     expect(sentSql).toContain('ORDER BY last_ts DESC');
   });
 
+  it('gives every aggregate an alias no raw column can resolve to', async () => {
+    const { adapter, query } = makeAdapter([]);
+
+    await adapter.getRecentModeratorActions({ orgId: 'org-1', limit: 100 });
+
+    const sentSql = query.mock.calls[0][0];
+    for (const column of [
+      'actor_id',
+      'item_type_id',
+      'actor_note',
+      'policies',
+    ]) {
+      expect(sentSql).not.toContain(`any(${column}) AS ${column}`);
+    }
+    expect(sentSql).toContain('any(actor_id) AS group_actor_id');
+    expect(sentSql).toContain('any(policies) AS group_policies');
+  });
+
   it('reads timestamps as UTC even though ClickHouse omits the zone', async () => {
     const { adapter } = makeAdapter([
       groupRow({ last_ts: '2026-08-05 12:00:00.000' }),
@@ -498,10 +516,10 @@ describe('ClickhouseActionExecutionsAdapter.getRecentModeratorActions', () => {
   it('tolerates null aggregate columns', async () => {
     const { adapter } = makeAdapter([
       groupRow({
-        actor_id: null,
-        item_type_id: null,
-        actor_note: null,
-        policies: null,
+        group_actor_id: null,
+        group_item_type_id: null,
+        group_actor_note: null,
+        group_policies: null,
         action_ids: null,
         item_count: null,
         failed_count: null,
@@ -573,6 +591,47 @@ describe('ClickhouseActionExecutionsAdapter.getRecentModeratorActions', () => {
     expect(sentSql).toContain(
       "max(ts) >= parseDateTime64BestEffort('2026-01-01T00:00:00.000Z')",
     );
+  });
+
+  it('caps the page limit at the server maximum', async () => {
+    const { adapter, query } = makeAdapter([]);
+
+    await adapter.getRecentModeratorActions({ orgId: 'org-1', limit: 100_000 });
+
+    const sentSql = query.mock.calls[0][0];
+    expect(sentSql).toContain('LIMIT 200');
+    expect(sentSql).not.toContain('LIMIT 100000');
+  });
+
+  it('keeps the limit placeholder bound when later filters add parameters', async () => {
+    const { adapter, query } = makeAdapter([]);
+
+    await adapter.getRecentModeratorActions({
+      orgId: 'org-1',
+      limit: 25,
+      itemId: 'i-1',
+      cursor: {
+        ts: new Date('2026-08-05T12:00:00.000Z'),
+        correlationId: 'manual-action-run:abc',
+      },
+    });
+
+    const sentSql = query.mock.calls[0][0];
+    expect(sentSql).toContain("has(groupUniqArray(item_id), 'i-1')");
+    expect(sentSql).toContain('LIMIT 25');
+    expect(sentSql).not.toContain('?');
+  });
+
+  it('refuses a page limit that is not a finite number', async () => {
+    const { adapter } = makeAdapter([]);
+
+    await expect(
+      adapter.getRecentModeratorActions({
+        orgId: 'org-1',
+        limit:
+          '100; DROP TABLE analytics.ACTION_EXECUTIONS' as unknown as number,
+      }),
+    ).rejects.toThrow('finite number');
   });
 });
 
@@ -647,6 +706,50 @@ describe('ClickhouseActionExecutionsAdapter.getManualActionItems', () => {
     });
 
     expect(result).toEqual({ items: [], totalCount: 0 });
+  });
+
+  it('caps the page limit but pages past the cap with the offset', async () => {
+    const { adapter, query } = makeAdapter([]);
+
+    await adapter.getManualActionItems({
+      orgId: 'org-1',
+      correlationId: 'manual-action-run:abc',
+      occurredAt: new Date('2026-08-05T12:00:00.000Z'),
+      limit: 100_000,
+      offset: 400,
+    });
+
+    const sentSql = query.mock.calls[0][0];
+    expect(sentSql).toContain('LIMIT 200 OFFSET 400');
+    expect(sentSql).not.toContain('?');
+  });
+
+  it('floors a negative offset to the first page', async () => {
+    const { adapter, query } = makeAdapter([]);
+
+    await adapter.getManualActionItems({
+      orgId: 'org-1',
+      correlationId: 'manual-action-run:abc',
+      occurredAt: new Date('2026-08-05T12:00:00.000Z'),
+      limit: 50,
+      offset: -5,
+    });
+
+    expect(query.mock.calls[0][0]).toContain('LIMIT 50 OFFSET 0');
+  });
+
+  it('refuses an offset that is not a finite number', async () => {
+    const { adapter } = makeAdapter([]);
+
+    await expect(
+      adapter.getManualActionItems({
+        orgId: 'org-1',
+        correlationId: 'manual-action-run:abc',
+        occurredAt: new Date('2026-08-05T12:00:00.000Z'),
+        limit: 50,
+        offset: '0 UNION ALL SELECT 1' as unknown as number,
+      }),
+    ).rejects.toThrow('finite number');
   });
 });
 
