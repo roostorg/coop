@@ -20,9 +20,6 @@ export function logErrorJson(m: { error: unknown; message?: string }) {
   console.error(jsonStringify(serialized));
 }
 
-export function logJson(
-  message: string,
-  fields: Readonly<Record<string, string | number | boolean>> = {},
-) {
-  console.log(jsonStringify({ ...fields, message }));
+export function logJson(message: string) {
+  console.log(jsonStringify({ message }));
 }

@@ -1500,7 +1500,6 @@ export default async function getBottle(
         container.NcmecService.getUserHasExistingNcmecReport(params),
       container.ManualReviewContentResolver,
       container.Meter,
-      process.env.MANUAL_REVIEW_METRICS_ORG_ID,
     );
   });
 

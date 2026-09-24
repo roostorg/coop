@@ -19,21 +19,6 @@ export class ManualReviewMetrics {
     }
   }
 
-  gauge(
-    kind: string,
-    value: number,
-    attributes: ReviewMetricAttributes & { state?: string },
-  ) {
-    try {
-      this.meter?.manualReviewSnapshotGauge.record(value, {
-        kind,
-        ...attributes,
-      });
-    } catch {
-      /* Best-effort telemetry. */
-    }
-  }
-
   duration(
     phase: string,
     start: Date | string | null,

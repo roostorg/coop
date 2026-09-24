@@ -37,15 +37,9 @@ export class CoopMeter {
   public readonly manualReviewEventsCounter: opentelemetry.Counter;
   public readonly manualReviewDurationHistogram: opentelemetry.Histogram;
 
-  public readonly manualReviewSnapshotGauge: opentelemetry.Gauge;
-
   constructor() {
     const metricNamespace = 'coop-api';
     const myMeter = opentelemetry.metrics.getMeter('api-service-meter');
-    this.manualReviewSnapshotGauge = myMeter.createGauge(
-      `${metricNamespace}.manual_review.snapshot.gauge`,
-    );
-
     /**
      * Metrics related to user requests to the API
      */

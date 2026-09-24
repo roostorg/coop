@@ -116,76 +116,39 @@ After the iframe loads, and whenever a reviewer changes their overlay settings, 
 
 ## Manual-review telemetry
 
-The existing OpenTelemetry meter exports optional manual-review instruments:
+The existing OpenTelemetry meter emits two instruments when a provider is configured:
 
-- `coop-api.manual_review.events.counter` always carries `event` and `queue_id`.
-  Enqueue-call and content-resolution events also carry `item_type_id`; decisions
-  and `timing_unavailable_*` events carry `item_type_id`, `decision_type`, and
-  `automatic`. Claims, skips, collection failures and removed-queue events carry
-  no other attributes. `enqueue_call_succeeded` and `appeal_enqueue_call_succeeded`
-  count successful calls, including deduplicated adds, not unique insertions.
-  A stored decision is not proof that its downstream action completed.
-- `coop-api.manual_review.duration_ms.histogram` carries `phase=claim_elapsed` or
-  `total_to_decision`, `queue_id`, `item_type_id`, `decision_type`, and `automatic`.
-  Claim elapsed includes idle time. Automatic closes and swept dispositions have
-  no human claim sample; directly reviewed decisions with missing/invalid claim
-  timestamps still emit availability events instead of zero durations.
-- `coop-api.manual_review.snapshot.gauge` with `kind`. Set
-  `MANUAL_REVIEW_METRICS_ORG_ID` on the server to opt in to that organization's
-  snapshots. Without this setting, no polling takes place. The default meter
-  remains a no-op unless the deployment registers an OpenTelemetry provider.
+- `coop-api.manual_review.events.counter`: `event` and `queue_id`; enqueue and
+  content-resolution events also include `item_type_id`. Decisions and unavailable
+  timing events include `item_type_id`, `decision_type` and `automatic`.
+  `enqueue_call_succeeded` and `appeal_enqueue_call_succeeded` count operations,
+  including deduplicated adds, not unique insertions. Claims/skips carry only the
+  queue. A stored decision is not proof of completed downstream enforcement.
+- `coop-api.manual_review.duration_ms.histogram`: `phase=claim_elapsed` or
+  `total_to_decision`, plus queue, item type, decision type and automatic status.
+  Claim elapsed includes idle time; swept/automatic decisions omit it. Missing
+  times on directly reviewed jobs produce availability counters, not zero times.
 
-Snapshot collection uses the existing queue service and public BullMQ APIs,
-about once a minute after the preceding cycle settles. The SQL list is limited to
-51 rows; finding more than 50 rejects that cycle without sampling any queue.
-Each queue reads at most 1,000 ready-job timestamps. No media is fetched or job
-lock acquired. BullMQ may hydrate queued payloads internally; only numeric
-aggregates and static queue identifiers leave the snapshot helper.
+For backlog monitoring, a trusted deployment can call
+`registerReviewMetricsCollector(start)` from `services/manualReviewMetricsCollector`
+**before** service construction. `start` receives only
+`read(orgId, abortSignal)` and returns a synchronous stop callback. The last active
+registration is used; unregistering affects future service instances only. Without
+registration, no queue reads or timers are started. Startup/shutdown exceptions in
+this optional adapter cannot prevent review service startup or shutdown.
 
-A 20-second deadline covers the entire cycle, including the queue list. Expiry
-records `collection_failed_timeout` and `success=0`, prevents further reads and
-discards late results. Shared database/Redis calls cannot be force-cancelled;
-an in-flight read must settle before the next cycle is scheduled. A permanently
-stalled read therefore leaves the collector failed, rather than accumulating
-concurrent requests. Shutdown aborts scheduling and suppresses late emissions.
+The reader returns queue IDs and counts, observed oldest ready age, coverage and
+sample time. It rejects missing scope or more than 50 queues (SQL fetches at most
+51), reads at most 1,000 waiting/prioritized timestamps per queue, and checks
+cancellation between public BullMQ calls. Shared client requests cannot be
+force-cancelled. Counts are not transactional; partial/changing reads can understate
+age. No jobs are claimed or locks renewed. BullMQ may hydrate payloads internally,
+but the callback receives metadata only, never content or URLs.
 
-`collection_failed_read`, `collection_failed_queue_limit`, and
-`collection_failed_timeout` count failures independently of the latest health
-gauge. They use `queue_id=all` and never carry raw errors, identifiers or URLs.
-A later success does not erase these historical failure counts.
-
-The standalone collector emits JSON logs with `event=manual_review.metrics.*`:
-`started`, `failed`, `sampled`, and `stopped`. A sample is logged on first success,
-recovery, a change in the number of incomplete queues, or queue removal; ordinary
-healthy cycles do not log. Failures log once per cycle with bounded
-`reason=read|queue_limit|timeout` and a consecutive-failure count. Timeout logs do
-not wait for a stalled read. Sample logs include queue counts and duration, not
-queue/org/reviewer identifiers, media, URLs or raw errors. `sampled` means a
-snapshot was collected, not that an external metrics backend ingested it.
-Logging failures are best-effort and do not interrupt collection.
-
-The `kind` values separate jobs by state, observed oldest-ready age, timestamp
-coverage, per-queue sample time and collection health/freshness. Query each kind
-separately. Waiting and prioritized jobs contribute to age; active, paused and
-delayed jobs do not. Age starts at the BullMQ entry timestamp. Coverage means the
-bounded read passed its checks, not an atomic snapshot. Concurrent queue changes
-or partial reads can understate age. Failed collection leaves the last backlog
-sample unchanged; inspect health and advancing per-queue sample timestamps.
-
-Snapshots carry `kind` and `queue_id`; job-count samples also carry `state`.
-`present=1` means the queue appeared in the latest successful list. After a known
-queue disappears from a successful list, the collector emits `present=0`, clears
-its counts and age, sets coverage to 1 (no remaining jobs to inspect), advances
-its sample timestamp, and emits `queue_removed`. A failed/partial cycle never
-marks queues removed. Cleared series are tombstones, not existing empty queues;
-use `present` when listing queues. Exporter-retained samples from stopped
-replicas or previous processes still require freshness/retention checks.
-
-Counters are best-effort operational signals, not an audit ledger. Replica
-snapshots must not be summed. StatsD exporters may repeat stale gauges and
-export non-mergeable per-host histogram percentiles. Configure privacy and
-cardinality controls in the deployment's provider. No content, reviewer, URL
-or free-text reason is added to metric attributes by this instrumentation.
+The deployment owns scheduling, deadlines, log policy, snapshot instruments,
+replica aggregation and cardinality mapping. Counters are best-effort, not an audit
+ledger; snapshot failure is unknown rather than zero backlog. No reviewer IDs,
+content IDs, URLs or free-text reasons are included in native metric attributes.
 
 ## Historical reference
 

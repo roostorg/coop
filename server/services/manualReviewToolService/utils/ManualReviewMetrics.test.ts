@@ -49,17 +49,9 @@ describe('native review metric semantics', () => {
       .mockImplementation(() => {
         throw new Error('exporter');
       });
-    jest
-      .spyOn(meter.manualReviewSnapshotGauge, 'record')
-      .mockImplementation(() => {
-        throw new Error('exporter');
-      });
     expect(() => metrics.event('decision_stored', attrs)).not.toThrow();
     expect(() =>
       metrics.duration('claim_elapsed', null, new Date(), attrs),
-    ).not.toThrow();
-    expect(() =>
-      metrics.gauge('success', 1, { queue_id: 'all' }),
     ).not.toThrow();
   });
   it('histogram throws do not affect review submission', () => {
@@ -70,16 +62,6 @@ describe('native review metric semantics', () => {
       });
     expect(() =>
       metrics.duration('claim_elapsed', new Date(1000), new Date(5000), attrs),
-    ).not.toThrow();
-  });
-  it('gauge throws do not affect review submission', () => {
-    jest
-      .spyOn(meter.manualReviewSnapshotGauge, 'record')
-      .mockImplementation(() => {
-        throw new Error('gauge exporter failed');
-      });
-    expect(() =>
-      metrics.gauge('queue_size', 42, { queue_id: 'test' }),
     ).not.toThrow();
   });
   afterEach(() => jest.restoreAllMocks());
