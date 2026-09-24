@@ -83,9 +83,10 @@ export interface ManualActionItemsInput {
   orgId: string;
   correlationId: string;
   /**
-   * `max(ts)` of the operation, from the feed row. Bounds the partition scan —
-   * `correlation_id` is not in the table's sort key, so without this every
-   * lookup scans the whole retention window.
+   * `max(ts)` of the operation, from the feed row. Caps the partition scan at
+   * the run's own day. There is deliberately no lower bound: the scan must
+   * never be narrower than the feed's, or this panel would list fewer items
+   * than the row it was opened from claims.
    */
   occurredAt: Date;
   limit: number;
