@@ -731,9 +731,15 @@ module.exports = {
           {
             patterns: [
               {
-                group: ['**/test/**', '**/e2e/**'],
+                group: [
+                  '**/test/**',
+                  '**/e2e/**',
+                  '**/__tests__/**',
+                  '**/*.test.*',
+                  '**/*.spec.*',
+                ],
                 message:
-                  'Production code must not import from test/ or e2e/. A test ' +
+                  'Production code must not import test-only code. A test ' +
                   'helper imported here is compiled into transpiled/ and ships ' +
                   'in the server image, and drags its dev-only dependencies ' +
                   'with it. Move the helper to the module it belongs to ' +

@@ -26,6 +26,6 @@ export default defineConfig({
       exclude: ['node_modules/**', 'test/**'],
       reporter: ['json', 'text'],
     },
-    onConsoleLog: () => false,
+    onConsoleLog: (_log, type) => type === 'stderr',
   },
 });

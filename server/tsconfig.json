@@ -1,8 +1,8 @@
 {
   // The config editors resolve every file through, so it owns the whole tree
   // and carries Vitest's globals. Production code is checked *without* them by
-  // tsconfig.build.json, which is what `npm run build`, `npm start` and
-  // `npm run typecheck` compile.
+  // tsconfig.build.json, which is what `npm run build` and the first half of
+  // `npm run typecheck` compile. `npm start` uses this config instead.
   //
   // The split is one-directional on purpose: this file is permissive so no file
   // ever falls outside a project (a file an editor can't place lands in an
