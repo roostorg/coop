@@ -1,4 +1,4 @@
-import { inject } from '../../iocContainer/index.js';
+import { inject } from '../../iocContainer/utils.js';
 import { type ItemTypeSelector } from './types/itemTypes.js';
 
 export const makeGetItemTypeEventuallyConsistent = inject(

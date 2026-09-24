@@ -7,7 +7,7 @@ import {
 } from '@roostorg/coop-types';
 import _ from 'lodash';
 
-import { inject } from '../../iocContainer/index.js';
+import { inject } from '../../iocContainer/utils.js';
 import { assertUnreachable } from '../../utils/misc.js';
 import {
   CoopInput,

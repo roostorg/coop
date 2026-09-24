@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import type { Kysely, Selectable } from 'kysely';
 
-import { inject } from '../../iocContainer/index.js';
+import { inject } from '../../iocContainer/utils.js';
 import { type CombinedPg } from '../combinedDbTypes.js';
 import { type ApiKeyServicePg } from './dbTypes.js';
 

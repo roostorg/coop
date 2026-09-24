@@ -1,8 +1,4 @@
 /* eslint-disable max-lines */
-// Initialize inject before loading services that import it from this barrel.
-// prettier-ignore
-import { inject } from './utils.js';
-
 import { createRequire } from 'module';
 import Bottle from '@ethanresnick/bottlejs';
 import opentelemetry from '@opentelemetry/api';
@@ -1833,7 +1829,7 @@ export default async function getBottle(
   return bottle;
 }
 
-export { inject };
+export { inject } from './utils.js';
 
 /**
  * Simple helper function that looks at a bottle container and returns whether
