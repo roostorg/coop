@@ -10,7 +10,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Added
 
-- Native OpenTelemetry manual-review counters and timings, plus an optional bounded queue-snapshot hook ([#1286](https://github.com/roostorg/coop/pull/1286) by [@sunilatlas](https://github.com/sunilatlas), closes [#1287](https://github.com/roostorg/coop/issues/1287))
+- Native OpenTelemetry manual-review counters and elapsed timings ([#1286](https://github.com/roostorg/coop/pull/1286) by [@sunilatlas](https://github.com/sunilatlas), relates to [#1287](https://github.com/roostorg/coop/issues/1287))
 
 ## [1.1.0-alpha] - 2026-09-21
 

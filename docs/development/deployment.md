@@ -116,39 +116,22 @@ After the iframe loads, and whenever a reviewer changes their overlay settings, 
 
 ## Manual-review telemetry
 
-The existing OpenTelemetry meter emits two instruments when a provider is configured:
+The existing OpenTelemetry meter emits `coop-api.manual_review.events.counter`
+for successful enqueue calls, claims, stored skips/decisions and content-resolution
+outcomes. Attributes are `event`, `queue_id`, plus `item_type_id` when known;
+decisions also include `decision_type` and `automatic`. Enqueue calls include
+BullMQ-deduplicated adds and are not unique-job counts.
 
-- `coop-api.manual_review.events.counter`: `event` and `queue_id`; enqueue and
-  content-resolution events also include `item_type_id`. Decisions and unavailable
-  timing events include `item_type_id`, `decision_type` and `automatic`.
-  `enqueue_call_succeeded` and `appeal_enqueue_call_succeeded` count operations,
-  including deduplicated adds, not unique insertions. Claims/skips carry only the
-  queue. A stored decision is not proof of completed downstream enforcement.
-- `coop-api.manual_review.duration_ms.histogram`: `phase=claim_elapsed` or
-  `total_to_decision`, plus queue, item type, decision type and automatic status.
-  Claim elapsed includes idle time; swept/automatic decisions omit it. Missing
-  times on directly reviewed jobs produce availability counters, not zero times.
+`coop-api.manual_review.duration_ms.histogram` records `phase=total_to_decision`
+and human `claim_elapsed` using existing timestamps, with queue/item/decision
+attributes. Claim elapsed includes idle time; swept/automatic decisions omit it.
+Missing/invalid timestamps emit `timing_unavailable_<phase>` instead of zero.
 
-For backlog monitoring, a trusted deployment can call
-`registerReviewMetricsCollector(start)` from `services/manualReviewMetricsCollector`
-**before** service construction. `start` receives only
-`read(orgId, abortSignal)` and returns a synchronous stop callback. The last active
-registration is used; unregistering affects future service instances only. Without
-registration, no queue reads or timers are started. Startup/shutdown exceptions in
-this optional adapter cannot prevent review service startup or shutdown.
-
-The reader returns queue IDs and counts, observed oldest ready age, coverage and
-sample time. It rejects missing scope or more than 50 queues (SQL fetches at most
-51), reads at most 1,000 waiting/prioritized timestamps per queue, and checks
-cancellation between public BullMQ calls. Shared client requests cannot be
-force-cancelled. Counts are not transactional; partial/changing reads can understate
-age. No jobs are claimed or locks renewed. BullMQ may hydrate payloads internally,
-but the callback receives metadata only, never content or URLs.
-
-The deployment owns scheduling, deadlines, log policy, snapshot instruments,
-replica aggregation and cardinality mapping. Counters are best-effort, not an audit
-ledger; snapshot failure is unknown rather than zero backlog. No reviewer IDs,
-content IDs, URLs or free-text reasons are included in native metric attributes.
+No polling or extra storage reads are added. Continuous backlog/oldest age is not
+collected. Metrics are best-effort, not an audit ledger, completed enforcement or
+proof of viewing. Exporter failures cannot fail reviews. Configure cardinality
+and privacy in the deployment provider; no reviewer/content IDs, URLs or free-text
+reasons are emitted. Do not average per-host histogram percentiles.
 
 ## Historical reference
 

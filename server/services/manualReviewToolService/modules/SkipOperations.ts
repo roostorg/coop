@@ -5,18 +5,13 @@ import { makeNotFoundError } from '../../../utils/errors.js';
 import { isForeignKeyViolationError } from '../../../utils/kysely.js';
 import type { ReadonlyDeep } from '../../../utils/typescript-types.js';
 import { type ManualReviewToolServicePg } from '../dbTypes.js';
-import { ManualReviewMetrics } from '../utils/ManualReviewMetrics.js';
 import type { RecentDecisionsFilterInput } from './DecisionAnalytics.js';
 
 export default class SkipOperations {
-  private readonly metrics: ManualReviewMetrics;
-
   constructor(
     private readonly pgQuery: Kysely<ManualReviewToolServicePg>,
-    meter?: Dependencies['Meter'],
-  ) {
-    this.metrics = new ManualReviewMetrics(meter);
-  }
+    private readonly meter?: Dependencies['Meter'],
+  ) {}
 
   async logSkip(opts: {
     orgId: string;
@@ -38,7 +33,7 @@ export default class SkipOperations {
         ])
         .executeTakeFirst();
 
-      this.metrics.event('skip_recorded', {
+      this.meter?.recordManualReviewEvent('skip_recorded', {
         queue_id: queueId,
       });
     } catch (e) {

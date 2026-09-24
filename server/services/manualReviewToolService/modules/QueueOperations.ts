@@ -65,8 +65,6 @@ import {
   type OriginJobInfo,
   type StoredManualReviewJob,
 } from '../manualReviewToolService.js';
-import { ManualReviewMetrics } from '../utils/ManualReviewMetrics.js';
-import { createQueueSnapshot } from '../utils/ReviewQueueSnapshot.js';
 
 export type ManualReviewQueue = {
   id: string;
@@ -165,7 +163,6 @@ export default class QueueOperations {
     Bind1<typeof getBullWorker<ManualReviewAppealJob>>
   >;
   private readonly transactionWithRetry: KyselyTransactionWithRetry<ManualReviewToolServicePg>;
-  private readonly metrics: ManualReviewMetrics;
 
   constructor(
     private readonly pgQuery: Kysely<ManualReviewToolServicePg>,
@@ -173,9 +170,8 @@ export default class QueueOperations {
     private readonly moderationConfigService: Dependencies['ModerationConfigService'],
     redis: RedisConnection,
     private readonly tracer: Dependencies['Tracer'],
-    meter?: Dependencies['Meter'],
+    private readonly meter?: Dependencies['Meter'],
   ) {
-    this.metrics = new ManualReviewMetrics(meter);
     this.transactionWithRetry = makeKyselyTransactionWithRetry(this.pgQuery);
     // Reassingment here is a hack to work around TS syntax limitations
     // with generic instantiation expressions.
@@ -713,15 +709,12 @@ export default class QueueOperations {
       .execute();
   }
 
-  async getAllQueuesForOrgAndDangerouslyBypassPermissioning(
-    orgId: string,
-    limit?: number,
-  ) {
-    const query = this.pgQuery
+  async getAllQueuesForOrgAndDangerouslyBypassPermissioning(orgId: string) {
+    return this.pgQuery
       .selectFrom('manual_review_tool.manual_review_queues')
       .select(PgQueueSelection)
-      .where('org_id', '=', orgId);
-    return (limit === undefined ? query : query.limit(limit)).execute();
+      .where('org_id', '=', orgId)
+      .execute();
   }
 
   async getQueueForOrgAndDangerouslyBypassPermissioning(opts: {
@@ -882,7 +875,7 @@ export default class QueueOperations {
       { removeOnComplete: true, jobId: bullJobId },
     );
 
-    this.metrics.event('enqueue_call_succeeded', {
+    this.meter?.recordManualReviewEvent('enqueue_call_succeeded', {
       queue_id: queueId,
       item_type_id: payload.item.itemTypeIdentifier.id,
     });
@@ -934,7 +927,7 @@ export default class QueueOperations {
       { removeOnComplete: true, jobId: bullJobId },
     );
 
-    this.metrics.event('appeal_enqueue_call_succeeded', {
+    this.meter?.recordManualReviewEvent('appeal_enqueue_call_succeeded', {
       queue_id: queueId,
       item_type_id: payload.item.itemTypeIdentifier.id,
     });
@@ -1694,22 +1687,6 @@ export default class QueueOperations {
       ),
     );
     return counts.reduce((sum, count) => sum + count, 0);
-  }
-
-  async getMetricsSnapshot(
-    opts: {
-      orgId: string;
-      queueId: string;
-      isAppealsQueue: boolean;
-    },
-    signal?: AbortSignal,
-  ) {
-    signal?.throwIfAborted();
-    const queue = opts.isAppealsQueue
-      ? await this.#getBullAppealQueue(opts.orgId, opts.queueId)
-      : await this.#getBullQueue(opts.orgId, opts.queueId);
-    signal?.throwIfAborted();
-    return createQueueSnapshot(queue, Date.now, signal);
   }
 
   async getOldestJobCreatedAt(opts: {

@@ -91,4 +91,45 @@ export class CoopMeter {
       `${metricNamespace}.manual_review.duration_ms.histogram`,
     );
   }
+
+  recordManualReviewEvent(
+    event: string,
+    attributes?: Record<string, string | number | boolean>,
+  ) {
+    try {
+      this.manualReviewEventsCounter.add(1, {
+        event,
+        ...attributes,
+      });
+    } catch {
+      /* Best-effort telemetry, not an audit ledger. */
+    }
+  }
+
+  recordManualReviewDuration(
+    phase: string,
+    start: Date | string | null,
+    end: Date,
+    attributes?: Record<string, string | number | boolean>,
+  ) {
+    const startMs =
+      start instanceof Date
+        ? start.getTime()
+        : typeof start === 'string' && start.includes('T')
+          ? Date.parse(start)
+          : NaN;
+    const value = end instanceof Date ? end.getTime() - startMs : NaN;
+    if (!Number.isFinite(value) || value < 0) {
+      this.recordManualReviewEvent(`timing_unavailable_${phase}`, attributes);
+      return;
+    }
+    try {
+      this.manualReviewDurationHistogram.record(value, {
+        phase,
+        ...attributes,
+      });
+    } catch {
+      /* Best-effort telemetry. */
+    }
+  }
 }

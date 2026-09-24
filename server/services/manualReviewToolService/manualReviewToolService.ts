@@ -26,7 +26,6 @@ import {
   resolveManualReviewContentSafely,
   type ManualReviewContentResolver,
 } from '../manualReviewContentResolver.js';
-import { startReviewMetricsCollector } from '../manualReviewMetricsCollector.js';
 import { type ModerationConfigService } from '../moderationConfigService/index.js';
 import { type PartialItemsService } from '../partialItemsService/index.js';
 import {
@@ -85,7 +84,6 @@ import SkipOperations, {
 import UserReportSweep, {
   type ClearOtherReportsResult,
 } from './modules/UserReportSweep.js';
-import { ManualReviewMetrics } from './utils/ManualReviewMetrics.js';
 
 // An id that's unique across all jobs ever added to any queue (pending or not).
 // This is the id that's passed into the MRT Service by callers to identify a
@@ -304,8 +302,6 @@ export type ManualReviewJobKind = ManualReviewJobPayload['kind'];
 
 export class ManualReviewToolService {
   private readonly queueOps: QueueOperations;
-  private readonly metrics: ManualReviewMetrics;
-  private readonly stopMetrics?: () => void;
   private readonly jobRendering: JobRendering;
   private readonly jobRouting: JobRouting;
   private readonly appealsJobRouting: AppealsJobRouting;
@@ -341,9 +337,8 @@ export class ManualReviewToolService {
       userItemTypeId: string;
     }) => Promise<boolean>,
     private readonly resolveManualReviewContent: ManualReviewContentResolver,
-    meter?: Dependencies['Meter'],
+    private readonly meter?: Dependencies['Meter'],
   ) {
-    this.metrics = new ManualReviewMetrics(meter);
     this.queueOps = new QueueOperations(
       pgQuery,
       pgQueryReadReplica,
@@ -352,7 +347,6 @@ export class ManualReviewToolService {
       tracer,
       meter,
     );
-    this.stopMetrics = startReviewMetricsCollector(this.queueOps);
     this.jobEnrichment = new JobEnrichment(
       partialItemsService,
       userStatisticsService,
@@ -372,7 +366,7 @@ export class ManualReviewToolService {
       //routingRuleExecutionLogger,
     );
     this.manualReviewToolSettings = new ManualReviewToolSettings(pgQuery);
-    this.claimOps = new ClaimOperations(pgQuery, meter);
+    this.claimOps = new ClaimOperations(pgQuery);
     this.jobDecisioning = new JobDecisioning(
       this.queueOps,
       pgQuery,
@@ -1149,7 +1143,10 @@ export class ManualReviewToolService {
           item_type_id: opts.job.payload.item.itemTypeIdentifier.id,
         };
         if (!canResolve) {
-          this.metrics.event('content_resolution_not_authorized', attributes);
+          this.meter?.recordManualReviewEvent(
+            'content_resolution_not_authorized',
+            attributes,
+          );
           return opts.job;
         }
 
@@ -1164,14 +1161,17 @@ export class ManualReviewToolService {
           {
             onResolved: (count) => {
               span.setAttribute('content.resolved_count', count);
-              this.metrics.event(
+              this.meter?.recordManualReviewEvent(
                 count > 0 ? 'content_resolved' : 'content_resolution_unchanged',
                 attributes,
               );
             },
             onError: (error) => {
               this.tracer.logSpanFailed(span, error);
-              this.metrics.event('content_resolution_failed', attributes);
+              this.meter?.recordManualReviewEvent(
+                'content_resolution_failed',
+                attributes,
+              );
             },
           },
         );
@@ -1446,7 +1446,9 @@ export class ManualReviewToolService {
     jobId: JobId;
   }) {
     const { orgId, queueId, userId, jobId } = opts;
-    this.metrics.event('claim_acquired', { queue_id: queueId });
+    this.meter?.recordManualReviewEvent('claim_acquired', {
+      queue_id: queueId,
+    });
     try {
       await this.claimOps.logClaim({
         orgId,
@@ -1665,7 +1667,6 @@ export class ManualReviewToolService {
   }
 
   async close() {
-    this.stopMetrics?.();
     return Promise.all([this.queueOps.close(), this.jobRouting.close()]);
   }
 }
