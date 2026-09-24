@@ -1,7 +1,8 @@
 import crypto from 'node:crypto';
 import { URL } from 'node:url';
 
-import { inject, type Dependencies } from '../../iocContainer/index.js';
+import { type Dependencies } from '../../iocContainer/index.js';
+import { inject } from '../../iocContainer/utils.js';
 import { CoopEmailAddress } from '../../services/sendEmailService/index.js';
 import { b64EncodeArrayBuffer } from '../../utils/encoding.js';
 import {
@@ -166,7 +167,7 @@ class OrgAPI {
    * (e.g. org created before this feature), we create and persist one once.
    */
   async getPublicSigningKeyPem(orgId: string) {
-    let key: CryptoKey;
+    let key: crypto.webcrypto.CryptoKey;
     try {
       key =
         await this.signingKeyPairService.getSignatureVerificationInfo(orgId);

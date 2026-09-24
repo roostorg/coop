@@ -931,7 +931,13 @@ export default function ManualReviewRecentDecisions() {
     <div className="flex items-start gap-2 pb-1">
       <Input
         className="rounded-lg w-[300px]"
-        placeholder="Input a user's ID or username"
+        placeholder="Search by user ID or name"
+        // This is a plain search field, but "username" in the placeholder plus
+        // autoFocus trips password-manager login heuristics. Opt out of autofill.
+        autoComplete="off"
+        data-1p-ignore
+        data-lpignore="true"
+        data-bwignore="true"
         value={userSearchString}
         onChange={(event) => setUserSearchString(event.target.value)}
         onKeyDown={(event) => {

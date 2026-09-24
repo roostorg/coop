@@ -1,6 +1,7 @@
 import { sql } from 'kysely';
 import { uid } from 'uid';
 import { v1 as uuidv1 } from 'uuid';
+import { vi } from 'vitest';
 
 import createMrtQueue from '../../test/fixtureHelpers/createMrtQueue.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
@@ -1523,8 +1524,8 @@ describe('Manual Review Tool Service', () => {
           enqueueSourceInfo: { kind: 'REPORT' },
         });
 
-        const releaseSpy = jest.spyOn(mrtService['queueOps'], 'releaseJobLock');
-        const logClaimSpy = jest
+        const releaseSpy = vi.spyOn(mrtService['queueOps'], 'releaseJobLock');
+        const logClaimSpy = vi
           .spyOn(mrtService['claimOps'], 'logClaim')
           .mockRejectedValueOnce(new Error('claim insert failed'));
 

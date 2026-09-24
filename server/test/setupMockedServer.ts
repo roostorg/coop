@@ -1,10 +1,7 @@
-// NB: This file can only be imported from within a jest test (as the jest
-// runtime actually makes the global jest variable available, which we're
-// relying on here).
-
 import otel from '@opentelemetry/api';
 import type pg from 'pg';
 import * as superTest from 'supertest';
+import { vi, type Mock, type Mocked } from 'vitest';
 
 import getBottle, {
   getPgConnectionParams,
@@ -34,7 +31,7 @@ export function disableConsoleLogging() {
 }
 
 /**
- * Boots the Express app against real Postgres (ClickHouse/analytics mocked),
+ * Boots the Express app against real Postgres (analytics and queues mocked),
  * inside a transaction that `rollback()` discards so tests need no cleanup.
  * Only Postgres is rolled back. Usually used via
  * `makeTransactionalTestWithFixture`.
@@ -86,17 +83,17 @@ export async function getBottleContainerWithIOMocks(
     new otel.ProxyTracerProvider().getTracer('noop'),
   );
 
-  const queryMock = jest.fn(
+  const queryMock = vi.fn(
     async (_query: string, _tracer: SafeTracer, _binds?: readonly unknown[]) =>
       [] as unknown[],
-  ) as jest.MockedFunction<IDataWarehouse['query']>;
+  ) as Mock<IDataWarehouse['query']>;
 
   const transactionImpl: IDataWarehouse['transaction'] = async (fn) =>
     fn(async (sql, binds) => queryMock(sql, tracer, binds));
 
-  const startMock = jest.fn(() => {}) as IDataWarehouse['start'];
-  const closeMock = jest.fn(async () => {}) as IDataWarehouse['close'];
-  const getProviderMock = jest.fn(
+  const startMock = vi.fn(() => {}) as IDataWarehouse['start'];
+  const closeMock = vi.fn(async () => {}) as IDataWarehouse['close'];
+  const getProviderMock = vi.fn(
     () => 'clickhouse',
   ) as IDataWarehouse['getProvider'];
 
@@ -109,13 +106,31 @@ export async function getBottleContainerWithIOMocks(
   };
 
   const analyticsMock = {
-    bulkWrite: jest.fn(async () => {}),
-    createCDCStream: jest.fn(async () => {}),
-    consumeCDCChanges: jest.fn(async () => {}),
-    supportsCDC: jest.fn(() => false),
-    flushPendingWrites: jest.fn(async () => {}),
-    close: jest.fn(async () => {}),
-  } as unknown as jest.Mocked<IDataWarehouseAnalytics>;
+    bulkWrite: vi.fn(async () => {}),
+    createCDCStream: vi.fn(async () => {}),
+    consumeCDCChanges: vi.fn(async () => {}),
+    supportsCDC: vi.fn(() => false),
+    flushPendingWrites: vi.fn(async () => {}),
+    close: vi.fn(async () => {}),
+  } as unknown as Mocked<IDataWarehouseAnalytics>;
+
+  // This harness does not run item-processing workers. Keep queue I/O mocked
+  // too, avoiding real Redis connections and the writers' 1.5s drain delay on
+  // every shutdown. The integration harness still uses the real queues.
+  for (const name of [
+    'itemSubmissionQueueBulkWrite',
+    'itemSubmissionRetryQueueBulkWrite',
+  ] as const) {
+    bottle.value(
+      name,
+      Object.assign(
+        vi.fn(async () => ({ error: false, results: [] })),
+        {
+          close: vi.fn(async () => {}),
+        },
+      ),
+    );
+  }
 
   bottle.value('DataWarehouse', dataWarehouseMock);
   bottle.value('DataWarehouseAnalytics', analyticsMock);

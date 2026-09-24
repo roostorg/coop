@@ -40,7 +40,8 @@
   "overrides": {
     "ajv": "~8.18.0",
     "uuid": "^14.0.0",
-    "fast-uri": "^3.1.4"
+    "fast-uri": "^3.1.4",
+    "adm-zip": "^0.6.1"
   },
   "publishConfig": {
     "access": "public"

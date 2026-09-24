@@ -1,4 +1,5 @@
 import { type ScalarTypes } from '@roostorg/coop-types';
+import { vi } from 'vitest';
 
 import { jsonParse, type JsonOf } from '../../../utils/encoding.js';
 import { type HmaService } from '../../hmaService/index.js';
@@ -30,7 +31,7 @@ const mockBanks = [
 
 describe('ImageSimilarityMatchSignal', () => {
   it('throws when no banks are provided', async () => {
-    const signal = makeSignal(jest.fn());
+    const signal = makeSignal(vi.fn());
 
     await expect(
       signal.run({
@@ -46,7 +47,7 @@ describe('ImageSimilarityMatchSignal', () => {
   });
 
   it('throws when image has no hashes', async () => {
-    const signal = makeSignal(jest.fn());
+    const signal = makeSignal(vi.fn());
 
     await expect(
       signal.run({
@@ -60,7 +61,7 @@ describe('ImageSimilarityMatchSignal', () => {
 
   it('returns score true and matchedValue when at least one bank matches', async () => {
     const signal = makeSignal(
-      jest.fn().mockResolvedValue({
+      vi.fn().mockResolvedValue({
         matched: true,
         matchedBanks: ['ORG_TEST_BANK'],
       }),
@@ -88,7 +89,7 @@ describe('ImageSimilarityMatchSignal', () => {
 
   it('returns score false and no matchedValue when no bank matches', async () => {
     const signal = makeSignal(
-      jest.fn().mockResolvedValue({
+      vi.fn().mockResolvedValue({
         matched: false,
         matchedBanks: [],
       }),
@@ -113,7 +114,7 @@ describe('ImageSimilarityMatchSignal', () => {
 
   it('aggregates matched banks across hash types', async () => {
     const signal = makeSignal(
-      jest
+      vi
         .fn()
         .mockImplementation(async (_ids: string[], signalType: string) => ({
           matched: signalType === 'pdq',

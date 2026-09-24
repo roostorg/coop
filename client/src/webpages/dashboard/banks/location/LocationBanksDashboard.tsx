@@ -47,7 +47,9 @@ gql`
 `;
 
 export default function LocationBanksDashboard() {
-  const { loading, error, data, refetch } = useGQLLocationBanksQuery();
+  const { loading, error, data, refetch } = useGQLLocationBanksQuery({
+    fetchPolicy: 'no-cache',
+  });
 
   const [deleteLocationBank] = useGQLDeleteLocationBankMutation({
     onError: () => {},

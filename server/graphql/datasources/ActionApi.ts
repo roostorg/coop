@@ -2,7 +2,8 @@ import { type Exception } from '@opentelemetry/api';
 import pLimit from 'p-limit';
 import { v1 as uuidv1 } from 'uuid';
 
-import { inject, type Dependencies } from '../../iocContainer/index.js';
+import { type Dependencies } from '../../iocContainer/index.js';
+import { inject } from '../../iocContainer/utils.js';
 import {
   parseStoredParameters,
   validateActionParameterValues,
