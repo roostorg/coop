@@ -39,6 +39,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Fixed
 
+- Policy and action updates reject invalid cross-organization relationships and policy cycles (by [@taobojlen](https://github.com/taobojlen))
 - Rule history dropping other rules' versions when filtered by start date ([#1056](https://github.com/roostorg/coop/pull/1056) by [@juanmrad](https://github.com/juanmrad))
 - `RetryFailedNcmecDecisionsJob` ignoring `NCMEC_ENV` and retrying test decisions ([#928](https://github.com/roostorg/coop/pull/928) by [@taobojlen](https://github.com/taobojlen))
 - Queue creation failing with "name already exists" on the default reviewer selection ([#1069](https://github.com/roostorg/coop/pull/1069) by [@jess-upscrolled](https://github.com/jess-upscrolled), closes [#1074](https://github.com/roostorg/coop/issues/1074))

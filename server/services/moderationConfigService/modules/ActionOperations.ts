@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- action transaction and error definitions stay colocated */
 import { sql, type Kysely } from 'kysely';
 import { type JsonObject, type JsonValue, type Writable } from 'type-fest';
 import { uid } from 'uid';
@@ -95,6 +96,16 @@ type ActionDbResult = FixKyselyRowCorrelation<
   typeof actionDbSelection
 >;
 
+export function rethrowActionWriteError(error: unknown): never {
+  if (
+    isUniqueViolationError(error) &&
+    (error as { constraint?: string }).constraint === 'actions_org_id_name_key'
+  ) {
+    throw makeActionNameExistsError({ shouldErrorSpan: true });
+  }
+  throw error;
+}
+
 export default class ActionOperations {
   private readonly transactionWithRetry: ReturnType<
     typeof makeKyselyTransactionWithRetry<ModerationConfigServicePg>
@@ -131,6 +142,9 @@ export default class ActionOperations {
 
     return this.transactionWithRetry(async (trx) => {
       try {
+        if (input.itemTypeIds !== undefined) {
+          await this.#validateItemTypeIds(trx, orgId, input.itemTypeIds);
+        }
         const query = trx
           .insertInto('public.actions')
           .values({
@@ -168,10 +182,7 @@ export default class ActionOperations {
         assertCustomAction(action);
         return action;
       } catch (e: unknown) {
-        if (isUniqueViolationError(e)) {
-          throw makeActionNameExistsError({ shouldErrorSpan: true });
-        }
-        throw e;
+        rethrowActionWriteError(e);
       }
     });
   }
@@ -242,21 +253,29 @@ export default class ActionOperations {
     itemTypeIds?: readonly string[] | undefined;
   }): Promise<CustomAction> {
     const { orgId, actionId, patch, itemTypeIds } = opts;
-    const validatedParameters =
-      patch.parameters === undefined
-        ? undefined
-        : validateActionParameters(patch.parameters);
     return this.transactionWithRetry(async (trx) => {
       const existing = (await trx
         .selectFrom('public.actions')
         .select(actionDbSelection)
         .where('id', '=', actionId)
         .where('org_id', '=', orgId)
-        .where('action_type', '=', 'CUSTOM_ACTION')
+        .forUpdate()
         .executeTakeFirst()) as ActionDbResult | undefined;
 
       if (existing == null) {
         throw makeNotFoundError('Action not found', { shouldErrorSpan: true });
+      }
+      if (existing.actionType !== 'CUSTOM_ACTION') {
+        throw makeBuiltInActionImmutableError({ shouldErrorSpan: true });
+      }
+
+      const validatedParameters =
+        patch.parameters === undefined
+          ? undefined
+          : validateActionParameters(patch.parameters);
+
+      if (itemTypeIds !== undefined) {
+        await this.#validateItemTypeIds(trx, orgId, itemTypeIds);
       }
 
       const setPayload = removeUndefinedKeys({
@@ -322,10 +341,7 @@ export default class ActionOperations {
         assertCustomAction(action);
         return action;
       } catch (e: unknown) {
-        if (isUniqueViolationError(e)) {
-          throw makeActionNameExistsError({ shouldErrorSpan: true });
-        }
-        throw e;
+        rethrowActionWriteError(e);
       }
     });
   }
@@ -484,9 +500,34 @@ export default class ActionOperations {
   #getPgQuery(readFromReplica: boolean = false) {
     return readFromReplica ? this.pgQueryReplica : this.pgQuery;
   }
+
+  async #validateItemTypeIds(
+    trx: Kysely<ModerationConfigServicePg>,
+    orgId: string,
+    itemTypeIds: readonly string[],
+  ) {
+    const uniqueIds = new Set(itemTypeIds);
+    if (uniqueIds.size !== itemTypeIds.length) {
+      throw makeInvalidActionItemTypeIdsError({ shouldErrorSpan: true });
+    }
+    if (itemTypeIds.length === 0) return;
+
+    const matchingRows = await trx
+      .selectFrom('public.item_types')
+      .select('id')
+      .where('org_id', '=', orgId)
+      .where('id', 'in', itemTypeIds)
+      .execute();
+    if (matchingRows.length !== itemTypeIds.length) {
+      throw makeInvalidActionItemTypeIdsError({ shouldErrorSpan: true });
+    }
+  }
 }
 
-export type ActionErrorType = 'ActionNameExistsError';
+export type ActionErrorType =
+  | 'ActionNameExistsError'
+  | 'InvalidActionItemTypeIdsError'
+  | 'BuiltInActionImmutableError';
 
 export const makeActionNameExistsError = (data: ErrorInstanceData) =>
   new CoopError({
@@ -494,5 +535,24 @@ export const makeActionNameExistsError = (data: ErrorInstanceData) =>
     type: [ErrorType.UniqueViolation],
     title: 'An action with this name already exists',
     name: 'ActionNameExistsError',
+    ...data,
+  });
+
+export const makeInvalidActionItemTypeIdsError = (data: ErrorInstanceData) =>
+  new CoopError({
+    status: 400,
+    type: [ErrorType.InvalidUserInput],
+    title: 'Invalid action item type IDs',
+    detail: 'One or more item type IDs are invalid',
+    name: 'InvalidActionItemTypeIdsError',
+    ...data,
+  });
+
+export const makeBuiltInActionImmutableError = (data: ErrorInstanceData) =>
+  new CoopError({
+    status: 409,
+    type: [ErrorType.Conflict],
+    title: 'Built-in actions cannot be updated',
+    name: 'BuiltInActionImmutableError',
     ...data,
   });
