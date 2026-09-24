@@ -7,7 +7,6 @@ import { type NonEmptyString } from '../../utils/typescript-types.js';
 import { Integration } from '../signalsService/index.js';
 import { type SignalAuthServicePg } from './dbTypes.js';
 
-/** Signal consumers only need credential lookup, not cache management. */
 export type GetCredentials<T extends ConfigurableIntegration> = (
   orgId: string,
 ) => Promise<ReadonlyDeep<CredentialTypes[T]> | undefined>;
