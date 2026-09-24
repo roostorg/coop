@@ -74,7 +74,7 @@ export interface ModeratorActionGroupRecord {
   actorNote: string | null;
   /** Distinct items the operation touched. Exact, not estimated. */
   itemCount: number;
-  /** `(item, action)` executions that failed after retries. */
+  /** Distinct items with an execution that failed after retries. */
   failedCount: number;
   occurredAt: Date;
 }
