@@ -8,6 +8,10 @@ For more information about each release including git tags and artifacts, see [R
 
 ## [Unreleased]
 
+### Changed
+
+- Item type updates reject incompatible field changes ([#1272](https://github.com/roostorg/coop/pull/1272) by [@taobojlen](https://github.com/taobojlen))
+
 ## [1.1.0-alpha] - 2026-09-21
 
 ### Added
@@ -21,7 +25,6 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Changed
 
-- Item type updates reject incompatible field changes (by [@taobojlen](https://github.com/taobojlen))
 - Scylla is now optional via `SCYLLA_ENABLED` ([#918](https://github.com/roostorg/coop/pull/918) by [@sunilatlas](https://github.com/sunilatlas), [#1268](https://github.com/roostorg/coop/pull/1268) by [@thisismissem](https://github.com/thisismissem))
 - Settings "Other" tab renamed to "Partial Items" and its settings relocated ([#965](https://github.com/roostorg/coop/pull/965) by [@golden-fox07](https://github.com/golden-fox07))
 - Queue deletion is refused while routing rules still reference the queue ([#808](https://github.com/roostorg/coop/pull/808) by [@reitblatt](https://github.com/reitblatt))

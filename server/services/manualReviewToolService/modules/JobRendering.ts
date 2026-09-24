@@ -31,6 +31,15 @@ export default class JobRendering {
     hiddenFields: readonly string[];
   }) {
     const setHiddenFields = async (query: Kysely<JobRenderingPg>) => {
+      if (opts.hiddenFields.length === 0) {
+        return query
+          .$extendTables<ManualReviewToolServicePg>()
+          .deleteFrom('manual_review_tool.manual_review_hidden_item_fields')
+          .where('org_id', '=', opts.orgId)
+          .where('item_type_id', '=', opts.itemTypeId)
+          .execute();
+      }
+
       const itemType = await query
         .selectFrom('public.item_types')
         .select('fields')
@@ -39,15 +48,6 @@ export default class JobRendering {
         .forUpdate()
         .executeTakeFirst();
       if (itemType === undefined) {
-        // The delete caller cleans up after deleting the item type.
-        if (opts.hiddenFields.length === 0) {
-          return query
-            .$extendTables<ManualReviewToolServicePg>()
-            .deleteFrom('manual_review_tool.manual_review_hidden_item_fields')
-            .where('org_id', '=', opts.orgId)
-            .where('item_type_id', '=', opts.itemTypeId)
-            .execute();
-        }
         throw makeNotFoundError('Item type not found', {
           shouldErrorSpan: false,
         });
