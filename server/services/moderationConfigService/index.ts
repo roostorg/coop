@@ -54,6 +54,8 @@ export {
 
 export { BUILT_IN_ACTIONS } from './modules/ActionOperations.js';
 
+export type { ModerationConfigServicePg } from './dbTypes.js';
+
 export { Policy, PolicyType } from './types/policies.js';
 
 export { UserPenaltySeverity } from './types/shared.js';
@@ -81,11 +83,22 @@ export {
 } from './moderationConfigService.js';
 
 export {
+  type ItemTypeErrorType,
+  makeItemTypeSchemaIncompatibleError,
+  makeInvalidItemTypeSchemaError,
+  makeInvalidItemTypeHiddenFieldsError,
+  makeItemTypeNameAlreadyExistsError,
   makeRuleNameExistsError,
   makeRuleIsMissingContentTypeError,
   makeRuleHasRunningBacktestsError,
   makeLocationBankNameExistsError,
 } from './errors.js';
+
+export {
+  assertValidItemSchema,
+  assertBackwardCompatibleItemSchema,
+  assertHiddenFieldsExist,
+} from './modules/itemTypeSchemaValidation.js';
 
 export {
   ACTION_PARAMETER_TYPES,

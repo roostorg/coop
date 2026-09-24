@@ -2,7 +2,7 @@
 
 import { SpanStatusCode } from '@opentelemetry/api';
 import { type ItemIdentifier } from '@roostorg/coop-types';
-import { type Kysely } from 'kysely';
+import { type Kysely, type Transaction } from 'kysely';
 import _ from 'lodash';
 import { type Opaque } from 'type-fest';
 
@@ -15,6 +15,7 @@ import {
 } from '../../utils/errors.js';
 import { isUniqueViolationError } from '../../utils/kysely.js';
 import type { OmitEach, ReplaceDeep } from '../../utils/typescript-types.js';
+import { type CombinedPg } from '../combinedDbTypes.js';
 import {
   getFieldValueForRole,
   getFieldValueOrValues,
@@ -26,7 +27,10 @@ import {
   resolveManualReviewContentSafely,
   type ManualReviewContentResolver,
 } from '../manualReviewContentResolver.js';
-import { type ModerationConfigService } from '../moderationConfigService/index.js';
+import {
+  type ModerationConfigService,
+  type ModerationConfigServicePg,
+} from '../moderationConfigService/index.js';
 import { type PartialItemsService } from '../partialItemsService/index.js';
 import {
   UserPermission,
@@ -376,7 +380,9 @@ export class ManualReviewToolService {
       this.claimOps,
       getUserHasExistingNcmecReport,
     );
-    this.jobRendering = new JobRendering(pgQuery);
+    this.jobRendering = new JobRendering(
+      pgQuery.$extendTables<ModerationConfigServicePg>(),
+    );
     this.decisionAnalytics = new DecisionAnalytics(pgQueryReadReplica);
     this.commentOps = new CommentOperations(pgQuery);
     this.skipOps = new SkipOperations(pgQuery);
@@ -389,6 +395,28 @@ export class ManualReviewToolService {
       this.jobDecisioning,
       moderationConfigService,
       this.tracer,
+    );
+  }
+
+  forTransaction(trx: Transaction<CombinedPg>) {
+    const query = trx
+      .$extendTables<ManualReviewToolServicePg>()
+      .$pickTables<keyof ManualReviewToolServicePg>();
+    return new ManualReviewToolService(
+      this.redis,
+      this.ruleEvaluator,
+      this.routingRuleExecutionLogger,
+      query,
+      query,
+      this.userStatisticsService,
+      this.getCustomActionsByIds,
+      this.tracer,
+      this.moderationConfigService.forTransaction(trx),
+      this.partialItemsService,
+      this.onRecordDecision,
+      this.onEnqueue,
+      this.getUserHasExistingNcmecReport,
+      this.resolveManualReviewContent,
     );
   }
 
@@ -1198,23 +1226,20 @@ export class ManualReviewToolService {
     return this.queueOps.getOldestJobCreatedAt(opts);
   }
 
-  async getHiddenFieldsForItemType(opts: {
-    orgId: string;
-    itemTypeId: string;
-  }) {
-    return this.jobRendering.getHiddenFieldsForItemType(opts);
+  async getHiddenFieldsForItemType(
+    ...args: Parameters<JobRendering['getHiddenFieldsForItemType']>
+  ) {
+    return this.jobRendering.getHiddenFieldsForItemType(...args);
   }
 
   async getIgnoreCallbackForOrg(orgId: string) {
     return this.jobDecisioning.getIgnoreCallbackForOrg(orgId);
   }
 
-  async setHiddenFieldsForItemType(opts: {
-    orgId: string;
-    itemTypeId: string;
-    hiddenFields: readonly string[];
-  }) {
-    return this.jobRendering.setHiddenFieldsForItemType(opts);
+  async setHiddenFieldsForItemType(
+    ...args: Parameters<JobRendering['setHiddenFieldsForItemType']>
+  ) {
+    return this.jobRendering.setHiddenFieldsForItemType(...args);
   }
 
   async getUsersWhoCanSeeQueue(opts: {
