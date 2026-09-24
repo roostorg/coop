@@ -9,6 +9,9 @@ function field(index: number): FieldState {
     type: GQLScalarType.String,
     required: false,
     hidden: false,
+    persisted: false,
+    originallyRequired: false,
+    addedToExistingItemType: false,
   };
 }
 

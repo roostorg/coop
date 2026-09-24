@@ -7814,18 +7814,22 @@ export type GQLCreateContentTypeMutation = {
     | {
         readonly __typename: 'InvalidItemTypeHiddenFieldsError';
         readonly title: string;
+        readonly detail?: string | null;
       }
     | {
         readonly __typename: 'InvalidItemTypeSchemaError';
         readonly title: string;
+        readonly detail?: string | null;
       }
     | {
         readonly __typename: 'ItemTypeNameAlreadyExistsError';
         readonly title: string;
+        readonly detail?: string | null;
       }
     | {
         readonly __typename: 'ItemTypeSchemaIncompatibleError';
         readonly title: string;
+        readonly detail?: string | null;
       }
     | {
         readonly __typename: 'MutateContentTypeSuccessResponse';
@@ -7834,7 +7838,11 @@ export type GQLCreateContentTypeMutation = {
           readonly id: string;
         } | null;
       }
-    | { readonly __typename: 'NotFoundError'; readonly title: string };
+    | {
+        readonly __typename: 'NotFoundError';
+        readonly title: string;
+        readonly detail?: string | null;
+      };
 };
 
 export type GQLUpdateContentTypeMutationVariables = Exact<{
@@ -7847,18 +7855,22 @@ export type GQLUpdateContentTypeMutation = {
     | {
         readonly __typename: 'InvalidItemTypeHiddenFieldsError';
         readonly title: string;
+        readonly detail?: string | null;
       }
     | {
         readonly __typename: 'InvalidItemTypeSchemaError';
         readonly title: string;
+        readonly detail?: string | null;
       }
     | {
         readonly __typename: 'ItemTypeNameAlreadyExistsError';
         readonly title: string;
+        readonly detail?: string | null;
       }
     | {
         readonly __typename: 'ItemTypeSchemaIncompatibleError';
         readonly title: string;
+        readonly detail?: string | null;
       }
     | {
         readonly __typename: 'MutateContentTypeSuccessResponse';
@@ -7867,7 +7879,11 @@ export type GQLUpdateContentTypeMutation = {
           readonly id: string;
         } | null;
       }
-    | { readonly __typename: 'NotFoundError'; readonly title: string };
+    | {
+        readonly __typename: 'NotFoundError';
+        readonly title: string;
+        readonly detail?: string | null;
+      };
 };
 
 export type GQLCreateUserTypeMutationVariables = Exact<{
@@ -7880,18 +7896,22 @@ export type GQLCreateUserTypeMutation = {
     | {
         readonly __typename: 'InvalidItemTypeHiddenFieldsError';
         readonly title: string;
+        readonly detail?: string | null;
       }
     | {
         readonly __typename: 'InvalidItemTypeSchemaError';
         readonly title: string;
+        readonly detail?: string | null;
       }
     | {
         readonly __typename: 'ItemTypeNameAlreadyExistsError';
         readonly title: string;
+        readonly detail?: string | null;
       }
     | {
         readonly __typename: 'ItemTypeSchemaIncompatibleError';
         readonly title: string;
+        readonly detail?: string | null;
       }
     | {
         readonly __typename: 'MutateUserTypeSuccessResponse';
@@ -7900,7 +7920,11 @@ export type GQLCreateUserTypeMutation = {
           readonly id: string;
         } | null;
       }
-    | { readonly __typename: 'NotFoundError'; readonly title: string };
+    | {
+        readonly __typename: 'NotFoundError';
+        readonly title: string;
+        readonly detail?: string | null;
+      };
 };
 
 export type GQLUpdateUserTypeMutationVariables = Exact<{
@@ -7913,18 +7937,22 @@ export type GQLUpdateUserTypeMutation = {
     | {
         readonly __typename: 'InvalidItemTypeHiddenFieldsError';
         readonly title: string;
+        readonly detail?: string | null;
       }
     | {
         readonly __typename: 'InvalidItemTypeSchemaError';
         readonly title: string;
+        readonly detail?: string | null;
       }
     | {
         readonly __typename: 'ItemTypeNameAlreadyExistsError';
         readonly title: string;
+        readonly detail?: string | null;
       }
     | {
         readonly __typename: 'ItemTypeSchemaIncompatibleError';
         readonly title: string;
+        readonly detail?: string | null;
       }
     | {
         readonly __typename: 'MutateUserTypeSuccessResponse';
@@ -7933,7 +7961,11 @@ export type GQLUpdateUserTypeMutation = {
           readonly id: string;
         } | null;
       }
-    | { readonly __typename: 'NotFoundError'; readonly title: string };
+    | {
+        readonly __typename: 'NotFoundError';
+        readonly title: string;
+        readonly detail?: string | null;
+      };
 };
 
 export type GQLCreateThreadTypeMutationVariables = Exact<{
@@ -7946,18 +7978,22 @@ export type GQLCreateThreadTypeMutation = {
     | {
         readonly __typename: 'InvalidItemTypeHiddenFieldsError';
         readonly title: string;
+        readonly detail?: string | null;
       }
     | {
         readonly __typename: 'InvalidItemTypeSchemaError';
         readonly title: string;
+        readonly detail?: string | null;
       }
     | {
         readonly __typename: 'ItemTypeNameAlreadyExistsError';
         readonly title: string;
+        readonly detail?: string | null;
       }
     | {
         readonly __typename: 'ItemTypeSchemaIncompatibleError';
         readonly title: string;
+        readonly detail?: string | null;
       }
     | {
         readonly __typename: 'MutateThreadTypeSuccessResponse';
@@ -7966,7 +8002,11 @@ export type GQLCreateThreadTypeMutation = {
           readonly id: string;
         } | null;
       }
-    | { readonly __typename: 'NotFoundError'; readonly title: string };
+    | {
+        readonly __typename: 'NotFoundError';
+        readonly title: string;
+        readonly detail?: string | null;
+      };
 };
 
 export type GQLUpdateThreadTypeMutationVariables = Exact<{
@@ -7979,18 +8019,22 @@ export type GQLUpdateThreadTypeMutation = {
     | {
         readonly __typename: 'InvalidItemTypeHiddenFieldsError';
         readonly title: string;
+        readonly detail?: string | null;
       }
     | {
         readonly __typename: 'InvalidItemTypeSchemaError';
         readonly title: string;
+        readonly detail?: string | null;
       }
     | {
         readonly __typename: 'ItemTypeNameAlreadyExistsError';
         readonly title: string;
+        readonly detail?: string | null;
       }
     | {
         readonly __typename: 'ItemTypeSchemaIncompatibleError';
         readonly title: string;
+        readonly detail?: string | null;
       }
     | {
         readonly __typename: 'MutateThreadTypeSuccessResponse';
@@ -7999,7 +8043,11 @@ export type GQLUpdateThreadTypeMutation = {
           readonly id: string;
         } | null;
       }
-    | { readonly __typename: 'NotFoundError'; readonly title: string };
+    | {
+        readonly __typename: 'NotFoundError';
+        readonly title: string;
+        readonly detail?: string | null;
+      };
 };
 
 type GQLItemFieldsContentItemFragment = {
@@ -31894,6 +31942,7 @@ export const GQLCreateContentTypeDocument = gql`
       }
       ... on Error {
         title
+        detail
       }
     }
   }
@@ -31951,6 +32000,7 @@ export const GQLUpdateContentTypeDocument = gql`
       }
       ... on Error {
         title
+        detail
       }
     }
   }
@@ -32008,6 +32058,7 @@ export const GQLCreateUserTypeDocument = gql`
       }
       ... on Error {
         title
+        detail
       }
     }
   }
@@ -32065,6 +32116,7 @@ export const GQLUpdateUserTypeDocument = gql`
       }
       ... on Error {
         title
+        detail
       }
     }
   }
@@ -32122,6 +32174,7 @@ export const GQLCreateThreadTypeDocument = gql`
       }
       ... on Error {
         title
+        detail
       }
     }
   }
@@ -32179,6 +32232,7 @@ export const GQLUpdateThreadTypeDocument = gql`
       }
       ... on Error {
         title
+        detail
       }
     }
   }

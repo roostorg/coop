@@ -8,6 +8,7 @@ import { selectFilterByLabelOption } from '../components/antDesignUtils';
 
 import { GQLContainerType, GQLScalarType } from '../../../graphql/generated';
 import { titleCaseEnumString } from '../../../utils/string';
+import { getItemTypeFieldEditability } from './itemTypeFieldEditability';
 import {
   getDisplayStringForRole,
   SchemaFieldRoles,
@@ -34,6 +35,9 @@ export type FieldState = {
     valueScalarType: GQLScalarType;
   };
   hidden: boolean;
+  persisted: boolean;
+  originallyRequired: boolean;
+  addedToExistingItemType: boolean;
 };
 
 export default function ItemTypeFormCustomField<T extends ItemTypeKind>(props: {
@@ -50,6 +54,19 @@ export default function ItemTypeFormCustomField<T extends ItemTypeKind>(props: {
     onClickDelete,
     updateFieldState,
   } = props;
+  const editability = getItemTypeFieldEditability(field);
+  const immutableFieldTooltip = field.persisted
+    ? 'Saved field names and types cannot be changed.'
+    : undefined;
+  const requiredTooltip = !editability.canToggleRequired
+    ? 'New and previously optional fields cannot become required.'
+    : undefined;
+  const selectableRoles = availableRoles.filter(
+    (role) =>
+      !field.persisted ||
+      role === SchemaFieldRoles.NONE ||
+      schemaFieldRolesFieldTypes[role] === field.type,
+  );
 
   const fieldTypeSelect = (
     <div className="flex flex-col gap-2">
@@ -59,7 +76,7 @@ export default function ItemTypeFormCustomField<T extends ItemTypeKind>(props: {
         dropdownMatchSelectWidth={false}
         className="w-36"
         value={field.type ?? undefined}
-        disabled={field.role != null}
+        disabled={field.role != null || !editability.canChangeType}
         allowClear
         showSearch
         filterOption={selectFilterByLabelOption}
@@ -94,14 +111,22 @@ export default function ItemTypeFormCustomField<T extends ItemTypeKind>(props: {
       <div className="flex flex-row items-end mb-4">
         <div className="flex flex-col gap-2">
           <div className="font-semibold">Field Name</div>
-          <Input
-            className="rounded-lg w-36"
-            placeholder="Field Name"
-            defaultValue={field.name}
-            onChange={(event) => {
-              updateFieldState(field, { ...field, name: event.target.value });
-            }}
-          />
+          <Tooltip title={immutableFieldTooltip}>
+            <span>
+              <Input
+                className="rounded-lg w-36"
+                placeholder="Field Name"
+                defaultValue={field.name}
+                disabled={!editability.canRename}
+                onChange={(event) => {
+                  updateFieldState(field, {
+                    ...field,
+                    name: event.target.value,
+                  });
+                }}
+              />
+            </span>
+          </Tooltip>
         </div>
         <div className="flex flex-col mx-4 gap-2">
           <div className="font-semibold">Role (Optional)</div>
@@ -118,7 +143,9 @@ export default function ItemTypeFormCustomField<T extends ItemTypeKind>(props: {
                 ? updateFieldState(field, { ...field, role: undefined })
                 : updateFieldState(field, {
                     ...field,
-                    type: schemaFieldRolesFieldTypes[value],
+                    type: editability.canChangeType
+                      ? schemaFieldRolesFieldTypes[value]
+                      : field.type,
                     role: value,
                   })
             }
@@ -142,7 +169,8 @@ export default function ItemTypeFormCustomField<T extends ItemTypeKind>(props: {
               // availableRoles). But that would be a weird experience, so if
               // this field's role is set, then we manually add that role as an
               // option in the dropdown.
-              availableRoles
+              selectableRoles
+                .filter((role) => role !== field.role)
                 .sort((a, b) =>
                   a === SchemaFieldRoles.NONE
                     ? -1
@@ -164,16 +192,21 @@ export default function ItemTypeFormCustomField<T extends ItemTypeKind>(props: {
         </div>
 
         <div className="flex items-center mb-2 mr-2 space-x-2">
-          <Checkbox
-            id={`required-checkbox-${field.index}`}
-            checked={field.required}
-            onCheckedChange={(isChecked) =>
-              updateFieldState(field, {
-                ...field,
-                required: isChecked,
-              })
-            }
-          />
+          <Tooltip title={requiredTooltip}>
+            <span>
+              <Checkbox
+                id={`required-checkbox-${field.index}`}
+                checked={field.required}
+                disabled={!editability.canToggleRequired}
+                onCheckedChange={(isChecked) =>
+                  updateFieldState(field, {
+                    ...field,
+                    required: isChecked,
+                  })
+                }
+              />
+            </span>
+          </Tooltip>
           <Label htmlFor={`required-checkbox-${field.index}`}>Required</Label>
         </div>
 
@@ -190,126 +223,141 @@ export default function ItemTypeFormCustomField<T extends ItemTypeKind>(props: {
           />
           <Label htmlFor={`hidden-checkbox-${field.index}`}>Hidden Field</Label>
         </div>
-        <Button
-          className="self-end ml-2 text-red-500 border-none"
-          icon={<Trash2 className="w-4 h-4" />}
-          aria-label="Delete field"
-          onClick={onClickDelete}
-        />
+        <Tooltip title={immutableFieldTooltip}>
+          <span className="self-end ml-2">
+            <Button
+              className="text-red-500 border-none"
+              icon={<Trash2 className="w-4 h-4" />}
+              onClick={onClickDelete}
+              disabled={!editability.canDelete}
+              aria-label="Delete field"
+            />
+          </span>
+        </Tooltip>
       </div>
       <div className="flex flex-row gap-4">
         {field.role == null ? (
-          fieldTypeSelect
+          <Tooltip title={immutableFieldTooltip}>{fieldTypeSelect}</Tooltip>
         ) : (
           <Tooltip
             title={
-              <div>
-                This field must be of type{' '}
-                <b>{titleCaseEnumString(field.type).replace('Id', 'ID')}</b>{' '}
-                because of its role is set to{' '}
-                <b>{getDisplayStringForRole(field.role, itemTypeKind)}.</b>
-              </div>
+              field.persisted ? (
+                'Saved field types cannot be changed. Only compatible roles can be selected.'
+              ) : (
+                <div>
+                  This field must be of type{' '}
+                  <b>{titleCaseEnumString(field.type).replace('Id', 'ID')}</b>{' '}
+                  because its role is set to{' '}
+                  <b>{getDisplayStringForRole(field.role, itemTypeKind)}.</b>
+                </div>
+              )
             }
           >
             {fieldTypeSelect}
           </Tooltip>
         )}
         {isContainerType(field.type) ? (
-          <div className="flex flex-col gap-2">
-            <div className="font-semibold">
-              {field.type === GQLContainerType.Map
-                ? 'Key Type'
-                : 'Element Type'}
+          <Tooltip title={immutableFieldTooltip}>
+            <div className="flex flex-col gap-2">
+              <div className="font-semibold">
+                {field.type === GQLContainerType.Map
+                  ? 'Key Type'
+                  : 'Element Type'}
+              </div>
+              <Select
+                placeholder={
+                  field.type === GQLContainerType.Map
+                    ? 'Key type'
+                    : 'Element type'
+                }
+                className="w-36"
+                dropdownMatchSelectWidth={false}
+                allowClear
+                showSearch
+                filterOption={selectFilterByLabelOption}
+                disabled={!editability.canChangeType}
+                value={
+                  field.type === GQLContainerType.Map
+                    ? (field.container?.keyScalarType ?? undefined)
+                    : (field.container?.valueScalarType ?? undefined)
+                }
+                onSelect={(value) =>
+                  updateFieldState(field, {
+                    ...field,
+                    container: {
+                      // Safe cast because of the isContainerType check above
+                      containerType: field.type as GQLContainerType,
+                      keyScalarType: field.type === 'ARRAY' ? null : value,
+                      valueScalarType:
+                        field.type === 'ARRAY'
+                          ? value
+                          : field.container
+                            ? field.container.valueScalarType
+                            : GQLScalarType.String,
+                    },
+                  })
+                }
+              >
+                {Object.values(GQLScalarType).map((scalar, i) => (
+                  <Option
+                    key={i}
+                    value={scalar}
+                    label={titleCaseEnumString(scalar).replace('Id', 'ID')}
+                  >
+                    {titleCaseEnumString(scalar).replace('Id', 'ID')}
+                  </Option>
+                ))}
+              </Select>
             </div>
-            <Select
-              placeholder={
-                field.type === GQLContainerType.Map
-                  ? 'Key type'
-                  : 'Element type'
-              }
-              className="w-36"
-              dropdownMatchSelectWidth={false}
-              allowClear
-              showSearch
-              filterOption={selectFilterByLabelOption}
-              value={
-                field.type === GQLContainerType.Map
-                  ? (field.container?.keyScalarType ?? undefined)
-                  : (field.container?.valueScalarType ?? undefined)
-              }
-              onSelect={(value) =>
-                updateFieldState(field, {
-                  ...field,
-                  container: {
-                    // Safe cast because of the isContainerType check above
-                    containerType: field.type as GQLContainerType,
-                    keyScalarType: field.type === 'ARRAY' ? null : value,
-                    valueScalarType:
-                      field.type === 'ARRAY'
-                        ? value
-                        : field.container
-                          ? field.container.valueScalarType
-                          : GQLScalarType.String,
-                  },
-                })
-              }
-            >
-              {Object.values(GQLScalarType).map((scalar, i) => (
-                <Option
-                  key={i}
-                  value={scalar}
-                  label={titleCaseEnumString(scalar).replace('Id', 'ID')}
-                >
-                  {titleCaseEnumString(scalar).replace('Id', 'ID')}
-                </Option>
-              ))}
-            </Select>
-          </div>
+          </Tooltip>
         ) : null}
         {field.type === GQLContainerType.Map ? (
-          <div className="flex flex-col gap-2">
-            <div className="font-semibold">Value Type</div>
-            <Select
-              className="w-36"
-              placeholder="Value type"
-              dropdownMatchSelectWidth={false}
-              allowClear
-              showSearch
-              filterOption={selectFilterByLabelOption}
-              value={
-                field.container?.keyScalarType !== null
-                  ? (field.container?.valueScalarType ?? undefined)
-                  : undefined
-              }
-              onSelect={(value) => {
-                const { container } = field;
-                if (container == null) {
-                  throw Error(
-                    'Should not be able to set the field.container.valueScalarType field if field.container is not set',
-                  );
+          <Tooltip title={immutableFieldTooltip}>
+            <div className="flex flex-col gap-2">
+              <div className="font-semibold">Value Type</div>
+              <Select
+                className="w-36"
+                placeholder="Value type"
+                dropdownMatchSelectWidth={false}
+                allowClear
+                showSearch
+                filterOption={selectFilterByLabelOption}
+                disabled={!editability.canChangeType}
+                value={
+                  field.container?.keyScalarType !== null
+                    ? (field.container?.valueScalarType ?? undefined)
+                    : undefined
                 }
+                onSelect={(value) => {
+                  const { container } = field;
+                  if (container == null) {
+                    throw Error(
+                      'Should not be able to set the field.container.valueScalarType field if field.container is not set',
+                    );
+                  }
 
-                updateFieldState(field, {
-                  ...field,
-                  container: {
-                    containerType: field.type as GQLContainerType,
-                    keyScalarType: container.keyScalarType,
-                    valueScalarType: value,
-                  },
-                });
-              }}
-            >
-              {Object.values(GQLScalarType).map((scalar, i) => (
-                <Option
-                  key={i}
-                  value={scalar}
-                  label={titleCaseEnumString(scalar).replace('Id', 'ID')}
-                >
-                  {titleCaseEnumString(scalar).replace('Id', 'ID')}
-                </Option>
-              ))}
-            </Select>
-          </div>
+                  updateFieldState(field, {
+                    ...field,
+                    container: {
+                      containerType: field.type as GQLContainerType,
+                      keyScalarType: container.keyScalarType,
+                      valueScalarType: value,
+                    },
+                  });
+                }}
+              >
+                {Object.values(GQLScalarType).map((scalar, i) => (
+                  <Option
+                    key={i}
+                    value={scalar}
+                    label={titleCaseEnumString(scalar).replace('Id', 'ID')}
+                  >
+                    {titleCaseEnumString(scalar).replace('Id', 'ID')}
+                  </Option>
+                ))}
+              </Select>
+            </div>
+          </Tooltip>
         ) : null}
       </div>
     </div>
