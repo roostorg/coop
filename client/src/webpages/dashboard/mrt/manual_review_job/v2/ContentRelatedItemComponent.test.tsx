@@ -143,12 +143,6 @@ async function openActionSelect() {
   });
 }
 
-async function openPolicySelect(currentLabel: string) {
-  fireEvent.mouseDown(
-    screen.queryByTitle(currentLabel) ?? screen.getByText(currentLabel),
-  );
-}
-
 describe('summarizeActionParameterValues', () => {
   const parameters = [
     {
@@ -279,7 +273,7 @@ describe('ContentRelatedItemComponent', () => {
     });
   });
 
-  it('does not enqueue an action until a required policy is selected', async () => {
+  it('enqueues a selected action immediately when a policy is required', async () => {
     const onEnqueueAction = vi.fn();
     renderContentItem({
       onEnqueueAction,
@@ -290,27 +284,38 @@ describe('ContentRelatedItemComponent', () => {
     });
     await openActionSelect();
     fireEvent.click(screen.getByText('Hide Content'));
-    expect(onEnqueueAction).not.toHaveBeenCalled();
-    expect(screen.getByText('Select policy')).toBeInTheDocument();
-    expect(screen.queryByText('Select an action')).not.toBeInTheDocument();
-    expect(screen.queryByText('Add another action')).not.toBeInTheDocument();
-    await openPolicySelect('Select policy');
-    await waitFor(() => {
-      expect(screen.getByText('Spam')).toBeInTheDocument();
-    });
-    fireEvent.click(screen.getByText('Spam'));
     expect(onEnqueueAction).toHaveBeenCalledWith({
       action: {
         id: 'hide_content',
         name: 'Hide Content',
         penalty: GQLUserPenaltySeverity.High,
       },
-      policies: [{ id: 'policy_spam', name: 'Spam' }],
+      policies: [],
       target: {
         identifier: { itemId: 'post_1', itemTypeId: contentTypeId },
         displayName: 'Post (post_1)',
       },
     });
+  });
+
+  it('marks a queued action when a required policy is still missing', async () => {
+    renderContentItem({
+      relatedActions: [
+        relatedActionForContentItem({
+          item,
+          displayName: 'Post (post_1)',
+          action: hideContentAction,
+          selectedPolicyIds: [],
+          allPolicies: policies,
+        }),
+      ],
+      requirePolicySelectionToEnqueueAction: true,
+    });
+    await waitFor(() => {
+      expect(screen.getByText('hello world')).toBeInTheDocument();
+    });
+    expect(screen.getByText('Policy required')).toBeInTheDocument();
+    expect(screen.getByText('Add another action')).toBeInTheDocument();
   });
 
   it('re-enqueues a queued action when the reviewer changes its policy', async () => {
@@ -449,7 +454,7 @@ describe('AdditionalReportedContentItems', () => {
               data: { body: 'other post' },
             },
           ]}
-          excludeItemIds={['post_1']}
+          excludeItems={[{ id: 'post_1', typeId: contentTypeId }]}
           unblurAllMedia
           allActions={[hideContentAction]}
           allPolicies={policies}
@@ -470,12 +475,34 @@ describe('AdditionalReportedContentItems', () => {
     expect(screen.queryByText('hello world')).not.toBeInTheDocument();
   });
 
+  it('does not exclude an item whose id matches a different type', async () => {
+    render(
+      <MockedProvider mocks={apolloMocks}>
+        <AdditionalReportedContentItems
+          items={[item]}
+          excludeItems={[{ id: 'post_1', typeId: userTypeId }]}
+          unblurAllMedia
+          allActions={[hideContentAction]}
+          allPolicies={policies}
+          relatedActions={[]}
+          onEnqueueAction={() => {}}
+          isActionable
+          requirePolicySelectionToEnqueueAction={false}
+          allowMoreThanOnePolicySelection={false}
+        />
+      </MockedProvider>,
+    );
+    await waitFor(() => {
+      expect(screen.getByText('hello world')).toBeInTheDocument();
+    });
+  });
+
   it('renders nothing when every item is excluded', () => {
     const { container } = render(
       <MockedProvider mocks={apolloMocks}>
         <AdditionalReportedContentItems
           items={[item]}
-          excludeItemIds={['post_1']}
+          excludeItems={[{ id: 'post_1', typeId: contentTypeId }]}
           unblurAllMedia
           allActions={[hideContentAction]}
           allPolicies={policies}

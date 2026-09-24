@@ -2,7 +2,7 @@ import {
   actionableRelatedActions,
   parseItemCreatedAt,
   relatedActionPublishPayloads,
-  sanitizeRelatedActionParameterPayloads,
+  validateRelatedActionParameterPayloads,
 } from './JobDecisioning.js';
 
 describe('parseItemCreatedAt', () => {
@@ -110,7 +110,7 @@ describe('actionableRelatedActions', () => {
   });
 });
 
-describe('sanitizeRelatedActionParameterPayloads', () => {
+describe('validateRelatedActionParameterPayloads', () => {
   const parameterizedAction = {
     id: 'enqueue_human',
     actionType: 'CUSTOM_ACTION',
@@ -140,7 +140,7 @@ describe('sanitizeRelatedActionParameterPayloads', () => {
 
   test('keeps values that match the action parameter spec', () => {
     expect(
-      sanitizeRelatedActionParameterPayloads(
+      validateRelatedActionParameterPayloads(
         [relatedAction],
         [parameterizedAction],
       ),
@@ -149,7 +149,7 @@ describe('sanitizeRelatedActionParameterPayloads', () => {
 
   test('rejects unknown parameter keys', () => {
     expect(() =>
-      sanitizeRelatedActionParameterPayloads(
+      validateRelatedActionParameterPayloads(
         [
           {
             ...relatedAction,
@@ -165,7 +165,7 @@ describe('sanitizeRelatedActionParameterPayloads', () => {
 
   test('rejects invalid option values', () => {
     expect(() =>
-      sanitizeRelatedActionParameterPayloads(
+      validateRelatedActionParameterPayloads(
         [
           {
             ...relatedAction,
@@ -181,7 +181,7 @@ describe('sanitizeRelatedActionParameterPayloads', () => {
 
   test('drops payloads for missing or non-custom actions', () => {
     expect(
-      sanitizeRelatedActionParameterPayloads(
+      validateRelatedActionParameterPayloads(
         [
           {
             ...relatedAction,
@@ -205,7 +205,7 @@ describe('sanitizeRelatedActionParameterPayloads', () => {
 
   test('drops empty payloads when the action has no parameters', () => {
     expect(
-      sanitizeRelatedActionParameterPayloads(
+      validateRelatedActionParameterPayloads(
         [
           {
             actionIds: ['hide_content'],

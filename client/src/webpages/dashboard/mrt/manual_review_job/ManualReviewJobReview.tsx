@@ -663,6 +663,16 @@ function ManualReviewJobReviewImpl(props: {
       },
     });
 
+  const requiresPolicyForDecisions = Boolean(
+    data?.myOrg?.requiresPolicyForDecisionsInMrt,
+  );
+  const relatedActionsMissingRequiredPolicy =
+    requiresPolicyForDecisions &&
+    selectedRelatedActions.some((it) => it.policies.length === 0);
+  const submitDisabledReason = relatedActionsMissingRequiredPolicy
+    ? 'Select a policy for every additional-item action before submitting'
+    : undefined;
+
   const canBeSubmitted = (() => {
     if (selectedPrimaryActions.length === 0 || submissionLoading) {
       return false;
@@ -683,13 +693,10 @@ function ManualReviewJobReviewImpl(props: {
       return false;
     }
 
-    if (data?.myOrg?.requiresPolicyForDecisionsInMrt) {
+    if (requiresPolicyForDecisions) {
       // First check if there are related actions, and if there are, make sure
       // they include policies
-      if (
-        selectedRelatedActions.length > 0 &&
-        selectedRelatedActions.some((it) => it.policies.length === 0)
-      ) {
+      if (relatedActionsMissingRequiredPolicy) {
         return false;
       }
 
@@ -1747,6 +1754,7 @@ function ManualReviewJobReviewImpl(props: {
                 {decisionReasonSection}
               </div>
               <ManualReviewJobEnqueuedRelatedActions
+                policyRequired={requiresPolicyForDecisions}
                 actionsData={selectedRelatedActions.map((action) => ({
                   // NB: We don't include any iconUrl or otherImageUrls here yet, since we're still
                   // figuring out exactly what we're going to be getting from the
@@ -1831,181 +1839,192 @@ function ManualReviewJobReviewImpl(props: {
               {enqueueGate.modalElement}
             </div>
             <div className="shrink-0 pt-3">
-              <button
-                type="button"
-                disabled={!canBeSubmitted}
-                className={`flex w-full justify-center items-center rounded-md text-sm shadow-none drop-shadow-none p-2 font-semibold ${
-                  canBeSubmitted
-                    ? 'border-none text-white cursor-pointer bg-coop-blue hover:bg-coop-blue-hover focus:bg-coop-blue active:bg-coop-blue'
-                    : 'border border-solid border-gray-200 bg-gray-100 text-gray-300 cursor-not-allowed'
-                }`}
-                onClick={() => {
-                  if (canBeSubmitted) {
-                    const decisionComponents = (() => {
-                      if (
-                        selectedPrimaryActions.some(
-                          (it) =>
-                            'type' in it.action && it.action.type === 'IGNORE',
-                        )
-                      ) {
-                        return [{ ignore: {} }];
-                      } else if (
-                        // if we are processing a user appeal, there should only ever be one decision
-                        // and it should be either accept or reject. this is enforced by `canBeSubmitted`
-                        selectedPrimaryActions.some(
-                          (it) =>
-                            'type' in it.action &&
-                            it.action.type === 'REJECT_APPEAL',
-                        )
-                      ) {
-                        return [
-                          {
-                            rejectAppeal: {
-                              appealId:
-                                'appealId' in job.payload
-                                  ? job.payload.appealId
-                                  : __throw(new Error('Appeal ID not found')),
-                            },
-                          },
-                        ];
-                      } else if (
-                        selectedPrimaryActions.some(
-                          (it) =>
-                            'type' in it.action &&
-                            it.action.type === 'ACCEPT_APPEAL',
-                        )
-                      ) {
-                        return [
-                          {
-                            acceptAppeal: {
-                              appealId:
-                                'appealId' in job.payload
-                                  ? job.payload.appealId
-                                  : __throw(new Error('Appeal ID not found')),
-                            },
-                          },
-                        ];
-                      }
-
-                      const moveToQueue = (() => {
-                        const moveAction = selectedPrimaryActions.find(
-                          (it) =>
-                            'type' in it.action && it.action.type === 'MOVE',
-                        )?.action;
-                        if (
-                          moveAction === undefined ||
-                          !('type' in moveAction) ||
-                          moveAction.type !== 'MOVE' ||
-                          !('newQueueId' in moveAction)
-                        ) {
-                          return undefined;
-                        }
-                        return {
-                          transformJobAndRecreateInQueue: {
-                            newJobKind: 'DEFAULT' as const,
-                            originalQueueId: queueId,
-                            newQueueId: moveAction.newQueueId,
-                            policyIds: selectedPrimaryPolicies.map(
-                              (policy) => policy.id,
-                            ),
-                          },
-                        };
-                      })();
-
-                      return filterNullOrUndefined([
-                        selectedPrimaryActions.some(
-                          (it) => !('type' in it.action),
-                        )
-                          ? {
-                              userAction: {
-                                actionIds: filterNullOrUndefined(
-                                  selectedPrimaryActions.map((action) =>
-                                    !('type' in action.action)
-                                      ? action.action.id
-                                      : undefined,
-                                  ),
-                                ),
-                                itemIds: [payload.item.id],
-                                itemTypeId: payload.item.type.id,
-                                policyIds: selectedPrimaryPolicies.map(
-                                  (policy) => policy.id,
-                                ),
-                                actionIdsToMrtApiParamDecisionPayload: {
-                                  // Only CustomActions have an `id`; including
-                                  // built-ins or MOVE would add an `"undefined"`
-                                  // key.
-                                  ...selectedPrimaryActions
-                                    .filter(
-                                      (
-                                        it,
-                                      ): it is ManualReviewJobEnqueuedPrimaryActionData & {
-                                        action: CustomAction;
-                                      } => !('type' in it.action),
-                                    )
-                                    .reduce(
-                                      (acc, action) => ({
-                                        ...acc,
-                                        [action.action.id]:
-                                          action.customMrtApiParamDecisionPayload,
-                                      }),
-                                      {},
-                                    ),
+              <Tooltip title={submitDisabledReason}>
+                <span className="block w-full">
+                  <button
+                    type="button"
+                    disabled={!canBeSubmitted}
+                    className={`flex w-full justify-center items-center rounded-md text-sm shadow-none drop-shadow-none p-2 font-semibold ${
+                      canBeSubmitted
+                        ? 'border-none text-white cursor-pointer bg-coop-blue hover:bg-coop-blue-hover focus:bg-coop-blue active:bg-coop-blue'
+                        : 'border border-solid border-gray-200 bg-gray-100 text-gray-300 cursor-not-allowed'
+                    }`}
+                    onClick={() => {
+                      if (canBeSubmitted) {
+                        const decisionComponents = (() => {
+                          if (
+                            selectedPrimaryActions.some(
+                              (it) =>
+                                'type' in it.action &&
+                                it.action.type === 'IGNORE',
+                            )
+                          ) {
+                            return [{ ignore: {} }];
+                          } else if (
+                            // if we are processing a user appeal, there should only ever be one decision
+                            // and it should be either accept or reject. this is enforced by `canBeSubmitted`
+                            selectedPrimaryActions.some(
+                              (it) =>
+                                'type' in it.action &&
+                                it.action.type === 'REJECT_APPEAL',
+                            )
+                          ) {
+                            return [
+                              {
+                                rejectAppeal: {
+                                  appealId:
+                                    'appealId' in job.payload
+                                      ? job.payload.appealId
+                                      : __throw(
+                                          new Error('Appeal ID not found'),
+                                        ),
                                 },
                               },
+                            ];
+                          } else if (
+                            selectedPrimaryActions.some(
+                              (it) =>
+                                'type' in it.action &&
+                                it.action.type === 'ACCEPT_APPEAL',
+                            )
+                          ) {
+                            return [
+                              {
+                                acceptAppeal: {
+                                  appealId:
+                                    'appealId' in job.payload
+                                      ? job.payload.appealId
+                                      : __throw(
+                                          new Error('Appeal ID not found'),
+                                        ),
+                                },
+                              },
+                            ];
+                          }
+
+                          const moveToQueue = (() => {
+                            const moveAction = selectedPrimaryActions.find(
+                              (it) =>
+                                'type' in it.action &&
+                                it.action.type === 'MOVE',
+                            )?.action;
+                            if (
+                              moveAction === undefined ||
+                              !('type' in moveAction) ||
+                              moveAction.type !== 'MOVE' ||
+                              !('newQueueId' in moveAction)
+                            ) {
+                              return undefined;
                             }
-                          : undefined,
-                        selectedPrimaryActions.some(
-                          (it) =>
-                            'type' in it.action &&
-                            it.action.type === 'ENQUEUE_TO_NCMEC',
-                        )
-                          ? {
+                            return {
                               transformJobAndRecreateInQueue: {
-                                newJobKind: 'NCMEC' as const,
+                                newJobKind: 'DEFAULT' as const,
+                                originalQueueId: queueId,
+                                newQueueId: moveAction.newQueueId,
                                 policyIds: selectedPrimaryPolicies.map(
                                   (policy) => policy.id,
                                 ),
                               },
-                            }
-                          : undefined,
-                        moveToQueue,
-                      ]);
-                    })();
-                    submitDecision({
-                      variables: {
-                        input: {
-                          reportHistory: reportHistory.map((it) => ({
-                            policyId: it.policyId,
-                            reason: it.reason,
-                            reportId: it.reportId,
-                            reportedAt: it.reportedAt,
-                            reporterId: it.reporterId
+                            };
+                          })();
+
+                          return filterNullOrUndefined([
+                            selectedPrimaryActions.some(
+                              (it) => !('type' in it.action),
+                            )
                               ? {
-                                  id: it.reporterId.id,
-                                  typeId: it.reporterId.typeId,
+                                  userAction: {
+                                    actionIds: filterNullOrUndefined(
+                                      selectedPrimaryActions.map((action) =>
+                                        !('type' in action.action)
+                                          ? action.action.id
+                                          : undefined,
+                                      ),
+                                    ),
+                                    itemIds: [payload.item.id],
+                                    itemTypeId: payload.item.type.id,
+                                    policyIds: selectedPrimaryPolicies.map(
+                                      (policy) => policy.id,
+                                    ),
+                                    actionIdsToMrtApiParamDecisionPayload: {
+                                      // Only CustomActions have an `id`; including
+                                      // built-ins or MOVE would add an `"undefined"`
+                                      // key.
+                                      ...selectedPrimaryActions
+                                        .filter(
+                                          (
+                                            it,
+                                          ): it is ManualReviewJobEnqueuedPrimaryActionData & {
+                                            action: CustomAction;
+                                          } => !('type' in it.action),
+                                        )
+                                        .reduce(
+                                          (acc, action) => ({
+                                            ...acc,
+                                            [action.action.id]:
+                                              action.customMrtApiParamDecisionPayload,
+                                          }),
+                                          {},
+                                        ),
+                                    },
+                                  },
                                 }
                               : undefined,
-                          })),
-                          queueId: queueId!,
-                          jobId: job.id,
-                          lockToken: lockToken!,
-                          reportedItemDecisionComponents: decisionComponents,
-                          relatedItemActions: relatedActionsToSubmitInput(
-                            selectedRelatedActions,
-                          ),
-                          decisionReason,
-                        },
-                      },
-                    });
-                  }
-                }}
-              >
-                {submissionLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin self-start" />
-                ) : (
-                  <div className="text-base">Submit</div>
-                )}
-              </button>
+                            selectedPrimaryActions.some(
+                              (it) =>
+                                'type' in it.action &&
+                                it.action.type === 'ENQUEUE_TO_NCMEC',
+                            )
+                              ? {
+                                  transformJobAndRecreateInQueue: {
+                                    newJobKind: 'NCMEC' as const,
+                                    policyIds: selectedPrimaryPolicies.map(
+                                      (policy) => policy.id,
+                                    ),
+                                  },
+                                }
+                              : undefined,
+                            moveToQueue,
+                          ]);
+                        })();
+                        submitDecision({
+                          variables: {
+                            input: {
+                              reportHistory: reportHistory.map((it) => ({
+                                policyId: it.policyId,
+                                reason: it.reason,
+                                reportId: it.reportId,
+                                reportedAt: it.reportedAt,
+                                reporterId: it.reporterId
+                                  ? {
+                                      id: it.reporterId.id,
+                                      typeId: it.reporterId.typeId,
+                                    }
+                                  : undefined,
+                              })),
+                              queueId: queueId!,
+                              jobId: job.id,
+                              lockToken: lockToken!,
+                              reportedItemDecisionComponents:
+                                decisionComponents,
+                              relatedItemActions: relatedActionsToSubmitInput(
+                                selectedRelatedActions,
+                              ),
+                              decisionReason,
+                            },
+                          },
+                        });
+                      }
+                    }}
+                  >
+                    {submissionLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin self-start" />
+                    ) : (
+                      <div className="text-base">Submit</div>
+                    )}
+                  </button>
+                </span>
+              </Tooltip>
             </div>
           </div>
         ) : null}

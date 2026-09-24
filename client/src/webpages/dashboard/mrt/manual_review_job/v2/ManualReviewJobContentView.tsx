@@ -161,7 +161,7 @@ export default function ManualReviewJobContentView(props: {
       {'additionalContentItems' in payload ? (
         <AdditionalReportedContentItems
           items={payload.additionalContentItems}
-          excludeItemIds={[payload.item.id]}
+          excludeItems={[{ id: payload.item.id, typeId: payload.item.type.id }]}
           unblurAllMedia={unblurAllMedia}
           allActions={allActions}
           allPolicies={allPolicies}
