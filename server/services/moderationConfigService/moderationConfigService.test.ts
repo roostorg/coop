@@ -312,6 +312,15 @@ describe('ModerationConfigService', () => {
               itemTypeId: itemType.id,
             }),
           ).resolves.toEqual([]);
+          await expect(
+            deps.KyselyPg.selectFrom(
+              'manual_review_tool.manual_review_hidden_item_fields',
+            )
+              .select('item_type_id')
+              .where('org_id', '=', org.id)
+              .where('item_type_id', '=', itemType.id)
+              .executeTakeFirst(),
+          ).resolves.toBeUndefined();
         },
       );
     });
@@ -329,11 +338,39 @@ describe('ModerationConfigService', () => {
           deps: container,
           org: fixture.org,
           async cleanup() {
-            await fixture.cleanup();
-            await Promise.all([
-              container.KyselyPg.destroy(),
-              container.KyselyPgReadReplica.destroy(),
-            ]);
+            try {
+              await container.KyselyPg.deleteFrom(
+                'manual_review_tool.manual_review_hidden_item_fields',
+              )
+                .where('org_id', '=', fixture.org.id)
+                .execute();
+              await fixture.cleanup();
+              await expect(
+                container.KyselyPg.selectFrom(
+                  'manual_review_tool.manual_review_hidden_item_fields',
+                )
+                  .select('item_type_id')
+                  .where('org_id', '=', fixture.org.id)
+                  .execute(),
+              ).resolves.toEqual([]);
+              await expect(
+                container.KyselyPg.selectFrom('public.item_types')
+                  .select('id')
+                  .where('org_id', '=', fixture.org.id)
+                  .execute(),
+              ).resolves.toEqual([]);
+              await expect(
+                container.KyselyPg.selectFrom('public.orgs')
+                  .select('id')
+                  .where('id', '=', fixture.org.id)
+                  .executeTakeFirst(),
+              ).resolves.toBeUndefined();
+            } finally {
+              await Promise.all([
+                container.KyselyPg.destroy(),
+                container.KyselyPgReadReplica.destroy(),
+              ]);
+            }
           },
         };
       });
