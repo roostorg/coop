@@ -23,7 +23,7 @@ Reference files: `README.md` (getting started), `server/bin/README.md` (utility 
 
 ## Design
 
-- **API:** REST + GraphQL (Apollo Server); client uses Apollo Client with InMemoryCache; server resolvers live in `server/graphql/resolvers/`.
+- **API:** REST + GraphQL (Apollo Server); client uses Apollo Client with InMemoryCache; server resolvers are aggregated in `server/graphql/resolvers.ts`, with the SDL and per-domain resolvers in `server/graphql/modules/`.
 - **GraphQL authoring:** Inline in resolver files with `/* GraphQL */` comment markers — codegen discovers queries this way. Searching for `gql` or `graphql` alone misses most of it.
 - **GraphQL codegen:** `npm run generate` (from root) regenerates `client/src/graphql/generated.ts` and `server/graphql/generated.ts`. **Never hand-edit** either `generated.ts`. **Never hand-merge** either `generated.ts` during a rebase/merge — pick one side with `git checkout --ours|--theirs <file>`, then run `npm run generate`. Hand-merging produces output that parses but drifts from the schema.
 - **Adding a new built-in `SignalType`:** the type list is hand-mirrored in four files; missing any one ships a signal that's invisible to the dashboard. Update all of:
@@ -34,7 +34,7 @@ Reference files: `README.md` (getting started), `server/bin/README.md` (utility 
 
   After step 3, run `npm run generate` from the repo root to refresh the codegen output.
 
-- **Data model:** Use Knex query builder for Postgres; ClickHouse via raw SQL in `server/clickhouse/`; Scylla via Cassandra driver.
+- **Data model:** Use Knex query builder for Postgres; ClickHouse via raw SQL in `server/storage/dataWarehouse/ClickhouseAdapter.ts`; Scylla via Cassandra driver.
 - **Dependency injection:** Server uses BottleJS DI (wired in `server/iocContainer/`). Register services in `iocContainer`, don't export singletons from service files. Consumers receive dependencies via DI rather than importing directly. Bypassing `iocContainer` will work at runtime but breaks test mocking patterns.
 
 ## Build and run

@@ -268,6 +268,7 @@ export default function ManualReviewJobLatestSubmissionsWithThreadComponent(prop
               baseFields: item.itemTypeFields,
             },
           }}
+          itemId={item.itemId}
           unblurAllMedia={unblurAllMedia}
           title={`${item.itemTypeName}`}
           key={`${item.itemTypeId}:${item.itemId}`}
