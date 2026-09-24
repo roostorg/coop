@@ -171,9 +171,7 @@ describe('sendEmailService', () => {
     it('prints the email and reports successful delivery', async () => {
       const previousNodeEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = 'development';
-      using consoleSpy = vi
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
+      using consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
       try {
         const sendEmail = makeSendEmailViaConsole();
@@ -203,9 +201,7 @@ describe('sendEmailService', () => {
       const previousNodeEnv = process.env.NODE_ENV;
       process.env.EMAIL_TRANSPORT = 'console';
       process.env.NODE_ENV = 'development';
-      using consoleSpy = vi
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
+      using consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
       try {
         const sendEmail = makeSendEmail();

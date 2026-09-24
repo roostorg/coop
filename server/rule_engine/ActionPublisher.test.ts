@@ -1,6 +1,5 @@
 import { vi, type Mock } from 'vitest';
 
- 
 /**
  * Unit tests for ActionPublisher to verify action execution logging behavior.
  *
