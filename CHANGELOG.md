@@ -51,6 +51,10 @@ For more information about each release including git tags and artifacts, see [R
 - Update Node.js to 24.22.1 to remove compromised eMudhra emSign CA certificates ([Node.js advisory](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases), [#1436](https://github.com/roostorg/coop/pull/1436) by [@serendipty01](https://github.com/serendipty01))
 - Store hash-exchange credentials per bank ([#1360](https://github.com/roostorg/coop/pull/1360) by [@juanmrad](https://github.com/juanmrad))
 
+### Changed
+
+- Item type updates reject incompatible field changes ([#1272](https://github.com/roostorg/coop/pull/1272) by [@taobojlen](https://github.com/taobojlen))
+
 ## [1.1.1] - 2026-10-01
 
 ### Security
@@ -74,7 +78,6 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Changed
 
-- Item type updates reject incompatible field changes (by [@taobojlen](https://github.com/taobojlen))
 - Scylla is now optional via `SCYLLA_ENABLED` ([#918](https://github.com/roostorg/coop/pull/918) by [@sunilatlas](https://github.com/sunilatlas), [#1268](https://github.com/roostorg/coop/pull/1268) by [@thisismissem](https://github.com/thisismissem))
 - Settings "Other" tab renamed to "Partial Items" and its settings relocated ([#965](https://github.com/roostorg/coop/pull/965) by [@golden-fox07](https://github.com/golden-fox07))
 - Queue deletion is refused while routing rules still reference the queue ([#808](https://github.com/roostorg/coop/pull/808) by [@reitblatt](https://github.com/reitblatt))
