@@ -231,23 +231,34 @@ describe.each(variants)(
     });
 
     it.each(domainErrors)(
-      'maps %s from create and update mutations to %s',
+      'maps %s from create mutations to %s',
       async (error, pointer) => {
-        for (const [resolver, service, input] of [
-          [createResolver, createService, { name: 'type name', fields }],
-          [updateResolver, updateService, { id: itemTypeId }],
-        ] as const) {
-          const { context, transactionConfig } = makeContext();
-          transactionConfig[service].mockRejectedValueOnce(error);
+        const { context, transactionConfig } = makeContext();
+        transactionConfig[createService].mockRejectedValueOnce(error);
 
-          await expect(callMutation(resolver, input, context)).resolves.toEqual(
-            expect.objectContaining({
-              __typename: error.name,
-              pointer,
-              detail: error.detail,
-            }),
-          );
-        }
+        await expect(
+          callMutation(createResolver, { name: 'type name', fields }, context),
+        ).resolves.toMatchObject({
+          __typename: error.name,
+          pointer,
+          detail: error.detail,
+        });
+      },
+    );
+
+    it.each(domainErrors)(
+      'maps %s from update mutations to %s',
+      async (error, pointer) => {
+        const { context, transactionConfig } = makeContext();
+        transactionConfig[updateService].mockRejectedValueOnce(error);
+
+        await expect(
+          callMutation(updateResolver, { id: itemTypeId }, context),
+        ).resolves.toMatchObject({
+          __typename: error.name,
+          pointer,
+          detail: error.detail,
+        });
       },
     );
   },
