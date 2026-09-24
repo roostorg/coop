@@ -787,6 +787,11 @@ export default class JobDecisioning {
           ? 'multiple'
           : (decisionComponents[0]?.type ?? 'UNKNOWN'),
       automatic: isAutomaticClose,
+      decision_source: !recordAssignedAt
+        ? 'sweep'
+        : isAutomaticClose
+          ? 'automatic_close'
+          : 'direct',
     };
     const recordedAt = new Date();
     this.meter?.recordManualReviewEvent('decision_stored', attributes);

@@ -38,6 +38,7 @@ export class CoopMeter {
    */
   public readonly manualReviewEventsCounter: opentelemetry.Counter;
   public readonly manualReviewDurationHistogram: opentelemetry.Histogram;
+  private nextManualReviewWarningAt = 0;
 
   constructor() {
     const metricNamespace = 'coop-api';
@@ -88,9 +89,14 @@ export class CoopMeter {
      */
     this.manualReviewEventsCounter = myMeter.createCounter(
       `${metricNamespace}.manual_review.events.counter`,
+      { unit: '1', description: 'Manual-review lifecycle operation counts' },
     );
     this.manualReviewDurationHistogram = myMeter.createHistogram(
       `${metricNamespace}.manual_review.duration_ms.histogram`,
+      {
+        unit: 'ms',
+        description: 'Elapsed manual-review time, including idle time',
+      },
     );
   }
 
@@ -98,16 +104,14 @@ export class CoopMeter {
     event: string,
     attributes?: Record<string, string | number | boolean>,
   ) {
-    let outcome = 'submitted';
     try {
       this.manualReviewEventsCounter.add(1, {
-        event,
         ...attributes,
+        event,
       });
     } catch {
-      outcome = 'error';
+      this.logManualReviewTelemetryFailure('counter', event);
     }
-    this.logManualReviewTelemetry('counter', event, outcome);
   }
 
   recordManualReviewDuration(
@@ -127,31 +131,31 @@ export class CoopMeter {
       this.recordManualReviewEvent(`timing_unavailable_${phase}`, attributes);
       return;
     }
-    let outcome = 'submitted';
     try {
       this.manualReviewDurationHistogram.record(value, {
-        phase,
         ...attributes,
+        phase,
       });
     } catch {
-      outcome = 'error';
+      this.logManualReviewTelemetryFailure('histogram', phase);
     }
-    this.logManualReviewTelemetry('histogram', phase, outcome);
   }
 
-  private logManualReviewTelemetry(
-    instrument: string,
+  private logManualReviewTelemetryFailure(
+    instrument: 'counter' | 'histogram',
     operation: string,
-    outcome: string,
   ) {
     try {
+      const now = Date.now();
+      if (now < this.nextManualReviewWarningAt) return;
+      this.nextManualReviewWarningAt = now + 60_000;
       // eslint-disable-next-line no-restricted-syntax -- Meter has no SafeTracer dependency.
       logJson({
         event: 'manual_review.telemetry',
-        level: outcome === 'error' ? 'WARN' : 'INFO',
+        level: 'WARN',
         instrument,
         operation,
-        outcome,
+        outcome: 'error',
       });
     } catch {
       /* Logging must not affect review operations. */

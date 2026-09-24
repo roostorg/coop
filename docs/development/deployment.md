@@ -119,13 +119,21 @@ After the iframe loads, and whenever a reviewer changes their overlay settings, 
 The existing OpenTelemetry meter emits `coop-api.manual_review.events.counter`
 for successful enqueue calls, claims, stored skips/decisions and content-resolution
 outcomes. Attributes are `event`, `queue_id`, plus `item_type_id` when known;
-decisions also include `decision_type` and `automatic`. Enqueue calls include
+decisions also include `decision_type`, `automatic` and `decision_source`.
+`decision_source` is `direct`, `sweep` (including swept automatic closures), or
+`automatic_close` for non-sweep automatic closures. `automatic` remains true only
+for decisions containing `AUTOMATIC_CLOSE`; swept `IGNORE` and `SAME_ACTION`
+decisions remain false. Enqueue calls include
 BullMQ-deduplicated adds and are not unique-job counts.
 
 `coop-api.manual_review.duration_ms.histogram` records `phase=total_to_decision`
 and human `claim_elapsed` using existing timestamps, with queue/item/decision
 attributes. Claim elapsed includes idle time; swept/automatic decisions omit it.
 Missing/invalid timestamps emit `timing_unavailable_<phase>` instead of zero.
+The counter declares unit `1` and the duration histogram declares unit `ms`.
+Caller attributes cannot override `event` or `phase`. Recording failures log a
+payload-free warning at most once per minute per meter instance; successful
+recording does not log and does not acknowledge exporter delivery.
 
 No polling or extra storage reads are added. Continuous backlog/oldest age is not
 collected. Metrics are best-effort, not an audit ledger, completed enforcement or
