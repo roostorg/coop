@@ -1,4 +1,5 @@
 import { type GraphQLResolveInfo } from 'graphql';
+import { vi } from 'vitest';
 
 import {
   makeInvalidPolicyParentError,
@@ -13,7 +14,7 @@ const updatePolicy = resolvers.Mutation.updatePolicy;
 
 describe('updatePolicy resolver', () => {
   it('adapts the authenticated user to a user mutation actor', async () => {
-    const service = { updatePolicy: jest.fn().mockResolvedValue({ id: 'p' }) };
+    const service = { updatePolicy: vi.fn().mockResolvedValue({ id: 'p' }) };
     const context = {
       getUser: () => ({
         id: 'user-id',
@@ -53,7 +54,7 @@ describe('updatePolicy resolver', () => {
       makePolicyHierarchyCycleError({ shouldErrorSpan: false }),
     ],
   ])('maps %s into the GraphQL union', async (name, error) => {
-    const service = { updatePolicy: jest.fn().mockRejectedValue(error) };
+    const service = { updatePolicy: vi.fn().mockRejectedValue(error) };
     const context = {
       getUser: () => ({
         id: 'user-id',
