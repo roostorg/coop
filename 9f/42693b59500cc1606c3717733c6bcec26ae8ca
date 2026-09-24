@@ -1,0 +1,28 @@
+client/src/webpages/dashboard/mrt/manual_review_job/v2/ContentRelatedItemComponent.tsx
+  s_bf176cd2a0f4ea::t_ec2c5596fbd3b3 12,55-61,187,190,214,218,222,232-233,244,253-255,264-268,271-272,274-275,306-310,313-319,328-336,367,370-378,390,392,405,412,444-462
+  s_bf176cd2a0f4ea::t_d02aefa1fc0387 273
+AGENTS.md
+  s_bf176cd2a0f4ea::t_44f1381e57d508 26,37
+client/src/webpages/dashboard/investigation/ItemInvestigationRuleResults.tsx
+  s_bf176cd2a0f4ea::t_5e2a3b1c417d2c 17,106-107,120-121,178-181,220-222,241-248
+client/src/webpages/dashboard/mrt/manual_review_job/v2/user/ManualReviewJobLatestSubmissionsWithThreadComponent.tsx
+  s_bf176cd2a0f4ea::t_e346d3c345ca70 271
+server/test/setupMockedServer.ts
+  s_bf176cd2a0f4ea::t_3cbe31f4d3750d 37,120-137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9f42693b59500cc1606c3717733c6bcec26ae8ca",
+  "prompts": {},
+  "sessions": {
+    "s_bf176cd2a0f4ea": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "9d7682ef-2fb5-476e-819d-ca457fe8e5b9",
+        "model": "grok-4.6"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
