@@ -711,9 +711,7 @@ module.exports = {
       //
       // tsconfig.build.json's `exclude` cannot enforce this by itself:
       // excluding a path only stops it being a compilation *root*, never stops
-      // it being pulled into the program through an import edge. That is
-      // exactly how `test/propertyTestingHelpers.ts` came to be type-checked
-      // as production code and emitted into `transpiled/`.
+      // it being pulled into the program through an import edge.
       //
       // `excludedFiles` mirrors the test patterns in tsconfig.build.json's
       // `exclude`. Keep the two in step.
