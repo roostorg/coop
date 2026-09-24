@@ -1,3 +1,5 @@
+import { vi } from 'vitest';
+
 import { UserPermission } from '../../services/userManagementService/index.js';
 import { resolvers } from './integration.js';
 
@@ -7,9 +9,9 @@ import { resolvers } from './integration.js';
 
 describe('integration resolvers', () => {
   function makeCtx(permissions: readonly UserPermission[]) {
-    const getConfigWithMetadata = jest.fn();
-    const setConfig = jest.fn();
-    const setConfigByIntegrationId = jest.fn();
+    const getConfigWithMetadata = vi.fn();
+    const setConfig = vi.fn();
+    const setConfigByIntegrationId = vi.fn();
     const ctx = {
       getUser: () => ({
         id: 'user-1',

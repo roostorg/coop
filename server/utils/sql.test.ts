@@ -1,4 +1,5 @@
 import { Kysely, PostgresDialect } from 'kysely';
+import { vi } from 'vitest';
 
 import { takeLast } from './sql.js';
 
@@ -11,7 +12,7 @@ function makeCompileOnlyDb<
         options: {},
         async connect() {
           return {
-            query: jest.fn().mockResolvedValue({
+            query: vi.fn().mockResolvedValue({
               rows: [],
               command: 'SELECT',
               rowCount: 0,

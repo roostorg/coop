@@ -9,7 +9,7 @@ import { Language } from '../../../../../../utils/language.js';
 import { __throw } from '../../../../../../utils/misc.js';
 import { type Bind1 } from '../../../../../../utils/typescript-types.js';
 import { type FetchHTTP } from '../../../../../networkingService/index.js';
-import { type CachedGetCredentials } from '../../../../../signalAuthService/signalAuthService.js';
+import { type GetCredentials } from '../../../../../signalAuthService/signalAuthService.js';
 import { Integration } from '../../../../types/Integration.js';
 import { SignalPricingStructure } from '../../../../types/SignalPricingStructure.js';
 import { SignalType } from '../../../../types/SignalType.js';
@@ -38,7 +38,7 @@ export default class OpenAiWhisperTranscriptionSignal extends SignalBase<
   'OPEN_AI_WHISPER_TRANSCRIPTION'
 > {
   constructor(
-    protected readonly getOpenAiCredentials: CachedGetCredentials<'OPEN_AI'>,
+    protected readonly getOpenAiCredentials: GetCredentials<'OPEN_AI'>,
     protected readonly getOpenAiTranscription: FetchOpenAiTranscription,
   ) {
     super();

@@ -1,6 +1,6 @@
 import type { Kysely } from 'kysely';
 
-import { inject } from '../../iocContainer/index.js';
+import { inject } from '../../iocContainer/utils.js';
 import type { SSOServicePg } from './dbTypes.js';
 
 export class SSOService {

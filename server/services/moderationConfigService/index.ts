@@ -52,6 +52,8 @@ export {
   EnqueueToMrtAction,
 } from './types/actions.js';
 
+export { BUILT_IN_ACTIONS } from './modules/ActionOperations.js';
+
 export { Policy, PolicyType } from './types/policies.js';
 
 export { UserPenaltySeverity } from './types/shared.js';
@@ -92,6 +94,7 @@ export {
   type ActionParameterType,
   type RawActionParameterInput,
   parseStoredParameters,
+  serializeParameters,
   validateActionParameters,
 } from './modules/actionParametersValidation.js';
 export {

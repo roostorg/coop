@@ -11,6 +11,11 @@ For more information about each release including git tags and artifacts, see [R
 ### Added
 
 - Optional policy and audit callbacks with bounded deadlines for review and item content responses ([#1270](https://github.com/roostorg/coop/pull/1270) by [@sunilatlas](https://github.com/sunilatlas), closes [#1269](https://github.com/roostorg/coop/issues/1269))
+
+## [1.1.0-alpha] - 2026-09-21
+
+### Added
+- REST configuration reads for policies, actions, and item types ([#1144](https://github.com/roostorg/coop/pull/1144) by [@taobojlen](https://github.com/taobojlen))
 - List parameters used in the action in the item action history view ([#1173](https://github.com/roostorg/coop/pull/1173) by [@maarkN](https://github.com/maarkN), closes [#833](https://github.com/roostorg/coop/issues/833))
 - Manual Review Analytics with average handle time per moderator ([#1022](https://github.com/roostorg/coop/pull/1022) by [@juanmrad](https://github.com/juanmrad), closes [#380](https://github.com/roostorg/coop/issues/380))
 - Support for text-only NCMEC reports ([#866](https://github.com/roostorg/coop/pull/866), [#881](https://github.com/roostorg/coop/pull/881) by [@calebmcquaid](https://github.com/calebmcquaid), closes [#661](https://github.com/roostorg/coop/issues/661))
@@ -316,7 +321,8 @@ We're developing Coop in the open and want to hear from you. Whether you're test
 
 This release was possible because of the efforts of contributors who worked through complex redesign, partners who believed in the vision of open source safety tools, and the broader trust and safety community who provided feedback and guidance. Thank you especially to @juanmrad, @pawiecz, @kbicevski, Sjoerd Simons, @emanueleaina, @dom-notion, @cassidyjames, @vinaysrao1, @wayjaywang, and @julietshen.
 
-[unreleased]: https://github.com/roostorg/coop/compare/1.0.2...HEAD
+[unreleased]: https://github.com/roostorg/coop/compare/1.1.0-alpha...HEAD
+[1.1.0-alpha]: https://github.com/roostorg/coop/compare/1.0.2...1.1.0-alpha
 [1.0.2]: https://github.com/roostorg/coop/compare/1.0.1...1.0.2
 [1.0.1]: https://github.com/roostorg/coop/compare/1.0.0...1.0.1
 [1.0.0]: https://github.com/roostorg/coop/compare/0.1...1.0.0

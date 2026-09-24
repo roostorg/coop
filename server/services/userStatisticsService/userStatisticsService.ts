@@ -6,7 +6,8 @@ import { type ItemIdentifier } from '@roostorg/coop-types';
 import { sql, type Kysely } from 'kysely';
 import { type ReadonlyDeep } from 'type-fest';
 
-import { inject, type Dependencies } from '../../iocContainer/index.js';
+import { type Dependencies } from '../../iocContainer/index.js';
+import { inject } from '../../iocContainer/utils.js';
 import { type PolicyActionPenalties } from '../policyActionPenalties.js';
 import { initialUserScore, type UserScore } from './computeUserScore.js';
 import {

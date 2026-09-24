@@ -106,6 +106,12 @@ jobs:
       - name: Build server
         run: npm --prefix server run build
 
+      - name: Build E2E seed helpers
+        # The production build excludes test/fixtureHelpers, which the
+        # Playwright seeder imports from transpiled/. Compile just the seed
+        # helpers and their imports in the E2E runner, not the full test suite.
+        run: cd server && ./node_modules/.bin/tsc -p tsconfig.e2e.json
+
       - name: Start server and client
         # Redirect output to files so the backgrounded processes don't hold this
         # step's stdout pipe open (which would hang the step).

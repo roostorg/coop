@@ -1,6 +1,6 @@
 import { ScalarTypes } from '@roostorg/coop-types';
 
-import { type CachedGetCredentials } from '../../../../../signalAuthService/signalAuthService.js';
+import { type GetCredentials } from '../../../../../signalAuthService/signalAuthService.js';
 import { Integration } from '../../../../types/Integration.js';
 import { type RecommendedThresholds } from '../../../../types/RecommendedThresholds.js';
 import { SignalPricingStructure } from '../../../../types/SignalPricingStructure.js';
@@ -21,7 +21,7 @@ export default class GoogleContentSafetyImageSignal extends SignalBase<
   }
 > {
   constructor(
-    protected readonly getGoogleContentSafetyCredentials: CachedGetCredentials<'GOOGLE_CONTENT_SAFETY_API'>,
+    protected readonly getGoogleContentSafetyCredentials: GetCredentials<'GOOGLE_CONTENT_SAFETY_API'>,
     protected readonly getGoogleContentSafetyScores: FetchGoogleContentSafetyScores,
   ) {
     super();

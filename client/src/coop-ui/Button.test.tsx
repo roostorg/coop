@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { Mail } from 'lucide-react';
 import React from 'react';
+import { vi } from 'vitest';
 
 import '@testing-library/jest-dom/extend-expect';
 
@@ -56,7 +57,7 @@ describe('Button component', () => {
   });
 
   it('handles click events', () => {
-    const handleClick = jest.fn();
+    const handleClick = vi.fn();
     render(<Button onClick={handleClick}>Click Me</Button>);
     const button = screen.getByRole('button', { name: /click me/i });
     fireEvent.click(button);
