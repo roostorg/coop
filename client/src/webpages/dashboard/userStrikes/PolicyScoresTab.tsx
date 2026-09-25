@@ -36,12 +36,6 @@ export default function PolicyScoresTab() {
     undefined,
   );
   const [updatePolicy] = useGQLUpdatePolicyMutation({
-    onCompleted: async () => {
-      // Because of the cascading policy updates (i.e. parent policies affect
-      // the children), we should refetch the whole policy tree when one is
-      // updated
-      refetchAllPolicies();
-    },
     onError: () => {
       setErrorMessage('Error saving policy. Please try again.');
     },
@@ -137,31 +131,41 @@ export default function PolicyScoresTab() {
       const childPolicyIds = flattenedChildPolicies.map((p) => p.value.id);
 
       const discardChanges = (policyId: string) => {
-        const filteredScores = omit(updatedPolicyScores, [
-          policyId,
-          ...childPolicyIds,
-        ]);
-        setUpdatedPolicyScores({
-          ...filteredScores,
-        });
+        setUpdatedPolicyScores((currentScores) =>
+          omit(currentScores, [policyId, ...childPolicyIds]),
+        );
       };
 
       const savePolicyScores = async (policyId: string) => {
-        // only update this policy and it's child policies, not the whole list
+        // only update this policy and its child policies, not the whole list
         // of policies
-        await Promise.all(
-          [policyId, ...childPolicyIds].map(async (key) => {
-            if (updatedPolicyScores[key]) {
-              return updatePolicy({
-                variables: {
-                  input: {
-                    ...updatedPolicyScores[key],
-                  },
-                },
-              });
-            }
-          }),
+        const policyIds = [policyId, ...childPolicyIds].filter(
+          (key) => updatedPolicyScores[key],
         );
+        if (policyIds.length === 0) {
+          return true;
+        }
+        await Promise.all(
+          policyIds.map((key) =>
+            updatePolicy({
+              variables: {
+                input: {
+                  ...updatedPolicyScores[key],
+                },
+              },
+            }),
+          ),
+        );
+        // Because parent policy updates can cascade to children, refresh the
+        // policy tree before removing the local draft values.
+        try {
+          await refetchAllPolicies();
+        } catch {
+          setErrorMessage('Error refreshing policies. Please try again.');
+          return false;
+        }
+        discardChanges(policyId);
+        return true;
       };
 
       // don't allow editing child policies when this is set to true
@@ -211,7 +215,10 @@ export default function PolicyScoresTab() {
                           className="!fill-none"
                           startIcon={Check}
                           onClick={async () => {
-                            await savePolicyScores(policy.value.id);
+                            const saved = await savePolicyScores(policy.value.id);
+                            if (!saved) {
+                              return;
+                            }
                             if (expandedPolicies.includes(policy.value.name)) {
                               toggleExpanded(policy.value.name);
                             }
@@ -351,7 +358,13 @@ export default function PolicyScoresTab() {
         </div>
       );
     },
-    [editingPolicies, expandedPolicies, updatedPolicyScores, updatePolicy],
+    [
+      editingPolicies,
+      expandedPolicies,
+      refetchAllPolicies,
+      updatedPolicyScores,
+      updatePolicy,
+    ],
   );
   const errorModal = (
     <CoopModal
@@ -510,8 +523,12 @@ function ChildPoliciesTable(props: {
           <div className="mt-1">
             <Switch
               disabled={editingDisabled}
-              onChange={(event) => {
-                const { checked } = event.target as HTMLInputElement;
+              checked={
+                updatedPolicyScores[policy.value.id]
+                  ?.applyUserStrikeCountConfigToChildren ??
+                policy.value.applyUserStrikeCountConfigToChildren
+              }
+              onCheckedChange={(checked) => {
                 setUpdatedPolicyScores({
                   ...updatedPolicyScores,
                   [policy.value.id]: {
