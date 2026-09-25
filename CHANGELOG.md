@@ -11,10 +11,12 @@ For more information about each release including git tags and artifacts, see [R
 ### Added
 
 - Optional policy and audit callbacks with bounded deadlines for review and item content responses ([#1270](https://github.com/roostorg/coop/pull/1270) by [@sunilatlas](https://github.com/sunilatlas), closes [#1269](https://github.com/roostorg/coop/issues/1269))
+- Native OpenTelemetry manual-review counters, decision-source labels and elapsed timings ([#1286](https://github.com/roostorg/coop/pull/1286) by [@sunilatlas](https://github.com/sunilatlas), relates to [#1287](https://github.com/roostorg/coop/issues/1287))
 
 ## [1.1.0-alpha] - 2026-09-21
 
 ### Added
+
 - REST configuration reads for policies, actions, and item types ([#1144](https://github.com/roostorg/coop/pull/1144) by [@taobojlen](https://github.com/taobojlen))
 - List parameters used in the action in the item action history view ([#1173](https://github.com/roostorg/coop/pull/1173) by [@maarkN](https://github.com/maarkN), closes [#833](https://github.com/roostorg/coop/issues/833))
 - Manual Review Analytics with average handle time per moderator ([#1022](https://github.com/roostorg/coop/pull/1022) by [@juanmrad](https://github.com/juanmrad), closes [#380](https://github.com/roostorg/coop/issues/380))

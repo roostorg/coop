@@ -1,5 +1,6 @@
 import { sql, type Kysely } from 'kysely';
 
+import { type Dependencies } from '../../../iocContainer/index.js';
 import { makeNotFoundError } from '../../../utils/errors.js';
 import { isForeignKeyViolationError } from '../../../utils/kysely.js';
 import type { ReadonlyDeep } from '../../../utils/typescript-types.js';
@@ -7,7 +8,10 @@ import { type ManualReviewToolServicePg } from '../dbTypes.js';
 import type { RecentDecisionsFilterInput } from './DecisionAnalytics.js';
 
 export default class SkipOperations {
-  constructor(private readonly pgQuery: Kysely<ManualReviewToolServicePg>) {}
+  constructor(
+    private readonly pgQuery: Kysely<ManualReviewToolServicePg>,
+    private readonly meter?: Dependencies['Meter'],
+  ) {}
 
   async logSkip(opts: {
     orgId: string;
@@ -28,6 +32,10 @@ export default class SkipOperations {
           },
         ])
         .executeTakeFirst();
+
+      this.meter?.recordManualReviewEvent('skip_recorded', {
+        queue_id: queueId,
+      });
     } catch (e) {
       if (isForeignKeyViolationError(e)) {
         throw makeNotFoundError('Job not found', { shouldErrorSpan: true });
