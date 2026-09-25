@@ -40,7 +40,7 @@
             const path_to_root = "../";
             const default_light_theme = "roost";
             const default_dark_theme = "roost";
-            window.path_to_searchindex_js = "../searchindex-f82558af.js";
+            window.path_to_searchindex_js = "../searchindex-19833e51.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-33b43635.js"></script>
@@ -316,6 +316,29 @@
 }
 </code></pre>
 <p><code>blur</code> ranges from <code>0</code> (none) to <code>6</code> (strongest); <code>grayscale</code> and <code>sepia</code> are simple on/off filters. Your proxy’s page should listen for this message and apply the requested effects to the content it’s displaying.</p>
+<h2 id="manual-review-telemetry"><a class="header" href="#manual-review-telemetry">Manual-review telemetry</a></h2>
+<p>The existing OpenTelemetry meter emits <code>coop-api.manual_review.events.counter</code>
+for successful enqueue calls, claims, stored skips/decisions and content-resolution
+outcomes. Attributes are <code>event</code>, <code>queue_id</code>, plus <code>item_type_id</code> when known;
+decisions also include <code>decision_type</code>, <code>automatic</code> and <code>decision_source</code>.
+<code>decision_source</code> is <code>direct</code>, <code>sweep</code> (including swept automatic closures), or
+<code>automatic_close</code> for non-sweep automatic closures. <code>automatic</code> remains true only
+for decisions containing <code>AUTOMATIC_CLOSE</code>; swept <code>IGNORE</code> and <code>SAME_ACTION</code>
+decisions remain false. Enqueue calls include
+BullMQ-deduplicated adds and are not unique-job counts.</p>
+<p><code>coop-api.manual_review.duration_ms.histogram</code> records <code>phase=total_to_decision</code>
+and human <code>claim_elapsed</code> using existing timestamps, with queue/item/decision
+attributes. Claim elapsed includes idle time; swept/automatic decisions omit it.
+Missing/invalid timestamps emit <code>timing_unavailable_&lt;phase&gt;</code> instead of zero.
+The counter declares unit <code>1</code> and the duration histogram declares unit <code>ms</code>.
+Caller attributes cannot override <code>event</code> or <code>phase</code>. Recording failures log a
+payload-free warning at most once per minute per meter instance; successful
+recording does not log and does not acknowledge exporter delivery.</p>
+<p>No polling or extra storage reads are added. Continuous backlog/oldest age is not
+collected. Metrics are best-effort, not an audit ledger, completed enforcement or
+proof of viewing. Exporter failures cannot fail reviews. Configure cardinality
+and privacy in the deployment provider; no reviewer/content IDs, URLs or free-text
+reasons are emitted. Do not average per-host histogram percentiles.</p>
 <h2 id="historical-reference"><a class="header" href="#historical-reference">Historical reference</a></h2>
 <p>For historical reference, AWS infrastructure code (CDK, Helm charts, Pulumi, CDKTF) that was previously used for production deployments is available in the <a href="https://github.com/roostorg/coop/tree/0.1/.devops"><code>0.1</code> tag</a>. That infrastructure code may have drifted from the current application architecture and is no longer maintained, but may serve as a reference for your own deployment.</p>
 <style>
