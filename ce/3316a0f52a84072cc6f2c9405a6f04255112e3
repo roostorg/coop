@@ -1,0 +1,36 @@
+CHANGELOG.md
+  s_60f1d4bc33b442::t_e324b9335fe9a3 19
+  s_60f1d4bc33b442::t_6ca03dab3e748c 14
+docs/development/deployment.md
+  s_60f1d4bc33b442::t_4eb2f4784ed6e1 117-143
+server/iocContainer/index.ts
+  s_60f1d4bc33b442::t_b9755f2aee8ede 1513
+server/services/manualReviewToolService/manualReviewToolService.ts
+  s_60f1d4bc33b442::t_e42cef6e4aaa58 340,348,380,385,1141-1151,1162-1175,1353,1377,1410,1450,1452-1456
+server/services/manualReviewToolService/modules/JobDecisioning.ts
+  s_60f1d4bc33b442::t_afe6a4596c82ba 204,762,781-811
+server/services/manualReviewToolService/modules/QueueOperations.ts
+  s_60f1d4bc33b442::t_9feeed330dfded 173,878-882,930-934
+server/services/manualReviewToolService/modules/SkipOperations.ts
+  s_60f1d4bc33b442::t_7646e27ed937d1 3,11-14,35-38
+server/utils/CoopMeter.ts
+  s_60f1d4bc33b442::t_955770ef856efd 3-4,36-42,86-162
+server/utils/logging.ts
+  s_60f1d4bc33b442::t_04eb3147cbad30 23-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ce3316a0f52a84072cc6f2c9405a6f04255112e3",
+  "prompts": {},
+  "sessions": {
+    "s_60f1d4bc33b442": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "dda7d87d-cf0b-4520-8d65-b6650f872217",
+        "model": "grok-4.6"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
