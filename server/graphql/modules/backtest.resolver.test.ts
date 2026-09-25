@@ -167,7 +167,7 @@ describe('backtest resolvers', () => {
               sampleEndAt: new Date().toISOString(),
             },
           },
-          ctx,
+          ctx as never,
         ),
       ).rejects.toThrow('User not authorized to create backtests.');
 

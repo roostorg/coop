@@ -44,7 +44,7 @@ describe('retroaction resolvers', () => {
               endAt: new Date(),
             },
           },
-          ctx,
+          ctx as never,
         ),
       ).rejects.toThrow('User not authorized to run retroaction.');
 
