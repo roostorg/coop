@@ -1,0 +1,19 @@
+docs/development/content-access.md
+  s_60f1d4bc33b442::t_8e55d7c62885c8 178
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "198ae9706b491280e8ba19ab9a8fac0beac02f91",
+  "prompts": {},
+  "sessions": {
+    "s_60f1d4bc33b442": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "dda7d87d-cf0b-4520-8d65-b6650f872217",
+        "model": "grok-4.6"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
