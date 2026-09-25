@@ -45,3 +45,7 @@ build/
 # NCMEC report XML files (contain sensitive data)
 ncmec-reports/
 .devops/backups/
+
+# poutine supply-chain scan reports (.github/workflows/poutine.yml)
+poutine.sarif
+poutine.txt
