@@ -143,7 +143,12 @@ describe('Content type schemas', () => {
       expect(coerce(url, [])).toBeInstanceOf(Error);
     });
 
-    test.each([42, true, {}, []])('rejects non-string input %p', (value) => {
+    test.each([
+      { name: 'number', value: 42 },
+      { name: 'boolean', value: true },
+      { name: 'object', value: {} },
+      { name: 'array', value: [] },
+    ])('rejects non-string $name input', ({ value }) => {
       expect(coerce(value, [])).toBeInstanceOf(Error);
     });
 

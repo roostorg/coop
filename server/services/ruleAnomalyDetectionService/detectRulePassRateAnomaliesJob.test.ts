@@ -1,3 +1,5 @@
+import { vi, type Mock, type Mocked } from 'vitest';
+
 import {
   type Dependencies,
   type PublicInterface,
@@ -8,7 +10,6 @@ import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import createRule from '../../test/fixtureHelpers/createRule.js';
 import createUser from '../../test/fixtureHelpers/createUser.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
-import { type Mocked } from '../../test/mockHelpers/jestMocks.js';
 import { RuleAlarmStatus } from '../moderationConfigService/index.js';
 import DetectRulePassRateAnomaliesJob from './detectRulePassRateAnomaliesJob.js';
 
@@ -23,17 +24,17 @@ function makeMockKyselyForRules(
   }>,
   orgRows: Array<{ id: string; on_call_alert_email: string | null }>,
 ) {
-  const updateExecute = jest.fn().mockResolvedValue(undefined);
+  const updateExecute = vi.fn().mockResolvedValue(undefined);
   const mockDb = {
-    selectFrom: jest.fn((table: string) => {
+    selectFrom: vi.fn((table: string) => {
       const chain: {
-        select: jest.Mock;
-        where: jest.Mock;
-        execute: jest.Mock;
+        select: Mock;
+        where: Mock;
+        execute: Mock;
       } = {
-        select: jest.fn(),
-        where: jest.fn(),
-        execute: jest.fn(),
+        select: vi.fn(),
+        where: vi.fn(),
+        execute: vi.fn(),
       };
       chain.select.mockReturnValue(chain);
       chain.where.mockReturnValue(chain);
@@ -55,9 +56,9 @@ function makeMockKyselyForRules(
       });
       return chain;
     }),
-    updateTable: jest.fn(() => ({
-      set: jest.fn().mockReturnValue({
-        where: jest.fn().mockReturnValue({
+    updateTable: vi.fn(() => ({
+      set: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({
           execute: updateExecute,
         }),
       }),
@@ -182,13 +183,12 @@ describe('Detect Rule Anomalies', () => {
             return newAlarmStatusByRule;
           };
 
-        const mockNotificationsService = {
-          createNotifications: jest.fn(),
-          getNotificationsForUser: jest.fn(),
-        } as unknown as Mocked<
-          PublicInterface<NotificationsService>,
-          'createNotifications'
-        >;
+        const mockNotificationsService: Mocked<
+          PublicInterface<NotificationsService>
+        > = {
+          createNotifications: vi.fn(),
+          getNotificationsForUser: vi.fn(),
+        };
 
         const mockKysely = makeMockKyselyForRules(mockDummyRules, [
           { id: org.id, on_call_alert_email: null },
@@ -216,7 +216,7 @@ describe('Detect Rule Anomalies', () => {
           mockKysely as unknown as Dependencies['KyselyPg'],
           mockNotificationsService,
           mockGetCurrentPeriodRuleAlarmStatuses,
-          jest.fn<() => Promise<void>>(),
+          vi.fn<() => Promise<void>>(),
         );
         await worker.run();
 

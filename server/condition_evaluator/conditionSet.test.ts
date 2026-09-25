@@ -1,6 +1,7 @@
 import fc from 'fast-check';
 import _ from 'lodash';
 import type { ReadonlyDeep } from 'type-fest';
+import { vi } from 'vitest';
 
 import {
   ConditionCompletionOutcome,
@@ -34,86 +35,89 @@ const { AND, OR, XOR } = ConditionConjunction;
 describe('Condition Evaluation', () => {
   describe('getConditionSetResults', () => {
     test('should run conditions in cost order, skipping unnecessary ones', async () => {
-      const stubRunLeafCondition = jest.fn(
+      const stubRunLeafCondition = vi.fn(
         async (_it: ReadonlyDeep<LeafCondition>) => ({
           outcome: ConditionCompletionOutcome.PASSED,
         }),
       );
 
       await fc.assert(
-        fc
-          .asyncProperty(
-            fc.array(
-              fc.tuple(
-                LeafConditionArbitrary(makeConditionInputArbitrary()),
-                fc.nat(),
-              ),
-              { minLength: 1 },
+        fc.asyncProperty(
+          fc.array(
+            fc.tuple(
+              LeafConditionArbitrary(makeConditionInputArbitrary()),
+              fc.nat(),
             ),
-            async (leafConditionsWithCosts) => {
-              // Take all the generated conditions, and only keep one for each
-              // signal (including for a null signal) so that we can return
-              // sensible/consistent costs across conditions.
-              const leafConditionsAndCostsWithUniqueSignalIds = _.uniqBy(
-                leafConditionsWithCosts,
-                (it) => (it[0].signal ? it[0].signal.id : null),
+            { minLength: 1 },
+          ),
+          async (leafConditionsWithCosts) => {
+            // Take all the generated conditions, and only keep one for each
+            // signal (including for a null signal) so that we can return
+            // sensible/consistent costs across conditions.
+            const leafConditionsAndCostsWithUniqueSignalIds = _.uniqBy(
+              leafConditionsWithCosts,
+              (it) => (it[0].signal ? it[0].signal.id : null),
+            );
+
+            const getSignalCost = (() => {
+              const costsBySignalId = new Map(
+                leafConditionsAndCostsWithUniqueSignalIds
+                  .filter((it) => it[0].signal) // this fn only handles signals that are defined
+                  .map(
+                    ([condition, cost]) =>
+                      [condition.signal!.id, cost] as const,
+                  ),
               );
 
-              const getSignalCost = (() => {
-                const costsBySignalId = new Map(
-                  leafConditionsAndCostsWithUniqueSignalIds
-                    .filter((it) => it[0].signal) // this fn only handles signals that are defined
-                    .map(
-                      ([condition, cost]) =>
-                        [condition.signal!.id, cost] as const,
-                    ),
-                );
+              return async (id: ExternalSignalId) =>
+                costsBySignalId.get(getSignalIdString(id))!;
+            })() satisfies (id: ExternalSignalId) => Promise<number>;
 
-                return async (id: ExternalSignalId) =>
-                  costsBySignalId.get(getSignalIdString(id))!;
-              })() satisfies (id: ExternalSignalId) => Promise<number>;
+            const conditions = leafConditionsAndCostsWithUniqueSignalIds.map(
+              (it) => it[0],
+            ) satisfies LeafCondition[] as NonEmptyArray<LeafCondition>;
 
-              const conditions = leafConditionsAndCostsWithUniqueSignalIds.map(
-                (it) => it[0],
-              ) satisfies LeafCondition[] as NonEmptyArray<LeafCondition>;
+            const lowestConditionCost = Math.min(
+              ...(await Promise.all(
+                conditions.map(async (it) => getCost(it, getSignalCost)),
+              )),
+            );
 
-              const lowestConditionCost = Math.min(
-                ...(await Promise.all(
-                  conditions.map(async (it) => getCost(it, getSignalCost)),
-                )),
-              );
+            await getConditionSetResults(
+              { conditions, conjunction: ConditionConjunction.OR },
+              // Tests only exercise getSignalCost / tracer.getActiveSpan;
+              // a full RuleEvaluationContext / SafeTracer is unnecessary.
+              /* eslint-disable @typescript-eslint/no-explicit-any */
+              { getSignalCost } as any,
+              vi.fn() as any,
+              /* eslint-enable @typescript-eslint/no-explicit-any */
+              stubRunLeafCondition,
+            );
 
-              await getConditionSetResults(
-                { conditions, conjunction: ConditionConjunction.OR },
-                // Tests only exercise getSignalCost / tracer.getActiveSpan;
-                // a full RuleEvaluationContext / SafeTracer is unnecessary.
-                /* eslint-disable @typescript-eslint/no-explicit-any */
-                { getSignalCost } as any,
-                jest.fn() as any,
-                /* eslint-enable @typescript-eslint/no-explicit-any */
-                stubRunLeafCondition,
-              );
+            // We should've only evaluated one condition (the lowest cost one)
+            // because it will pass, and the condition conjuction is OR, so
+            // the remaining ones can be skipped.
+            expect(stubRunLeafCondition).toHaveBeenCalledTimes(1);
 
-              // We should've only evaluated one condition (the lowest cost one)
-              // because it will pass, and the condition conjuction is OR, so
-              // the remaining ones can be skipped.
-              expect(stubRunLeafCondition).toHaveBeenCalledTimes(1);
-
-              // We don't know exactly which condition will have been run,
-              // because multiple conditions could be tied for having the lowest
-              // cost, but we assert that whatever condition was evaluated has
-              // the lowest cost.
-              expect(
-                await getCost(
-                  stubRunLeafCondition.mock.calls[0][0],
-                  getSignalCost,
-                ),
-              ).toEqual(lowestConditionCost);
-            },
-          )
-          .afterEach(() => {
-            stubRunLeafCondition.mockClear();
-          }),
+            // We don't know exactly which condition will have been run,
+            // because multiple conditions could be tied for having the lowest
+            // cost, but we assert that whatever condition was evaluated has
+            // the lowest cost.
+            expect(
+              await getCost(
+                stubRunLeafCondition.mock.calls[0][0],
+                getSignalCost,
+              ),
+            ).toEqual(lowestConditionCost);
+          },
+        ),
+        {
+          plugins: [
+            fc.afterEach(() => {
+              stubRunLeafCondition.mockClear();
+            }),
+          ],
+        },
       );
     });
   });

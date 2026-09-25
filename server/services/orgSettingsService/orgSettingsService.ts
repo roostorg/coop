@@ -2,7 +2,7 @@ import { type Kysely } from 'kysely';
 import { type JsonObject } from 'type-fest';
 import { type ReadonlyObjectDeep } from 'type-fest/source/readonly-deep.js';
 
-import { inject } from '../../iocContainer/index.js';
+import { inject } from '../../iocContainer/utils.js';
 import { cached } from '../../utils/caching.js';
 import { MINUTE_MS } from '../../utils/time.js';
 

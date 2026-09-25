@@ -1,4 +1,5 @@
 import { Kysely } from 'kysely';
+import { vi } from 'vitest';
 
 import {
   makeMockPgDialect,
@@ -18,25 +19,25 @@ describe('UserStatisticsService', () => {
     test.todo('should fetch stats w/ batching and update accordingly');
 
     test('is a no-op without warehouse change streams', async () => {
-      const warehouseMock = jest
+      const warehouseMock = vi
         .fn<WarehouseExecute>()
         .mockImplementation(async (_query) => {
           return { rows: [] };
         });
 
-      const pgReadMock = jest
+      const pgReadMock = vi
         .fn<MockPgExecute>()
         .mockResolvedValue({ rows: [], command: 'SELECT', rowCount: 0 });
 
-      const pgWriteMock = jest
+      const pgWriteMock = vi
         .fn<MockPgExecute>()
         .mockResolvedValue({ rows: [], command: 'SELECT', rowCount: 0 });
 
-      const fetchUserActionStatisticsMock = jest
+      const fetchUserActionStatisticsMock = vi
         .fn<ReturnType<typeof makeFetchUserActionStatistics>>()
         .mockResolvedValue([]);
 
-      const fetchUserSubmissionStatisticsMock = jest
+      const fetchUserSubmissionStatisticsMock = vi
         .fn<ReturnType<typeof makeFetchUserSubmissionStatistics>>()
         .mockResolvedValue([]);
 

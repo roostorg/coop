@@ -1,9 +1,8 @@
-// eslint-disable-next-line import/no-extraneous-dependencies
-import jestSnapshot, { type Context as SnapshotContext } from 'jest-snapshot';
 import { JSONPath } from 'jsonpath-plus';
 import lodash from 'lodash';
+import { Snapshots } from 'vitest';
 
-const { toMatchSnapshot } = jestSnapshot;
+const { toMatchSnapshot } = Snapshots;
 const { set } = lodash;
 
 interface CustomMatchers<R = unknown> {
@@ -24,28 +23,17 @@ interface CustomMatchers<R = unknown> {
   toMatchDynamicSnapshot(propertyMatchers: object, hint?: string): R;
 }
 
-declare global {
-  // eslint-disable-next-line @typescript-eslint/no-namespace
-  namespace jest {
-    // Normally, an empty interface in TS is pointless but, in this case, we're
-    // actually taking advantage of declaration merging (on Expect, Matchers,
-    // and InverseAsymmetricMatchers) to make those interfaces, which are defined
-    // elsewhere extend our CustomMatchers interface.
-    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-    interface Expect extends CustomMatchers {}
-    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-    interface Matchers<R> extends CustomMatchers<R> {}
-    // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-    interface InverseAsymmetricMatchers extends CustomMatchers {}
-  }
+declare module 'vitest' {
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type -- extends Vitest's matcher types
+  interface Matchers<
+    R extends void | Promise<void> = void | Promise<void>,
+  > extends CustomMatchers<R> {}
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type -- extends Vitest's matcher types
+  interface AsymmetricMatchersContaining extends CustomMatchers {}
 }
 
 expect.extend({
-  toMatchDynamicSnapshot(
-    received,
-    propertyMatchers: object,
-    hint?: string,
-  ): jest.CustomMatcherResult | Promise<jest.CustomMatcherResult> {
+  toMatchDynamicSnapshot(received, propertyMatchers: object, hint?: string) {
     // Treat property matcher keys as jsonpath queries
     // if they start with a $ and contain a dot.
     const isJsonPath = (it: string) => it[0] === '$' && it.includes('.');
@@ -68,7 +56,7 @@ expect.extend({
     });
 
     return toMatchSnapshot.call(
-      this as SnapshotContext,
+      this,
       received,
       generatedPropertyMatchers,
       hint,

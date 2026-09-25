@@ -12,7 +12,7 @@ export function selectManualReviewJob<T extends { id: string }>({
 }): T | undefined {
   if (closedJob != null) return closedJob;
   if (dequeuedJob === null) return undefined;
-  if (currentJobId == null) return dequeuedJob ?? undefined;
+  if (currentJobId == null) return dequeuedJob;
   if (queriedJob?.id === currentJobId) return queriedJob;
   if (dequeuedJob?.id === currentJobId) return dequeuedJob;
   return undefined;

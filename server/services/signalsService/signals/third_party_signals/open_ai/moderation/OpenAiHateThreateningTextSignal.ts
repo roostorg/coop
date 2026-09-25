@@ -1,6 +1,6 @@
 import { ScalarTypes } from '@roostorg/coop-types';
 
-import { type CachedGetCredentials } from '../../../../../signalAuthService/signalAuthService.js';
+import { type GetCredentials } from '../../../../../signalAuthService/signalAuthService.js';
 import { SignalType } from '../../../../types/SignalType.js';
 import SignalBase, { type SignalInput } from '../../../SignalBase.js';
 import {
@@ -22,7 +22,7 @@ export default class OpenAiHateThreateningTextSignal extends SignalBase<
   { scalarType: ScalarTypes['NUMBER'] }
 > {
   constructor(
-    protected readonly getOpenAiCredentials: CachedGetCredentials<'OPEN_AI'>,
+    protected readonly getOpenAiCredentials: GetCredentials<'OPEN_AI'>,
     protected readonly getOpenAiScores: FetchOpenAiModerationScores,
   ) {
     super();

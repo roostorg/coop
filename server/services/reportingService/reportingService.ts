@@ -2,7 +2,8 @@ import { type ItemIdentifier } from '@roostorg/coop-types';
 import { type Kysely } from 'kysely';
 import { match } from 'ts-pattern';
 
-import { inject, type Dependencies } from '../../iocContainer/index.js';
+import { type Dependencies } from '../../iocContainer/index.js';
+import { inject } from '../../iocContainer/utils.js';
 import { type ConsumerDirectives } from '../../lib/cache/index.js';
 import {
   type IReportingAnalyticsAdapter,

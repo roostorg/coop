@@ -4,7 +4,7 @@ import { jsonStringify } from '../../../../../utils/encoding.js';
 import { makeSignalPermanentError } from '../../../../../utils/errors.js';
 import { type Bind1 } from '../../../../../utils/typescript-types.js';
 import { type FetchHTTP } from '../../../../networkingService/index.js';
-import { type CachedGetCredentials } from '../../../../signalAuthService/signalAuthService.js';
+import { type GetCredentials } from '../../../../signalAuthService/signalAuthService.js';
 import { type SignalInput } from '../../SignalBase.js';
 
 export interface ZentropiResponse {
@@ -56,7 +56,7 @@ export async function getZentropiScores(
 }
 
 export async function runZentropiLabelerImpl(
-  getZentropiCredentials: CachedGetCredentials<'ZENTROPI'>,
+  getZentropiCredentials: GetCredentials<'ZENTROPI'>,
   input: SignalInput<ScalarTypes['STRING']>,
   fetchScores: FetchZentropiScores,
 ) {

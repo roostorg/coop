@@ -1,4 +1,5 @@
 import { type Kysely } from 'kysely';
+import { vi, type Mock } from 'vitest';
 
 import { makeTestWithFixture } from '../../test/utils.js';
 import { MIN_PASSWORD_LENGTH } from './constants.js';
@@ -7,14 +8,14 @@ import UserManagementService from './userManagementService.js';
 
 // Mock dependencies
 const mockDb = {
-  selectFrom: jest.fn(),
-  insertInto: jest.fn(),
-  updateTable: jest.fn(),
-  deleteFrom: jest.fn(),
-  transaction: jest.fn(),
+  selectFrom: vi.fn(),
+  insertInto: vi.fn(),
+  updateTable: vi.fn(),
+  deleteFrom: vi.fn(),
+  transaction: vi.fn(),
 } as unknown as Kysely<UserManagementPg>;
 
-const mockSendEmail = jest.fn();
+const mockSendEmail = vi.fn();
 
 const mockConfigService = {
   uiUrl: 'http://localhost:3000',
@@ -31,7 +32,7 @@ describe('UserManagementService', () => {
   });
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('#generatePasswordResetTokenForUser', () => {
@@ -44,9 +45,9 @@ describe('UserManagementService', () => {
 
         // Mock user lookup
         const mockSelect = {
-          select: jest.fn().mockReturnThis(),
-          where: jest.fn().mockReturnThis(),
-          executeTakeFirst: jest.fn().mockResolvedValue({
+          select: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          executeTakeFirst: vi.fn().mockResolvedValue({
             email,
             orgId,
           }),
@@ -54,19 +55,19 @@ describe('UserManagementService', () => {
 
         // Mock token insertion
         const mockInsert = {
-          values: jest.fn().mockReturnThis(),
-          execute: jest.fn().mockResolvedValue([]),
+          values: vi.fn().mockReturnThis(),
+          execute: vi.fn().mockResolvedValue([]),
         };
 
         // Mock delete
         const mockDelete = {
-          where: jest.fn().mockReturnThis(),
-          execute: jest.fn().mockResolvedValue([]),
+          where: vi.fn().mockReturnThis(),
+          execute: vi.fn().mockResolvedValue([]),
         };
 
-        (mockDb.selectFrom as jest.Mock).mockReturnValue(mockSelect);
-        (mockDb.insertInto as jest.Mock).mockReturnValue(mockInsert);
-        (mockDb.deleteFrom as jest.Mock).mockReturnValue(mockDelete);
+        (mockDb.selectFrom as Mock).mockReturnValue(mockSelect);
+        (mockDb.insertInto as Mock).mockReturnValue(mockInsert);
+        (mockDb.deleteFrom as Mock).mockReturnValue(mockDelete);
 
         const token = await sut.generatePasswordResetTokenForUser({
           userId,
@@ -101,15 +102,15 @@ describe('UserManagementService', () => {
 
         // Mock user lookup
         const mockSelect = {
-          select: jest.fn().mockReturnThis(),
-          where: jest.fn().mockReturnThis(),
-          executeTakeFirst: jest.fn().mockResolvedValue({
+          select: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          executeTakeFirst: vi.fn().mockResolvedValue({
             email: 'test@example.com',
             orgId: userOrgId,
           }),
         };
 
-        (mockDb.selectFrom as jest.Mock).mockReturnValue(mockSelect);
+        (mockDb.selectFrom as Mock).mockReturnValue(mockSelect);
 
         await expect(
           sut.generatePasswordResetTokenForUser({
@@ -137,12 +138,12 @@ describe('UserManagementService', () => {
 
         // Mock user lookup returning null
         const mockSelect = {
-          select: jest.fn().mockReturnThis(),
-          where: jest.fn().mockReturnThis(),
-          executeTakeFirst: jest.fn().mockResolvedValue(null),
+          select: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          executeTakeFirst: vi.fn().mockResolvedValue(null),
         };
 
-        (mockDb.selectFrom as jest.Mock).mockReturnValue(mockSelect);
+        (mockDb.selectFrom as Mock).mockReturnValue(mockSelect);
 
         await expect(
           sut.generatePasswordResetTokenForUser({
@@ -169,9 +170,9 @@ describe('UserManagementService', () => {
 
         // Mock user lookup
         const mockSelect = {
-          select: jest.fn().mockReturnThis(),
-          where: jest.fn().mockReturnThis(),
-          executeTakeFirst: jest.fn().mockResolvedValue({
+          select: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          executeTakeFirst: vi.fn().mockResolvedValue({
             email,
             orgId,
           }),
@@ -179,22 +180,22 @@ describe('UserManagementService', () => {
 
         // Mock token insertion
         const mockInsert = {
-          values: jest.fn().mockReturnThis(),
-          execute: jest.fn().mockResolvedValue([]),
+          values: vi.fn().mockReturnThis(),
+          execute: vi.fn().mockResolvedValue([]),
         };
 
         // Mock delete
         const mockDelete = {
-          where: jest.fn().mockReturnThis(),
-          execute: jest.fn().mockResolvedValue([]),
+          where: vi.fn().mockReturnThis(),
+          execute: vi.fn().mockResolvedValue([]),
         };
 
         // Mock email sending to fail (but it's caught internally by sendEmail)
         mockSendEmail.mockResolvedValue(undefined); // sendEmail catches errors internally
 
-        (mockDb.selectFrom as jest.Mock).mockReturnValue(mockSelect);
-        (mockDb.insertInto as jest.Mock).mockReturnValue(mockInsert);
-        (mockDb.deleteFrom as jest.Mock).mockReturnValue(mockDelete);
+        (mockDb.selectFrom as Mock).mockReturnValue(mockSelect);
+        (mockDb.insertInto as Mock).mockReturnValue(mockInsert);
+        (mockDb.deleteFrom as Mock).mockReturnValue(mockDelete);
 
         // Should still return token - email service handles its own errors
         const token = await sut.generatePasswordResetTokenForUser({
@@ -216,9 +217,9 @@ describe('UserManagementService', () => {
 
         // Valid, non-expired reset token.
         const mockSelect = {
-          selectAll: jest.fn().mockReturnThis(),
-          where: jest.fn().mockReturnThis(),
-          executeTakeFirst: jest.fn().mockResolvedValue({
+          selectAll: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          executeTakeFirst: vi.fn().mockResolvedValue({
             hashed_token: 'hashed',
             user_id: userId,
             org_id: 'org-456',
@@ -227,22 +228,22 @@ describe('UserManagementService', () => {
         };
 
         const mockUpdate = {
-          set: jest.fn().mockReturnThis(),
-          where: jest.fn().mockReturnThis(),
-          execute: jest.fn().mockResolvedValue([]),
+          set: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          execute: vi.fn().mockResolvedValue([]),
         };
 
         const mockDelete = {
-          where: jest.fn().mockReturnThis(),
-          execute: jest.fn().mockResolvedValue([]),
+          where: vi.fn().mockReturnThis(),
+          execute: vi.fn().mockResolvedValue([]),
         };
 
-        (mockDb.selectFrom as jest.Mock).mockReturnValue(mockSelect);
-        (mockDb.updateTable as jest.Mock).mockReturnValue(mockUpdate);
-        (mockDb.deleteFrom as jest.Mock).mockReturnValue(mockDelete);
+        (mockDb.selectFrom as Mock).mockReturnValue(mockSelect);
+        (mockDb.updateTable as Mock).mockReturnValue(mockUpdate);
+        (mockDb.deleteFrom as Mock).mockReturnValue(mockDelete);
         // Steps 2-4 run inside makeKyselyTransactionWithRetry, which calls
         // `pgQuery.transaction().execute(cb)`. Run the callback against mockDb.
-        (mockDb.transaction as jest.Mock).mockReturnValue({
+        (mockDb.transaction as Mock).mockReturnValue({
           execute: (cb: (trx: typeof mockDb) => unknown) => cb(mockDb),
         });
 
@@ -263,9 +264,9 @@ describe('UserManagementService', () => {
       'rejects a password shorter than the minimum length',
       async ({ sut }) => {
         const mockSelect = {
-          selectAll: jest.fn().mockReturnThis(),
-          where: jest.fn().mockReturnThis(),
-          executeTakeFirst: jest.fn().mockResolvedValue({
+          selectAll: vi.fn().mockReturnThis(),
+          where: vi.fn().mockReturnThis(),
+          executeTakeFirst: vi.fn().mockResolvedValue({
             hashed_token: 'hashed',
             user_id: 'user-123',
             org_id: 'org-456',
@@ -273,7 +274,7 @@ describe('UserManagementService', () => {
           }),
         };
 
-        (mockDb.selectFrom as jest.Mock).mockReturnValue(mockSelect);
+        (mockDb.selectFrom as Mock).mockReturnValue(mockSelect);
 
         const tooShortPassword = 'a'.repeat(MIN_PASSWORD_LENGTH - 1);
 

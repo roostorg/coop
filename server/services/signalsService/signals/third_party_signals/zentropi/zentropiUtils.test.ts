@@ -1,8 +1,9 @@
 import { ScalarTypes } from '@roostorg/coop-types';
+import { vi } from 'vitest';
 
 import { isCoopErrorOfType } from '../../../../../utils/errors.js';
 import { type FetchHTTP } from '../../../../networkingService/index.js';
-import { type CachedGetCredentials } from '../../../../signalAuthService/signalAuthService.js';
+import { type GetCredentials } from '../../../../signalAuthService/signalAuthService.js';
 import { type SignalInput } from '../../SignalBase.js';
 import {
   getZentropiScores,
@@ -28,21 +29,16 @@ function makeInput(
 
 function makeCredentialGetter(
   apiKey: string | null = 'test-api-key',
-): CachedGetCredentials<'ZENTROPI'> {
-  return Object.assign(
-    jest
-      .fn()
-      .mockResolvedValue(
-        apiKey ? { apiKey } : undefined,
-      ) as unknown as CachedGetCredentials<'ZENTROPI'>,
-    { close: jest.fn().mockResolvedValue(undefined) },
-  );
+): GetCredentials<'ZENTROPI'> {
+  return vi
+    .fn<GetCredentials<'ZENTROPI'>>()
+    .mockResolvedValue(apiKey ? { apiKey } : undefined);
 }
 
 describe('zentropiUtils', () => {
   describe('score mapping', () => {
     it('maps label=1, high confidence to high score (violating)', async () => {
-      const fetchScores: FetchZentropiScores = jest.fn().mockResolvedValue({
+      const fetchScores: FetchZentropiScores = vi.fn().mockResolvedValue({
         label: 1,
         confidence: 0.95,
       } satisfies ZentropiResponse);
@@ -57,7 +53,7 @@ describe('zentropiUtils', () => {
     });
 
     it('maps label=0, high confidence to low score (safe)', async () => {
-      const fetchScores: FetchZentropiScores = jest.fn().mockResolvedValue({
+      const fetchScores: FetchZentropiScores = vi.fn().mockResolvedValue({
         label: 0,
         confidence: 0.95,
       } satisfies ZentropiResponse);
@@ -72,7 +68,7 @@ describe('zentropiUtils', () => {
     });
 
     it('maps label=0, low confidence to ~0.4 (uncertain, leaning safe)', async () => {
-      const fetchScores: FetchZentropiScores = jest.fn().mockResolvedValue({
+      const fetchScores: FetchZentropiScores = vi.fn().mockResolvedValue({
         label: 0,
         confidence: 0.6,
       } satisfies ZentropiResponse);
@@ -87,7 +83,7 @@ describe('zentropiUtils', () => {
     });
 
     it('maps label=1, low confidence to 0.6 (uncertain, leaning violating)', async () => {
-      const fetchScores: FetchZentropiScores = jest.fn().mockResolvedValue({
+      const fetchScores: FetchZentropiScores = vi.fn().mockResolvedValue({
         label: 1,
         confidence: 0.6,
       } satisfies ZentropiResponse);
@@ -102,7 +98,7 @@ describe('zentropiUtils', () => {
     });
 
     it('handles label as string "1" (API returns strings)', async () => {
-      const fetchScores: FetchZentropiScores = jest.fn().mockResolvedValue({
+      const fetchScores: FetchZentropiScores = vi.fn().mockResolvedValue({
         label: '1',
         confidence: 0.95,
       } satisfies ZentropiResponse);
@@ -117,7 +113,7 @@ describe('zentropiUtils', () => {
     });
 
     it('handles label as string "0" (API returns strings)', async () => {
-      const fetchScores: FetchZentropiScores = jest.fn().mockResolvedValue({
+      const fetchScores: FetchZentropiScores = vi.fn().mockResolvedValue({
         label: '0',
         confidence: 0.95,
       } satisfies ZentropiResponse);
@@ -132,7 +128,7 @@ describe('zentropiUtils', () => {
     });
 
     it('returns correct outputType', async () => {
-      const fetchScores: FetchZentropiScores = jest.fn().mockResolvedValue({
+      const fetchScores: FetchZentropiScores = vi.fn().mockResolvedValue({
         label: 1,
         confidence: 0.9,
       } satisfies ZentropiResponse);
@@ -149,7 +145,7 @@ describe('zentropiUtils', () => {
 
   describe('error handling', () => {
     it('throws when missing credentials', async () => {
-      const fetchScores: FetchZentropiScores = jest.fn();
+      const fetchScores: FetchZentropiScores = vi.fn();
 
       await expect(
         runZentropiLabelerImpl(
@@ -161,7 +157,7 @@ describe('zentropiUtils', () => {
     });
 
     it('throws when missing subcategory', async () => {
-      const fetchScores: FetchZentropiScores = jest.fn();
+      const fetchScores: FetchZentropiScores = vi.fn();
 
       await expect(
         runZentropiLabelerImpl(
@@ -173,7 +169,7 @@ describe('zentropiUtils', () => {
     });
 
     it('passes labelerVersionId from subcategory to fetcher', async () => {
-      const fetchScores: FetchZentropiScores = jest.fn().mockResolvedValue({
+      const fetchScores: FetchZentropiScores = vi.fn().mockResolvedValue({
         label: 0,
         confidence: 0.9,
       } satisfies ZentropiResponse);
@@ -194,43 +190,37 @@ describe('zentropiUtils', () => {
 
   describe('getZentropiScores', () => {
     it('returns SignalPermanentError for 404', async () => {
-      const mockFetchHTTP = jest.fn().mockResolvedValue({
+      const mockFetchHTTP = vi.fn().mockResolvedValue({
         ok: false,
         status: 404,
       }) as unknown as FetchHTTP;
 
-      try {
-        await getZentropiScores(mockFetchHTTP, {
+      await expect(
+        getZentropiScores(mockFetchHTTP, {
           text: 'test',
           apiKey: 'key',
           labelerVersionId: 'lv_bad',
-        });
-        fail('Expected error to be thrown');
-      } catch (e) {
-        expect(isCoopErrorOfType(e, 'SignalPermanentError')).toBe(true);
-      }
+        }),
+      ).rejects.toSatisfy((e) => isCoopErrorOfType(e, 'SignalPermanentError'));
     });
 
     it('returns SignalPermanentError for 401', async () => {
-      const mockFetchHTTP = jest.fn().mockResolvedValue({
+      const mockFetchHTTP = vi.fn().mockResolvedValue({
         ok: false,
         status: 401,
       }) as unknown as FetchHTTP;
 
-      try {
-        await getZentropiScores(mockFetchHTTP, {
+      await expect(
+        getZentropiScores(mockFetchHTTP, {
           text: 'test',
           apiKey: 'bad-key',
           labelerVersionId: 'lv_123',
-        });
-        fail('Expected error to be thrown');
-      } catch (e) {
-        expect(isCoopErrorOfType(e, 'SignalPermanentError')).toBe(true);
-      }
+        }),
+      ).rejects.toSatisfy((e) => isCoopErrorOfType(e, 'SignalPermanentError'));
     });
 
     it('throws transient error for 5xx', async () => {
-      const mockFetchHTTP = jest.fn().mockResolvedValue({
+      const mockFetchHTTP = vi.fn().mockResolvedValue({
         ok: false,
         status: 500,
       }) as unknown as FetchHTTP;
@@ -244,15 +234,15 @@ describe('zentropiUtils', () => {
       ).rejects.toThrow('Zentropi API error: 500');
 
       // Verify it's NOT a SignalPermanentError
-      try {
-        await getZentropiScores(mockFetchHTTP, {
+      await expect(
+        getZentropiScores(mockFetchHTTP, {
           text: 'test',
           apiKey: 'key',
           labelerVersionId: 'lv_123',
-        });
-      } catch (e) {
-        expect(isCoopErrorOfType(e, 'SignalPermanentError')).toBe(false);
-      }
+        }),
+      ).rejects.not.toSatisfy((e) =>
+        isCoopErrorOfType(e, 'SignalPermanentError'),
+      );
     });
 
     it('returns parsed response on success', async () => {
@@ -262,7 +252,7 @@ describe('zentropiUtils', () => {
         explanation: 'Content violates policy',
       };
 
-      const mockFetchHTTP = jest.fn().mockResolvedValue({
+      const mockFetchHTTP = vi.fn().mockResolvedValue({
         ok: true,
         body: mockResponse,
       }) as unknown as FetchHTTP;

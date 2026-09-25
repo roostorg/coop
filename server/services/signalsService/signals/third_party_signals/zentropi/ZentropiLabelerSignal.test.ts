@@ -1,6 +1,7 @@
 import { ScalarTypes } from '@roostorg/coop-types';
+import { vi } from 'vitest';
 
-import { type CachedGetCredentials } from '../../../../signalAuthService/signalAuthService.js';
+import { type GetCredentials } from '../../../../signalAuthService/signalAuthService.js';
 import { Integration } from '../../../types/Integration.js';
 import { SignalType } from '../../../types/SignalType.js';
 import { type SignalInput } from '../../SignalBase.js';
@@ -14,15 +15,10 @@ type StringSignalInput = SignalInput<ScalarTypes['STRING']>;
 
 function makeCredentialGetter(
   apiKey: string | null = 'test-api-key',
-): CachedGetCredentials<'ZENTROPI'> {
-  return Object.assign(
-    jest
-      .fn()
-      .mockResolvedValue(
-        apiKey ? { apiKey } : undefined,
-      ) as unknown as CachedGetCredentials<'ZENTROPI'>,
-    { close: jest.fn().mockResolvedValue(undefined) },
-  );
+): GetCredentials<'ZENTROPI'> {
+  return vi
+    .fn<GetCredentials<'ZENTROPI'>>()
+    .mockResolvedValue(apiKey ? { apiKey } : undefined);
 }
 
 function makeInput(
@@ -40,7 +36,7 @@ function makeInput(
 
 describe('ZentropiLabelerSignal', () => {
   it('has correct signal metadata', () => {
-    const signal = new ZentropiLabelerSignal(makeCredentialGetter(), jest.fn());
+    const signal = new ZentropiLabelerSignal(makeCredentialGetter(), vi.fn());
 
     expect(signal.id).toEqual({ type: SignalType.ZENTROPI_LABELER });
     expect(signal.displayName).toBe('Zentropi Labeler');
@@ -58,7 +54,7 @@ describe('ZentropiLabelerSignal', () => {
   it('returns disabled info when credentials are missing', async () => {
     const signal = new ZentropiLabelerSignal(
       makeCredentialGetter(null),
-      jest.fn(),
+      vi.fn(),
     );
 
     const info = await signal.getDisabledInfo('org-1');
@@ -69,7 +65,7 @@ describe('ZentropiLabelerSignal', () => {
   it('returns enabled info when credentials are present', async () => {
     const signal = new ZentropiLabelerSignal(
       makeCredentialGetter('key'),
-      jest.fn(),
+      vi.fn(),
     );
 
     const info = await signal.getDisabledInfo('org-1');
@@ -77,7 +73,7 @@ describe('ZentropiLabelerSignal', () => {
   });
 
   it('calls run and returns correct result', async () => {
-    const fetchScores: FetchZentropiScores = jest.fn().mockResolvedValue({
+    const fetchScores: FetchZentropiScores = vi.fn().mockResolvedValue({
       label: 1,
       confidence: 0.88,
     } satisfies ZentropiResponse);

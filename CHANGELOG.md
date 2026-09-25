@@ -8,6 +8,10 @@ For more information about each release including git tags and artifacts, see [R
 
 ## [Unreleased]
 
+### Added
+
+- Native OpenTelemetry manual-review counters, decision-source labels and elapsed timings ([#1286](https://github.com/roostorg/coop/pull/1286) by [@sunilatlas](https://github.com/sunilatlas), relates to [#1287](https://github.com/roostorg/coop/issues/1287))
+
 ### Fixed
 
 - Completed manual reviews no longer reappear when no next job is available; refreshed content stays tied to the active job.

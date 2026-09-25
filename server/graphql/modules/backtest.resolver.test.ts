@@ -1,3 +1,5 @@
+import { vi } from 'vitest';
+
 import {
   UserPermission,
   UserRole,
@@ -129,8 +131,8 @@ describe('Backtest field resolvers', () => {
 describe('backtest resolvers', () => {
   describe('Mutation.createBacktest', () => {
     it('does not call getRuleByIdAndOrg when the user lacks RUN_BACKTEST', async () => {
-      const getRuleByIdAndOrg = jest.fn();
-      const createBacktest = jest.fn();
+      const getRuleByIdAndOrg = vi.fn();
+      const createBacktest = vi.fn();
 
       const ctx = {
         getUser: () => ({
@@ -165,7 +167,7 @@ describe('backtest resolvers', () => {
               sampleEndAt: new Date().toISOString(),
             },
           },
-          ctx as never,
+          ctx,
         ),
       ).rejects.toThrow('User not authorized to create backtests.');
 
