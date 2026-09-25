@@ -1,0 +1,19 @@
+name: Discord Bot
+
+on:
+  issues:
+    types: [opened]
+  pull_request_target:
+    types: [opened, ready_for_review]
+  release:
+    types: [published]
+
+permissions: {}
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: roostorg/discord-bot@9fbb71b7cc6ac2fb638acebcdf1cdfd86500f56e #main
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
