@@ -1,6 +1,10 @@
 import { TooltipProvider } from '@/coop-ui/Tooltip';
-import { fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  createMemoryRouter,
+  MemoryRouter,
+  RouterProvider,
+} from 'react-router-dom';
 
 import '@testing-library/jest-dom/extend-expect';
 
@@ -86,6 +90,12 @@ function getSettingsButton() {
   return screen.queryByRole('button', { name: 'Settings' });
 }
 
+// Non-null variant for the cases where the button is always present (i.e. every
+// test except the "not in the document" one).
+function getSettingsButtonEl() {
+  return screen.getByRole('button', { name: 'Settings' });
+}
+
 describe('Sidebar', () => {
   it('renders main menu items and footer links', () => {
     renderSidebar();
@@ -119,12 +129,116 @@ describe('Sidebar', () => {
 
   it('expands settings sub-items when gear icon is clicked', () => {
     renderSidebar('/dashboard/overview', 'Overview');
-    const settingsButton = getSettingsButton();
+    const settingsButton = getSettingsButtonEl();
     expect(settingsButton).toHaveAttribute('aria-expanded', 'false');
 
-    fireEvent.click(settingsButton!);
+    fireEvent.click(settingsButton);
 
     expect(settingsButton).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('collapses a gear-opened settings submenu when clicking outside the sidebar', () => {
+    renderSidebar('/dashboard/overview', 'Overview');
+    fireEvent.click(getSettingsButtonEl());
+    expect(getSettingsButton()).toHaveAttribute('aria-expanded', 'true');
+
+    fireEvent.pointerDown(document.body);
+
+    expect(getSettingsButton()).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('keeps the submenu open when clicking the gear toggle or a sub-item', () => {
+    renderSidebar('/dashboard/overview', 'Overview');
+    fireEvent.click(getSettingsButtonEl());
+    expect(getSettingsButton()).toHaveAttribute('aria-expanded', 'true');
+
+    fireEvent.pointerDown(getSettingsButtonEl());
+    expect(getSettingsButton()).toHaveAttribute('aria-expanded', 'true');
+
+    fireEvent.pointerDown(screen.getByText('Item Types'));
+    expect(getSettingsButton()).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('collapses the submenu when clicking its own empty padding', () => {
+    renderSidebar('/dashboard/overview', 'Overview');
+    fireEvent.click(getSettingsButtonEl());
+    expect(getSettingsButton()).toHaveAttribute('aria-expanded', 'true');
+
+    // The panel that wraps the sub-item list, but outside the list itself.
+    const panel = screen
+      .getByText('Item Types')
+      .closest('[class*="overflow-hidden"]');
+    if (panel == null) {
+      throw new Error('settings submenu panel not found');
+    }
+    fireEvent.pointerDown(panel);
+
+    expect(getSettingsButton()).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('collapses a gear-opened settings submenu when navigating to another page', async () => {
+    const router = createMemoryRouter(
+      [
+        {
+          path: '*',
+          element: (
+            <Sidebar
+              menuItems={menuItems}
+              settingsMenuItems={settingsMenuItems}
+              selectedMenuItem="Overview"
+              setSelectedMenuItem={vi.fn()}
+              permissions={allPermissions}
+              logout={vi.fn()}
+            />
+          ),
+        },
+      ],
+      { initialEntries: ['/dashboard/overview'] },
+    );
+    render(
+      <TooltipProvider>
+        <RouterProvider router={router} />
+      </TooltipProvider>,
+    );
+
+    // Open via the gear button while on a non-settings route (no settings route
+    // was ever visited).
+    fireEvent.click(getSettingsButtonEl());
+    expect(getSettingsButton()).toHaveAttribute('aria-expanded', 'true');
+
+    await act(async () => {
+      await router.navigate('/dashboard/manual_review');
+    });
+
+    expect(getSettingsButton()).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('collapses settings sub-items after navigating away from Settings', () => {
+    const props = {
+      menuItems,
+      settingsMenuItems,
+      setSelectedMenuItem: vi.fn(),
+      permissions: allPermissions,
+      logout: vi.fn(),
+    };
+    let selectedMenuItem = 'Settings';
+    const tree = () => (
+      <TooltipProvider>
+        <MemoryRouter initialEntries={['/dashboard/settings']}>
+          <Sidebar {...props} selectedMenuItem={selectedMenuItem} />
+        </MemoryRouter>
+      </TooltipProvider>
+    );
+
+    const { rerender } = render(tree());
+    const subItemContainer = screen
+      .getByText('Item Types')
+      .closest('[class*="overflow-hidden"]');
+    expect(subItemContainer).not.toHaveClass('max-h-0');
+
+    selectedMenuItem = 'Overview';
+    rerender(tree());
+    expect(subItemContainer).toHaveClass('max-h-0');
   });
 
   describe('path-based menu selection', () => {
