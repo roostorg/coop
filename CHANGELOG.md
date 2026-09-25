@@ -16,6 +16,10 @@ For more information about each release including git tags and artifacts, see [R
 
 - Review console hides "Enqueue to NCMEC" when NCMEC reporting isn't enabled ([#1470](https://github.com/roostorg/coop/pull/1470) by [@serendipty01](https://github.com/serendipty01))
 
+### Fixed
+
+- API requests answering 401 Invalid API Key instead of 503 when the database is unreachable ([#XXXX](https://github.com/roostorg/coop/pull/XXXX) by [@serendipty01](https://github.com/serendipty01))
+
 ## [1.2.0] - 2026-10-21
 
 ### Added
