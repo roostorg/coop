@@ -53,9 +53,11 @@ A callback exception or timeout blocks the field with the same sanitized
 On timeout, the service aborts that callback's `signal` and rejects even if the
 callback ignores it. Existing one-argument callbacks remain compatible, but
 should propagate the signal and use their own dependency timeouts to stop work.
-Late success cannot grant access. Cancellation cannot undo a committed audit write
-or stop a dependency that ignores it, so a timed-out request can still have an
-audit record. Use the event ID for idempotency, not as proof of content delivery.
+Late success cannot grant access. `record` runs only after `authorize` returns a
+result; an authorize timeout or exception fails closed without an audit event.
+Cancellation cannot undo a committed audit write or stop a dependency that ignores
+it, so a timed-out `record` callback can still have an audit record. Use the event
+ID for idempotency, not as proof of content delivery.
 Missing required deployment configuration must fail startup rather than silently
 omit an extension.
 
