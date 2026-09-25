@@ -1,0 +1,30 @@
+docs/development/content-access.md
+  s_60f1d4bc33b442::t_8d5cd2cf37d5a4 62-66
+server/services/contentAccessService.tracing.test.ts
+  s_60f1d4bc33b442::t_c8911abbfdba84 2
+  s_60f1d4bc33b442::t_9d4b2db7362b3e 44,49,52-65
+  s_60f1d4bc33b442::t_3ccb13fb6c9547 24-27,76,83
+server/graphql/modules/contentAccess.resolver.test.ts
+  s_60f1d4bc33b442::t_e324b9335fe9a3 5
+  s_60f1d4bc33b442::t_e592c56a767ae1 115,122,171,196,223,289,306,316-317,336,346,361,392,418
+server/services/contentAccessService.test.ts
+  s_60f1d4bc33b442::t_1e1c73c278ba8e 30,58,101,103,125,141,143,154,173,186,202,214,229,234,248,264-265
+  s_60f1d4bc33b442::t_64556255ae44f8 104
+  s_60f1d4bc33b442::t_f28fbcb21e5562 1-2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "04f265712db37f4ab6e47bfa8a8488c53c2bb4c5",
+  "prompts": {},
+  "sessions": {
+    "s_60f1d4bc33b442": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "dda7d87d-cf0b-4520-8d65-b6650f872217",
+        "model": "grok-4.6"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
