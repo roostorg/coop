@@ -1,3 +1,5 @@
+import { vi } from 'vitest';
+
 import ContentAccessService, {
   ContentAccessError,
   getRegisteredContentAccessExtension,
@@ -25,7 +27,7 @@ describe('content access extension', () => {
 
   it('awaits a metadata-only audit before completing access', async () => {
     let persist: (() => void) | undefined;
-    const record = jest.fn(
+    const record = vi.fn(
       async (_event: ContentAccessEvent) =>
         new Promise<void>((resolve) => {
           persist = resolve;
@@ -53,7 +55,7 @@ describe('content access extension', () => {
   });
 
   it('records denial and cannot override it through audit success', async () => {
-    const record = jest.fn(async () => {});
+    const record = vi.fn(async () => {});
     await expect(
       new ContentAccessService({
         authorize: async () => false,
@@ -96,10 +98,10 @@ describe('content access extension', () => {
   });
 
   describe('callback deadlines', () => {
-    beforeEach(() => jest.useFakeTimers());
+    beforeEach(() => vi.useFakeTimers());
     afterEach(() => {
-      jest.useRealTimers();
-      jest.restoreAllMocks();
+      vi.restoreAllMocks();
+      vi.useRealTimers();
     });
 
     it.each([0, -1, 1.5, NaN, Infinity, 2_147_483_648])(
@@ -120,7 +122,7 @@ describe('content access extension', () => {
       'bounds a never-settling %s callback (timeout=%s)',
       async (stage, timeoutMs) => {
         let signal: AbortSignal | undefined;
-        const record = jest.fn(async () => {});
+        const record = vi.fn(async () => {});
         const service = new ContentAccessService({
           timeoutMs,
           record,
@@ -136,9 +138,9 @@ describe('content access extension', () => {
           new ContentAccessError('unavailable'),
         );
         expect(signal).toBeInstanceOf(AbortSignal);
-        jest.advanceTimersByTime((timeoutMs ?? 5_000) - 1);
+        vi.advanceTimersByTime((timeoutMs ?? 5_000) - 1);
         expect(signal?.aborted).toBe(false);
-        jest.advanceTimersByTime(1);
+        vi.advanceTimersByTime(1);
         await rejected;
         expect(signal?.aborted).toBe(true);
         expect(signal?.reason).toEqual(new ContentAccessError('unavailable'));
@@ -149,7 +151,7 @@ describe('content access extension', () => {
     it.each(['resolve', 'reject'] as const)(
       'fails closed if an abort listener tries to %s authorization',
       async (onAbort) => {
-        const record = jest.fn(async () => {});
+        const record = vi.fn(async () => {});
         const service = new ContentAccessService({
           timeoutMs: 25,
           authorize: async (_, signal) =>
@@ -168,7 +170,7 @@ describe('content access extension', () => {
         const rejected = expect(service.beforeAccess(request)).rejects.toEqual(
           new ContentAccessError('unavailable'),
         );
-        jest.advanceTimersByTime(25);
+        vi.advanceTimersByTime(25);
         await rejected;
         expect(record).not.toHaveBeenCalled();
       },
@@ -181,7 +183,7 @@ describe('content access extension', () => {
         const pending = new Promise<void>((resolve) => {
           complete = resolve;
         });
-        const record = jest.fn(async () => {});
+        const record = vi.fn(async () => {});
         const service = new ContentAccessService({
           timeoutMs: 25,
           authorize:
@@ -197,7 +199,7 @@ describe('content access extension', () => {
         const rejected = expect(access).rejects.toEqual(
           new ContentAccessError('unavailable'),
         );
-        jest.advanceTimersByTime(25);
+        vi.advanceTimersByTime(25);
         await rejected;
         complete?.();
         await expect(access).rejects.toEqual(
@@ -209,7 +211,7 @@ describe('content access extension', () => {
 
     it('uses separate signals and clears timers after callbacks complete', async () => {
       let signals: AbortSignal[] = [];
-      const clear = jest.spyOn(globalThis, 'clearTimeout');
+      const clear = vi.spyOn(globalThis, 'clearTimeout');
       const service = new ContentAccessService({
         timeoutMs: 25,
         authorize: async (_, signal) => {
@@ -224,12 +226,12 @@ describe('content access extension', () => {
       expect(signals).toHaveLength(2);
       expect(signals[0]).not.toBe(signals[1]);
       expect(clear).toHaveBeenCalledTimes(2);
-      jest.advanceTimersByTime(25);
+      vi.advanceTimersByTime(25);
       expect(signals.every((signal) => !signal.aborted)).toBe(true);
     });
 
     it('clears timers after a synchronous callback failure', async () => {
-      const clear = jest.spyOn(globalThis, 'clearTimeout');
+      const clear = vi.spyOn(globalThis, 'clearTimeout');
       const service = new ContentAccessService({
         authorize: () => {
           throw new Error('private exception');
@@ -243,7 +245,7 @@ describe('content access extension', () => {
   });
 
   it('does not emit an authorized audit after a policy exception', async () => {
-    const record = jest.fn(async () => {});
+    const record = vi.fn(async () => {});
     const service = new ContentAccessService({
       authorize: async () => {
         throw new Error('unavailable');
@@ -259,8 +261,8 @@ describe('content access extension', () => {
   it('uses registered callbacks through the container factory and restores prior state', async () => {
     const before = getRegisteredContentAccessExtension();
     const extension = {
-      authorize: jest.fn(async () => false),
-      record: jest.fn(async () => {}),
+      authorize: vi.fn(async () => false),
+      record: vi.fn(async () => {}),
     };
     const unregister = registerContentAccessExtension(extension);
     try {

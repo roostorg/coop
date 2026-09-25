@@ -2,6 +2,7 @@ import { ApolloServer } from '@apollo/server';
 import { makeExecutableSchema } from '@graphql-tools/schema';
 import { MapperKind, mapSchema } from '@graphql-tools/utils';
 import { GraphQLScalarType } from 'graphql';
+import { vi } from 'vitest';
 
 import ContentAccessService, {
   type ContentAccessEvent,
@@ -111,14 +112,14 @@ function makeContext(
   authenticated = true,
 ) {
   return {
-    getUser: jest.fn(() =>
+    getUser: vi.fn(() =>
       authenticated
         ? { id: 'reviewer', orgId: 'org', role: 'ADMIN' }
         : undefined,
     ),
     services: {
       ContentAccessService: new ContentAccessService(extension),
-      getItemTypeEventuallyConsistent: jest.fn(async () => item.type),
+      getItemTypeEventuallyConsistent: vi.fn(async () => item.type),
     },
   };
 }
@@ -167,7 +168,7 @@ describe('content access with production GraphQL types and Apollo formatter', ()
   it.each(['active', 'preview', 'history', 'appeal'])(
     'denies %s payloads even for an administrator',
     async (field) => {
-      const record = jest.fn(async (_event: ContentAccessEvent) => {});
+      const record = vi.fn(async (_event: ContentAccessEvent) => {});
       const result = await execute(
         `{ ${field} { id ${selectPayload} } }`,
         makeContext({ authorize: async () => false, record }),
@@ -192,7 +193,7 @@ describe('content access with production GraphQL types and Apollo formatter', ()
   it.each(['item', 'userItem', 'threadItem', 'selectorItem'])(
     'denies and audits %s data',
     async (field) => {
-      const record = jest.fn(async (_event: ContentAccessEvent) => {});
+      const record = vi.fn(async (_event: ContentAccessEvent) => {});
       const result = await execute(
         `{ ${field} { data } }`,
         makeContext({ authorize: async () => false, record }),
@@ -219,7 +220,7 @@ describe('content access with production GraphQL types and Apollo formatter', ()
     ['comment', 'commentText', 'review_comment'],
     ['decision', 'decisionReason', 'review_decision'],
   ])('denies and audits %s text', async (field, text, resourceType) => {
-    const record = jest.fn(async (_event: ContentAccessEvent) => {});
+    const record = vi.fn(async (_event: ContentAccessEvent) => {});
     const result = await execute(
       `{ ${field} { ${text} } }`,
       makeContext({ authorize: async () => false, record }),
@@ -285,7 +286,7 @@ describe('content access with production GraphQL types and Apollo formatter', ()
   });
 
   it('hydrates selectors and records exact versions when enabled', async () => {
-    const record = jest.fn(async (_event: ContentAccessEvent) => {});
+    const record = vi.fn(async (_event: ContentAccessEvent) => {});
     const context = makeContext({ record });
     const result = await execute(
       '{ selectorItem { data } oldItem { data } }',
@@ -302,7 +303,7 @@ describe('content access with production GraphQL types and Apollo formatter', ()
   });
 
   it('does not require content access for job identifiers or absent reasons', async () => {
-    const authorize = jest.fn(async () => false);
+    const authorize = vi.fn(async () => false);
     const result = await execute(
       '{ active { id } noReason { decisionReason } }',
       makeContext({ authorize }),
@@ -312,8 +313,8 @@ describe('content access with production GraphQL types and Apollo formatter', ()
   });
 
   it('coalesces aliases within a context, not across requests', async () => {
-    const authorize = jest.fn(async () => true);
-    const record = jest.fn(async (_event: ContentAccessEvent) => {});
+    const authorize = vi.fn(async () => true);
+    const record = vi.fn(async (_event: ContentAccessEvent) => {});
     const extension = { authorize, record };
     const source = `{ a: active { ${selectPayload} } b: history { ${selectPayload} } }`;
     expect(
@@ -332,7 +333,7 @@ describe('content access with production GraphQL types and Apollo formatter', ()
   });
 
   it('rejects unauthenticated field access before callbacks when enabled', async () => {
-    const record = jest.fn(async () => {});
+    const record = vi.fn(async () => {});
     const result = await execute(
       `{ active { ${selectPayload} } }`,
       makeContext({ record }, false),
@@ -342,7 +343,7 @@ describe('content access with production GraphQL types and Apollo formatter', ()
   });
 
   it('rejects cross-organization jobs and items before callbacks', async () => {
-    const record = jest.fn(async () => {});
+    const record = vi.fn(async () => {});
     const result = await execute(
       `{ foreignJob { ${selectPayload} } foreignItem { data } }`,
       makeContext({ record }),
@@ -357,7 +358,7 @@ describe('content access with production GraphQL types and Apollo formatter', ()
   it.each(['authorize', 'record'] as const)(
     'returns a safe client error when %s fails',
     async (stage) => {
-      const callback = jest.fn(async () => {
+      const callback = vi.fn(async () => {
         throw new Error('secret media URL');
       });
       const result = await execute(
@@ -388,7 +389,7 @@ describe('content access with production GraphQL types and Apollo formatter', ()
     'returns a safe client error when %s never settles',
     async (stage) => {
       let signal: AbortSignal | undefined;
-      const callback = jest.fn(async (_, callbackSignal: AbortSignal) => {
+      const callback = vi.fn(async (_, callbackSignal: AbortSignal) => {
         signal = callbackSignal;
         return new Promise<never>(() => {});
       });
@@ -414,7 +415,7 @@ describe('content access with production GraphQL types and Apollo formatter', ()
   );
 
   it('still sanitizes unrelated unexpected errors through the production formatter', async () => {
-    const log = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
     try {
       const result = await execute('{ unexpectedFailure }');
       expect(result.errors?.[0].message).toBe(

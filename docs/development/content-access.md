@@ -59,8 +59,11 @@ audit record. Use the event ID for idempotency, not as proof of content delivery
 Missing required deployment configuration must fail startup rather than silently
 omit an extension.
 
-For example, use configured service URLs (never URLs from submitted content),
-service credentials and dependency limits shorter than the outer deadline:
+For example, use configured service URLs (never URLs from submitted content)
+over HTTPS or equivalent authenticated encrypted transport, with service
+credentials and dependency limits shorter than the outer deadline. Use plain
+HTTP only for a same-host loopback or explicitly isolated channel that is not
+remotely reachable by an untrusted network participant:
 
 ```ts
 registerContentAccessExtension({
