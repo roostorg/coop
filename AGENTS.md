@@ -87,9 +87,11 @@ Client: http://localhost:3000 · Server: http://localhost:8080
 
 Both packages use Vitest. Server tests need the local backing services and migrations; client tests run in-process with jsdom.
 
+Always pass `--build` to `docker compose run`. Compose only builds when no image exists yet, so without it your code changes are not in the container and the run silently reports on a stale image.
+
 ```bash
 # Run all tests (via docker compose)
-docker compose run --rm test
+docker compose run --rm --build test
 
 # Server unit tests (backing services must already be running)
 (cd server && npm test)
@@ -116,11 +118,11 @@ CI runs entirely via GitHub Actions (`.github/workflows/apply_pr_checks.yaml`). 
 ```bash
 npm ci && npm run prettier
 npm ci && npm run generate && test -z "$(git status --porcelain)"
-docker compose run --rm backend npm run lint
-docker compose run --rm backend npm run build
-docker compose run --rm client npm run lint
-docker compose run --rm client npm run build
-docker compose run --rm test
+docker compose run --rm --build backend npm run lint
+docker compose run --rm --build backend npm run build
+docker compose run --rm --build client npm run lint
+docker compose run --rm --build client npm run build
+docker compose run --rm --build test
 ```
 
 Individual checks:
@@ -129,11 +131,11 @@ Individual checks:
 | ---------------------------------------- | ------------------------------------------------------------------- |
 | `check_formatting`                       | `npm ci && npm run prettier`                                        |
 | `check_generated_graphql`                | `npm ci && npm run generate && test -z "$(git status --porcelain)"` |
-| `check_api_server` (lint)                | `docker compose run --rm backend npm run lint`                      |
-| `check_api_server` (build)               | `docker compose run --rm backend npm run build`                     |
-| `run_frontend_checks_if_changed` (lint)  | `docker compose run --rm client npm run lint`                       |
-| `run_frontend_checks_if_changed` (build) | `docker compose run --rm client npm run build`                      |
-| `check_api_server` (test)                | `docker compose run --rm test`                                      |
+| `check_api_server` (lint)                | `docker compose run --rm --build backend npm run lint`              |
+| `check_api_server` (build)               | `docker compose run --rm --build backend npm run build`             |
+| `run_frontend_checks_if_changed` (lint)  | `docker compose run --rm --build client npm run lint`               |
+| `run_frontend_checks_if_changed` (build) | `docker compose run --rm --build client npm run build`              |
+| `check_api_server` (test)                | `docker compose run --rm --build test`                              |
 
 Tear down:
 
@@ -205,7 +207,7 @@ Two things differ from a local dev setup:
 
 ## ROOST guiding principles
 
-- **Commands over prose.** Prefer `docker compose run --rm test` over descriptive paragraphs.
+- **Commands over prose.** Prefer `docker compose run --rm --build test` over descriptive paragraphs.
 - **Same review bar.** PRs authored with agent assistance are held to the same standards as any other PR.
 - **Boundaries with alternatives.** When stating a restriction, provide the alternative path (e.g. don't edit `generated.ts` — regenerate via `npm run generate`).
 - **Iterate over time.** Start minimal. When you give an agent the same instruction twice, add it to this file.
