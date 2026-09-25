@@ -14,7 +14,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Fixed
 
-- Completed manual reviews no longer reappear when no next job is available; refreshed content stays tied to the active job.
+- Completed manual reviews no longer reappear when no next job is available; refreshed content stays tied to the active job ([#1302](https://github.com/roostorg/coop/pull/1302) by [@sunilatlas](https://github.com/sunilatlas)).
 
 ## [1.1.0-alpha] - 2026-09-21
 
