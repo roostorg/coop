@@ -137,25 +137,35 @@ export default function PolicyScoresTab() {
       };
 
       const savePolicyScores = async (policyId: string) => {
-        // only update this policy and it's child policies, not the whole list
+        // only update this policy and its child policies, not the whole list
         // of policies
+        const policyIds = [policyId, ...childPolicyIds].filter(
+          (key) => updatedPolicyScores[key],
+        );
+        if (policyIds.length === 0) {
+          return true;
+        }
         await Promise.all(
-          [policyId, ...childPolicyIds].map(async (key) => {
-            if (updatedPolicyScores[key]) {
-              return updatePolicy({
-                variables: {
-                  input: {
-                    ...updatedPolicyScores[key],
-                  },
+          policyIds.map((key) =>
+            updatePolicy({
+              variables: {
+                input: {
+                  ...updatedPolicyScores[key],
                 },
-              });
-            }
-          }),
+              },
+            }),
+          ),
         );
         // Because parent policy updates can cascade to children, refresh the
         // policy tree before removing the local draft values.
-        await refetchAllPolicies();
+        try {
+          await refetchAllPolicies();
+        } catch {
+          setErrorMessage('Error refreshing policies. Please try again.');
+          return false;
+        }
         discardChanges(policyId);
+        return true;
       };
 
       // don't allow editing child policies when this is set to true
@@ -205,7 +215,10 @@ export default function PolicyScoresTab() {
                           className="!fill-none"
                           startIcon={Check}
                           onClick={async () => {
-                            await savePolicyScores(policy.value.id);
+                            const saved = await savePolicyScores(policy.value.id);
+                            if (!saved) {
+                              return;
+                            }
                             if (expandedPolicies.includes(policy.value.name)) {
                               toggleExpanded(policy.value.name);
                             }
