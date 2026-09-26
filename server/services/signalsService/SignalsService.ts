@@ -184,10 +184,10 @@ export class SignalsService {
     externalOnly?: boolean;
     directives?: ConsumerDirectives;
   }): Promise<Signal[]> {
-    const { orgId, externalOnly = true } = opts;
+    const { externalOnly = true } = opts;
 
     const allSignals = Object.values(this.signalsByType).filter((signal) =>
-      isSignalEnabledForOrg(signal.id, orgId),
+      isSignalEnabled(signal.id),
     );
 
     const finalSignals = externalOnly
@@ -385,13 +385,14 @@ function makeSignalNotFoundError(it: SignalReference) {
   });
 }
 
-function isSignalEnabledForOrg(signalId: SignalId, orgId: string) {
+/**
+ * AGGREGATION was never rolled out beyond two internal test orgs, so it stays
+ * opt-in via ENABLE_AGGREGATION_SIGNAL until a maintainer decides to launch it
+ * for everyone. Every other signal type is always enabled.
+ */
+export function isSignalEnabled(signalId: SignalId) {
   if (signalId.type === 'AGGREGATION') {
-    return [
-      'e7c89ce7729' /* Local Test Example */,
-      '53d45130ba1' /* Prod ML Test */,
-    ].includes(orgId);
+    return process.env.ENABLE_AGGREGATION_SIGNAL === 'true';
   }
-
   return true;
 }
