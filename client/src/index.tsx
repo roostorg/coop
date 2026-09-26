@@ -81,6 +81,13 @@ const client = new ApolloClient({
           return `${object.contentId}.${object.ruleId}.${object.ts}`;
         },
       },
+      ReportingRule: {
+        fields: {
+          insights: {
+            merge: true,
+          },
+        },
+      },
       LeafConditionWithResultSignal: {
         keyFields: (object: Readonly<StoreObject>, _: KeyFieldsContext) =>
           stringify(object),
