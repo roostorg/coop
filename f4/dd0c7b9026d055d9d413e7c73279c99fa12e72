@@ -1,0 +1,28 @@
+.github/workflows/apply_pr_checks.yaml
+  s_c39daae3705902::t_18045c664eb72d 218-221
+  s_c39daae3705902::t_1c712838d04cf7 222
+docs/development/local.md
+  s_c39daae3705902::t_221eb5cf661ca8 236
+  s_c39daae3705902::t_a5721cbc289102 224
+AGENTS.md
+  s_c39daae3705902::t_6cbfa1f6ae3ae5 135
+  s_c39daae3705902::t_8f7bdfd1173d26 121
+server/package.json
+  s_c39daae3705902::t_25ac0f1b7d82bb 15-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f4dd0c7b9026d055d9d413e7c73279c99fa12e72",
+  "prompts": {},
+  "sessions": {
+    "s_c39daae3705902": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "70d379d5-c769-4221-a4d3-dffc884c934e",
+        "model": "auto-smart"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
