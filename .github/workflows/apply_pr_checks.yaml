@@ -212,11 +212,13 @@ jobs:
       - name: Lint
         run: docker compose run --rm --quiet-pull backend npm run lint
 
-      - name: Typecheck server
-        run: docker compose run --rm --quiet-pull backend npm run typecheck
-
       - name: Build server
         run: docker compose run --rm --quiet-pull backend npm run build
+
+      # Build typechecks tsconfig.build.json. This pass uses the default
+      # tsconfig, which includes tests — the same program `npm start` compiles.
+      - name: Typecheck server tests
+        run: docker compose run --rm --quiet-pull backend npm run typecheck:with-tests
 
       - name: Migrate CI DBs and Test
         run: |
