@@ -337,6 +337,7 @@ export class ManualReviewToolService {
       userItemTypeId: string;
     }) => Promise<boolean>,
     private readonly resolveManualReviewContent: ManualReviewContentResolver,
+    private readonly meter?: Dependencies['Meter'],
   ) {
     this.queueOps = new QueueOperations(
       pgQuery,
@@ -344,6 +345,7 @@ export class ManualReviewToolService {
       moderationConfigService,
       redis,
       tracer,
+      meter,
     );
     this.jobEnrichment = new JobEnrichment(
       partialItemsService,
@@ -375,11 +377,12 @@ export class ManualReviewToolService {
       this.manualReviewToolSettings,
       this.claimOps,
       getUserHasExistingNcmecReport,
+      meter,
     );
     this.jobRendering = new JobRendering(pgQuery);
     this.decisionAnalytics = new DecisionAnalytics(pgQueryReadReplica);
     this.commentOps = new CommentOperations(pgQuery);
-    this.skipOps = new SkipOperations(pgQuery);
+    this.skipOps = new SkipOperations(pgQuery, meter);
     this.reporterInvalidation = new ReporterInvalidation(
       this.queueOps,
       this.tracer,
@@ -1135,7 +1138,17 @@ export class ManualReviewToolService {
             }),
         });
         span.setAttribute('content.resolution_authorized', canResolve);
-        if (!canResolve) return opts.job;
+        const attributes = {
+          queue_id: opts.queueId,
+          item_type_id: opts.job.payload.item.itemTypeIdentifier.id,
+        };
+        if (!canResolve) {
+          this.meter?.recordManualReviewEvent(
+            'content_resolution_not_authorized',
+            attributes,
+          );
+          return opts.job;
+        }
 
         return resolveManualReviewContentSafely(
           {
@@ -1146,9 +1159,20 @@ export class ManualReviewToolService {
           },
           this.resolveManualReviewContent,
           {
-            onResolved: (count) =>
-              span.setAttribute('content.resolved_count', count),
-            onError: (error) => this.tracer.logSpanFailed(span, error),
+            onResolved: (count) => {
+              span.setAttribute('content.resolved_count', count);
+              this.meter?.recordManualReviewEvent(
+                count > 0 ? 'content_resolved' : 'content_resolution_unchanged',
+                attributes,
+              );
+            },
+            onError: (error) => {
+              this.tracer.logSpanFailed(span, error);
+              this.meter?.recordManualReviewEvent(
+                'content_resolution_failed',
+                attributes,
+              );
+            },
           },
         );
       },
@@ -1326,6 +1350,7 @@ export class ManualReviewToolService {
           queueId,
           userId,
           jobId: job.job.id,
+          itemTypeId: job.job.payload.item.itemTypeIdentifier.id,
         });
       }
       return job;
@@ -1349,6 +1374,7 @@ export class ManualReviewToolService {
           queueId,
           userId,
           jobId: job.job.id,
+          itemTypeId: job.job.payload.item.itemTypeIdentifier.id,
         });
         return job;
       }
@@ -1381,6 +1407,7 @@ export class ManualReviewToolService {
           queueId,
           userId,
           jobId: job.job.id,
+          itemTypeId: job.job.payload.item.itemTypeIdentifier.id,
         });
         return job;
       } else {
@@ -1420,8 +1447,13 @@ export class ManualReviewToolService {
     queueId: string;
     userId: string;
     jobId: JobId;
+    itemTypeId: string;
   }) {
-    const { orgId, queueId, userId, jobId } = opts;
+    const { orgId, queueId, userId, jobId, itemTypeId } = opts;
+    this.meter?.recordManualReviewEvent('claim_acquired', {
+      queue_id: queueId,
+      item_type_id: itemTypeId,
+    });
     try {
       await this.claimOps.logClaim({
         orgId,

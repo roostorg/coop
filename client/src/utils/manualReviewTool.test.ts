@@ -1,3 +1,5 @@
+import { vi } from 'vitest';
+
 import { GQLUserPenaltySeverity } from '../graphql/generated';
 import {
   recomputeSelectedRelatedActions,
@@ -7,7 +9,7 @@ import {
 
 describe('recomputeSelectedRelatedActions', () => {
   afterEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   test('Should return input when there are no selected actions', () => {

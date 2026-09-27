@@ -1,6 +1,6 @@
 import { Client } from '@googlemaps/google-maps-services-js';
 
-import { inject } from '../../iocContainer/index.js';
+import { inject } from '../../iocContainer/utils.js';
 
 class PlacesApiService {
   private readonly client = new Client({});

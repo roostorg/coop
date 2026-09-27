@@ -21,6 +21,7 @@ import { isCoopErrorOfType } from '../../utils/errors.js';
 import { assertUnreachable } from '../../utils/misc.js';
 import { isNonEmptyArray } from '../../utils/typescript-types.js';
 import {
+  type GQLContentItemResolvers,
   type GQLContentItemTypeResolvers,
   type GQLFieldInput,
   type GQLItemBaseResolvers,
@@ -29,12 +30,15 @@ import {
   type GQLItemTypeResolvers,
   type GQLMutationResolvers,
   type GQLQueryResolvers,
+  type GQLResolversParentTypes,
+  type GQLThreadItemResolvers,
   type GQLThreadItemTypeResolvers,
   type GQLUserItemResolvers,
   type GQLUserItemTypeResolvers,
 } from '../generated.js';
 import { type Context } from '../resolvers.js';
 import { formatItemSubmissionForGQL } from '../types.js';
+import { beforeContentAccess } from '../utils/contentAccess.js';
 import { unauthenticatedError } from '../utils/errors.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 
@@ -536,7 +540,30 @@ const ItemTypeSchemaVariantInputResolver = {
 export type ItemTypeSchemaVariantInputResolverValue =
   (typeof ItemTypeSchemaVariantInputResolver)[keyof typeof ItemTypeSchemaVariantInputResolver];
 
+async function resolveItemData(
+  item:
+    | GQLResolversParentTypes['ContentItem']
+    | GQLResolversParentTypes['ThreadItem']
+    | GQLResolversParentTypes['UserItem'],
+  _: unknown,
+  context: Context,
+) {
+  if (!context.services.ContentAccessService.enabled) return item.data;
+  const type = await getItemTypeFromItemTypeOrSelector(item.type, context);
+  await beforeContentAccess(context, type.orgId, {
+    resourceType: 'item',
+    resourceId: item.id,
+    itemTypeId: item.type.id,
+    submissionId: item.submissionId,
+    field: 'data',
+  });
+  return item.data;
+}
+
+const ContentItem: GQLContentItemResolvers = { data: resolveItemData };
+const ThreadItem: GQLThreadItemResolvers = { data: resolveItemData };
 const UserItem: GQLUserItemResolvers = {
+  data: resolveItemData,
   async userScore(userItem, __, context) {
     const user = context.getUser();
     if (!user) {
@@ -1108,6 +1135,8 @@ const resolvers = {
   ItemTypeBase,
   ItemBase,
   Item,
+  ContentItem,
+  ThreadItem,
   UserItem,
   Mutation,
   ContentItemType,

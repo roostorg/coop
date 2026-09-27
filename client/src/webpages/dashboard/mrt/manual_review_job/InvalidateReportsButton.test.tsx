@@ -1,6 +1,7 @@
 import { MockedProvider } from '@apollo/client/testing';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
+import { vi } from 'vitest';
 
 import '@testing-library/jest-dom/extend-expect';
 
@@ -181,7 +182,7 @@ describe('InvalidateReportsButton', () => {
     ];
 
     let resolveHandler: (() => void) | undefined;
-    const onInvalidated = jest.fn(
+    const onInvalidated = vi.fn(
       async () =>
         new Promise<void>((resolve) => {
           mutationOrder.push('handler-start');

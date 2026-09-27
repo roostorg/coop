@@ -6,6 +6,7 @@ import {
   type TaggedScalar,
 } from '@roostorg/coop-types';
 import fc from 'fast-check';
+import { vi } from 'vitest';
 
 import { DerivedFieldSpecArbitrary } from '../../test/arbitraries/ContentType.js';
 import { makeTestWithFixture } from '../../test/utils.js';
@@ -29,7 +30,7 @@ describe('Item type schemas', () => {
   describe('Derived Field handling', () => {
     describe('getDerivedContentFieldValue', () => {
       const testWithMockRunSignal = makeTestWithFixture(() => ({
-        mockRunSignal: jest.fn<TransientRunSignalWithCache>(
+        mockRunSignal: vi.fn<TransientRunSignalWithCache>(
           async ({ signal, value }) => {
             if (signal.type !== SignalType.OPEN_AI_WHISPER_TRANSCRIPTION) {
               throw new Error('expected type to match our derivation recipe.');
@@ -272,7 +273,9 @@ describe('Item type schemas', () => {
               derivationType: 'hasOwnProperty' as any, // invalid, hacking attempt.
             }),
           );
-        }).toThrowErrorMatchingInlineSnapshot(`"Invalid derived field spec"`);
+        }).toThrowErrorMatchingInlineSnapshot(
+          `[Error: Invalid derived field spec]`,
+        );
 
         expect(() => {
           parseDerivedFieldSpec(
@@ -285,7 +288,9 @@ describe('Item type schemas', () => {
               derivationType: 'VIDEO_TRANSCRIPTION',
             }),
           );
-        }).toThrowErrorMatchingInlineSnapshot(`"Invalid derived field spec"`);
+        }).toThrowErrorMatchingInlineSnapshot(
+          `[Error: Invalid derived field spec]`,
+        );
 
         expect(() => {
           parseDerivedFieldSpec(
@@ -294,7 +299,9 @@ describe('Item type schemas', () => {
               derivationType: 'VIDEO_TRANSCRIPTION',
             }),
           );
-        }).toThrowErrorMatchingInlineSnapshot(`"Invalid derived field spec"`);
+        }).toThrowErrorMatchingInlineSnapshot(
+          `[Error: Invalid derived field spec]`,
+        );
 
         expect(() => {
           parseDerivedFieldSpec(
@@ -303,7 +310,9 @@ describe('Item type schemas', () => {
               derivationType: 'VIDEO_TRANSCRIPTION',
             }),
           );
-        }).toThrowErrorMatchingInlineSnapshot(`"Invalid derived field spec"`);
+        }).toThrowErrorMatchingInlineSnapshot(
+          `[Error: Invalid derived field spec]`,
+        );
 
         expect(() => {
           parseDerivedFieldSpec(
@@ -312,7 +321,9 @@ describe('Item type schemas', () => {
               derivationType: 'VIDEO_TRANSCRIPTION',
             }),
           );
-        }).toThrowErrorMatchingInlineSnapshot(`"Invalid derived field spec"`);
+        }).toThrowErrorMatchingInlineSnapshot(
+          `[Error: Invalid derived field spec]`,
+        );
         /* eslint-enable @typescript-eslint/no-explicit-any */
       });
     });

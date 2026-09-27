@@ -21,6 +21,7 @@ import {
   type GQLDequeueManualReviewJobResponseResolvers,
   type GQLManualReviewChartSettingsResolvers,
   type GQLManualReviewDecisionComponentResolvers,
+  type GQLManualReviewDecisionResolvers,
   type GQLManualReviewJobCommentResolvers,
   type GQLManualReviewJobEnqueueSourceInfoResolvers,
   type GQLManualReviewJobPayloadResolvers,
@@ -36,6 +37,7 @@ import {
   type GQLUserManualReviewJobPayloadResolvers,
 } from '../generated.js';
 import { formatItemSubmissionForGQL } from '../types.js';
+import { beforeContentAccess } from '../utils/contentAccess.js';
 import {
   forbiddenError,
   unauthenticatedError,
@@ -1858,7 +1860,37 @@ const ManualReviewQueue: GQLManualReviewQueueResolvers = {
   },
 };
 
+const ManualReviewDecision: GQLManualReviewDecisionResolvers = {
+  async decisionReason(decision, _, context) {
+    if (!context.services.ContentAccessService.enabled)
+      return decision.decisionReason ?? null;
+    const user = context.getUser();
+    if (user == null) throw unauthenticatedError('Authenticated user required');
+    if (decision.decisionReason == null) return null;
+    // DecisionAnalytics scopes these records to the authenticated organization.
+    await beforeContentAccess(context, user.orgId, {
+      resourceType: 'review_decision',
+      resourceId: decision.id,
+      field: 'decisionReason',
+    });
+    return decision.decisionReason;
+  },
+};
+
 const ManualReviewJobComment: GQLManualReviewJobCommentResolvers = {
+  async commentText(comment, _, context) {
+    if (!context.services.ContentAccessService.enabled)
+      return comment.commentText;
+    const user = context.getUser();
+    if (user == null) throw unauthenticatedError('Authenticated user required');
+    // CommentOperations scopes these records to the authenticated organization.
+    await beforeContentAccess(context, user.orgId, {
+      resourceType: 'review_comment',
+      resourceId: comment.id,
+      field: 'commentText',
+    });
+    return comment.commentText;
+  },
   async author(comment, _, context) {
     const user = context.getUser();
     if (user == null) {
@@ -1877,6 +1909,14 @@ const ManualReviewJobComment: GQLManualReviewJobCommentResolvers = {
 };
 
 const ManualReviewJob: GQLManualReviewJobResolvers = {
+  async payload(job, _, context) {
+    await beforeContentAccess(context, job.orgId, {
+      resourceType: 'review_job',
+      resourceId: job.id,
+      field: 'payload',
+    });
+    return job.payload;
+  },
   async comments(job, _, context) {
     const user = context.getUser();
     if (user == null) {
@@ -2864,6 +2904,7 @@ const resolvers = {
   ThreadManualReviewJobPayload,
   NcmecManualReviewJobPayload,
   ManualReviewDecisionComponent,
+  ManualReviewDecision,
   ManualReviewChartSettings,
   ManualReviewJobComment,
   ManualReviewJob,

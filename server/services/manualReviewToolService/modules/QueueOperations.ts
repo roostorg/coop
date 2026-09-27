@@ -170,6 +170,7 @@ export default class QueueOperations {
     private readonly moderationConfigService: Dependencies['ModerationConfigService'],
     redis: RedisConnection,
     private readonly tracer: Dependencies['Tracer'],
+    private readonly meter?: Dependencies['Meter'],
   ) {
     this.transactionWithRetry = makeKyselyTransactionWithRetry(this.pgQuery);
     // Reassingment here is a hack to work around TS syntax limitations
@@ -874,6 +875,11 @@ export default class QueueOperations {
       { removeOnComplete: true, jobId: bullJobId },
     );
 
+    this.meter?.recordManualReviewEvent('enqueue_call_succeeded', {
+      queue_id: queueId,
+      item_type_id: payload.item.itemTypeIdentifier.id,
+    });
+
     // Again, because new job data comes in in the non-legacy format, it's safe
     // to cast.
     return newJob.data satisfies StoredManualReviewJob as ManualReviewJob;
@@ -920,6 +926,11 @@ export default class QueueOperations {
       },
       { removeOnComplete: true, jobId: bullJobId },
     );
+
+    this.meter?.recordManualReviewEvent('appeal_enqueue_call_succeeded', {
+      queue_id: queueId,
+      item_type_id: payload.item.itemTypeIdentifier.id,
+    });
 
     return newJob.data;
   }

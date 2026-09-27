@@ -1,3 +1,5 @@
+import { vi } from 'vitest';
+
 import { createPgPool } from './createPgPool.js';
 
 describe('createPgPool', () => {
@@ -12,7 +14,7 @@ describe('createPgPool', () => {
 
   test('logs and swallows idle-client errors instead of re-throwing', async () => {
     const pool = createPgPool({ host: '127.0.0.1', port: 1 });
-    const consoleErrorSpy = jest
+    const consoleErrorSpy = vi
       .spyOn(console, 'error')
       .mockImplementation(() => {});
 

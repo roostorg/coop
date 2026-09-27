@@ -1,5 +1,6 @@
 import { faker } from '@faker-js/faker';
 import { uid } from 'uid';
+import { vi } from 'vitest';
 
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../test/fixtureHelpers/createUser.js';
@@ -325,7 +326,7 @@ describe('POST Report', () => {
       };
 
       // Spy (calling through) so we can assert what gets forwarded to MRT.
-      const enqueueSpy = jest.spyOn(deps.ManualReviewToolService, 'enqueue');
+      const enqueueSpy = vi.spyOn(deps.ManualReviewToolService, 'enqueue');
 
       try {
         await request

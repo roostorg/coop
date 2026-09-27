@@ -1,4 +1,4 @@
-import { inject } from '../../iocContainer/index.js';
+import { inject } from '../../iocContainer/utils.js';
 import { cached } from '../../utils/caching.js';
 import { jsonParse, jsonStringify } from '../../utils/encoding.js';
 import { type CollapseCases } from '../../utils/typescript-types.js';

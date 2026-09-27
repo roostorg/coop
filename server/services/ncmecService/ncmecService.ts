@@ -2,7 +2,8 @@ import { type ItemIdentifier } from '@roostorg/coop-types';
 import _Ajv from 'ajv-draft-04';
 import { sql, type Kysely } from 'kysely';
 
-import { inject, type Dependencies } from '../../iocContainer/index.js';
+import { type Dependencies } from '../../iocContainer/index.js';
+import { inject } from '../../iocContainer/utils.js';
 import { type ActionExecutionCorrelationId } from '../analyticsLoggers/ActionExecutionLogger.js';
 import { type RuleExecutionCorrelationId } from '../analyticsLoggers/ruleExecutionLoggingUtils.js';
 import { type ItemSubmissionWithTypeIdentifier } from '../itemProcessingService/makeItemSubmissionWithTypeIdentifier.js';

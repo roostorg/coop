@@ -11,6 +11,12 @@ For more information about each release including git tags and artifacts, see [R
 ### Added
 
 - Actions and policy selection on additional content items in the review console ([#1202](https://github.com/roostorg/coop/pull/1202) by [@juanmrad](https://github.com/juanmrad), closes [#581](https://github.com/roostorg/coop/issues/581))
+- Optional policy and audit callbacks with bounded deadlines for review and item content responses ([#1270](https://github.com/roostorg/coop/pull/1270) by [@sunilatlas](https://github.com/sunilatlas), closes [#1269](https://github.com/roostorg/coop/issues/1269))
+- Native OpenTelemetry manual-review counters, decision-source labels and elapsed timings ([#1286](https://github.com/roostorg/coop/pull/1286) by [@sunilatlas](https://github.com/sunilatlas), relates to [#1287](https://github.com/roostorg/coop/issues/1287))
+
+### Fixed
+
+- Completed manual reviews no longer reappear when no next job is available; refreshed content stays tied to the active job ([#1302](https://github.com/roostorg/coop/pull/1302) by [@sunilatlas](https://github.com/sunilatlas), closes [#1303](https://github.com/roostorg/coop/issues/1303)).
 
 ## [1.1.0-alpha] - 2026-09-21
 

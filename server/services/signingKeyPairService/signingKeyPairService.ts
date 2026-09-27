@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { type ReadonlyDeep } from 'type-fest';
 
-import { inject } from '../../iocContainer/index.js';
+import { inject } from '../../iocContainer/utils.js';
 import { cached, type Cached } from '../../utils/caching.js';
 
 /**
