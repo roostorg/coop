@@ -1,0 +1,32 @@
+AGENTS.md
+  s_c39daae3705902::t_a886f4729713ac 120
+  s_c39daae3705902::t_737aca9e729c4b 134
+docs/development/local.md
+  s_c39daae3705902::t_94a2b50c5d1bb0 223
+  s_c39daae3705902::t_d1222c43794432 235
+.github/workflows/apply_pr_checks.yaml
+  s_c39daae3705902::t_a903e1e1edf338 215-217
+server/services/contentAccessService.tracing.test.ts
+  s_c39daae3705902::t_8ac87197a4ea7f 52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "637582573ca4253f21a497ccb258601cab5816cc",
+  "prompts": {},
+  "humans": {
+    "h_228f5682388812": {
+      "author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_c39daae3705902": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "70d379d5-c769-4221-a4d3-dffc884c934e",
+        "model": "auto-smart"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
