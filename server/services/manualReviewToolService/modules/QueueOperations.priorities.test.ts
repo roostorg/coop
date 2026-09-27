@@ -318,6 +318,41 @@ describe('QueueOperations job priorities', () => {
   );
 
   testWithQueue()(
+    'setJobPriority with an unchanged priority keeps FIFO order',
+    async ({ org, queue, mrtService }) => {
+      const queueOps = mrtService['queueOps'];
+      const payloadFor = makePayloadFor(uid());
+      const first = await queueOps.addJob({
+        orgId: org.id,
+        queueId: queue.id,
+        enqueueSourceInfo: { kind: 'REPORT' },
+        jobPayload: { policyIds: [], payload: payloadFor('item-first') },
+      });
+      await queueOps.addJob({
+        orgId: org.id,
+        queueId: queue.id,
+        enqueueSourceInfo: { kind: 'REPORT' },
+        jobPayload: { policyIds: [], payload: payloadFor('item-second') },
+      });
+
+      // What a re-report of a FIFO job does.
+      await queueOps.setJobPriority({
+        orgId: org.id,
+        queueId: queue.id,
+        jobId: first.id,
+        priority: 0,
+      });
+
+      const next = await queueOps.dequeueNextJobWithLock({
+        orgId: org.id,
+        queueId: queue.id,
+        lockToken: 'reviewer-fifo',
+      });
+      expect(next?.job.payload.item.itemId).toBe('item-first');
+    },
+  );
+
+  testWithQueue()(
     'setJobPriority does not overwrite job data',
     async ({ org, queue, mrtService }) => {
       const queueOps = mrtService['queueOps'];

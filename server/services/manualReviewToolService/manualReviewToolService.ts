@@ -560,13 +560,14 @@ export class ManualReviewToolService {
             }
 
             // A merged job keeps its old priority unless restamped with the
-            // new report count.
-            if (existingJobInSameQueue && priority != null) {
+            // new report count. FIFO restamps with 0 so a job still
+            // prioritized from an earlier sort mode is demoted too.
+            if (existingJobInSameQueue) {
               await this.#setJobPriorityOrScheduleRecompute({
                 orgId: input.orgId,
                 queueId: targetQueueForNewJob,
                 jobId: job.id,
-                priority,
+                priority: priority ?? 0,
               });
             }
 
@@ -1190,6 +1191,7 @@ export class ManualReviewToolService {
       })();
       try {
         let appliedSortType: JobSortType | undefined;
+        let settled = false;
         for (let round = 0; round < MAX_PRIORITY_RECOMPUTE_ROUNDS; round++) {
           const queue =
             await this.queueOps.getQueueForOrgAndDangerouslyBypassPermissioning(
@@ -1197,6 +1199,7 @@ export class ManualReviewToolService {
             );
           // Deleted while we waited for the lock, or already up to date.
           if (queue === undefined || queue.jobSortType === appliedSortType) {
+            settled = true;
             break;
           }
           const sortType = queue.jobSortType;
@@ -1217,6 +1220,7 @@ export class ManualReviewToolService {
             shouldContinue: () => !lease.renewFailed,
           });
           if (result.aborted) {
+            settled = true;
             break;
           }
           if (!result.snapshotStable) {
@@ -1231,6 +1235,13 @@ export class ManualReviewToolService {
             );
           }
           appliedSortType = sortType;
+        }
+        if (!settled) {
+          // The sort mode kept changing; rejecting hands the latest mode to
+          // the scheduler's retry.
+          throw new Error(
+            `Priority recompute for queue ${queueId} ran out of rounds before the sort mode settled`,
+          );
         }
       } finally {
         lease.stopped = true;

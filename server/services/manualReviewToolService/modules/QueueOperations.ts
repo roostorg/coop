@@ -1094,6 +1094,11 @@ export default class QueueOperations {
     if (!job || job.data.id !== jobId) {
       return false;
     }
+    // changePriority re-inserts the job even when the value is unchanged,
+    // which sends it to the back of its priority tier (or of `wait`).
+    if (job.priority === priority) {
+      return true;
+    }
     await job.changePriority({ priority });
     return true;
   }

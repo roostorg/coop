@@ -11,7 +11,7 @@ const rowWithValue = (value: SortValue) =>
         reports: value,
       },
     },
-  }) as Parameters<typeof integerSort>[0];
+  }) as unknown as Parameters<typeof integerSort>[0];
 
 describe('integerSort', () => {
   it('sorts numeric and comma-formatted values numerically', () => {
