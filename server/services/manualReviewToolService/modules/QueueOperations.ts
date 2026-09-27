@@ -84,6 +84,8 @@ export type ManualReviewQueue = {
 
 const OLDEST_JOB_PRIORITIZED_SCAN_LIMIT = 10_000;
 
+const MAX_RECOMPUTE_SNAPSHOT_PASSES = 10;
+
 const PgQueueSelection = [
   'id',
   'org_id as orgId',
@@ -1052,10 +1054,8 @@ export default class QueueOperations {
     queueId: string;
     jobId: JobId;
     data: ManualReviewJob;
-    // When set, re-stamps the job's BullMQ priority alongside the data update.
-    priority?: number;
   }) {
-    const { orgId, queueId, jobId, data, priority } = opts;
+    const { orgId, queueId, jobId, data } = opts;
     const queue = await this.#getBullQueue(orgId, queueId);
     const { bullId } = parseExternalId(jobId);
     const job = await queue.getJob(bullId);
@@ -1065,21 +1065,7 @@ export default class QueueOperations {
     if (!job || job.data.id !== jobId) {
       return undefined;
     }
-    // Merge reports first so a later priority restamp failure can't drop
-    // the payload update. `changePriority` is only safe on waiting jobs;
-    // applying it to an active (reviewer-held) job can reinsert the id
-    // into `prioritized` while the lock is still held.
     await job.updateData(data);
-    if (priority != null) {
-      try {
-        const state = await job.getState();
-        if (state === 'waiting' || state === 'prioritized') {
-          await job.changePriority({ priority });
-        }
-      } catch {
-        // Data is already saved; a later sweep can restamp priority.
-      }
-    }
 
     // Because the `data` arg above is a ManualReviewJob, we know the stored
     // data for this particular job won't be in the legacy format.
@@ -1087,10 +1073,36 @@ export default class QueueOperations {
   }
 
   /**
-   * Gives every pending job on a queue a fresh priority, e.g. after the
-   * queue's sort mode changes. Calls `getPriority` once per job.
+   * Sets a job's BullMQ priority without touching its data, so it can't
+   * clobber a concurrent payload merge. Returns false if the job is gone.
    *
-   * Works in two passes. Changing a job's priority reorders the same list
+   * Safe in any job state: BullMQ only re-inserts jobs that are in `wait` or
+   * `prioritized`. For active and delayed jobs it just records the priority
+   * on the job, and BullMQ applies it when the job returns to the queue
+   * (e.g. after `releaseJobLock` moves it to delayed).
+   */
+  async setJobPriority(opts: {
+    orgId: string;
+    queueId: string;
+    jobId: JobId;
+    priority: number;
+  }): Promise<boolean> {
+    const { orgId, queueId, jobId, priority } = opts;
+    const queue = await this.#getBullQueue(orgId, queueId);
+    const { bullId } = parseExternalId(jobId);
+    const job = await queue.getJob(bullId);
+    if (!job || job.data.id !== jobId) {
+      return false;
+    }
+    await job.changePriority({ priority });
+    return true;
+  }
+
+  /**
+   * Gives every pending job on a queue a fresh priority, e.g. after the
+   * queue's sort mode changes.
+   *
+   * Works in two phases. Changing a job's priority reorders the same list
    * we'd be paging through, which can skip jobs or process them twice — so
    * first collect every job's (id, createdAt, itemId) into a snapshot (tiny
    * tuples, cheap to hold even for huge queues), then walk the snapshot and
@@ -1104,10 +1116,14 @@ export default class QueueOperations {
    * in the order we updated them, not the order they originally arrived —
    * so updating oldest-first is what keeps FIFO order intact.
    *
-   * Pass 2 re-fetches each job by id. That's a second Redis round-trip per
-   * job, but BullMQ's `changePriority` is a method on `Job`, so the only way
-   * to avoid it is to hold every job's full payload in memory for the whole
-   * sweep — worse for exactly the large queues this batching protects.
+   * The update phase re-fetches each job by id. That's a second Redis
+   * round-trip per job, but BullMQ's `changePriority` is a method on `Job`,
+   * so the only way to avoid it is to hold every job's full payload in memory
+   * for the whole sweep — worse for exactly the large queues this batching
+   * protects.
+   *
+   * `shouldContinue` is checked before each write so a caller that has lost
+   * its lock can stop without overwriting a newer sweep's priorities.
    */
   async recomputePrioritiesForQueue(opts: {
     orgId: string;
@@ -1115,23 +1131,28 @@ export default class QueueOperations {
     getPriorities: (
       itemIds: readonly string[],
     ) => Promise<ReadonlyMap<string, number>>;
-  }) {
-    const { orgId, queueId, getPriorities } = opts;
+    shouldContinue?: () => boolean;
+  }): Promise<{ aborted: boolean; snapshotStable: boolean }> {
+    const { orgId, queueId, getPriorities, shouldContinue = () => true } = opts;
     const queue = await this.#getBullQueue(orgId, queueId);
     const batchSize = 200;
 
     const pending: Array<{
       bullId: string;
-      createdAtMs: number;
+      enqueuedAtMs: number;
+      dataCreatedAtMs: number;
       itemId: string;
     }> = [];
     const seen = new Set<string>();
-    // Two offset passes. A concurrent dequeue during the first pass
-    // compacting the list can skip a job at the page boundary; the
-    // second pass (with a seen-set) picks those up at their new index
-    // without re-stamping jobs we already captured. Always-from-0 paging
-    // would never look past the first page on a read-only snapshot.
-    for (let pass = 0; pass < 2; pass++) {
+    // Offset paging while reviewers dequeue can skip jobs, because removing
+    // a job shifts every later job to a lower offset. Repeat full passes
+    // (the seen-set dedupes) until one finds nothing new.
+    let snapshotStable = false;
+    for (let pass = 0; pass < MAX_RECOMPUTE_SNAPSHOT_PASSES; pass++) {
+      if (!shouldContinue()) {
+        return { aborted: true, snapshotStable };
+      }
+      const seenBeforePass = seen.size;
       let start = 0;
       while (true) {
         // Priority-enqueued jobs live in BullMQ's 'prioritized' state, not
@@ -1151,30 +1172,45 @@ export default class QueueOperations {
           const itemWithLegacyId = item as { itemId?: string; id?: string };
           const itemId = itemWithLegacyId.itemId ?? itemWithLegacyId.id;
           if (itemId == null) continue;
-          // Bull-managed arrival order is the FIFO tie-break key. Fall back
-          // to application data for jobs without a Bull timestamp.
-          const createdAtMs =
-            typeof job.timestamp === 'number' && Number.isFinite(job.timestamp)
-              ? job.timestamp
-              : new Date(job.data.createdAt).getTime();
+          // Bull-managed arrival order is the FIFO tie-break key. It only has
+          // millisecond resolution, so jobs enqueued in the same millisecond
+          // fall back to the job's own createdAt.
+          const toSortableMs = (ms: number) =>
+            Number.isFinite(ms) ? ms : Number.MAX_SAFE_INTEGER;
+          const dataCreatedAtMs = toSortableMs(
+            new Date(job.data.createdAt).getTime(),
+          );
           pending.push({
             bullId,
-            createdAtMs: Number.isFinite(createdAtMs)
-              ? createdAtMs
-              : Number.MAX_SAFE_INTEGER,
+            enqueuedAtMs:
+              typeof job.timestamp === 'number'
+                ? toSortableMs(job.timestamp)
+                : dataCreatedAtMs,
+            dataCreatedAtMs,
             itemId,
           });
         }
         if (jobs.length < batchSize) break;
         start += batchSize;
       }
+      if (seen.size === seenBeforePass) {
+        snapshotStable = true;
+        break;
+      }
     }
 
-    pending.sort((a, b) => a.createdAtMs - b.createdAtMs);
+    pending.sort(
+      (a, b) =>
+        a.enqueuedAtMs - b.enqueuedAtMs ||
+        a.dataCreatedAtMs - b.dataCreatedAtMs,
+    );
 
     const priorities = await getPriorities(pending.map((it) => it.itemId));
 
     for (const { bullId, itemId } of pending) {
+      if (!shouldContinue()) {
+        return { aborted: true, snapshotStable };
+      }
       const priority = priorities.get(itemId);
       // No priority resolved for this item — leave the job's current one
       // alone rather than guessing.
@@ -1182,13 +1218,12 @@ export default class QueueOperations {
       const bullJob = await queue.getJob(bullId);
       // Dequeued or removed since the snapshot — nothing to re-stamp.
       if (!bullJob) continue;
-      // Only re-prioritize jobs still waiting for a worker. Active jobs are
-      // already being worked on; completed/failed are terminal.
-      const state = await bullJob.getState();
-      if (state !== 'waiting' && state !== 'prioritized' && state !== 'delayed')
-        continue;
+      // Active and delayed jobs are stamped too: BullMQ records the priority
+      // on the job without re-inserting it, and applies it when the job
+      // returns to the queue (e.g. a reviewer skips it).
       await bullJob.changePriority({ priority });
     }
+    return { aborted: false, snapshotStable };
   }
 
   /**
@@ -1825,8 +1860,17 @@ export default class QueueOperations {
       ? await this.#getBullAppealQueue(orgId, queueId)
       : await this.#getBullQueue(orgId, queueId);
 
+    // `prioritized` is ordered by priority, not age, so finding its oldest
+    // job means scanning all of it. Past the cap, report "unknown" rather
+    // than an age computed from a partial scan.
+    if (
+      (await queue.getPrioritizedCount()) > OLDEST_JOB_PRIORITIZED_SCAN_LIMIT
+    ) {
+      return null;
+    }
+
     // getWaiting/getDelayed return oldest-first, so their first entry is the
-    // oldest. `prioritized` is ordered by priority, so scan it instead.
+    // oldest.
     const [waitingJobs, delayedJobs, prioritizedJobs] = await Promise.all([
       queue.getWaiting(0, 0),
       queue.getDelayed(0, 0),

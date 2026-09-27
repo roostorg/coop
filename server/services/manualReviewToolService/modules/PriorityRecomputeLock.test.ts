@@ -172,5 +172,33 @@ describe('PriorityRecomputeLock', () => {
       expect(token).toBeNull();
       expect(Date.now() - startedAt).toBeLessThan(200);
     });
+
+    test('releases a lock that Redis grants after the waiter timed out', async () => {
+      let grantLate: (value: string) => void = () => {};
+      let releaseCalls = 0;
+      const slowRedis = {
+        set: async () =>
+          new Promise<string>((resolve) => {
+            grantLate = resolve;
+          }),
+        eval: async () => {
+          releaseCalls += 1;
+          return 1;
+        },
+      } as unknown as IORedis.Redis;
+      const slowLock = new PriorityRecomputeLock(slowRedis);
+
+      const token = await slowLock.acquireWaiting({
+        orgId,
+        queueId,
+        timeoutMs: 30,
+        pollIntervalMs: 10,
+      });
+      expect(token).toBeNull();
+
+      grantLate('OK');
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(releaseCalls).toBe(1);
+    });
   });
 });

@@ -93,6 +93,12 @@ import UserReportSweep, {
   type ClearOtherReportsResult,
 } from './modules/UserReportSweep.js';
 
+const MAX_PRIORITY_RECOMPUTE_ATTEMPTS = 3;
+const PRIORITY_RECOMPUTE_RETRY_BASE_DELAY_MS = 30_000;
+// Bounds how many times one lock holder re-sweeps because the sort mode
+// changed again while it was sweeping.
+const MAX_PRIORITY_RECOMPUTE_ROUNDS = 5;
+
 // An id that's unique across all jobs ever added to any queue (pending or not).
 // This is the id that's passed into the MRT Service by callers to identify a
 // job, and that's exposed to callers when a job is returned from this service.
@@ -329,8 +335,8 @@ export class ManualReviewToolService {
     // ReportingService -> ActionPublisher -> ManualReviewToolService). Call
     // the outer function at use time to resolve the real dependency:
     // this.getNumTimesReported()({ orgId, itemId }).
-    readonly getNumTimesReported: () => Dependencies['ReportingService']['getNumTimesReported'],
-    readonly getNumTimesReportedForItems: () => Dependencies['ReportingService']['getNumTimesReportedForItems'],
+    private readonly getNumTimesReported: () => Dependencies['ReportingService']['getNumTimesReported'],
+    private readonly getNumTimesReportedForItems: () => Dependencies['ReportingService']['getNumTimesReportedForItems'],
     readonly redis: Dependencies['IORedis'],
     readonly ruleEvaluator: Dependencies['RuleEvaluator'],
     readonly routingRuleExecutionLogger: Dependencies['RoutingRuleExecutionLogger'],
@@ -525,7 +531,7 @@ export class ManualReviewToolService {
               deps: { getNumTimesReported: this.getNumTimesReported() },
             });
 
-            let job = existingJobInSameQueue
+            const job = existingJobInSameQueue
               ? await this.queueOps.updateJobForQueue({
                   orgId: input.orgId,
                   queueId: targetQueueForNewJob,
@@ -534,7 +540,6 @@ export class ManualReviewToolService {
                     ...existingJobInSameQueue,
                     payload: finalJobPayload,
                   },
-                  priority,
                 })
               : await this.queueOps.addJob({
                   orgId: input.orgId,
@@ -552,6 +557,17 @@ export class ManualReviewToolService {
               // between when we looked up the existing job and did the update.
               // Just do nothing
               return;
+            }
+
+            // A merged job keeps its old priority unless restamped with the
+            // new report count.
+            if (existingJobInSameQueue && priority != null) {
+              await this.#setJobPriorityOrScheduleRecompute({
+                orgId: input.orgId,
+                queueId: targetQueueForNewJob,
+                jobId: job.id,
+                priority,
+              });
             }
 
             // The queue can change sort mode between the initial read and the
@@ -575,18 +591,12 @@ export class ManualReviewToolService {
               // Enqueue uses `undefined` for FIFO so new jobs stay on `wait`.
               // A job that was already stamped needs an explicit 0 to leave
               // `prioritized`; otherwise the restamp would be a no-op.
-              const updatedJob = await this.queueOps.updateJobForQueue({
+              await this.#setJobPriorityOrScheduleRecompute({
                 orgId: input.orgId,
                 queueId: targetQueueForNewJob,
                 jobId: job.id,
-                data: job,
                 priority: priorityAfterSortChange ?? 0,
               });
-              if (!updatedJob) {
-                // The job may have disappeared between the two writes.
-                return;
-              }
-              job = updatedJob;
             }
 
             // log job creation/enqueue to postgres
@@ -1037,10 +1047,10 @@ export class ManualReviewToolService {
   // Re-stamps every pending job's priority in the background. Deliberately
   // not awaited by callers: a sweep is O(pending jobs) Redis round-trips,
   // which would time out the mutation on a large queue.
-  #scheduleQueuePriorityRecompute(opts: {
-    orgId: string;
-    queueId: string;
-  }): void {
+  #scheduleQueuePriorityRecompute(
+    opts: { orgId: string; queueId: string },
+    attempt = 1,
+  ): void {
     const running = this.tracer
       .addActiveSpan(
         {
@@ -1049,14 +1059,20 @@ export class ManualReviewToolService {
           attributes: {
             'mrtQueue.orgId': opts.orgId,
             'mrtQueue.queueId': opts.queueId,
+            'mrtQueue.recomputeAttempt': attempt,
           },
         },
         async () => this.#recomputeQueuePrioritiesUnderLock(opts),
       )
       .catch(() => {
-        // The failure is recorded on the span by addActiveSpan. There is no
-        // caller to propagate to; the next sort-mode change (or each future
-        // enqueue) re-stamps priorities.
+        // The failure is recorded on the span by addActiveSpan. Nothing else
+        // re-sorts the whole queue, so retry with backoff.
+        if (attempt < MAX_PRIORITY_RECOMPUTE_ATTEMPTS) {
+          setTimeout(
+            () => this.#scheduleQueuePriorityRecompute(opts, attempt + 1),
+            PRIORITY_RECOMPUTE_RETRY_BASE_DELAY_MS * 2 ** (attempt - 1),
+          ).unref();
+        }
       })
       .finally(() => {
         this.#priorityRecomputes.delete(running);
@@ -1064,10 +1080,53 @@ export class ManualReviewToolService {
     this.#priorityRecomputes.add(running);
   }
 
+  #logPrioritySpanFailure(
+    operation: string,
+    attributes: { orgId: string; queueId: string },
+    error: unknown,
+  ) {
+    this.tracer.addSpan(
+      {
+        resource: 'mrtService',
+        operation,
+        attributes: {
+          'mrtQueue.orgId': attributes.orgId,
+          'mrtQueue.queueId': attributes.queueId,
+        },
+      },
+      (span) => {
+        this.tracer.logSpanFailed(span, error);
+      },
+    );
+  }
+
+  // Priority-only write for a job that was just enqueued or merged. A failure
+  // here would leave just this job misordered, so fall back to re-sorting the
+  // queue instead of failing an enqueue whose data is already saved.
+  async #setJobPriorityOrScheduleRecompute(opts: {
+    orgId: string;
+    queueId: string;
+    jobId: JobId;
+    priority: number;
+  }) {
+    try {
+      await this.queueOps.setJobPriority(opts);
+    } catch (error) {
+      this.#logPrioritySpanFailure('setJobPriorityFailed', opts, error);
+      this.#scheduleQueuePriorityRecompute({
+        orgId: opts.orgId,
+        queueId: opts.queueId,
+      });
+    }
+  }
+
   /**
    * Sweeps a queue's priorities while holding the cross-instance lock.
    *
-   * Waits for a sweep already in progress rather than giving up
+   * Waits for a sweep already in progress rather than giving up. After each
+   * sweep the holder re-reads the sort mode and sweeps again if it changed,
+   * so a waiter that times out behind a long sweep doesn't lose its change:
+   * the holder's re-read happens after that change was saved.
    */
   async #recomputeQueuePrioritiesUnderLock(opts: {
     orgId: string;
@@ -1083,23 +1142,12 @@ export class ManualReviewToolService {
     // attacker-supplied input, so there's no timing channel to protect.
     // eslint-disable-next-line security/detect-possible-timing-attacks
     if (token == null) {
-      this.tracer.addSpan(
-        {
-          resource: 'mrtService',
-          operation: 'recomputeLockTimeout',
-          attributes: {
-            'mrtQueue.orgId': orgId,
-            'mrtQueue.queueId': queueId,
-          },
-        },
-        (span) => {
-          this.tracer.logSpanFailed(
-            span,
-            new Error(
-              `Priority recompute lock timed out for queue ${queueId}. Existing jobs keep their current priorities.`,
-            ),
-          );
-        },
+      this.#logPrioritySpanFailure(
+        'recomputeLockTimeout',
+        opts,
+        new Error(
+          `Priority recompute lock timed out for queue ${queueId}; the current lock holder applies the latest sort mode when it finishes.`,
+        ),
       );
       return;
     }
@@ -1141,30 +1189,49 @@ export class ManualReviewToolService {
         }
       })();
       try {
-        const queue =
-          await this.queueOps.getQueueForOrgAndDangerouslyBypassPermissioning({
+        let appliedSortType: JobSortType | undefined;
+        for (let round = 0; round < MAX_PRIORITY_RECOMPUTE_ROUNDS; round++) {
+          const queue =
+            await this.queueOps.getQueueForOrgAndDangerouslyBypassPermissioning(
+              { orgId, queueId },
+            );
+          // Deleted while we waited for the lock, or already up to date.
+          if (queue === undefined || queue.jobSortType === appliedSortType) {
+            break;
+          }
+          const sortType = queue.jobSortType;
+
+          const result = await this.queueOps.recomputePrioritiesForQueue({
             orgId,
             queueId,
+            getPriorities: async (itemIds) =>
+              getJobPrioritiesForItems({
+                orgId,
+                itemIds,
+                sortType,
+                deps: {
+                  getNumTimesReportedForItems:
+                    this.getNumTimesReportedForItems(),
+                },
+              }),
+            shouldContinue: () => !lease.renewFailed,
           });
-        // Deleted while we waited for the lock.
-        if (queue === undefined) {
-          return;
+          if (result.aborted) {
+            break;
+          }
+          if (!result.snapshotStable) {
+            // Jobs added or shifted by concurrent dequeues on the last pass
+            // may have been missed; they keep their previous priority.
+            this.#logPrioritySpanFailure(
+              'recomputeSnapshotUnstable',
+              opts,
+              new Error(
+                `Priority recompute for queue ${queueId} hit its snapshot pass limit; some jobs may keep their previous priority.`,
+              ),
+            );
+          }
+          appliedSortType = sortType;
         }
-        const sortType = queue.jobSortType;
-
-        await this.queueOps.recomputePrioritiesForQueue({
-          orgId,
-          queueId,
-          getPriorities: async (itemIds) =>
-            getJobPrioritiesForItems({
-              orgId,
-              itemIds,
-              sortType,
-              deps: {
-                getNumTimesReportedForItems: this.getNumTimesReportedForItems(),
-              },
-            }),
-        });
       } finally {
         lease.stopped = true;
         waiter.wake?.();
@@ -1177,7 +1244,7 @@ export class ManualReviewToolService {
       await this.priorityRecomputeLock.release({ orgId, queueId, token });
     }
     if (lostLease) {
-      this.#scheduleQueuePriorityRecompute(opts);
+      // Rejecting hands this to the scheduler's retry.
       throw new Error('Lost priority recompute lease');
     }
   }

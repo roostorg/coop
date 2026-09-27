@@ -35,6 +35,8 @@ export const RECOMPUTE_LOCK_WAIT_TIMEOUT_MS = RECOMPUTE_LOCK_TTL_MS;
 
 export const RECOMPUTE_LOCK_POLL_INTERVAL_MS = 500;
 
+const TIMED_OUT = Symbol('timedOut');
+
 /**
  * A lock per (org, queue) so only one priority sweep runs at a time, no matter
  * how many API processes are deployed.
@@ -65,19 +67,35 @@ export default class PriorityRecomputeLock {
         return null;
       }
       let timeout: ReturnType<typeof setTimeout> | undefined;
-      const token = await Promise.race([
-        this.acquire(acquireOpts),
-        new Promise<null>((resolve) => {
-          timeout = setTimeout(() => resolve(null), remainingMs);
+      const attempt = this.acquire(acquireOpts);
+      const result = await Promise.race([
+        attempt,
+        new Promise<typeof TIMED_OUT>((resolve) => {
+          timeout = setTimeout(() => resolve(TIMED_OUT), remainingMs);
         }),
       ]).finally(() => {
         if (timeout !== undefined) {
           clearTimeout(timeout);
         }
       });
-      // eslint-disable-next-line security/detect-possible-timing-attacks
-      if (token != null) {
-        return token;
+      if (result === TIMED_OUT) {
+        // A SET that lands after we gave up would hold the lock for a full
+        // TTL with no owner to release it.
+        attempt
+          .then(async (lateToken) => {
+            if (lateToken != null) {
+              await this.release({
+                orgId: opts.orgId,
+                queueId: opts.queueId,
+                token: lateToken,
+              });
+            }
+          })
+          .catch(() => {});
+        return null;
+      }
+      if (result != null) {
+        return result;
       }
       if (Date.now() >= deadline) {
         return null;

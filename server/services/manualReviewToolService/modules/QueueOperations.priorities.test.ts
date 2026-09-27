@@ -253,33 +253,144 @@ describe('QueueOperations job priorities', () => {
   );
 
   testWithQueue()(
-    'updateJobForQueue updates active jobs without changing priority',
+    'setJobPriority keeps an active job active and applies after release',
     async ({ org, queue, mrtService }) => {
       const queueOps = mrtService['queueOps'];
-      const payload = makePayloadFor(uid())('item-active');
+      const itemTypeId = uid();
+      const payloadFor = makePayloadFor(itemTypeId);
       await queueOps.addJob({
         orgId: org.id,
         queueId: queue.id,
         enqueueSourceInfo: { kind: 'REPORT' },
         priority: 1000,
-        jobPayload: { policyIds: [], payload },
+        jobPayload: { policyIds: [], payload: payloadFor('item-active') },
+      });
+      await queueOps.addJob({
+        orgId: org.id,
+        queueId: queue.id,
+        enqueueSourceInfo: { kind: 'REPORT' },
+        priority: 1500,
+        jobPayload: { policyIds: [], payload: payloadFor('item-other') },
       });
 
+      const lockToken = 'reviewer-active';
       const claimed = await queueOps.dequeueNextJobWithLock({
         orgId: org.id,
         queueId: queue.id,
-        lockToken: 'reviewer-active',
+        lockToken,
       });
-      expect(claimed).not.toBeNull();
+      expect(claimed?.job.payload.item.itemId).toBe('item-active');
 
-      const updated = await queueOps.updateJobForQueue({
+      expect(
+        await queueOps.setJobPriority({
+          orgId: org.id,
+          queueId: queue.id,
+          jobId: claimed!.job.id,
+          priority: 2000,
+        }),
+      ).toBe(true);
+
+      const bullQueue = await queueOps['getOrCreateBullQueue']({
+        orgId: org.id,
+        queueId: queue.id,
+      });
+      const bullJob = await bullQueue.getJob(
+        itemIdToBullJobId({ typeId: itemTypeId, id: 'item-active' }),
+      );
+      expect(await bullJob?.getState()).toBe('active');
+      expect(bullJob?.priority).toBe(2000);
+      expect(await bullQueue.getJobCountByTypes('prioritized')).toBe(1);
+
+      await queueOps.releaseJobLock({
         orgId: org.id,
         queueId: queue.id,
         jobId: claimed!.job.id,
-        data: claimed!.job,
+        lockToken,
+      });
+
+      const next = await queueOps.dequeueNextJobWithLock({
+        orgId: org.id,
+        queueId: queue.id,
+        lockToken: 'reviewer-2',
+      });
+      expect(next?.job.payload.item.itemId).toBe('item-other');
+    },
+  );
+
+  testWithQueue()(
+    'setJobPriority does not overwrite job data',
+    async ({ org, queue, mrtService }) => {
+      const queueOps = mrtService['queueOps'];
+      const itemTypeId = uid();
+      const job = await queueOps.addJob({
+        orgId: org.id,
+        queueId: queue.id,
+        enqueueSourceInfo: { kind: 'REPORT' },
+        priority: 1000,
+        jobPayload: {
+          policyIds: [],
+          payload: makePayloadFor(itemTypeId)('item-merge'),
+        },
+      });
+
+      await queueOps.updateJobForQueue({
+        orgId: org.id,
+        queueId: queue.id,
+        jobId: job.id,
+        data: { ...job, policyIds: ['merged-policy'] },
+      });
+      await queueOps.setJobPriority({
+        orgId: org.id,
+        queueId: queue.id,
+        jobId: job.id,
         priority: 2000,
       });
-      expect(updated?.id).toBe(claimed!.job.id);
+
+      const bullQueue = await queueOps['getOrCreateBullQueue']({
+        orgId: org.id,
+        queueId: queue.id,
+      });
+      const stored = await bullQueue.getJob(
+        itemIdToBullJobId({ typeId: itemTypeId, id: 'item-merge' }),
+      );
+      expect(stored?.data).toMatchObject({ policyIds: ['merged-policy'] });
+      expect(stored?.priority).toBe(2000);
+    },
+  );
+
+  testWithQueue()(
+    'recomputePrioritiesForQueue stops writing when shouldContinue is false',
+    async ({ org, queue, mrtService }) => {
+      const queueOps = mrtService['queueOps'];
+      const itemTypeId = uid();
+      await queueOps.addJob({
+        orgId: org.id,
+        queueId: queue.id,
+        enqueueSourceInfo: { kind: 'REPORT' },
+        priority: 1000,
+        jobPayload: {
+          policyIds: [],
+          payload: makePayloadFor(itemTypeId)('item-A'),
+        },
+      });
+
+      const result = await queueOps.recomputePrioritiesForQueue({
+        orgId: org.id,
+        queueId: queue.id,
+        getPriorities: async (itemIds) =>
+          new Map(itemIds.map((itemId) => [itemId, 2000])),
+        shouldContinue: () => false,
+      });
+      expect(result.aborted).toBe(true);
+
+      const bullQueue = await queueOps['getOrCreateBullQueue']({
+        orgId: org.id,
+        queueId: queue.id,
+      });
+      const bullJob = await bullQueue.getJob(
+        itemIdToBullJobId({ typeId: itemTypeId, id: 'item-A' }),
+      );
+      expect(bullJob?.priority).toBe(1000);
     },
   );
 
