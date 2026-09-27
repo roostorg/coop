@@ -1,3 +1,5 @@
+import { vi } from 'vitest';
+
 import { UserPermission } from '../../services/userManagementService/index.js';
 import { resolvers } from './ncmec.js';
 
@@ -16,7 +18,7 @@ const VALID_INPUT = {
 };
 
 function makeCtx(permissions: readonly UserPermission[]) {
-  const updateNcmecOrgSettings = jest.fn(async () => undefined);
+  const updateNcmecOrgSettings = vi.fn(async () => undefined);
   const ctx = {
     getUser: () => ({
       id: 'user-1',

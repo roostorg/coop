@@ -11,6 +11,12 @@ For more information about each release including git tags and artifacts, see [R
 ### Added
 
 - Per-queue job sort order for manual review queues with support for sorting by number of reports ([#718](https://github.com/roostorg/coop/pull/718) by [@calebmcquaid](https://github.com/calebmcquaid), closes [#670](https://github.com/roostorg/coop/issues/670))
+- Optional policy and audit callbacks with bounded deadlines for review and item content responses ([#1270](https://github.com/roostorg/coop/pull/1270) by [@sunilatlas](https://github.com/sunilatlas), closes [#1269](https://github.com/roostorg/coop/issues/1269))
+- Native OpenTelemetry manual-review counters, decision-source labels and elapsed timings ([#1286](https://github.com/roostorg/coop/pull/1286) by [@sunilatlas](https://github.com/sunilatlas), relates to [#1287](https://github.com/roostorg/coop/issues/1287))
+
+### Fixed
+
+- Completed manual reviews no longer reappear when no next job is available; refreshed content stays tied to the active job ([#1302](https://github.com/roostorg/coop/pull/1302) by [@sunilatlas](https://github.com/sunilatlas), closes [#1303](https://github.com/roostorg/coop/issues/1303)).
 
 ## [1.1.0-alpha] - 2026-09-21
 

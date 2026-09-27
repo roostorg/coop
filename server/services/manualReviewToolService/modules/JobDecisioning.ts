@@ -201,6 +201,7 @@ export default class JobDecisioning {
       userId: string;
       userItemTypeId: string;
     }) => Promise<boolean>,
+    private readonly meter?: Dependencies['Meter'],
   ) {}
 
   async submitDecision(opts: SubmitDecisionInput) {
@@ -758,7 +759,7 @@ export default class JobDecisioning {
             })
         : null;
 
-    return this.pgQuery
+    await this.pgQuery
       .insertInto('manual_review_tool.manual_review_decisions')
       .values({
         id,
@@ -777,6 +778,37 @@ export default class JobDecisioning {
         assigned_at: assignedAt,
       })
       .execute();
+
+    const attributes = {
+      queue_id: queueId,
+      item_type_id: job.payload.item.itemTypeIdentifier.id,
+      decision_type:
+        decisionComponents.length > 1
+          ? 'multiple'
+          : (decisionComponents[0]?.type ?? 'UNKNOWN'),
+      automatic: isAutomaticClose,
+      decision_source: !recordAssignedAt
+        ? 'sweep'
+        : isAutomaticClose
+          ? 'automatic_close'
+          : 'direct',
+    };
+    const recordedAt = new Date();
+    this.meter?.recordManualReviewEvent('decision_stored', attributes);
+    this.meter?.recordManualReviewDuration(
+      'total_to_decision',
+      job.createdAt,
+      recordedAt,
+      attributes,
+    );
+    if (recordAssignedAt && !isAutomaticClose) {
+      this.meter?.recordManualReviewDuration(
+        'claim_elapsed',
+        assignedAt,
+        recordedAt,
+        attributes,
+      );
+    }
   }
 
   async getNcmecDecisions(opts: { startDate: Date; endDate: Date }) {

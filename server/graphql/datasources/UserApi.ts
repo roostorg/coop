@@ -1,7 +1,8 @@
 import { type Exception } from '@opentelemetry/api';
 import { uid } from 'uid';
 
-import { inject, type Dependencies } from '../../iocContainer/index.js';
+import { type Dependencies } from '../../iocContainer/index.js';
+import { inject } from '../../iocContainer/utils.js';
 import { type CombinedPg } from '../../services/combinedDbTypes.js';
 import { type LoginMethod } from '../../services/coreAppTables.js';
 import {

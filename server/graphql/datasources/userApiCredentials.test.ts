@@ -1,5 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { type Kysely } from 'kysely';
+import { vi } from 'vitest';
 
 import {
   hashPassword,
@@ -14,15 +15,15 @@ function makeMockKyselyPg(opts: {
   userRow: Record<string, unknown> | undefined;
   updateShouldThrow?: boolean;
 }) {
-  const selectExecuteTakeFirst = jest.fn().mockResolvedValue(opts.userRow);
+  const selectExecuteTakeFirst = vi.fn().mockResolvedValue(opts.userRow);
   const selectBuilder = {
-    select: jest.fn().mockReturnThis(),
-    where: jest.fn().mockReturnThis(),
+    select: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
     executeTakeFirst: selectExecuteTakeFirst,
   };
-  const selectFrom = jest.fn().mockReturnValue(selectBuilder);
+  const selectFrom = vi.fn().mockReturnValue(selectBuilder);
 
-  const updateExecute = jest.fn();
+  const updateExecute = vi.fn();
   if (opts.updateShouldThrow) {
     updateExecute.mockRejectedValue(new Error('update failed'));
   } else {
@@ -31,11 +32,11 @@ function makeMockKyselyPg(opts: {
     updateExecute.mockResolvedValue([]);
   }
   const updateBuilder = {
-    set: jest.fn().mockReturnThis(),
-    where: jest.fn().mockReturnThis(),
+    set: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
     execute: updateExecute,
   };
-  const updateTable = jest.fn().mockReturnValue(updateBuilder);
+  const updateTable = vi.fn().mockReturnValue(updateBuilder);
 
   const kyselyPg = {
     selectFrom,
@@ -66,8 +67,8 @@ function makeUserRow(overrides: Partial<Record<string, unknown>> = {}) {
 }
 
 function makeDeps(kyselyPg: Kysely<unknown>) {
-  const getSamlSettings = jest.fn().mockResolvedValue(null);
-  const logActiveSpanFailedIfAny = jest.fn();
+  const getSamlSettings = vi.fn().mockResolvedValue(null);
+  const logActiveSpanFailedIfAny = vi.fn();
   return {
     deps: {
       kyselyPg,

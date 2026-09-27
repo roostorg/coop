@@ -1,3 +1,5 @@
+import { vi, type Mock } from 'vitest';
+
 import { type ItemSubmission } from '../itemProcessingService/index.js';
 import { type ItemSubmissionWithTypeIdentifier } from '../itemProcessingService/makeItemSubmissionWithTypeIdentifier.js';
 import { type ItemType } from '../moderationConfigService/types/itemTypes.js';
@@ -70,7 +72,7 @@ const fullUserSubmission = {
 
 async function* emptyAsyncIterable(): AsyncGenerator<never> {}
 
-function makeEnqueue(enqueueSpy: jest.Mock): NcmecEnqueueToMrt {
+function makeEnqueue(enqueueSpy: Mock): NcmecEnqueueToMrt {
   return new NcmecEnqueueToMrt(
     {
       getPartialItems: async () => [fullUserSubmission],
@@ -94,7 +96,7 @@ function makeEnqueue(enqueueSpy: jest.Mock): NcmecEnqueueToMrt {
   );
 }
 
-function enqueuedPayload(enqueueSpy: jest.Mock): Record<string, unknown> {
+function enqueuedPayload(enqueueSpy: Mock): Record<string, unknown> {
   expect(enqueueSpy).toHaveBeenCalledTimes(1);
   const [input] = enqueueSpy.mock.calls[0] as unknown as [
     { payload: Record<string, unknown> },
@@ -104,7 +106,7 @@ function enqueuedPayload(enqueueSpy: jest.Mock): Record<string, unknown> {
 
 describe('NcmecEnqueueToMrt reportedMessages in the job payload', () => {
   it('records the reported content item as a reported message', async () => {
-    const enqueueSpy = jest.fn(async () => undefined);
+    const enqueueSpy = vi.fn(async () => undefined);
     const result = await makeEnqueue(
       enqueueSpy,
     ).enqueueForHumanReviewIfApplicable({
@@ -125,7 +127,7 @@ describe('NcmecEnqueueToMrt reportedMessages in the job payload', () => {
   });
 
   it('omits reportedMessages when the reported item is the user themself', async () => {
-    const enqueueSpy = jest.fn(async () => undefined);
+    const enqueueSpy = vi.fn(async () => undefined);
     const result = await makeEnqueue(
       enqueueSpy,
     ).enqueueForHumanReviewIfApplicable({

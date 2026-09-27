@@ -3,7 +3,8 @@ import { type Kysely } from 'kysely';
 import _ from 'lodash';
 import { type ReadonlyDeep } from 'type-fest';
 
-import { inject, type Dependencies } from '../../iocContainer/index.js';
+import { type Dependencies } from '../../iocContainer/index.js';
+import { inject } from '../../iocContainer/utils.js';
 import { type UserStatisticsServiceWarehouse } from './dbTypes.js';
 
 export type UserActionStatistics = {

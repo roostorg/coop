@@ -1,3 +1,5 @@
+import { vi } from 'vitest';
+
 import { instantiateOpaqueType } from '../../../utils/typescript-types.js';
 import {
   makeSubmissionId,
@@ -88,7 +90,7 @@ describe('JobPriority', () => {
     });
 
     test('does not fetch any property values', async () => {
-      const getNumTimesReported = jest.fn();
+      const getNumTimesReported = vi.fn();
       await getJobPriorityForItem({
         orgId,
         item: makeItem(),

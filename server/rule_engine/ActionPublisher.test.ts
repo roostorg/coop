@@ -1,5 +1,5 @@
-/* eslint-disable max-lines -- scenarios share the `makeIsolatedPublisher`
- * harness; splitting would duplicate ~100 lines of setup. */
+import { vi, type Mock } from 'vitest';
+
 /**
  * Unit tests for ActionPublisher to verify action execution logging behavior.
  *
@@ -16,7 +16,7 @@ import { ActionPublisher } from './ActionPublisher.js';
 import { RuleEnvironment } from './RuleEngine.js';
 
 type IsolatedPublisherOptions = {
-  fetchHTTP: jest.Mock;
+  fetchHTTP: Mock;
   manualReviewToolService?: Partial<Dependencies['ManualReviewToolService']>;
   ncmecService?: Partial<Dependencies['NcmecService']>;
   itemInvestigationService?: Partial<Dependencies['ItemInvestigationService']>;
@@ -37,27 +37,27 @@ function makeNoopTracer(): Dependencies['Tracer'] {
 }
 
 function makeIsolatedPublisher(opts: IsolatedPublisherOptions) {
-  const logActionExecutions = jest.fn().mockResolvedValue(undefined);
+  const logActionExecutions = vi.fn().mockResolvedValue(undefined);
   const actionExecutionLogger = {
     logActionExecutions,
   } as unknown as Dependencies['ActionExecutionLogger'];
   const signingKeyPairService = {
-    sign: jest.fn().mockResolvedValue(undefined),
+    sign: vi.fn().mockResolvedValue(undefined),
   } as unknown as Dependencies['SigningKeyPairService'];
   const itemInvestigationService = (opts.itemInvestigationService ?? {
-    getItemByIdentifier: jest.fn().mockResolvedValue(undefined),
+    getItemByIdentifier: vi.fn().mockResolvedValue(undefined),
   }) as Dependencies['ItemInvestigationService'];
   const userStrikeService = {
-    applyUserStrikeFromPublishedActions: jest.fn().mockResolvedValue(undefined),
-    getUserStrikeValue: jest.fn().mockResolvedValue(0),
-    findMostSeverePolicyViolationFromActions: jest
+    applyUserStrikeFromPublishedActions: vi.fn().mockResolvedValue(undefined),
+    getUserStrikeValue: vi.fn().mockResolvedValue(0),
+    findMostSeverePolicyViolationFromActions: vi
       .fn()
       .mockReturnValue(undefined),
     ...opts.userStrikeService,
   } as unknown as Dependencies['UserStrikeService'];
   const getItemTypeEventuallyConsistent =
     opts.getItemTypeEventuallyConsistent ??
-    jest.fn().mockResolvedValue(undefined);
+    vi.fn().mockResolvedValue(undefined);
   const publisher = new ActionPublisher(
     actionExecutionLogger,
     makeNoopTracer(),
@@ -88,7 +88,7 @@ describe('ActionPublisher', () => {
 
   describe('publishActions', () => {
     it('should log each action execution exactly once (not N² times)', async () => {
-      const logSpy = jest.spyOn(
+      const logSpy = vi.spyOn(
         container.ActionExecutionLogger,
         'logActionExecutions',
       );
@@ -192,7 +192,7 @@ describe('ActionPublisher', () => {
     });
 
     it('builds the CUSTOM_ACTION webhook body with parameters merged into `custom` and actorNote at the top level', async () => {
-      const fetchHTTP = jest.fn().mockResolvedValue({ status: 200, ok: true });
+      const fetchHTTP = vi.fn().mockResolvedValue({ status: 200, ok: true });
       const { publisher } = makeIsolatedPublisher({ fetchHTTP });
 
       await publisher.publishActions(
@@ -253,7 +253,7 @@ describe('ActionPublisher', () => {
     });
 
     it('includes the resolved creator for a USER target (the target itself)', async () => {
-      const fetchHTTP = jest.fn().mockResolvedValue({ status: 200, ok: true });
+      const fetchHTTP = vi.fn().mockResolvedValue({ status: 200, ok: true });
       const { publisher } = makeIsolatedPublisher({ fetchHTTP });
 
       await publisher.publishActions(
@@ -300,8 +300,8 @@ describe('ActionPublisher', () => {
     });
 
     it('resolves and includes the creator for a CONTENT identifier-only target by fetching the submission', async () => {
-      const fetchHTTP = jest.fn().mockResolvedValue({ status: 200, ok: true });
-      const getItemByIdentifier = jest.fn().mockResolvedValue({
+      const fetchHTTP = vi.fn().mockResolvedValue({ status: 200, ok: true });
+      const getItemByIdentifier = vi.fn().mockResolvedValue({
         latestSubmission: {
           itemId: 'message-456',
           submissionId: 'sub-1',
@@ -359,11 +359,11 @@ describe('ActionPublisher', () => {
     });
 
     it('omits the creator when a CONTENT target has no resolvable submission', async () => {
-      const fetchHTTP = jest.fn().mockResolvedValue({ status: 200, ok: true });
+      const fetchHTTP = vi.fn().mockResolvedValue({ status: 200, ok: true });
       const { publisher } = makeIsolatedPublisher({
         fetchHTTP,
         itemInvestigationService: {
-          getItemByIdentifier: jest.fn().mockResolvedValue(undefined),
+          getItemByIdentifier: vi.fn().mockResolvedValue(undefined),
         },
       });
 
@@ -408,11 +408,11 @@ describe('ActionPublisher', () => {
     });
 
     it('still delivers the webhook (with creator omitted) when the creator lookup rejects', async () => {
-      const fetchHTTP = jest.fn().mockResolvedValue({ status: 200, ok: true });
+      const fetchHTTP = vi.fn().mockResolvedValue({ status: 200, ok: true });
       const { publisher } = makeIsolatedPublisher({
         fetchHTTP,
         itemInvestigationService: {
-          getItemByIdentifier: jest
+          getItemByIdentifier: vi
             .fn()
             .mockRejectedValue(new Error('lookup failed')),
         },
@@ -460,7 +460,7 @@ describe('ActionPublisher', () => {
     });
 
     it('omits actorNote from the webhook body entirely when no note is supplied', async () => {
-      const fetchHTTP = jest.fn().mockResolvedValue({ status: 200, ok: true });
+      const fetchHTTP = vi.fn().mockResolvedValue({ status: 200, ok: true });
       const { publisher } = makeIsolatedPublisher({ fetchHTTP });
 
       await publisher.publishActions(
@@ -504,7 +504,7 @@ describe('ActionPublisher', () => {
     });
 
     it('includes the decision reason as a top-level `decisionReason` field', async () => {
-      const fetchHTTP = jest.fn().mockResolvedValue({ status: 200, ok: true });
+      const fetchHTTP = vi.fn().mockResolvedValue({ status: 200, ok: true });
       const { publisher } = makeIsolatedPublisher({ fetchHTTP });
 
       await publisher.publishActions(
@@ -550,7 +550,7 @@ describe('ActionPublisher', () => {
     });
 
     it('omits `decisionReason` from the webhook body when no decision reason is supplied', async () => {
-      const fetchHTTP = jest.fn().mockResolvedValue({ status: 200, ok: true });
+      const fetchHTTP = vi.fn().mockResolvedValue({ status: 200, ok: true });
       const { publisher } = makeIsolatedPublisher({ fetchHTTP });
 
       await publisher.publishActions(
@@ -594,9 +594,9 @@ describe('ActionPublisher', () => {
     });
 
     it('includes the user strike total (current total plus strikes this event applies)', async () => {
-      const fetchHTTP = jest.fn().mockResolvedValue({ status: 200, ok: true });
-      const getUserStrikeValue = jest.fn().mockResolvedValue(2);
-      const findMostSeverePolicyViolationFromActions = jest
+      const fetchHTTP = vi.fn().mockResolvedValue({ status: 200, ok: true });
+      const getUserStrikeValue = vi.fn().mockResolvedValue(2);
+      const findMostSeverePolicyViolationFromActions = vi
         .fn()
         .mockReturnValue({ id: 'policy-1', userStrikeCount: 3 });
       const { publisher } = makeIsolatedPublisher({
@@ -660,13 +660,13 @@ describe('ActionPublisher', () => {
     });
 
     it('omits the user strike total when there is no resolvable target user', async () => {
-      const fetchHTTP = jest.fn().mockResolvedValue({ status: 200, ok: true });
-      const getUserStrikeValue = jest.fn();
+      const fetchHTTP = vi.fn().mockResolvedValue({ status: 200, ok: true });
+      const getUserStrikeValue = vi.fn();
       const { publisher } = makeIsolatedPublisher({
         fetchHTTP,
         userStrikeService: { getUserStrikeValue },
         itemInvestigationService: {
-          getItemByIdentifier: jest.fn().mockResolvedValue(undefined),
+          getItemByIdentifier: vi.fn().mockResolvedValue(undefined),
         },
       });
 
@@ -713,14 +713,14 @@ describe('ActionPublisher', () => {
     });
 
     it('reports the resolved creator strike total (no applied delta) for an identifier-only CONTENT target', async () => {
-      const fetchHTTP = jest.fn().mockResolvedValue({ status: 200, ok: true });
-      const getUserStrikeValue = jest.fn().mockResolvedValue(4);
+      const fetchHTTP = vi.fn().mockResolvedValue({ status: 200, ok: true });
+      const getUserStrikeValue = vi.fn().mockResolvedValue(4);
       // A strike weight exists, but for identifier-only CONTENT no strike is
       // actually applied, so it must not be added to the reported total.
-      const findMostSeverePolicyViolationFromActions = jest
+      const findMostSeverePolicyViolationFromActions = vi
         .fn()
         .mockReturnValue({ id: 'policy-1', userStrikeCount: 3 });
-      const getItemByIdentifier = jest.fn().mockResolvedValue({
+      const getItemByIdentifier = vi.fn().mockResolvedValue({
         latestSubmission: {
           itemId: 'message-77',
           submissionId: 'sub-77',
@@ -794,7 +794,7 @@ describe('ActionPublisher', () => {
     });
 
     it('forwards moderator-supplied parameter values and actor note to the logger', async () => {
-      const logSpy = jest.spyOn(
+      const logSpy = vi.spyOn(
         container.ActionExecutionLogger,
         'logActionExecutions',
       );
@@ -857,7 +857,7 @@ describe('ActionPublisher', () => {
     });
 
     it('enqueues to NCMEC for a synthetic USER target with no item submission record', async () => {
-      const enqueueForHumanReviewIfApplicable = jest
+      const enqueueForHumanReviewIfApplicable = vi
         .fn()
         .mockResolvedValue({ status: 'ENQUEUED' });
       const userItemType = {
@@ -869,14 +869,14 @@ describe('ActionPublisher', () => {
         schema: [],
         schemaFieldRoles: {},
       };
-      const getItemTypeEventuallyConsistent = jest
+      const getItemTypeEventuallyConsistent = vi
         .fn()
         .mockResolvedValue(userItemType);
       const { publisher, logActionExecutions } = makeIsolatedPublisher({
-        fetchHTTP: jest.fn(),
+        fetchHTTP: vi.fn(),
         ncmecService: { enqueueForHumanReviewIfApplicable },
         itemInvestigationService: {
-          getItemByIdentifier: jest.fn().mockResolvedValue(undefined),
+          getItemByIdentifier: vi.fn().mockResolvedValue(undefined),
         },
         getItemTypeEventuallyConsistent,
       });
@@ -926,7 +926,7 @@ describe('ActionPublisher', () => {
     });
 
     it('enqueues to MRT for a synthetic USER target with no submission record', async () => {
-      const enqueue = jest.fn().mockResolvedValue(undefined);
+      const enqueue = vi.fn().mockResolvedValue(undefined);
       const userItemType = {
         id: 'user-type-2',
         kind: 'USER' as const,
@@ -936,14 +936,14 @@ describe('ActionPublisher', () => {
         schema: [],
         schemaFieldRoles: {},
       };
-      const getItemTypeEventuallyConsistent = jest
+      const getItemTypeEventuallyConsistent = vi
         .fn()
         .mockResolvedValue(userItemType);
       const { publisher, logActionExecutions } = makeIsolatedPublisher({
-        fetchHTTP: jest.fn(),
+        fetchHTTP: vi.fn(),
         manualReviewToolService: { enqueue },
         itemInvestigationService: {
-          getItemByIdentifier: jest.fn().mockResolvedValue(undefined),
+          getItemByIdentifier: vi.fn().mockResolvedValue(undefined),
         },
         getItemTypeEventuallyConsistent,
       });
@@ -990,7 +990,7 @@ describe('ActionPublisher', () => {
     });
 
     it('infers the creator and enqueues to NCMEC for a CONTENT target with no submission', async () => {
-      const enqueueForHumanReviewIfApplicable = jest
+      const enqueueForHumanReviewIfApplicable = vi
         .fn()
         .mockResolvedValue({ status: 'ENQUEUED' });
       const userItemType = {
@@ -1006,7 +1006,7 @@ describe('ActionPublisher', () => {
       // then synthesizes a submission keyed on *the creator's* id (not the
       // content's id). The mock mirrors that shape so the test exercises a
       // payload production can actually produce.
-      const synthesizeUserItemFromContentTarget = jest.fn().mockResolvedValue({
+      const synthesizeUserItemFromContentTarget = vi.fn().mockResolvedValue({
         latestSubmission: {
           itemId: 'creator-user-id-7',
           itemType: userItemType,
@@ -1017,10 +1017,10 @@ describe('ActionPublisher', () => {
         },
       });
       const { publisher, logActionExecutions } = makeIsolatedPublisher({
-        fetchHTTP: jest.fn(),
+        fetchHTTP: vi.fn(),
         ncmecService: { enqueueForHumanReviewIfApplicable },
         itemInvestigationService: {
-          getItemByIdentifier: jest.fn().mockResolvedValue(undefined),
+          getItemByIdentifier: vi.fn().mockResolvedValue(undefined),
           synthesizeUserItemFromContentTarget,
         },
       });
@@ -1073,18 +1073,18 @@ describe('ActionPublisher', () => {
     });
 
     it('fails loudly when ENQUEUE_TO_NCMEC targets a CONTENT item with no submission and no inferable creator', async () => {
-      const consoleSpy = jest
+      using consoleSpy = vi
         .spyOn(console, 'error')
         .mockImplementation(() => {});
-      const enqueueForHumanReviewIfApplicable = jest.fn();
-      const synthesizeUserItemFromContentTarget = jest
+      const enqueueForHumanReviewIfApplicable = vi.fn();
+      const synthesizeUserItemFromContentTarget = vi
         .fn()
         .mockResolvedValue(null);
       const { publisher, logActionExecutions } = makeIsolatedPublisher({
-        fetchHTTP: jest.fn(),
+        fetchHTTP: vi.fn(),
         ncmecService: { enqueueForHumanReviewIfApplicable },
         itemInvestigationService: {
-          getItemByIdentifier: jest.fn().mockResolvedValue(undefined),
+          getItemByIdentifier: vi.fn().mockResolvedValue(undefined),
           synthesizeUserItemFromContentTarget,
         },
       });
@@ -1135,7 +1135,6 @@ describe('ActionPublisher', () => {
       expect(loggedLine).toEqual(
         expect.stringContaining('actionPublisher.publishAction.failed'),
       );
-      consoleSpy.mockRestore();
     });
   });
 });

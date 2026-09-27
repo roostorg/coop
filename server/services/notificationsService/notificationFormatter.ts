@@ -76,7 +76,7 @@ export function formatNotification<T extends NotificationType>(
     default:
       return {
         // eslint-disable-next-line no-restricted-syntax
-        text: JSON.stringify(it, undefined, 2),
+        text: JSON.stringify(notification, undefined, 2),
       };
   }
 }

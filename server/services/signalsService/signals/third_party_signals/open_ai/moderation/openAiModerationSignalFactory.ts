@@ -12,7 +12,7 @@
  */
 import { ScalarTypes } from '@roostorg/coop-types';
 
-import { type CachedGetCredentials } from '../../../../../signalAuthService/signalAuthService.js';
+import { type GetCredentials } from '../../../../../signalAuthService/signalAuthService.js';
 import { type SignalType } from '../../../../types/SignalType.js';
 import SignalBase, {
   type SignalInput,
@@ -45,7 +45,7 @@ type ModerationMode<InputScalar extends SignalInputType, ModelName> = {
   inputScalar: InputScalar;
   /** Routes to either `runOpenAiModerationImpl` or `runOpenAiModerationImageImpl`. */
   runImpl: (
-    getOpenAiCredentials: CachedGetCredentials<'OPEN_AI'>,
+    getOpenAiCredentials: GetCredentials<'OPEN_AI'>,
     input: SignalInput<InputScalar>,
     getOpenAiScores: FetchOpenAiModerationScores,
     modelName: ModelName,
@@ -68,7 +68,7 @@ function makeOpenAiModerationSignal<
     { scalarType: ScalarTypes['NUMBER'] }
   > {
     constructor(
-      protected readonly getOpenAiCredentials: CachedGetCredentials<'OPEN_AI'>,
+      protected readonly getOpenAiCredentials: GetCredentials<'OPEN_AI'>,
       protected readonly getOpenAiScores: FetchOpenAiModerationScores,
     ) {
       super();

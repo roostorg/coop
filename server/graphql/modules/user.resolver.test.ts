@@ -1,10 +1,12 @@
+import { vi } from 'vitest';
+
 import { UserPermission } from '../../services/userManagementService/index.js';
 import { resolvers } from './user.js';
 
 describe('user resolvers', () => {
   describe('Mutation.deleteUser', () => {
     function makeCtx(permissions: readonly UserPermission[]) {
-      const deleteUser = jest.fn(async () => true);
+      const deleteUser = vi.fn(async () => true);
       const ctx = {
         getUser: () => ({
           id: 'admin-1',
@@ -65,8 +67,8 @@ describe('user resolvers', () => {
 
     function makeCtx(opts?: { reviewableQueueIds?: string[]; user?: null }) {
       const reviewableQueueIds = opts?.reviewableQueueIds ?? ['q-allowed'];
-      const getFavoriteQueuesForUser = jest.fn(async () => favoriteQueues);
-      const getReviewableQueuesForUser = jest.fn(
+      const getFavoriteQueuesForUser = vi.fn(async () => favoriteQueues);
+      const getReviewableQueuesForUser = vi.fn(
         async ({ queueIds }: { queueIds?: readonly string[] }) =>
           favoriteQueues.filter(
             (queue) =>
@@ -74,7 +76,7 @@ describe('user resolvers', () => {
               (queueIds == null || queueIds.includes(queue.id)),
           ),
       );
-      const addFavoriteQueueForUser = jest.fn(async () => undefined);
+      const addFavoriteQueueForUser = vi.fn(async () => undefined);
       const ctx = {
         getUser: () => (opts?.user === null ? null : caller),
         services: {

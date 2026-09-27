@@ -1,3 +1,5 @@
+import { vi } from 'vitest';
+
 import { type Action } from '../../services/moderationConfigService/index.js';
 import { UserPermission } from '../../services/userManagementService/index.js';
 import { resolveOrgActions, resolvers } from './org.js';
@@ -39,8 +41,8 @@ describe('Org resolvers', () => {
       const actions = opts.actionTypes.map((a) =>
         makeAction(a.id, a.actionType, opts.orgId),
       );
-      const getActions = jest.fn(async () => actions);
-      const hasNCMECReportingEnabled = jest.fn(
+      const getActions = vi.fn(async () => actions);
+      const hasNCMECReportingEnabled = vi.fn(
         async () => opts.hasNCMECReportingEnabled,
       );
       const ctx = {
@@ -109,11 +111,11 @@ describe('Org resolvers', () => {
       permissions: readonly UserPermission[];
       callerOrgId?: string;
     }) {
-      const getActivatedApiKeyForOrg = jest.fn(async () => ({
+      const getActivatedApiKeyForOrg = vi.fn(async () => ({
         key: 'api-key-secret',
       }));
-      const getPublicSigningKeyPem = jest.fn(async () => 'PEM_BODY');
-      const getAllIntegrationConfigs = jest.fn(async () => []);
+      const getPublicSigningKeyPem = vi.fn(async () => 'PEM_BODY');
+      const getAllIntegrationConfigs = vi.fn(async () => []);
       const ctx = {
         getUser: () => ({
           id: 'user-1',
@@ -201,7 +203,7 @@ describe('Org resolvers', () => {
 
   describe('Org.usersWhoCanReviewEveryQueue is not readable cross-tenant (PII leak guard)', () => {
     function makeCtx(opts: { orgId: string; callerOrgId?: string | null }) {
-      const getOrgUsersForGraphQL = jest.fn(async () => []);
+      const getOrgUsersForGraphQL = vi.fn(async () => []);
       const ctx = {
         getUser: () =>
           opts.callerOrgId === null
@@ -249,10 +251,10 @@ describe('Org resolvers', () => {
 
   describe('Org.mrtQueues is membership-scoped', () => {
     function makeCtx(opts: { callerOrgId?: string | null }) {
-      const getReviewableQueuesForUser = jest.fn(async () => [
+      const getReviewableQueuesForUser = vi.fn(async () => [
         { id: 'q-1', orgId: 'org-1', name: 'q-1' },
       ]);
-      const getAllQueuesForOrgAndDangerouslyBypassPermissioning = jest.fn(
+      const getAllQueuesForOrgAndDangerouslyBypassPermissioning = vi.fn(
         async () => {
           throw new Error('resolver must not bypass permissioning');
         },

@@ -2,7 +2,8 @@ import type { ScalarType, TaggedScalar } from '@roostorg/coop-types';
 import type { ReadonlyDeep } from 'type-fest';
 
 import { getSignalInputValueOrValues } from '../../condition_evaluator/leafCondition.js';
-import { inject, type Dependencies } from '../../iocContainer/index.js';
+import { type Dependencies } from '../../iocContainer/index.js';
+import { inject } from '../../iocContainer/utils.js';
 import { type RuleEvaluationContext } from '../../rule_engine/RuleEvaluator.js';
 import { assertUnreachable } from '../../utils/misc.js';
 import type SafeTracer from '../../utils/SafeTracer.js';

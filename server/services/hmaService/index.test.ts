@@ -1,3 +1,5 @@
+import { vi, type Mock } from 'vitest';
+
 import { jsonParse } from '../../utils/encoding.js';
 import type { HashBank } from './dbTypes.js';
 import { HmaService, type ExchangeInfo } from './index.js';
@@ -15,25 +17,25 @@ const MOCK_BANK: HashBank = {
 
 function makeMockKyselyPg() {
   const mockChain = {
-    values: jest.fn().mockReturnThis(),
-    returningAll: jest.fn().mockReturnThis(),
-    executeTakeFirstOrThrow: jest.fn().mockResolvedValue(MOCK_BANK),
-    selectAll: jest.fn().mockReturnThis(),
-    where: jest.fn().mockReturnThis(),
-    executeTakeFirst: jest.fn().mockResolvedValue(MOCK_BANK),
-    execute: jest.fn().mockResolvedValue([]),
-    set: jest.fn().mockReturnThis(),
+    values: vi.fn().mockReturnThis(),
+    returningAll: vi.fn().mockReturnThis(),
+    executeTakeFirstOrThrow: vi.fn().mockResolvedValue(MOCK_BANK),
+    selectAll: vi.fn().mockReturnThis(),
+    where: vi.fn().mockReturnThis(),
+    executeTakeFirst: vi.fn().mockResolvedValue(MOCK_BANK),
+    execute: vi.fn().mockResolvedValue([]),
+    set: vi.fn().mockReturnThis(),
   };
   return {
-    insertInto: jest.fn().mockReturnValue(mockChain),
-    selectFrom: jest.fn().mockReturnValue(mockChain),
-    updateTable: jest.fn().mockReturnValue(mockChain),
-    deleteFrom: jest.fn().mockReturnValue(mockChain),
+    insertInto: vi.fn().mockReturnValue(mockChain),
+    selectFrom: vi.fn().mockReturnValue(mockChain),
+    updateTable: vi.fn().mockReturnValue(mockChain),
+    deleteFrom: vi.fn().mockReturnValue(mockChain),
     _chain: mockChain,
   } as unknown as ConstructorParameters<typeof HmaService>[1];
 }
 
-function makeService(fetchHTTP: jest.Mock) {
+function makeService(fetchHTTP: Mock) {
   return new HmaService(fetchHTTP as never, makeMockKyselyPg());
 }
 
@@ -52,7 +54,7 @@ function fail(status: number, body?: unknown) {
 describe('HmaService', () => {
   describe('createBank', () => {
     it('creates a standalone bank via POST /c/banks when no exchange is provided', async () => {
-      const fetchHTTP = jest
+      const fetchHTTP = vi
         .fn()
         .mockResolvedValue(
           ok({ name: 'COOP_ORG1_MY_BANK', matching_enabled_ratio: 1.0 }),
@@ -69,7 +71,7 @@ describe('HmaService', () => {
     });
 
     it('creates a bank via POST /c/exchanges when exchange config is provided', async () => {
-      const fetchHTTP = jest.fn().mockResolvedValue(created());
+      const fetchHTTP = vi.fn().mockResolvedValue(created());
       const svc = makeService(fetchHTTP);
 
       const result = await svc.createBank('org1', 'My Bank', 'desc', 1.0, {
@@ -88,7 +90,7 @@ describe('HmaService', () => {
     });
 
     it('updates enabled_ratio after exchange creation when not 1.0', async () => {
-      const fetchHTTP = jest.fn().mockResolvedValue(created());
+      const fetchHTTP = vi.fn().mockResolvedValue(created());
       const svc = makeService(fetchHTTP);
 
       await svc.createBank('org1', 'My Bank', 'desc', 0.5, {
@@ -103,7 +105,7 @@ describe('HmaService', () => {
     });
 
     it('throws when HMA returns an error for exchange creation', async () => {
-      const fetchHTTP = jest.fn().mockResolvedValue(fail(500));
+      const fetchHTTP = vi.fn().mockResolvedValue(fail(500));
       const svc = makeService(fetchHTTP);
 
       await expect(
@@ -115,7 +117,7 @@ describe('HmaService', () => {
     });
 
     it('throws when HMA returns an error for standalone bank creation', async () => {
-      const fetchHTTP = jest.fn().mockResolvedValue(fail(409));
+      const fetchHTTP = vi.fn().mockResolvedValue(fail(409));
       const svc = makeService(fetchHTTP);
 
       await expect(
@@ -126,7 +128,7 @@ describe('HmaService', () => {
 
   describe('setExchangeCredentials', () => {
     it('sends credentials to the correct endpoint', async () => {
-      const fetchHTTP = jest.fn().mockResolvedValue(created());
+      const fetchHTTP = vi.fn().mockResolvedValue(created());
       const svc = makeService(fetchHTTP);
 
       await svc.setExchangeCredentials('ncmec', { user: 'u', password: 'p' });
@@ -140,7 +142,7 @@ describe('HmaService', () => {
     });
 
     it('throws when HMA returns an error', async () => {
-      const fetchHTTP = jest.fn().mockResolvedValue(fail(400));
+      const fetchHTTP = vi.fn().mockResolvedValue(fail(400));
       const svc = makeService(fetchHTTP);
 
       await expect(
@@ -151,7 +153,7 @@ describe('HmaService', () => {
 
   describe('getExchangeForBank', () => {
     it('returns null when HMA returns 404 (no exchange configured)', async () => {
-      const fetchHTTP = jest.fn().mockResolvedValue(fail(404));
+      const fetchHTTP = vi.fn().mockResolvedValue(fail(404));
       const svc = makeService(fetchHTTP);
 
       const result = await svc.getExchangeForBank('COOP_ORG1_BANK');
@@ -160,7 +162,7 @@ describe('HmaService', () => {
     });
 
     it('returns error info when HMA returns a non-404 error', async () => {
-      const fetchHTTP = jest.fn().mockResolvedValue(fail(500));
+      const fetchHTTP = vi.fn().mockResolvedValue(fail(500));
       const svc = makeService(fetchHTTP);
 
       const result = await svc.getExchangeForBank('COOP_ORG1_BANK');
@@ -170,7 +172,7 @@ describe('HmaService', () => {
     });
 
     it('returns error info when HMA is unreachable', async () => {
-      const fetchHTTP = jest.fn().mockRejectedValue(new Error('ECONNREFUSED'));
+      const fetchHTTP = vi.fn().mockRejectedValue(new Error('ECONNREFUSED'));
       const svc = makeService(fetchHTTP);
 
       const result = await svc.getExchangeForBank('COOP_ORG1_BANK');
@@ -180,7 +182,7 @@ describe('HmaService', () => {
     });
 
     it('returns full exchange info with fetch status on success', async () => {
-      const fetchHTTP = jest
+      const fetchHTTP = vi
         .fn()
         .mockResolvedValueOnce(
           ok({
@@ -222,7 +224,7 @@ describe('HmaService', () => {
     });
 
     it('returns fetch failed status', async () => {
-      const fetchHTTP = jest
+      const fetchHTTP = vi
         .fn()
         .mockResolvedValueOnce(
           ok({
@@ -257,7 +259,7 @@ describe('HmaService', () => {
     });
 
     it('detects active fetch in progress', async () => {
-      const fetchHTTP = jest
+      const fetchHTTP = vi
         .fn()
         .mockResolvedValueOnce(
           ok({
@@ -290,7 +292,7 @@ describe('HmaService', () => {
     });
 
     it('gracefully handles status endpoint failure', async () => {
-      const fetchHTTP = jest
+      const fetchHTTP = vi
         .fn()
         .mockResolvedValueOnce(
           ok({
@@ -344,7 +346,7 @@ describe('HmaService', () => {
           ],
         },
       };
-      const fetchHTTP = jest.fn().mockResolvedValue(ok(hmaSchema));
+      const fetchHTTP = vi.fn().mockResolvedValue(ok(hmaSchema));
       const svc = makeService(fetchHTTP);
 
       const result = await svc.getExchangeApiSchema('fb_threatexchange');
@@ -354,7 +356,7 @@ describe('HmaService', () => {
     });
 
     it('falls back to built-in schema when HMA endpoint fails', async () => {
-      const fetchHTTP = jest.fn().mockResolvedValue(fail(404));
+      const fetchHTTP = vi.fn().mockResolvedValue(fail(404));
       const svc = makeService(fetchHTTP);
 
       const result = await svc.getExchangeApiSchema('fb_threatexchange');
@@ -364,7 +366,7 @@ describe('HmaService', () => {
     });
 
     it('falls back to built-in schema on network error', async () => {
-      const fetchHTTP = jest.fn().mockRejectedValue(new Error('ECONNREFUSED'));
+      const fetchHTTP = vi.fn().mockRejectedValue(new Error('ECONNREFUSED'));
       const svc = makeService(fetchHTTP);
 
       const result = await svc.getExchangeApiSchema('ncmec');
@@ -374,7 +376,7 @@ describe('HmaService', () => {
     });
 
     it('returns empty schema for unknown exchange type with no fallback', async () => {
-      const fetchHTTP = jest.fn().mockResolvedValue(fail(404));
+      const fetchHTTP = vi.fn().mockResolvedValue(fail(404));
       const svc = makeService(fetchHTTP);
 
       const result = await svc.getExchangeApiSchema('unknown_exchange');

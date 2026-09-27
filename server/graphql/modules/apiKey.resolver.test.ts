@@ -1,3 +1,5 @@
+import { vi } from 'vitest';
+
 import { UserPermission } from '../../services/userManagementService/index.js';
 import {
   Mutation as MutationResolvers,
@@ -27,9 +29,9 @@ const Mutation = MutationResolvers as {
 
 describe('apiKey resolvers', () => {
   function makeCtx(permissions: readonly UserPermission[]) {
-    const getActiveApiKeyForOrg = jest.fn(async () => ({ key: 'secret' }));
-    const rotateApiKey = jest.fn();
-    const rotateWebhookSigningKey = jest.fn();
+    const getActiveApiKeyForOrg = vi.fn(async () => ({ key: 'secret' }));
+    const rotateApiKey = vi.fn();
+    const rotateWebhookSigningKey = vi.fn();
     const ctx = {
       getUser: () => ({
         id: 'user-1',

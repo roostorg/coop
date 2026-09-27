@@ -34,7 +34,7 @@ Reference files: `README.md` (getting started), `server/bin/README.md` (utility 
 
   After step 3, run `npm run generate` from the repo root to refresh the codegen output.
 
-- **Data model:** Use Knex query builder for Postgres; ClickHouse via raw SQL in `server/storage/dataWarehouse/ClickhouseAdapter.ts`; Scylla via Cassandra driver.
+- **Data model:** Use Kysely query builder for Postgres; ClickHouse via raw SQL in `server/storage/dataWarehouse/ClickhouseAdapter.ts`; Scylla via Cassandra driver.
 - **Dependency injection:** Server uses BottleJS DI (wired in `server/iocContainer/`). Register services in `iocContainer`, don't export singletons from service files. Consumers receive dependencies via DI rather than importing directly. Bypassing `iocContainer` will work at runtime but breaks test mocking patterns.
 
 ## Build and run
@@ -85,13 +85,13 @@ Client: http://localhost:3000 · Server: http://localhost:8080
 
 ## Testing
 
-Integration tests spin up services via docker compose. Unit tests run in-process.
+Both packages use Vitest. Server tests need the local backing services and migrations; client tests run in-process with jsdom.
 
 ```bash
 # Run all tests (via docker compose)
 docker compose run --rm test
 
-# Server unit tests (no Docker)
+# Server unit tests (backing services must already be running)
 (cd server && npm test)
 
 # Client unit tests (no Docker)

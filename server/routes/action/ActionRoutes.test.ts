@@ -1,6 +1,7 @@
 import express from 'express';
 import _ from 'lodash';
 import supertest from 'supertest';
+import { vi } from 'vitest';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import {
@@ -106,8 +107,8 @@ describe('GET actions', () => {
       user,
       deps,
     }) => {
-      const read = jest.spyOn(deps.ModerationConfigService, 'getActions');
-      const readAssignments = jest.spyOn(
+      const read = vi.spyOn(deps.ModerationConfigService, 'getActions');
+      const readAssignments = vi.spyOn(
         deps.ModerationConfigService,
         'getActionItemTypeIds',
       );
@@ -218,8 +219,8 @@ describe('GET actions', () => {
   testWithConfig(
     'rejects missing and invalid API keys before reading actions',
     async ({ request, deps }) => {
-      const read = jest.spyOn(deps.ModerationConfigService, 'getActions');
-      const readAssignments = jest.spyOn(
+      const read = vi.spyOn(deps.ModerationConfigService, 'getActions');
+      const readAssignments = vi.spyOn(
         deps.ModerationConfigService,
         'getActionItemTypeIds',
       );
@@ -236,9 +237,9 @@ describe('GET actions', () => {
   testWithConfig(
     'returns an empty collection',
     async ({ request, apiKey, deps }) => {
-      jest
-        .spyOn(deps.ModerationConfigService, 'getActions')
-        .mockResolvedValue([]);
+      vi.spyOn(deps.ModerationConfigService, 'getActions').mockResolvedValue(
+        [],
+      );
       const response = await request
         .get('/api/v1/actions/')
         .set('x-api-key', apiKey)
@@ -258,13 +259,13 @@ describe('getActions read scheduling', () => {
     const started = new Promise<void>((resolve) => {
       signalStarted = resolve;
     });
-    const read = jest.fn<Dependencies['ModerationConfigService']['getActions']>(
+    const read = vi.fn<Dependencies['ModerationConfigService']['getActions']>(
       async () => {
         signalStarted();
         return actions;
       },
     );
-    const readAssignments = jest
+    const readAssignments = vi
       .fn<Dependencies['ModerationConfigService']['getActionItemTypeIds']>()
       .mockResolvedValue(new Map());
     const handler = getActions({
