@@ -1,0 +1,373 @@
+client/src/webpages/dashboard/mrt/manual_review_job/ManualReviewJobReview.test.tsx
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-235
+server/services/reportingService/reportingService.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 5-6
+server/package.json
+  s_bc2888f96fdb07::t_e02e8497925fa3 7,11-15,119,136-138
+server/rule_engine/ruleEngineQueries.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 12
+server/graphql/modules/manualReviewTool.resolver.test.ts
+  s_bc2888f96fdb07::t_7b8c33362029be 79-81
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-2,48,54,59,62-70,73,76
+client/src/setupTests.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 3-10
+server/graphql/modules/itemType.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 24,33-34,41,543-564,566,1138-1139
+server/services/analyticsLoggers/OrgCreationLogger.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-2
+server/services/placesApiService/placesApiService.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 3
+server/graphql/modules/org.resolver.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-2,44-45,114,117-118,206,254,257
+server/services/ruleAnomalyDetectionService/getRuleAnomalyDetectionStatistics.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-2,14,38,42-44
+server/services/signalsService/signals/third_party_signals/zentropi/zentropiUtils.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 7,59
+server/graphql/modules/user.resolver.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-2,9,70-71,79
+server/plugins/warehouse/queries/ClickhouseActionExecutionsAdapter.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 2,9,18-21
+server/utils/CoopMeter.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 3-4,36-42,86-162
+server/graphql/utils/safeDepthLimit.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 8,71-72
+.github/copilot-instructions.md
+  s_bc2888f96fdb07::t_e02e8497925fa3 29
+client/src/webpages/dashboard/mrt/manual_review_job/InvalidateReportsButton.test.tsx
+  s_bc2888f96fdb07::t_e02e8497925fa3 4,185
+server/services/userStatisticsService/fetchUserActionStatistics.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 6-7
+server/graphql/datasources/InvestigationApi.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-2
+server/services/signalsService/signals/third_party_signals/open_ai/whisper/OpenAiWhisperTranscriptionSignal.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 12,41
+client/src/utils/manualReviewTool.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-2,11
+server/graphql/datasources/ActionApi.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 5-6
+server/services/userStatisticsService/fetchUserActionStatistics.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 3,14,26,37
+server/test/integ/README.md
+  s_bc2888f96fdb07::t_e02e8497925fa3 30
+server/services/sendEmailService/sendEmailService.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 3,13,128,153,162-163,165-166,174,204
+server/condition_evaluator/conditionSet.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 4,38,45-49,51-60,62-70,72-74,76-78,80-84,86-95,97-100,102-120
+server/services/manualReviewToolService/modules/QueueOperations.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 178,905-909,957-960
+  s_bc2888f96fdb07::t_4a3e99d5c36df3 961
+client/src/webpages/dashboard/mrt/manual_review_job/selectManualReviewJob.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1,3,8,10,13-18
+server/routes/policies/PoliciesRoutes.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-2,64
+server/graphql/services.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 15
+server/services/signalsService/signals/third_party_signals/open_ai/moderation/openAIModerationUtils.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-2,17
+server/utils/SafeTracer.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 2,9
+server/graphql/datasources/UserApi.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 4-5
+client/package.json
+  s_bc2888f96fdb07::t_e02e8497925fa3 81,85,94,101,111
+server/routes/reporting/ReportingRoutes.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 3,329
+server/rule_engine/ActionPublisher.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-2,19,40,45,48,51-53,60,91,195,256,303-304,362,366,411,415,463,507,553,597-599,663-664,669,716-717,720,723,797,860,872,876,879,929,939,943,946,993,1009,1020,1023,1076,1079-1080,1084,1087
+server/services/derivedFieldsService/helpers.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 9,33,276-278,291-293,302-304,313-315,324-326
+server/services/signalsService/signals/third_party_signals/open_ai/moderation/OpenAiHateThreateningTextSignal.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 3,25
+server/services/signalAuthService/signalAuthService.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 2,10-12
+server/graphql/datasources/RoleApi.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 3-4
+server/services/signalsService/signals/ImageSimilarityDoesNotMatch.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 2,35,51,65,95
+server/services/signalsService/signals/third_party_signals/open_ai/moderation/OpenAiGraphicViolenceTextSignal.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 3,25
+server/services/notificationsService/notificationsService.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 7-8
+server/services/ncmecService/ncmecEnqueueToMrt.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-2,75,99,109,130
+server/graphql/modules/manualReviewTool.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 23,39,1871-1887,1889-1901,1920-1927,2906
+client/src/coop-ui/Button.test.tsx
+  s_bc2888f96fdb07::t_e02e8497925fa3 4,60
+client/vite.config.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 64
+server/services/signalsService/signals/third_party_signals/open_ai/moderation/OpenAiSexualMinorsTextSignal.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 3,25
+server/services/userStatisticsService/fetchUserSubmissionStatistics.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 5-6
+server/test/stubs/KyselyPg.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 6,8
+server/test/arbitraries/Shared.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 2
+server/services/userStatisticsService/fetchUserSubmissionStatistics.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 3,14,22,33
+server/services/userStatisticsService/userStatisticsService.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 9-10
+server/graphql/datasources/userApiCredentials.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 3,18,20-21,24,26,35-36,39,70-71
+server/services/signalsService/signals/third_party_signals/open_ai/moderation/OpenAiSexualTextSignal.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 3,25
+server/services/manualReviewToolService/modules/SkipOperations.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 3,11-14,35-38
+server/utils/bodySchemaValidation.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 2,24,29
+codegen.yaml
+  s_bc2888f96fdb07::t_e02e8497925fa3 121
+server/workers_jobs/RetryFailedNcmecDecisionsJob.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 2,101-103,108-111,113,116,118,122,125-126,129,165,187,209,232,238,257,263
+package.json
+  s_bc2888f96fdb07::t_e02e8497925fa3 44,49
+server/services/manualReviewContentResolver.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 2,28,34,45,100,120,139
+server/services/manualReviewToolService/modules/JobDecisioning.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 24,35
+client/src/webpages/dashboard/mrt/manual_review_job/selectManualReviewJob.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 5-10,12-47,49-57,60,64-90,93-108,110,113,117-128,130,132,135,139,141
+server/.eslintrc.cjs
+  s_bc2888f96fdb07::t_e02e8497925fa3 288,388-390,709-747
+  s_bc2888f96fdb07::t_aba16995f391ff 748-750
+server/services/signalsService/signals/third_party_signals/open_ai/moderation/OpenAiSelfHarmTextSignal.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 3,25
+server/services/signalsService/signals/aggregation/AggregationSignal.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 3,53,57,63,193-196,208-211
+server/services/ruleHistoryService/ruleHistoryService.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 10
+server/iocContainer/createPgPool.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-2,17
+server/test/utils.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-2,172,221
+server/services/signalsService/signals/third_party_signals/zentropi/zentropiUtils.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 2,6,32-35,41,56,71,86,101,116,131,148,160,172,193,198-199,203-204,208,213-214,218-219,223,237-238,242-245,255
+server/tsconfig.build.json
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-40
+server/services/networkingService/index.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 12
+client/src/webpages/dashboard/mrt/manual_review_job/ManualReviewJobReview.tsx
+  s_bc2888f96fdb07::t_e02e8497925fa3 404-406,741,743-746
+server/services/analyticsQueries/UserHistoryQueries.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 4-5
+server/utils/caching.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-2,25,39,53,73
+server/iocContainer/index.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 104-107,380,478,945-948,1518
+  s_bc2888f96fdb07::t_e090f2b4c2ed51 103
+server/services/signalsService/signals/third_party_signals/google/content_safety/GoogleContentSafetyImageSignal.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 3,24
+server/knip.json
+  s_bc2888f96fdb07::t_e02e8497925fa3 7-8
+server/routes/item_types/ItemTypeRoutes.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-2,86,99-101
+server/services/moderationConfigService/moderationConfigService.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 5,46
+server/routes/action/ActionRoutes.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 4,110-111,222-223,240-242,262,268
+server/services/signalsService/signals/third_party_signals/open_ai/moderation/OpenAiViolenceTextSignal.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 3,25
+server/graphql/datasources/UserApi.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 2,26,28-30,34-35,39-40,44,62,150
+server/utils/sql.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 2,15
+server/services/signalsService/signals/ImageSimilarityMatch.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 2,34,50,64,92,117
+server/services/manualReviewToolService/manualReviewToolService.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 4,1527-1528
+server/utils/logging.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 23-26
+server/vitest.config.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-31
+server/services/itemProcessingService/fieldTypeHandlers.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 146-151
+server/graphql/modules/backtest.resolver.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-2,134-135
+server/services/apiKeyService/apiKeyService.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-8,13-29,32-34,37-38,41-54,56-83,85-90,92,94-96,98,101-102,104-105,107-123,125-126,128-129
+server/services/signalsService/SignalsService.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 3-4
+server/graphql/utils/contentAccess.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-68
+server/services/manualReviewToolService/modules/JobPriority.test.ts
+  s_bc2888f96fdb07::t_c79f5c34384efb 1-2
+  s_bc2888f96fdb07::t_f6270a0a76b57d 93
+server/graphql/modules/integration.resolver.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-2,12-14
+client/src/coop-ui/DateRangePicker.test.tsx
+  s_bc2888f96fdb07::t_e02e8497925fa3 2,39
+db/package.json
+  s_bc2888f96fdb07::t_e02e8497925fa3 24,38
+server/graphql/datasources/OrgApi.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 4-5
+server/graphql/modules/ncmec.resolver.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-2,21
+server/graphql/modules/roles.resolver.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-2,16-19,24-27
+server/plugins/warehouse/queries/ClickhouseContentApiRequestsAdapter.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 2,9,18-21
+server/services/ncmecService/ncmecService.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 5-6
+server/services/hmaService/index.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-2,20-27,30-33,38,57,74,93,108,120,131,145,156,165,175,185,227,262,295,349,359,369,379
+server/services/signalsService/signals/third_party_signals/open_ai/moderation/OpenAiHateTextSignal.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 3,25
+server/services/apiKeyService/apiKeyService.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 4
+server/services/userManagementService/userManagementService.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 2,11-15,18,35,48-50,58-59,64-65,68-70,105-107,113,141-143,146,173-175,183-184,189-190,196-198,220-222,231-233,237-238,241-243,246,267-269,277
+server/tsconfig.json
+  s_bc2888f96fdb07::t_e02e8497925fa3 2-3,23-27,34-37,41-46
+server/test/arbitraries/Condition.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 15
+server/vitest.integ.config.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-12
+server/services/aggregationsService/StringNumberKeyValueStore.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 3-4
+server/services/manualReviewToolService/modules/JobDecisioning.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 204,762,781-811
+AGENTS.md
+  s_bc2888f96fdb07::t_e02e8497925fa3 37,88,94
+server/services/manualReviewToolService/manualReviewToolService.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 355,364,396,401,1394-1404,1415-1428,1606,1630,1663,1703,1705-1709
+server/api.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 30,239
+server/graphql/modules/hashBanks/resolvers.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-2,18,23-25,95-96,169
+server/routes/action/submitAction.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 2,31-34,39,64-65,82,100,113,132,163
+server/services/itemInvestigationService/synthesizeUserItemFromCreatorReferences.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-2,30,32,35,38-39,54-55,62-63,85,87,91,105,112-113,116,133,135-136,145-146,152-153,173,180-181,196,202,208-209,222,226,231-232,247-248,256-257,273,279-280,294,300,304
+server/services/signalsService/signals/third_party_signals/open_ai/moderation/openAiModerationSignalFactory.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 15,48,71
+server/services/contentAccessService.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-388
+server/services/signalsService/signals/third_party_signals/zentropi/ZentropiLabelerSignal.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 3,18
+server/services/analyticsQueries/ItemHistoryQueries.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 3-4
+server/graphql/types.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 6,9
+  s_bc2888f96fdb07::t_4f0df669419e17 10
+server/services/notificationsService/notificationFormatter.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 79
+.github/workflows/discord-bot.yml
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-21
+server/services/orgAwareSignalExecutionService/signalExecutionService.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 2,14,17,33,35-36,61,138,140
+server/services/moderationConfigService/moderationConfigServiceQueries.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1
+server/services/signalsService/signals/third_party_signals/google/content_safety/googleContentSafetyLib.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 10,126
+server/graphql/utils/formatError.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-33
+docs/development/content-access.md
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-191
+server/services/contentAccessService.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-187
+server/graphql/datasources/LocationBankApi.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 6-7
+server/test/extendExpect.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 3,5,26-32,36,59
+server/test/stubs/makeMockWarehouseKyselyDialect.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 18,122
+client/src/coop-ui/Checkbox.test.tsx
+  s_bc2888f96fdb07::t_e02e8497925fa3 3,14,31,41,59,65,69
+server/services/derivedFieldsService/derivedFieldsService.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 10
+server/services/ruleAnomalyDetectionService/detectRulePassRateAnomaliesJob.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-2,27,29,31-33,35-37,59-61,186-191,219
+server/graphql/datasources/ActionApi.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-2,6,8-9,12-13,46-49,55
+server/services/orgSettingsService/orgSettingsService.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 5
+server/test/arbitraries/ContentType.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 15
+docs/development/deployment.md
+  s_bc2888f96fdb07::t_e02e8497925fa3 117-143
+CHANGELOG.md
+  s_bc2888f96fdb07::t_e02e8497925fa3 14-19
+server/graphql/modules/contentAccess.resolver.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-431
+server/services/analyticsLoggers/ActionExecutionLogger.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-2,13,16
+server/graphql/modules/investigation.resolver.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-2,71-72,75,106,127-128,167,190,217,235,282,289
+server/tsconfig.e2e.json
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-12
+server/services/signalsService/signals/third_party_signals/open_ai/moderation/openAIModerationUtils.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 11,85,128,169
+server/services/userManagementService/sessionPersistence.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 2,9-10,13,21
+client/src/webpages/dashboard/investigation/ItemInvestigationRuleResults.tsx
+  s_bc2888f96fdb07::t_e02e8497925fa3 17,106-107,120-121,178-181,220-222,241-248
+server/graphql/modules/apiKey.resolver.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-2,32-34
+server/utils/enum.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-7
+server/graphql/utils/resolveSamlUser.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 5,54,76,93,109,131,151,174,176
+server/services/userStatisticsService/userStatisticsService.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 2,22,28,32,36,40
+docs/development/README.md
+  s_bc2888f96fdb07::t_e02e8497925fa3 8-9
+server/services/signalsService/types/SignalType.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 3
+server/services/signalsService/signals/third_party_signals/zentropi/ZentropiLabelerSignal.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 2,4,18-21,39,57,68,76
+server/services/SSOService/SSOService.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 3
+.github/workflows/e2e.yaml
+  s_bc2888f96fdb07::t_e02e8497925fa3 109-114
+server/services/manualReviewToolService/manualReviewToolQueries.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1
+server/services/signingKeyPairService/signingKeyPairService.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 4
+server/test/setupMockedServer.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 4,34,86,89,94-96,109-133
+server/graphql/datasources/RuleApi.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 9-10
+server/services/analyticsQueries/ItemHistoryQueries.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 2,16,23
+server/services/contentAccessService.tracing.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-94
+server/graphql/modules/retroaction.resolver.test.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-2,12-13
+server/graphql/datasources/IntegrationApi.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 1-2
+client/src/coop-ui/Drawer.test.tsx
+  s_bc2888f96fdb07::t_e02e8497925fa3 3,23,27-31
+.github/workflows/publish-docker.yaml
+  s_bc2888f96fdb07::t_e02e8497925fa3 103,105,119,149,151,165,195,197,211
+server/services/aggregationsService/AggregationsService.ts
+  s_bc2888f96fdb07::t_e02e8497925fa3 5-6
+client/package-lock.json
+  s_bc2888f96fdb07::t_68f183085125a1 72,76,85,92,102,1835-1837,2271-2273,2288-2290,2305-2307,2322-2324,2339-2341,2356-2358,2373-2375,2390-2392,2410-2412,2430-2432,2450-2452,2470-2472,2490-2492,2510-2512,2530-2532,2550-2552,2567-2569,2584-2586,2601-2603,2618-2620,4671-4673,5299-5301,5809-5811,5815-5816,5818,5836-5839,5843,5847-5849,6242-6244,7206-7212,7668-7670,9331-9333,9351,9358,9915-9917,9923-9926,10010-10012,10016,10025-10043,12299-12301,13058-13060,13062-13065,13068-13070,14096-14113,14120,14128-14134,14137,14178-14181,14183-14204,14207-14209,14219-14235,14550-14552
+db/package-lock.json
+  s_bc2888f96fdb07::t_2e8a901068835c 15,23,130-132,147-149,164-166,181-183,198-200,215-217,232-234,249-251,269-271,289-291,309-311,329-331,349-351,369-371,389-391,409-411,426-428,443-445,460-462,477-479,1320-1322,1340,1347,1377-1379,1457-1459,1463,1472-1490,2160-2162
+migrator/package-lock.json
+  s_bc2888f96fdb07::t_a2645a17fc6e48 78-80,95-97,112-114,129-131,146-148,163-165,180-182,197-199,217-219,237-239,257-259,277-279,297-299,317-319,337-339,357-359,374-376,391-393,408-410,425-427,769-771,1098-1100,1118,1125,1214-1216,1220,1229-1247,1708-1710,1835-1837,1842-1844,1849-1851,1856-1858,1863-1865,1870-1872,1877-1879,1884-1886,1891-1893,1898-1900,1905-1907,1912-1914,1919-1921,1926-1928,1933-1935,1940-1942,1947-1949,1954-1956,1961-1963,1968-1970,2178-2180,2411-2413,2420,2427,2487-2489,2492-2511,2791-2793
+package-lock.json
+  s_bc2888f96fdb07::t_8821e8ba13e25b 22,28,2175-2177,4383-4385
+server/graphql/generated.ts
+  s_bc2888f96fdb07::t_dd11538d81cbc7 63-66,6214,6971
+server/package-lock.json
+  s_bc2888f96fdb07::t_59e9bb357a9e22 101,118-120,488-490,510-512,798,800-801,808,810-811,818,820-821,825,827-828,830-831,834-840,843,845-846,850-851,857-874,877,880,883-886,888-890,893-896,899-902,905-908,911,913,916-919,922,924,927-930,933-939,941,944-947,951-955,958-961,965,968-974,977-980,982,985-991,994-997,999,1002-1008,1011-1014,1016,1019-1025,1027-1033,1036-1042,1044-1050,1053-1059,1062-1065,1067,1070-1076,1079-1082,1084,1087-1093,1095-1101,1104-1110,1112-1118,1121-1127,1130-1133,1135,1138-1144,1146-1152,1155-1161,1163-1169,1172-1178,1180-1186,1189-1195,1197-1203,1206-1212,1214-1220,1223-1229,1231-1237,1240-1246,1249-1252,1254,1257-1263,1265-1269,1271,1274-1280,1283-1286,1288,1291-1298,1300-1303,1305,1308-1314,1317-1320,1322,1325-1331,1334-1337,1339,1342-1348,1351-1354,1356,1359-1365,1367-1371,1373,1376-1382,1384-1388,1390,1393-1399,1403-1405,1407,1806-1809,1812,1815-1825,1827,1829-1830,1833-1836,1838,1840-1843,1846-1849,1851-1853,1855-1862,1867-1873,1875-1878,1880-1951,1953-1960,1962,1965-1968,1970-1971,1973,1976,1979-1984,1987-1990,1992,1994,1996-1997,2000-2003,2006,2008-2021,2024-2030,2032-2035,2037,2040-2046,2048-2051,2053,2056-2062,2064-2067,2069,2072-2078,2080-2083,2085,2088-2094,2096-2099,2101,2104-2110,2112-2115,2117,2120-2129,2131-2134,2136,2139-2148,2150-2153,2155,2158-2167,2169-2172,2174,2177-2186,2188-2191,2193,2196-2202,2204-2207,2209,2212-2247,2250-2261,2264,2267-2270,2273-2277,2280-2301,2304-2312,2315-2318,2320-2323,2325,2328-2331,2333-2335,2337-2340,2343-2347,2350-2353,2357,2360-2384,2387-2390,2392,2395-2407,2409,2412-2415,2419,2424-2427,2429-2432,2436,2441-2444,2446-2449,2451,2453,2457-2461,2463-2466,2468,2470,2475-2478,2480-2483,2485,2487,2492-2495,2497-2500,2502,2505-2506,2511,2514,2517-2520,2524-2526,2531,2534,2537-2540,2542-2546,2551,2554,2557-2560,2562-2566,2571,2574,2577-2580,2582-2586,2594,2597-2600,2602,2604,2614,2617-2620,2622,2624,2626,2634,2637-2640,2644,2646,2654,2657-2660,2662,2664,2668,2671,2674-2677,2681,2688,2691-2694,2698,2705,2708-2711,2715,2722,2725-2729,2731-2732,2735-2742,2747,2749-2752,2761,2763-2766,2775,2777-2780,2789,2791-2794,2803,2805-2808,2817,2819-2822,2831,2833-2836,2848,2850-2853,2865,2867-2870,2882,2884-2887,2899,2901-2904,2916,2918-2921,2933,2935-2938,2950,2952-2955,2967,2969-2972,2981,2983-2986,2988,2993-2997,2999,3002-3039,3041,3048,3050-3053,3062,3064-3067,3070-3071,3074-3151,3162-3165,3176-3179,3190-3193,3204-3221,3232-3235,3240-3242,3249-3252,3257-3259,3266-3269,3283-3286,3300-3303,3305,3317-3320,3322,3326,3334-3337,3339,3343,3351-3354,3356,3360,3368-3371,3373,3385-3388,3390,3402-3405,3407,3410-3412,3416,3419-3422,3424,3427-3429,3432-3434,3436-3442,3444-3446,3449-3451,3453-3459,3463-3465,3467-3473,3477-3479,3481-3484,3495-3498,3500,3509-3515,3518-3521,3523-3529,3531-3535,11102-11112,11167-11173,11175-11177,12514-12615,12944-12972,13250-13259,13276-13284,13286,13832-13838,13897-13938,14100-14103,14106,14109-14112,14116-14117,14120-14126,14129-14132,14136-14141,14145-14152,14154-14158,14161,14166-14170,14173,14176,14179-14183,14186-14189,14192-14196,14198-14218,14220-14223,14226-14229,14232-14241,14244,14247-14253,14256-14259,14261,14263-14276,14278-14282,14285-14290,14292-14295,14298-14308,14310-14313,14316-14319,14321-14328,14330-14333,14336-14342,14345-14348,14350,14352,14355,14358-14361,14364-14367,14369,14371,14374-14377,14379-14382,14384-14392,14395-14398,14400-14406,14408-14415,14418-14427,14429-14432,14435-14439,14441,14444,14447,14450-14453,14456,14459-14475,14478-14481,14483-14485,14488-14491,14493,14495,14498,14501-14504,14506-14513,14515-14517,14520,14523,14526-14529,14531-14533,14536,14539-14542,14544,14546,14549,14552-14555,14557,14559,14562,14565-14568,14570,14572,14575-14578,14582,14585-14588,14591,14594-14597,14600,14603-14607,14609-14615,14618-14623,14625,14628-14631,14634-14661,14664,14666-14668,14671-14674,14676-14685,14687,14690-14691,14694-14697,14699,14702-14710,14713,14716-14719,14722,14725-14728,14731,14734,14737-14738,14741-14754,14757,14760,14763-14766,14769-14770,14773-14774,14779-14782,14784-14788,14790-14794,14797,14800-14803,14806,14809,14812-14821,14823,14825-14850,14853,14856-14859,14863-14871,14873,14875-14881,14884-14887,14889-14892,14894,14897-14900,14903-14906,14909,14911-14912,14914,14917-14920,14923-14928,14931,14935,14938-14941,14945-14946,14949,14952,14955-14958,14962-14963,14966,14969-14972,14974-14999,15002,15011-15014,15017-15021,15024,15027-15039,15043-15050,15053-15056,15058,15061-15065,15068-15071,15073-15080,15082-15119,15124-15127,15131-15136,15145-15148,15155-15163,15166-15169,15176-15179,15181,15184-15187,15190-15194,15196-15199,15208-15212,15214-15215,15218,15221-15224,15226,15228-15230,15233,15235-15236,15239-15242,15245-15246,15249,15252-15255,15257-15259,15261-15262,15265-15268,15270,15272-15275,15278-15281,15285-15286,15295-15298,15302-15307,15310,15313,15316-15319,15328-15340,15343,15346,15348-15349,15352-15355,15358,15361-15364,15367,15370,15372-15373,15376-15379,15389-15401,15404,15410-15413,15416-15418,15426-15429,15438-15441,15444,15453-15457,15459,15462,15465-15468,15470-15474,15476,15478-15479,15482-15485,15487-15497,15499-15502,15505-15509,15512,15514-15516,15519-15522,15524,15527-15530,15533,15536,15539-15540,15543-15549,15552-15555,15558-15559,15562,15568-15571,15574,15577-15585,15589-15591,15594,15597-15600,15603-15609,15612,15614-15616,15619-15622,15626-15628,15631-15634,15637-15640,15644-15648,15651-15654,15657-15660,15664,15667-15670,15673-15676,15680-15681,15684-15687,15690-15693,15696-15703,15705-15708,15711-15714,15717,15720,15722-15723,15726-15729,15731,15733-15735,15738-15741,15744-15747,15751-15752,15755-15758,15761-15764,15767,15770-15773,15776-15778,15780,15783-15791,15794-15797,15801-15805,15808-15811,15814-15817,15820,15823,15826-15829,15831,15833-15835,15837-15839,15842-15845,15847,15849,15852,15855-15858,15862-15865,15868-15871,15874-15875,15877-15885,15887,15890-15893,15897-15898,15901-15904,15907-15916,15920-15923,15926,15929,15932-15935,15939,15942,15945-15948,15952,15955-15958,15961-15964,15968-15969,15972-15975,15978-15981,15984-15988,15990,15993,15996-15999,16002,16005-16008,16011-16014,16018,16021,16024-16027,16031,16034,16036-16037,16040-16043,16047-16048,16051,16054,16057-16068,16080-16082,16171-16173,16191,16198,16223-16225,16315-16318,16322-16334,16436-16438,16440,16502-16520,16698-16711,16777-16779,16783,16792-16810,17183-17211,17522,17573-17618,18032-18035,18037,18066-18069,18136-18139,18141,18157-18163,18404-18423,18441-18449,19158-19315,19436-19452,19564-19566
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2615d4842e911709bf48bb0669f05b10f3612a46",
+  "prompts": {},
+  "sessions": {
+    "s_bc2888f96fdb07": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "4ead4283-e0b1-440a-b9f5-2f8dcb4c5d0b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
