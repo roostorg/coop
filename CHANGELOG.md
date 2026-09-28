@@ -19,7 +19,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Security
 
-- Prevent cross-organization item disclosure through Scylla item lookups.
+- Prevent cross-organization item disclosure through Scylla item lookups ([#1315](https://github.com/roostorg/coop/pull/1315) by [@taobojlen](https://github.com/taobojlen))
 
 ## [1.1.0-alpha] - 2026-09-21
 
