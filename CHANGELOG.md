@@ -23,6 +23,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Fixed
 
+- Policy and action updates reject invalid cross-organization relationships and policy cycles ([#1274](https://github.com/roostorg/coop/pull/1274) by [@taobojlen](https://github.com/taobojlen))
 - Image hashing now applies to every Image field in an item or report, not just an array field named `images` ([#1390](https://github.com/roostorg/coop/pull/1390) by [@reitblatt](https://github.com/reitblatt))
 - Renaming a hash bank no longer discards its hashed content ([#1360](https://github.com/roostorg/coop/pull/1360) by [@juanmrad](https://github.com/juanmrad))
 - Zentropi Labeler signal failing on every call ([#1335](https://github.com/roostorg/coop/pull/1335) by [@reitblatt](https://github.com/reitblatt), [#1388](https://github.com/roostorg/coop/pull/1388) by [@Joseph-Mutua](https://github.com/Joseph-Mutua))
@@ -127,7 +128,6 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Fixed
 
-- Policy and action updates reject invalid cross-organization relationships and policy cycles (by [@taobojlen](https://github.com/taobojlen))
 - Rule history dropping other rules' versions when filtered by start date ([#1056](https://github.com/roostorg/coop/pull/1056) by [@juanmrad](https://github.com/juanmrad))
 - `RetryFailedNcmecDecisionsJob` ignoring `NCMEC_ENV` and retrying test decisions ([#928](https://github.com/roostorg/coop/pull/928) by [@taobojlen](https://github.com/taobojlen))
 - Queue creation failing with "name already exists" on the default reviewer selection ([#1069](https://github.com/roostorg/coop/pull/1069) by [@jess-upscrolled](https://github.com/jess-upscrolled))
