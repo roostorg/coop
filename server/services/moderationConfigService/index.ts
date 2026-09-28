@@ -56,8 +56,11 @@ export { BUILT_IN_ACTIONS } from './modules/ActionOperations.js';
 
 export type { ModerationConfigServicePg } from './dbTypes.js';
 
-export { Policy, PolicyType } from './types/policies.js';
-export { type ModerationConfigMutationActor } from './types/mutationActor.js';
+export {
+  Policy,
+  PolicyType,
+  type PolicyMutationInvoker,
+} from './types/policies.js';
 
 export { UserPenaltySeverity } from './types/shared.js';
 
