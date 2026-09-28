@@ -96,16 +96,6 @@ type ActionDbResult = FixKyselyRowCorrelation<
   typeof actionDbSelection
 >;
 
-export function rethrowActionWriteError(error: unknown): never {
-  if (
-    isUniqueViolationError(error) &&
-    (error as { constraint?: string }).constraint === 'actions_org_id_name_key'
-  ) {
-    throw makeActionNameExistsError({ shouldErrorSpan: true });
-  }
-  throw error;
-}
-
 export default class ActionOperations {
   private readonly transactionWithRetry: ReturnType<
     typeof makeKyselyTransactionWithRetry<ModerationConfigServicePg>
@@ -182,7 +172,10 @@ export default class ActionOperations {
         assertCustomAction(action);
         return action;
       } catch (e: unknown) {
-        rethrowActionWriteError(e);
+        if (isUniqueViolationError(e)) {
+          throw makeActionNameExistsError({ shouldErrorSpan: true });
+        }
+        throw e;
       }
     });
   }
@@ -259,14 +252,11 @@ export default class ActionOperations {
         .select(actionDbSelection)
         .where('id', '=', actionId)
         .where('org_id', '=', orgId)
-        .forUpdate()
+        .where('action_type', '=', 'CUSTOM_ACTION')
         .executeTakeFirst()) as ActionDbResult | undefined;
 
       if (existing == null) {
         throw makeNotFoundError('Action not found', { shouldErrorSpan: true });
-      }
-      if (existing.actionType !== 'CUSTOM_ACTION') {
-        throw makeBuiltInActionImmutableError({ shouldErrorSpan: true });
       }
 
       const validatedParameters =
@@ -341,7 +331,10 @@ export default class ActionOperations {
         assertCustomAction(action);
         return action;
       } catch (e: unknown) {
-        rethrowActionWriteError(e);
+        if (isUniqueViolationError(e)) {
+          throw makeActionNameExistsError({ shouldErrorSpan: true });
+        }
+        throw e;
       }
     });
   }
@@ -525,9 +518,7 @@ export default class ActionOperations {
 }
 
 export type ActionErrorType =
-  | 'ActionNameExistsError'
-  | 'InvalidActionItemTypeIdsError'
-  | 'BuiltInActionImmutableError';
+  'ActionNameExistsError' | 'InvalidActionItemTypeIdsError';
 
 export const makeActionNameExistsError = (data: ErrorInstanceData) =>
   new CoopError({
@@ -545,14 +536,5 @@ export const makeInvalidActionItemTypeIdsError = (data: ErrorInstanceData) =>
     title: 'Invalid action item type IDs',
     detail: 'One or more item type IDs are invalid',
     name: 'InvalidActionItemTypeIdsError',
-    ...data,
-  });
-
-export const makeBuiltInActionImmutableError = (data: ErrorInstanceData) =>
-  new CoopError({
-    status: 409,
-    type: [ErrorType.Conflict],
-    title: 'Built-in actions cannot be updated',
-    name: 'BuiltInActionImmutableError',
     ...data,
   });
