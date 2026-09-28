@@ -55,8 +55,6 @@ const typeDefs = /* GraphQL */ `
     parentId: ID
     parentName: String
     policyType: PolicyType
-    userStrikeCount: Int
-    applyUserStrikeCountConfigToChildren: Boolean
   }
 
   input UpdatePolicyInput {
@@ -155,9 +153,6 @@ const Mutation: GQLMutationResolvers = {
           policyText: policy.policyText ?? null,
           enforcementGuidelines: policy.enforcementGuidelines ?? null,
           policyType: policy.policyType ?? null,
-          userStrikeCount: policy.userStrikeCount ?? undefined,
-          applyUserStrikeCountConfigToChildren:
-            policy.applyUserStrikeCountConfigToChildren ?? undefined,
         },
         orgId: user.orgId,
         actor: {
