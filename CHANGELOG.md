@@ -10,7 +10,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Added
 
-- REST create/update endpoints for policies, item types, and custom actions (by [@taobojlen](https://github.com/taobojlen))
+- REST create/update endpoints for policies, item types, and custom actions ([#1275](https://github.com/roostorg/coop/pull/1275) by [@taobojlen](https://github.com/taobojlen))
 
 ### Fixed
 
