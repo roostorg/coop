@@ -1577,16 +1577,6 @@ export type GQLIntegrationNoInputCredentialsError = GQLError & {
   readonly type: ReadonlyArray<Scalars['String']['output']>;
 };
 
-export type GQLInvalidActionItemTypeIdsError = GQLError & {
-  readonly __typename?: 'InvalidActionItemTypeIdsError';
-  readonly detail?: Maybe<Scalars['String']['output']>;
-  readonly pointer?: Maybe<Scalars['String']['output']>;
-  readonly requestId?: Maybe<Scalars['String']['output']>;
-  readonly status: Scalars['Int']['output'];
-  readonly title: Scalars['String']['output'];
-  readonly type: ReadonlyArray<Scalars['String']['output']>;
-};
-
 export type GQLInvalidItemTypeHiddenFieldsError = GQLError & {
   readonly __typename?: 'InvalidItemTypeHiddenFieldsError';
   readonly detail?: Maybe<Scalars['String']['output']>;
@@ -1599,16 +1589,6 @@ export type GQLInvalidItemTypeHiddenFieldsError = GQLError & {
 
 export type GQLInvalidItemTypeSchemaError = GQLError & {
   readonly __typename?: 'InvalidItemTypeSchemaError';
-  readonly detail?: Maybe<Scalars['String']['output']>;
-  readonly pointer?: Maybe<Scalars['String']['output']>;
-  readonly requestId?: Maybe<Scalars['String']['output']>;
-  readonly status: Scalars['Int']['output'];
-  readonly title: Scalars['String']['output'];
-  readonly type: ReadonlyArray<Scalars['String']['output']>;
-};
-
-export type GQLInvalidPolicyParentError = GQLError & {
-  readonly __typename?: 'InvalidPolicyParentError';
   readonly detail?: Maybe<Scalars['String']['output']>;
   readonly pointer?: Maybe<Scalars['String']['output']>;
   readonly requestId?: Maybe<Scalars['String']['output']>;
@@ -2512,9 +2492,7 @@ export const GQLMutateActionError = {
 export type GQLMutateActionError =
   (typeof GQLMutateActionError)[keyof typeof GQLMutateActionError];
 export type GQLMutateActionResponse =
-  | GQLActionNameExistsError
-  | GQLInvalidActionItemTypeIdsError
-  | GQLMutateActionSuccessResponse;
+  GQLActionNameExistsError | GQLMutateActionSuccessResponse;
 
 export type GQLMutateActionSuccessResponse = {
   readonly __typename?: 'MutateActionSuccessResponse';
@@ -3553,16 +3531,6 @@ export type GQLPolicyActionCount = {
   readonly count: Scalars['Int']['output'];
   readonly itemSubmissionIds: ReadonlyArray<Scalars['String']['output']>;
   readonly policyId?: Maybe<Scalars['String']['output']>;
-};
-
-export type GQLPolicyHierarchyCycleError = GQLError & {
-  readonly __typename?: 'PolicyHierarchyCycleError';
-  readonly detail?: Maybe<Scalars['String']['output']>;
-  readonly pointer?: Maybe<Scalars['String']['output']>;
-  readonly requestId?: Maybe<Scalars['String']['output']>;
-  readonly status: Scalars['Int']['output'];
-  readonly title: Scalars['String']['output'];
-  readonly type: ReadonlyArray<Scalars['String']['output']>;
 };
 
 export type GQLPolicyNameExistsError = GQLError & {
@@ -5032,11 +5000,7 @@ export type GQLUpdatePolicyInput = {
   readonly userStrikeCount?: InputMaybe<Scalars['Int']['input']>;
 };
 
-export type GQLUpdatePolicyResponse =
-  | GQLInvalidPolicyParentError
-  | GQLNotFoundError
-  | GQLPolicy
-  | GQLPolicyHierarchyCycleError;
+export type GQLUpdatePolicyResponse = GQLNotFoundError | GQLPolicy;
 
 export type GQLUpdateReportingRuleInput = {
   readonly actionIds?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
@@ -5687,7 +5651,6 @@ export type GQLResolversUnionTypes<_RefType extends Record<string, unknown>> = {
     | UserManualReviewJobPayload;
   MutateActionResponse:
     | GQLActionNameExistsError
-    | GQLInvalidActionItemTypeIdsError
     | (Omit<GQLMutateActionSuccessResponse, 'data'> & {
         data: _RefType['CustomAction'];
       });
@@ -5785,11 +5748,7 @@ export type GQLResolversUnionTypes<_RefType extends Record<string, unknown>> = {
         data: _RefType['ManualReviewQueue'];
       })
     | GQLNotFoundError;
-  UpdatePolicyResponse:
-    | GQLInvalidPolicyParentError
-    | GQLNotFoundError
-    | GQLPolicy
-    | GQLPolicyHierarchyCycleError;
+  UpdatePolicyResponse: GQLNotFoundError | GQLPolicy;
   UpdateReportingRuleResponse:
     | (Omit<GQLMutateReportingRuleSuccessResponse, 'data'> & {
         data: _RefType['ReportingRule'];
@@ -5832,10 +5791,8 @@ export type GQLResolversInterfaceTypes<
     | GQLIntegrationConfigUnsupportedIntegrationError
     | GQLIntegrationEmptyInputCredentialsError
     | GQLIntegrationNoInputCredentialsError
-    | GQLInvalidActionItemTypeIdsError
     | GQLInvalidItemTypeHiddenFieldsError
     | GQLInvalidItemTypeSchemaError
-    | GQLInvalidPolicyParentError
     | GQLInviteUserTokenExpiredError
     | GQLInviteUserTokenMissingError
     | GQLItemTypeNameAlreadyExistsError
@@ -5853,7 +5810,6 @@ export type GQLResolversInterfaceTypes<
     | GQLPartialItemsEndpointResponseError
     | GQLPartialItemsInvalidResponseError
     | GQLPartialItemsMissingEndpointError
-    | GQLPolicyHierarchyCycleError
     | GQLPolicyNameExistsError
     | GQLQueueDoesNotExistError
     | GQLRecordingJobDecisionFailedError
@@ -6168,10 +6124,8 @@ export type GQLResolversTypes = {
   IntegrationEmptyInputCredentialsError: ResolverTypeWrapper<GQLIntegrationEmptyInputCredentialsError>;
   IntegrationMetadata: ResolverTypeWrapper<GQLIntegrationMetadata>;
   IntegrationNoInputCredentialsError: ResolverTypeWrapper<GQLIntegrationNoInputCredentialsError>;
-  InvalidActionItemTypeIdsError: ResolverTypeWrapper<GQLInvalidActionItemTypeIdsError>;
   InvalidItemTypeHiddenFieldsError: ResolverTypeWrapper<GQLInvalidItemTypeHiddenFieldsError>;
   InvalidItemTypeSchemaError: ResolverTypeWrapper<GQLInvalidItemTypeSchemaError>;
-  InvalidPolicyParentError: ResolverTypeWrapper<GQLInvalidPolicyParentError>;
   InvalidateReportsFromReporterInput: GQLInvalidateReportsFromReporterInput;
   InvalidateReportsFromReporterSuccessResponse: ResolverTypeWrapper<GQLInvalidateReportsFromReporterSuccessResponse>;
   InviteUserInput: GQLInviteUserInput;
@@ -6463,7 +6417,6 @@ export type GQLResolversTypes = {
   PluginIntegrationApiCredential: ResolverTypeWrapper<GQLPluginIntegrationApiCredential>;
   Policy: ResolverTypeWrapper<GQLPolicy>;
   PolicyActionCount: ResolverTypeWrapper<GQLPolicyActionCount>;
-  PolicyHierarchyCycleError: ResolverTypeWrapper<GQLPolicyHierarchyCycleError>;
   PolicyNameExistsError: ResolverTypeWrapper<GQLPolicyNameExistsError>;
   PolicyType: GQLPolicyType;
   PolicyViolationsCount: ResolverTypeWrapper<GQLPolicyViolationsCount>;
@@ -6965,10 +6918,8 @@ export type GQLResolversParentTypes = {
   IntegrationEmptyInputCredentialsError: GQLIntegrationEmptyInputCredentialsError;
   IntegrationMetadata: GQLIntegrationMetadata;
   IntegrationNoInputCredentialsError: GQLIntegrationNoInputCredentialsError;
-  InvalidActionItemTypeIdsError: GQLInvalidActionItemTypeIdsError;
   InvalidItemTypeHiddenFieldsError: GQLInvalidItemTypeHiddenFieldsError;
   InvalidItemTypeSchemaError: GQLInvalidItemTypeSchemaError;
-  InvalidPolicyParentError: GQLInvalidPolicyParentError;
   InvalidateReportsFromReporterInput: GQLInvalidateReportsFromReporterInput;
   InvalidateReportsFromReporterSuccessResponse: GQLInvalidateReportsFromReporterSuccessResponse;
   InviteUserInput: GQLInviteUserInput;
@@ -7178,7 +7129,6 @@ export type GQLResolversParentTypes = {
   PluginIntegrationApiCredential: GQLPluginIntegrationApiCredential;
   Policy: GQLPolicy;
   PolicyActionCount: GQLPolicyActionCount;
-  PolicyHierarchyCycleError: GQLPolicyHierarchyCycleError;
   PolicyNameExistsError: GQLPolicyNameExistsError;
   PolicyViolationsCount: GQLPolicyViolationsCount;
   PostActionsEnqueueSourceInfo: GQLPostActionsEnqueueSourceInfo;
@@ -9114,10 +9064,8 @@ export type GQLErrorResolvers<
     | 'IntegrationConfigUnsupportedIntegrationError'
     | 'IntegrationEmptyInputCredentialsError'
     | 'IntegrationNoInputCredentialsError'
-    | 'InvalidActionItemTypeIdsError'
     | 'InvalidItemTypeHiddenFieldsError'
     | 'InvalidItemTypeSchemaError'
-    | 'InvalidPolicyParentError'
     | 'InviteUserTokenExpiredError'
     | 'InviteUserTokenMissingError'
     | 'ItemTypeNameAlreadyExistsError'
@@ -9135,7 +9083,6 @@ export type GQLErrorResolvers<
     | 'PartialItemsEndpointResponseError'
     | 'PartialItemsInvalidResponseError'
     | 'PartialItemsMissingEndpointError'
-    | 'PolicyHierarchyCycleError'
     | 'PolicyNameExistsError'
     | 'QueueDoesNotExistError'
     | 'RecordingJobDecisionFailedError'
@@ -9666,36 +9613,6 @@ export type GQLIntegrationNoInputCredentialsErrorResolvers<
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
-export type GQLInvalidActionItemTypeIdsErrorResolvers<
-  ContextType = Context,
-  ParentType extends GQLResolversParentTypes['InvalidActionItemTypeIdsError'] =
-    GQLResolversParentTypes['InvalidActionItemTypeIdsError'],
-> = {
-  detail?: Resolver<
-    Maybe<GQLResolversTypes['String']>,
-    ParentType,
-    ContextType
-  >;
-  pointer?: Resolver<
-    Maybe<GQLResolversTypes['String']>,
-    ParentType,
-    ContextType
-  >;
-  requestId?: Resolver<
-    Maybe<GQLResolversTypes['String']>,
-    ParentType,
-    ContextType
-  >;
-  status?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
-  title?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
-  type?: Resolver<
-    ReadonlyArray<GQLResolversTypes['String']>,
-    ParentType,
-    ContextType
-  >;
-  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
-};
-
 export type GQLInvalidItemTypeHiddenFieldsErrorResolvers<
   ContextType = Context,
   ParentType extends
@@ -9731,36 +9648,6 @@ export type GQLInvalidItemTypeSchemaErrorResolvers<
   ContextType = Context,
   ParentType extends GQLResolversParentTypes['InvalidItemTypeSchemaError'] =
     GQLResolversParentTypes['InvalidItemTypeSchemaError'],
-> = {
-  detail?: Resolver<
-    Maybe<GQLResolversTypes['String']>,
-    ParentType,
-    ContextType
-  >;
-  pointer?: Resolver<
-    Maybe<GQLResolversTypes['String']>,
-    ParentType,
-    ContextType
-  >;
-  requestId?: Resolver<
-    Maybe<GQLResolversTypes['String']>,
-    ParentType,
-    ContextType
-  >;
-  status?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
-  title?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
-  type?: Resolver<
-    ReadonlyArray<GQLResolversTypes['String']>,
-    ParentType,
-    ContextType
-  >;
-  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
-};
-
-export type GQLInvalidPolicyParentErrorResolvers<
-  ContextType = Context,
-  ParentType extends GQLResolversParentTypes['InvalidPolicyParentError'] =
-    GQLResolversParentTypes['InvalidPolicyParentError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -11064,9 +10951,7 @@ export type GQLMutateActionResponseResolvers<
     GQLResolversParentTypes['MutateActionResponse'],
 > = {
   __resolveType: TypeResolveFn<
-    | 'ActionNameExistsError'
-    | 'InvalidActionItemTypeIdsError'
-    | 'MutateActionSuccessResponse',
+    'ActionNameExistsError' | 'MutateActionSuccessResponse',
     ParentType,
     ContextType
   >;
@@ -12724,36 +12609,6 @@ export type GQLPolicyActionCountResolvers<
     ParentType,
     ContextType
   >;
-};
-
-export type GQLPolicyHierarchyCycleErrorResolvers<
-  ContextType = Context,
-  ParentType extends GQLResolversParentTypes['PolicyHierarchyCycleError'] =
-    GQLResolversParentTypes['PolicyHierarchyCycleError'],
-> = {
-  detail?: Resolver<
-    Maybe<GQLResolversTypes['String']>,
-    ParentType,
-    ContextType
-  >;
-  pointer?: Resolver<
-    Maybe<GQLResolversTypes['String']>,
-    ParentType,
-    ContextType
-  >;
-  requestId?: Resolver<
-    Maybe<GQLResolversTypes['String']>,
-    ParentType,
-    ContextType
-  >;
-  status?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
-  title?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
-  type?: Resolver<
-    ReadonlyArray<GQLResolversTypes['String']>,
-    ParentType,
-    ContextType
-  >;
-  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
 export type GQLPolicyNameExistsErrorResolvers<
@@ -14849,10 +14704,7 @@ export type GQLUpdatePolicyResponseResolvers<
     GQLResolversParentTypes['UpdatePolicyResponse'],
 > = {
   __resolveType: TypeResolveFn<
-    | 'InvalidPolicyParentError'
-    | 'NotFoundError'
-    | 'Policy'
-    | 'PolicyHierarchyCycleError',
+    'NotFoundError' | 'Policy',
     ParentType,
     ContextType
   >;
@@ -15578,10 +15430,8 @@ export type GQLResolvers<ContextType = Context> = {
   IntegrationEmptyInputCredentialsError?: GQLIntegrationEmptyInputCredentialsErrorResolvers<ContextType>;
   IntegrationMetadata?: GQLIntegrationMetadataResolvers<ContextType>;
   IntegrationNoInputCredentialsError?: GQLIntegrationNoInputCredentialsErrorResolvers<ContextType>;
-  InvalidActionItemTypeIdsError?: GQLInvalidActionItemTypeIdsErrorResolvers<ContextType>;
   InvalidItemTypeHiddenFieldsError?: GQLInvalidItemTypeHiddenFieldsErrorResolvers<ContextType>;
   InvalidItemTypeSchemaError?: GQLInvalidItemTypeSchemaErrorResolvers<ContextType>;
-  InvalidPolicyParentError?: GQLInvalidPolicyParentErrorResolvers<ContextType>;
   InvalidateReportsFromReporterSuccessResponse?: GQLInvalidateReportsFromReporterSuccessResponseResolvers<ContextType>;
   InviteUserToken?: GQLInviteUserTokenResolvers<ContextType>;
   InviteUserTokenExpiredError?: GQLInviteUserTokenExpiredErrorResolvers<ContextType>;
@@ -15694,7 +15544,6 @@ export type GQLResolvers<ContextType = Context> = {
   PluginIntegrationApiCredential?: GQLPluginIntegrationApiCredentialResolvers<ContextType>;
   Policy?: GQLPolicyResolvers<ContextType>;
   PolicyActionCount?: GQLPolicyActionCountResolvers<ContextType>;
-  PolicyHierarchyCycleError?: GQLPolicyHierarchyCycleErrorResolvers<ContextType>;
   PolicyNameExistsError?: GQLPolicyNameExistsErrorResolvers<ContextType>;
   PolicyViolationsCount?: GQLPolicyViolationsCountResolvers<ContextType>;
   PostActionsEnqueueSourceInfo?: GQLPostActionsEnqueueSourceInfoResolvers<ContextType>;
