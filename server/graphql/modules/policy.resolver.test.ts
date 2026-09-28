@@ -8,7 +8,7 @@ import { resolvers } from './policy.js';
 const updatePolicy = resolvers.Mutation.updatePolicy;
 
 describe('updatePolicy resolver', () => {
-  it('adapts the authenticated user to a user mutation actor', async () => {
+  it('passes the authenticated user as invokedBy', async () => {
     const service = { updatePolicy: vi.fn().mockResolvedValue({ id: 'p' }) };
     const context = {
       getUser: () => ({
@@ -30,7 +30,11 @@ describe('updatePolicy resolver', () => {
 
     expect(service.updatePolicy).toHaveBeenCalledWith(
       expect.objectContaining({
-        actor: expect.objectContaining({ type: 'user', userId: 'user-id' }),
+        invokedBy: {
+          userId: 'user-id',
+          orgId: 'org-id',
+          permissions: [UserPermission.MANAGE_POLICIES],
+        },
       }),
     );
   });

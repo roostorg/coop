@@ -24,8 +24,7 @@ import {
 } from '../../userManagementService/index.js';
 import { type ModerationConfigServicePg } from '../dbTypes.js';
 import { type Policy } from '../index.js';
-import { type ModerationConfigMutationActor } from '../types/mutationActor.js';
-import type { PolicyType } from '../types/policies.js';
+import type { PolicyMutationInvoker, PolicyType } from '../types/policies.js';
 
 const policyDbSelection = [
   'id',
@@ -167,9 +166,9 @@ export default class PolicyOperations {
       userStrikeCount?: number;
       applyUserStrikeCountConfigToChildren?: boolean;
     };
-    actor: ModerationConfigMutationActor;
+    invokedBy: PolicyMutationInvoker;
   }) {
-    const { orgId: org_id, policy, actor } = opts;
+    const { orgId: org_id, policy, invokedBy } = opts;
     const {
       name,
       parentId: parent_id,
@@ -181,9 +180,9 @@ export default class PolicyOperations {
         apply_user_strike_count_config_to_children,
     } = policy;
     if (
-      actor.orgId !== org_id ||
-      (actor.type === 'user' &&
-        !actor.permissions.includes(UserPermission.MANAGE_POLICIES))
+      invokedBy.orgId !== org_id ||
+      ('userId' in invokedBy &&
+        !invokedBy.permissions.includes(UserPermission.MANAGE_POLICIES))
     ) {
       throw makeUnauthorizedError(
         'You do not have permission to create policies',
@@ -241,13 +240,13 @@ export default class PolicyOperations {
       userStrikeCount?: number | null;
       applyUserStrikeCountConfigToChildren?: boolean | null;
     };
-    actor: ModerationConfigMutationActor;
+    invokedBy: PolicyMutationInvoker;
   }) {
-    const { orgId, policy, actor } = opts;
+    const { orgId, policy, invokedBy } = opts;
     if (
-      actor.orgId !== orgId ||
-      (actor.type === 'user' &&
-        !actor.permissions.includes(UserPermission.MANAGE_POLICIES))
+      invokedBy.orgId !== orgId ||
+      ('userId' in invokedBy &&
+        !invokedBy.permissions.includes(UserPermission.MANAGE_POLICIES))
     ) {
       throw makeUnauthorizedError(
         'You do not have permission to update policies',

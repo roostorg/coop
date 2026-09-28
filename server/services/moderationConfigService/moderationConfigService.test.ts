@@ -1917,10 +1917,9 @@ describe('ModerationConfigService', () => {
       );
 
       testWithUserAndOrg(
-        'supports user and matching API-key policy actors while rejecting unauthorized actors',
+        'supports user and matching API-key policy invokers while rejecting unauthorized invokers',
         async ({ sutWithPrimary, org, user }) => {
-          const userActor = {
-            type: 'user' as const,
+          const userInvoker = {
             orgId: org.id,
             userId: user.id,
             permissions: user.getPermissions(),
@@ -1928,41 +1927,41 @@ describe('ModerationConfigService', () => {
           const created = await sutWithPrimary.createPolicy({
             orgId: org.id,
             policy: { name: 'User policy' },
-            actor: userActor,
+            invokedBy: userInvoker,
           });
           await expect(
             sutWithPrimary.updatePolicy({
               orgId: org.id,
               policy: { id: created.id, name: 'User-updated policy' },
-              actor: userActor,
+              invokedBy: userInvoker,
             }),
           ).resolves.toMatchObject({ name: 'User-updated policy' });
           await expect(
             sutWithPrimary.updatePolicy({
               orgId: org.id,
               policy: { id: created.id, name: 'No permission update' },
-              actor: { ...userActor, permissions: [] },
+              invokedBy: { ...userInvoker, permissions: [] },
             }),
           ).rejects.toMatchObject({ name: 'UnauthorizedError', status: 403 });
           await expect(
             sutWithPrimary.updatePolicy({
               orgId: org.id,
               policy: { id: created.id, name: 'API key policy' },
-              actor: { type: 'organizationApiKey', orgId: org.id },
+              invokedBy: { type: 'organizationApiKey', orgId: org.id },
             }),
           ).resolves.toMatchObject({ name: 'API key policy' });
           await expect(
             sutWithPrimary.createPolicy({
               orgId: org.id,
               policy: { name: 'No permission' },
-              actor: { ...userActor, permissions: [] },
+              invokedBy: { ...userInvoker, permissions: [] },
             }),
           ).rejects.toMatchObject({ name: 'UnauthorizedError', status: 403 });
           await expect(
             sutWithPrimary.updatePolicy({
               orgId: org.id,
               policy: { id: created.id, name: 'Wrong org' },
-              actor: { type: 'organizationApiKey', orgId: 'wrong-org' },
+              invokedBy: { type: 'organizationApiKey', orgId: 'wrong-org' },
             }),
           ).rejects.toMatchObject({ name: 'UnauthorizedError', status: 403 });
         },
@@ -1980,8 +1979,7 @@ describe('ModerationConfigService', () => {
               policyType: PolicyType.DRUG_SALES,
               parentId: null,
             },
-            actor: {
-              type: 'user',
+            invokedBy: {
               orgId: org.id,
               userId: user.id,
               permissions: user.getPermissions(),
@@ -2006,8 +2004,7 @@ describe('ModerationConfigService', () => {
               policyType: PolicyType.DRUG_SALES,
               parentId: null,
             },
-            actor: {
-              type: 'user',
+            invokedBy: {
               orgId: org.id,
               userId: user.id,
               permissions: user.getPermissions(),
@@ -2023,8 +2020,7 @@ describe('ModerationConfigService', () => {
               policyType: PolicyType.DRUG_SALES,
               parentId: parentPolicy.id,
             },
-            actor: {
-              type: 'user',
+            invokedBy: {
               orgId: org.id,
               userId: user.id,
               permissions: user.getPermissions(),
@@ -2051,8 +2047,7 @@ describe('ModerationConfigService', () => {
               policyType: PolicyType.DRUG_SALES,
               parentId: null,
             },
-            actor: {
-              type: 'user',
+            invokedBy: {
               orgId: org.id,
               userId: user.id,
               permissions: user.getPermissions(),
@@ -2069,8 +2064,7 @@ describe('ModerationConfigService', () => {
               policyType: PolicyType.DRUG_SALES,
               parentId: null,
             },
-            actor: {
-              type: 'user',
+            invokedBy: {
               orgId: org.id,
               userId: user.id,
               permissions: user.getPermissions(),
@@ -2102,15 +2096,13 @@ describe('ModerationConfigService', () => {
               enforcementGuidelines: null,
               policyType: null,
             },
-            actor: {
-              type: 'user',
+            invokedBy: {
               orgId: other.org.id,
               userId: otherUser.id,
               permissions: otherUser.getPermissions(),
             },
           });
-          const actor = {
-            type: 'user' as const,
+          const invokedBy = {
             orgId: org.id,
             userId: user.id,
             permissions: user.getPermissions(),
@@ -2128,7 +2120,7 @@ describe('ModerationConfigService', () => {
                     enforcementGuidelines: null,
                     policyType: null,
                   },
-                  actor,
+                  invokedBy,
                 });
                 throw new Error('Expected createPolicy to reject');
               } catch (error) {
@@ -2157,7 +2149,7 @@ describe('ModerationConfigService', () => {
               enforcementGuidelines: null,
               policyType: null,
             },
-            actor,
+            invokedBy,
           });
           const child = await sutWithPrimary.createPolicy({
             orgId: org.id,
@@ -2168,7 +2160,7 @@ describe('ModerationConfigService', () => {
               enforcementGuidelines: null,
               policyType: null,
             },
-            actor,
+            invokedBy,
           });
           const updateErrors = await Promise.all(
             ['missing-policy', otherParent.id].map(async (parentId) => {
@@ -2176,7 +2168,7 @@ describe('ModerationConfigService', () => {
                 await sutWithPrimary.updatePolicy({
                   orgId: org.id,
                   policy: { id: child.id, parentId },
-                  actor,
+                  invokedBy,
                 });
                 throw new Error('Expected updatePolicy to reject');
               } catch (error) {
@@ -2209,8 +2201,7 @@ describe('ModerationConfigService', () => {
       testWithUserAndOrg(
         'rejects self, direct, and multi-level policy cycles and preserves the original edge',
         async ({ sutWithPrimary, org, user }) => {
-          const actor = {
-            type: 'user' as const,
+          const invokedBy = {
             orgId: org.id,
             userId: user.id,
             permissions: user.getPermissions(),
@@ -2225,7 +2216,7 @@ describe('ModerationConfigService', () => {
                 enforcementGuidelines: null,
                 policyType: null,
               },
-              actor,
+              invokedBy,
             });
           const root = await create('Root', null);
           const child = await create('Child', root.id);
@@ -2240,7 +2231,7 @@ describe('ModerationConfigService', () => {
               sutWithPrimary.updatePolicy({
                 orgId: org.id,
                 policy: { id, parentId },
-                actor,
+                invokedBy,
               }),
             ).rejects.toEqual(
               expect.objectContaining({
@@ -2259,10 +2250,9 @@ describe('ModerationConfigService', () => {
       );
 
       testWithUserAndOrg(
-        'supports reparenting and clearing while rejecting wrong-org actors without changes',
+        'supports reparenting and clearing while rejecting wrong-org invokers without changes',
         async ({ sutWithPrimary, org, user }) => {
-          const actor = {
-            type: 'user' as const,
+          const invokedBy = {
             orgId: org.id,
             userId: user.id,
             permissions: user.getPermissions(),
@@ -2277,7 +2267,7 @@ describe('ModerationConfigService', () => {
                 enforcementGuidelines: null,
                 policyType: null,
               },
-              actor,
+              invokedBy,
             });
           const first = await create('First', null);
           const second = await create('Second', null);
@@ -2287,7 +2277,7 @@ describe('ModerationConfigService', () => {
               await sutWithPrimary.updatePolicy({
                 orgId: org.id,
                 policy: { id: child.id, parentId: second.id },
-                actor,
+                invokedBy,
               })
             ).parentId,
           ).toBe(second.id);
@@ -2296,7 +2286,7 @@ describe('ModerationConfigService', () => {
               await sutWithPrimary.updatePolicy({
                 orgId: org.id,
                 policy: { id: child.id, parentId: null },
-                actor,
+                invokedBy,
               })
             ).parentId,
           ).toBeNull();
@@ -2305,7 +2295,7 @@ describe('ModerationConfigService', () => {
             sutWithPrimary.updatePolicy({
               orgId: org.id,
               policy: { id: child.id, parentId: first.id },
-              actor: { ...actor, orgId: 'wrong-org' },
+              invokedBy: { ...invokedBy, orgId: 'wrong-org' },
             }),
           ).rejects.toEqual(
             expect.objectContaining({ type: [ErrorType.Unauthorized] }),
@@ -2326,7 +2316,7 @@ describe('ModerationConfigService', () => {
                 enforcementGuidelines: null,
                 policyType: null,
               },
-              actor: { ...actor, orgId: 'wrong-org' },
+              invokedBy: { ...invokedBy, orgId: 'wrong-org' },
             }),
           ).rejects.toEqual(
             expect.objectContaining({ type: [ErrorType.Unauthorized] }),

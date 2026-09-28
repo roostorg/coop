@@ -16,8 +16,7 @@ export default async function (opts: {
       enforcementGuidelines: null,
       policyType: null,
     },
-    actor: {
-      type: 'user',
+    invokedBy: {
       userId: '',
       permissions: [UserPermission.MANAGE_POLICIES],
       orgId,

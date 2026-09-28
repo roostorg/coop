@@ -131,8 +131,7 @@ const Mutation: GQLMutationResolvers = {
           policyType: policy.policyType ?? null,
         },
         orgId: user.orgId,
-        actor: {
-          type: 'user',
+        invokedBy: {
           userId: user.id,
           permissions: user.getPermissions(),
           orgId: user.orgId,
@@ -190,8 +189,7 @@ const Mutation: GQLMutationResolvers = {
             applyUserStrikeCountConfigToChildren,
           },
           orgId: user.orgId,
-          actor: {
-            type: 'user',
+          invokedBy: {
             userId: user.id,
             permissions: user.getPermissions(),
             orgId: user.orgId,
