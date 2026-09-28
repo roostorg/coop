@@ -19,7 +19,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Changed
 
-- Item type updates reject incompatible field changes ([#1272](https://github.com/roostorg/coop/pull/1272) by [@taobojlen](https://github.com/taobojlen))
+- Item type writes validate schemas, field roles, and hidden fields ([#1272](https://github.com/roostorg/coop/pull/1272) by [@taobojlen](https://github.com/taobojlen))
 
 ## [1.1.0-alpha] - 2026-09-21
 
