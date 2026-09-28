@@ -297,7 +297,7 @@ describe('configuration write REST routes', () => {
     expect(service.invalidateLatestItemTypesCache).not.toHaveBeenCalled();
   });
 
-  it('creates a policy with the API-key actor and exact public output', async () => {
+  it('creates a policy with the API-key invoker and exact public output', async () => {
     const { app, service } = harness();
     const response = await auth(request(app).post('/api/v1/policies/'))
       .send({ name: 'Spam' })
@@ -323,11 +323,11 @@ describe('configuration write REST routes', () => {
         enforcementGuidelines: null,
         policyType: null,
       },
-      actor: { type: 'organizationApiKey', orgId },
+      invokedBy: { type: 'organizationApiKey', orgId },
     });
   });
 
-  it('patches a policy for its organization with the API-key actor', async () => {
+  it('patches a policy for its organization with the API-key invoker', async () => {
     const { app, service } = harness();
     await auth(request(app).patch(`/api/v1/policies/${policy.id}`))
       .send({ policyText: null })
@@ -340,7 +340,7 @@ describe('configuration write REST routes', () => {
     expect(service.updatePolicy).toHaveBeenCalledWith({
       orgId,
       policy: { id: policy.id, policyText: null },
-      actor: { type: 'organizationApiKey', orgId },
+      invokedBy: { type: 'organizationApiKey', orgId },
     });
   });
 
