@@ -19,7 +19,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Security
 
-- Remove hash-exchange credential editing and the `updateExchangeCredentials` GraphQL mutation to prevent cross-organization overwrites.
+- Remove hash-exchange credential editing and the `updateExchangeCredentials` GraphQL mutation to prevent cross-organization overwrites ([#1317](https://github.com/roostorg/coop/pull/1317) by [@taobojlen](https://github.com/taobojlen)).
 
 ## [1.1.0-alpha] - 2026-09-21
 
