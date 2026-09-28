@@ -816,7 +816,9 @@ describe('QueueOperations', () => {
           actionIdsToHide: [],
           actionIdsToUnhide: [],
         }),
-      ).rejects.toThrow();
+      ).rejects.toThrow(
+        "Queue, user, or role does not belong to the caller's organization",
+      );
       expect(
         await mrtService.getAssignedRoleIdsForQueue({
           orgId: org.id,
