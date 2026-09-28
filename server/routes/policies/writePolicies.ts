@@ -25,7 +25,7 @@ export function createPolicy({
         enforcementGuidelines: req.body.enforcementGuidelines ?? null,
         policyType: req.body.policyType ?? null,
       },
-      actor: { type: 'organizationApiKey', orgId },
+      invokedBy: { type: 'organizationApiKey', orgId },
     });
     res.status(201).json(serializePolicy(policy));
   };
@@ -52,7 +52,7 @@ export function patchPolicy({
     const policy = await ModerationConfigService.updatePolicy({
       orgId,
       policy: { ...req.body, id },
-      actor: { type: 'organizationApiKey', orgId },
+      invokedBy: { type: 'organizationApiKey', orgId },
     });
     res.status(200).json(serializePolicy(policy));
   };
