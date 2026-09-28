@@ -1558,16 +1558,6 @@ export type GQLIntegrationNoInputCredentialsError = GQLError & {
   readonly type: ReadonlyArray<Scalars['String']['output']>;
 };
 
-export type GQLInvalidActionItemTypeIdsError = GQLError & {
-  readonly __typename: 'InvalidActionItemTypeIdsError';
-  readonly detail?: Maybe<Scalars['String']['output']>;
-  readonly pointer?: Maybe<Scalars['String']['output']>;
-  readonly requestId?: Maybe<Scalars['String']['output']>;
-  readonly status: Scalars['Int']['output'];
-  readonly title: Scalars['String']['output'];
-  readonly type: ReadonlyArray<Scalars['String']['output']>;
-};
-
 export type GQLInvalidItemTypeHiddenFieldsError = GQLError & {
   readonly __typename: 'InvalidItemTypeHiddenFieldsError';
   readonly detail?: Maybe<Scalars['String']['output']>;
@@ -1580,16 +1570,6 @@ export type GQLInvalidItemTypeHiddenFieldsError = GQLError & {
 
 export type GQLInvalidItemTypeSchemaError = GQLError & {
   readonly __typename: 'InvalidItemTypeSchemaError';
-  readonly detail?: Maybe<Scalars['String']['output']>;
-  readonly pointer?: Maybe<Scalars['String']['output']>;
-  readonly requestId?: Maybe<Scalars['String']['output']>;
-  readonly status: Scalars['Int']['output'];
-  readonly title: Scalars['String']['output'];
-  readonly type: ReadonlyArray<Scalars['String']['output']>;
-};
-
-export type GQLInvalidPolicyParentError = GQLError & {
-  readonly __typename: 'InvalidPolicyParentError';
   readonly detail?: Maybe<Scalars['String']['output']>;
   readonly pointer?: Maybe<Scalars['String']['output']>;
   readonly requestId?: Maybe<Scalars['String']['output']>;
@@ -2577,9 +2557,7 @@ export const GQLMutateActionError = {
 export type GQLMutateActionError =
   (typeof GQLMutateActionError)[keyof typeof GQLMutateActionError];
 export type GQLMutateActionResponse =
-  | GQLActionNameExistsError
-  | GQLInvalidActionItemTypeIdsError
-  | GQLMutateActionSuccessResponse;
+  GQLActionNameExistsError | GQLMutateActionSuccessResponse;
 
 export type GQLMutateActionSuccessResponse = {
   readonly __typename: 'MutateActionSuccessResponse';
@@ -3640,16 +3618,6 @@ export type GQLPolicyActionCount = {
   readonly count: Scalars['Int']['output'];
   readonly itemSubmissionIds: ReadonlyArray<Scalars['String']['output']>;
   readonly policyId?: Maybe<Scalars['String']['output']>;
-};
-
-export type GQLPolicyHierarchyCycleError = GQLError & {
-  readonly __typename: 'PolicyHierarchyCycleError';
-  readonly detail?: Maybe<Scalars['String']['output']>;
-  readonly pointer?: Maybe<Scalars['String']['output']>;
-  readonly requestId?: Maybe<Scalars['String']['output']>;
-  readonly status: Scalars['Int']['output'];
-  readonly title: Scalars['String']['output'];
-  readonly type: ReadonlyArray<Scalars['String']['output']>;
 };
 
 export type GQLPolicyNameExistsError = GQLError & {
@@ -5176,11 +5144,7 @@ export type GQLUpdatePolicyInput = {
   readonly userStrikeCount?: InputMaybe<Scalars['Int']['input']>;
 };
 
-export type GQLUpdatePolicyResponse =
-  | GQLInvalidPolicyParentError
-  | GQLNotFoundError
-  | GQLPolicy
-  | GQLPolicyHierarchyCycleError;
+export type GQLUpdatePolicyResponse = GQLNotFoundError | GQLPolicy;
 
 export type GQLUpdateReportingRuleInput = {
   readonly actionIds?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
@@ -6148,7 +6112,6 @@ export type GQLCreateActionMutation = {
         readonly status: number;
         readonly type: ReadonlyArray<string>;
       }
-    | { readonly __typename: 'InvalidActionItemTypeIdsError' }
     | {
         readonly __typename: 'MutateActionSuccessResponse';
         readonly data: {
@@ -6198,7 +6161,6 @@ export type GQLUpdateActionMutation = {
         readonly status: number;
         readonly type: ReadonlyArray<string>;
       }
-    | { readonly __typename: 'InvalidActionItemTypeIdsError' }
     | {
         readonly __typename: 'MutateActionSuccessResponse';
         readonly data: {
@@ -19865,7 +19827,6 @@ export type GQLUpdatePolicyMutationVariables = Exact<{
 export type GQLUpdatePolicyMutation = {
   readonly __typename: 'Mutation';
   readonly updatePolicy:
-    | { readonly __typename: 'InvalidPolicyParentError' }
     | { readonly __typename: 'NotFoundError' }
     | {
         readonly __typename: 'Policy';
@@ -19877,8 +19838,7 @@ export type GQLUpdatePolicyMutation = {
         readonly policyType?: GQLPolicyType | null;
         readonly userStrikeCount?: number | null;
         readonly applyUserStrikeCountConfigToChildren?: boolean | null;
-      }
-    | { readonly __typename: 'PolicyHierarchyCycleError' };
+      };
 };
 
 export type GQLDeletePolicyMutationVariables = Exact<{
