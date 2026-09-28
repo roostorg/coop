@@ -6,7 +6,6 @@ import {
   makeInvalidItemTypeHiddenFieldsError,
   makeInvalidItemTypeSchemaError,
   makeItemTypeNameAlreadyExistsError,
-  makeItemTypeSchemaIncompatibleError,
 } from '../../services/moderationConfigService/index.js';
 import { makeNotFoundError } from '../../utils/errors.js';
 import { type Context } from '../resolvers.js';
@@ -23,7 +22,6 @@ const fields = [
 ];
 const errorData = { detail: 'Invalid item type', shouldErrorSpan: false };
 const domainErrors = [
-  [makeItemTypeSchemaIncompatibleError(errorData), '/input/fields'],
   [makeInvalidItemTypeSchemaError(errorData), '/input/fields'],
   [makeInvalidItemTypeHiddenFieldsError(errorData), '/input/hiddenFields'],
   [makeItemTypeNameAlreadyExistsError(errorData), '/input/name'],

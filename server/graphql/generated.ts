@@ -1776,16 +1776,6 @@ export type GQLItemTypeNameAlreadyExistsError = GQLError & {
   readonly type: ReadonlyArray<Scalars['String']['output']>;
 };
 
-export type GQLItemTypeSchemaIncompatibleError = GQLError & {
-  readonly __typename?: 'ItemTypeSchemaIncompatibleError';
-  readonly detail?: Maybe<Scalars['String']['output']>;
-  readonly pointer?: Maybe<Scalars['String']['output']>;
-  readonly requestId?: Maybe<Scalars['String']['output']>;
-  readonly status: Scalars['Int']['output'];
-  readonly title: Scalars['String']['output'];
-  readonly type: ReadonlyArray<Scalars['String']['output']>;
-};
-
 export const GQLItemTypeSchemaVariant = {
   Original: 'ORIGINAL',
   Partial: 'PARTIAL',
@@ -2519,7 +2509,6 @@ export type GQLMutateContentItemTypeResponse =
   | GQLInvalidItemTypeHiddenFieldsError
   | GQLInvalidItemTypeSchemaError
   | GQLItemTypeNameAlreadyExistsError
-  | GQLItemTypeSchemaIncompatibleError
   | GQLMutateContentTypeSuccessResponse
   | GQLNotFoundError;
 
@@ -2574,7 +2563,6 @@ export type GQLMutateThreadItemTypeResponse =
   | GQLInvalidItemTypeHiddenFieldsError
   | GQLInvalidItemTypeSchemaError
   | GQLItemTypeNameAlreadyExistsError
-  | GQLItemTypeSchemaIncompatibleError
   | GQLMutateThreadTypeSuccessResponse
   | GQLNotFoundError;
 
@@ -2587,7 +2575,6 @@ export type GQLMutateUserItemTypeResponse =
   | GQLInvalidItemTypeHiddenFieldsError
   | GQLInvalidItemTypeSchemaError
   | GQLItemTypeNameAlreadyExistsError
-  | GQLItemTypeSchemaIncompatibleError
   | GQLMutateUserTypeSuccessResponse
   | GQLNotFoundError;
 
@@ -5671,7 +5658,6 @@ export type GQLResolversUnionTypes<_RefType extends Record<string, unknown>> = {
     | GQLInvalidItemTypeHiddenFieldsError
     | GQLInvalidItemTypeSchemaError
     | GQLItemTypeNameAlreadyExistsError
-    | GQLItemTypeSchemaIncompatibleError
     | (Omit<GQLMutateContentTypeSuccessResponse, 'data'> & {
         data?: Maybe<_RefType['ContentItemType']>;
       })
@@ -5690,7 +5676,6 @@ export type GQLResolversUnionTypes<_RefType extends Record<string, unknown>> = {
     | GQLInvalidItemTypeHiddenFieldsError
     | GQLInvalidItemTypeSchemaError
     | GQLItemTypeNameAlreadyExistsError
-    | GQLItemTypeSchemaIncompatibleError
     | (Omit<GQLMutateThreadTypeSuccessResponse, 'data'> & {
         data?: Maybe<_RefType['ThreadItemType']>;
       })
@@ -5699,7 +5684,6 @@ export type GQLResolversUnionTypes<_RefType extends Record<string, unknown>> = {
     | GQLInvalidItemTypeHiddenFieldsError
     | GQLInvalidItemTypeSchemaError
     | GQLItemTypeNameAlreadyExistsError
-    | GQLItemTypeSchemaIncompatibleError
     | (Omit<GQLMutateUserTypeSuccessResponse, 'data'> & {
         data?: Maybe<_RefType['UserItemType']>;
       })
@@ -5812,7 +5796,6 @@ export type GQLResolversInterfaceTypes<
     | GQLInviteUserTokenExpiredError
     | GQLInviteUserTokenMissingError
     | GQLItemTypeNameAlreadyExistsError
-    | GQLItemTypeSchemaIncompatibleError
     | GQLJobHasAlreadyBeenSubmittedError
     | GQLLocationBankNameExistsError
     | GQLLoginIncorrectPasswordError
@@ -6186,7 +6169,6 @@ export type GQLResolversTypes = {
   >;
   ItemTypeIdentifierInput: GQLItemTypeIdentifierInput;
   ItemTypeNameAlreadyExistsError: ResolverTypeWrapper<GQLItemTypeNameAlreadyExistsError>;
-  ItemTypeSchemaIncompatibleError: ResolverTypeWrapper<GQLItemTypeSchemaIncompatibleError>;
   ItemTypeSchemaVariant: ResolverTypeWrapper<ItemTypeSchemaVariantResolverValue>;
   ItemTypeSchemaVariantInput: ResolverTypeWrapper<ItemTypeSchemaVariantInputResolverValue>;
   ItemWithParents: ResolverTypeWrapper<
@@ -6970,7 +6952,6 @@ export type GQLResolversParentTypes = {
   };
   ItemTypeIdentifierInput: GQLItemTypeIdentifierInput;
   ItemTypeNameAlreadyExistsError: GQLItemTypeNameAlreadyExistsError;
-  ItemTypeSchemaIncompatibleError: GQLItemTypeSchemaIncompatibleError;
   ItemWithParents: Omit<GQLItemWithParents, 'item' | 'parents'> & {
     item: GQLResolversParentTypes['ItemSubmissions'];
     parents: ReadonlyArray<GQLResolversParentTypes['ItemSubmissions']>;
@@ -9088,7 +9069,6 @@ export type GQLErrorResolvers<
     | 'InviteUserTokenExpiredError'
     | 'InviteUserTokenMissingError'
     | 'ItemTypeNameAlreadyExistsError'
-    | 'ItemTypeSchemaIncompatibleError'
     | 'JobHasAlreadyBeenSubmittedError'
     | 'LocationBankNameExistsError'
     | 'LoginIncorrectPasswordError'
@@ -9977,37 +9957,6 @@ export type GQLItemTypeNameAlreadyExistsErrorResolvers<
   ContextType = Context,
   ParentType extends GQLResolversParentTypes['ItemTypeNameAlreadyExistsError'] =
     GQLResolversParentTypes['ItemTypeNameAlreadyExistsError'],
-> = {
-  detail?: Resolver<
-    Maybe<GQLResolversTypes['String']>,
-    ParentType,
-    ContextType
-  >;
-  pointer?: Resolver<
-    Maybe<GQLResolversTypes['String']>,
-    ParentType,
-    ContextType
-  >;
-  requestId?: Resolver<
-    Maybe<GQLResolversTypes['String']>,
-    ParentType,
-    ContextType
-  >;
-  status?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
-  title?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
-  type?: Resolver<
-    ReadonlyArray<GQLResolversTypes['String']>,
-    ParentType,
-    ContextType
-  >;
-  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
-};
-
-export type GQLItemTypeSchemaIncompatibleErrorResolvers<
-  ContextType = Context,
-  ParentType extends
-    GQLResolversParentTypes['ItemTypeSchemaIncompatibleError'] =
-    GQLResolversParentTypes['ItemTypeSchemaIncompatibleError'],
 > = {
   detail?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -11039,7 +10988,6 @@ export type GQLMutateContentItemTypeResponseResolvers<
     | 'InvalidItemTypeHiddenFieldsError'
     | 'InvalidItemTypeSchemaError'
     | 'ItemTypeNameAlreadyExistsError'
-    | 'ItemTypeSchemaIncompatibleError'
     | 'MutateContentTypeSuccessResponse'
     | 'NotFoundError',
     ParentType,
@@ -11176,7 +11124,6 @@ export type GQLMutateThreadItemTypeResponseResolvers<
     | 'InvalidItemTypeHiddenFieldsError'
     | 'InvalidItemTypeSchemaError'
     | 'ItemTypeNameAlreadyExistsError'
-    | 'ItemTypeSchemaIncompatibleError'
     | 'MutateThreadTypeSuccessResponse'
     | 'NotFoundError',
     ParentType,
@@ -11207,7 +11154,6 @@ export type GQLMutateUserItemTypeResponseResolvers<
     | 'InvalidItemTypeHiddenFieldsError'
     | 'InvalidItemTypeSchemaError'
     | 'ItemTypeNameAlreadyExistsError'
-    | 'ItemTypeSchemaIncompatibleError'
     | 'MutateUserTypeSuccessResponse'
     | 'NotFoundError',
     ParentType,
@@ -15504,7 +15450,6 @@ export type GQLResolvers<ContextType = Context> = {
   ItemTypeBase?: GQLItemTypeBaseResolvers<ContextType>;
   ItemTypeIdentifier?: GQLItemTypeIdentifierResolvers<ContextType>;
   ItemTypeNameAlreadyExistsError?: GQLItemTypeNameAlreadyExistsErrorResolvers<ContextType>;
-  ItemTypeSchemaIncompatibleError?: GQLItemTypeSchemaIncompatibleErrorResolvers<ContextType>;
   ItemTypeSchemaVariant?: GQLItemTypeSchemaVariantResolvers;
   ItemTypeSchemaVariantInput?: GQLItemTypeSchemaVariantInputResolvers;
   ItemWithParents?: GQLItemWithParentsResolvers<ContextType>;
