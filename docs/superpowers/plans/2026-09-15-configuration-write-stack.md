@@ -1,6 +1,9 @@
 # Configuration Write Stack Implementation Plan
 
-> **For agentic workers:** Use subagent-driven-development to implement each layer, then inspect its diff and run focused verification before proceeding.
+> Historical plan. The compatibility restrictions below were removed: item types
+> retain historical schema versions. #1272 now retains schema/role/hidden-field
+> validation and atomic writes; #1273 is closed. The current stack is
+> `main` → #1272 → #1274 → #1275. Do not restore the editor restrictions.
 
 **Goal:** Add globally enforced item-type safeguards before REST create/update operations, stacked above read API PR #1144.
 
