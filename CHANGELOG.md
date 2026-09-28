@@ -20,6 +20,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Fixed
 
+- Policy and action updates reject invalid cross-organization relationships and policy cycles ([#1274](https://github.com/roostorg/coop/pull/1274) by [@taobojlen](https://github.com/taobojlen))
 - Opening a review queue with no unskipped jobs no longer leaves reviewers on a loading spinner ([#1392](https://github.com/roostorg/coop/pull/1392) by [@Joseph-Mutua](https://github.com/Joseph-Mutua))
 
 ## [1.2.0] - 2026-10-21
@@ -141,7 +142,6 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Fixed
 
-- Policy and action updates reject invalid cross-organization relationships and policy cycles (by [@taobojlen](https://github.com/taobojlen))
 - Rule history dropping other rules' versions when filtered by start date ([#1056](https://github.com/roostorg/coop/pull/1056) by [@juanmrad](https://github.com/juanmrad))
 - `RetryFailedNcmecDecisionsJob` ignoring `NCMEC_ENV` and retrying test decisions ([#928](https://github.com/roostorg/coop/pull/928) by [@taobojlen](https://github.com/taobojlen))
 - Queue creation failing with "name already exists" on the default reviewer selection ([#1069](https://github.com/roostorg/coop/pull/1069) by [@jess-upscrolled](https://github.com/jess-upscrolled))
