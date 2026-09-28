@@ -84,7 +84,6 @@ export {
 
 export {
   type ItemTypeErrorType,
-  makeItemTypeSchemaIncompatibleError,
   makeInvalidItemTypeSchemaError,
   makeInvalidItemTypeHiddenFieldsError,
   makeItemTypeNameAlreadyExistsError,
@@ -96,7 +95,6 @@ export {
 
 export {
   assertValidItemSchema,
-  assertBackwardCompatibleItemSchema,
   assertHiddenFieldsExist,
 } from './modules/itemTypeSchemaValidation.js';
 

@@ -5,19 +5,9 @@ import {
 } from '../../utils/errors.js';
 
 export type ItemTypeErrorType =
-  | 'ItemTypeSchemaIncompatibleError'
   | 'InvalidItemTypeSchemaError'
   | 'InvalidItemTypeHiddenFieldsError'
   | 'ItemTypeNameAlreadyExistsError';
-
-export const makeItemTypeSchemaIncompatibleError = (data: ErrorInstanceData) =>
-  new CoopError({
-    status: 409,
-    type: [ErrorType.Conflict],
-    title: 'The item type schema is not backward compatible.',
-    name: 'ItemTypeSchemaIncompatibleError',
-    ...data,
-  });
 
 export const makeInvalidItemTypeSchemaError = (data: ErrorInstanceData) =>
   new CoopError({

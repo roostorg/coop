@@ -4,7 +4,6 @@ import { type ModerationConfigServicePg } from '../dbTypes.js';
 import {
   makeInvalidItemTypeHiddenFieldsError,
   makeInvalidItemTypeSchemaError,
-  makeItemTypeSchemaIncompatibleError,
 } from '../errors.js';
 import {
   type FieldRoleToScalarType,
@@ -46,49 +45,6 @@ export function assertValidItemSchema(schema: ItemSchema): void {
       }
     } else if (!scalarTypes.has(field.type) || container != null) {
       throwInvalidSchema(field.name, 'has an invalid scalar definition');
-    }
-  }
-}
-
-export function assertBackwardCompatibleItemSchema(
-  currentSchema: ItemSchema,
-  proposedSchema: ItemSchema,
-): void {
-  assertValidItemSchema(currentSchema);
-  assertValidItemSchema(proposedSchema);
-
-  const proposedByName = new Map(
-    proposedSchema.map((field) => [field.name, field]),
-  );
-  for (const currentField of currentSchema) {
-    const proposedField = proposedByName.get(currentField.name);
-    if (!proposedField) {
-      throwIncompatible(currentField.name, 'cannot be removed or renamed');
-    }
-    if (currentField.type !== proposedField.type) {
-      throwIncompatible(currentField.name, 'cannot change type');
-    }
-    if (currentField.container && proposedField.container) {
-      if (
-        currentField.container.containerType !==
-          proposedField.container.containerType ||
-        currentField.container.keyScalarType !==
-          proposedField.container.keyScalarType ||
-        currentField.container.valueScalarType !==
-          proposedField.container.valueScalarType
-      ) {
-        throwIncompatible(currentField.name, 'cannot change container shape');
-      }
-    }
-    if (!currentField.required && proposedField.required) {
-      throwIncompatible(currentField.name, 'cannot become required');
-    }
-  }
-
-  const currentNames = new Set(currentSchema.map(({ name }) => name));
-  for (const proposedField of proposedSchema) {
-    if (!currentNames.has(proposedField.name) && proposedField.required) {
-      throwIncompatible(proposedField.name, 'must be optional when added');
     }
   }
 }
@@ -240,13 +196,6 @@ export function assertHiddenFieldsExist(
       });
     }
   }
-}
-
-function throwIncompatible(fieldName: string, reason: string): never {
-  throw makeItemTypeSchemaIncompatibleError({
-    shouldErrorSpan: false,
-    detail: `Field "${fieldName}" ${reason}.`,
-  });
 }
 
 function throwInvalidSchema(fieldName: string, reason: string): never {

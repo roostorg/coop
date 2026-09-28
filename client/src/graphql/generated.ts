@@ -1716,16 +1716,6 @@ export type GQLItemTypeNameAlreadyExistsError = GQLError & {
   readonly type: ReadonlyArray<Scalars['String']['output']>;
 };
 
-export type GQLItemTypeSchemaIncompatibleError = GQLError & {
-  readonly __typename: 'ItemTypeSchemaIncompatibleError';
-  readonly detail?: Maybe<Scalars['String']['output']>;
-  readonly pointer?: Maybe<Scalars['String']['output']>;
-  readonly requestId?: Maybe<Scalars['String']['output']>;
-  readonly status: Scalars['Int']['output'];
-  readonly title: Scalars['String']['output'];
-  readonly type: ReadonlyArray<Scalars['String']['output']>;
-};
-
 export const GQLItemTypeSchemaVariant = {
   Original: 'ORIGINAL',
   Partial: 'PARTIAL',
@@ -2488,7 +2478,6 @@ export type GQLMutateContentItemTypeResponse =
   | GQLInvalidItemTypeHiddenFieldsError
   | GQLInvalidItemTypeSchemaError
   | GQLItemTypeNameAlreadyExistsError
-  | GQLItemTypeSchemaIncompatibleError
   | GQLMutateContentTypeSuccessResponse
   | GQLNotFoundError;
 
@@ -2543,7 +2532,6 @@ export type GQLMutateThreadItemTypeResponse =
   | GQLInvalidItemTypeHiddenFieldsError
   | GQLInvalidItemTypeSchemaError
   | GQLItemTypeNameAlreadyExistsError
-  | GQLItemTypeSchemaIncompatibleError
   | GQLMutateThreadTypeSuccessResponse
   | GQLNotFoundError;
 
@@ -2556,7 +2544,6 @@ export type GQLMutateUserItemTypeResponse =
   | GQLInvalidItemTypeHiddenFieldsError
   | GQLInvalidItemTypeSchemaError
   | GQLItemTypeNameAlreadyExistsError
-  | GQLItemTypeSchemaIncompatibleError
   | GQLMutateUserTypeSuccessResponse
   | GQLNotFoundError;
 
@@ -7976,10 +7963,6 @@ export type GQLCreateContentTypeMutation = {
         readonly title: string;
       }
     | {
-        readonly __typename: 'ItemTypeSchemaIncompatibleError';
-        readonly title: string;
-      }
-    | {
         readonly __typename: 'MutateContentTypeSuccessResponse';
         readonly data?: {
           readonly __typename: 'ContentItemType';
@@ -8006,10 +7989,6 @@ export type GQLUpdateContentTypeMutation = {
       }
     | {
         readonly __typename: 'ItemTypeNameAlreadyExistsError';
-        readonly title: string;
-      }
-    | {
-        readonly __typename: 'ItemTypeSchemaIncompatibleError';
         readonly title: string;
       }
     | {
@@ -8042,10 +8021,6 @@ export type GQLCreateUserTypeMutation = {
         readonly title: string;
       }
     | {
-        readonly __typename: 'ItemTypeSchemaIncompatibleError';
-        readonly title: string;
-      }
-    | {
         readonly __typename: 'MutateUserTypeSuccessResponse';
         readonly data?: {
           readonly __typename: 'UserItemType';
@@ -8072,10 +8047,6 @@ export type GQLUpdateUserTypeMutation = {
       }
     | {
         readonly __typename: 'ItemTypeNameAlreadyExistsError';
-        readonly title: string;
-      }
-    | {
-        readonly __typename: 'ItemTypeSchemaIncompatibleError';
         readonly title: string;
       }
     | {
@@ -8108,10 +8079,6 @@ export type GQLCreateThreadTypeMutation = {
         readonly title: string;
       }
     | {
-        readonly __typename: 'ItemTypeSchemaIncompatibleError';
-        readonly title: string;
-      }
-    | {
         readonly __typename: 'MutateThreadTypeSuccessResponse';
         readonly data?: {
           readonly __typename: 'ThreadItemType';
@@ -8138,10 +8105,6 @@ export type GQLUpdateThreadTypeMutation = {
       }
     | {
         readonly __typename: 'ItemTypeNameAlreadyExistsError';
-        readonly title: string;
-      }
-    | {
-        readonly __typename: 'ItemTypeSchemaIncompatibleError';
         readonly title: string;
       }
     | {

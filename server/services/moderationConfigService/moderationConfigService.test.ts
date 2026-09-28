@@ -360,33 +360,34 @@ describe('ModerationConfigService', () => {
       );
 
       testWithOrg(
-        'update can add an optional field and relax a required field',
+        'update can change the schema while retaining the previous version',
         async ({ sutWithPrimary, org }) => {
           const item = await sutWithPrimary.createContentType(org.id, {
             name: 'evolving',
             schema,
             schemaFieldRoles: {},
           });
+          const proposedSchema = [
+            { ...schema[1], required: true },
+            { name: 'added', type: 'BOOLEAN', required: true, container: null },
+          ] as const;
           const updated = await sutWithPrimary.updateContentType(org.id, {
             id: item.id,
-            schema: [
-              { ...schema[0], required: false },
-              schema[1],
-              {
-                name: 'added',
-                type: 'BOOLEAN',
-                required: false,
-                container: null,
-              },
-            ],
+            schema: proposedSchema,
           });
-          expect(updated.schema).toHaveLength(3);
-          expect(updated.schema[0].required).toBe(false);
+          expect(updated.schema).toEqual(proposedSchema);
+          expect(updated.version).not.toBe(item.version);
+          await expect(
+            sutWithPrimary.getItemType({
+              orgId: org.id,
+              itemTypeSelector: { id: item.id, version: item.version },
+            }),
+          ).resolves.toMatchObject({ schema });
         },
       );
 
       testWithOrg(
-        'rejects an incompatible schema without changing the source row',
+        'rejects an invalid schema without changing the source row',
         async ({ sutWithPrimary, org }) => {
           const item = await sutWithPrimary.createContentType(org.id, {
             name: 'unchanged',
@@ -397,9 +398,9 @@ describe('ModerationConfigService', () => {
             sutWithPrimary.updateContentType(org.id, {
               id: item.id,
               name: 'must not persist',
-              schema: [{ ...schema[0], name: 'renamed' }, schema[1]],
+              schema: [schema[0], schema[0]],
             }),
-          ).rejects.toMatchObject({ name: 'ItemTypeSchemaIncompatibleError' });
+          ).rejects.toMatchObject({ name: 'InvalidItemTypeSchemaError' });
           await expect(
             sutWithPrimary.getItemType({
               orgId: org.id,

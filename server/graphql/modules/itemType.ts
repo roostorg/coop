@@ -394,15 +394,6 @@ const typeDefs = /* GraphQL */ `
     requestId: String
   }
 
-  type ItemTypeSchemaIncompatibleError implements Error {
-    title: String!
-    status: Int!
-    type: [String!]!
-    pointer: String
-    detail: String
-    requestId: String
-  }
-
   type InvalidItemTypeSchemaError implements Error {
     title: String!
     status: Int!
@@ -438,21 +429,18 @@ const typeDefs = /* GraphQL */ `
   union MutateContentItemTypeResponse =
     | MutateContentTypeSuccessResponse
     | ItemTypeNameAlreadyExistsError
-    | ItemTypeSchemaIncompatibleError
     | InvalidItemTypeSchemaError
     | InvalidItemTypeHiddenFieldsError
     | NotFoundError
   union MutateUserItemTypeResponse =
     | MutateUserTypeSuccessResponse
     | ItemTypeNameAlreadyExistsError
-    | ItemTypeSchemaIncompatibleError
     | InvalidItemTypeSchemaError
     | InvalidItemTypeHiddenFieldsError
     | NotFoundError
   union MutateThreadItemTypeResponse =
     | MutateThreadTypeSuccessResponse
     | ItemTypeNameAlreadyExistsError
-    | ItemTypeSchemaIncompatibleError
     | InvalidItemTypeSchemaError
     | InvalidItemTypeHiddenFieldsError
     | NotFoundError
@@ -829,12 +817,7 @@ const Query: GQLQueryResolvers = {
 };
 
 const mapItemTypeMutationError = (error: unknown) => {
-  if (
-    isCoopErrorOfType(error, [
-      'ItemTypeSchemaIncompatibleError',
-      'InvalidItemTypeSchemaError',
-    ])
-  ) {
+  if (isCoopErrorOfType(error, 'InvalidItemTypeSchemaError')) {
     return gqlErrorResult(error, '/input/fields');
   }
   if (isCoopErrorOfType(error, 'InvalidItemTypeHiddenFieldsError')) {

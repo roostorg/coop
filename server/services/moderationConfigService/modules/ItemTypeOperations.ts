@@ -40,7 +40,6 @@ import {
   type ItemTypeSelector,
 } from '../types/itemTypes.js';
 import {
-  assertBackwardCompatibleItemSchema,
   assertValidItemSchema,
   assertValidItemTypeFieldRoles,
   mergeItemTypeRoleColumns,
@@ -580,7 +579,6 @@ export default class ItemTypeOperations {
       }
       const proposedSchema = input.schema ?? current.fields;
       assertValidItemSchema(proposedSchema);
-      assertBackwardCompatibleItemSchema(current.fields, proposedSchema);
       const proposedRoleColumns = mergeItemTypeRoleColumns(
         current,
         roleColumns,
