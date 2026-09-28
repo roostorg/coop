@@ -74,29 +74,7 @@ const typeDefs = /* GraphQL */ `
     deletePolicy(id: ID!): Boolean
   }
 
-  union UpdatePolicyResponse =
-    | Policy
-    | NotFoundError
-    | InvalidPolicyParentError
-    | PolicyHierarchyCycleError
-
-  type InvalidPolicyParentError implements Error {
-    title: String!
-    status: Int!
-    type: [String!]!
-    pointer: String
-    detail: String
-    requestId: String
-  }
-
-  type PolicyHierarchyCycleError implements Error {
-    title: String!
-    status: Int!
-    type: [String!]!
-    pointer: String
-    detail: String
-    requestId: String
-  }
+  union UpdatePolicyResponse = Policy | NotFoundError
 
   type PolicyNameExistsError implements Error {
     title: String!
@@ -115,9 +93,7 @@ const typeDefs = /* GraphQL */ `
 
 const UpdatePolicyResponse: GQLUpdatePolicyResponseResolvers = {
   __resolveType(response) {
-    return (
-      response.__typename ?? ('title' in response ? 'NotFoundError' : 'Policy')
-    );
+    return 'title' in response ? 'NotFoundError' : 'Policy';
   },
 };
 
@@ -224,13 +200,7 @@ const Mutation: GQLMutationResolvers = {
 
       return gqlSuccessResult(updatedPolicy, 'Policy');
     } catch (e) {
-      if (
-        isCoopErrorOfType(e, [
-          'NotFoundError',
-          'InvalidPolicyParentError',
-          'PolicyHierarchyCycleError',
-        ])
-      ) {
+      if (isCoopErrorOfType(e, 'NotFoundError')) {
         return gqlErrorResult(e);
       }
 
