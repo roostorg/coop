@@ -204,19 +204,9 @@ const typeDefs = /* GraphQL */ `
     requestId: String
   }
 
-  type InvalidActionItemTypeIdsError implements Error {
-    title: String!
-    status: Int!
-    type: [String!]!
-    pointer: String
-    detail: String
-    requestId: String
-  }
-
   union MutateActionResponse =
     | MutateActionSuccessResponse
     | ActionNameExistsError
-    | InvalidActionItemTypeIdsError
 
   type MutateActionSuccessResponse {
     data: CustomAction!
@@ -449,9 +439,6 @@ const Mutation: GQLMutationResolvers = {
       if (isCoopErrorOfType(e, 'ActionNameExistsError')) {
         return gqlErrorResult(e, `/input/name`);
       }
-      if (isCoopErrorOfType(e, 'InvalidActionItemTypeIdsError')) {
-        return gqlErrorResult(e, `/input/itemTypeIds`);
-      }
 
       throw e;
     }
@@ -471,9 +458,6 @@ const Mutation: GQLMutationResolvers = {
     } catch (e: unknown) {
       if (isCoopErrorOfType(e, 'ActionNameExistsError')) {
         return gqlErrorResult(e, `/input/name`);
-      }
-      if (isCoopErrorOfType(e, 'InvalidActionItemTypeIdsError')) {
-        return gqlErrorResult(e, `/input/itemTypeIds`);
       }
 
       throw e;
