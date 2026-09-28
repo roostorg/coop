@@ -315,9 +315,6 @@ export type GQLAddPoliciesResponse = {
 };
 
 export type GQLAddPolicyInput = {
-  readonly applyUserStrikeCountConfigToChildren?: InputMaybe<
-    Scalars['Boolean']['input']
-  >;
   readonly enforcementGuidelines?: InputMaybe<Scalars['String']['input']>;
   readonly id?: InputMaybe<Scalars['ID']['input']>;
   readonly name: Scalars['String']['input'];
@@ -325,7 +322,6 @@ export type GQLAddPolicyInput = {
   readonly parentName?: InputMaybe<Scalars['String']['input']>;
   readonly policyText?: InputMaybe<Scalars['String']['input']>;
   readonly policyType?: InputMaybe<GQLPolicyType>;
-  readonly userStrikeCount?: InputMaybe<Scalars['Int']['input']>;
 };
 
 export type GQLAggregation = {
@@ -461,16 +457,6 @@ export type GQLBaseField = GQLField & {
   readonly name: Scalars['String']['output'];
   readonly required: Scalars['Boolean']['output'];
   readonly type: GQLFieldType;
-};
-
-export type GQLBuiltInActionImmutableError = GQLError & {
-  readonly __typename?: 'BuiltInActionImmutableError';
-  readonly detail?: Maybe<Scalars['String']['output']>;
-  readonly pointer?: Maybe<Scalars['String']['output']>;
-  readonly requestId?: Maybe<Scalars['String']['output']>;
-  readonly status: Scalars['Int']['output'];
-  readonly title: Scalars['String']['output'];
-  readonly type: ReadonlyArray<Scalars['String']['output']>;
 };
 
 export type GQLCannotDeleteDefaultUserError = GQLError & {
@@ -2599,7 +2585,6 @@ export type GQLMutateActionError =
   (typeof GQLMutateActionError)[keyof typeof GQLMutateActionError];
 export type GQLMutateActionResponse =
   | GQLActionNameExistsError
-  | GQLBuiltInActionImmutableError
   | GQLInvalidActionItemTypeIdsError
   | GQLMutateActionSuccessResponse;
 
@@ -5812,7 +5797,6 @@ export type GQLResolversUnionTypes<_RefType extends Record<string, unknown>> = {
     | UserManualReviewJobPayload;
   MutateActionResponse:
     | GQLActionNameExistsError
-    | GQLBuiltInActionImmutableError
     | GQLInvalidActionItemTypeIdsError
     | (Omit<GQLMutateActionSuccessResponse, 'data'> & {
         data: _RefType['CustomAction'];
@@ -5953,7 +5937,6 @@ export type GQLResolversInterfaceTypes<
   Error:
     | GQLActionNameExistsError
     | GQLAddCommentFailedError
-    | GQLBuiltInActionImmutableError
     | GQLCannotDeleteDefaultUserError
     | GQLChangePasswordError
     | GQLDeleteAllJobsUnauthorizedError
@@ -6085,7 +6068,6 @@ export type GQLResolversTypes = {
   BacktestStatus: GQLBacktestStatus;
   BaseField: ResolverTypeWrapper<GQLBaseField>;
   Boolean: ResolverTypeWrapper<Scalars['Boolean']['output']>;
-  BuiltInActionImmutableError: ResolverTypeWrapper<GQLBuiltInActionImmutableError>;
   CannotDeleteDefaultUserError: ResolverTypeWrapper<GQLCannotDeleteDefaultUserError>;
   ChangePasswordError: ResolverTypeWrapper<GQLChangePasswordError>;
   ChangePasswordInput: GQLChangePasswordInput;
@@ -6956,7 +6938,6 @@ export type GQLResolversParentTypes = {
   Backtest: GraphQLBacktestParent;
   BaseField: GQLBaseField;
   Boolean: Scalars['Boolean']['output'];
-  BuiltInActionImmutableError: GQLBuiltInActionImmutableError;
   CannotDeleteDefaultUserError: GQLCannotDeleteDefaultUserError;
   ChangePasswordError: GQLChangePasswordError;
   ChangePasswordInput: GQLChangePasswordInput;
@@ -8088,36 +8069,6 @@ export type GQLBaseFieldResolvers<
   name?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   required?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
   type?: Resolver<GQLResolversTypes['FieldType'], ParentType, ContextType>;
-  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
-};
-
-export type GQLBuiltInActionImmutableErrorResolvers<
-  ContextType = Context,
-  ParentType extends GQLResolversParentTypes['BuiltInActionImmutableError'] =
-    GQLResolversParentTypes['BuiltInActionImmutableError'],
-> = {
-  detail?: Resolver<
-    Maybe<GQLResolversTypes['String']>,
-    ParentType,
-    ContextType
-  >;
-  pointer?: Resolver<
-    Maybe<GQLResolversTypes['String']>,
-    ParentType,
-    ContextType
-  >;
-  requestId?: Resolver<
-    Maybe<GQLResolversTypes['String']>,
-    ParentType,
-    ContextType
-  >;
-  status?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
-  title?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
-  type?: Resolver<
-    ReadonlyArray<GQLResolversTypes['String']>,
-    ParentType,
-    ContextType
-  >;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
@@ -9292,7 +9243,6 @@ export type GQLErrorResolvers<
   __resolveType: TypeResolveFn<
     | 'ActionNameExistsError'
     | 'AddCommentFailedError'
-    | 'BuiltInActionImmutableError'
     | 'CannotDeleteDefaultUserError'
     | 'ChangePasswordError'
     | 'DeleteAllJobsUnauthorizedError'
@@ -11341,7 +11291,6 @@ export type GQLMutateActionResponseResolvers<
 > = {
   __resolveType: TypeResolveFn<
     | 'ActionNameExistsError'
-    | 'BuiltInActionImmutableError'
     | 'InvalidActionItemTypeIdsError'
     | 'MutateActionSuccessResponse',
     ParentType,
@@ -15845,7 +15794,6 @@ export type GQLResolvers<ContextType = Context> = {
   AutomaticCloseDecisionComponent?: GQLAutomaticCloseDecisionComponentResolvers<ContextType>;
   Backtest?: GQLBacktestResolvers<ContextType>;
   BaseField?: GQLBaseFieldResolvers<ContextType>;
-  BuiltInActionImmutableError?: GQLBuiltInActionImmutableErrorResolvers<ContextType>;
   CannotDeleteDefaultUserError?: GQLCannotDeleteDefaultUserErrorResolvers<ContextType>;
   ChangePasswordError?: GQLChangePasswordErrorResolvers<ContextType>;
   ChangePasswordResponse?: GQLChangePasswordResponseResolvers<ContextType>;

@@ -213,20 +213,10 @@ const typeDefs = /* GraphQL */ `
     requestId: String
   }
 
-  type BuiltInActionImmutableError implements Error {
-    title: String!
-    status: Int!
-    type: [String!]!
-    pointer: String
-    detail: String
-    requestId: String
-  }
-
   union MutateActionResponse =
     | MutateActionSuccessResponse
     | ActionNameExistsError
     | InvalidActionItemTypeIdsError
-    | BuiltInActionImmutableError
 
   type MutateActionSuccessResponse {
     data: CustomAction!
@@ -462,9 +452,6 @@ const Mutation: GQLMutationResolvers = {
       if (isCoopErrorOfType(e, 'InvalidActionItemTypeIdsError')) {
         return gqlErrorResult(e, `/input/itemTypeIds`);
       }
-      if (isCoopErrorOfType(e, 'BuiltInActionImmutableError')) {
-        return gqlErrorResult(e);
-      }
 
       throw e;
     }
@@ -487,9 +474,6 @@ const Mutation: GQLMutationResolvers = {
       }
       if (isCoopErrorOfType(e, 'InvalidActionItemTypeIdsError')) {
         return gqlErrorResult(e, `/input/itemTypeIds`);
-      }
-      if (isCoopErrorOfType(e, 'BuiltInActionImmutableError')) {
-        return gqlErrorResult(e);
       }
 
       throw e;

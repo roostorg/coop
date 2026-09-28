@@ -196,7 +196,7 @@ export default class PolicyOperations {
       const newPolicy = await this.transactionWithRetry(
         { isolationLevel: 'serializable' },
         async (trx) => {
-          const policies = await this.#lockPolicies(trx, org_id);
+          const policies = await this.#getPolicyParents(trx, org_id);
           this.#validateParent(policies, id, parent_id);
           return trx
             .insertInto('public.policies')
@@ -259,7 +259,7 @@ export default class PolicyOperations {
       const updatedPolicy = await this.transactionWithRetry(
         { isolationLevel: 'serializable' },
         async (trx) => {
-          const policies = await this.#lockPolicies(trx, orgId);
+          const policies = await this.#getPolicyParents(trx, orgId);
           const current = policies.find(({ id }) => id === policy.id);
           if (current === undefined) {
             throw makeNotFoundError('Policy not found', {
@@ -337,7 +337,7 @@ export default class PolicyOperations {
     return readFromReplica ? this.pgQueryReplica : this.pgQuery;
   }
 
-  async #lockPolicies(
+  async #getPolicyParents(
     trx: Transaction<ModerationConfigServicePg>,
     orgId: string,
   ) {
@@ -345,8 +345,6 @@ export default class PolicyOperations {
       .selectFrom('public.policies')
       .select(['id', 'parent_id'])
       .where('org_id', '=', orgId)
-      .orderBy('id')
-      .forUpdate()
       .execute();
   }
 
