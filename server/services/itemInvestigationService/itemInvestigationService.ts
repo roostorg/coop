@@ -521,9 +521,13 @@ export class ItemInvestigationService {
       ],
     }).catch((_) => []);
 
-    if (queryResults.length) {
+    // The global item_identifier index cannot also constrain org_id in CQL.
+    // Filter before partitioning so neither latest nor prior submissions leak.
+    const orgSubmissions = queryResults.filter((row) => row.org_id === orgId);
+
+    if (orgSubmissions.length) {
       const { latestSubmission, priorSubmissions } =
-        partitionLatestAndPriorSubmissions(queryResults);
+        partitionLatestAndPriorSubmissions(orgSubmissions);
 
       return scyllaSubmissionsForItemToSubmissionsForItemWithTypeIdentifier({
         latestSubmission,
