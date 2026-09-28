@@ -1,6 +1,6 @@
 import { ItemTypeKind } from '@roostorg/coop-types';
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, it, vi } from 'vitest';
 
 import '@testing-library/jest-dom/extend-expect';
 
