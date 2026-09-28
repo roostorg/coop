@@ -58,7 +58,7 @@ describe('hashBanks resolvers', () => {
       ).not.toHaveBeenCalled();
     });
 
-    it('creates a bank with exchange and credentials', async () => {
+    it('creates a bank with exchange configuration', async () => {
       const ctx = makeContext();
       const input = {
         name: 'test bank',
@@ -67,7 +67,6 @@ describe('hashBanks resolvers', () => {
         exchange: {
           api_name: 'fb_threatexchange',
           config_json: '{"privacy_group":123}',
-          credentials_json: '{"api_token":"tok"}',
         },
       };
 
@@ -87,35 +86,7 @@ describe('hashBanks resolvers', () => {
       );
       expect(
         ctx.services.HMAHashBankService.setExchangeCredentials,
-      ).toHaveBeenCalledWith('fb_threatexchange', { api_token: 'tok' });
-    });
-
-    it('returns success with warning when credentials fail', async () => {
-      const ctx = makeContext({
-        createBank: vi.fn().mockResolvedValue(MOCK_BANK),
-        setExchangeCredentials: vi
-          .fn()
-          .mockRejectedValue(new Error('cred error')),
-      });
-      const input = {
-        name: 'test bank',
-        description: 'desc',
-        enabled_ratio: 1.0,
-        exchange: {
-          api_name: 'ncmec',
-          config_json: '{"environment":"https://test.ncmec.org"}',
-          credentials_json: '{"user":"u","password":"p"}',
-        },
-      };
-
-      const result = await (resolvers.Mutation as any).createHashBank(
-        {},
-        { input },
-        ctx,
-      );
-
-      expect(result).toHaveProperty('data');
-      expect(result.warning).toContain('credentials could not be set');
+      ).not.toHaveBeenCalled();
     });
 
     it('does not set credentials when credentials_json is absent', async () => {
@@ -135,25 +106,6 @@ describe('hashBanks resolvers', () => {
       expect(
         ctx.services.HMAHashBankService.setExchangeCredentials,
       ).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('Mutation.updateExchangeCredentials', () => {
-    it('calls setExchangeCredentials and returns true', async () => {
-      const ctx = makeContext();
-
-      const result = await (
-        resolvers.Mutation as any
-      ).updateExchangeCredentials(
-        {},
-        { apiName: 'ncmec', credentialsJson: '{"user":"u","password":"p"}' },
-        ctx,
-      );
-
-      expect(result).toBe(true);
-      expect(
-        ctx.services.HMAHashBankService.setExchangeCredentials,
-      ).toHaveBeenCalledWith('ncmec', { user: 'u', password: 'p' });
     });
   });
 
