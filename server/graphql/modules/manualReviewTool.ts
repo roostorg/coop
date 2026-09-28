@@ -1843,26 +1843,7 @@ const ManualReviewQueue: GQLManualReviewQueueResolvers = {
     return context.dataSources.userAPI.getGraphQLUsersFromIds(userIds);
   },
   async assignedRoleIds(queue, _, context) {
-    const user = context.getUser();
-    if (user == null) {
-      throw unauthenticatedError('User required.');
-    }
-    const service = context.services.ManualReviewToolService;
-    const accessibleQueue = user
-      .getPermissions()
-      .includes(UserPermission.EDIT_MRT_QUEUES)
-      ? await service.getQueueForOrgAndDangerouslyBypassPermissioning({
-          orgId: user.orgId,
-          queueId: queue.id,
-        })
-      : await service.getQueueForOrg({
-          orgId: user.orgId,
-          userId: user.id,
-          queueId: queue.id,
-        });
-    if (accessibleQueue == null) {
-      throw forbiddenError('User does not have access to this queue');
-    }
+    const user = await assertQueueIsReviewable(queue, context);
     return context.services.ManualReviewToolService.getAssignedRoleIdsForQueue({
       queueId: queue.id,
       orgId: user.orgId,

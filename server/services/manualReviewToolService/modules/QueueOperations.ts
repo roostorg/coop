@@ -2113,13 +2113,13 @@ const makeQueueDoesNotExistError = (data: ErrorInstanceData) => {
 };
 
 /**
- * Thrown when a target queue or user does not belong to the caller's org.
+ * Thrown when a target queue, user, or role does not belong to the caller's org.
  */
 const makeAccessibleQueueNotInOrgError = (data: ErrorInstanceData) =>
   new CoopError({
     status: 403,
     type: [ErrorType.Unauthorized],
-    title: "Queue or user does not belong to the caller's organization",
+    title: "Queue, user, or role does not belong to the caller's organization",
     name: 'AccessibleQueueNotInOrgError',
     ...data,
   });
