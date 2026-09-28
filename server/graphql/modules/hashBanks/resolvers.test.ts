@@ -21,7 +21,6 @@ function makeContext(overrides: Record<string, Mock> = {}) {
     services: {
       HMAHashBankService: {
         createBank: vi.fn().mockResolvedValue(MOCK_BANK),
-        setExchangeCredentials: vi.fn().mockResolvedValue(undefined),
         getExchangeForBank: vi.fn().mockResolvedValue(null),
         ...overrides,
       },
@@ -53,9 +52,6 @@ describe('hashBanks resolvers', () => {
         1.0,
         undefined,
       );
-      expect(
-        ctx.services.HMAHashBankService.setExchangeCredentials,
-      ).not.toHaveBeenCalled();
     });
 
     it('creates a bank with exchange configuration', async () => {
@@ -84,28 +80,6 @@ describe('hashBanks resolvers', () => {
         1.0,
         { apiName: 'fb_threatexchange', apiJson: { privacy_group: 123 } },
       );
-      expect(
-        ctx.services.HMAHashBankService.setExchangeCredentials,
-      ).not.toHaveBeenCalled();
-    });
-
-    it('does not set credentials when credentials_json is absent', async () => {
-      const ctx = makeContext();
-      const input = {
-        name: 'test bank',
-        description: 'desc',
-        enabled_ratio: 1.0,
-        exchange: {
-          api_name: 'stop_ncii',
-          config_json: '{}',
-        },
-      };
-
-      await (resolvers.Mutation as any).createHashBank({}, { input }, ctx);
-
-      expect(
-        ctx.services.HMAHashBankService.setExchangeCredentials,
-      ).not.toHaveBeenCalled();
     });
   });
 

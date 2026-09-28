@@ -2639,7 +2639,6 @@ export type GQLMutation = {
   readonly updateAppealSettings: GQLAppealSettings;
   readonly updateContentItemType: GQLMutateContentItemTypeResponse;
   readonly updateContentRule: GQLUpdateContentRuleResponse;
-  readonly updateExchangeCredentials: Scalars['Boolean']['output'];
   readonly updateHasAppealsEnabled: Scalars['Boolean']['output'];
   readonly updateHasReportingRulesEnabled: Scalars['Boolean']['output'];
   readonly updateHashBank: GQLMutateHashBankResponse;
@@ -2935,11 +2934,6 @@ export type GQLMutationUpdateContentItemTypeArgs = {
 
 export type GQLMutationUpdateContentRuleArgs = {
   input: GQLUpdateContentRuleInput;
-};
-
-export type GQLMutationUpdateExchangeCredentialsArgs = {
-  apiName: Scalars['String']['input'];
-  credentialsJson: Scalars['String']['input'];
 };
 
 export type GQLMutationUpdateHasAppealsEnabledArgs = {
@@ -11487,15 +11481,6 @@ export type GQLMutationResolvers<
     ParentType,
     ContextType,
     RequireFields<GQLMutationUpdateContentRuleArgs, 'input'>
-  >;
-  updateExchangeCredentials?: Resolver<
-    GQLResolversTypes['Boolean'],
-    ParentType,
-    ContextType,
-    RequireFields<
-      GQLMutationUpdateExchangeCredentialsArgs,
-      'apiName' | 'credentialsJson'
-    >
   >;
   updateHasAppealsEnabled?: Resolver<
     GQLResolversTypes['Boolean'],

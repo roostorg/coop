@@ -95,9 +95,5 @@ export const typeDefs = /* GraphQL */ `
     createHashBank(input: CreateHashBankInput!): MutateHashBankResponse!
     updateHashBank(input: UpdateHashBankInput!): MutateHashBankResponse!
     deleteHashBank(id: ID!): Boolean!
-    updateExchangeCredentials(
-      apiName: String!
-      credentialsJson: String!
-    ): Boolean!
   }
 `;

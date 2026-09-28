@@ -2569,7 +2569,6 @@ export type GQLMutation = {
   readonly updateAppealSettings: GQLAppealSettings;
   readonly updateContentItemType: GQLMutateContentItemTypeResponse;
   readonly updateContentRule: GQLUpdateContentRuleResponse;
-  readonly updateExchangeCredentials: Scalars['Boolean']['output'];
   readonly updateHasAppealsEnabled: Scalars['Boolean']['output'];
   readonly updateHasReportingRulesEnabled: Scalars['Boolean']['output'];
   readonly updateHashBank: GQLMutateHashBankResponse;
@@ -2865,11 +2864,6 @@ export type GQLMutationUpdateContentItemTypeArgs = {
 
 export type GQLMutationUpdateContentRuleArgs = {
   input: GQLUpdateContentRuleInput;
-};
-
-export type GQLMutationUpdateExchangeCredentialsArgs = {
-  apiName: Scalars['String']['input'];
-  credentialsJson: Scalars['String']['input'];
 };
 
 export type GQLMutationUpdateHasAppealsEnabledArgs = {
@@ -5530,16 +5524,6 @@ export type GQLDeleteHashBankMutationVariables = Exact<{
 export type GQLDeleteHashBankMutation = {
   readonly __typename: 'Mutation';
   readonly deleteHashBank: boolean;
-};
-
-export type GQLUpdateExchangeCredentialsMutationVariables = Exact<{
-  apiName: Scalars['String']['input'];
-  credentialsJson: Scalars['String']['input'];
-}>;
-
-export type GQLUpdateExchangeCredentialsMutation = {
-  readonly __typename: 'Mutation';
-  readonly updateExchangeCredentials: boolean;
 };
 
 export type GQLPasswordRequirementsQueryVariables = Exact<{
@@ -27255,62 +27239,6 @@ export type GQLDeleteHashBankMutationOptions = Apollo.BaseMutationOptions<
   GQLDeleteHashBankMutation,
   GQLDeleteHashBankMutationVariables
 >;
-export const GQLUpdateExchangeCredentialsDocument = gql`
-  mutation UpdateExchangeCredentials(
-    $apiName: String!
-    $credentialsJson: String!
-  ) {
-    updateExchangeCredentials(
-      apiName: $apiName
-      credentialsJson: $credentialsJson
-    )
-  }
-`;
-export type GQLUpdateExchangeCredentialsMutationFn = Apollo.MutationFunction<
-  GQLUpdateExchangeCredentialsMutation,
-  GQLUpdateExchangeCredentialsMutationVariables
->;
-
-/**
- * __useGQLUpdateExchangeCredentialsMutation__
- *
- * To run a mutation, you first call `useGQLUpdateExchangeCredentialsMutation` within a React component and pass it any options that fit your needs.
- * When your component renders, `useGQLUpdateExchangeCredentialsMutation` returns a tuple that includes:
- * - A mutate function that you can call at any time to execute the mutation
- * - An object with fields that represent the current status of the mutation's execution
- *
- * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
- *
- * @example
- * const [gqlUpdateExchangeCredentialsMutation, { data, loading, error }] = useGQLUpdateExchangeCredentialsMutation({
- *   variables: {
- *      apiName: // value for 'apiName'
- *      credentialsJson: // value for 'credentialsJson'
- *   },
- * });
- */
-export function useGQLUpdateExchangeCredentialsMutation(
-  baseOptions?: Apollo.MutationHookOptions<
-    GQLUpdateExchangeCredentialsMutation,
-    GQLUpdateExchangeCredentialsMutationVariables
-  >,
-) {
-  const options = { ...defaultOptions, ...baseOptions };
-  return Apollo.useMutation<
-    GQLUpdateExchangeCredentialsMutation,
-    GQLUpdateExchangeCredentialsMutationVariables
-  >(GQLUpdateExchangeCredentialsDocument, options);
-}
-export type GQLUpdateExchangeCredentialsMutationHookResult = ReturnType<
-  typeof useGQLUpdateExchangeCredentialsMutation
->;
-export type GQLUpdateExchangeCredentialsMutationResult =
-  Apollo.MutationResult<GQLUpdateExchangeCredentialsMutation>;
-export type GQLUpdateExchangeCredentialsMutationOptions =
-  Apollo.BaseMutationOptions<
-    GQLUpdateExchangeCredentialsMutation,
-    GQLUpdateExchangeCredentialsMutationVariables
-  >;
 export const GQLPasswordRequirementsDocument = gql`
   query PasswordRequirements {
     passwordRequirements {
@@ -45909,7 +45837,6 @@ export const namedOperations = {
     CreateHashBank: 'CreateHashBank',
     UpdateHashBank: 'UpdateHashBank',
     DeleteHashBank: 'DeleteHashBank',
-    UpdateExchangeCredentials: 'UpdateExchangeCredentials',
     Login: 'Login',
     DeleteRejectedUser: 'DeleteRejectedUser',
     SignUp: 'SignUp',

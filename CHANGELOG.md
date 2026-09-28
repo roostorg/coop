@@ -19,7 +19,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Security
 
-- Prevent cross-organization hash-exchange credential overwrites by requiring deployment-operator configuration.
+- Remove hash-exchange credential editing and the `updateExchangeCredentials` GraphQL mutation to prevent cross-organization overwrites.
 
 ## [1.1.0-alpha] - 2026-09-21
 

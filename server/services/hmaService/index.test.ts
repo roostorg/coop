@@ -126,31 +126,6 @@ describe('HmaService', () => {
     });
   });
 
-  describe('setExchangeCredentials', () => {
-    it('sends credentials to the correct endpoint', async () => {
-      const fetchHTTP = vi.fn().mockResolvedValue(created());
-      const svc = makeService(fetchHTTP);
-
-      await svc.setExchangeCredentials('ncmec', { user: 'u', password: 'p' });
-
-      expect(fetchHTTP).toHaveBeenCalledTimes(1);
-      const call = fetchHTTP.mock.calls[0][0];
-      expect(call.url).toContain('/c/exchanges/api/ncmec');
-      expect(call.method).toBe('post');
-      const body = jsonParse(call.body);
-      expect(body.credential_json).toEqual({ user: 'u', password: 'p' });
-    });
-
-    it('throws when HMA returns an error', async () => {
-      const fetchHTTP = vi.fn().mockResolvedValue(fail(400));
-      const svc = makeService(fetchHTTP);
-
-      await expect(
-        svc.setExchangeCredentials('ncmec', { user: 'u', password: 'p' }),
-      ).rejects.toThrow("Failed to set exchange credentials for 'ncmec'");
-    });
-  });
-
   describe('getExchangeForBank', () => {
     it('returns null when HMA returns 404 (no exchange configured)', async () => {
       const fetchHTTP = vi.fn().mockResolvedValue(fail(404));

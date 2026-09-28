@@ -4,7 +4,7 @@ import type {
   GQLQueryResolvers,
 } from '../../generated.js';
 import type { Context } from '../../resolvers.js';
-import { forbiddenError, unauthenticatedError } from '../../utils/errors.js';
+import { unauthenticatedError } from '../../utils/errors.js';
 import { gqlErrorResult, gqlSuccessResult } from '../../utils/gqlResult.js';
 
 interface ExchangeConfigInput {
@@ -104,13 +104,6 @@ const Mutation: GQLMutationResolvers<Context> = {
       throw unauthenticatedError('User required.');
     }
 
-    // HMA credentials are deployment-wide, not scoped to the session org.
-    if (input.exchange?.credentials_json != null) {
-      throw forbiddenError(
-        'Exchange credentials must be configured by the deployment operator.',
-      );
-    }
-
     try {
       const exchangeConfig = input.exchange
         ? {
@@ -186,21 +179,6 @@ const Mutation: GQLMutationResolvers<Context> = {
 
     await context.services.HMAHashBankService.deleteBank(user.orgId, id);
     return true;
-  },
-
-  async updateExchangeCredentials(
-    _: unknown,
-    _args: { apiName: string; credentialsJson: string },
-    context: Context,
-  ) {
-    const user = context.getUser();
-    if (!user?.orgId) {
-      throw unauthenticatedError('User required.');
-    }
-    // Even organization managers must not change deployment-wide credentials.
-    throw forbiddenError(
-      'Exchange credentials must be configured by the deployment operator.',
-    );
   },
 };
 
