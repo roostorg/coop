@@ -117,10 +117,7 @@ export {
   makeInvalidPolicyParentError,
   makePolicyHierarchyCycleError,
 } from './modules/PolicyOperations.js';
-export {
-  makeBuiltInActionImmutableError,
-  makeInvalidActionItemTypeIdsError,
-} from './modules/ActionOperations.js';
+export { makeInvalidActionItemTypeIdsError } from './modules/ActionOperations.js';
 export {
   MAX_ACTOR_NOTE_LENGTH,
   validateActorNote,

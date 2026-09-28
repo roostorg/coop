@@ -245,9 +245,6 @@ export type GQLAddPoliciesResponse = {
 };
 
 export type GQLAddPolicyInput = {
-  readonly applyUserStrikeCountConfigToChildren?: InputMaybe<
-    Scalars['Boolean']['input']
-  >;
   readonly enforcementGuidelines?: InputMaybe<Scalars['String']['input']>;
   readonly id?: InputMaybe<Scalars['ID']['input']>;
   readonly name: Scalars['String']['input'];
@@ -255,7 +252,6 @@ export type GQLAddPolicyInput = {
   readonly parentName?: InputMaybe<Scalars['String']['input']>;
   readonly policyText?: InputMaybe<Scalars['String']['input']>;
   readonly policyType?: InputMaybe<GQLPolicyType>;
-  readonly userStrikeCount?: InputMaybe<Scalars['Int']['input']>;
 };
 
 export type GQLAggregation = {
@@ -391,16 +387,6 @@ export type GQLBaseField = GQLField & {
   readonly name: Scalars['String']['output'];
   readonly required: Scalars['Boolean']['output'];
   readonly type: GQLFieldType;
-};
-
-export type GQLBuiltInActionImmutableError = GQLError & {
-  readonly __typename: 'BuiltInActionImmutableError';
-  readonly detail?: Maybe<Scalars['String']['output']>;
-  readonly pointer?: Maybe<Scalars['String']['output']>;
-  readonly requestId?: Maybe<Scalars['String']['output']>;
-  readonly status: Scalars['Int']['output'];
-  readonly title: Scalars['String']['output'];
-  readonly type: ReadonlyArray<Scalars['String']['output']>;
 };
 
 export type GQLCannotDeleteDefaultUserError = GQLError & {
@@ -2457,7 +2443,6 @@ export type GQLMutateActionError =
   (typeof GQLMutateActionError)[keyof typeof GQLMutateActionError];
 export type GQLMutateActionResponse =
   | GQLActionNameExistsError
-  | GQLBuiltInActionImmutableError
   | GQLInvalidActionItemTypeIdsError
   | GQLMutateActionSuccessResponse;
 
@@ -5946,7 +5931,6 @@ export type GQLCreateActionMutation = {
         readonly status: number;
         readonly type: ReadonlyArray<string>;
       }
-    | { readonly __typename: 'BuiltInActionImmutableError' }
     | { readonly __typename: 'InvalidActionItemTypeIdsError' }
     | {
         readonly __typename: 'MutateActionSuccessResponse';
@@ -5997,7 +5981,6 @@ export type GQLUpdateActionMutation = {
         readonly status: number;
         readonly type: ReadonlyArray<string>;
       }
-    | { readonly __typename: 'BuiltInActionImmutableError' }
     | { readonly __typename: 'InvalidActionItemTypeIdsError' }
     | {
         readonly __typename: 'MutateActionSuccessResponse';

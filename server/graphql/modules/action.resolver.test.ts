@@ -1,10 +1,7 @@
 import { type GraphQLResolveInfo } from 'graphql';
 import { vi } from 'vitest';
 
-import {
-  makeBuiltInActionImmutableError,
-  makeInvalidActionItemTypeIdsError,
-} from '../../services/moderationConfigService/index.js';
+import { makeInvalidActionItemTypeIdsError } from '../../services/moderationConfigService/index.js';
 import { type Context } from '../resolvers.js';
 import { resolvers } from './action.js';
 
@@ -56,35 +53,3 @@ describe.each(['createAction', 'updateAction'] as const)(
     });
   },
 );
-
-describe('updateAction resolver', () => {
-  it('maps immutable built-in actions into the GraphQL union', async () => {
-    const actionAPI = {
-      updateAction: vi
-        .fn()
-        .mockRejectedValue(
-          makeBuiltInActionImmutableError({ shouldErrorSpan: false }),
-        ),
-    };
-    const context = {
-      getUser: () => ({ orgId: 'org-id' }),
-      dataSources: { actionAPI },
-    } as unknown as Context;
-    const resolver = resolvers.Mutation.updateAction;
-    if (typeof resolver !== 'function') throw new Error('Missing resolver');
-
-    const result = await resolver(
-      {},
-      { input: { id: 'built-in-id' } },
-      context,
-      {} as GraphQLResolveInfo,
-    );
-
-    expect(result).toEqual(
-      expect.objectContaining({
-        __typename: 'BuiltInActionImmutableError',
-        name: 'BuiltInActionImmutableError',
-      }),
-    );
-  });
-});
