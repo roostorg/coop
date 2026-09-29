@@ -12,6 +12,8 @@ import {
 } from '../../services/moderationConfigService/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
+import { createBodySchemaValidator } from '../../utils/bodySchemaValidation.js';
+import actionRoutes from './ActionRoutes.js';
 import getActions, { type GetActionsOutput } from './getActions.js';
 
 const { sortBy } = _;
@@ -247,6 +249,36 @@ describe('GET actions', () => {
       expect(response.body).toEqual({ actions: [] });
     },
   );
+});
+
+describe('POST actions', () => {
+  test('accepts object parameters and rejects arrays and null', async () => {
+    const app = express();
+    app.use(express.json());
+    const schema = actionRoutes.routes.find(
+      ({ method, path }) => method === 'post' && path === '/',
+    )!.bodySchema!;
+    app.post(
+      '/api/v1/actions/',
+      createBodySchemaValidator(schema),
+      (_req, res) => res.sendStatus(204),
+    );
+    app.use(((error, _req, res, _next) => {
+      res.status(error.status ?? 500).json(error);
+    }) satisfies express.ErrorRequestHandler);
+    const body = { actionId: 'a', itemId: 'i', itemTypeId: 't' };
+
+    await supertest(app)
+      .post('/api/v1/actions/')
+      .send({ ...body, parameters: { nested: [null] } })
+      .expect(204);
+    for (const parameters of [[], null]) {
+      await supertest(app)
+        .post('/api/v1/actions/')
+        .send({ ...body, parameters })
+        .expect(400);
+    }
+  });
 });
 
 describe('getActions read scheduling', () => {

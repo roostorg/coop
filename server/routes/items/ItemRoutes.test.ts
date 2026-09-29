@@ -1,9 +1,13 @@
 import { faker } from '@faker-js/faker';
+import express, { type ErrorRequestHandler } from 'express';
+import request from 'supertest';
 import { uid } from 'uid';
 
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../test/fixtureHelpers/createUser.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
+import { createBodySchemaValidator } from '../../utils/bodySchemaValidation.js';
+import itemRoutes from './ItemRoutes.js';
 
 describe('POST Items', () => {
   const testWithFixture = makeTransactionalTestWithFixture(async ({ deps }) => {
@@ -62,6 +66,25 @@ describe('POST Items', () => {
       analytics.bulkWrite.mock.calls.forEach(([, , config]) => {
         expect(config?.batchTimeout ?? undefined).toEqual(undefined);
       });
+    },
+  );
+
+  testWithFixture(
+    'accepts an item with a type selector and nested data',
+    async ({ request, apiKey, contentType }) => {
+      await request
+        .post('/api/v1/items/async')
+        .set('x-api-key', apiKey)
+        .send({
+          items: [
+            {
+              id: uid(),
+              data: { name: 'John Doe', metadata: { source: 'test' } },
+              type: { id: contentType.id },
+            },
+          ],
+        })
+        .expect(202);
     },
   );
 
@@ -127,4 +150,58 @@ describe('POST Items', () => {
       });
     },
   );
+});
+
+test('POST /items/async accepts object data and rejects arrays and null', async () => {
+  const app = express();
+  app.use(express.json());
+  const schema = itemRoutes.routes[0].bodySchema!;
+  app.post(
+    '/api/v1/items/async',
+    createBodySchemaValidator(schema),
+    (_req, res) => res.sendStatus(204),
+  );
+  app.use(((error, _req, res, _next) => {
+    res.status(error.status ?? 500).json(error);
+  }) satisfies ErrorRequestHandler);
+  const item = { id: 'i', typeId: 't' };
+
+  await request(app)
+    .post('/api/v1/items/async')
+    .send({ items: [{ ...item, data: { nested: [null] } }] })
+    .expect(204);
+  for (const data of [[], null]) {
+    await request(app)
+      .post('/api/v1/items/async')
+      .send({ items: [{ ...item, data }] })
+      .expect(400);
+  }
+});
+
+test('POST /items/async requires exactly one valid item type selector branch', async () => {
+  const app = express();
+  app.use(express.json());
+  const schema = itemRoutes.routes[0].bodySchema!;
+  app.post(
+    '/api/v1/items/async',
+    createBodySchemaValidator(schema),
+    (_req, res) => res.sendStatus(204),
+  );
+  app.use(((error, _req, res, _next) => {
+    res.status(error.status ?? 500).json(error);
+  }) satisfies ErrorRequestHandler);
+  const item = { id: 'item-1', data: {} };
+
+  await request(app)
+    .post('/api/v1/items/async')
+    .send({ items: [{ ...item, type: { id: 'post' }, typeId: 123 }] })
+    .expect(204);
+  await request(app)
+    .post('/api/v1/items/async')
+    .send({ items: [{ ...item, typeId: 'post', type: null }] })
+    .expect(204);
+  await request(app)
+    .post('/api/v1/items/async')
+    .send({ items: [{ ...item, typeId: 'post', type: { id: 'post' } }] })
+    .expect(400);
 });
