@@ -1248,7 +1248,6 @@ export type GQLExchangeApiSchema = {
 export type GQLExchangeConfigInput = {
   readonly api_name: Scalars['String']['input'];
   readonly config_json: Scalars['String']['input'];
-  readonly credentials_json?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type GQLExchangeFieldDescriptor = {

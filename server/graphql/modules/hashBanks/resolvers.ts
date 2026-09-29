@@ -10,7 +10,6 @@ import { gqlErrorResult, gqlSuccessResult } from '../../utils/gqlResult.js';
 interface ExchangeConfigInput {
   api_name: string;
   config_json: string;
-  credentials_json?: string | null;
 }
 
 const Query: GQLQueryResolvers<Context> = {

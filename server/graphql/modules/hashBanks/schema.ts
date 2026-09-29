@@ -48,7 +48,6 @@ export const typeDefs = /* GraphQL */ `
   input ExchangeConfigInput {
     api_name: String!
     config_json: String!
-    credentials_json: String
   }
 
   input CreateHashBankInput {
