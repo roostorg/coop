@@ -1,5 +1,8 @@
 import { type Dependencies } from '../../iocContainer/index.js';
-import { type ItemTypeKind } from '../../services/moderationConfigService/index.js';
+import {
+  itemTypeRoleNames,
+  type ItemTypeKind,
+} from '../../services/moderationConfigService/index.js';
 import { makeBadRequestError, makeNotFoundError } from '../../utils/errors.js';
 import { makeKyselyTransactionWithRetry } from '../../utils/kyselyTransactionWithRetry.js';
 import { assertUnreachable } from '../../utils/misc.js';
@@ -16,27 +19,7 @@ function roles(
   supplied: Record<string, string | null>,
   complete: boolean,
 ) {
-  const valid = {
-    CONTENT: [
-      'displayName',
-      'createdAt',
-      'creatorId',
-      'isDeleted',
-      'ipAddress',
-      'parentId',
-      'threadId',
-    ],
-    THREAD: ['displayName', 'createdAt', 'creatorId', 'isDeleted', 'ipAddress'],
-    USER: [
-      'displayName',
-      'profileIcon',
-      'backgroundImage',
-      'createdAt',
-      'isDeleted',
-      'ipAddress',
-      'email',
-    ],
-  }[kind];
+  const valid: readonly string[] = itemTypeRoleNames[kind];
   if (Object.keys(supplied).some((role) => !valid.includes(role))) {
     throw makeBadRequestError(
       `Invalid schema field role for ${kind} item type`,
