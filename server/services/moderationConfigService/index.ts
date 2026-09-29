@@ -1,5 +1,6 @@
 export {
   ItemTypeKind,
+  itemTypeRoleNames,
   ItemSchema,
   ItemTypeSchemaVariant,
   ItemType,

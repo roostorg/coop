@@ -84,6 +84,33 @@ export type ContentSchemaFieldRoles = {
 export type SchemaFieldRoles =
   UserSchemaFieldRoles | ThreadSchemaFieldRoles | ContentSchemaFieldRoles;
 
+export const itemTypeRoleNames = {
+  CONTENT: [
+    'displayName',
+    'createdAt',
+    'creatorId',
+    'isDeleted',
+    'ipAddress',
+    'parentId',
+    'threadId',
+  ],
+  THREAD: ['displayName', 'createdAt', 'creatorId', 'isDeleted', 'ipAddress'],
+  USER: [
+    'displayName',
+    'profileIcon',
+    'backgroundImage',
+    'createdAt',
+    'isDeleted',
+    'ipAddress',
+    'email',
+  ],
+} as const satisfies {
+  [K in ItemTypeKind]: readonly (keyof Extract<
+    ItemType,
+    { kind: K }
+  >['schemaFieldRoles'])[];
+};
+
 /**
  * These three fields uniquely identify a particular "incarnation" of a given
  * item type (where an incarnation refers to both a version of the item type, in
