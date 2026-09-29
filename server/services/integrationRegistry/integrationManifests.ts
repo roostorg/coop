@@ -382,7 +382,7 @@ const SENTINEL: IntegrationManifestEntry = {
           {
             label: 'Deployment',
             value:
-              'Coop talks to a self-hosted Sentinel HTTP service (see server/sentinel-api/ in this repo, which wraps the upstream Roblox/sentinel library). Configure the URL of the Sentinel deployment this org should use, plus optional scoring/context overrides, below.',
+              'Coop talks to a self-hosted Sentinel HTTP service (see https://github.com/UMass-Rescue/sentinel-api, which wraps the upstream Roblox/sentinel library). Configure the URL of the Sentinel deployment this org should use, plus optional scoring/context overrides, below.',
           },
           {
             label: 'Credentials',
