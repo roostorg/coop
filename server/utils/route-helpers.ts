@@ -1,9 +1,9 @@
 import { type RequestHandler } from 'express';
 import { type ParamsDictionary, type Query } from 'express-serve-static-core';
 import { type JsonObject, type JsonValue, type ReadonlyDeep } from 'type-fest';
+import { type GenericSchema } from 'valibot';
 
 import { type Dependencies } from '../iocContainer/index.js';
-import { type JSONSchemaV4 } from './json-schema-types.js';
 
 export type RequestHandlerWithBodies<
   ReqBody extends JsonObject,
@@ -29,7 +29,7 @@ export type Route<
     | RequestHandlerWithBodies<ReqBody, ResBody>
     | RequestHandlerWithBodies<ReqBody, ResBody>[];
   name?: string;
-  bodySchema?: JSONSchemaV4<ReqBody>;
+  bodySchema?: GenericSchema<unknown, ReqBody>;
 };
 
 type RouteOpts<ReqBody extends JsonObject> = Pick<
