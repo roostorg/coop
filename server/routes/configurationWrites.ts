@@ -3,6 +3,7 @@ import { type JsonObject } from 'type-fest';
 
 import {
   ItemTypeKind,
+  itemTypeRoleNames,
   parameterListSchema,
   parseStoredParameters,
   PolicyType,
@@ -90,18 +91,7 @@ const schema = {
     oneOf: [scalarField, containerField('ARRAY'), containerField('MAP')],
   },
 } as const;
-const roleNames = [
-  'displayName',
-  'profileIcon',
-  'backgroundImage',
-  'createdAt',
-  'isDeleted',
-  'ipAddress',
-  'email',
-  'creatorId',
-  'parentId',
-  'threadId',
-];
+const roleNames = [...new Set(Object.values(itemTypeRoleNames).flat())];
 const schemaFieldRoles = {
   type: 'object',
   additionalProperties: false,
