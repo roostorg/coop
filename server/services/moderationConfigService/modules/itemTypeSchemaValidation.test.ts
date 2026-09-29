@@ -180,6 +180,7 @@ describe('item type field roles', () => {
     ).toThrow(
       expect.objectContaining({
         name: 'InvalidItemTypeSchemaError',
+        pointer: '/schemaFieldRoles',
         detail: expect.stringContaining(detail),
       }),
     );

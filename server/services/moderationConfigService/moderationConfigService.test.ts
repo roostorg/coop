@@ -52,13 +52,17 @@ async function mutateItemTypeAndHiddenFields<T extends ItemTypeMutationMethod>(
     async (trx) => {
       const transactionConfig = config.forTransaction(trx);
       const review = deps.ManualReviewToolService.forTransaction(trx);
-      const item = await transactionConfig[method](orgId, input as never);
-      await review.setHiddenFieldsForItemType({
-        orgId,
-        itemTypeId: item.id,
-        hiddenFields,
-      });
-      return item;
+      try {
+        const item = await transactionConfig[method](orgId, input as never);
+        await review.setHiddenFieldsForItemType({
+          orgId,
+          itemTypeId: item.id,
+          hiddenFields,
+        });
+        return item;
+      } finally {
+        await transactionConfig.close();
+      }
     },
   );
   await config.invalidateLatestItemTypesCache(orgId);
@@ -521,14 +525,23 @@ describe('ModerationConfigService', () => {
             schemaFieldRoles: {},
           });
           await expect(
-            mutateItemTypeAndHiddenFields(
-              sutWithPrimary,
-              deps,
-              org.id,
-              'updateContentType',
-              { id: a.id, name: 'B' },
-              ['required'],
-            ),
+            makeKyselyTransactionWithRetry(deps.KyselyPg)(async (trx) => {
+              const transactionConfig = sutWithPrimary.forTransaction(trx);
+              const review = deps.ManualReviewToolService.forTransaction(trx);
+              try {
+                await review.setHiddenFieldsForItemType({
+                  orgId: org.id,
+                  itemTypeId: a.id,
+                  hiddenFields: ['required'],
+                });
+                await transactionConfig.updateContentType(org.id, {
+                  id: a.id,
+                  name: 'B',
+                });
+              } finally {
+                await transactionConfig.close();
+              }
+            }),
           ).rejects.toMatchObject({ name: 'ItemTypeNameAlreadyExistsError' });
           await expect(
             deps.ManualReviewToolService.getHiddenFieldsForItemType({
@@ -536,6 +549,25 @@ describe('ModerationConfigService', () => {
               itemTypeId: a.id,
             }),
           ).resolves.toEqual(['optional']);
+        },
+      );
+
+      testWithOrg(
+        'normalizes empty role strings on creation for every kind',
+        async ({ sutWithPrimary, org }) => {
+          const cases = [
+            ['createContentType', 'creatorId'],
+            ['createThreadType', 'creatorId'],
+            ['createUserType', 'profileIcon'],
+          ] as const;
+          for (const [create, role] of cases) {
+            const item = await sutWithPrimary[create](org.id, {
+              name: `empty role ${create}`,
+              schema,
+              schemaFieldRoles: { [role]: '' },
+            });
+            expect(item.schemaFieldRoles).toHaveProperty(role, undefined);
+          }
         },
       );
 
