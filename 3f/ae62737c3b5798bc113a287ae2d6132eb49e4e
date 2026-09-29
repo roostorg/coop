@@ -1,0 +1,22 @@
+server/package.json
+  s_c39daae3705902::t_6c6d043755ed3e 15
+  s_c39daae3705902::t_0dcb9746908598 7
+server/tsconfig.build.json
+  s_c39daae3705902::t_64187f20a2cdae 2-5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3fae62737c3b5798bc113a287ae2d6132eb49e4e",
+  "prompts": {},
+  "sessions": {
+    "s_c39daae3705902": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "70d379d5-c769-4221-a4d3-dffc884c934e",
+        "model": "auto-smart"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
