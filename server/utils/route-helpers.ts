@@ -29,7 +29,7 @@ export type Route<
     | RequestHandlerWithBodies<ReqBody, ResBody>
     | RequestHandlerWithBodies<ReqBody, ResBody>[];
   name?: string;
-  bodySchema?: GenericSchema<unknown, ReqBody>;
+  bodySchema?: GenericSchema<ReqBody, unknown>;
 };
 
 type RouteOpts<ReqBody extends JsonObject> = Pick<

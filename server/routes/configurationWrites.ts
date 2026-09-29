@@ -1,5 +1,6 @@
 import { ContainerTypes, ScalarTypes } from '@roostorg/coop-types';
-import { type JsonObject } from 'type-fest';
+import { type JsonObject, type JsonValue } from 'type-fest';
+import * as v from 'valibot';
 
 import {
   ItemTypeKind,
@@ -9,162 +10,137 @@ import {
   PolicyType,
   serializeParameters,
   type Action,
-  type ItemSchema,
   type ItemType,
-  type ItemTypeKind as ItemTypeKindValue,
   type Policy,
-  type RawActionParameterInput,
 } from '../services/moderationConfigService/index.js';
 import { hasOrgId } from '../utils/apiKeyMiddleware.js';
 import { makeBadRequestError, makeNotFoundError } from '../utils/errors.js';
 
-export type PolicyWrite = {
-  name: string;
-  parentId?: string | null;
-  policyText?: string | null;
-  enforcementGuidelines?: string | null;
-  policyType?: keyof typeof PolicyType | null;
-  userStrikeCount?: number;
-  applyUserStrikeCountConfigToChildren?: boolean;
-};
-export type ItemTypeWrite = {
-  kind?: ItemTypeKindValue;
-  name?: string;
-  description?: string | null;
-  schema?: ItemSchema;
-  schemaFieldRoles?: Record<string, string | null>;
-  hiddenFields?: string[];
-};
-export type ActionWrite = JsonObject & {
-  name?: string;
-  description?: string | null;
-  itemTypeIds?: string[];
-  callbackUrl?: string;
-  callbackUrlHeaders?: JsonObject | null;
-  callbackUrlBody?: JsonObject | null;
-  applyUserStrikes?: boolean;
-  parameters?: RawActionParameterInput[];
-};
-
-const nullableString = { type: ['string', 'null'] } as const;
-const stringArray = { type: 'array', items: { type: 'string' } } as const;
-const scalarValues = Object.keys(ScalarTypes);
-const scalarField = {
-  type: 'object',
-  additionalProperties: false,
-  required: ['name', 'type', 'required', 'container'],
-  properties: {
-    name: { type: 'string' },
-    type: { enum: scalarValues },
-    required: { type: 'boolean' },
-    container: { type: 'null' },
-  },
-} as const;
-const containerField = (type: 'ARRAY' | 'MAP') =>
-  ({
-    type: 'object',
-    additionalProperties: false,
-    required: ['name', 'type', 'required', 'container'],
-    properties: {
-      name: { type: 'string' },
-      type: { enum: [type] },
-      required: { type: 'boolean' },
-      container: {
-        type: 'object',
-        additionalProperties: false,
-        required: ['containerType', 'keyScalarType', 'valueScalarType'],
-        properties: {
-          containerType: { enum: [type] },
-          keyScalarType:
-            type === ContainerTypes.ARRAY
-              ? { type: 'null' }
-              : { enum: scalarValues },
-          valueScalarType: { enum: scalarValues },
-        },
-      },
-    },
-  }) as const;
-const schema = {
-  type: 'array',
-  minItems: 1,
-  items: {
-    oneOf: [scalarField, containerField('ARRAY'), containerField('MAP')],
-  },
-} as const;
+const nullableString = v.nullable(v.string());
+const stringArray = v.array(v.string());
+const scalarField = v.strictObject({
+  name: v.string(),
+  type: v.enum(ScalarTypes),
+  required: v.boolean(),
+  container: v.null(),
+});
+const arrayField = v.strictObject({
+  name: v.string(),
+  type: v.literal(ContainerTypes.ARRAY),
+  required: v.boolean(),
+  container: v.strictObject({
+    containerType: v.literal(ContainerTypes.ARRAY),
+    keyScalarType: v.null(),
+    valueScalarType: v.enum(ScalarTypes),
+  }),
+});
+const mapField = v.strictObject({
+  name: v.string(),
+  type: v.literal(ContainerTypes.MAP),
+  required: v.boolean(),
+  container: v.strictObject({
+    containerType: v.literal(ContainerTypes.MAP),
+    keyScalarType: v.enum(ScalarTypes),
+    valueScalarType: v.enum(ScalarTypes),
+  }),
+});
+const fieldSchema = v.union([scalarField, arrayField, mapField]);
+const schema = v.tupleWithRest([fieldSchema], fieldSchema);
 const roleNames = [...new Set(Object.values(itemTypeRoleNames).flat())];
-const schemaFieldRoles = {
-  type: 'object',
-  additionalProperties: false,
-  properties: Object.fromEntries(
-    roleNames.map((role) => [role, nullableString]),
-  ),
-} as const;
+type RoleName =
+  (typeof itemTypeRoleNames)[keyof typeof itemTypeRoleNames][number];
+const schemaFieldRoles = v.strictObject(
+  Object.fromEntries(
+    roleNames.map((role) => [role, v.optional(nullableString)]),
+  ) as Record<RoleName, v.OptionalSchema<typeof nullableString, undefined>>,
+);
 const policyProperties = {
-  name: { type: 'string' },
+  name: v.string(),
   parentId: nullableString,
   policyText: nullableString,
   enforcementGuidelines: nullableString,
-  policyType: { enum: [...Object.keys(PolicyType), null] },
-  userStrikeCount: { type: 'integer', minimum: 0 },
-  applyUserStrikeCountConfigToChildren: { type: 'boolean' },
+  policyType: v.nullable(v.enum(PolicyType)),
+  userStrikeCount: v.pipe(v.number(), v.integer(), v.minValue(0)),
+  applyUserStrikeCountConfigToChildren: v.boolean(),
 };
 const itemProperties = {
-  kind: { enum: Object.keys(ItemTypeKind) },
-  name: { type: 'string' },
+  kind: v.enum(ItemTypeKind),
+  name: v.string(),
   description: nullableString,
   schema,
   schemaFieldRoles,
   hiddenFields: stringArray,
 };
 const { kind: _kind, ...itemPatchProperties } = itemProperties;
+const permissiveObject = v.custom<JsonObject>(
+  (value) =>
+    typeof value === 'object' && value !== null && !Array.isArray(value),
+);
+type JsonActionParameter = Omit<
+  v.InferInput<typeof parameterListSchema>[number],
+  'defaultValue'
+> & { defaultValue?: JsonValue };
+const actionParameterListSchema = v.pipe(
+  v.custom<JsonActionParameter[]>(Array.isArray),
+  v.transform((value): v.InferInput<typeof parameterListSchema> => value),
+  parameterListSchema,
+);
 const actionProperties = {
-  name: { type: 'string' },
+  name: v.string(),
   description: nullableString,
   itemTypeIds: stringArray,
-  callbackUrl: { type: 'string' },
-  callbackUrlHeaders: { type: ['object', 'null'], additionalProperties: {} },
-  callbackUrlBody: { type: ['object', 'null'], additionalProperties: {} },
-  applyUserStrikes: { type: 'boolean' },
-  parameters: parameterListSchema,
+  callbackUrl: v.string(),
+  callbackUrlHeaders: v.nullable(permissiveObject),
+  callbackUrlBody: v.nullable(permissiveObject),
+  applyUserStrikes: v.boolean(),
+  parameters: actionParameterListSchema,
 };
-const objectSchema = (
-  properties: object,
-  required?: string[],
-  patch = false,
-) => ({
-  $schema: 'http://json-schema.org/draft-04/schema#',
-  type: 'object',
-  additionalProperties: false,
-  properties,
-  ...(required ? { required } : {}),
-  ...(patch ? { minProperties: 1 } : {}),
+const nonemptyPatch = <TEntries extends v.ObjectEntries>(entries: TEntries) =>
+  v.pipe(
+    v.partial(v.strictObject(entries)),
+    v.check((value) => Object.keys(value).length > 0),
+  );
+
+export const createPolicySchema = v.strictObject({
+  name: policyProperties.name,
+  parentId: v.optional(policyProperties.parentId),
+  policyText: v.optional(policyProperties.policyText),
+  enforcementGuidelines: v.optional(policyProperties.enforcementGuidelines),
+  policyType: v.optional(policyProperties.policyType),
+  userStrikeCount: v.optional(policyProperties.userStrikeCount),
+  applyUserStrikeCountConfigToChildren: v.optional(
+    policyProperties.applyUserStrikeCountConfigToChildren,
+  ),
 });
-export const createPolicySchema = objectSchema(policyProperties, ['name']);
-export const patchPolicySchema = objectSchema(
-  policyProperties,
-  undefined,
-  true,
-);
-export const createItemTypeSchema = objectSchema(itemProperties, [
-  'kind',
-  'name',
-  'schema',
-  'schemaFieldRoles',
-]);
-export const patchItemTypeSchema = objectSchema(
-  itemPatchProperties,
-  undefined,
-  true,
-);
-export const createActionSchema = objectSchema(actionProperties, [
-  'name',
-  'callbackUrl',
-]);
-export const patchActionSchema = objectSchema(
-  actionProperties,
-  undefined,
-  true,
-);
+export const patchPolicySchema = nonemptyPatch(policyProperties);
+export type PolicyWrite = v.InferOutput<typeof createPolicySchema>;
+export type PolicyPatch = v.InferOutput<typeof patchPolicySchema>;
+
+export const createItemTypeSchema = v.strictObject({
+  kind: itemProperties.kind,
+  name: itemProperties.name,
+  description: v.optional(itemProperties.description),
+  schema: itemProperties.schema,
+  schemaFieldRoles: itemProperties.schemaFieldRoles,
+  hiddenFields: v.optional(itemProperties.hiddenFields),
+});
+export const patchItemTypeSchema = nonemptyPatch(itemPatchProperties);
+export type CreateItemTypeWrite = v.InferOutput<typeof createItemTypeSchema>;
+export type ItemTypeWrite = v.InferOutput<typeof patchItemTypeSchema>;
+
+export const createActionSchema = v.strictObject({
+  name: actionProperties.name,
+  description: v.optional(actionProperties.description),
+  itemTypeIds: v.optional(actionProperties.itemTypeIds),
+  callbackUrl: actionProperties.callbackUrl,
+  callbackUrlHeaders: v.optional(actionProperties.callbackUrlHeaders),
+  callbackUrlBody: v.optional(actionProperties.callbackUrlBody),
+  applyUserStrikes: v.optional(actionProperties.applyUserStrikes),
+  parameters: v.optional(actionProperties.parameters),
+});
+export const patchActionSchema = nonemptyPatch(actionProperties);
+export type CreateActionWrite = v.InferInput<typeof createActionSchema>;
+export type ActionWrite = v.InferInput<typeof patchActionSchema>;
 
 export function requireOrgId(req: unknown): string {
   if (!hasOrgId(req))

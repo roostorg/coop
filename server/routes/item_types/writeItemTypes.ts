@@ -11,12 +11,13 @@ import {
   requireId,
   requireOrgId,
   serializeItemType,
+  type CreateItemTypeWrite,
   type ItemTypeWrite,
 } from '../configurationWrites.js';
 
 function roles(
   kind: ItemTypeKind,
-  supplied: Record<string, string | null>,
+  supplied: Record<string, string | null | undefined>,
   complete: boolean,
 ) {
   const valid: readonly string[] = itemTypeRoleNames[kind];
@@ -26,20 +27,18 @@ function roles(
       { shouldErrorSpan: true },
     );
   }
-  return complete
+  const normalized = complete
     ? Object.fromEntries(valid.map((role) => [role, supplied[role] ?? null]))
-    : supplied;
+    : Object.fromEntries(
+        Object.entries(supplied).filter((entry) => entry[1] !== undefined),
+      );
+  return normalized as Record<string, string | null>;
 }
 
 async function createForKind(
   service: Dependencies['ModerationConfigService'],
   orgId: string,
-  body: ItemTypeWrite & {
-    kind: ItemTypeKind;
-    name: string;
-    schema: NonNullable<ItemTypeWrite['schema']>;
-    schemaFieldRoles: Record<string, string | null>;
-  },
+  body: CreateItemTypeWrite,
 ) {
   const { kind, hiddenFields: _hiddenFields, ...input } = body;
   const normalized = {
@@ -64,17 +63,12 @@ export function createItemType({
   ModerationConfigService,
   ManualReviewToolService,
 }: Dependencies): RequestHandlerWithBodies<
-  ItemTypeWrite,
+  CreateItemTypeWrite,
   ReturnType<typeof serializeItemType>
 > {
   return async (req, res) => {
     const orgId = requireOrgId(req);
-    const body = req.body as ItemTypeWrite & {
-      kind: ItemTypeKind;
-      name: string;
-      schema: NonNullable<ItemTypeWrite['schema']>;
-      schemaFieldRoles: Record<string, string | null>;
-    };
+    const body = req.body;
     const item = await makeKyselyTransactionWithRetry(KyselyPg)(async (trx) => {
       const config = ModerationConfigService.forTransaction(trx);
       const review = ManualReviewToolService.forTransaction(trx);

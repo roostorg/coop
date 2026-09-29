@@ -330,6 +330,14 @@ describe('configuration write REST routes', () => {
     });
   });
 
+  it('rejects an empty configuration patch before calling a service', async () => {
+    const { app, service } = harness();
+    await auth(request(app).patch(`/api/v1/policies/${policy.id}`))
+      .send({})
+      .expect(400);
+    expect(service.updatePolicy).not.toHaveBeenCalled();
+  });
+
   it('creates a custom action with defaults and exact public output', async () => {
     const { app, service } = harness();
     const response = await auth(request(app).post('/api/v1/actions/custom'))
