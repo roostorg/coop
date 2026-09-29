@@ -55,7 +55,7 @@ describe('createBodySchemaValidator', () => {
       status: 400,
       title: 'Request body failed schema validation.',
       pointer: undefined,
-      detail: "/: must have required property 'name'",
+      detail: '/: invalid value',
     });
   });
 
@@ -67,7 +67,7 @@ describe('createBodySchemaValidator', () => {
 
     expect(firstNextArg(next)).toMatchObject({
       pointer: '/parent',
-      detail: "/parent: must have required property 'child'",
+      detail: '/parent: invalid value',
     });
   });
 
@@ -82,11 +82,11 @@ describe('createBodySchemaValidator', () => {
       name: 'BadRequestError',
       status: 400,
       pointer: '/count',
-      detail: '/count: must be number',
+      detail: '/count: invalid value',
     });
   });
 
-  test('preserves a sanitized numeric-constraint summary', () => {
+  test('reports a numeric-constraint failure without echoing its value', () => {
     const middleware = createBodySchemaValidator(
       v.object({ count: v.pipe(v.number(), v.minValue(2)) }),
     );
@@ -94,7 +94,7 @@ describe('createBodySchemaValidator', () => {
 
     expect(firstNextArg(next)).toMatchObject({
       pointer: '/count',
-      detail: '/count: must be >= 2',
+      detail: '/count: invalid value',
     });
   });
 
@@ -106,7 +106,7 @@ describe('createBodySchemaValidator', () => {
 
     expect(firstNextArg(next)).toMatchObject({
       pointer: undefined,
-      detail: '/: must NOT have additional properties',
+      detail: '/: invalid value',
     });
   });
 
