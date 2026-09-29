@@ -1507,6 +1507,26 @@ export type GQLIntegrationNoInputCredentialsError = GQLError & {
   readonly type: ReadonlyArray<Scalars['String']['output']>;
 };
 
+export type GQLInvalidItemTypeHiddenFieldsError = GQLError & {
+  readonly __typename: 'InvalidItemTypeHiddenFieldsError';
+  readonly detail?: Maybe<Scalars['String']['output']>;
+  readonly pointer?: Maybe<Scalars['String']['output']>;
+  readonly requestId?: Maybe<Scalars['String']['output']>;
+  readonly status: Scalars['Int']['output'];
+  readonly title: Scalars['String']['output'];
+  readonly type: ReadonlyArray<Scalars['String']['output']>;
+};
+
+export type GQLInvalidItemTypeSchemaError = GQLError & {
+  readonly __typename: 'InvalidItemTypeSchemaError';
+  readonly detail?: Maybe<Scalars['String']['output']>;
+  readonly pointer?: Maybe<Scalars['String']['output']>;
+  readonly requestId?: Maybe<Scalars['String']['output']>;
+  readonly status: Scalars['Int']['output'];
+  readonly title: Scalars['String']['output'];
+  readonly type: ReadonlyArray<Scalars['String']['output']>;
+};
+
 export type GQLInvalidateReportsFromReporterInput = {
   /**
    * Scopes the sweep to a single MRT job. When omitted, every pending job
@@ -2416,7 +2436,11 @@ export type GQLMutateBankResponse = {
 };
 
 export type GQLMutateContentItemTypeResponse =
-  GQLItemTypeNameAlreadyExistsError | GQLMutateContentTypeSuccessResponse;
+  | GQLInvalidItemTypeHiddenFieldsError
+  | GQLInvalidItemTypeSchemaError
+  | GQLItemTypeNameAlreadyExistsError
+  | GQLMutateContentTypeSuccessResponse
+  | GQLNotFoundError;
 
 export type GQLMutateContentRuleSuccessResponse = {
   readonly __typename: 'MutateContentRuleSuccessResponse';
@@ -2466,7 +2490,11 @@ export type GQLMutateRoutingRulesOrderSuccessResponse = {
 };
 
 export type GQLMutateThreadItemTypeResponse =
-  GQLItemTypeNameAlreadyExistsError | GQLMutateThreadTypeSuccessResponse;
+  | GQLInvalidItemTypeHiddenFieldsError
+  | GQLInvalidItemTypeSchemaError
+  | GQLItemTypeNameAlreadyExistsError
+  | GQLMutateThreadTypeSuccessResponse
+  | GQLNotFoundError;
 
 export type GQLMutateThreadTypeSuccessResponse = {
   readonly __typename: 'MutateThreadTypeSuccessResponse';
@@ -2474,7 +2502,11 @@ export type GQLMutateThreadTypeSuccessResponse = {
 };
 
 export type GQLMutateUserItemTypeResponse =
-  GQLItemTypeNameAlreadyExistsError | GQLMutateUserTypeSuccessResponse;
+  | GQLInvalidItemTypeHiddenFieldsError
+  | GQLInvalidItemTypeSchemaError
+  | GQLItemTypeNameAlreadyExistsError
+  | GQLMutateUserTypeSuccessResponse
+  | GQLNotFoundError;
 
 export type GQLMutateUserRuleSuccessResponse = {
   readonly __typename: 'MutateUserRuleSuccessResponse';
@@ -7767,6 +7799,14 @@ export type GQLCreateContentTypeMutation = {
   readonly __typename: 'Mutation';
   readonly createContentItemType:
     | {
+        readonly __typename: 'InvalidItemTypeHiddenFieldsError';
+        readonly title: string;
+      }
+    | {
+        readonly __typename: 'InvalidItemTypeSchemaError';
+        readonly title: string;
+      }
+    | {
         readonly __typename: 'ItemTypeNameAlreadyExistsError';
         readonly title: string;
       }
@@ -7776,7 +7816,8 @@ export type GQLCreateContentTypeMutation = {
           readonly __typename: 'ContentItemType';
           readonly id: string;
         } | null;
-      };
+      }
+    | { readonly __typename: 'NotFoundError'; readonly title: string };
 };
 
 export type GQLUpdateContentTypeMutationVariables = Exact<{
@@ -7787,6 +7828,14 @@ export type GQLUpdateContentTypeMutation = {
   readonly __typename: 'Mutation';
   readonly updateContentItemType:
     | {
+        readonly __typename: 'InvalidItemTypeHiddenFieldsError';
+        readonly title: string;
+      }
+    | {
+        readonly __typename: 'InvalidItemTypeSchemaError';
+        readonly title: string;
+      }
+    | {
         readonly __typename: 'ItemTypeNameAlreadyExistsError';
         readonly title: string;
       }
@@ -7796,7 +7845,8 @@ export type GQLUpdateContentTypeMutation = {
           readonly __typename: 'ContentItemType';
           readonly id: string;
         } | null;
-      };
+      }
+    | { readonly __typename: 'NotFoundError'; readonly title: string };
 };
 
 export type GQLCreateUserTypeMutationVariables = Exact<{
@@ -7807,6 +7857,14 @@ export type GQLCreateUserTypeMutation = {
   readonly __typename: 'Mutation';
   readonly createUserItemType:
     | {
+        readonly __typename: 'InvalidItemTypeHiddenFieldsError';
+        readonly title: string;
+      }
+    | {
+        readonly __typename: 'InvalidItemTypeSchemaError';
+        readonly title: string;
+      }
+    | {
         readonly __typename: 'ItemTypeNameAlreadyExistsError';
         readonly title: string;
       }
@@ -7816,7 +7874,8 @@ export type GQLCreateUserTypeMutation = {
           readonly __typename: 'UserItemType';
           readonly id: string;
         } | null;
-      };
+      }
+    | { readonly __typename: 'NotFoundError'; readonly title: string };
 };
 
 export type GQLUpdateUserTypeMutationVariables = Exact<{
@@ -7827,6 +7886,14 @@ export type GQLUpdateUserTypeMutation = {
   readonly __typename: 'Mutation';
   readonly updateUserItemType:
     | {
+        readonly __typename: 'InvalidItemTypeHiddenFieldsError';
+        readonly title: string;
+      }
+    | {
+        readonly __typename: 'InvalidItemTypeSchemaError';
+        readonly title: string;
+      }
+    | {
         readonly __typename: 'ItemTypeNameAlreadyExistsError';
         readonly title: string;
       }
@@ -7836,7 +7903,8 @@ export type GQLUpdateUserTypeMutation = {
           readonly __typename: 'UserItemType';
           readonly id: string;
         } | null;
-      };
+      }
+    | { readonly __typename: 'NotFoundError'; readonly title: string };
 };
 
 export type GQLCreateThreadTypeMutationVariables = Exact<{
@@ -7847,6 +7915,14 @@ export type GQLCreateThreadTypeMutation = {
   readonly __typename: 'Mutation';
   readonly createThreadItemType:
     | {
+        readonly __typename: 'InvalidItemTypeHiddenFieldsError';
+        readonly title: string;
+      }
+    | {
+        readonly __typename: 'InvalidItemTypeSchemaError';
+        readonly title: string;
+      }
+    | {
         readonly __typename: 'ItemTypeNameAlreadyExistsError';
         readonly title: string;
       }
@@ -7856,7 +7932,8 @@ export type GQLCreateThreadTypeMutation = {
           readonly __typename: 'ThreadItemType';
           readonly id: string;
         } | null;
-      };
+      }
+    | { readonly __typename: 'NotFoundError'; readonly title: string };
 };
 
 export type GQLUpdateThreadTypeMutationVariables = Exact<{
@@ -7867,6 +7944,14 @@ export type GQLUpdateThreadTypeMutation = {
   readonly __typename: 'Mutation';
   readonly updateThreadItemType:
     | {
+        readonly __typename: 'InvalidItemTypeHiddenFieldsError';
+        readonly title: string;
+      }
+    | {
+        readonly __typename: 'InvalidItemTypeSchemaError';
+        readonly title: string;
+      }
+    | {
         readonly __typename: 'ItemTypeNameAlreadyExistsError';
         readonly title: string;
       }
@@ -7876,7 +7961,8 @@ export type GQLUpdateThreadTypeMutation = {
           readonly __typename: 'ThreadItemType';
           readonly id: string;
         } | null;
-      };
+      }
+    | { readonly __typename: 'NotFoundError'; readonly title: string };
 };
 
 type GQLItemFieldsContentItemFragment = {

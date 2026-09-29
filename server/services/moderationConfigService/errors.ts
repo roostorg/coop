@@ -4,6 +4,38 @@ import {
   type ErrorInstanceData,
 } from '../../utils/errors.js';
 
+export type ItemTypeErrorType =
+  | 'InvalidItemTypeSchemaError'
+  | 'InvalidItemTypeHiddenFieldsError'
+  | 'ItemTypeNameAlreadyExistsError';
+
+export const makeInvalidItemTypeSchemaError = (data: ErrorInstanceData) =>
+  new CoopError({
+    status: 400,
+    type: [ErrorType.InvalidUserInput],
+    title: 'The item type schema is invalid.',
+    name: 'InvalidItemTypeSchemaError',
+    ...data,
+  });
+
+export const makeInvalidItemTypeHiddenFieldsError = (data: ErrorInstanceData) =>
+  new CoopError({
+    status: 400,
+    type: [ErrorType.InvalidUserInput],
+    title: 'The item type hidden fields are invalid.',
+    name: 'InvalidItemTypeHiddenFieldsError',
+    ...data,
+  });
+
+export const makeItemTypeNameAlreadyExistsError = (data: ErrorInstanceData) =>
+  new CoopError({
+    status: 409,
+    type: [ErrorType.UniqueViolation],
+    title: 'An item type with that name already exists in this organization.',
+    name: 'ItemTypeNameAlreadyExistsError',
+    ...data,
+  });
+
 export type RuleErrorType =
   | 'RuleNameExistsError'
   | 'RuleHasRunningBacktestsError'

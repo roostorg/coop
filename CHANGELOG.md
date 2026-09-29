@@ -17,6 +17,10 @@ For more information about each release including git tags and artifacts, see [R
 
 - Completed manual reviews no longer reappear when no next job is available; refreshed content stays tied to the active job ([#1302](https://github.com/roostorg/coop/pull/1302) by [@sunilatlas](https://github.com/sunilatlas), closes [#1303](https://github.com/roostorg/coop/issues/1303)).
 
+### Changed
+
+- Item type writes validate schemas, field roles, and hidden fields ([#1272](https://github.com/roostorg/coop/pull/1272) by [@taobojlen](https://github.com/taobojlen))
+
 ## [1.1.0-alpha] - 2026-09-21
 
 ### Added
