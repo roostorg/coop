@@ -3,6 +3,7 @@ import { vi } from 'vitest';
 import { GQLUserPenaltySeverity } from '../graphql/generated';
 import {
   recomputeSelectedRelatedActions,
+  relatedActionsToSubmitInput,
   selectPreferredUserItem,
 } from './manualReviewTool';
 
@@ -251,6 +252,88 @@ describe('selectPreferredUserItem', () => {
   test('returns undefined when neither first item is a UserItem', () => {
     expect(
       selectPreferredUserItem([contentItem], [contentItem]),
+    ).toBeUndefined();
+  });
+});
+
+describe('relatedActionsToSubmitInput', () => {
+  const hideContent = {
+    action: {
+      id: 'hide_content',
+      name: 'Hide Content',
+      penalty: GQLUserPenaltySeverity.High,
+    },
+    target: {
+      identifier: { itemId: 'post_1', itemTypeId: 'content' },
+      displayName: 'Post (post_1)',
+    },
+    policies: [{ id: 'policy_spam', name: 'Spam' }],
+  };
+  const enqueueHuman = {
+    action: {
+      id: 'enqueue_human',
+      name: 'Enqueue for Human Review',
+      penalty: GQLUserPenaltySeverity.None,
+    },
+    target: {
+      identifier: { itemId: 'post_2', itemTypeId: 'content' },
+      displayName: 'Post (post_2)',
+    },
+    policies: [{ id: 'policy_abuse', name: 'Abuse' }],
+    customMrtApiParamDecisionPayload: { queue: 'priority' },
+  };
+
+  test('includes only items the reviewer marked with an action', () => {
+    expect(relatedActionsToSubmitInput([hideContent, enqueueHuman])).toEqual([
+      {
+        actionIds: ['hide_content'],
+        itemIds: ['post_1'],
+        itemTypeId: 'content',
+        policyIds: ['policy_spam'],
+      },
+      {
+        actionIds: ['enqueue_human'],
+        itemIds: ['post_2'],
+        itemTypeId: 'content',
+        policyIds: ['policy_abuse'],
+        actionIdsToMrtApiParamDecisionPayload: {
+          enqueue_human: { queue: 'priority' },
+        },
+      },
+    ]);
+  });
+
+  test('omits unmarked items and incomplete enqueue entries', () => {
+    expect(relatedActionsToSubmitInput([])).toEqual([]);
+    expect(
+      relatedActionsToSubmitInput([
+        {
+          ...hideContent,
+          action: { ...hideContent.action, id: '' },
+        },
+        {
+          ...hideContent,
+          target: {
+            ...hideContent.target,
+            identifier: { itemId: '', itemTypeId: 'content' },
+          },
+        },
+        hideContent,
+      ]),
+    ).toEqual([
+      {
+        actionIds: ['hide_content'],
+        itemIds: ['post_1'],
+        itemTypeId: 'content',
+        policyIds: ['policy_spam'],
+      },
+    ]);
+  });
+
+  test('omits parameter payload when none were saved', () => {
+    expect(
+      relatedActionsToSubmitInput([hideContent])[0]
+        .actionIdsToMrtApiParamDecisionPayload,
     ).toBeUndefined();
   });
 });

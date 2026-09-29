@@ -10,6 +10,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Added
 
+- Actions and policy selection on additional content items in the review console ([#1202](https://github.com/roostorg/coop/pull/1202) by [@juanmrad](https://github.com/juanmrad), closes [#581](https://github.com/roostorg/coop/issues/581))
 - Optional policy and audit callbacks with bounded deadlines for review and item content responses ([#1270](https://github.com/roostorg/coop/pull/1270) by [@sunilatlas](https://github.com/sunilatlas), closes [#1269](https://github.com/roostorg/coop/issues/1269))
 - Native OpenTelemetry manual-review counters, decision-source labels and elapsed timings ([#1286](https://github.com/roostorg/coop/pull/1286) by [@sunilatlas](https://github.com/sunilatlas), relates to [#1287](https://github.com/roostorg/coop/issues/1287))
 
@@ -20,6 +21,7 @@ For more information about each release including git tags and artifacts, see [R
 ### Security
 
 - Remove hash-exchange credential editing, the `updateExchangeCredentials` GraphQL mutation, and the `ExchangeConfigInput.credentials_json` field to prevent cross-organization overwrites ([#1317](https://github.com/roostorg/coop/pull/1317) by [@taobojlen](https://github.com/taobojlen)).
+- Prevent cross-organization item disclosure through Scylla item lookups ([#1315](https://github.com/roostorg/coop/pull/1315) by [@taobojlen](https://github.com/taobojlen))
 
 ## [1.1.0-alpha] - 2026-09-21
 

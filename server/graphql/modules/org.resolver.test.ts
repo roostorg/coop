@@ -333,4 +333,64 @@ describe('Org resolvers', () => {
       expect(getReviewableQueuesForUser).not.toHaveBeenCalled();
     });
   });
+
+  describe('Org.ncmecReports requires VIEW_CHILD_SAFETY_DATA', () => {
+    function makeCtx(opts: {
+      permissions: readonly UserPermission[];
+      callerOrgId?: string;
+    }) {
+      const getNcmecReports = vi.fn(async () => [] as unknown[]);
+      const ctx = {
+        getUser: () => ({
+          id: 'user-1',
+          orgId: opts.callerOrgId ?? 'org-1',
+          getPermissions: () => opts.permissions,
+        }),
+        services: { NcmecService: { getNcmecReports } },
+      };
+      return { ctx, getNcmecReports };
+    }
+
+    const orgParent = { id: 'org-1' };
+    const Org = resolvers.Org as Record<
+      'ncmecReports',
+      (
+        parent: typeof orgParent,
+        args: unknown,
+        ctx: unknown,
+      ) => Promise<unknown>
+    >;
+
+    it('throws forbiddenError when the caller lacks VIEW_CHILD_SAFETY_DATA', async () => {
+      const { ctx, getNcmecReports } = makeCtx({
+        permissions: [UserPermission.VIEW_MRT],
+      });
+      await expect(Org.ncmecReports(orgParent, {}, ctx)).rejects.toThrow(
+        'VIEW_CHILD_SAFETY_DATA permission required',
+      );
+      expect(getNcmecReports).not.toHaveBeenCalled();
+    });
+
+    it('throws the IDOR guard first when the caller is in a different org', async () => {
+      const { ctx, getNcmecReports } = makeCtx({
+        permissions: [UserPermission.VIEW_CHILD_SAFETY_DATA],
+        callerOrgId: 'other-org',
+      });
+      await expect(Org.ncmecReports(orgParent, {}, ctx)).rejects.toThrow(
+        'User required.',
+      );
+      expect(getNcmecReports).not.toHaveBeenCalled();
+    });
+
+    it('reaches the service when the caller has VIEW_CHILD_SAFETY_DATA', async () => {
+      const { ctx, getNcmecReports } = makeCtx({
+        permissions: [UserPermission.VIEW_CHILD_SAFETY_DATA],
+      });
+      await expect(Org.ncmecReports(orgParent, {}, ctx)).resolves.toEqual([]);
+      expect(getNcmecReports).toHaveBeenCalledWith({
+        orgId: 'org-1',
+        reviewerId: 'user-1',
+      });
+    });
+  });
 });

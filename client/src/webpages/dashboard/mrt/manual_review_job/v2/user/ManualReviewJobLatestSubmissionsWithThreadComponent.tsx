@@ -97,6 +97,8 @@ export default function ManualReviewJobLatestSubmissionsWithThreadComponent(prop
   allPolicies: readonly { id: string; name: string }[];
   relatedActions: readonly ManualReviewJobEnqueuedActionData[];
   onEnqueueActions: (actions: ManualReviewJobEnqueuedActionData[]) => void;
+  onRemoveAction?: (action: ManualReviewJobEnqueuedActionData) => void;
+  onEditParameters?: (action: ManualReviewJobEnqueuedActionData) => void;
   setRelatedUser: (user: RelatedItem) => void;
   reportedUserRef?: React.RefObject<HTMLDivElement | null>;
   isActionable?: boolean;
@@ -115,6 +117,8 @@ export default function ManualReviewJobLatestSubmissionsWithThreadComponent(prop
     relatedActions,
     reportedUserRef,
     onEnqueueActions,
+    onRemoveAction,
+    onEditParameters,
     isActionable = true,
     requirePolicySelectionToEnqueueAction = false,
     allowMoreThanOnePolicySelection,
@@ -256,16 +260,29 @@ export default function ManualReviewJobLatestSubmissionsWithThreadComponent(prop
       return (
         <ContentRelatedItemComponent
           item={{
+            id: item.itemId,
             data: item.itemData,
             type: {
               id: item.itemTypeId,
+              name: item.itemTypeName,
               baseFields: item.itemTypeFields,
             },
           }}
           itemId={item.itemId}
           unblurAllMedia={unblurAllMedia}
           title={`${item.itemTypeName}`}
-          key={item.itemId}
+          key={`${item.itemTypeId}:${item.itemId}`}
+          allActions={allActions}
+          allPolicies={allPolicies}
+          relatedActions={relatedActions}
+          onEnqueueAction={(action) => onEnqueueActions([action])}
+          onRemoveAction={onRemoveAction}
+          onEditParameters={onEditParameters}
+          isActionable={isActionable}
+          requirePolicySelectionToEnqueueAction={
+            requirePolicySelectionToEnqueueAction
+          }
+          allowMoreThanOnePolicySelection={allowMoreThanOnePolicySelection}
         />
       );
     }),
