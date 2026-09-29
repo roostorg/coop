@@ -4,6 +4,7 @@ import {
   requireId,
   requireOrgId,
   serializePolicy,
+  type PolicyPatch,
   type PolicyWrite,
 } from '../configurationWrites.js';
 
@@ -33,7 +34,7 @@ export function createPolicy({
 export function patchPolicy({
   ModerationConfigService,
 }: Dependencies): RequestHandlerWithBodies<
-  Partial<PolicyWrite>,
+  PolicyPatch,
   ReturnType<typeof serializePolicy>
 > {
   return async (req, res) => {

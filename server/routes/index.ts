@@ -8,9 +8,9 @@ import PoliciesRoutes from './policies/PoliciesRoutes.js';
 import ReportingRoutes from './reporting/ReportingRoutes.js';
 import UserScoresRoutes from './user_scores/UserScoresRoutes.js';
 
-/** Array of routes accepted by a controller. Uses wide types so GET (no body) and POST routes both fit. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Controller accepts any route shape
-export type ControllerRouteList = Route<any, any>[];
+/** Array of GET routes (no body) and routes with arbitrary typed bodies. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Controller preserves each route's body type
+export type ControllerRouteList = (Route<never, any> | Route<any, any>)[];
 
 export type Controller = {
   // Path prefix expected to always start with a slash, given how we're
