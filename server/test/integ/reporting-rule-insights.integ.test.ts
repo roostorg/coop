@@ -179,6 +179,27 @@ describe('reporting rule sample details (integration)', () => {
       itemData: jsonStringify({ selection: 'newer-decoy' }),
       ts: newerAt.toISOString(),
     });
+
+    const responseWithEmptyTimestamp = await harness.request
+      .post('/api/v1/graphql')
+      .send({
+        query,
+        variables: {
+          input: {
+            ruleId,
+            item: { id: itemId, typeId: itemTypeId },
+            date: '',
+            lookback: 'LATEST',
+          },
+        },
+      });
+
+    expect(responseWithEmptyTimestamp.body.errors).toBeUndefined();
+    expect(
+      responseWithEmptyTimestamp.body.data.getFullReportingRuleResultForItem,
+    ).toEqual({
+      title: 'Item not found',
+    });
   }, 60_000);
 });
 

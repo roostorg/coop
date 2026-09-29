@@ -396,7 +396,8 @@ const Query: GQLQueryResolvers = {
         orgId: user.orgId,
       });
       const rule = rules.find((candidate) => candidate.id === ruleId);
-      const executionTimestamp = input.date ? new Date(input.date) : undefined;
+      const executionTimestamp =
+        input.date == null ? undefined : new Date(input.date);
       if (
         rule == null ||
         (executionTimestamp != null &&
