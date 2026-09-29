@@ -20,6 +20,7 @@ import {
   type GQLQueryResolvers,
 } from '../generated.js';
 import { type Context } from '../resolvers.js';
+import { requireChildSafetyPermission } from '../utils/authorization.js';
 import {
   forbiddenError,
   unauthenticatedError,
@@ -551,6 +552,7 @@ const Org: GQLOrgResolvers = {
     if (!user || user.orgId !== org.id) {
       throw unauthenticatedError('User required.');
     }
+    requireChildSafetyPermission(user);
     const reports = await context.services.NcmecService.getNcmecReports({
       orgId: user.orgId,
       reviewerId: user.id,

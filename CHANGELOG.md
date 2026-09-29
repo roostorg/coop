@@ -58,6 +58,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Security
 
+- Prevent cross-organization item disclosure through Scylla item lookups ([#1315](https://github.com/roostorg/coop/pull/1315) by [@taobojlen](https://github.com/taobojlen))
 - Review queue and job access control hardening ([#1151](https://github.com/roostorg/coop/pull/1151) by [@serendipty01](https://github.com/serendipty01) and [@cassidyjames](https://github.com/cassidyjames))
 - Passwords are hashed with Argon2id instead of bcrypt at cost factor 5 ([#901](https://github.com/roostorg/coop/pull/901) by [@serendipty01](https://github.com/serendipty01))
 - Minimum password length raised to 15 and enforced server-side ([#1065](https://github.com/roostorg/coop/pull/1065), [#1094](https://github.com/roostorg/coop/pull/1094) by [@serendipty01](https://github.com/serendipty01))
