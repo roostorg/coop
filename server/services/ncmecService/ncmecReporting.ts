@@ -1,15 +1,14 @@
 /* eslint-disable max-lines */
 import type { Exception } from '@opentelemetry/api';
 import { makeEnumLike, type ItemIdentifier } from '@roostorg/coop-types';
-import _Ajv from 'ajv';
 import { sql, type Kysely } from 'kysely';
 import _ from 'lodash';
 import { FormData } from 'undici';
+import * as v from 'valibot';
 import { js2xml } from 'xml-js';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import { jsonStringify } from '../../utils/encoding.js';
-import { type JSONSchemaV4 } from '../../utils/json-schema-types.js';
 import { type FixKyselyRowCorrelation } from '../../utils/kysely.js';
 import { logErrorJson } from '../../utils/logging.js';
 import { assertUnreachable, withRetries } from '../../utils/misc.js';
@@ -1144,33 +1143,24 @@ type FileAdditionalInfo = {
   fileName?: string;
 };
 
-const Ajv = _Ajv as unknown as typeof _Ajv.default;
-const ajv = new Ajv();
-
-const validateIpAddressEvent = {
-  type: 'array',
-  items: {
-    type: 'object',
-    properties: {
-      ipAddress: { type: 'string' },
-      eventName: {
-        type: 'string',
-        enum: [
-          'Login',
-          'Registration',
-          'Purchase',
-          'Upload',
-          'Other',
-          'Unknown',
-        ],
-      },
-      dateTime: { type: 'string' },
-      possibleProxy: { type: 'boolean' },
-      port: { type: 'integer' },
-    },
-    required: ['ipAddress'],
-  },
-} as const;
+const ipAddressEventSchema = v.array(
+  v.object({
+    ipAddress: v.string(),
+    eventName: v.optional(
+      v.picklist([
+        'Login',
+        'Registration',
+        'Purchase',
+        'Upload',
+        'Other',
+        'Unknown',
+      ]),
+    ),
+    dateTime: v.optional(v.string()),
+    possibleProxy: v.optional(v.boolean()),
+    port: v.optional(v.pipe(v.number(), v.integer())),
+  }),
+);
 
 type NcmecMessageResponse = {
   conversations: {
@@ -1185,169 +1175,98 @@ type NcmecMessageResponse = {
   }[];
 };
 
-const validateNcmecMessages = ajv.compile<NcmecMessageResponse>({
-  type: 'object',
-  properties: {
-    conversations: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          threadId: { type: 'string' },
-          typeId: { type: 'string' },
-          messages: {
-            type: 'array',
-            items: {
-              type: 'object',
-              oneOf: [
-                {
-                  ...rawItemSubmissionSchema.oneOf[0],
-                  properties: {
-                    ...rawItemSubmissionSchema.oneOf[0].properties,
-                    ipAddress: {
-                      type: 'object',
-                      properties: {
-                        ip: { type: 'string' },
-                        port: { type: 'integer' },
-                      },
-                      required: ['ip', 'port'],
-                    },
-                  },
-                  required: [
-                    ...rawItemSubmissionSchema.oneOf[0].required,
-                    'ipAddress',
-                  ],
-                },
-                {
-                  ...rawItemSubmissionSchema.oneOf[1],
-                  properties: {
-                    ...rawItemSubmissionSchema.oneOf[1].properties,
-                    ipAddress: {
-                      type: 'object',
-                      properties: {
-                        ip: { type: 'string' },
-                        port: { type: 'integer' },
-                      },
-                      required: ['ip', 'port'],
-                    },
-                  },
-                  required: [
-                    ...rawItemSubmissionSchema.oneOf[1].required,
-                    'ipAddress',
-                  ],
-                },
-              ],
-            },
-          },
-        },
-        required: ['threadId', 'typeId', 'messages'],
-      },
-    },
-  },
-  required: ['conversations'],
-} as const satisfies JSONSchemaV4<NcmecMessageResponse>);
+const ncmecMessagesSchema = v.object({
+  conversations: v.array(
+    v.object({
+      threadId: v.string(),
+      typeId: v.string(),
+      messages: v.array(
+        v.intersect([
+          rawItemSubmissionSchema,
+          v.object({
+            ipAddress: v.object({
+              ip: v.string(),
+              port: v.pipe(v.number(), v.integer()),
+            }),
+          }),
+        ]),
+      ),
+    }),
+  ),
+});
 
-const validateNcmecAdditionalInfo = ajv.compile<NcmecAdditionalInfoResponse>({
-  type: 'object',
-  properties: {
-    users: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          id: { type: 'string' },
-          typeId: { type: 'string' },
-          screenName: { type: 'string' },
-          email: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                email: { type: 'string' },
-                verified: { type: 'boolean' },
-                verificationDate: { type: 'string' },
-                type: { type: 'string', enum: ['Business', 'Home', 'Work'] },
-              },
-              required: ['email'],
-            },
-          },
-          ipCaptureEvent: validateIpAddressEvent,
-          // NB: the typings break here if we don't have { required: [] },
-          // but actually putting an empty array for `required` in the runtime
-          // value breaks request handling, so we just use a cast.
-          data: { type: 'object' } as unknown as {
-            type: 'object';
-            required: [];
-          },
-        },
-        required: ['id', 'typeId'],
-      },
-    },
-    media: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          id: { type: 'string' },
-          typeId: { type: 'string' },
-          ipCaptureEvent: validateIpAddressEvent,
-          additionalInfo: {
-            type: 'array',
-            items: {
-              type: 'string',
-            },
-          },
-          fileName: { type: 'string' },
-          missing: { type: 'boolean' },
-          publiclyAvailable: { type: 'boolean' },
-          fileDetails: {
-            type: 'object',
-            properties: {
-              hash: { type: 'string' },
-              hashType: { type: 'string' },
-            },
-            required: ['hash', 'hashType'],
-          },
-        },
-        required: ['id', 'typeId'],
-      },
-    },
-    additionalFiles: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          fileUrl: { type: 'string' },
-          additionalInfo: {
-            type: 'array',
-            items: {
-              type: 'string',
-            },
-          },
-          fileName: { type: 'string' },
-        },
-        required: ['fileUrl'],
-      },
-    },
-    messages: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          id: { type: 'string' },
-          typeId: { type: 'string' },
-          ipAddress: { type: 'string' },
-        },
-        required: ['id', 'typeId', 'ipAddress'],
-      },
-    },
-    additionalInfo: {
-      type: 'string',
-    },
-  },
-  additionalProperties: true,
-  required: ['users'],
-} as const satisfies JSONSchemaV4<NcmecAdditionalInfoResponse>);
+const validateNcmecMessages = (input: unknown): input is NcmecMessageResponse =>
+  v.safeParse(ncmecMessagesSchema, input).success;
+
+const rawItemDataSchema = v.custom<RawItemData>(
+  (input) =>
+    typeof input === 'object' && input !== null && !Array.isArray(input),
+);
+
+const ncmecAdditionalInfoSchema = v.object({
+  users: v.array(
+    v.object({
+      id: v.string(),
+      typeId: v.string(),
+      screenName: v.optional(v.string()),
+      email: v.optional(
+        v.array(
+          v.object({
+            email: v.string(),
+            verified: v.optional(v.boolean()),
+            verificationDate: v.optional(v.string()),
+            type: v.optional(v.picklist(['Business', 'Home', 'Work'])),
+          }),
+        ),
+      ),
+      ipCaptureEvent: v.optional(ipAddressEventSchema),
+      data: v.optional(rawItemDataSchema),
+    }),
+  ),
+  media: v.optional(
+    v.array(
+      v.object({
+        id: v.string(),
+        typeId: v.string(),
+        ipCaptureEvent: v.optional(ipAddressEventSchema),
+        additionalInfo: v.optional(v.array(v.string())),
+        fileName: v.optional(v.string()),
+        missing: v.optional(v.boolean()),
+        publiclyAvailable: v.optional(v.boolean()),
+        fileDetails: v.optional(
+          v.object({
+            hash: v.string(),
+            hashType: v.string(),
+          }),
+        ),
+      }),
+    ),
+  ),
+  additionalFiles: v.optional(
+    v.array(
+      v.object({
+        fileUrl: v.string(),
+        additionalInfo: v.optional(v.array(v.string())),
+        fileName: v.optional(v.string()),
+      }),
+    ),
+  ),
+  messages: v.optional(
+    v.array(
+      v.object({
+        id: v.string(),
+        typeId: v.string(),
+        ipAddress: v.string(),
+      }),
+    ),
+  ),
+  additionalInfo: v.optional(v.string()),
+});
+
+export const validateNcmecAdditionalInfo = (
+  input: unknown,
+): input is NcmecAdditionalInfoResponse =>
+  v.safeParse(ncmecAdditionalInfoSchema, input).success;
 
 export type NcmecMediaReport = {
   id: string;

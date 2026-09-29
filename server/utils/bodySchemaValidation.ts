@@ -19,7 +19,7 @@ import { makeBadRequestError } from './errors.js';
  * received by the route handler.
  */
 export function createBodySchemaValidator<ReqBody extends JsonObject>(
-  schema: GenericSchema<unknown, ReqBody>,
+  schema: GenericSchema<ReqBody, unknown>,
 ): RequestHandler {
   return (req, _res, next) => {
     const result = safeParse(schema, req.body, { abortEarly: false });
@@ -31,7 +31,7 @@ export function createBodySchemaValidator<ReqBody extends JsonObject>(
     next(
       makeBadRequestError('Request body failed schema validation.', {
         shouldErrorSpan: false,
-        pointer: toJsonPointer(result.issues[0].path),
+        pointer: toJsonPointer(publicIssuePath(result.issues[0])),
         detail: formatIssues(result.issues),
       }),
     );
@@ -52,8 +52,39 @@ function escapeJsonPointerSegment(segment: unknown): string {
 function formatIssues(issues: readonly GenericIssue[]): string {
   return issues
     .map((issue) => {
-      const loc = toJsonPointer(issue.path) ?? '/';
-      return `${loc}: invalid value`;
+      const loc = toJsonPointer(publicIssuePath(issue)) ?? '/';
+      return `${loc}: ${formatIssue(issue)}`;
     })
     .join('; ');
+}
+
+/**
+ * Valibot points key issues at the key itself, while Ajv points required and
+ * additional-property failures at the object containing that key.
+ */
+function publicIssuePath(
+  issue: GenericIssue,
+): readonly IssuePathItem[] | undefined {
+  if (issue.type === 'object' || issue.type === 'strict_object') {
+    return issue.path?.slice(0, -1);
+  }
+  return issue.path;
+}
+
+/** Build an Ajv-like summary exclusively from schema metadata. */
+function formatIssue(issue: GenericIssue): string {
+  const key = issue.path?.at(-1)?.key;
+  if (issue.type === 'object' && key !== undefined) {
+    return `must have required property '${String(key)}'`;
+  }
+  if (issue.type === 'strict_object') {
+    return 'must NOT have additional properties';
+  }
+  if (issue.type === 'integer') {
+    return 'must be integer';
+  }
+  if (issue.expected) {
+    return `must be ${issue.expected.replace(/^(>=|<=|>|<)(.+)$/, '$1 $2')}`;
+  }
+  return 'invalid value';
 }
