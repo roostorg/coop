@@ -168,6 +168,45 @@ describe('item type field roles', () => {
   });
 
   test.each([
+    ['creator_id_field', 'RELATED_ITEM', ['CONTENT', 'THREAD']],
+    ['thread_id_field', 'RELATED_ITEM', ['CONTENT']],
+    ['parent_id_field', 'RELATED_ITEM', ['CONTENT']],
+    ['profile_icon_field', 'IMAGE', ['USER']],
+    ['background_image_field', 'IMAGE', ['USER']],
+    ['email_field', 'EMAIL_ADDRESS', ['USER']],
+  ] as const)(
+    '%s is accepted only for its supported kinds',
+    (column, type, kinds) => {
+      for (const kind of ['CONTENT', 'THREAD', 'USER'] as const) {
+        const validate = () =>
+          assertValidItemTypeFieldRoles(
+            schema(...roleSchema, scalar('target', false, type)),
+            kind,
+            {
+              [column]: 'target',
+              ...(kind === 'CONTENT'
+                ? {
+                    thread_id_field: 'thread',
+                    created_at_field: 'created',
+                  }
+                : {}),
+            },
+          );
+        if ((kinds as readonly string[]).includes(kind)) {
+          expect(validate).not.toThrow();
+        } else {
+          expect(validate).toThrow(
+            expect.objectContaining({
+              name: 'InvalidItemTypeSchemaError',
+              detail: `Field role "kind" contains a role that is not valid for ${kind}.`,
+            }),
+          );
+        }
+      }
+    },
+  );
+
+  test.each([
     ['missing', { display_name_field: 'absent' }, 'does not exist'],
     [
       'wrong type',
