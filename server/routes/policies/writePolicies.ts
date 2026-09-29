@@ -1,5 +1,4 @@
 import { type Dependencies } from '../../iocContainer/index.js';
-import { makeNotFoundError } from '../../utils/errors.js';
 import { type RequestHandlerWithBodies } from '../../utils/route-helpers.js';
 import {
   requireId,
@@ -40,15 +39,6 @@ export function patchPolicy({
   return async (req, res) => {
     const orgId = requireOrgId(req);
     const id = requireId(req.params.id, 'Policy');
-    if (
-      (await ModerationConfigService.getPolicy({
-        orgId,
-        policyId: id,
-        readFromReplica: false,
-      })) === undefined
-    ) {
-      throw makeNotFoundError('Policy not found', { shouldErrorSpan: true });
-    }
     const policy = await ModerationConfigService.updatePolicy({
       orgId,
       policy: { ...req.body, id },
