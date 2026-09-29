@@ -8,7 +8,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ## [Unreleased]
 
-## [1.1.0]
+## [1.1.0] - 2026-09-29
 
 ### Added
 
