@@ -211,7 +211,7 @@ describe('validateActionParameters', () => {
     } catch (error) {
       expect(error).toMatchObject({
         title: 'Invalid action parameters',
-        detail: expect.stringContaining('/0/type'),
+        detail: '/0/type: invalid value',
       });
       expect((error as { detail?: string }).detail).not.toContain(secret);
     }
