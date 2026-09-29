@@ -15,6 +15,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Fixed
 
+- Policy and action updates reject invalid cross-organization relationships and policy cycles ([#1274](https://github.com/roostorg/coop/pull/1274) by [@taobojlen](https://github.com/taobojlen))
 - Completed manual reviews no longer reappear when no next job is available; refreshed content stays tied to the active job ([#1302](https://github.com/roostorg/coop/pull/1302) by [@sunilatlas](https://github.com/sunilatlas), closes [#1303](https://github.com/roostorg/coop/issues/1303)).
 
 ### Changed
