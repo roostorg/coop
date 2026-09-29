@@ -221,7 +221,6 @@ Most PR checks are defined as `docker compose` services so you can reproduce the
 | `check_generated_graphql`                | `npm ci && npm run generate && test -z "$(git status --porcelain)"` |
 | `check_api_server` (lint)                | `docker compose run --rm backend npm run lint`                      |
 | `check_api_server` (build)               | `docker compose run --rm backend npm run build`                     |
-| `check_api_server` (typecheck)           | `docker compose run --rm backend npm run typecheck:with-tests`      |
 | `run_frontend_checks_if_changed` (lint)  | `docker compose run --rm client npm run lint`                       |
 | `run_frontend_checks_if_changed` (build) | `docker compose run --rm client npm run build`                      |
 | `check_api_server` (test)                | `docker compose run --rm test`                                      |
@@ -233,7 +232,6 @@ npm ci && npm run prettier \
   && npm run generate && test -z "$(git status --porcelain)" \
   && docker compose run --rm backend npm run lint \
   && docker compose run --rm backend npm run build \
-  && docker compose run --rm backend npm run typecheck:with-tests \
   && docker compose run --rm client npm run lint \
   && docker compose run --rm client npm run build \
   && docker compose run --rm test
