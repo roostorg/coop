@@ -10,7 +10,6 @@ import { gqlErrorResult, gqlSuccessResult } from '../../utils/gqlResult.js';
 interface ExchangeConfigInput {
   api_name: string;
   config_json: string;
-  credentials_json?: string | null;
 }
 
 const Query: GQLQueryResolvers<Context> = {
@@ -124,32 +123,7 @@ const Mutation: GQLMutationResolvers<Context> = {
         exchangeConfig,
       );
 
-      let warning: string | undefined;
-      if (input.exchange?.credentials_json) {
-        try {
-          // eslint-disable-next-line no-restricted-syntax
-          const credData = JSON.parse(
-            input.exchange.credentials_json,
-          ) as Record<string, unknown>;
-          await context.services.HMAHashBankService.setExchangeCredentials(
-            input.exchange.api_name,
-            credData,
-          );
-        } catch (credError) {
-          // eslint-disable-next-line no-console
-          console.error(
-            'Failed to set exchange credentials during bank creation:',
-            credError,
-          );
-          warning =
-            'Bank and exchange were created, but credentials could not be set. You can update them from the bank settings page.';
-        }
-      }
-
-      return gqlSuccessResult(
-        { data: bank, warning },
-        'MutateHashBankSuccessResponse',
-      );
+      return gqlSuccessResult({ data: bank }, 'MutateHashBankSuccessResponse');
     } catch (e) {
       if (isCoopErrorOfType(e, 'MatchingBankNameExistsError')) {
         return gqlErrorResult(e, '/input/name');
@@ -203,25 +177,6 @@ const Mutation: GQLMutationResolvers<Context> = {
     }
 
     await context.services.HMAHashBankService.deleteBank(user.orgId, id);
-    return true;
-  },
-
-  async updateExchangeCredentials(
-    _: unknown,
-    { apiName, credentialsJson }: { apiName: string; credentialsJson: string },
-    context: Context,
-  ) {
-    const user = context.getUser();
-    if (!user?.orgId) {
-      throw unauthenticatedError('User required.');
-    }
-
-    // eslint-disable-next-line no-restricted-syntax
-    const credData = JSON.parse(credentialsJson) as Record<string, unknown>;
-    await context.services.HMAHashBankService.setExchangeCredentials(
-      apiName,
-      credData,
-    );
     return true;
   },
 };

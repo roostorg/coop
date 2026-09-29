@@ -1,4 +1,4 @@
-import { Button, Form, Input, Select, Slider, Switch, Tag } from 'antd';
+import { Form, Input, Select, Slider, Switch, Tag } from 'antd';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -17,7 +17,6 @@ import {
   useGQLExchangeApiSchemaLazyQuery,
   useGQLExchangeApisQuery,
   useGQLHashBankByIdQuery,
-  useGQLUpdateExchangeCredentialsMutation,
   useGQLUpdateHashBankMutation,
   type GQLExchangeApiSchemaQuery,
 } from '../../../../graphql/generated';
@@ -194,9 +193,6 @@ export default function HashBankForm() {
   const [exchangeConfigValues, setExchangeConfigValues] = useState<
     Record<string, unknown>
   >({});
-  const [exchangeCredValues, setExchangeCredValues] = useState<
-    Record<string, unknown>
-  >({});
 
   const isCreating = id == null;
 
@@ -222,14 +218,8 @@ export default function HashBankForm() {
     if (selectedExchangeApi) {
       fetchSchema({ variables: { apiName: selectedExchangeApi } });
       setExchangeConfigValues({});
-      setExchangeCredValues({});
     }
   }, [selectedExchangeApi, fetchSchema]);
-
-  const [editCredValues, setEditCredValues] = useState<Record<string, unknown>>(
-    {},
-  );
-  const [showCredForm, setShowCredForm] = useState(false);
 
   useEffect(() => {
     if (schema) {
@@ -238,14 +228,6 @@ export default function HashBankForm() {
         if (f.default != null) configDefaults[f.name] = f.default;
       }
       setExchangeConfigValues(configDefaults);
-
-      if (schema.credentials_schema) {
-        const credDefaults: Record<string, unknown> = {};
-        for (const f of schema.credentials_schema.fields) {
-          if (f.default != null) credDefaults[f.name] = f.default;
-        }
-        setExchangeCredValues(credDefaults);
-      }
     }
   }, [schema]);
 
@@ -346,36 +328,6 @@ export default function HashBankForm() {
     }
   }, [bank, form]);
 
-  const bankExchangeApi = bank?.exchange?.api;
-
-  const [updateExchangeCredentials, updateCredsMutationParams] =
-    useGQLUpdateExchangeCredentialsMutation({
-      onError: () => {
-        setModalInfo({
-          title: 'Error Updating Credentials',
-          body: 'We encountered an error trying to update the exchange credentials. Please try again.',
-          buttonText: 'OK',
-        });
-        showModal();
-      },
-      onCompleted: () => {
-        setModalInfo({
-          title: 'Credentials Updated',
-          body: 'Exchange credentials have been updated successfully.',
-          buttonText: 'Done',
-        });
-        showModal();
-        setEditCredValues({});
-        setShowCredForm(false);
-      },
-    });
-
-  useEffect(() => {
-    if (!isCreating && bankExchangeApi) {
-      fetchSchema({ variables: { apiName: bankExchangeApi } });
-    }
-  }, [isCreating, bankExchangeApi, fetchSchema]);
-
   if (bankQueryError) {
     throw bankQueryError;
   }
@@ -389,12 +341,6 @@ export default function HashBankForm() {
         ? {
             api_name: selectedExchangeApi,
             config_json: JSON.stringify(exchangeConfigValues),
-            credentials_json:
-              schema.credentials_schema &&
-              selectedApiInfo &&
-              !selectedApiInfo.has_auth
-                ? JSON.stringify(exchangeCredValues)
-                : undefined,
           }
         : undefined;
 
@@ -428,20 +374,6 @@ export default function HashBankForm() {
     });
   };
 
-  const onUpdateCredentials = () => {
-    if (!bankExchangeApi) return;
-    updateExchangeCredentials({
-      variables: {
-        apiName: bankExchangeApi,
-        credentialsJson: JSON.stringify(editCredValues),
-      },
-      refetchQueries: [
-        namedOperations.Query.HashBanks,
-        { query: GQLHashBankByIdDocument, variables: { id } },
-      ],
-    });
-  };
-
   const onHideModal = () => {
     hideModal();
 
@@ -464,20 +396,7 @@ export default function HashBankForm() {
           exchangeConfigValues[f.name] === ''),
     );
 
-  const hasRequiredCredsMissing =
-    selectedExchangeApi &&
-    schema?.credentials_schema &&
-    selectedApiInfo &&
-    !selectedApiInfo.has_auth &&
-    schema.credentials_schema.fields.some(
-      (f) =>
-        f.required &&
-        (exchangeCredValues[f.name] == null ||
-          exchangeCredValues[f.name] === ''),
-    );
-
-  const isExchangeIncomplete =
-    Boolean(hasRequiredConfigMissing) || Boolean(hasRequiredCredsMissing);
+  const isExchangeIncomplete = Boolean(hasRequiredConfigMissing);
 
   const modal = (
     <CoopModal
@@ -566,51 +485,13 @@ export default function HashBankForm() {
                     </span>
                   )}
                 </div>
-                {schema?.credentials_schema &&
-                  schema.credentials_schema.fields.length > 0 && (
-                    <Button
-                      type="link"
-                      onClick={() => {
-                        setShowCredForm((prev) => !prev);
-                        if (showCredForm) setEditCredValues({});
-                      }}
-                    >
-                      {showCredForm ? 'Cancel' : 'Update Credentials'}
-                    </Button>
-                  )}
               </div>
-
-              {showCredForm &&
-                schema?.credentials_schema &&
-                schema.credentials_schema.fields.length > 0 && (
-                  <div className="mb-6">
-                    <DynamicSchemaFields
-                      title="Update Exchange Credentials"
-                      subtitle="Enter new credentials to replace the existing ones."
-                      fields={schema.credentials_schema.fields}
-                      values={editCredValues}
-                      onChange={setEditCredValues}
-                    />
-                    <div className="mt-4">
-                      <CoopButton
-                        title="Save Credentials"
-                        loading={updateCredsMutationParams.loading}
-                        disabled={schema.credentials_schema.fields
-                          .filter((f) => f.required)
-                          .some(
-                            (f) =>
-                              editCredValues[f.name] == null ||
-                              editCredValues[f.name] === '',
-                          )}
-                        disabledTooltipTitle="Please fill in all required credential fields"
-                        onClick={onUpdateCredentials}
-                      />
-                    </div>
-                    <div className="mt-5 divider mb-9" />
-                  </div>
-                )}
             </>
           )}
+          <p className="mb-6 text-sm text-zinc-500">
+            Exchange credentials are managed by your deployment operator.
+            Contact them to configure or update credentials.
+          </p>
         </>
       )}
 
@@ -709,19 +590,17 @@ export default function HashBankForm() {
                 selectedApiInfo &&
                 !selectedApiInfo.has_auth && (
                   <div className="mt-6">
-                    <DynamicSchemaFields
-                      title="Exchange Credentials"
-                      subtitle="Provide authentication credentials for this exchange API. These credentials are shared across all exchanges of this type."
-                      fields={schema.credentials_schema.fields}
-                      values={exchangeCredValues}
-                      onChange={setExchangeCredValues}
-                    />
+                    <p className="text-sm text-amber-700">
+                      Credentials are missing. Contact your deployment operator
+                      to configure them before this bank can receive hashes.
+                    </p>
                   </div>
                 )}
 
               {schema.credentials_schema && selectedApiInfo?.has_auth && (
                 <div className="mt-4 p-3 text-sm rounded-md bg-emerald-50 text-emerald-700">
                   Credentials for this exchange API are already configured.
+                  Contact your deployment operator to update them.
                 </div>
               )}
             </>

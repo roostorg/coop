@@ -669,27 +669,6 @@ export class HmaService {
     }
   }
 
-  async setExchangeCredentials(
-    apiName: string,
-    credentialJson: Record<string, unknown>,
-  ): Promise<void> {
-    const requestBody = { credential_json: credentialJson };
-
-    const response = await this.fetchHTTP({
-      url: `${this.hmaServiceUrl}/c/exchanges/api/${encodeURIComponent(apiName)}`,
-      method: 'post',
-      body: jsonStringify(requestBody),
-      headers: { 'Content-Type': 'application/json' },
-      handleResponseBody: 'discard',
-    });
-
-    if (!response.ok) {
-      throw new Error(
-        `Failed to set exchange credentials for '${apiName}': status=${response.status}`,
-      );
-    }
-  }
-
   async getExchangeForBank(hmaName: string): Promise<ExchangeInfo | null> {
     let response;
     try {

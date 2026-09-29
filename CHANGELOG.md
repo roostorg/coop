@@ -20,6 +20,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Security
 
+- Remove hash-exchange credential editing, the `updateExchangeCredentials` GraphQL mutation, and the `ExchangeConfigInput.credentials_json` field to prevent cross-organization overwrites ([#1317](https://github.com/roostorg/coop/pull/1317) by [@taobojlen](https://github.com/taobojlen)).
 - Prevent cross-organization item disclosure through Scylla item lookups ([#1315](https://github.com/roostorg/coop/pull/1315) by [@taobojlen](https://github.com/taobojlen))
 
 ## [1.1.0-alpha] - 2026-09-21
