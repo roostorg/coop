@@ -1,11 +1,8 @@
-import _Ajv, { type ErrorObject } from 'ajv-draft-04';
 import { type JsonValue } from 'type-fest';
+import * as v from 'valibot';
 
 import { makeBadRequestError } from '../../../utils/errors.js';
 import { assertUnreachable } from '../../../utils/misc.js';
-
-// `ajv-draft-04` is CJS.
-const Ajv = _Ajv as unknown as typeof _Ajv.default;
 
 export const ACTION_PARAMETER_TYPES = [
   'STRING',
@@ -35,7 +32,7 @@ export type ActionParameter = {
 };
 
 /**
- * Pre-validation shape — what GraphQL/REST callers hand us before AJV runs.
+ * Pre-validation shape — what GraphQL/REST callers hand us before validation.
  * Looser than `ActionParameter` (any string-keyed object); we use this in
  * service-layer signatures so the type makes the "needs validation" boundary
  * obvious without forcing callers to pre-narrow null vs undefined.
@@ -46,52 +43,42 @@ export type RawActionParameterInput = Readonly<Record<string, unknown>>;
 // digits, `_`, `-`, and `.` so consumers can use snake_case, kebab-case, or
 // dotted namespacing; whitespace, quotes, and brackets are rejected because
 // they break dotted access in most languages and need escaping in URLs/logs.
-const PARAMETER_NAME_PATTERN = '^[a-zA-Z0-9_.\\-]+$';
+const PARAMETER_NAME_PATTERN = /^[a-zA-Z0-9_.\-]+$/;
 
-const optionSchema = {
-  type: 'object',
-  additionalProperties: false,
-  required: ['value', 'label'],
-  properties: {
-    value: { type: 'string', minLength: 1, maxLength: 200 },
-    label: { type: 'string', minLength: 1, maxLength: 200 },
-  },
-} as const;
+const optionSchema = v.strictObject({
+  value: v.pipe(v.string(), v.minLength(1), v.maxLength(200)),
+  label: v.pipe(v.string(), v.minLength(1), v.maxLength(200)),
+});
 
 // Structural shape only. Per-type rules (options required for SELECT, default
 // matches type, min<=max) live in `validatePerTypeRules` because expressing
-// them in JSON Schema draft-04 is verbose and harder to read.
-const parameterSchema = {
-  type: 'object',
-  additionalProperties: false,
-  required: ['name', 'displayName', 'type', 'required'],
-  properties: {
-    name: {
-      type: 'string',
-      minLength: 1,
-      maxLength: 64,
-      pattern: PARAMETER_NAME_PATTERN,
-    },
-    displayName: { type: 'string', minLength: 1, maxLength: 200 },
-    description: { type: 'string', maxLength: 2000 },
-    type: { enum: [...ACTION_PARAMETER_TYPES] },
-    required: { type: 'boolean' },
-    options: { type: 'array', items: optionSchema, minItems: 1, maxItems: 100 },
-    min: { type: 'number' },
-    max: { type: 'number' },
-    maxLength: { type: 'integer', minimum: 1, maximum: 100000 },
-    defaultValue: {},
-  },
-} as const;
+// them structurally is verbose and harder to read.
+const parameterSchema = v.strictObject({
+  name: v.pipe(
+    v.string(),
+    v.minLength(1),
+    v.maxLength(64),
+    v.regex(PARAMETER_NAME_PATTERN),
+  ),
+  displayName: v.pipe(v.string(), v.minLength(1), v.maxLength(200)),
+  description: v.optional(v.pipe(v.string(), v.maxLength(2000))),
+  type: v.picklist(ACTION_PARAMETER_TYPES),
+  required: v.boolean(),
+  options: v.optional(
+    v.pipe(v.array(optionSchema), v.minLength(1), v.maxLength(100)),
+  ),
+  min: v.optional(v.number()),
+  max: v.optional(v.number()),
+  maxLength: v.optional(
+    v.pipe(v.number(), v.integer(), v.minValue(1), v.maxValue(100000)),
+  ),
+  defaultValue: v.optional(v.unknown()),
+});
 
-export const parameterListSchema = {
-  type: 'array',
-  items: parameterSchema,
-  maxItems: 50,
-} as const;
-
-const ajv = new Ajv({ allErrors: true, strictSchema: true });
-const validateStructure = ajv.compile(parameterListSchema);
+export const parameterListSchema = v.pipe(
+  v.array(parameterSchema),
+  v.maxLength(50),
+);
 
 /**
  * Throw a `CoopError` if `parameters` is not a valid action parameter list.
@@ -104,11 +91,14 @@ export function validateActionParameters(
     return [];
   }
 
-  if (!validateStructure(parameters)) {
-    throw makeInvalidParameterError(formatAjvErrors(validateStructure.errors));
+  const result = v.safeParse(parameterListSchema, parameters, {
+    abortEarly: false,
+  });
+  if (!result.success) {
+    throw makeInvalidParameterError(formatValibotIssues(result.issues));
   }
 
-  const list = parameters as ActionParameter[];
+  const list: ActionParameter[] = result.output;
 
   const seenNames = new Set<string>();
   for (const [index, param] of list.entries()) {
@@ -141,7 +131,7 @@ function validatePerTypeRules(param: ActionParameter, index: number): void {
       validateSelectRules(param, index);
       return;
     default:
-      // AJV's `enum` keyword has already rejected unknown `type` values; this
+      // The schema has already rejected unknown `type` values; this
       // branch only exists to satisfy the exhaustiveness check.
       assertUnreachable(param.type);
   }
@@ -306,26 +296,51 @@ function validateSelectRules(param: ActionParameter, index: number): void {
   }
 }
 
-function formatAjvErrors(
-  errors: readonly ErrorObject[] | null | undefined,
-): string {
-  if (!errors || errors.length === 0) return 'invalid action parameters';
-  return errors
-    .map(
-      (err) => `${err.instancePath || '/'}: ${err.message ?? 'invalid value'}`,
-    )
+function formatValibotIssues(issues: readonly v.GenericIssue[]): string {
+  if (issues.length === 0) return 'invalid action parameters';
+  return issues
+    .map((issue) => {
+      const publicPath =
+        issue.type === 'object' || issue.type === 'strict_object'
+          ? issue.path?.slice(0, -1)
+          : issue.path;
+      const pathSegments = publicPath?.map(
+        ({ key }) =>
+          `/${String(key).replaceAll('~', '~0').replaceAll('/', '~1')}`,
+      );
+      const path = pathSegments?.length ? pathSegments.join('') : '/';
+      return `${path}: ${formatValibotIssue(issue)}`;
+    })
     .join('; ');
+}
+
+/** Build a useful summary exclusively from schema metadata, never input. */
+function formatValibotIssue(issue: v.GenericIssue): string {
+  const key = issue.path?.at(-1)?.key;
+  if (issue.type === 'object' && key !== undefined) {
+    return `must have required property '${String(key)}'`;
+  }
+  if (issue.type === 'strict_object') {
+    return 'must NOT have additional properties';
+  }
+  if (issue.type === 'integer') {
+    return 'must be integer';
+  }
+  if (issue.expected) {
+    return `must be ${issue.expected.replace(/^(>=|<=|>|<)(.+)$/, '$1 $2')}`;
+  }
+  return 'invalid value';
 }
 
 /**
  * Recover a typed parameter list from the loose `JsonValue | null` stored in
  * `actions.custom_mrt_api_params`. Designed to be defensive: silently drops
- * any entry that doesn't validate so legacy rows written before the AJV-
- * validated authoring path (PR 1) don't crash readers/executors.
+ * any entry that doesn't validate so legacy rows written before the validated
+ * authoring path (PR 1) don't crash readers/executors.
  *
  * Use this anywhere you need to act on an action's parameter spec at
  * execution time — distinct from `validateActionParameters`, which is the
- * write-side AJV validator.
+ * write-side validator.
  */
 export function parseStoredParameters(value: unknown): ActionParameter[] {
   if (!Array.isArray(value)) return [];

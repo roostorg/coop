@@ -4,6 +4,7 @@ import { vi } from 'vitest';
 
 import { createBodySchemaValidator } from './bodySchemaValidation.js';
 import { CoopError } from './errors.js';
+import { route } from './route-helpers.js';
 
 const schema = v.object({
   name: v.string(),
@@ -53,9 +54,21 @@ describe('createBodySchemaValidator', () => {
       name: 'BadRequestError',
       status: 400,
       title: 'Request body failed schema validation.',
+      pointer: undefined,
+      detail: "/: must have required property 'name'",
     });
-    // Error message should reference the missing field, not crash.
-    expect((err as CoopError).detail).toContain('name');
+  });
+
+  test('points a nested missing field at its containing object', () => {
+    const middleware = createBodySchemaValidator(
+      v.object({ parent: v.object({ child: v.string() }) }),
+    );
+    const { next } = invoke(middleware, { parent: {} });
+
+    expect(firstNextArg(next)).toMatchObject({
+      pointer: '/parent',
+      detail: "/parent: must have required property 'child'",
+    });
   });
 
   test('forwards a BadRequestError when a field has the wrong type', () => {
@@ -69,6 +82,31 @@ describe('createBodySchemaValidator', () => {
       name: 'BadRequestError',
       status: 400,
       pointer: '/count',
+      detail: '/count: must be number',
+    });
+  });
+
+  test('preserves a sanitized numeric-constraint summary', () => {
+    const middleware = createBodySchemaValidator(
+      v.object({ count: v.pipe(v.number(), v.minValue(2)) }),
+    );
+    const { next } = invoke(middleware, { count: 1 });
+
+    expect(firstNextArg(next)).toMatchObject({
+      pointer: '/count',
+      detail: '/count: must be >= 2',
+    });
+  });
+
+  test('reports an unknown property at its containing object', () => {
+    const middleware = createBodySchemaValidator(
+      v.strictObject({ name: v.string() }),
+    );
+    const { next } = invoke(middleware, { name: 'ok', extra: 'secret' });
+
+    expect(firstNextArg(next)).toMatchObject({
+      pointer: undefined,
+      detail: '/: must NOT have additional properties',
     });
   });
 
@@ -113,5 +151,31 @@ describe('createBodySchemaValidator', () => {
     expect(err.detail ?? '').not.toContain('input');
     expect(err.detail ?? '').not.toContain('received');
     expect(err.detail ?? '').not.toContain('secret-value');
+  });
+});
+
+describe('route body schema typing', () => {
+  test('types the handler body as the original input of a transforming/defaulting schema', () => {
+    const transformingSchema = v.object({
+      count: v.pipe(
+        v.string(),
+        v.transform((value) => Number(value)),
+      ),
+      label: v.optional(v.string(), 'default label'),
+    });
+
+    route.post(
+      '/typed',
+      { bodySchema: transformingSchema },
+      () => (req, res) => {
+        expectTypeOf(req.body).toEqualTypeOf<
+          v.InferInput<typeof transformingSchema>
+        >();
+        expectTypeOf(req.body).not.toEqualTypeOf<
+          v.InferOutput<typeof transformingSchema>
+        >();
+        res.sendStatus(204);
+      },
+    );
   });
 });
