@@ -68,6 +68,7 @@ function harness() {
     updateContentType: vi.fn().mockResolvedValue(item),
     updateThreadType: vi.fn().mockResolvedValue(item),
     updateUserType: vi.fn().mockResolvedValue(item),
+    close: vi.fn().mockResolvedValue(undefined),
   };
   const review = {
     setHiddenFieldsForItemType: vi.fn().mockResolvedValue(undefined),
@@ -172,6 +173,7 @@ describe('configuration write REST routes', () => {
       hiddenFields: [],
     });
     expect(service.invalidateLatestItemTypesCache).toHaveBeenCalledWith(orgId);
+    expect(config.close).toHaveBeenCalledOnce();
   });
 
   it.each([
@@ -235,6 +237,7 @@ describe('configuration write REST routes', () => {
       },
     });
     expect(review.setHiddenFieldsForItemType).toHaveBeenCalledTimes(1);
+    expect(config.close).toHaveBeenCalledTimes(2);
   });
 
   it.each([
@@ -260,7 +263,7 @@ describe('configuration write REST routes', () => {
   );
 
   it('propagates hidden-field setter errors from an item-type transaction', async () => {
-    const { app, service, review } = harness();
+    const { app, service, config, review } = harness();
     review.setHiddenFieldsForItemType.mockRejectedValueOnce(
       new Error('hidden field failure'),
     );
@@ -275,6 +278,7 @@ describe('configuration write REST routes', () => {
       })
       .expect(500);
     expect(service.invalidateLatestItemTypesCache).not.toHaveBeenCalled();
+    expect(config.close).toHaveBeenCalledOnce();
   });
 
   it('does not invalidate the item-type cache when the transaction commit fails', async () => {

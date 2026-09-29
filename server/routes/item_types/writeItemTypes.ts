@@ -95,13 +95,17 @@ export function createItemType({
     const item = await makeKyselyTransactionWithRetry(KyselyPg)(async (trx) => {
       const config = ModerationConfigService.forTransaction(trx);
       const review = ManualReviewToolService.forTransaction(trx);
-      const created = await createForKind(config, orgId, body);
-      await review.setHiddenFieldsForItemType({
-        orgId,
-        itemTypeId: created.id,
-        hiddenFields: body.hiddenFields ?? [],
-      });
-      return created;
+      try {
+        const created = await createForKind(config, orgId, body);
+        await review.setHiddenFieldsForItemType({
+          orgId,
+          itemTypeId: created.id,
+          hiddenFields: body.hiddenFields ?? [],
+        });
+        return created;
+      } finally {
+        await config.close();
+      }
     });
     await ModerationConfigService.invalidateLatestItemTypesCache(orgId);
     res.status(201).json(serializeItemType(item));
@@ -137,28 +141,32 @@ export function patchItemType({
     const item = await makeKyselyTransactionWithRetry(KyselyPg)(async (trx) => {
       const config = ModerationConfigService.forTransaction(trx);
       const review = ManualReviewToolService.forTransaction(trx);
-      let updated;
-      switch (current.kind) {
-        case 'CONTENT':
-          updated = await config.updateContentType(orgId, input);
-          break;
-        case 'THREAD':
-          updated = await config.updateThreadType(orgId, input);
-          break;
-        case 'USER':
-          updated = await config.updateUserType(orgId, input);
-          break;
-        default:
-          return assertUnreachable(current);
+      try {
+        let updated;
+        switch (current.kind) {
+          case 'CONTENT':
+            updated = await config.updateContentType(orgId, input);
+            break;
+          case 'THREAD':
+            updated = await config.updateThreadType(orgId, input);
+            break;
+          case 'USER':
+            updated = await config.updateUserType(orgId, input);
+            break;
+          default:
+            return assertUnreachable(current);
+        }
+        if (hiddenFields !== undefined) {
+          await review.setHiddenFieldsForItemType({
+            orgId,
+            itemTypeId: id,
+            hiddenFields,
+          });
+        }
+        return updated;
+      } finally {
+        await config.close();
       }
-      if (hiddenFields !== undefined) {
-        await review.setHiddenFieldsForItemType({
-          orgId,
-          itemTypeId: id,
-          hiddenFields,
-        });
-      }
-      return updated;
     });
     await ModerationConfigService.invalidateLatestItemTypesCache(orgId);
     res.status(200).json(serializeItemType(item));
