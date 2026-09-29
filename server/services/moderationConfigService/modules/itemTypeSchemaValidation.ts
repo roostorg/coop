@@ -1,5 +1,6 @@
 import { ContainerTypes, ScalarTypes } from '@roostorg/coop-types';
 
+import { type SnakeToCamelCase } from '../../../utils/typescript-types.js';
 import { type ModerationConfigServicePg } from '../dbTypes.js';
 import {
   makeInvalidItemTypeHiddenFieldsError,
@@ -77,10 +78,16 @@ const roleDefinitions = {
   is_deleted_field: { role: 'isDeleted', type: 'BOOLEAN' },
   ip_address_field: { role: 'ipAddress', type: 'IP_ADDRESS' },
   email_field: { role: 'email', type: 'EMAIL_ADDRESS' },
-} as const satisfies Record<
-  keyof Required<ItemTypeRoleColumns>,
-  { role: keyof FieldRoleToScalarType; type: string }
->;
+} as const satisfies {
+  [Column in keyof Required<ItemTypeRoleColumns>]: {
+    role: SnakeToCamelCase<
+      Column extends `${infer Name}_field` ? Name : never
+    > &
+      keyof FieldRoleToScalarType &
+      (typeof itemTypeRoleNames)[ItemTypeKind][number];
+    type: string;
+  };
+};
 
 export function mergeItemTypeRoleColumns(
   current: Required<ItemTypeRoleColumns>,
