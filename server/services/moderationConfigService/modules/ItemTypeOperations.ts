@@ -511,9 +511,15 @@ export default class ItemTypeOperations {
     roleColumns: ItemTypeRoleColumns,
   ): Promise<T> {
     const itemTypeId = uid();
+    const normalizedRoleColumns = Object.fromEntries(
+      Object.entries(roleColumns).map(([column, value]) => [
+        column,
+        replaceEmptyStringWithNull(value),
+      ]),
+    ) as ItemTypeRoleColumns;
     const create = async (query: Kysely<ModerationConfigServicePg>) => {
       assertValidItemSchema(input.schema);
-      assertValidItemTypeFieldRoles(input.schema, kind, roleColumns);
+      assertValidItemTypeFieldRoles(input.schema, kind, normalizedRoleColumns);
       await query
         .insertInto('public.item_types')
         .values({
@@ -523,7 +529,7 @@ export default class ItemTypeOperations {
           org_id: orgId,
           kind,
           fields: input.schema,
-          ...roleColumns,
+          ...normalizedRoleColumns,
         })
         .execute();
       const rows = await getItemTypeVersionsBaseQuery({

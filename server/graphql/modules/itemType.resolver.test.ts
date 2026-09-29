@@ -23,6 +23,13 @@ const fields = [
 const errorData = { detail: 'Invalid item type', shouldErrorSpan: false };
 const domainErrors = [
   [makeInvalidItemTypeSchemaError(errorData), '/input/fields'],
+  [
+    makeInvalidItemTypeSchemaError({
+      ...errorData,
+      pointer: '/schemaFieldRoles',
+    }),
+    '/input/fieldRoles',
+  ],
   [makeInvalidItemTypeHiddenFieldsError(errorData), '/input/hiddenFields'],
   [makeItemTypeNameAlreadyExistsError(errorData), '/input/name'],
   [makeNotFoundError('Item type not found', errorData), '/input/id'],
@@ -43,7 +50,9 @@ const makeContext = () => {
     updateContentType: vi.fn().mockResolvedValue(itemType),
     updateThreadType: vi.fn().mockResolvedValue(itemType),
     updateUserType: vi.fn().mockResolvedValue(itemType),
+    close: vi.fn().mockResolvedValue(undefined),
   };
+  const transactionCompleted = vi.fn();
   const transactionReview = {
     setHiddenFieldsForItemType: vi.fn().mockResolvedValue(undefined),
   };
@@ -58,13 +67,18 @@ const makeContext = () => {
     context: {
       getUser: () => ({ orgId }),
       services: {
-        transaction: (run: (transaction: object) => unknown) => run(trx),
+        transaction: async (run: (transaction: object) => unknown) => {
+          const result = await run(trx);
+          transactionCompleted();
+          return result;
+        },
         ModerationConfigService,
         ManualReviewToolService,
       },
     } as unknown as Context,
     ModerationConfigService,
     ManualReviewToolService: transactionReview,
+    transactionCompleted,
     transactionConfig,
   };
 };
@@ -159,12 +173,18 @@ describe.each(variants)(
         expect(
           ModerationConfigService.invalidateLatestItemTypesCache,
         ).toHaveBeenCalledWith(orgId);
+        expect(transactionConfig.close).toHaveBeenCalledOnce();
       },
     );
 
     it('maps all supplied update values and hidden fields', async () => {
-      const { context, ManualReviewToolService, transactionConfig } =
-        makeContext();
+      const {
+        context,
+        ManualReviewToolService,
+        ModerationConfigService,
+        transactionCompleted,
+        transactionConfig,
+      } = makeContext();
       await callMutation(
         updateResolver,
         {
@@ -188,6 +208,15 @@ describe.each(variants)(
       expect(
         ManualReviewToolService.setHiddenFieldsForItemType,
       ).toHaveBeenCalledWith({ orgId, itemTypeId, hiddenFields });
+      expect(transactionConfig.close).toHaveBeenCalledOnce();
+      expect(transactionCompleted).toHaveBeenCalledOnce();
+      expect(
+        ModerationConfigService.invalidateLatestItemTypesCache,
+      ).toHaveBeenCalledWith(orgId);
+      expect(transactionCompleted.mock.invocationCallOrder[0]).toBeLessThan(
+        ModerationConfigService.invalidateLatestItemTypesCache.mock
+          .invocationCallOrder[0],
+      );
     });
 
     it('preserves omitted hidden fields and clears an explicit empty list', async () => {
@@ -231,7 +260,12 @@ describe.each(variants)(
     it.each(domainErrors)(
       'maps %s from create mutations to %s',
       async (error, pointer) => {
-        const { context, transactionConfig } = makeContext();
+        const {
+          context,
+          ModerationConfigService,
+          transactionCompleted,
+          transactionConfig,
+        } = makeContext();
         transactionConfig[createService].mockRejectedValueOnce(error);
 
         await expect(
@@ -241,13 +275,23 @@ describe.each(variants)(
           pointer,
           detail: error.detail,
         });
+        expect(transactionConfig.close).toHaveBeenCalledOnce();
+        expect(transactionCompleted).not.toHaveBeenCalled();
+        expect(
+          ModerationConfigService.invalidateLatestItemTypesCache,
+        ).not.toHaveBeenCalled();
       },
     );
 
     it.each(domainErrors)(
       'maps %s from update mutations to %s',
       async (error, pointer) => {
-        const { context, transactionConfig } = makeContext();
+        const {
+          context,
+          ModerationConfigService,
+          transactionCompleted,
+          transactionConfig,
+        } = makeContext();
         transactionConfig[updateService].mockRejectedValueOnce(error);
 
         await expect(
@@ -257,6 +301,11 @@ describe.each(variants)(
           pointer,
           detail: error.detail,
         });
+        expect(transactionConfig.close).toHaveBeenCalledOnce();
+        expect(transactionCompleted).not.toHaveBeenCalled();
+        expect(
+          ModerationConfigService.invalidateLatestItemTypesCache,
+        ).not.toHaveBeenCalled();
       },
     );
   },
