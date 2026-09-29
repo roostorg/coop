@@ -170,7 +170,7 @@ Note: `check_migration_order` runs only in GitHub Actions — it's GitHub-specif
 - Use only the six Keep a Changelog headings — `### Added`, `### Changed`, `### Deprecated`, `### Removed`, `### Fixed`, `### Security` — adding the heading under `## [Unreleased]` if it's missing. Don't invent others.
 - `Fixed` is for behavior that was wrong and is now correct; `Changed` is for intentionally altering behavior that was already correct.
 - Keep each entry to a single concise line, essentially a title: no reasoning, mechanism, or caveats. Anyone who needs the detail follows the PR link.
-- Format: `- Description ([#123](https://github.com/roostorg/coop/pull/123) by [@user](https://github.com/user))`,
+- Format: `- Description ([#123](https://github.com/roostorg/coop/pull/123) by [@user](https://github.com/user))`.
 - Omit related issue links (e.g. `closes [#456](...)`); this information is accessible at the PR link.
 - Removing a GraphQL enum value, type, or field, or removing or renaming an environment variable, always earns an entry.
 - Never edit a released version's section; it's a historical record. Corrections go under `## [Unreleased]`.
