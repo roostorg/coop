@@ -309,27 +309,9 @@ function formatValibotIssues(issues: readonly v.GenericIssue[]): string {
           `/${String(key).replaceAll('~', '~0').replaceAll('/', '~1')}`,
       );
       const path = pathSegments?.length ? pathSegments.join('') : '/';
-      return `${path}: ${formatValibotIssue(issue)}`;
+      return `${path}: invalid value`;
     })
     .join('; ');
-}
-
-/** Build a useful summary exclusively from schema metadata, never input. */
-function formatValibotIssue(issue: v.GenericIssue): string {
-  const key = issue.path?.at(-1)?.key;
-  if (issue.type === 'object' && key !== undefined) {
-    return `must have required property '${String(key)}'`;
-  }
-  if (issue.type === 'strict_object') {
-    return 'must NOT have additional properties';
-  }
-  if (issue.type === 'integer') {
-    return 'must be integer';
-  }
-  if (issue.expected) {
-    return `must be ${issue.expected.replace(/^(>=|<=|>|<)(.+)$/, '$1 $2')}`;
-  }
-  return 'invalid value';
 }
 
 /**
