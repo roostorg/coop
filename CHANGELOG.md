@@ -17,7 +17,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Fixed
 
-- Completed manual reviews reappear when no next job is available ([#1302](https://github.com/roostorg/coop/pull/1302) by [@sunilatlas](https://github.com/sunilatlas)).
+- Completed manual reviews reappear when no next job is available ([#1302](https://github.com/roostorg/coop/pull/1302) by [@sunilatlas](https://github.com/sunilatlas))
 - Investigation result table filters not applying ([#988](https://github.com/roostorg/coop/pull/988) by [@taobojlen](https://github.com/taobojlen))
 - Routing rule reordering can reorder another organization's rules ([#1318](https://github.com/roostorg/coop/pull/1318) by [@Joseph-Mutua](https://github.com/Joseph-Mutua))
 
