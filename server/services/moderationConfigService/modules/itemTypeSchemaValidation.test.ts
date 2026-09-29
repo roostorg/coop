@@ -209,6 +209,23 @@ describe('item type field roles', () => {
       }),
     ).not.toThrow();
   });
+
+  test('rejects an email role on content while accepting it on users', () => {
+    const emailSchema = schema(scalar('emailAddress', false, 'EMAIL_ADDRESS'));
+    const roles = { email_field: 'emailAddress' };
+
+    expect(() =>
+      assertValidItemTypeFieldRoles(emailSchema, 'CONTENT', roles),
+    ).toThrow(
+      expect.objectContaining({
+        name: 'InvalidItemTypeSchemaError',
+        pointer: '/schemaFieldRoles',
+      }),
+    );
+    expect(() =>
+      assertValidItemTypeFieldRoles(emailSchema, 'USER', roles),
+    ).not.toThrow();
+  });
 });
 
 describe('assertHiddenFieldsExist', () => {
