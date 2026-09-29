@@ -10,6 +10,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Added
 
+- REST create/update endpoints for policies, item types, and custom actions ([#1275](https://github.com/roostorg/coop/pull/1275) by [@taobojlen](https://github.com/taobojlen))
 - Optional policy and audit callbacks with bounded deadlines for review and item content responses ([#1270](https://github.com/roostorg/coop/pull/1270) by [@sunilatlas](https://github.com/sunilatlas), closes [#1269](https://github.com/roostorg/coop/issues/1269))
 - Native OpenTelemetry manual-review counters, decision-source labels and elapsed timings ([#1286](https://github.com/roostorg/coop/pull/1286) by [@sunilatlas](https://github.com/sunilatlas), relates to [#1287](https://github.com/roostorg/coop/issues/1287))
 

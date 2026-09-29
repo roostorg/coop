@@ -2,6 +2,21 @@
 
 Fetch your organization's configured policies programmatically.
 
+## Create and update
+
+```http
+POST /api/v1/policies/
+PATCH /api/v1/policies/policy-id
+```
+
+```json
+{ "name": "Spam", "policyText": "No unsolicited advertising" }
+```
+
+Create requires `name` and returns `201`. PATCH accepts only supplied fields
+and returns `200`; use `null` to clear nullable fields such as `parentId`.
+Responses use the same public policy shape documented below.
+
 ## Endpoint
 
 ```http
