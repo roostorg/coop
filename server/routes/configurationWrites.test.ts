@@ -5,7 +5,7 @@ import { vi } from 'vitest';
 import { type Dependencies } from '../iocContainer/index.js';
 import { makeItemTypeNameAlreadyExistsError } from '../services/moderationConfigService/index.js';
 import { createBodySchemaValidator } from '../utils/bodySchemaValidation.js';
-import { sanitizeError } from '../utils/errors.js';
+import { makeNotFoundError, sanitizeError } from '../utils/errors.js';
 import actions from './action/ActionRoutes.js';
 import itemTypes from './item_types/ItemTypeRoutes.js';
 import policies from './policies/PoliciesRoutes.js';
@@ -76,7 +76,6 @@ function harness() {
   const service = {
     getItemType: vi.fn().mockResolvedValue(item),
     createPolicy: vi.fn().mockResolvedValue(policy),
-    getPolicy: vi.fn().mockResolvedValue(policy),
     updatePolicy: vi.fn().mockResolvedValue(policy),
     createAction: vi.fn().mockResolvedValue(action),
     updateCustomAction: vi.fn().mockResolvedValue(action),
@@ -147,35 +146,6 @@ const auth = (testRequest: request.Test) =>
   testRequest.set('x-api-key', apiKey);
 
 describe('configuration write REST routes', () => {
-  it('creates an item type and returns only its public representation', async () => {
-    const { app, service, config, manualReviewTool, review, trx } = harness();
-    const response = await auth(request(app).post('/api/v1/item_types/'))
-      .send({
-        kind: 'CONTENT',
-        name: 'Post',
-        schema: [field],
-        schemaFieldRoles: { displayName: 'title' },
-      })
-      .expect(201);
-
-    expect(response.body).toEqual(publicItem);
-    expect(service.forTransaction).toHaveBeenCalledWith(trx);
-    expect(manualReviewTool.forTransaction).toHaveBeenCalledWith(trx);
-    expect(config.createContentType).toHaveBeenCalledWith(orgId, {
-      name: 'Post',
-      description: null,
-      schema: [field],
-      schemaFieldRoles: { displayName: 'title' },
-    });
-    expect(review.setHiddenFieldsForItemType).toHaveBeenCalledWith({
-      orgId,
-      itemTypeId: item.id,
-      hiddenFields: [],
-    });
-    expect(service.invalidateLatestItemTypesCache).toHaveBeenCalledWith(orgId);
-    expect(config.close).toHaveBeenCalledOnce();
-  });
-
   it.each([
     ['CONTENT', 'createContentType'],
     ['THREAD', 'createThreadType'],
@@ -183,26 +153,36 @@ describe('configuration write REST routes', () => {
   ] as const)(
     'creates a %s item type and its hidden fields in the same transaction',
     async (kind, method) => {
-      const { app, config, review } = harness();
-      await auth(request(app).post('/api/v1/item_types/'))
+      const { app, service, config, manualReviewTool, review, trx } = harness();
+      config[method].mockResolvedValueOnce({ ...item, kind });
+      const response = await auth(request(app).post('/api/v1/item_types/'))
         .send({
           kind,
           name: 'Post',
           schema: [field],
-          schemaFieldRoles: {},
+          schemaFieldRoles: { displayName: 'title' },
           hiddenFields: ['title'],
         })
         .expect(201);
 
-      expect(config[method]).toHaveBeenCalledWith(
-        orgId,
-        expect.not.objectContaining({ hiddenFields: expect.anything() }),
-      );
+      expect(response.body).toEqual({ ...publicItem, kind });
+      expect(service.forTransaction).toHaveBeenCalledWith(trx);
+      expect(manualReviewTool.forTransaction).toHaveBeenCalledWith(trx);
+      expect(config[method]).toHaveBeenCalledWith(orgId, {
+        name: 'Post',
+        description: null,
+        schema: [field],
+        schemaFieldRoles: { displayName: 'title' },
+      });
       expect(review.setHiddenFieldsForItemType).toHaveBeenCalledWith({
         orgId,
         itemTypeId: item.id,
         hiddenFields: ['title'],
       });
+      expect(service.invalidateLatestItemTypesCache).toHaveBeenCalledWith(
+        orgId,
+      );
+      expect(config.close).toHaveBeenCalledOnce();
     },
   );
 
@@ -336,11 +316,6 @@ describe('configuration write REST routes', () => {
     await auth(request(app).patch(`/api/v1/policies/${policy.id}`))
       .send({ policyText: null })
       .expect(200);
-    expect(service.getPolicy).toHaveBeenCalledWith({
-      orgId,
-      policyId: policy.id,
-      readFromReplica: false,
-    });
     expect(service.updatePolicy).toHaveBeenCalledWith({
       orgId,
       policy: { id: policy.id, policyText: null },
@@ -491,19 +466,24 @@ describe('configuration write REST routes', () => {
     },
   );
 
-  it.each([
-    ['item type', `/api/v1/item_types/${item.id}`, 'getItemType'],
-    ['policy', `/api/v1/policies/${policy.id}`, 'getPolicy'],
-  ] as const)(
-    'returns 404 for a foreign or missing %s before mutation',
-    async (_name, url, lookup) => {
-      const { app, service, config } = harness();
-      service[lookup].mockResolvedValueOnce(undefined);
-      await auth(request(app).patch(url)).send({ name: 'Renamed' }).expect(404);
-      expect(config.updateContentType).not.toHaveBeenCalled();
-      expect(service.updatePolicy).not.toHaveBeenCalled();
-    },
-  );
+  it('returns 404 for a foreign or missing item type before mutation', async () => {
+    const { app, service, config } = harness();
+    service.getItemType.mockResolvedValueOnce(undefined);
+    await auth(request(app).patch(`/api/v1/item_types/${item.id}`))
+      .send({ name: 'Renamed' })
+      .expect(404);
+    expect(config.updateContentType).not.toHaveBeenCalled();
+  });
+
+  it('propagates a missing policy from the update service as 404', async () => {
+    const { app, service } = harness();
+    service.updatePolicy.mockRejectedValueOnce(
+      makeNotFoundError('Policy not found', { shouldErrorSpan: true }),
+    );
+    await auth(request(app).patch(`/api/v1/policies/${policy.id}`))
+      .send({ name: 'Renamed' })
+      .expect(404);
+  });
 
   it('propagates a service conflict response', async () => {
     const { app, config } = harness();
