@@ -6,9 +6,25 @@ import {
   NCMECEvent,
   resolveReportedPersonEmail,
   summarizeCyberTipFailure,
+  validateNcmecAdditionalInfo,
 } from './ncmecReporting.js';
 
 describe('NCMEC reporting', () => {
+  describe('validateNcmecAdditionalInfo', () => {
+    it('accepts object-valued user data but rejects arrays', () => {
+      const response = {
+        users: [{ id: 'user-id', typeId: 'user', data: { role: 'member' } }],
+      };
+
+      expect(validateNcmecAdditionalInfo(response)).toBe(true);
+      expect(
+        validateNcmecAdditionalInfo({
+          users: [{ id: 'user-id', typeId: 'user', data: [] }],
+        }),
+      ).toBe(false);
+    });
+  });
+
   describe('buildInternetDetailsFromOrgSetting', () => {
     it('returns undefined when type is null or undefined', () => {
       expect(

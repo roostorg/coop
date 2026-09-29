@@ -1,11 +1,15 @@
 import { faker } from '@faker-js/faker';
+import express, { type ErrorRequestHandler } from 'express';
 import _ from 'lodash';
+import request from 'supertest';
 import { uid } from 'uid';
 
 import { serializeDerivedFieldSpec } from '../../services/derivedFieldsService/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../test/fixtureHelpers/createUser.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
+import { createBodySchemaValidator } from '../../utils/bodySchemaValidation.js';
+import contentRoutes from './ContentRoutes.js';
 
 const { omit } = _;
 
@@ -256,4 +260,27 @@ describe('POST Content', () => {
         });
     },
   );
+});
+
+test('POST /content accepts object content and rejects arrays and null', async () => {
+  const app = express();
+  app.use(express.json());
+  const schema = contentRoutes.routes[0].bodySchema!;
+  app.post('/api/v1/content', createBodySchemaValidator(schema), (_req, res) =>
+    res.sendStatus(204),
+  );
+  app.use(((error, _req, res, _next) => {
+    res.status(error.status ?? 500).json(error);
+  }) satisfies ErrorRequestHandler);
+
+  await request(app)
+    .post('/api/v1/content')
+    .send({ contentType: 'post', contentId: '1', content: { nested: [null] } })
+    .expect(204);
+  for (const content of [[], null]) {
+    await request(app)
+      .post('/api/v1/content')
+      .send({ contentType: 'post', contentId: '1', content })
+      .expect(400);
+  }
 });

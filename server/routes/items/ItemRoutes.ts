@@ -1,36 +1,24 @@
-import {
-  rawItemSubmissionSchema,
-  type RawItemSubmission,
-} from '../../services/itemProcessingService/index.js';
+import * as v from 'valibot';
+
+import { rawItemSubmissionSchema } from '../../services/itemProcessingService/index.js';
 import { createApiKeyMiddleware } from '../../utils/apiKeyMiddleware.js';
 import { route } from '../../utils/route-helpers.js';
 import { type Controller } from '../index.js';
 import submitItems from './submitItems.js';
 
-export type SubmitItemsInput = {
-  items: RawItemSubmission[];
-};
+const submitItemsInputSchema = v.object({
+  items: v.array(rawItemSubmissionSchema),
+});
 
-// eslint-disable-next-line @typescript-eslint/consistent-type-assertions
+export type SubmitItemsInput = v.InferOutput<typeof submitItemsInputSchema>;
+
 export default {
   pathPrefix: '/items',
   routes: [
     route.post<SubmitItemsInput, undefined>(
       '/async/',
       {
-        bodySchema: {
-          $schema: 'http://json-schema.org/draft-04/schema#',
-          title: 'SubmitItemsInputModel',
-          type: 'object',
-          properties: {
-            items: {
-              type: 'array',
-              // This 'items' key is defined by our JSON schema checker library, so we can't change it
-              items: rawItemSubmissionSchema,
-            },
-          },
-          required: ['items'],
-        },
+        bodySchema: submitItemsInputSchema,
       },
       (deps) => [
         createApiKeyMiddleware<SubmitItemsInput, undefined>(deps),
@@ -38,4 +26,4 @@ export default {
       ],
     ),
   ],
-} as Controller;
+} satisfies Controller;

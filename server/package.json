@@ -46,8 +46,6 @@
     "@sendgrid/mail": "^8.1.6",
     "@stdlib/stats-binomial-test": "^0.2.3",
     "@total-typescript/ts-reset": "^0.6.1",
-    "ajv": "^8.18.0",
-    "ajv-draft-04": "^1.0.0",
     "bcryptjs": "^2.4.3",
     "bullmq": "^5.0.0",
     "cassandra-driver": "^4.8.0",
@@ -84,6 +82,7 @@
     "undici": "^7.24.0",
     "unhomoglyph": "^1.0.6",
     "uuid": "^14.0.0",
+    "valibot": "^1.5.0",
     "validator": "^13.15.35",
     "xml-js": "^1.6.11",
     "yargs": "^17.7.2"
