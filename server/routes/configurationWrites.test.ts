@@ -187,7 +187,7 @@ describe('configuration write REST routes', () => {
   );
 
   it('patches an item type, omitting roles or completely clearing supplied roles', async () => {
-    const { app, config, review } = harness();
+    const { app, service, config, review } = harness();
     await auth(request(app).patch(`/api/v1/item_types/${item.id}`))
       .send({ name: 'Renamed', hiddenFields: [] })
       .expect(200, publicItem);
@@ -218,6 +218,10 @@ describe('configuration write REST routes', () => {
     });
     expect(review.setHiddenFieldsForItemType).toHaveBeenCalledTimes(1);
     expect(config.close).toHaveBeenCalledTimes(2);
+    expect(service.invalidateLatestItemTypesCache.mock.calls).toEqual([
+      [orgId],
+      [orgId],
+    ]);
   });
 
   it.each([
@@ -239,6 +243,9 @@ describe('configuration write REST routes', () => {
         itemTypeId: item.id,
         hiddenFields: ['title'],
       });
+      expect(service.invalidateLatestItemTypesCache).toHaveBeenCalledWith(
+        orgId,
+      );
     },
   );
 
@@ -466,12 +473,15 @@ describe('configuration write REST routes', () => {
     },
   );
 
-  it('returns 404 for a foreign or missing item type before mutation', async () => {
+  it('returns 404 for a missing item type before mutation', async () => {
     const { app, service, config } = harness();
     service.getItemType.mockResolvedValueOnce(undefined);
     await auth(request(app).patch(`/api/v1/item_types/${item.id}`))
       .send({ name: 'Renamed' })
       .expect(404);
+    expect(service.getItemType).toHaveBeenCalledWith(
+      expect.objectContaining({ orgId }),
+    );
     expect(config.updateContentType).not.toHaveBeenCalled();
   });
 
