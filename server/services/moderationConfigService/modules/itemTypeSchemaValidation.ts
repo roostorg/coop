@@ -208,6 +208,7 @@ function throwInvalidSchema(fieldName: string, reason: string): never {
 function throwInvalidRole(role: string, reason: string): never {
   throw makeInvalidItemTypeSchemaError({
     shouldErrorSpan: false,
+    pointer: '/schemaFieldRoles',
     detail: `Field role "${role}" ${reason}.`,
   });
 }

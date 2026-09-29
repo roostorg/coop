@@ -401,25 +401,18 @@ export class ManualReviewToolService {
     );
   }
 
-  forTransaction(trx: Transaction<CombinedPg>) {
-    const query = trx
-      .$extendTables<ManualReviewToolServicePg>()
-      .$pickTables<keyof ManualReviewToolServicePg>();
-    return new ManualReviewToolService(
-      this.redis,
-      this.ruleEvaluator,
-      this.routingRuleExecutionLogger,
-      query,
-      query,
-      this.userStatisticsService,
-      this.getCustomActionsByIds,
-      this.tracer,
-      this.moderationConfigService.forTransaction(trx),
-      this.partialItemsService,
-      this.onRecordDecision,
-      this.onEnqueue,
-      this.getUserHasExistingNcmecReport,
-      this.resolveManualReviewContent,
+  forTransaction(
+    trx: Transaction<CombinedPg>,
+  ): Pick<
+    ManualReviewToolService,
+    'getHiddenFieldsForItemType' | 'setHiddenFieldsForItemType'
+  > {
+    return new JobRendering(
+      trx
+        .$extendTables<ManualReviewToolServicePg>()
+        .$pickTables<
+          keyof (ManualReviewToolServicePg & ModerationConfigServicePg)
+        >(),
     );
   }
 
