@@ -1,4 +1,3 @@
-import _Ajv from 'ajv-draft-04';
 import { sql, type Kysely } from 'kysely';
 
 import { type Dependencies } from '../../iocContainer/index.js';

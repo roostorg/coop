@@ -1,5 +1,5 @@
 import { type ItemIdentifier } from '@roostorg/coop-types';
-import _Ajv from 'ajv-draft-04';
+import * as v from 'valibot';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
@@ -10,12 +10,8 @@ import {
   ErrorType,
   type ErrorInstanceData,
 } from '../../utils/errors.js';
-import { type JSONSchemaV4 } from '../../utils/json-schema-types.js';
 import { safePick } from '../../utils/misc.js';
-import {
-  rawItemSubmissionSchema,
-  type RawItemSubmission,
-} from '../itemProcessingService/index.js';
+import { rawItemSubmissionSchema } from '../itemProcessingService/index.js';
 import {
   rawItemSubmissionToItemSubmission,
   type ItemSubmission,
@@ -25,22 +21,10 @@ import { type FetchHTTP } from '../networkingService/index.js';
 import { type OrgSettingsService } from '../orgSettingsService/orgSettingsService.js';
 import { isJsonParseFailure } from './isJsonParseFailure.js';
 
-const Ajv = _Ajv as unknown as typeof _Ajv.default;
-const ajv = new Ajv();
-
-type PartialItemsResponse = { items: RawItemSubmission[] };
-
 // Extra top-level keys are accepted but ignored.
-const validatePartialItemsResponse = ajv.compile<PartialItemsResponse>({
-  type: 'object',
-  properties: {
-    items: {
-      type: 'array',
-      items: rawItemSubmissionSchema,
-    },
-  },
-  required: ['items'],
-} as const satisfies JSONSchemaV4<PartialItemsResponse>);
+const partialItemsResponseSchema = v.looseObject({
+  items: v.array(rawItemSubmissionSchema),
+});
 
 function makePartialItemsService(
   orgSettingsService: OrgSettingsService,
@@ -115,13 +99,17 @@ function makePartialItemsService(
             });
           }
 
-          const responseBody = response.body;
-          if (!validatePartialItemsResponse(responseBody)) {
-            span.setAttribute('response.body', jsonStringify(responseBody));
+          const responseBodyResult = v.safeParse(
+            partialItemsResponseSchema,
+            response.body,
+          );
+          if (!responseBodyResult.success) {
+            span.setAttribute('response.body', jsonStringify(response.body));
             throw makePartialItemsEndpointInvalidResponseError({
               shouldErrorSpan: true,
             });
           }
+          const responseBody = responseBodyResult.output;
 
           // Create a unique string "key" for each item that we can use to verify
           // that the returned items were the ones we requested.

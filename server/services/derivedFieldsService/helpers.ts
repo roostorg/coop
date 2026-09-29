@@ -1,7 +1,7 @@
 import { type ScalarType, type TaggedScalar } from '@roostorg/coop-types';
-import _Ajv, { type JSONSchemaType } from 'ajv-draft-04';
 import _ from 'lodash';
 import { type ReadonlyDeep } from 'type-fest';
+import * as v from 'valibot';
 
 import { extractContentValueOrValues } from '../../condition_evaluator/leafCondition.js';
 import {
@@ -33,8 +33,6 @@ import {
   type SignalOutputType,
   type SignalsService,
 } from '../signalsService/index.js';
-
-const Ajv = _Ajv as unknown as typeof _Ajv.default;
 
 const { sum } = _;
 
@@ -205,57 +203,32 @@ export function serializeDerivedFieldSpec(spec: DerivedFieldSpec) {
   return b64UrlEncode(jsonStringifyUnstable(spec));
 }
 
-const derivedFieldSpecSchema: JSONSchemaType<DerivedFieldSpec> = {
-  type: 'object',
-  properties: {
-    source: {
-      type: 'object',
-      required: ['type'],
-      oneOf: [
-        {
-          properties: {
-            type: { type: 'string', const: 'FULL_ITEM' },
-          },
-          required: ['type'],
-          additionalProperties: false,
-        },
-        {
-          properties: {
-            type: { type: 'string', const: 'CONTENT_FIELD' },
-            name: { type: 'string' },
-            contentTypeId: { type: 'string' },
-          },
-          required: ['type', 'name', 'contentTypeId'],
-          additionalProperties: false,
-        },
-        {
-          properties: {
-            type: { type: 'string', const: 'CONTENT_COOP_INPUT' },
-            name: { type: 'string', enum: Object.values(CoopInput) },
-          },
-          required: ['type', 'name'],
-          additionalProperties: false,
-        },
-      ],
-    },
-    derivationType: { type: 'string', enum: derivedFieldTypes },
-  },
-  required: ['source', 'derivationType'],
-  additionalProperties: false,
-};
-
-const ajv = new Ajv();
-const validateDerivedFieldSpec = ajv.compile(derivedFieldSpecSchema);
+const derivedFieldSpecSchema = v.strictObject({
+  source: v.variant('type', [
+    v.strictObject({ type: v.literal('FULL_ITEM') }),
+    v.strictObject({
+      type: v.literal('CONTENT_FIELD'),
+      name: v.string(),
+      contentTypeId: v.string(),
+    }),
+    v.strictObject({
+      type: v.literal('CONTENT_COOP_INPUT'),
+      name: v.enum(CoopInput),
+    }),
+  ]),
+  derivationType: v.picklist(derivedFieldTypes),
+});
 
 export function parseDerivedFieldSpec(
   spec: B64UrlOf<JsonOf<DerivedFieldSpec>>,
 ): DerivedFieldSpec {
   const parsedResult = jsonParse(b64UrlDecode(spec));
-  if (validateDerivedFieldSpec(parsedResult)) {
-    return parsedResult;
+  const result = v.safeParse(derivedFieldSpecSchema, parsedResult);
+  if (result.success) {
+    return result.output;
   } else {
     throw new Error(`Invalid derived field spec`, {
-      cause: new AggregateError(validateDerivedFieldSpec.errors ?? []),
+      cause: new AggregateError(result.issues),
     });
   }
 }
