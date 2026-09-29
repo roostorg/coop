@@ -51,10 +51,10 @@ function escapeJsonPointerSegment(segment: unknown): string {
 
 function formatIssues(issues: readonly GenericIssue[]): string {
   return issues
-    .map((issue) => {
-      const loc = toJsonPointer(publicIssuePath(issue)) ?? '/';
-      return `${loc}: ${formatIssue(issue)}`;
-    })
+    .map(
+      (issue) =>
+        `${toJsonPointer(publicIssuePath(issue)) ?? '/'}: invalid value`,
+    )
     .join('; ');
 }
 
@@ -69,22 +69,4 @@ function publicIssuePath(
     return issue.path?.slice(0, -1);
   }
   return issue.path;
-}
-
-/** Build an Ajv-like summary exclusively from schema metadata. */
-function formatIssue(issue: GenericIssue): string {
-  const key = issue.path?.at(-1)?.key;
-  if (issue.type === 'object' && key !== undefined) {
-    return `must have required property '${String(key)}'`;
-  }
-  if (issue.type === 'strict_object') {
-    return 'must NOT have additional properties';
-  }
-  if (issue.type === 'integer') {
-    return 'must be integer';
-  }
-  if (issue.expected) {
-    return `must be ${issue.expected.replace(/^(>=|<=|>|<)(.+)$/, '$1 $2')}`;
-  }
-  return 'invalid value';
 }
