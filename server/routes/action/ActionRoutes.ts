@@ -1,37 +1,42 @@
-import { type ItemIdentifier } from '@roostorg/coop-types';
-import { type JsonObject, type JsonValue } from 'type-fest';
+import { type JsonObject } from 'type-fest';
+import * as v from 'valibot';
 
 import { MAX_ACTOR_NOTE_LENGTH } from '../../services/moderationConfigService/index.js';
 import { createApiKeyMiddleware } from '../../utils/apiKeyMiddleware.js';
-import { type JSONSchemaV4 } from '../../utils/json-schema-types.js';
 import { route } from '../../utils/route-helpers.js';
 import {
   createActionSchema,
   patchActionSchema,
   type ActionWrite,
+  type CreateActionWrite,
 } from '../configurationWrites.js';
 import { type Controller } from '../index.js';
 import getActions, { type GetActionsOutput } from './getActions.js';
 import submitAction from './submitAction.js';
 import { createCustomAction, patchCustomAction } from './writeActions.js';
 
-export type SubmitActionInput = JsonObject & {
-  actionId: string;
-  itemId: string;
-  itemTypeId: string;
-  policyIds?: string[];
-  reportedItems?: ItemIdentifier[];
-  actorId?: string;
-  /**
-   * Optional moderator-supplied parameter values. Validated against the
-   * action's parameter spec server-side in `submitAction.ts` before publish;
-   * the body schema only enforces it's a JSON object so the imperative
-   * validator has something well-formed to inspect.
-   */
-  parameters?: Record<string, JsonValue>;
-  /** Optional moderator note. Sent to the webhook as `actorNote`. */
-  note?: string;
-};
+const itemIdentifierSchema = v.object({
+  id: v.string(),
+  typeId: v.string(),
+});
+const submitActionInputSchema = v.object({
+  actionId: v.string(),
+  itemId: v.string(),
+  itemTypeId: v.string(),
+  policyIds: v.optional(v.array(v.string())),
+  reportedItems: v.optional(v.array(itemIdentifierSchema)),
+  actorId: v.optional(v.string()),
+  // Parameter values are checked against the stored action spec in the handler.
+  parameters: v.optional(
+    v.custom<JsonObject>(
+      (input) =>
+        typeof input === 'object' && input !== null && !Array.isArray(input),
+    ),
+  ),
+  note: v.optional(v.pipe(v.string(), v.maxLength(MAX_ACTOR_NOTE_LENGTH))),
+});
+
+export type SubmitActionInput = v.InferInput<typeof submitActionInputSchema>;
 
 // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
 export default {
@@ -44,75 +49,21 @@ export default {
     route.post<SubmitActionInput, undefined>(
       '/',
       {
-        // The `parameters` property accepts an arbitrary JSON object whose
-        // shape is validated imperatively in `submitAction.ts` against the
-        // action's stored spec. AJV draft-04 forbids `required: []`, but the
-        // inferred TS schema type for `Record<string, JsonValue>` demands a
-        // (non-empty) `required` array, so we cast the whole `bodySchema`
-        // once and rely on the runtime AJV check to catch any drift.
-        bodySchema: {
-          $schema: 'http://json-schema.org/draft-04/schema#',
-          title: 'ActionInputModel',
-          type: 'object',
-          properties: {
-            actionId: {
-              type: 'string',
-            },
-            itemId: {
-              type: 'string',
-            },
-            itemTypeId: {
-              type: 'string',
-            },
-            policyIds: {
-              type: 'array',
-              items: {
-                type: 'string',
-              },
-            },
-            reportedItems: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  id: {
-                    type: 'string',
-                  },
-                  typeId: {
-                    type: 'string',
-                  },
-                },
-                required: ['id', 'typeId'],
-              },
-            },
-            actorId: {
-              type: 'string',
-            },
-            parameters: {
-              type: 'object',
-              additionalProperties: true,
-            },
-            note: {
-              type: 'string',
-              maxLength: MAX_ACTOR_NOTE_LENGTH,
-            },
-          },
-          required: ['actionId', 'itemId', 'itemTypeId'],
-        } as unknown as JSONSchemaV4<SubmitActionInput>,
+        bodySchema: submitActionInputSchema,
       },
       (deps) => [
         createApiKeyMiddleware<SubmitActionInput, undefined>(deps),
         submitAction(deps),
       ],
     ),
-    route.post<ActionWrite, JsonObject>(
+    route.post<CreateActionWrite, JsonObject>(
       '/custom',
-      { bodySchema: createActionSchema as JSONSchemaV4<ActionWrite> },
+      { bodySchema: createActionSchema },
       (deps) => [createApiKeyMiddleware(deps), createCustomAction(deps)],
     ),
     route.patch<ActionWrite, JsonObject>(
       '/:id',
-      { bodySchema: patchActionSchema as JSONSchemaV4<ActionWrite> },
+      { bodySchema: patchActionSchema },
       (deps) => [createApiKeyMiddleware(deps), patchCustomAction(deps)],
     ),
   ],
