@@ -1,19 +1,14 @@
 import type { Request, Response } from 'express';
+import * as v from 'valibot';
 import { vi } from 'vitest';
 
 import { createBodySchemaValidator } from './bodySchemaValidation.js';
 import { CoopError } from './errors.js';
 
-const schema: Record<string, unknown> = {
-  $schema: 'http://json-schema.org/draft-04/schema#',
-  type: 'object',
-  properties: {
-    name: { type: 'string' },
-    count: { type: 'integer' },
-  },
-  required: ['name'],
-  additionalProperties: false,
-};
+const schema = v.object({
+  name: v.string(),
+  count: v.optional(v.pipe(v.number(), v.integer())),
+});
 
 function invoke(
   middleware: ReturnType<typeof createBodySchemaValidator>,
@@ -23,7 +18,7 @@ function invoke(
   const res: Partial<Response> = {};
   const next = vi.fn();
   middleware(req as Request, res as Response, next);
-  return { next };
+  return { next, req };
 }
 
 function firstNextArg(next: ReturnType<typeof vi.fn>): unknown {
@@ -77,14 +72,15 @@ describe('createBodySchemaValidator', () => {
     });
   });
 
-  test('rejects unknown additional properties when the schema forbids them', () => {
+  test('passes an accepted extra-property body to the handler unchanged', () => {
     const middleware = createBodySchemaValidator(schema);
-    const { next } = invoke(middleware, { name: 'ok', surprise: true });
+    const body = { name: 'ok', surprise: true };
+    const { next, req } = invoke(middleware, body);
 
     expect(next).toHaveBeenCalledTimes(1);
-    const err = firstNextArg(next);
-    expect(err).toBeInstanceOf(CoopError);
-    expect(err).toMatchObject({ name: 'BadRequestError', status: 400 });
+    expect(next).toHaveBeenCalledWith();
+    expect(req.body).toBe(body);
+    expect(req.body).toEqual({ name: 'ok', surprise: true });
   });
 
   test('rejects non-object bodies (e.g., undefined from a request with no body)', () => {
@@ -97,12 +93,25 @@ describe('createBodySchemaValidator', () => {
     expect(err).toMatchObject({ name: 'BadRequestError', status: 400 });
   });
 
-  test('does not leak Ajv internals (schemaPath / params) in the error detail', () => {
+  test('escapes issue path segments as a JSON Pointer', () => {
+    const middleware = createBodySchemaValidator(
+      v.object({ 'a/b~c': v.string() }),
+    );
+    const { next } = invoke(middleware, { 'a/b~c': 42 });
+
+    expect(firstNextArg(next)).toMatchObject({ pointer: '/a~1b~0c' });
+  });
+
+  test('does not leak validator internals or request values in the error detail', () => {
     const middleware = createBodySchemaValidator(schema);
-    const { next } = invoke(middleware, { name: 42 });
+    const { next } = invoke(middleware, {
+      name: 'secret-value',
+      count: 'wrong',
+    });
 
     const err = firstNextArg(next) as CoopError;
-    expect(err.detail ?? '').not.toContain('schemaPath');
-    expect(err.detail ?? '').not.toContain('params');
+    expect(err.detail ?? '').not.toContain('input');
+    expect(err.detail ?? '').not.toContain('received');
+    expect(err.detail ?? '').not.toContain('secret-value');
   });
 });
