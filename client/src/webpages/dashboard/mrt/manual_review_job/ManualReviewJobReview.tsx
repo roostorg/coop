@@ -44,7 +44,6 @@ import {
   useGQLDequeueManualReviewJobMutation,
   useGQLLogSkipMutation,
   useGQLManualReviewJobInfoQuery,
-  useGQLReleaseJobLockMutation,
   useGQLSubmitManualReviewDecisionMutation,
   type GQLActionParameter,
   type GQLThreadManualReviewJobPayload,
@@ -232,10 +231,6 @@ gql`
   mutation LogSkip($input: LogSkipInput!) {
     logSkip(input: $input)
   }
-
-  mutation ReleaseJobLock($input: ReleaseJobLockInput!) {
-    releaseJobLock(input: $input)
-  }
 `;
 
 enum BuiltInActionType {
@@ -394,12 +389,12 @@ function ManualReviewJobReviewImpl(props: {
   const mrtParentComponentRef = useRef<HTMLDivElement>(null);
   const reportedUserRef = useRef<HTMLDivElement>(null);
 
-  const resetState = () => {
+  const resetState = useCallback(() => {
     setSelectedPrimaryActions([]);
     setSelectedPrimaryPolicies([]);
     setSelectedRelatedActions([]);
     setDecisionReason(undefined);
-  };
+  }, [setSelectedRelatedActions]);
 
   const {
     data,
@@ -789,10 +784,6 @@ function ManualReviewJobReviewImpl(props: {
     fetchPolicy: 'no-cache',
   });
 
-  const [releaseJobLock] = useGQLReleaseJobLockMutation({
-    fetchPolicy: 'no-cache',
-  });
-
   const advanceToNextJobAfterInvalidation = useCallback(async () => {
     setIsAdvancingToNextJob(true);
     try {
@@ -804,8 +795,7 @@ function ManualReviewJobReviewImpl(props: {
     } finally {
       setIsAdvancingToNextJob(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [getNextJob, navigate]);
+  }, [getNextJob, navigate, resetState]);
 
   // Runs after the invalidate mutation resolves. Refreshes the job view,
   // and if invalidation deleted the current job, advances to the next one.
@@ -833,25 +823,50 @@ function ManualReviewJobReviewImpl(props: {
   }, [jobId, queueId, refetchJobInfo, advanceToNextJobAfterInvalidation]);
 
   const skipToNextJob = async () => {
-    // First, release the lock on the current job and log the skip
+    // This is wired straight to a button's `onClick`, so nothing downstream
+    // catches a rejection: any error escaping here is an unhandled promise
+    // rejection and the reviewer gets no feedback at all. Both the skip and
+    // the follow-up dequeue therefore handle rejection explicitly.
+    const showSkipFailed = () =>
+      setModalInfo({
+        visible: true,
+        modalBody: 'Failed to skip this job. Please try again.',
+        footer: [{ title: 'Ok', type: 'primary', onClick: hideModal }],
+      });
+
+    // Skipping is one server-side operation: it logs the skip, hides the job
+    // from this reviewer for the skip window, and releases the lock so the
+    // job returns to the shared pool for everyone else.
     if (queueId && job?.id && lockToken) {
-      await Promise.all([
-        logSkip(),
-        releaseJobLock({
-          variables: {
-            input: {
-              queueId,
-              jobId: job.id,
-              lockToken,
-            },
-          },
-        }),
-      ]);
+      let skipped: boolean;
+      try {
+        const result = await logSkip();
+        skipped = result.data?.logSkip === true;
+      } catch {
+        // Network/GraphQL failure. Same reviewer-facing outcome as a falsy
+        // response: nothing was released or hidden.
+        skipped = false;
+      }
+      if (!skipped) {
+        // Stay on the current job so the reviewer can retry (or decide)
+        // instead of advancing past it.
+        showSkipFailed();
+        return;
+      }
     }
 
     // Reset state and try to get the next job
     resetState();
-    const result = await getNextJob();
+    let result;
+    try {
+      result = await getNextJob();
+    } catch {
+      // The skip already succeeded, so the job is gone from this reviewer's
+      // view; only the advance failed. Surface it rather than leaving the
+      // reviewer on a job they no longer hold.
+      showSkipFailed();
+      return;
+    }
 
     // If there's no next job, redirect to the queues page
     if (result.data?.dequeueManualReviewJob == null) {
@@ -859,7 +874,11 @@ function ManualReviewJobReviewImpl(props: {
     }
   };
 
-  if (loading || jobDataLoading || (!closedJob && !lockToken)) {
+  // `loading && !data`: the job-info query reloads in place (e.g. when its
+  // jobIds variable changes while advancing, or on refetch after an
+  // invalidation). Once we have data, keep the current view up during those
+  // reloads instead of flashing the full-screen spinner.
+  if ((loading && !data) || jobDataLoading || (!closedJob && !lockToken)) {
     return (
       <div className="flex items-center justify-center w-full h-screen">
         <ComponentLoading />
