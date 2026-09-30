@@ -16,6 +16,10 @@ import {
   ManualReviewJobAction,
   ManualReviewJobEnqueuedActionData,
 } from '../../ManualReviewJobReview';
+import {
+  AdditionalReportedContentItems,
+  type RelatedContentItem,
+} from '../ContentRelatedItemComponent';
 import FieldsComponent from '../ManualReviewJobFieldsComponent';
 import ManualReviewJobMagnifyImageComponent from '../ManualReviewJobMagnifyImageComponent';
 import ManualReviewJobCurrentJobsComponent from './ManualReviewJobCurrentJobsComponent';
@@ -38,11 +42,14 @@ export default function ManualReviewJobPrimaryUserComponent(props: {
   relatedActions: readonly ManualReviewJobEnqueuedActionData[];
   reportedUserRef?: React.RefObject<HTMLDivElement | null>;
   onEnqueueActions: (actions: ManualReviewJobEnqueuedActionData[]) => void;
+  onRemoveAction?: (action: ManualReviewJobEnqueuedActionData) => void;
+  onEditParameters?: (action: ManualReviewJobEnqueuedActionData) => void;
   isReported?: boolean;
   isActionable?: boolean;
   requirePolicySelectionToEnqueueAction: boolean;
   allowMoreThanOnePolicySelection: boolean;
   jobCreatedAt?: Date;
+  additionalContentItems?: readonly RelatedContentItem[];
 }) {
   const {
     user,
@@ -52,6 +59,8 @@ export default function ManualReviewJobPrimaryUserComponent(props: {
     allPolicies,
     relatedActions,
     onEnqueueActions,
+    onRemoveAction,
+    onEditParameters,
     reportedUserRef,
     isReported = false,
     isActionable = true,
@@ -95,6 +104,8 @@ export default function ManualReviewJobPrimaryUserComponent(props: {
           allItemTypes={allItemTypes}
           relatedActions={relatedActions}
           onEnqueueAction={(action) => onEnqueueActions([action])}
+          onRemoveAction={onRemoveAction}
+          onEditParameters={onEditParameters}
           unblurAllMedia={unblurAllMedia}
           setSelectedUser={setSecondaryRelatedUser}
           isReporter={false}
@@ -205,6 +216,23 @@ export default function ManualReviewJobPrimaryUserComponent(props: {
       {userComponent}
       <ItemActionHistory itemIdentifier={userIdentifier} />
       <ManualReviewJobCurrentJobsComponent userIdentifier={userIdentifier} />
+      {props.additionalContentItems ? (
+        <AdditionalReportedContentItems
+          items={props.additionalContentItems}
+          unblurAllMedia={unblurAllMedia}
+          allActions={allActions}
+          allPolicies={allPolicies}
+          relatedActions={relatedActions}
+          onEnqueueAction={(action) => onEnqueueActions([action])}
+          onRemoveAction={onRemoveAction}
+          onEditParameters={onEditParameters}
+          isActionable={isActionable}
+          requirePolicySelectionToEnqueueAction={
+            requirePolicySelectionToEnqueueAction
+          }
+          allowMoreThanOnePolicySelection={allowMoreThanOnePolicySelection}
+        />
+      ) : null}
       <ManualReviewJobLatestSubmissionsWithThreadComponent
         userIdentifier={userIdentifier}
         reportedUserIdentifier={userIdentifier}
@@ -215,6 +243,8 @@ export default function ManualReviewJobPrimaryUserComponent(props: {
         allPolicies={allPolicies}
         relatedActions={relatedActions}
         onEnqueueActions={onEnqueueActions}
+        onRemoveAction={onRemoveAction}
+        onEditParameters={onEditParameters}
         reportedUserRef={reportedUserRef}
         isActionable={isActionable}
         requirePolicySelectionToEnqueueAction={

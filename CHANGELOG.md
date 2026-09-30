@@ -11,21 +11,19 @@ For more information about each release including git tags and artifacts, see [R
 ### Added
 
 - Per-queue job sort order for manual review queues with support for sorting by number of reports ([#718](https://github.com/roostorg/coop/pull/718) by [@calebmcquaid](https://github.com/calebmcquaid), closes [#670](https://github.com/roostorg/coop/issues/670))
-- Optional policy and audit callbacks with bounded deadlines for review and item content responses ([#1270](https://github.com/roostorg/coop/pull/1270) by [@sunilatlas](https://github.com/sunilatlas), closes [#1269](https://github.com/roostorg/coop/issues/1269))
-- Native OpenTelemetry manual-review counters, decision-source labels and elapsed timings ([#1286](https://github.com/roostorg/coop/pull/1286) by [@sunilatlas](https://github.com/sunilatlas), relates to [#1287](https://github.com/roostorg/coop/issues/1287))
 
-### Fixed
-
-- Completed manual reviews no longer reappear when no next job is available; refreshed content stays tied to the active job ([#1302](https://github.com/roostorg/coop/pull/1302) by [@sunilatlas](https://github.com/sunilatlas), closes [#1303](https://github.com/roostorg/coop/issues/1303)).
-
-## [1.1.0-alpha] - 2026-09-21
+## [1.1.0] - 2026-09-29
 
 ### Added
 
+- Actions and policy selection on additional content items in the review console ([#1202](https://github.com/roostorg/coop/pull/1202) by [@juanmrad](https://github.com/juanmrad))
+- Optional policy and audit callbacks with bounded deadlines for review and item content responses ([#1270](https://github.com/roostorg/coop/pull/1270) by [@sunilatlas](https://github.com/sunilatlas))
+- Native OpenTelemetry manual-review counters, decision-source labels, and elapsed timings ([#1286](https://github.com/roostorg/coop/pull/1286) by [@sunilatlas](https://github.com/sunilatlas))
+- Item IDs on additional content items, with a control to copy them ([#1146](https://github.com/roostorg/coop/pull/1146) by [@juanmrad](https://github.com/juanmrad))
 - REST configuration reads for policies, actions, and item types ([#1144](https://github.com/roostorg/coop/pull/1144) by [@taobojlen](https://github.com/taobojlen))
-- List parameters used in the action in the item action history view ([#1173](https://github.com/roostorg/coop/pull/1173) by [@maarkN](https://github.com/maarkN), closes [#833](https://github.com/roostorg/coop/issues/833))
-- Manual Review Analytics with average handle time per moderator ([#1022](https://github.com/roostorg/coop/pull/1022) by [@juanmrad](https://github.com/juanmrad), closes [#380](https://github.com/roostorg/coop/issues/380))
-- Support for text-only NCMEC reports ([#866](https://github.com/roostorg/coop/pull/866), [#881](https://github.com/roostorg/coop/pull/881) by [@calebmcquaid](https://github.com/calebmcquaid), closes [#661](https://github.com/roostorg/coop/issues/661))
+- List parameters used in the action in the item action history view ([#1173](https://github.com/roostorg/coop/pull/1173) by [@maarkN](https://github.com/maarkN))
+- Manual Review Analytics with average handle time per moderator ([#1022](https://github.com/roostorg/coop/pull/1022) by [@juanmrad](https://github.com/juanmrad))
+- Support for text-only NCMEC reports ([#866](https://github.com/roostorg/coop/pull/866), [#881](https://github.com/roostorg/coop/pull/881) by [@calebmcquaid](https://github.com/calebmcquaid))
 - OpenAI `self-harm/intent` and `self-harm/instructions` signals for text and image ([#535](https://github.com/roostorg/coop/pull/535) by [@julietshen](https://github.com/julietshen))
 - Sepia filter for moderator wellness controls ([#62](https://github.com/roostorg/coop/pull/62) by [@serendipty01](https://github.com/serendipty01))
 
@@ -41,17 +39,69 @@ For more information about each release including git tags and artifacts, see [R
 
 - Unused `GRAPHQL_OPAQUE_SCALAR_SECRET` and `LAUNCHDARKLY_SECRET` environment variables ([#1246](https://github.com/roostorg/coop/pull/1246) by [@ThisIsMissEm](https://github.com/ThisIsMissEm))
 - Google Cloud Translation API, the `ENGLISH_TRANSLATION` derived field, and `GOOGLE_TRANSLATE_API_KEY` ([#1045](https://github.com/roostorg/coop/pull/1045) by [@julietshen](https://github.com/julietshen))
-- `IMAGE_SIMILARITY_SCORE` and `IMAGE_EXACT_MATCH` signal types ([#1043](https://github.com/roostorg/coop/pull/1043) by [@julietshen](https://github.com/julietshen), closes [#686](https://github.com/roostorg/coop/issues/686))
+- `IMAGE_SIMILARITY_SCORE` and `IMAGE_EXACT_MATCH` signal types ([#1043](https://github.com/roostorg/coop/pull/1043) by [@julietshen](https://github.com/julietshen))
+
+### Fixed
+
+- Completed manual reviews reappear when no next job is available ([#1302](https://github.com/roostorg/coop/pull/1302) by [@sunilatlas](https://github.com/sunilatlas))
+- Investigation result table filters not applying ([#988](https://github.com/roostorg/coop/pull/988) by [@taobojlen](https://github.com/taobojlen))
+- Routing rule reordering can reorder another organization's rules ([#1318](https://github.com/roostorg/coop/pull/1318) by [@Joseph-Mutua](https://github.com/Joseph-Mutua))
+- Rule history dropping other rules' versions when filtered by start date ([#1056](https://github.com/roostorg/coop/pull/1056) by [@juanmrad](https://github.com/juanmrad))
+- `RetryFailedNcmecDecisionsJob` ignoring `NCMEC_ENV` and retrying test decisions ([#928](https://github.com/roostorg/coop/pull/928) by [@taobojlen](https://github.com/taobojlen))
+- Queue creation failing with "name already exists" on the default reviewer selection ([#1069](https://github.com/roostorg/coop/pull/1069) by [@jess-upscrolled](https://github.com/jess-upscrolled))
+- Job submission failing when an item has an unparseable `Created At` value ([#913](https://github.com/roostorg/coop/pull/913) by [@julietshen](https://github.com/julietshen))
+- "Something Went Wrong" when opening a job or queue with an unparseable `Created At` value ([#916](https://github.com/roostorg/coop/pull/916) by [@julietshen](https://github.com/julietshen))
+- "Skipped Jobs By Queue" grouping by reviewer instead of queue ([#1009](https://github.com/roostorg/coop/pull/1009) by [@taobojlen](https://github.com/taobojlen))
+- Strike analytics User column linking to the triggering item instead of the struck user ([#979](https://github.com/roostorg/coop/pull/979) by [@juanmrad](https://github.com/juanmrad))
+- Child policies in User Strikes showing the parent policy's score ([#992](https://github.com/roostorg/coop/pull/992) by [@taobojlen](https://github.com/taobojlen))
+- "Oldest Task Age" showing the newest job's age ([#909](https://github.com/roostorg/coop/pull/909) by [@dom-notion](https://github.com/dom-notion))
+- Sorting on the merged reports and users tables, and on enum columns ([#993](https://github.com/roostorg/coop/pull/993), [#995](https://github.com/roostorg/coop/pull/995), [#1003](https://github.com/roostorg/coop/pull/1003) by [@taobojlen](https://github.com/taobojlen))
+- Scylla healthcheck probing gossip instead of CQL readiness ([#1041](https://github.com/roostorg/coop/pull/1041) by [@reitblatt](https://github.com/reitblatt))
+- Podman Compose setup failing to resolve the backend ([#981](https://github.com/roostorg/coop/pull/981) by [@juanmrad](https://github.com/juanmrad))
+- DB Migrator rejecting non-standard Scylla ports ([#878](https://github.com/roostorg/coop/pull/878) by [@jess-upscrolled](https://github.com/jess-upscrolled))
+
+### Security
+
+- Prevent cross-organization item disclosure through Scylla item lookups ([#1315](https://github.com/roostorg/coop/pull/1315) by [@taobojlen](https://github.com/taobojlen))
+- Review queue and job access control hardening ([#1151](https://github.com/roostorg/coop/pull/1151) by [@serendipty01](https://github.com/serendipty01) and [@cassidyjames](https://github.com/cassidyjames))
+- Passwords are hashed with Argon2id instead of bcrypt at cost factor 5 ([#901](https://github.com/roostorg/coop/pull/901) by [@serendipty01](https://github.com/serendipty01))
+- Minimum password length raised to 15 and enforced server-side ([#1065](https://github.com/roostorg/coop/pull/1065), [#1094](https://github.com/roostorg/coop/pull/1094) by [@serendipty01](https://github.com/serendipty01))
+- Routine dependency package upgrades to address vulnerabilities
+
+## [1.1.0-alpha] - 2026-09-21
+
+### Added
+
+- REST configuration reads for policies, actions, and item types ([#1144](https://github.com/roostorg/coop/pull/1144) by [@taobojlen](https://github.com/taobojlen))
+- List parameters used in the action in the item action history view ([#1173](https://github.com/roostorg/coop/pull/1173) by [@maarkN](https://github.com/maarkN))
+- Manual Review Analytics with average handle time per moderator ([#1022](https://github.com/roostorg/coop/pull/1022) by [@juanmrad](https://github.com/juanmrad))
+- Support for text-only NCMEC reports ([#866](https://github.com/roostorg/coop/pull/866), [#881](https://github.com/roostorg/coop/pull/881) by [@calebmcquaid](https://github.com/calebmcquaid))
+- OpenAI `self-harm/intent` and `self-harm/instructions` signals for text and image ([#535](https://github.com/roostorg/coop/pull/535) by [@julietshen](https://github.com/julietshen))
+- Sepia filter for moderator wellness controls ([#62](https://github.com/roostorg/coop/pull/62) by [@serendipty01](https://github.com/serendipty01))
+
+### Changed
+
+- Scylla is now optional via `SCYLLA_ENABLED` ([#918](https://github.com/roostorg/coop/pull/918) by [@sunilatlas](https://github.com/sunilatlas), [#1268](https://github.com/roostorg/coop/pull/1268) by [@thisismissem](https://github.com/thisismissem))
+- Settings "Other" tab renamed to "Partial Items" and its settings relocated ([#965](https://github.com/roostorg/coop/pull/965) by [@golden-fox07](https://github.com/golden-fox07))
+- Queue deletion is refused while routing rules still reference the queue ([#808](https://github.com/roostorg/coop/pull/808) by [@reitblatt](https://github.com/reitblatt))
+- Long text fields in the review console collapse behind a "Read more" control ([#903](https://github.com/roostorg/coop/pull/903) by [@taobojlen](https://github.com/taobojlen))
+- Production Node images moved from Debian 11 (bullseye) to Debian 12 (bookworm) ([#1138](https://github.com/roostorg/coop/pull/1138) by [@juanmrad](https://github.com/juanmrad))
+
+### Removed
+
+- Unused `GRAPHQL_OPAQUE_SCALAR_SECRET` and `LAUNCHDARKLY_SECRET` environment variables ([#1246](https://github.com/roostorg/coop/pull/1246) by [@ThisIsMissEm](https://github.com/ThisIsMissEm))
+- Google Cloud Translation API, the `ENGLISH_TRANSLATION` derived field, and `GOOGLE_TRANSLATE_API_KEY` ([#1045](https://github.com/roostorg/coop/pull/1045) by [@julietshen](https://github.com/julietshen))
+- `IMAGE_SIMILARITY_SCORE` and `IMAGE_EXACT_MATCH` signal types ([#1043](https://github.com/roostorg/coop/pull/1043) by [@julietshen](https://github.com/julietshen))
 
 ### Fixed
 
 - Rule history dropping other rules' versions when filtered by start date ([#1056](https://github.com/roostorg/coop/pull/1056) by [@juanmrad](https://github.com/juanmrad))
 - `RetryFailedNcmecDecisionsJob` ignoring `NCMEC_ENV` and retrying test decisions ([#928](https://github.com/roostorg/coop/pull/928) by [@taobojlen](https://github.com/taobojlen))
-- Queue creation failing with "name already exists" on the default reviewer selection ([#1069](https://github.com/roostorg/coop/pull/1069) by [@jess-upscrolled](https://github.com/jess-upscrolled), closes [#1074](https://github.com/roostorg/coop/issues/1074))
+- Queue creation failing with "name already exists" on the default reviewer selection ([#1069](https://github.com/roostorg/coop/pull/1069) by [@jess-upscrolled](https://github.com/jess-upscrolled))
 - Job submission failing when an item has an unparseable `Created At` value ([#913](https://github.com/roostorg/coop/pull/913) by [@julietshen](https://github.com/julietshen))
 - "Something Went Wrong" when opening a job or queue with an unparseable `Created At` value ([#916](https://github.com/roostorg/coop/pull/916) by [@julietshen](https://github.com/julietshen))
 - "Skipped Jobs By Queue" grouping by reviewer instead of queue ([#1009](https://github.com/roostorg/coop/pull/1009) by [@taobojlen](https://github.com/taobojlen))
-- Strike analytics User column linking to the triggering item instead of the struck user ([#979](https://github.com/roostorg/coop/pull/979) by [@juanmrad](https://github.com/juanmrad), closes [#818](https://github.com/roostorg/coop/issues/818))
+- Strike analytics User column linking to the triggering item instead of the struck user ([#979](https://github.com/roostorg/coop/pull/979) by [@juanmrad](https://github.com/juanmrad))
 - Child policies in User Strikes showing the parent policy's score ([#992](https://github.com/roostorg/coop/pull/992) by [@taobojlen](https://github.com/taobojlen))
 - "Oldest Task Age" showing the newest job's age ([#909](https://github.com/roostorg/coop/pull/909) by [@dom-notion](https://github.com/dom-notion))
 - Sorting on the merged reports and users tables, and on enum columns ([#993](https://github.com/roostorg/coop/pull/993), [#995](https://github.com/roostorg/coop/pull/995), [#1003](https://github.com/roostorg/coop/pull/1003) by [@taobojlen](https://github.com/taobojlen))
@@ -62,7 +112,7 @@ For more information about each release including git tags and artifacts, see [R
 ### Security
 
 - Review queue and job access control hardening ([#1151](https://github.com/roostorg/coop/pull/1151) by [@serendipty01](https://github.com/serendipty01) and [@cassidyjames](https://github.com/cassidyjames))
-- Passwords are hashed with Argon2id instead of bcrypt at cost factor 5 ([#901](https://github.com/roostorg/coop/pull/901) by [@serendipty01](https://github.com/serendipty01), closes [#900](https://github.com/roostorg/coop/issues/900))
+- Passwords are hashed with Argon2id instead of bcrypt at cost factor 5 ([#901](https://github.com/roostorg/coop/pull/901) by [@serendipty01](https://github.com/serendipty01))
 - Minimum password length raised to 15 and enforced server-side ([#1065](https://github.com/roostorg/coop/pull/1065), [#1094](https://github.com/roostorg/coop/pull/1094) by [@serendipty01](https://github.com/serendipty01))
 
 ## [1.0.2] - 2026-06-30
@@ -139,7 +189,7 @@ This release addresses reported security advisories, improves NCMEC CyberTipline
 ### NCMEC
 
 - Minimum image count required before submitting an NCMEC report is now configurable (#710)
-- Policy selection and decision-reason requirements are skipped for NCMEC jobs, which don't meaningfully apply (#737, closes #736)
+- Policy selection and decision-reason requirements are skipped for NCMEC jobs, which don't meaningfully apply (#737)
 
 ### Integrations
 
@@ -153,7 +203,7 @@ This release addresses reported security advisories, improves NCMEC CyberTipline
 
 ### Removals
 
-- GDPR delete endpoint, database table, and related documentation removed; the endpoint was reconsidered and dropped rather than implemented (#728, closes #336)
+- GDPR delete endpoint, database table, and related documentation removed; the endpoint was reconsidered and dropped rather than implemented (#728)
 
 ### CI & infrastructure
 
@@ -328,7 +378,8 @@ We're developing Coop in the open and want to hear from you. Whether you're test
 
 This release was possible because of the efforts of contributors who worked through complex redesign, partners who believed in the vision of open source safety tools, and the broader trust and safety community who provided feedback and guidance. Thank you especially to @juanmrad, @pawiecz, @kbicevski, Sjoerd Simons, @emanueleaina, @dom-notion, @cassidyjames, @vinaysrao1, @wayjaywang, and @julietshen.
 
-[unreleased]: https://github.com/roostorg/coop/compare/1.1.0-alpha...HEAD
+[unreleased]: https://github.com/roostorg/coop/compare/1.1.0...HEAD
+[1.1.0]: https://github.com/roostorg/coop/compare/1.0.2...1.1.0
 [1.1.0-alpha]: https://github.com/roostorg/coop/compare/1.0.2...1.1.0-alpha
 [1.0.2]: https://github.com/roostorg/coop/compare/1.0.1...1.0.2
 [1.0.1]: https://github.com/roostorg/coop/compare/1.0.0...1.0.1
