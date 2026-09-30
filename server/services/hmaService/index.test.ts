@@ -2,7 +2,11 @@ import { vi, type Mock } from 'vitest';
 
 import { jsonParse } from '../../utils/encoding.js';
 import type { HashBank } from './dbTypes.js';
-import { HmaService, type ExchangeInfo } from './index.js';
+import {
+  ExchangeCredentialsMultiTenantError,
+  HmaService,
+  type ExchangeInfo,
+} from './index.js';
 
 const MOCK_BANK: HashBank = {
   id: 1,
@@ -21,6 +25,8 @@ function makeMockKyselyPg() {
     returningAll: vi.fn().mockReturnThis(),
     executeTakeFirstOrThrow: vi.fn().mockResolvedValue(MOCK_BANK),
     selectAll: vi.fn().mockReturnThis(),
+    select: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockReturnThis(),
     where: vi.fn().mockReturnThis(),
     executeTakeFirst: vi.fn().mockResolvedValue(MOCK_BANK),
     execute: vi.fn().mockResolvedValue([]),
@@ -35,8 +41,14 @@ function makeMockKyselyPg() {
   } as unknown as ConstructorParameters<typeof HmaService>[1];
 }
 
-function makeService(fetchHTTP: Mock) {
-  return new HmaService(fetchHTTP as never, makeMockKyselyPg());
+function makeService(fetchHTTP: Mock, orgCount = 1) {
+  const db = makeMockKyselyPg();
+  (
+    db as unknown as { _chain: { execute: Mock } }
+  )._chain.execute.mockResolvedValue(
+    Array.from({ length: orgCount }, (_, i) => ({ id: `org${i}` })),
+  );
+  return new HmaService(fetchHTTP as never, db);
 }
 
 function ok(body: unknown) {
@@ -144,6 +156,43 @@ describe('HmaService', () => {
     it('throws when HMA returns an error', async () => {
       const fetchHTTP = vi.fn().mockResolvedValue(fail(400));
       const svc = makeService(fetchHTTP);
+
+      await expect(
+        svc.setExchangeCredentials('ncmec', { user: 'u', password: 'p' }),
+      ).rejects.toThrow("Failed to set exchange credentials for 'ncmec'");
+    });
+  });
+
+  describe('setExchangeCredentials', () => {
+    it('sends credentials to the correct endpoint on a single-org instance', async () => {
+      const fetchHTTP = vi.fn().mockResolvedValue(created());
+      const svc = makeService(fetchHTTP, 1);
+
+      await svc.setExchangeCredentials('ncmec', { user: 'u', password: 'p' });
+
+      expect(fetchHTTP).toHaveBeenCalledTimes(1);
+      const call = fetchHTTP.mock.calls[0][0];
+      expect(call.url).toContain('/c/exchanges/api/ncmec');
+      expect(call.method).toBe('post');
+      expect(jsonParse(call.body).credential_json).toEqual({
+        user: 'u',
+        password: 'p',
+      });
+    });
+
+    it('refuses and never calls HMA when multiple orgs exist', async () => {
+      const fetchHTTP = vi.fn().mockResolvedValue(created());
+      const svc = makeService(fetchHTTP, 2);
+
+      await expect(
+        svc.setExchangeCredentials('ncmec', { user: 'u', password: 'p' }),
+      ).rejects.toBeInstanceOf(ExchangeCredentialsMultiTenantError);
+      expect(fetchHTTP).not.toHaveBeenCalled();
+    });
+
+    it('throws when HMA returns an error', async () => {
+      const fetchHTTP = vi.fn().mockResolvedValue(fail(400));
+      const svc = makeService(fetchHTTP, 1);
 
       await expect(
         svc.setExchangeCredentials('ncmec', { user: 'u', password: 'p' }),

@@ -8,6 +8,10 @@ For more information about each release including git tags and artifacts, see [R
 
 ## [Unreleased]
 
+### Security
+
+- Block hash-exchange credential updates when an instance hosts multiple organizations, preventing cross-organization overwrites (PR link pending)
+
 ## [1.1.0] - 2026-09-29
 
 ### Added

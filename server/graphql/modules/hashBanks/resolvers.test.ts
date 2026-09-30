@@ -1,7 +1,10 @@
 import { vi, type Mock } from 'vitest';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { HashBank } from '../../../services/hmaService/index.js';
+import {
+  ExchangeCredentialsMultiTenantError,
+  type HashBank,
+} from '../../../services/hmaService/index.js';
 import { resolvers } from './resolvers.js';
 
 const MOCK_BANK: HashBank = {
@@ -154,6 +157,22 @@ describe('hashBanks resolvers', () => {
       expect(
         ctx.services.HMAHashBankService.setExchangeCredentials,
       ).toHaveBeenCalledWith('ncmec', { user: 'u', password: 'p' });
+    });
+
+    it('rejects with FORBIDDEN when the instance is multi-tenant', async () => {
+      const ctx = makeContext({
+        setExchangeCredentials: vi
+          .fn()
+          .mockRejectedValue(new ExchangeCredentialsMultiTenantError()),
+      });
+
+      await expect(
+        (resolvers.Mutation as any).updateExchangeCredentials(
+          {},
+          { apiName: 'ncmec', credentialsJson: '{"user":"u"}' },
+          ctx,
+        ),
+      ).rejects.toMatchObject({ extensions: { code: 'FORBIDDEN' } });
     });
   });
 
