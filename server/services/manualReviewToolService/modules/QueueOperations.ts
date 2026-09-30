@@ -65,6 +65,7 @@ import {
   type OriginJobInfo,
   type StoredManualReviewJob,
 } from '../manualReviewToolService.js';
+import { type JobSortType } from './JobPriority.js';
 
 export type ManualReviewQueue = {
   id: string;
@@ -75,10 +76,15 @@ export type ManualReviewQueue = {
   isDefaultQueue: boolean;
   isAppealsQueue: boolean;
   autoCloseJobs: boolean;
+  jobSortType: JobSortType;
   // Null disposition disables "clear other reports for this user" (issue #650).
   clearReportsDisposition: ClearReportsDisposition | null;
   clearReportsScope: ClearReportsScope;
 };
+
+const OLDEST_JOB_PRIORITIZED_SCAN_LIMIT = 10_000;
+
+const MAX_RECOMPUTE_SNAPSHOT_PASSES = 10;
 
 const PgQueueSelection = [
   'id',
@@ -89,6 +95,7 @@ const PgQueueSelection = [
   'created_at as createdAt',
   'is_appeals_queue as isAppealsQueue',
   'auto_close_jobs as autoCloseJobs',
+  'job_sort_type as jobSortType',
   'clear_reports_disposition as clearReportsDisposition',
   'clear_reports_scope as clearReportsScope',
 ] as const;
@@ -251,6 +258,7 @@ export default class QueueOperations {
     invokedBy: Invoker;
     isAppealsQueue?: boolean;
     autoCloseJobs?: boolean;
+    jobSortType?: JobSortType;
     clearReportsDisposition?: ClearReportsDisposition | null;
     clearReportsScope?: ClearReportsScope;
     clearReportsTriggerActionIds?: readonly string[];
@@ -263,11 +271,16 @@ export default class QueueOperations {
       invokedBy,
       isAppealsQueue,
       autoCloseJobs,
+      jobSortType: requestedJobSortType = 'FIFO',
       clearReportsDisposition,
       clearReportsScope,
       clearReportsTriggerActionIds,
     } = input;
     const { orgId } = invokedBy;
+
+    // Appeal jobs are never enqueued with a priority, so appeals queues are
+    // always FIFO no matter what the caller asks for.
+    const jobSortType = isAppealsQueue ? 'FIFO' : requestedJobSortType;
 
     if (!invokedBy.permissions.includes(UserPermission.EDIT_MRT_QUEUES)) {
       throw makeUnauthorizedError(
@@ -306,6 +319,7 @@ export default class QueueOperations {
               description: replaceEmptyStringWithNull(description),
               is_appeals_queue: isAppealsQueue ?? false,
               auto_close_jobs: autoCloseJobs ?? false,
+              job_sort_type: jobSortType,
               clear_reports_disposition: clearReportsDisposition ?? null,
               clear_reports_scope: clearReportsScope ?? 'CURRENT_QUEUE',
             },
@@ -354,6 +368,7 @@ export default class QueueOperations {
     actionIdsToHide: readonly string[];
     actionIdsToUnhide: readonly string[];
     autoCloseJobs?: boolean;
+    jobSortType?: JobSortType;
     clearReportsDisposition?: ClearReportsDisposition | null;
     clearReportsScope?: ClearReportsScope;
     // When provided, replaces the queue's full set of trigger actions.
@@ -368,6 +383,7 @@ export default class QueueOperations {
       actionIdsToHide,
       actionIdsToUnhide,
       autoCloseJobs,
+      jobSortType,
       clearReportsDisposition,
       clearReportsScope,
       clearReportsTriggerActionIds,
@@ -392,6 +408,7 @@ export default class QueueOperations {
               name,
               description: replaceEmptyStringWithNull(description),
               auto_close_jobs: autoCloseJobs,
+              job_sort_type: jobSortType,
               // null disables the feature and must survive removeUndefinedKeys.
               clear_reports_disposition: clearReportsDisposition,
               clear_reports_scope: clearReportsScope,
@@ -674,6 +691,7 @@ export default class QueueOperations {
         'queues.created_at as createdAt',
         'queues.is_appeals_queue as isAppealsQueue',
         'queues.auto_close_jobs as autoCloseJobs',
+        'queues.job_sort_type as jobSortType',
         'queues.clear_reports_disposition as clearReportsDisposition',
         'queues.clear_reports_scope as clearReportsScope',
       ])
@@ -847,9 +865,16 @@ export default class QueueOperations {
       payload: ManualReviewJobPayload;
     };
     enqueueSourceInfo: ManualReviewJobEnqueueSourceInfo;
+    priority?: number;
   }) {
-    const { orgId, queueId, jobPayload, reenqueuedFrom, enqueueSourceInfo } =
-      opts;
+    const {
+      orgId,
+      queueId,
+      jobPayload,
+      reenqueuedFrom,
+      enqueueSourceInfo,
+      priority,
+    } = opts;
     const { payload, policyIds } = jobPayload;
 
     const queue = await this.#getBullQueue(orgId, queueId);
@@ -872,7 +897,11 @@ export default class QueueOperations {
         reenqueuedFrom,
         enqueueSourceInfo,
       },
-      { removeOnComplete: true, jobId: bullJobId },
+      {
+        removeOnComplete: true,
+        jobId: bullJobId,
+        ...(priority != null && { priority }),
+      },
     );
 
     this.meter?.recordManualReviewEvent('enqueue_call_succeeded', {
@@ -1044,9 +1073,168 @@ export default class QueueOperations {
   }
 
   /**
-   * Yields every undecided job on a queue (waiting, delayed, or active) for
-   * bounded admin sweeps such as reporter invalidation. Includes `active`
-   * jobs so sweeps can update what a reviewer currently has dequeued;
+   * Sets a job's BullMQ priority without touching its data, so it can't
+   * clobber a concurrent payload merge. Returns false if the job is gone.
+   *
+   * Safe in any job state: BullMQ only re-inserts jobs that are in `wait` or
+   * `prioritized`. For active and delayed jobs it just records the priority
+   * on the job, and BullMQ applies it when the job returns to the queue
+   * (e.g. after `releaseJobLock` moves it to delayed).
+   */
+  async setJobPriority(opts: {
+    orgId: string;
+    queueId: string;
+    jobId: JobId;
+    priority: number;
+  }): Promise<boolean> {
+    const { orgId, queueId, jobId, priority } = opts;
+    const queue = await this.#getBullQueue(orgId, queueId);
+    const { bullId } = parseExternalId(jobId);
+    const job = await queue.getJob(bullId);
+    if (!job || job.data.id !== jobId) {
+      return false;
+    }
+    // changePriority re-inserts the job even when the value is unchanged,
+    // which sends it to the back of its priority tier (or of `wait`).
+    if (job.priority === priority) {
+      return true;
+    }
+    await job.changePriority({ priority });
+    return true;
+  }
+
+  /**
+   * Gives every pending job on a queue a fresh priority, e.g. after the
+   * queue's sort mode changes.
+   *
+   * Works in two phases. Changing a job's priority reorders the same list
+   * we'd be paging through, which can skip jobs or process them twice — so
+   * first collect every job's (id, createdAt, itemId) into a snapshot (tiny
+   * tuples, cheap to hold even for huge queues), then walk the snapshot and
+   * update each job by id.
+   *
+   * `getPriorities` receives every pending item id at once and returns a
+   * priority per item id. Resolving priorities in bulk keeps a re-sort to a
+   * single data warehouse query instead of one per job.
+   *
+   * The snapshot is walked oldest-first. Jobs given equal priority dequeue
+   * in the order we updated them, not the order they originally arrived —
+   * so updating oldest-first is what keeps FIFO order intact.
+   *
+   * The update phase re-fetches each job by id. That's a second Redis
+   * round-trip per job, but BullMQ's `changePriority` is a method on `Job`,
+   * so the only way to avoid it is to hold every job's full payload in memory
+   * for the whole sweep — worse for exactly the large queues this batching
+   * protects.
+   *
+   * `shouldContinue` is checked before each write so a caller that has lost
+   * its lock can stop without overwriting a newer sweep's priorities.
+   */
+  async recomputePrioritiesForQueue(opts: {
+    orgId: string;
+    queueId: string;
+    getPriorities: (
+      itemIds: readonly string[],
+    ) => Promise<ReadonlyMap<string, number>>;
+    shouldContinue?: () => boolean;
+  }): Promise<{ aborted: boolean; snapshotStable: boolean }> {
+    const { orgId, queueId, getPriorities, shouldContinue = () => true } = opts;
+    const queue = await this.#getBullQueue(orgId, queueId);
+    const batchSize = 200;
+
+    const pending: Array<{
+      bullId: string;
+      enqueuedAtMs: number;
+      dataCreatedAtMs: number;
+      itemId: string;
+    }> = [];
+    const seen = new Set<string>();
+    // Offset paging while reviewers dequeue can skip jobs, because removing
+    // a job shifts every later job to a lower offset. Repeat full passes
+    // (the seen-set dedupes) until one finds nothing new.
+    let snapshotStable = false;
+    for (let pass = 0; pass < MAX_RECOMPUTE_SNAPSHOT_PASSES; pass++) {
+      if (!shouldContinue()) {
+        return { aborted: true, snapshotStable };
+      }
+      const seenBeforePass = seen.size;
+      let start = 0;
+      while (true) {
+        // Priority-enqueued jobs live in BullMQ's 'prioritized' state, not
+        // 'waiting'.
+        const jobs = await queue.getJobs(
+          ['waiting', 'prioritized', 'delayed', 'active'],
+          start,
+          start + batchSize - 1,
+        );
+        if (jobs.length === 0) break;
+        for (const job of jobs) {
+          if (job.id == null || seen.has(job.id)) continue;
+          const bullId = job.id;
+          seen.add(bullId);
+          const item = (job.data as ManualReviewJob).payload.item;
+          // Legacy jobs use `id` instead of `itemId`.
+          const itemWithLegacyId = item as { itemId?: string; id?: string };
+          const itemId = itemWithLegacyId.itemId ?? itemWithLegacyId.id;
+          if (itemId == null) continue;
+          // Bull-managed arrival order is the FIFO tie-break key. It only has
+          // millisecond resolution, so jobs enqueued in the same millisecond
+          // fall back to the job's own createdAt.
+          const toSortableMs = (ms: number) =>
+            Number.isFinite(ms) ? ms : Number.MAX_SAFE_INTEGER;
+          const dataCreatedAtMs = toSortableMs(
+            new Date(job.data.createdAt).getTime(),
+          );
+          pending.push({
+            bullId,
+            enqueuedAtMs:
+              typeof job.timestamp === 'number'
+                ? toSortableMs(job.timestamp)
+                : dataCreatedAtMs,
+            dataCreatedAtMs,
+            itemId,
+          });
+        }
+        if (jobs.length < batchSize) break;
+        start += batchSize;
+      }
+      if (seen.size === seenBeforePass) {
+        snapshotStable = true;
+        break;
+      }
+    }
+
+    pending.sort(
+      (a, b) =>
+        a.enqueuedAtMs - b.enqueuedAtMs ||
+        a.dataCreatedAtMs - b.dataCreatedAtMs,
+    );
+
+    const priorities = await getPriorities(pending.map((it) => it.itemId));
+
+    for (const { bullId, itemId } of pending) {
+      if (!shouldContinue()) {
+        return { aborted: true, snapshotStable };
+      }
+      const priority = priorities.get(itemId);
+      // No priority resolved for this item — leave the job's current one
+      // alone rather than guessing.
+      if (priority == null) continue;
+      const bullJob = await queue.getJob(bullId);
+      // Dequeued or removed since the snapshot — nothing to re-stamp.
+      if (!bullJob) continue;
+      // Active and delayed jobs are stamped too: BullMQ records the priority
+      // on the job without re-inserting it, and applies it when the job
+      // returns to the queue (e.g. a reviewer skips it).
+      await bullJob.changePriority({ priority });
+    }
+    return { aborted: false, snapshotStable };
+  }
+
+  /**
+   * Yields every undecided job on a queue (waiting, prioritized, delayed, or
+   * active) for bounded admin sweeps such as reporter invalidation. Includes
+   * `active` jobs so sweeps can update what a reviewer currently has dequeued;
    * excludes terminal states (completed/failed). `maxJobs` caps a single
    * sweep so it can't pin Redis indefinitely.
    *
@@ -1074,7 +1262,7 @@ export default class QueueOperations {
     while (snapshotIds.length < maxJobs) {
       const end = start + batchSize - 1;
       const legacyJobs = await queue.getJobs(
-        ['waiting', 'delayed', 'active'],
+        ['waiting', 'prioritized', 'delayed', 'active'],
         start,
         end,
       );
@@ -1085,7 +1273,7 @@ export default class QueueOperations {
         if (snapshotIds.length >= maxJobs) {
           break;
         }
-        const id = legacy?.data?.id;
+        const id = legacy.data?.id;
         if (id != null) {
           snapshotIds.push(id);
         }
@@ -1283,20 +1471,15 @@ export default class QueueOperations {
     await this.checkQueueExists(orgId, queueId);
     const worker = await this.getBullAppealWorker({ orgId, queueId });
 
-    let hasDecision = true;
-    while (hasDecision) {
+    while (true) {
       const job = await worker.getNextJob(lockToken);
 
       if (!job) {
         return null;
       }
 
-      // There is a race condition due to the locking mechanism where a job can
-      // be decided on but not dequeued, so we check here if the first job in the
-      // queue has a decision, and if so use the lock token to immediately
-      // remove it, then grab a new job and return to the caller. it is very
-      // unlikely that there are multiple jobs like this at the front of the
-      // queue, but not impossible.
+      // Race condition: a job can be decided but not yet dequeued.
+      // If the front job already has a decision, remove it and grab the next.
       const decision = await this.pgQueryReadReplica
         .selectFrom('manual_review_tool.manual_review_decisions')
         .where('created_at', '>=', new Date('2023-10-01'))
@@ -1304,23 +1487,17 @@ export default class QueueOperations {
         .where('id', '=', jobIdToGuid(job.data.id))
         .executeTakeFirst();
 
-      hasDecision = decision !== undefined;
-
-      if (hasDecision) {
-        await this.removeJob({
-          orgId,
-          queueId,
-          lockToken,
-          jobId: job.data.id,
-        }).catch(() => {});
-        // then continue while loop
-      } else {
-        // this is the most likely case, where there is a job
-        // and it has never been decided before
+      if (decision === undefined) {
         return { job: job.data, lockToken };
       }
+
+      await this.removeJob({
+        orgId,
+        queueId,
+        lockToken,
+        jobId: job.data.id,
+      }).catch(() => {});
     }
-    return null;
   }
 
   async dequeueNextJobWithLock(opts: {
@@ -1336,8 +1513,7 @@ export default class QueueOperations {
     await this.checkQueueExists(orgId, queueId);
     const worker = await this.getBullWorker({ orgId, queueId });
 
-    let hasDecision = true;
-    while (hasDecision) {
+    while (true) {
       const job = await worker.getNextJob(lockToken);
 
       if (!job) {
@@ -1346,37 +1522,27 @@ export default class QueueOperations {
 
       const convertedJob = await this.legacyJobToJob(job, orgId);
 
-      // There is a race condition due to the locking mechanism where a job can
-      // be decided on but not dequeued, so we check here if the first job in the
-      // queue has a decision, and if so use the lock token to immediately
-      // remove it, then grab a new job and return to the caller. it is very
-      // unlikely that there are multiple jobs like this at the front of the
-      // queue, but not impossible.
+      // Race condition: a job can be decided but not yet dequeued.
+      // If the front job already has a decision, remove it and grab the next.
       const decision = await this.pgQueryReadReplica
         .selectFrom('manual_review_tool.manual_review_decisions')
-        .select(['decision_components']) // not really necessary to return anything
+        .select(['decision_components'])
         .where('created_at', '>=', new Date('2023-10-01'))
         .where('org_id', '=', orgId)
         .where('id', '=', jobIdToGuid(convertedJob.data.id))
         .executeTakeFirst();
 
-      hasDecision = decision !== undefined;
-
-      if (hasDecision) {
-        await this.removeJob({
-          orgId,
-          queueId,
-          lockToken,
-          jobId: convertedJob.data.id,
-        }).catch(() => {});
-        // then continue while loop
-      } else {
-        // this is the most likely case, where there is a job
-        // and it has never been decided before
+      if (decision === undefined) {
         return { job: convertedJob.data, lockToken };
       }
+
+      await this.removeJob({
+        orgId,
+        queueId,
+        lockToken,
+        jobId: convertedJob.data.id,
+      }).catch(() => {});
     }
-    return null;
   }
 
   /**
@@ -1699,31 +1865,38 @@ export default class QueueOperations {
       ? await this.#getBullAppealQueue(orgId, queueId)
       : await this.#getBullQueue(orgId, queueId);
 
-    // Get the first waiting job and first delayed job. getWaiting/getDelayed
-    // return jobs oldest-first, so we only need to compare the first job from
-    // each state to find the oldest overall. NB: the equivalent
-    // queue.getJobs([state], 0, 0) defaults to descending order and would
-    // return the *newest* job instead.
-    const [waitingJobs, delayedJobs] = await Promise.all([
-      queue.getWaiting(0, 0),
-      queue.getDelayed(0, 0),
-    ]);
-
-    // If no jobs exist in either state, return null
-    if (waitingJobs.length === 0 && delayedJobs.length === 0) {
+    // `prioritized` is ordered by priority, not age, so finding its oldest
+    // job means scanning all of it. Past the cap, report "unknown" rather
+    // than an age computed from a partial scan.
+    if (
+      (await queue.getPrioritizedCount()) > OLDEST_JOB_PRIORITIZED_SCAN_LIMIT
+    ) {
       return null;
     }
 
-    // If only one type exists, return it
-    if (waitingJobs.length === 0) return delayedJobs[0].data.createdAt;
-    if (delayedJobs.length === 0) return waitingJobs[0].data.createdAt;
+    // getWaiting/getDelayed return oldest-first, so their first entry is the
+    // oldest.
+    const [waitingJobs, delayedJobs, prioritizedJobs] = await Promise.all([
+      queue.getWaiting(0, 0),
+      queue.getDelayed(0, 0),
+      queue.getPrioritized(0, OLDEST_JOB_PRIORITIZED_SCAN_LIMIT - 1),
+    ]);
 
-    // Both exist, return the older one
-    const waitingTime = new Date(waitingJobs[0].data.createdAt).getTime();
-    const delayedTime = new Date(delayedJobs[0].data.createdAt).getTime();
-    return waitingTime < delayedTime
-      ? waitingJobs[0].data.createdAt
-      : delayedJobs[0].data.createdAt;
+    const createdAts = [
+      ...waitingJobs.slice(0, 1),
+      ...delayedJobs.slice(0, 1),
+      ...prioritizedJobs,
+    ].map((job) => job.data.createdAt);
+
+    if (createdAts.length === 0) {
+      return null;
+    }
+
+    return createdAts.reduce((oldest, createdAt) =>
+      new Date(createdAt).getTime() < new Date(oldest).getTime()
+        ? createdAt
+        : oldest,
+    );
   }
 
   async close() {

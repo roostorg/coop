@@ -16,6 +16,7 @@ import FormHeader from '../components/FormHeader';
 import NameDescriptionInput from '../components/NameDescriptionInput';
 
 import {
+  GQLJobSortType,
   GQLMrtClearReportsDisposition,
   GQLMrtClearReportsScope,
   namedOperations,
@@ -79,6 +80,7 @@ gql`
         hiddenActionIds
         isAppealsQueue
         autoCloseJobs
+        jobSortType
         clearReportsDisposition
         clearReportsScope
         clearReportsTriggerActionIds
@@ -151,6 +153,7 @@ export default function ManualReviewQueueForm() {
   );
   const [hiddenActionIds, setHiddenActionIds] = useState<string[]>([]);
   const [autoCloseJobs, setAutoCloseJobs] = useState<boolean>(false);
+  const [jobSortType, setJobSortType] = useState<GQLJobSortType>('FIFO');
   const [isAppealsQueue, setIsAppealsQueue] = useState<boolean>(false);
   const [clearReportsDisposition, setClearReportsDisposition] =
     useState<GQLMrtClearReportsDisposition | null>(null);
@@ -310,6 +313,7 @@ export default function ManualReviewQueueForm() {
     setQueueDescription(queue.description ?? undefined);
     setHiddenActionIds([...queue.hiddenActionIds]);
     setAutoCloseJobs(queue.autoCloseJobs);
+    setJobSortType(queue.jobSortType);
     setIsAppealsQueue(queue.isAppealsQueue);
     setClearReportsDisposition(queue.clearReportsDisposition ?? null);
     setClearReportsScope(
@@ -345,6 +349,7 @@ export default function ManualReviewQueueForm() {
             hiddenActionIds,
             isAppealsQueue,
             autoCloseJobs,
+            jobSortType,
             clearReportsDisposition,
             clearReportsScope,
             clearReportsTriggerActionIds:
@@ -356,6 +361,7 @@ export default function ManualReviewQueueForm() {
       }),
     [
       autoCloseJobs,
+      jobSortType,
       clearReportsDisposition,
       clearReportsScope,
       clearReportsTriggerActionIds,
@@ -388,6 +394,7 @@ export default function ManualReviewQueueForm() {
               hiddenActionIds,
             ),
             autoCloseJobs,
+            jobSortType,
             clearReportsDisposition,
             clearReportsScope,
             clearReportsTriggerActionIds:
@@ -399,6 +406,7 @@ export default function ManualReviewQueueForm() {
       }),
     [
       autoCloseJobs,
+      jobSortType,
       clearReportsDisposition,
       clearReportsScope,
       clearReportsTriggerActionIds,
@@ -645,6 +653,31 @@ export default function ManualReviewQueueForm() {
           </div>
         </div>
       ) : null}
+      {/* Appeals queues are always FIFO: appeal jobs aren't enqueued with a
+       * priority, so offering a sort mode here would save a setting that has
+       * no effect. */}
+      {isAppealsQueue ? null : (
+        <div className="mt-8">
+          <div className="font-semibold">Job Sort Order</div>
+          <div className="mb-2 text-slate-500">
+            Controls how jobs in this queue are ordered for reviewers.
+          </div>
+          <Select
+            className="self-start !min-w-[160px]"
+            value={jobSortType}
+            onChange={setJobSortType}
+          >
+            <Option value="FIFO">First in, first out</Option>
+            <Option value="NUM_REPORTS">Most reported first</Option>
+          </Select>
+          <div className="mt-2 text-sm text-slate-400">
+            {jobSortType === 'FIFO' &&
+              'Jobs are reviewed in the order they were received.'}
+            {jobSortType === 'NUM_REPORTS' &&
+              'Jobs with more user reports are surfaced to reviewers first.'}
+          </div>
+        </div>
+      )}
       {divider()}
       <div className="self-start">
         <CoopButton

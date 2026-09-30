@@ -790,6 +790,7 @@ export type GQLCreateManualReviewQueueInput = {
   readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly hiddenActionIds: ReadonlyArray<Scalars['ID']['input']>;
   readonly isAppealsQueue: Scalars['Boolean']['input'];
+  readonly jobSortType?: InputMaybe<GQLJobSortType>;
   readonly name: Scalars['String']['input'];
   readonly userIds: ReadonlyArray<Scalars['ID']['input']>;
 };
@@ -1786,6 +1787,13 @@ export type GQLJobHasAlreadyBeenSubmittedError = GQLError & {
   readonly type: ReadonlyArray<Scalars['String']['output']>;
 };
 
+export const GQLJobSortType = {
+  Fifo: 'FIFO',
+  NumReports: 'NUM_REPORTS',
+} as const;
+
+export type GQLJobSortType =
+  (typeof GQLJobSortType)[keyof typeof GQLJobSortType];
 export const GQLLanguage = {
   Abkhazian: 'ABKHAZIAN',
   Afar: 'AFAR',
@@ -2253,6 +2261,7 @@ export type GQLManualReviewQueue = {
   readonly id: Scalars['ID']['output'];
   readonly isAppealsQueue: Scalars['Boolean']['output'];
   readonly isDefaultQueue: Scalars['Boolean']['output'];
+  readonly jobSortType: GQLJobSortType;
   readonly jobs: ReadonlyArray<GQLManualReviewJob>;
   readonly name: Scalars['String']['output'];
   readonly oldestJobCreatedAt?: Maybe<Scalars['DateTime']['output']>;
@@ -4852,6 +4861,7 @@ export type GQLUpdateManualReviewQueueInput = {
   >;
   readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly id: Scalars['ID']['input'];
+  readonly jobSortType?: InputMaybe<GQLJobSortType>;
   readonly name?: InputMaybe<Scalars['String']['input']>;
   readonly userIds: ReadonlyArray<Scalars['ID']['input']>;
 };
@@ -9968,6 +9978,7 @@ export type GQLManualReviewQueueQuery = {
     readonly hiddenActionIds: ReadonlyArray<string>;
     readonly isAppealsQueue: boolean;
     readonly autoCloseJobs: boolean;
+    readonly jobSortType: GQLJobSortType;
     readonly clearReportsDisposition?: GQLMrtClearReportsDisposition | null;
     readonly clearReportsScope: GQLMrtClearReportsScope;
     readonly clearReportsTriggerActionIds: ReadonlyArray<string>;
@@ -10058,11 +10069,13 @@ export type GQLManualReviewQueueJobsPreviewQuery = {
       readonly name: string;
       readonly description?: string | null;
       readonly pendingJobCount: number;
+      readonly jobSortType: GQLJobSortType;
       readonly jobs: ReadonlyArray<{
         readonly __typename: 'ManualReviewJob';
         readonly id: string;
         readonly createdAt: Date | string;
         readonly policyIds: ReadonlyArray<string>;
+        readonly numTimesReported?: number | null;
         readonly payload:
           | {
               readonly __typename: 'ContentAppealManualReviewJobPayload';
@@ -10580,6 +10593,7 @@ export type GQLManualReviewQueuesQuery = {
       readonly oldestJobCreatedAt?: Date | string | null;
       readonly isDefaultQueue: boolean;
       readonly isAppealsQueue: boolean;
+      readonly jobSortType: GQLJobSortType;
     }>;
   } | null;
 };
@@ -33058,6 +33072,7 @@ export const GQLManualReviewQueueDocument = gql`
         hiddenActionIds
         isAppealsQueue
         autoCloseJobs
+        jobSortType
         clearReportsDisposition
         clearReportsScope
         clearReportsTriggerActionIds
@@ -33310,10 +33325,12 @@ export const GQLManualReviewQueueJobsPreviewDocument = gql`
         name
         description
         pendingJobCount
+        jobSortType
         jobs {
           id
           createdAt
           policyIds
+          numTimesReported
           payload {
             ... on ContentManualReviewJobPayload {
               item {
@@ -33483,6 +33500,7 @@ export const GQLManualReviewQueuesDocument = gql`
         oldestJobCreatedAt
         isDefaultQueue
         isAppealsQueue
+        jobSortType
       }
     }
   }

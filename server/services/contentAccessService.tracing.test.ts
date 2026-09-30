@@ -49,7 +49,7 @@ it.each(['authorize', 'record'] as const)(
           }),
         }),
       );
-      const attributes = start.mock.calls[0][1].attributes as Record<
+      const attributes = start.mock.calls[0][1]?.attributes as Record<
         string,
         unknown
       >;
