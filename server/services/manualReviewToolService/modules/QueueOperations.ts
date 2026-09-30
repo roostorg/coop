@@ -175,7 +175,7 @@ export default class QueueOperations {
     private readonly pgQuery: Kysely<ManualReviewToolServicePg>,
     private readonly pgQueryReadReplica: Kysely<ManualReviewToolServicePg>,
     private readonly moderationConfigService: Dependencies['ModerationConfigService'],
-    redis: RedisConnection,
+    private readonly redis: RedisConnection,
     private readonly tracer: Dependencies['Tracer'],
     private readonly meter?: Dependencies['Meter'],
   ) {
@@ -1472,7 +1472,9 @@ export default class QueueOperations {
     const worker = await this.getBullAppealWorker({ orgId, queueId });
 
     while (true) {
-      const job = await worker.getNextJob(lockToken);
+      // block: false so a drained queue returns null immediately instead of
+      // long-polling and hanging the reviewer's request.
+      const job = await worker.getNextJob(lockToken, { block: false });
 
       if (!job) {
         return null;
@@ -1496,7 +1498,9 @@ export default class QueueOperations {
         queueId,
         lockToken,
         jobId: job.data.id,
-      }).catch(() => {});
+      }).catch((error: unknown) => {
+        this.tracer.logActiveSpanFailedIfAny(error);
+      });
     }
   }
 
@@ -1513,36 +1517,116 @@ export default class QueueOperations {
     await this.checkQueueExists(orgId, queueId);
     const worker = await this.getBullWorker({ orgId, queueId });
 
-    while (true) {
-      const job = await worker.getNextJob(lockToken);
+    // Jobs this reviewer skipped within the skip window (the lock token is
+    // the reviewer's userId). The scan steps past them by keeping them locked
+    // until it finishes, then releases them in `finally` so they return to
+    // the shared pool — a skip is per-reviewer, not global.
+    const reviewerSkips = await this.getActiveReviewerSkips({
+      orgId,
+      queueId,
+      reviewerId: lockToken,
+    });
+    const heldAside: Job<StoredManualReviewJob>[] = [];
 
-      if (!job) {
-        return null;
+    try {
+      while (true) {
+        const job = await worker.getNextJob(lockToken, { block: false });
+
+        if (!job) {
+          return null;
+        }
+        if (reviewerSkips.has(job.data.id)) {
+          heldAside.push(job);
+          continue;
+        }
+
+        const convertedJob = await this.legacyJobToJob(job, orgId);
+
+        // Race condition: a job can be decided but not yet dequeued.
+        // If the front job already has a decision, remove it and grab the next.
+        const decision = await this.pgQueryReadReplica
+          .selectFrom('manual_review_tool.manual_review_decisions')
+          .select(['decision_components'])
+          .where('created_at', '>=', new Date('2023-10-01'))
+          .where('org_id', '=', orgId)
+          .where('id', '=', jobIdToGuid(convertedJob.data.id))
+          .executeTakeFirst();
+
+        if (decision === undefined) {
+          return { job: convertedJob.data, lockToken };
+        }
+
+        await this.removeJob({
+          orgId,
+          queueId,
+          lockToken,
+          jobId: convertedJob.data.id,
+        }).catch((error: unknown) => {
+          this.tracer.logActiveSpanFailedIfAny(error);
+        });
       }
-
-      const convertedJob = await this.legacyJobToJob(job, orgId);
-
-      // Race condition: a job can be decided but not yet dequeued.
-      // If the front job already has a decision, remove it and grab the next.
-      const decision = await this.pgQueryReadReplica
-        .selectFrom('manual_review_tool.manual_review_decisions')
-        .select(['decision_components'])
-        .where('created_at', '>=', new Date('2023-10-01'))
-        .where('org_id', '=', orgId)
-        .where('id', '=', jobIdToGuid(convertedJob.data.id))
-        .executeTakeFirst();
-
-      if (decision === undefined) {
-        return { job: convertedJob.data, lockToken };
+    } finally {
+      // Release the held-aside jobs so other reviewers can pick them up
+      // immediately. This reviewer stays excluded via the skip set.
+      for (const held of heldAside) {
+        await this.releaseJobLock({
+          orgId,
+          queueId,
+          jobId: held.data.id,
+          lockToken,
+        });
       }
-
-      await this.removeJob({
-        orgId,
-        queueId,
-        lockToken,
-        jobId: convertedJob.data.id,
-      }).catch(() => {});
     }
+  }
+
+  static readonly REVIEWER_SKIP_TTL_MS = 30 * 60 * 1000;
+
+  #reviewerSkipKey(orgId: string, queueId: string, reviewerId: string): string {
+    return `{${orgId}}:mrt-reviewer-skips:${queueId}:${reviewerId}`;
+  }
+
+  /**
+   * Hides a job from one reviewer for the skip window and hands it straight
+   * back to everyone else.
+   *
+   * Releasing the lock is part of skipping, not a separate step callers have to
+   * remember — there is no case for recording a skip while still holding the
+   * job. `releaseJobLock` is a no-op when no lock is held, so this is safe even
+   * when the caller never took one.
+   */
+  async recordReviewerSkip(opts: {
+    orgId: string;
+    queueId: string;
+    reviewerId: string;
+    jobId: string;
+  }): Promise<void> {
+    const { orgId, queueId, reviewerId, jobId } = opts;
+    const key = this.#reviewerSkipKey(orgId, queueId, reviewerId);
+    const expiresAt = Date.now() + QueueOperations.REVIEWER_SKIP_TTL_MS;
+    await this.redis.zadd(key, expiresAt, jobId);
+    // Backstop: the whole set disappears once everything in it has expired.
+    await this.redis.pexpire(key, QueueOperations.REVIEWER_SKIP_TTL_MS);
+
+    // The lock token is the reviewer's own id.
+    await this.releaseJobLock({
+      orgId,
+      queueId,
+      jobId: instantiateOpaqueType<JobId>(jobId),
+      lockToken: reviewerId,
+    });
+  }
+
+  async getActiveReviewerSkips(opts: {
+    orgId: string;
+    queueId: string;
+    reviewerId: string;
+  }): Promise<Set<string>> {
+    const { orgId, queueId, reviewerId } = opts;
+    const key = this.#reviewerSkipKey(orgId, queueId, reviewerId);
+    // Drop expired entries, then read what's still active.
+    await this.redis.zremrangebyscore(key, 0, Date.now());
+    const ids = await this.redis.zrange(key, 0, -1);
+    return new Set(ids);
   }
 
   /**
@@ -1819,9 +1903,7 @@ export default class QueueOperations {
       // The token parameter ensures only the holder of the lock can release it
       await job.moveToDelayed(Date.now(), lockToken);
     } catch (error: unknown) {
-      // If the lock has already expired or the job is in a different state,
-      // we can safely ignore the error as the job is already released
-      // or will be handled by the stalled job checker
+      this.tracer.logActiveSpanFailedIfAny(error);
     }
   }
 
@@ -2154,9 +2236,13 @@ export async function getBullWorker<JobData = unknown>(
   await worker.startStalledCheckTimer();
 
   // Cast worker to a version of its original type, but fixed to correctly
-  // indicate that getNextJob() can return undefined
+  // indicate that getNextJob() can return undefined and accepts a `block`
+  // option (false = return immediately instead of long-polling).
   return worker as unknown as Omit<Worker<JobData>, 'getNextJob'> & {
-    getNextJob: (lockToken: string) => Promise<Job<JobData> | undefined>;
+    getNextJob: (
+      lockToken: string,
+      opts?: { block?: boolean },
+    ) => Promise<Job<JobData> | undefined>;
   };
 }
 

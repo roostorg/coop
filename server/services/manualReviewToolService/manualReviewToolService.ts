@@ -404,7 +404,7 @@ export class ManualReviewToolService {
     this.jobRendering = new JobRendering(pgQuery);
     this.decisionAnalytics = new DecisionAnalytics(pgQueryReadReplica);
     this.commentOps = new CommentOperations(pgQuery);
-    this.skipOps = new SkipOperations(pgQuery, meter);
+    this.skipOps = new SkipOperations(pgQuery, this.queueOps, meter);
     this.reporterInvalidation = new ReporterInvalidation(
       this.queueOps,
       this.tracer,
