@@ -364,6 +364,8 @@ export default function ManualReviewQueuesDashboard() {
     }
   };
   const hasAppealsEnabled = data?.myOrg?.hasAppealsEnabled ?? false;
+  const hasPendingAppeals =
+    queues?.some((it) => it.isAppealsQueue && it.pendingJobCount > 0) ?? false;
   const tabs = MRTQueuesDashboardTabs.filter((x) => {
     if (hasAppealsEnabled) {
       return x;
@@ -373,6 +375,14 @@ export default function ManualReviewQueuesDashboard() {
   }).map((value) => ({
     label: labelForTab(value),
     value,
+    icon:
+      value === 'APPEALS' && hasPendingAppeals ? (
+        <span
+          role="img"
+          aria-label="Pending appeals"
+          className="w-2 h-2 rounded-full bg-red-500"
+        />
+      ) : undefined,
   }));
   const tabBar = (
     <TabBar
