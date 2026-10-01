@@ -8,6 +8,10 @@ For more information about each release including git tags and artifacts, see [R
 
 ## [Unreleased]
 
+### Fixed
+
+- Zentropi Labeler signal failing on every request; each configured labeler now needs a labeler ID ([#TODO](https://github.com/roostorg/coop/pull/TODO) by [@cassidyjames](https://github.com/cassidyjames))
+
 ## [1.1.1] - 2026-10-01
 
 ### Security

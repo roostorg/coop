@@ -20,6 +20,7 @@ export async function getZentropiScores(
   params: {
     text: string;
     apiKey: string;
+    labelerId: string;
     labelerVersionId: string;
   },
 ): Promise<ZentropiResponse> {
@@ -32,6 +33,7 @@ export async function getZentropiScores(
     },
     body: jsonStringify({
       content_text: params.text,
+      labeler_id: params.labelerId,
       labeler_version_id: params.labelerVersionId,
     }),
     handleResponseBody: 'as-json',
@@ -39,13 +41,15 @@ export async function getZentropiScores(
   });
 
   if (!response.ok) {
-    if (response.status === 404 || response.status === 401) {
+    const permanentErrorReasons: Partial<Record<number, string>> = {
+      401: 'invalid API key',
+      404: 'labeler or version not found',
+      422: 'request rejected; check the labeler ID and version ID',
+    };
+    const reason = permanentErrorReasons[response.status];
+    if (reason !== undefined) {
       throw makeSignalPermanentError(
-        `Zentropi API error: ${response.status}${
-          response.status === 404
-            ? ' (invalid labeler_version_id)'
-            : ' (invalid API key)'
-        }`,
+        `Zentropi API error: ${response.status} (${reason})`,
         { shouldErrorSpan: true },
       );
     }
@@ -65,20 +69,44 @@ export async function runZentropiLabelerImpl(
   const credential = await getZentropiCredentials(orgId);
 
   if (!credential?.apiKey) {
-    throw new Error('Missing Zentropi API credentials');
+    throw makeSignalPermanentError('Missing Zentropi API credentials', {
+      shouldErrorSpan: true,
+    });
   }
 
   if (!subcategory) {
-    throw new Error(
-      'Missing labeler_version_id in subcategory. ' +
-        'Specify a Zentropi labeler_version_id in the condition subcategory field.',
+    throw makeSignalPermanentError(
+      'Missing Zentropi labeler in condition subcategory',
+      { shouldErrorSpan: true },
+    );
+  }
+
+  // The subcategory is the version ID of an entry in the org's saved config.
+  const labeler = credential.labelerVersions?.find(
+    (it) => it.id === subcategory,
+  );
+
+  if (!labeler) {
+    throw makeSignalPermanentError(
+      `Zentropi labeler version ${subcategory} is not configured; ` +
+        'add it in the Zentropi integration settings',
+      { shouldErrorSpan: true },
+    );
+  }
+
+  if (!labeler.labelerId) {
+    throw makeSignalPermanentError(
+      `Zentropi labeler "${labeler.label}" is missing a labeler ID; ` +
+        'add it in the Zentropi integration settings',
+      { shouldErrorSpan: true },
     );
   }
 
   const response = await fetchScores({
     text: value.value,
     apiKey: credential.apiKey,
-    labelerVersionId: subcategory,
+    labelerId: labeler.labelerId,
+    labelerVersionId: labeler.id,
   });
 
   // Composite score mapping:

@@ -113,6 +113,7 @@ gql`
               labelerVersions {
                 id
                 label
+                labelerId
               }
             }
             ... on PluginIntegrationApiCredential {
@@ -310,6 +311,15 @@ export default function IntegrationConfigForm() {
         .apiKey
     ) {
       return 'Please input the Zentropi API key';
+    }
+
+    if (
+      'zentropi' in mappedApiCredential &&
+      (
+        mappedApiCredential['zentropi'] as GQLZentropiIntegrationApiCredential
+      ).labelerVersions.some((it) => !it.labelerId || !it.id || !it.label)
+    ) {
+      return 'Please input a labeler ID, version ID, and name for each Zentropi labeler';
     }
 
     return undefined;

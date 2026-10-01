@@ -288,8 +288,8 @@ const ZENTROPI: IntegrationManifestEntry = {
             value: 'https://huggingface.co/zentropi-ai/cope-a-9b',
           },
           {
-            label: 'Documentation',
-            value: 'https://docs.zentropi.ai',
+            label: 'API Reference',
+            value: 'https://zentropi.ai/api',
           },
           {
             label: 'Research Talk',
@@ -307,7 +307,7 @@ const ZENTROPI: IntegrationManifestEntry = {
   },
   modelCardLearnMoreUrl: 'https://modelcards.withgoogle.com/',
   title: 'Zentropi',
-  docsUrl: 'https://docs.zentropi.ai',
+  docsUrl: 'https://zentropi.ai/api',
   requiresConfig: true,
 };
 
