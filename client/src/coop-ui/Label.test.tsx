@@ -1,8 +1,5 @@
-import { render, screen } from '@testing-library/react';
-
-import '@testing-library/jest-dom/extend-expect';
-
 import { Label } from '@/coop-ui/Label';
+import { render, screen } from '@testing-library/react';
 
 describe('Label Component', () => {
   test('renders the label with default properties', () => {

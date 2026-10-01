@@ -1,11 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { Mail } from 'lucide-react';
 import React from 'react';
-import { vi } from 'vitest';
-
-import '@testing-library/jest-dom/extend-expect';
-
 import { Link, MemoryRouter } from 'react-router-dom';
+import { vi } from 'vitest';
 
 import { Button } from './Button';
 

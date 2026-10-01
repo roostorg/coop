@@ -54,6 +54,7 @@
     "connect-pg-simple": "^7.0.0",
     "cors": "^2.8.5",
     "dataloader": "^2.1.0",
+    "debug": "^4.4.3",
     "express": "^5.1.0",
     "express-session": "^1.17.2",
     "fast-check": "^4.6.0",
