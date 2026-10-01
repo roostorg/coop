@@ -8,6 +8,7 @@ import { FormData } from 'undici';
 import { js2xml } from 'xml-js';
 
 import { type Dependencies } from '../../iocContainer/index.js';
+import { type ReportedMediaBankingEnqueueFn } from '../../queues/reportedMediaBankingQueue.js';
 import { jsonStringify } from '../../utils/encoding.js';
 import { type JSONSchemaV4 } from '../../utils/json-schema-types.js';
 import { type FixKyselyRowCorrelation } from '../../utils/kysely.js';
@@ -1391,6 +1392,7 @@ export default class NcmecReporting {
     private moderationConfigService: Dependencies['ModerationConfigService'],
     private getItemTypeEventuallyConsistent: Dependencies['getItemTypeEventuallyConsistent'],
     private readonly tracer: Dependencies['Tracer'],
+    private readonly reportedMediaBankingEnqueue: ReportedMediaBankingEnqueueFn,
   ) {}
   async hasNCMECReportingEnabled(orgId: string) {
     const ncmecOrgSettings = await this.pgQuery
@@ -2071,6 +2073,41 @@ export default class NcmecReporting {
               })),
               reportId: parseInt(reportId),
             });
+          }
+
+          const reportedMediaHashBankId =
+            ncmecConfig?.reported_media_hash_bank_id;
+
+          if (
+            reportedMediaHashBankId != null &&
+            reportParams.media.length > 0 &&
+            isTest === false
+          ) {
+            // Banking runs in its own worker. Enqueueing must never fail an
+            // accepted report, so a Redis outage is logged and dropped here.
+            try {
+              await this.reportedMediaBankingEnqueue(
+                reportParams.media.map((media) => ({
+                  orgId: reportParams.orgId,
+                  hashBankId: reportedMediaHashBankId,
+                  ncmecReportId: reportId,
+                  itemId: media.id,
+                  itemTypeId: media.typeId,
+                  url: media.url,
+                })),
+              );
+            } catch (e) {
+              // eslint-disable-next-line no-restricted-syntax
+              logErrorJson({
+                error: e,
+                message: jsonStringify({
+                  event: 'ncmecReportedMediaBankingEnqueueFailed',
+                  orgId: reportParams.orgId,
+                  ncmecReportId: reportId,
+                  hashBankId: reportedMediaHashBankId,
+                }),
+              });
+            }
           }
           return 'SUCCESS';
         } catch (e) {

@@ -164,6 +164,14 @@ npm run runWorkerOrJob ItemProcessingWorker
 
 Without this running, submitted items will be enqueued in Redis but not processed. Other available workers/jobs can be found in `server/iocContainer/services/workersAndJobs.ts`.
 
+Media from accepted NCMEC reports is added to the configured hash bank by
+another worker, which you only need when working on that flow:
+
+```sh
+cd server
+npm run runWorkerOrJob ReportedMediaBankingWorker
+```
+
 To preview emails locally without configuring SES or SendGrid, add the
 following to `server/.env`. The recipient, subject, and rendered content will
 be printed in the server terminal. This transport requires

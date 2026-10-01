@@ -80,6 +80,7 @@ const typeDefs = /* GraphQL */ `
     contactPersonPhone: String
     mediaReviewRequirement: NcmecMediaReviewRequirement
     minMediaToReview: Int
+    reportedMediaHashBankId: Int
   }
 
   input NcmecOrgSettingsInput {
@@ -100,6 +101,7 @@ const typeDefs = /* GraphQL */ `
     contactPersonPhone: String
     mediaReviewRequirement: NcmecMediaReviewRequirement
     minMediaToReview: Int
+    reportedMediaHashBankId: Int
   }
 
   type UpdateNcmecOrgSettingsResponse {
@@ -344,6 +346,19 @@ const Mutation: GQLMutationResolvers = {
     const { mediaReviewRequirement, minMediaToReview } =
       parseMediaReviewPolicy(input);
 
+    const reportedMediaHashBankId = input.reportedMediaHashBankId ?? null;
+
+    if (reportedMediaHashBankId !== null) {
+      const bank = await context.services.HMAHashBankService.getBankById(
+        user.orgId,
+        reportedMediaHashBankId,
+      );
+
+      if (!bank) {
+        throw userInputError('Selected hash bank was not found.');
+      }
+    }
+
     await context.services.NcmecService.updateNcmecOrgSettings({
       orgId: user.orgId,
       username,
@@ -363,6 +378,7 @@ const Mutation: GQLMutationResolvers = {
       contactPersonPhone: input.contactPersonPhone ?? null,
       mediaReviewRequirement,
       minMediaToReview,
+      reportedMediaHashBankId,
     });
 
     return { success: true };

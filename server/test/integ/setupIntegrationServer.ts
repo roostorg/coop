@@ -18,9 +18,16 @@ export type IntegrationServer = {
   shutdown: () => Promise<void>;
 };
 
+/** Workers the harness knows how to run inline. */
+export type HarnessWorkerName =
+  'ItemProcessingWorker' | 'ReportedMediaBankingWorker';
+
 export type MakeIntegrationServerOptions = {
   /** A hash of mocked dependencies to replace in the bottle  */
   mockedDeps?: Partial<Dependencies>;
+  /** Workers to run inline. Defaults to the item-processing worker alone, so a
+   * test that doesn't need banking doesn't pay for a second Redis consumer. */
+  workers?: readonly HarnessWorkerName[];
 };
 
 export async function makeIntegrationServer(
@@ -37,13 +44,16 @@ export async function makeIntegrationServer(
   const { app, shutdown: shutdownServer } = await makeServer(deps);
   const request = superTest.agent(app);
 
+  const workerNames = opts.workers ?? ['ItemProcessingWorker'];
+
   const workerAbort = new AbortController();
-  // Run the worker in the background — its run() promise only settles on error
-  // or shutdown, so we don't await it here.
-  const workerRun = deps.ItemProcessingWorker.run(workerAbort.signal);
-  workerRun.catch((err) => {
-    console.error('ItemProcessingWorker exited with error', err);
-  });
+  // Run the workers in the background — run() only settles on error or
+  // shutdown, so we don't await them here.
+  for (const name of workerNames) {
+    deps[name].run(workerAbort.signal).catch((err) => {
+      console.error(`${name} exited with error`, err);
+    });
+  }
 
   return {
     deps,
@@ -64,32 +74,42 @@ export async function makeIntegrationServer(
         }
       };
 
+      // BullMQ's Worker.close() already closes the shared ioredis connection,
+      // so every later step that touches Redis — another worker's close(), or
+      // closeSharedResourcesForShutdown — throws "Connection is closed" on a
+      // connection that is already gone. That specific error is benign here,
+      // since teardown is exactly what we are doing, so we swallow it.
+      const ignoreClosedConnection = (err: unknown) => {
+        if (err instanceof Error && err.message === 'Connection is closed.') {
+          return;
+        }
+        throw err;
+      };
+
+      // One at a time, since they share a Redis connection.
+      const workerErrors: unknown[] = [];
+      for (const name of workerNames) {
+        const err = await runStep(async () => {
+          await deps[name].shutdown().catch(ignoreClosedConnection);
+        });
+        if (err !== null) {
+          // eslint-disable-next-line functional/immutable-data -- local accumulator
+          workerErrors.push(err);
+        }
+      }
+
       // Awaited left-to-right inside the array literal, so steps still run
-      // sequentially — closeSharedResourcesForShutdown depends on the worker
-      // having closed its Redis connection first.
+      // sequentially — closeSharedResourcesForShutdown depends on the workers
+      // having closed their Redis connections first.
       const teardownErrors = [
-        await runStep(async () => {
-          await deps.ItemProcessingWorker.shutdown();
-        }),
+        ...workerErrors,
         await runStep(async () => {
           await shutdownServer();
         }),
         await runStep(async () => {
-          // BullMQ's Worker.close() already closes the shared ioredis
-          // connection, which makes closeSharedResourcesForShutdown throw
-          // "Connection is closed" when it tries to quit() redis a second
-          // time. That specific error is benign — every shared resource is
-          // already torn down — so we swallow it here rather than leak the
-          // failure into afterAll.
-          await deps.closeSharedResourcesForShutdown().catch((err) => {
-            if (
-              err instanceof Error &&
-              err.message === 'Connection is closed.'
-            ) {
-              return;
-            }
-            throw err;
-          });
+          await deps
+            .closeSharedResourcesForShutdown()
+            .catch(ignoreClosedConnection);
         }),
       ].filter((e): e is unknown => e !== null);
 
