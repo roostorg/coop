@@ -1,24 +1,26 @@
 # Zentropi CoPE
 
-[Zentropi CoPE](https://docs.zentropi.ai) (Content Policy Enforcement) is a policy-adaptive AI text classifier. Unlike classifiers with fixed taxonomies, CoPE has no predefined categories; instead, you write your own policy text describing what you want to detect, and the model classifies content against those policies. This makes it particularly useful for platforms with nuanced or unusual content policies that off-the-shelf classifiers handle poorly.
+[Zentropi CoPE](https://zentropi.ai) (Content Policy Enforcement) is a policy-adaptive AI text classifier. Unlike classifiers with fixed taxonomies, CoPE has no predefined categories; instead, you write your own policy text describing what you want to detect, and the model classifies content against those policies. This makes it particularly useful for platforms with nuanced or unusual content policies that off-the-shelf classifiers handle poorly.
 
 The model powering the integration is **CoPE-A-9B** (version 1.x, released July 2025).
 
 ## Requirements
 
-- A [Zentropi](https://docs.zentropi.ai) account with API access
-- One or more labeler versions created in the Zentropi UI, each with a policy definition
+- A [Zentropi](https://zentropi.ai) account with API access
+- One or more labelers created and deployed in the Zentropi UI, each with a policy definition
 
 ## Configuration
 
 In Coop, go to **Settings → Integrations** and add your Zentropi credentials:
 
 - **API Key**: your Zentropi API key
-- **Labeler Versions** (optional): a list of labeler version IDs and labels you've created in the Zentropi UI. Adding them here makes them available by name when building rules.
+- **Labeler Versions**: one entry per deployed labeler version you want to use in rules, each with its **Labeler ID**, **Version ID**, and a display name. You can find both IDs in the Zentropi UI.
 
 ## Signals
 
-Each Zentropi labeler version you've created in the Zentropi UI is a separate signal in Coop. When building a rule condition, select the Zentropi signal and enter the labeler version ID in the **subcategory** field.
+Each labeler version configured in the integration settings is available as a subcategory of the Zentropi Labeler signal. When building a rule condition, select the Zentropi signal and pick the labeler version by name in the **subcategory** field.
+
+Labeler versions saved before Coop collected labeler IDs fail with a "Missing Zentropi labeler ID" error. Edit the integration settings and add the labeler ID to each entry; existing rules keep working without changes.
 
 Coop sends the text field value to the Zentropi API and receives a score between 0 and 1:
 
@@ -61,7 +63,7 @@ The Zentropi documentation and [sample code notebook](https://colab.research.goo
 
 ## Links
 
-- [Zentropi documentation](https://docs.zentropi.ai)
+- [Zentropi API reference](https://zentropi.ai/api)
 - [HuggingFace model card](https://huggingface.co/zentropi-ai/cope-a-9b)
 - [Research talk](https://www.youtube.com/live/JMq49FZ5qmY?si=Q6qpHNeTo-Bc6t9a&t=1)
 - [Sample code notebook](https://colab.research.google.com/drive/1LBmQ3d0OVrq2EpVP0tc03POalf3sDpjl?usp=sharing)

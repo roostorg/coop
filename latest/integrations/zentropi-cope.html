@@ -40,7 +40,7 @@
             const path_to_root = "../";
             const default_light_theme = "roost";
             const default_dark_theme = "roost";
-            window.path_to_searchindex_js = "../searchindex-3988de07.js";
+            window.path_to_searchindex_js = "../searchindex-7ece0e58.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-33b43635.js"></script>
@@ -191,21 +191,22 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="zentropi-cope"><a class="header" href="#zentropi-cope">Zentropi CoPE</a></h1>
-<p><a href="https://docs.zentropi.ai">Zentropi CoPE</a> (Content Policy Enforcement) is a policy-adaptive AI text classifier. Unlike classifiers with fixed taxonomies, CoPE has no predefined categories; instead, you write your own policy text describing what you want to detect, and the model classifies content against those policies. This makes it particularly useful for platforms with nuanced or unusual content policies that off-the-shelf classifiers handle poorly.</p>
+<p><a href="https://zentropi.ai">Zentropi CoPE</a> (Content Policy Enforcement) is a policy-adaptive AI text classifier. Unlike classifiers with fixed taxonomies, CoPE has no predefined categories; instead, you write your own policy text describing what you want to detect, and the model classifies content against those policies. This makes it particularly useful for platforms with nuanced or unusual content policies that off-the-shelf classifiers handle poorly.</p>
 <p>The model powering the integration is <strong>CoPE-A-9B</strong> (version 1.x, released July 2025).</p>
 <h2 id="requirements"><a class="header" href="#requirements">Requirements</a></h2>
 <ul>
-<li>A <a href="https://docs.zentropi.ai">Zentropi</a> account with API access</li>
-<li>One or more labeler versions created in the Zentropi UI, each with a policy definition</li>
+<li>A <a href="https://zentropi.ai">Zentropi</a> account with API access</li>
+<li>One or more labelers created and deployed in the Zentropi UI, each with a policy definition</li>
 </ul>
 <h2 id="configuration"><a class="header" href="#configuration">Configuration</a></h2>
 <p>In Coop, go to <strong>Settings → Integrations</strong> and add your Zentropi credentials:</p>
 <ul>
 <li><strong>API Key</strong>: your Zentropi API key</li>
-<li><strong>Labeler Versions</strong> (optional): a list of labeler version IDs and labels you’ve created in the Zentropi UI. Adding them here makes them available by name when building rules.</li>
+<li><strong>Labeler Versions</strong>: one entry per deployed labeler version you want to use in rules, each with its <strong>Labeler ID</strong>, <strong>Version ID</strong>, and a display name. You can find both IDs in the Zentropi UI.</li>
 </ul>
 <h2 id="signals"><a class="header" href="#signals">Signals</a></h2>
-<p>Each Zentropi labeler version you’ve created in the Zentropi UI is a separate signal in Coop. When building a rule condition, select the Zentropi signal and enter the labeler version ID in the <strong>subcategory</strong> field.</p>
+<p>Each labeler version configured in the integration settings is available as a subcategory of the Zentropi Labeler signal. When building a rule condition, select the Zentropi signal and pick the labeler version by name in the <strong>subcategory</strong> field.</p>
+<p>Labeler versions saved before Coop collected labeler IDs fail with a “Missing Zentropi labeler ID” error. Edit the integration settings and add the labeler ID to each entry; existing rules keep working without changes.</p>
 <p>Coop sends the text field value to the Zentropi API and receives a score between 0 and 1:</p>
 <ul>
 <li><strong>0</strong> = confidently safe (model is confident the content does <em>not</em> violate your policy)</li>
@@ -249,7 +250,7 @@
 </div>
 <h2 id="links"><a class="header" href="#links">Links</a></h2>
 <ul>
-<li><a href="https://docs.zentropi.ai">Zentropi documentation</a></li>
+<li><a href="https://zentropi.ai/api">Zentropi API reference</a></li>
 <li><a href="https://huggingface.co/zentropi-ai/cope-a-9b">HuggingFace model card</a></li>
 <li><a href="https://www.youtube.com/live/JMq49FZ5qmY?si=Q6qpHNeTo-Bc6t9a&amp;t=1">Research talk</a></li>
 <li><a href="https://colab.research.google.com/drive/1LBmQ3d0OVrq2EpVP0tc03POalf3sDpjl?usp=sharing">Sample code notebook</a></li>
