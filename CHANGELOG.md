@@ -8,6 +8,8 @@ For more information about each release including git tags and artifacts, see [R
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-10-30
+
 ### Security
 
 - Block hash-exchange credential updates when an instance hosts multiple organizations ([#1330](https://github.com/roostorg/coop/pull/1330) by [@reitblatt](https://github.com/reitblatt))
@@ -378,7 +380,8 @@ We're developing Coop in the open and want to hear from you. Whether you're test
 
 This release was possible because of the efforts of contributors who worked through complex redesign, partners who believed in the vision of open source safety tools, and the broader trust and safety community who provided feedback and guidance. Thank you especially to @juanmrad, @pawiecz, @kbicevski, Sjoerd Simons, @emanueleaina, @dom-notion, @cassidyjames, @vinaysrao1, @wayjaywang, and @julietshen.
 
-[unreleased]: https://github.com/roostorg/coop/compare/1.1.0...HEAD
+[unreleased]: https://github.com/roostorg/coop/compare/1.1.1...HEAD
+[1.1.1]: https://github.com/roostorg/coop/compare/1.1.0...1.1.1
 [1.1.0]: https://github.com/roostorg/coop/compare/1.0.2...1.1.0
 [1.1.0-alpha]: https://github.com/roostorg/coop/compare/1.0.2...1.1.0-alpha
 [1.0.2]: https://github.com/roostorg/coop/compare/1.0.1...1.0.2
