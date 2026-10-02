@@ -791,6 +791,7 @@ export type GQLCreateManualReviewQueueInput = {
   readonly hiddenActionIds: ReadonlyArray<Scalars['ID']['input']>;
   readonly isAppealsQueue: Scalars['Boolean']['input'];
   readonly name: Scalars['String']['input'];
+  readonly roleIds: ReadonlyArray<Scalars['ID']['input']>;
   readonly userIds: ReadonlyArray<Scalars['ID']['input']>;
 };
 
@@ -2243,6 +2244,8 @@ export type GQLManualReviewJobWithDecisions = {
 
 export type GQLManualReviewQueue = {
   readonly __typename: 'ManualReviewQueue';
+  /** Roles whose members can review this queue, in addition to explicitly assigned reviewers. */
+  readonly assignedRoleIds: ReadonlyArray<Scalars['ID']['output']>;
   readonly autoCloseJobs: Scalars['Boolean']['output'];
   readonly clearReportsDisposition?: Maybe<GQLMrtClearReportsDisposition>;
   readonly clearReportsScope: GQLMrtClearReportsScope;
@@ -4853,6 +4856,7 @@ export type GQLUpdateManualReviewQueueInput = {
   readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly id: Scalars['ID']['input'];
   readonly name?: InputMaybe<Scalars['String']['input']>;
+  readonly roleIds: ReadonlyArray<Scalars['ID']['input']>;
   readonly userIds: ReadonlyArray<Scalars['ID']['input']>;
 };
 
@@ -9917,6 +9921,11 @@ export type GQLQueueFormDataQueryVariables = Exact<{ [key: string]: never }>;
 
 export type GQLQueueFormDataQuery = {
   readonly __typename: 'Query';
+  readonly rolesForOrg: ReadonlyArray<{
+    readonly __typename: 'Role';
+    readonly id: string;
+    readonly displayName: string;
+  }>;
   readonly myOrg?: {
     readonly __typename: 'Org';
     readonly hasAppealsEnabled: boolean;
@@ -9968,6 +9977,7 @@ export type GQLManualReviewQueueQuery = {
     readonly id: string;
     readonly name: string;
     readonly description?: string | null;
+    readonly assignedRoleIds: ReadonlyArray<string>;
     readonly hiddenActionIds: ReadonlyArray<string>;
     readonly isAppealsQueue: boolean;
     readonly autoCloseJobs: boolean;
@@ -32937,6 +32947,10 @@ export type GQLGetDecisionsTableQueryResult = Apollo.QueryResult<
 >;
 export const GQLQueueFormDataDocument = gql`
   query QueueFormData {
+    rolesForOrg {
+      id
+      displayName
+    }
     myOrg {
       hasAppealsEnabled
       hasPartialItemsEndpoint
@@ -33059,6 +33073,7 @@ export const GQLManualReviewQueueDocument = gql`
         explicitlyAssignedReviewers {
           id
         }
+        assignedRoleIds
         hiddenActionIds
         isAppealsQueue
         autoCloseJobs

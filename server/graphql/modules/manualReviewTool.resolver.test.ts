@@ -22,6 +22,7 @@ const ManualReviewQueue = resolvers.ManualReviewQueue as Record<
   | 'pendingJobCount'
   | 'oldestJobCreatedAt'
   | 'explicitlyAssignedReviewers'
+  | 'assignedRoleIds'
   | 'hiddenActionIds'
   | 'clearReportsTriggerActionIds',
   ResolverFn
@@ -592,6 +593,68 @@ describe('MRT queue/job resolvers are membership-scoped', () => {
       ).resolves.toEqual([{ id: 'user-2' }]);
       expect(getReviewableQueuesForUser).toHaveBeenCalledTimes(1);
     });
+
+    it('assignedRoleIds denies an assigned user without VIEW_MRT', async () => {
+      const { ctx: baseCtx } = makeCtx({
+        reviewableQueueIds: [],
+        user: { id: 'user-1', orgId: 'org-1', permissions: [] },
+      });
+      const ctx = {
+        ...baseCtx,
+        services: {
+          ManualReviewToolService: {
+            ...baseCtx.services.ManualReviewToolService,
+            getQueueForOrg: async () => ({ id: 'q-1', orgId: 'org-1' }),
+            getAssignedRoleIdsForQueue: async () => ['role-1'],
+          },
+        },
+      };
+
+      await expect(
+        ManualReviewQueue.assignedRoleIds(
+          { orgId: 'org-1', id: 'q-1' },
+          {},
+          ctx,
+        ),
+      ).rejects.toThrow('User does not have access to this queue');
+    });
+
+    it.each([[UserPermission.VIEW_MRT], [UserPermission.EDIT_MRT_QUEUES]])(
+      'assignedRoleIds shares authorization with other queue fields for %s',
+      async (permission) => {
+        const { ctx: baseCtx, getReviewableQueuesForUser } = makeCtx({
+          reviewableQueueIds: ['q-1'],
+          user: { id: 'user-1', orgId: 'org-1', permissions: [permission] },
+        });
+        const ctx = {
+          ...baseCtx,
+          services: {
+            ManualReviewToolService: {
+              ...baseCtx.services.ManualReviewToolService,
+              getQueueForOrg: async () => ({ id: 'q-1', orgId: 'org-1' }),
+              getAssignedRoleIdsForQueue: async () => ['role-1'],
+            },
+          },
+        };
+        const queue = { orgId: 'org-1', id: 'q-1' };
+
+        await expect(
+          Promise.all([
+            ManualReviewQueue.assignedRoleIds(queue, {}, ctx),
+            ManualReviewQueue.hiddenActionIds(queue, {}, ctx),
+          ]),
+        ).resolves.toEqual([['role-1'], ['action-1']]);
+        expect(getReviewableQueuesForUser).toHaveBeenCalledTimes(1);
+        expect(getReviewableQueuesForUser).toHaveBeenCalledWith({
+          invoker: {
+            userId: 'user-1',
+            orgId: 'org-1',
+            permissions: [permission],
+          },
+          queueIds: ['q-1'],
+        });
+      },
+    );
 
     it('hiddenActionIds refuses a queue the caller cannot review', async () => {
       const { ctx, getHiddenActionsForQueue } = makeCtx({

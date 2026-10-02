@@ -85,6 +85,7 @@ const testWithQueue = () =>
         orgId: org.id,
         queueId: opts.queueId ?? queue.id,
         userIds: [user.id],
+        roleIds: [],
         actionIdsToHide: [],
         actionIdsToUnhide: [],
         clearReportsDisposition: opts.disposition,
