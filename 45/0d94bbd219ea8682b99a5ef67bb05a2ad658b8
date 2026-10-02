@@ -1,0 +1,19 @@
+server/services/manualReviewToolService/modules/JobRouting.test.ts
+  s_c39daae3705902::t_ce732591c6d808 291
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "450d94bbd219ea8682b99a5ef67bb05a2ad658b8",
+  "prompts": {},
+  "sessions": {
+    "s_c39daae3705902": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "70d379d5-c769-4221-a4d3-dffc884c934e",
+        "model": "auto-smart"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
