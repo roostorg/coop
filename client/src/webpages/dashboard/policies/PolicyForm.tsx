@@ -271,7 +271,15 @@ export default function PolicyForm() {
                       },
                     ],
                   },
-                  onCompleted: () => setShowSuccess(true),
+                  onCompleted: ({ addPolicies }) => {
+                    if (addPolicies.failures.length > 0) {
+                      setErrorMessage(
+                        `Error saving policy: "${addPolicies.failures[0]}" may already exist.`,
+                      );
+                      return;
+                    }
+                    setShowSuccess(true);
+                  },
                   onError: () =>
                     setErrorMessage('Error saving policy. Please try again.'),
                 });
