@@ -1,0 +1,120 @@
+AGENTS.md
+  s_c39daae3705902::t_6e50f95bff72e4 122
+  s_c39daae3705902::t_48d3b8d92cf298 136
+  s_c39daae3705902::t_0ed66a96c6612f 121
+  s_c39daae3705902::t_e350aea4cccda0 123-125
+  s_c39daae3705902::t_026093fc1122b6 135
+  s_c39daae3705902::t_24db523fb00302 137-139
+CHANGELOG.md
+  s_c39daae3705902::t_4048bd6101af3d 11-22,25-48,52-75,82-84,100,106,110,121,198,212,387-389
+client/src/graphql/generated.ts
+  s_c39daae3705902::t_1774e9eecb0578 5296,5302,6550,30396
+client/src/utils/manualReviewTool.test.ts
+  s_c39daae3705902::t_c0239ec932ad90 6,258-339
+client/src/utils/manualReviewTool.ts
+  s_c39daae3705902::t_90a26830e35d81 1-3,5,37,92-121
+client/src/webpages/dashboard/banks/hash/HashBankForm.tsx
+  s_c39daae3705902::t_f2f537fa7a83c5 353-356,359-361
+client/src/webpages/dashboard/integrations/IntegrationConfigApiCredentialsSection.tsx
+  s_c39daae3705902::t_04a108ef025bee 65,79-84,117-124
+client/src/webpages/dashboard/integrations/IntegrationConfigForm.tsx
+  s_c39daae3705902::t_e5836554939006 116,316-324
+client/src/webpages/dashboard/integrations/integrationConfigs.ts
+  s_c39daae3705902::t_a7827f00bc6560 44
+client/src/webpages/dashboard/mrt/manual_review_job/ManualReviewJobReview.tsx
+  s_c39daae3705902::t_e58be500470175 55-59,356-374,379-384,668-677,698,701,761-762,1570-1577,1603-1610,1636-1643,1650-1654,1763,1791-1792,1801,1848-1905,1908-1923,1925,1927-1929,1934-1940,1942-1976,1979-2017,2019-2033
+client/src/webpages/dashboard/mrt/manual_review_job/v2/ContentRelatedItemComponent.test.tsx
+  s_c39daae3705902::t_b370a494f1d373 1-519
+client/src/webpages/dashboard/mrt/manual_review_job/v2/ContentRelatedItemComponent.tsx
+  s_c39daae3705902::t_a494b3a23a3b1b 1-6,8-10,13-14,16-19,22-40,43-169,171-424,435-441,444-448,450-478
+client/src/webpages/dashboard/mrt/manual_review_job/v2/ManualReviewJobContentView.tsx
+  s_c39daae3705902::t_3988c4a9a87a5d 21,40-41,57-58,126-127,161-178,217-218
+client/src/webpages/dashboard/mrt/manual_review_job/v2/related_actions/ManualReviewJobEnqueuedRelatedActionEntry.tsx
+  s_c39daae3705902::t_9fb4485fe721ab 20,32,68-71
+client/src/webpages/dashboard/mrt/manual_review_job/v2/related_actions/ManualReviewJobEnqueuedRelatedActions.tsx
+  s_c39daae3705902::t_e7c99de92bc402 32,34-39,87
+client/src/webpages/dashboard/mrt/manual_review_job/v2/threads/ManualReviewJobThreadComponent.tsx
+  s_c39daae3705902::t_44c3a9e457d295 474,477-478,480-482,485-491,496-499,514-519,537-540,568-635
+client/src/webpages/dashboard/mrt/manual_review_job/v2/user/ManualReviewJobLatestSubmissionsWithThreadComponent.tsx
+  s_c39daae3705902::t_37a4362a9f1d30 100-101,120-121,263,267,274-285
+client/src/webpages/dashboard/mrt/manual_review_job/v2/user/ManualReviewJobPrimaryUserComponent.tsx
+  s_c39daae3705902::t_5ef124979e33f9 19-22,45-46,52,62-63,107-108,219-235,246-247
+client/src/webpages/dashboard/mrt/manual_review_job/v2/user/ManualReviewJobRelatedUserComponent.tsx
+  s_c39daae3705902::t_381fe2d576620c 147-148,165-166,389-390
+docs/integrations/zentropi-cope.md
+  s_c39daae3705902::t_65fc1ae68445e2 3,9-10,17,21-23,66
+server/graphql/generated.ts
+  s_c39daae3705902::t_be8be5b5d79b48 5366,5372,15193-15197
+server/graphql/modules/hashBanks/resolvers.test.ts
+  s_c39daae3705902::t_bb2bc7481f9a4e 4-7,124-151,189-204
+server/graphql/modules/hashBanks/resolvers.ts
+  s_c39daae3705902::t_48c9cb53ba2f0d 1,8,146-148,224-234
+server/graphql/modules/integration.ts
+  s_c39daae3705902::t_e0abf1fde168ad 36,110
+server/graphql/modules/manualReviewTool.ts
+  s_c39daae3705902::t_1f2124e2e4dc54 5,2493-2506,2527-2529
+server/graphql/modules/ncmec.resolver.test.ts
+  s_c39daae3705902::t_9d86b16b012b8c 14-18,150-233
+server/graphql/modules/ncmec.ts
+  s_c39daae3705902::t_4d649a4d512c4e 8,250,280
+server/graphql/modules/org.resolver.test.ts
+  s_c39daae3705902::t_7f920b8fcb4011 336-395
+server/graphql/modules/org.ts
+  s_c39daae3705902::t_41e4a911b0a6f1 23,555
+server/graphql/utils/authorization.ts
+  s_c39daae3705902::t_e597c1210b64c3 9-10,12,45-58
+server/iocContainer/index.ts
+  s_c39daae3705902::t_71c591ff7cd6e5 13,129,132,1056,1425-1427,1429-1437,1439,1441-1446,1448-1452,1454-1491,1497-1504,1508-1509,1518-1526
+server/package-lock.json
+  s_c39daae3705902::t_123530bbec967a 14832-14834
+server/package.json
+  s_c39daae3705902::t_216a8f76e35719 149
+server/services/hmaService/index.test.ts
+  s_c39daae3705902::t_2ccbfaad9894d5 5-9,28-29,44-51,160-196
+server/services/hmaService/index.ts
+  s_c39daae3705902::t_92e961d4bb370c 180-193,200,690-701
+server/services/integrationRegistry/integrationManifests.ts
+  s_c39daae3705902::t_498bee93620999 292,310
+server/services/itemInvestigationService/itemInvestigationService.test.ts
+  s_c39daae3705902::t_209f4a80824ad6 5-8,12,18,104-199
+server/services/itemInvestigationService/itemInvestigationService.ts
+  s_c39daae3705902::t_6c71dfe5305ed7 524-528,530
+server/services/manualReviewToolService/index.ts
+  s_c39daae3705902::t_83a814a6e93432 40-44
+server/services/manualReviewToolService/manualReviewToolService.test.ts
+  s_c39daae3705902::t_46e529087d4fa2 6,115-120,128,131-138,879-1010
+server/services/manualReviewToolService/modules/JobDecisioning.test.ts
+  s_c39daae3705902::t_105cfcdd59e371 1-6,46-237
+server/services/manualReviewToolService/modules/JobDecisioning.ts
+  s_c39daae3705902::t_8dcadcd761a169 18-19,43,46-119,284-365,412-425,435-438,440-441,443-458,517,642
+server/services/manualReviewToolService/modules/JobRouting.test.ts
+  s_c39daae3705902::t_30890ae5dbc229 5,224-305
+server/services/manualReviewToolService/modules/JobRouting.ts
+  s_c39daae3705902::t_1820b27bb41abf 379
+server/services/signalAuthService/signalAuthService.ts
+  s_c39daae3705902::t_7f7106b18ebdfe 27-33
+server/services/signalsService/signals/third_party_signals/zentropi/ZentropiLabelerSignal.test.ts
+  s_c39daae3705902::t_644cf00b0de899 19-28
+server/services/signalsService/signals/third_party_signals/zentropi/ZentropiLabelerSignal.ts
+  s_c39daae3705902::t_fe2c17c7d5f1b4 37,42
+server/services/signalsService/signals/third_party_signals/zentropi/zentropiUtils.test.ts
+  s_c39daae3705902::t_ae0c33cfb97aa3 4,7-10,36-39,43,176-180,183-219,234,251,267,283,293,316,334-389
+server/services/signalsService/signals/third_party_signals/zentropi/zentropiUtils.ts
+  s_c39daae3705902::t_7af4eea6a3ed6c 23,36,48,54-60,67-87,102-120,126-127
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "da7c8e6a8c4ad6d2792d1bab4d661af9bea5d332",
+  "prompts": {},
+  "sessions": {
+    "s_c39daae3705902": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "70d379d5-c769-4221-a4d3-dffc884c934e",
+        "model": "auto-smart"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
