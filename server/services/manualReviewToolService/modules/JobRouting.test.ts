@@ -288,7 +288,7 @@ describe('JobRouting tests', () => {
 
       const otherOrgOrder = await getPersistedRoutingRuleOrder(otherOrg.id);
       const order = await getPersistedRoutingRuleOrder(org.id);
-      const expectedOrder = order.toReversed();
+      const expectedOrder = order.slice().reverse();
 
       const reorderedRules = await manualReviewToolService.reorderRoutingRules({
         orgId: org.id,
