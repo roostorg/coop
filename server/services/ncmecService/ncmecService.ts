@@ -54,8 +54,6 @@ export class NcmecService {
       moderationConfigService,
       manualReviewToolService,
       itemInvestigationService,
-      fetchHTTP,
-      signingKeyPairService,
       this.ncmecReporting,
     );
   }
