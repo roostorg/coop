@@ -20,7 +20,7 @@
   "dependencies": {
     "@clickhouse/client": "^1.23.1",
     "@roostorg/db-migrator": "^1.1.1",
-    "cassandra-driver": "^4.9.0",
+    "cassandra-driver": "^4.10.0",
     "kysely": "^0.29.6",
     "pg": "^8.23.0",
     "sequelize": "^6.37.8",
