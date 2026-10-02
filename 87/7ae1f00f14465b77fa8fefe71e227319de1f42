@@ -1,0 +1,29 @@
+AGENTS.md
+  s_c39daae3705902::t_cf5abbd7b88fb9 134
+  s_c39daae3705902::t_fa75cf006b7abc 120
+.github/workflows/apply_pr_checks.yaml
+  s_c39daae3705902::t_ccd5b72a39afd4 215-217
+docs/development/local.md
+  s_c39daae3705902::t_cf6778d475a33d 235
+  s_c39daae3705902::t_f69a5bef08c106 223
+server/tsconfig.build.json
+  s_c39daae3705902::t_757016df15fb67 2-3
+server/package.json
+  s_c39daae3705902::t_7acb3a63669f96 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "877ae1f00f14465b77fa8fefe71e227319de1f42",
+  "prompts": {},
+  "sessions": {
+    "s_c39daae3705902": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "70d379d5-c769-4221-a4d3-dffc884c934e",
+        "model": "auto-smart"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
