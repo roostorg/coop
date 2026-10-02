@@ -1,8 +1,6 @@
 {
-  // Production compilation unit: what `npm run build` emits, and the first
-  // thing `npm run typecheck` checks. The build script then typechecks
-  // tsconfig.json with --noEmit, so tests are checked without being emitted.
-  // `npm start` uses tsconfig.json directly.
+  // Production compilation unit: what `npm run build` emits and the first
+  // thing `npm run typecheck` checks. `npm start` uses tsconfig.json instead.
   //
   // It differs from tsconfig.json in exactly two ways: Vitest's globals are not
   // in scope, and test files are not compiled. Together those stop a test-only

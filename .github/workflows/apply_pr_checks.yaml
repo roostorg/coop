@@ -212,6 +212,9 @@ jobs:
       - name: Lint
         run: docker compose run --rm --quiet-pull backend npm run lint
 
+      - name: Typecheck server
+        run: docker compose run --rm --quiet-pull backend npm run typecheck
+
       - name: Build server
         run: docker compose run --rm --quiet-pull backend npm run build
 
