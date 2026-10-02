@@ -10,7 +10,13 @@ import {
   User as UserAlt3Filled,
   type LucideIcon,
 } from 'lucide-react';
-import React, { ReactElement, useEffect, useMemo, useState } from 'react';
+import React, {
+  ReactElement,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
 import DashboardMenuButton from '@/webpages/dashboard/components/DashboardMenuButton';
@@ -247,12 +253,44 @@ export default function Sidebar(props: SidebarProps) {
 
   const [isSettingsMenuExpanded, setIsSettingsMenuExpanded] =
     useState(isSettingsSelected);
+  // Re-sync the submenu to the active route on every navigation: expand on a
+  // settings page, collapse on anything else. `pathname` is in the deps (not
+  // just `isSettingsSelected`) so a submenu that was opened with the gear
+  // button — without ever entering a settings route — still collapses when the
+  // user navigates to another top-level page.
   useEffect(() => {
-    if (isSettingsSelected) {
-      setIsSettingsMenuExpanded(true);
-    }
-  }, [isSettingsSelected]);
+    setIsSettingsMenuExpanded(isSettingsSelected);
+  }, [isSettingsSelected, pathname]);
   const isSettingsMenuVisible = isSettingsMenuExpanded && !collapsed;
+
+  // While the submenu is open, collapse it on any click that isn't a settings
+  // sub-item link or the gear toggle itself — the dashboard content, the
+  // submenu's own padding, other sidebar items, etc. (Clicking a sub-item
+  // navigates to a settings route, which the effect above re-expands, so no
+  // flicker.)
+  const settingsSubItemsRef = useRef<HTMLDivElement>(null);
+  const settingsToggleRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!isSettingsMenuExpanded) {
+      return;
+    }
+    const handlePointerDown = (event: Event) => {
+      const target = event.target;
+      if (!(target instanceof Node)) {
+        return;
+      }
+      if (
+        settingsSubItemsRef.current?.contains(target) ||
+        settingsToggleRef.current?.contains(target)
+      ) {
+        return;
+      }
+      setIsSettingsMenuExpanded(false);
+    };
+    // pointerdown covers mouse, touch, and pen uniformly.
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, [isSettingsMenuExpanded]);
 
   const settingsMenu = (
     <div
@@ -268,7 +306,10 @@ export default function Sidebar(props: SidebarProps) {
         transition: 'max-height 0.5s ease-in-out',
       }}
     >
-      <div className="flex flex-col gap-[4px] m-[16px]">
+      <div
+        ref={settingsSubItemsRef}
+        className="flex flex-col gap-[4px] m-[16px]"
+      >
         {accessibleSettingsSubItems.map((item) => (
           <Link
             key={item.title}
@@ -350,6 +391,7 @@ export default function Sidebar(props: SidebarProps) {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div
+                    ref={settingsToggleRef}
                     role="button"
                     aria-label="Settings"
                     aria-expanded={isSettingsMenuVisible}
