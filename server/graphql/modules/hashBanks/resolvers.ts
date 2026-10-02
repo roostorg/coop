@@ -1,10 +1,11 @@
+import { ExchangeCredentialsMultiTenantError } from '../../../services/hmaService/index.js';
 import { isCoopErrorOfType } from '../../../utils/errors.js';
 import type {
   GQLMutationResolvers,
   GQLQueryResolvers,
 } from '../../generated.js';
 import type { Context } from '../../resolvers.js';
-import { unauthenticatedError } from '../../utils/errors.js';
+import { forbiddenError, unauthenticatedError } from '../../utils/errors.js';
 import { gqlErrorResult, gqlSuccessResult } from '../../utils/gqlResult.js';
 
 interface ExchangeConfigInput {
@@ -142,7 +143,9 @@ const Mutation: GQLMutationResolvers<Context> = {
             credError,
           );
           warning =
-            'Bank and exchange were created, but credentials could not be set. You can update them from the bank settings page.';
+            credError instanceof ExchangeCredentialsMultiTenantError
+              ? 'Bank and exchange were created, but credentials cannot be set from Coop on an instance with multiple organizations. Ask your deployment operator to configure them in HMA.'
+              : 'Bank and exchange were created, but credentials could not be set. You can update them from the bank settings page.';
         }
       }
 
@@ -218,10 +221,17 @@ const Mutation: GQLMutationResolvers<Context> = {
 
     // eslint-disable-next-line no-restricted-syntax
     const credData = JSON.parse(credentialsJson) as Record<string, unknown>;
-    await context.services.HMAHashBankService.setExchangeCredentials(
-      apiName,
-      credData,
-    );
+    try {
+      await context.services.HMAHashBankService.setExchangeCredentials(
+        apiName,
+        credData,
+      );
+    } catch (e) {
+      if (e instanceof ExchangeCredentialsMultiTenantError) {
+        throw forbiddenError(e.message);
+      }
+      throw e;
+    }
     return true;
   },
 };

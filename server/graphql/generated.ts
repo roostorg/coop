@@ -5363,11 +5363,13 @@ export type GQLZentropiLabelerVersion = {
   readonly __typename?: 'ZentropiLabelerVersion';
   readonly id: Scalars['String']['output'];
   readonly label: Scalars['String']['output'];
+  readonly labelerId?: Maybe<Scalars['String']['output']>;
 };
 
 export type GQLZentropiLabelerVersionInput = {
   readonly id: Scalars['String']['input'];
   readonly label: Scalars['String']['input'];
+  readonly labelerId: Scalars['String']['input'];
 };
 
 export type ResolverTypeWrapper<T> = Promise<T> | T;
@@ -15188,6 +15190,11 @@ export type GQLZentropiLabelerVersionResolvers<
 > = {
   id?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   label?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  labelerId?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
 };
 
 export type GQLResolvers<ContextType = Context> = {

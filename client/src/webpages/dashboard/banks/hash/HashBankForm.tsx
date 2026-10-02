@@ -350,10 +350,15 @@ export default function HashBankForm() {
 
   const [updateExchangeCredentials, updateCredsMutationParams] =
     useGQLUpdateExchangeCredentialsMutation({
-      onError: () => {
+      onError: (error) => {
+        const forbidden = error.graphQLErrors.find(
+          (e) => e.extensions?.code === 'FORBIDDEN',
+        );
         setModalInfo({
           title: 'Error Updating Credentials',
-          body: 'We encountered an error trying to update the exchange credentials. Please try again.',
+          body:
+            forbidden?.message ??
+            'We encountered an error trying to update the exchange credentials. Please try again.',
           buttonText: 'OK',
         });
         showModal();
