@@ -301,7 +301,7 @@ export default function ActionsDashboard() {
   const table = (
     <div className="rounded-2xl">
       {/* @ts-ignore */}
-      <Table columns={columns} data={tableData} />
+      <Table columns={columns} data={tableData} containerClassName="w-full" />
     </div>
   );
 
