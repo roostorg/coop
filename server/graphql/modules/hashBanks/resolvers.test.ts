@@ -2,7 +2,7 @@ import { vi, type Mock } from 'vitest';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import {
-  ExchangeCredentialsMultiTenantError,
+  HashBankUserError,
   type HashBank,
 } from '../../../services/hmaService/index.js';
 import { resolvers } from './resolvers.js';
@@ -18,18 +18,37 @@ const MOCK_BANK: HashBank = {
   updated_at: new Date(),
 };
 
+const SECRET = 'hunter2-super-secret';
+
 function makeContext(overrides: Record<string, Mock> = {}) {
   return {
     getUser: () => ({ orgId: 'org1' }),
     services: {
       HMAHashBankService: {
         createBank: vi.fn().mockResolvedValue(MOCK_BANK),
-        setExchangeCredentials: vi.fn().mockResolvedValue(undefined),
+        setExchangeCredentials: vi.fn(),
+        setBankExchangeCredentials: vi.fn().mockResolvedValue({
+          supports_auth: true,
+          has_credentials: true,
+          source: 'exchange',
+        }),
         getExchangeForBank: vi.fn().mockResolvedValue(null),
+        getExchangeApis: vi
+          .fn()
+          .mockResolvedValue([{ name: 'ncmec', supports_auth: true }]),
         ...overrides,
       },
     },
   };
+}
+
+async function errorText(promise: Promise<unknown>): Promise<string> {
+  try {
+    await promise;
+  } catch (e) {
+    return e instanceof Error ? `${e.message} ${e.stack}` : String(e);
+  }
+  throw new Error('Expected promise to reject');
 }
 
 describe('hashBanks resolvers', () => {
@@ -39,7 +58,7 @@ describe('hashBanks resolvers', () => {
       const input = {
         name: 'test bank',
         description: 'desc',
-        enabled_ratio: 1.0,
+        enabled_ratio: 1,
       };
 
       const result = await (resolvers.Mutation as any).createHashBank(
@@ -53,20 +72,17 @@ describe('hashBanks resolvers', () => {
         'org1',
         'test bank',
         'desc',
-        1.0,
+        1,
         undefined,
       );
-      expect(
-        ctx.services.HMAHashBankService.setExchangeCredentials,
-      ).not.toHaveBeenCalled();
     });
 
-    it('creates a bank with exchange and credentials', async () => {
+    it('passes the credentials to createBank instead of setting them separately', async () => {
       const ctx = makeContext();
       const input = {
         name: 'test bank',
         description: 'desc',
-        enabled_ratio: 1.0,
+        enabled_ratio: 1,
         exchange: {
           api_name: 'fb_threatexchange',
           config_json: '{"privacy_group":123}',
@@ -81,118 +97,189 @@ describe('hashBanks resolvers', () => {
       );
 
       expect(result).toHaveProperty('data');
+      expect(result.warning).toBeUndefined();
       expect(ctx.services.HMAHashBankService.createBank).toHaveBeenCalledWith(
         'org1',
         'test bank',
         'desc',
-        1.0,
-        { apiName: 'fb_threatexchange', apiJson: { privacy_group: 123 } },
+        1,
+        {
+          apiName: 'fb_threatexchange',
+          apiJson: { privacy_group: 123 },
+          credentialJson: { api_token: 'tok' },
+        },
       );
       expect(
         ctx.services.HMAHashBankService.setExchangeCredentials,
-      ).toHaveBeenCalledWith('fb_threatexchange', { api_token: 'tok' });
+      ).not.toHaveBeenCalled();
     });
 
-    it('returns success with warning when credentials fail', async () => {
-      const ctx = makeContext({
-        createBank: vi.fn().mockResolvedValue(MOCK_BANK),
-        setExchangeCredentials: vi
-          .fn()
-          .mockRejectedValue(new Error('cred error')),
-      });
-      const input = {
-        name: 'test bank',
-        description: 'desc',
-        enabled_ratio: 1.0,
-        exchange: {
-          api_name: 'ncmec',
-          config_json: '{"environment":"https://test.ncmec.org"}',
-          credentials_json: '{"user":"u","password":"p"}',
-        },
-      };
-
-      const result = await (resolvers.Mutation as any).createHashBank(
-        {},
-        { input },
-        ctx,
-      );
-
-      expect(result).toHaveProperty('data');
-      expect(result.warning).toContain('credentials could not be set');
-    });
-
-    it('returns the multi-tenant warning when the instance has multiple orgs', async () => {
-      const ctx = makeContext({
-        setExchangeCredentials: vi
-          .fn()
-          .mockRejectedValue(new ExchangeCredentialsMultiTenantError()),
-      });
-      const input = {
-        name: 'test bank',
-        description: 'desc',
-        enabled_ratio: 1.0,
-        exchange: {
-          api_name: 'ncmec',
-          config_json: '{"environment":"https://test.ncmec.org"}',
-          credentials_json: '{"user":"u","password":"p"}',
-        },
-      };
-
-      const result = await (resolvers.Mutation as any).createHashBank(
-        {},
-        { input },
-        ctx,
-      );
-
-      expect(result).toHaveProperty('data');
-      expect(result.warning).toContain('multiple organizations');
-      expect(result.warning).not.toContain('credentials could not be set');
-    });
-
-    it('does not set credentials when credentials_json is absent', async () => {
+    it('omits credentials when credentials_json is absent', async () => {
       const ctx = makeContext();
       const input = {
         name: 'test bank',
-        description: 'desc',
-        enabled_ratio: 1.0,
-        exchange: {
-          api_name: 'stop_ncii',
-          config_json: '{}',
-        },
+        enabled_ratio: 1,
+        exchange: { api_name: 'stop_ncii', config_json: '{}' },
       };
 
       await (resolvers.Mutation as any).createHashBank({}, { input }, ctx);
 
       expect(
-        ctx.services.HMAHashBankService.setExchangeCredentials,
-      ).not.toHaveBeenCalled();
+        ctx.services.HMAHashBankService.createBank.mock.calls[0][4],
+      ).toEqual({
+        apiName: 'stop_ncii',
+        apiJson: {},
+        credentialJson: undefined,
+      });
+    });
+
+    it('rejects malformed credentials_json without echoing it', async () => {
+      const ctx = makeContext();
+      const input = {
+        name: 'test bank',
+        enabled_ratio: 1,
+        exchange: {
+          api_name: 'ncmec',
+          config_json: '{}',
+          credentials_json: `{"user":"u","password":${SECRET}}`,
+        },
+      };
+
+      const text = await errorText(
+        (resolvers.Mutation as any).createHashBank({}, { input }, ctx),
+      );
+
+      expect(text).toContain('must be a valid JSON object');
+      expect(text).not.toContain(SECRET);
+      expect(ctx.services.HMAHashBankService.createBank).not.toHaveBeenCalled();
+    });
+
+    it('rejects non-scalar credential values', async () => {
+      const ctx = makeContext();
+      const input = {
+        name: 'test bank',
+        enabled_ratio: 1,
+        exchange: {
+          api_name: 'ncmec',
+          config_json: '{}',
+          credentials_json: '{"user":{"nested":true}}',
+        },
+      };
+
+      await expect(
+        (resolvers.Mutation as any).createHashBank({}, { input }, ctx),
+      ).rejects.toMatchObject({ extensions: { code: 'BAD_USER_INPUT' } });
+    });
+
+    it('surfaces HashBankUserError as BAD_USER_INPUT', async () => {
+      const ctx = makeContext({
+        createBank: vi
+          .fn()
+          .mockRejectedValue(new HashBankUserError('Missing: user')),
+      });
+      const input = {
+        name: 'test bank',
+        enabled_ratio: 1,
+        exchange: { api_name: 'ncmec', config_json: '{}' },
+      };
+
+      await expect(
+        (resolvers.Mutation as any).createHashBank({}, { input }, ctx),
+      ).rejects.toMatchObject({
+        message: 'Missing: user',
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
     });
   });
 
-  describe('Mutation.updateExchangeCredentials', () => {
-    it('calls setExchangeCredentials and returns true', async () => {
+  describe('Mutation.updateHashBankExchangeCredentials', () => {
+    it("scopes the update to the caller's org and bank", async () => {
       const ctx = makeContext();
 
       const result = await (
         resolvers.Mutation as any
-      ).updateExchangeCredentials(
+      ).updateHashBankExchangeCredentials(
         {},
-        { apiName: 'ncmec', credentialsJson: '{"user":"u","password":"p"}' },
+        { bankId: '1', credentialsJson: '{"user":"u","password":"p"}' },
         ctx,
       );
 
-      expect(result).toBe(true);
+      expect(result).toEqual({
+        supports_auth: true,
+        has_credentials: true,
+        source: 'exchange',
+      });
       expect(
-        ctx.services.HMAHashBankService.setExchangeCredentials,
-      ).toHaveBeenCalledWith('ncmec', { user: 'u', password: 'p' });
+        ctx.services.HMAHashBankService.setBankExchangeCredentials,
+      ).toHaveBeenCalledWith('org1', 1, { user: 'u', password: 'p' });
     });
 
-    it('rejects with FORBIDDEN when the instance is multi-tenant', async () => {
+    it('clears credentials when credentialsJson is null', async () => {
+      const ctx = makeContext();
+
+      await (resolvers.Mutation as any).updateHashBankExchangeCredentials(
+        {},
+        { bankId: '1', credentialsJson: null },
+        ctx,
+      );
+
+      expect(
+        ctx.services.HMAHashBankService.setBankExchangeCredentials,
+      ).toHaveBeenCalledWith('org1', 1, null);
+    });
+
+    it("returns not-found for another org's bank", async () => {
       const ctx = makeContext({
-        setExchangeCredentials: vi
+        setBankExchangeCredentials: vi
           .fn()
-          .mockRejectedValue(new ExchangeCredentialsMultiTenantError()),
+          .mockRejectedValue(new HashBankUserError('Hash bank not found.')),
       });
+
+      await expect(
+        (resolvers.Mutation as any).updateHashBankExchangeCredentials(
+          {},
+          { bankId: '99', credentialsJson: '{"user":"u"}' },
+          ctx,
+        ),
+      ).rejects.toMatchObject({
+        message: 'Hash bank not found.',
+        extensions: { code: 'BAD_USER_INPUT' },
+      });
+    });
+
+    it('rejects malformed credentialsJson without echoing it', async () => {
+      const ctx = makeContext();
+
+      const text = await errorText(
+        (resolvers.Mutation as any).updateHashBankExchangeCredentials(
+          {},
+          { bankId: '1', credentialsJson: `{"password":${SECRET}}` },
+          ctx,
+        ),
+      );
+
+      expect(text).not.toContain(SECRET);
+      expect(
+        ctx.services.HMAHashBankService.setBankExchangeCredentials,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('requires an authenticated user with an org', async () => {
+      const ctx = { ...makeContext(), getUser: () => null };
+
+      await expect(
+        (resolvers.Mutation as any).updateHashBankExchangeCredentials(
+          {},
+          { bankId: '1', credentialsJson: null },
+          ctx,
+        ),
+      ).rejects.toMatchObject({ extensions: { code: 'UNAUTHENTICATED' } });
+    });
+  });
+
+  describe('Mutation.updateExchangeCredentials (deprecated)', () => {
+    it('always refuses and never writes API-level credentials', async () => {
+      const ctx = makeContext();
 
       await expect(
         (resolvers.Mutation as any).updateExchangeCredentials(
@@ -201,6 +288,24 @@ describe('hashBanks resolvers', () => {
           ctx,
         ),
       ).rejects.toMatchObject({ extensions: { code: 'FORBIDDEN' } });
+      expect(
+        ctx.services.HMAHashBankService.setExchangeCredentials,
+      ).not.toHaveBeenCalled();
+      expect(
+        ctx.services.HMAHashBankService.setBankExchangeCredentials,
+      ).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Query.exchangeApis', () => {
+    it('reports the deprecated has_auth as false', async () => {
+      const ctx = makeContext();
+
+      const result = await (resolvers.Query as any).exchangeApis({}, {}, ctx);
+
+      expect(result).toEqual([
+        { name: 'ncmec', supports_auth: true, has_auth: false },
+      ]);
     });
   });
 
@@ -210,6 +315,7 @@ describe('hashBanks resolvers', () => {
         api: 'fb_threatexchange',
         enabled: true,
         has_auth: true,
+        credential_source: 'exchange',
         last_fetch_succeeded: true,
       };
       const ctx = makeContext({

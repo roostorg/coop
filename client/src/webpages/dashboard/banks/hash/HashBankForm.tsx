@@ -17,10 +17,48 @@ import {
   useGQLExchangeApiSchemaLazyQuery,
   useGQLExchangeApisQuery,
   useGQLHashBankByIdQuery,
-  useGQLUpdateExchangeCredentialsMutation,
+  useGQLUpdateHashBankExchangeCredentialsMutation,
   useGQLUpdateHashBankMutation,
   type GQLExchangeApiSchemaQuery,
 } from '../../../../graphql/generated';
+
+function userInputErrorMessage(
+  error: {
+    graphQLErrors: ReadonlyArray<{
+      message: string;
+      extensions?: Record<string, unknown>;
+    }>;
+  },
+  fallback: string,
+): string {
+  return (
+    error.graphQLErrors.find((e) => e.extensions?.code === 'BAD_USER_INPUT')
+      ?.message ?? fallback
+  );
+}
+
+function credentialTag(exchange: {
+  has_auth: boolean;
+  credential_source?: string | null;
+}): { color: string; label: string; prompt?: string } {
+  if (!exchange.has_auth) {
+    return {
+      color: 'orange',
+      label: 'Credentials Missing',
+      prompt:
+        'This exchange has no credentials. Add your organization’s credentials to start fetching.',
+    };
+  }
+  if (exchange.credential_source === 'exchange') {
+    return { color: 'green', label: 'Credentials Set' };
+  }
+  return {
+    color: 'orange',
+    label: 'Using Shared Credentials',
+    prompt:
+      'This exchange is using credentials shared by the HMA server, not your organization’s own. Update the credentials to use your own.',
+  };
+}
 
 type SchemaField = GQLExchangeApiSchemaQuery['exchangeApiSchema'] extends
   infer S | null | undefined
@@ -213,11 +251,6 @@ export default function HashBankForm() {
   const schema = schemaQuery.data?.exchangeApiSchema;
   const schemaLoading = schemaQuery.loading;
 
-  const selectedApiInfo = useMemo(
-    () => exchangeApis.find((a) => a.name === selectedExchangeApi),
-    [exchangeApis, selectedExchangeApi],
-  );
-
   useEffect(() => {
     if (selectedExchangeApi) {
       fetchSchema({ variables: { apiName: selectedExchangeApi } });
@@ -250,10 +283,13 @@ export default function HashBankForm() {
   }, [schema]);
 
   const [createHashBank, createMutationParams] = useGQLCreateHashBankMutation({
-    onError: () => {
+    onError: (error) => {
       setModalInfo({
         title: 'Error Creating Hash Bank',
-        body: 'We encountered an error trying to create your Hash Bank. Please try again.',
+        body: userInputErrorMessage(
+          error,
+          'We encountered an error trying to create your Hash Bank. Please try again.',
+        ),
         buttonText: 'OK',
       });
       showModal();
@@ -293,10 +329,13 @@ export default function HashBankForm() {
   });
 
   const [updateHashBank, updateMutationParams] = useGQLUpdateHashBankMutation({
-    onError: () => {
+    onError: (error) => {
       setModalInfo({
         title: 'Error Updating Hash Bank',
-        body: 'We encountered an error trying to update your Hash Bank. Please try again.',
+        body: userInputErrorMessage(
+          error,
+          'We encountered an error trying to update your Hash Bank. Please try again.',
+        ),
         buttonText: 'OK',
       });
       showModal();
@@ -349,16 +388,14 @@ export default function HashBankForm() {
   const bankExchangeApi = bank?.exchange?.api;
 
   const [updateExchangeCredentials, updateCredsMutationParams] =
-    useGQLUpdateExchangeCredentialsMutation({
+    useGQLUpdateHashBankExchangeCredentialsMutation({
       onError: (error) => {
-        const forbidden = error.graphQLErrors.find(
-          (e) => e.extensions?.code === 'FORBIDDEN',
-        );
         setModalInfo({
           title: 'Error Updating Credentials',
-          body:
-            forbidden?.message ??
+          body: userInputErrorMessage(
+            error,
             'We encountered an error trying to update the exchange credentials. Please try again.',
+          ),
           buttonText: 'OK',
         });
         showModal();
@@ -394,12 +431,9 @@ export default function HashBankForm() {
         ? {
             api_name: selectedExchangeApi,
             config_json: JSON.stringify(exchangeConfigValues),
-            credentials_json:
-              schema.credentials_schema &&
-              selectedApiInfo &&
-              !selectedApiInfo.has_auth
-                ? JSON.stringify(exchangeCredValues)
-                : undefined,
+            credentials_json: schema.credentials_schema?.fields.length
+              ? JSON.stringify(exchangeCredValues)
+              : undefined,
           }
         : undefined;
 
@@ -434,10 +468,10 @@ export default function HashBankForm() {
   };
 
   const onUpdateCredentials = () => {
-    if (!bankExchangeApi) return;
+    if (!bank?.exchange) return;
     updateExchangeCredentials({
       variables: {
-        apiName: bankExchangeApi,
+        bankId: bank.id,
         credentialsJson: JSON.stringify(editCredValues),
       },
       refetchQueries: [
@@ -472,8 +506,6 @@ export default function HashBankForm() {
   const hasRequiredCredsMissing =
     selectedExchangeApi &&
     schema?.credentials_schema &&
-    selectedApiInfo &&
-    !selectedApiInfo.has_auth &&
     schema.credentials_schema.fields.some(
       (f) =>
         f.required &&
@@ -504,6 +536,10 @@ export default function HashBankForm() {
   const exchangeApiDisplayName = bank?.exchange
     ? (EXCHANGE_DISPLAY_NAMES[bank.exchange.api] ?? bank.exchange.api)
     : null;
+  const exchangeCredentialTag =
+    bank?.exchange && schema?.credentials_schema?.fields.length
+      ? credentialTag(bank.exchange)
+      : null;
 
   return (
     <div className="flex flex-col text-start">
@@ -539,11 +575,11 @@ export default function HashBankForm() {
                     <Tag color={bank.exchange.enabled ? 'green' : 'default'}>
                       {bank.exchange.enabled ? 'Enabled' : 'Disabled'}
                     </Tag>
-                    <Tag color={bank.exchange.has_auth ? 'green' : 'orange'}>
-                      {bank.exchange.has_auth
-                        ? 'Credentials Set'
-                        : 'Credentials Missing'}
-                    </Tag>
+                    {exchangeCredentialTag && (
+                      <Tag color={exchangeCredentialTag.color}>
+                        {exchangeCredentialTag.label}
+                      </Tag>
+                    )}
                     {bank.exchange.last_fetch_succeeded === false && (
                       <Tag color="red">Fetch Failed</Tag>
                     )}
@@ -561,6 +597,11 @@ export default function HashBankForm() {
                       {bank.exchange.fetched_items != null && (
                         <> &middot; {bank.exchange.fetched_items} items</>
                       )}
+                    </span>
+                  )}
+                  {exchangeCredentialTag?.prompt && (
+                    <span className="text-xs text-orange-700">
+                      {exchangeCredentialTag.prompt}
                     </span>
                   )}
                   {bank.exchange.last_fetch_succeeded === false && (
@@ -710,23 +751,15 @@ export default function HashBankForm() {
                 </div>
               )}
 
-              {schema.credentials_schema &&
-                selectedApiInfo &&
-                !selectedApiInfo.has_auth && (
-                  <div className="mt-6">
-                    <DynamicSchemaFields
-                      title="Exchange Credentials"
-                      subtitle="Provide authentication credentials for this exchange API. These credentials are shared across all exchanges of this type."
-                      fields={schema.credentials_schema.fields}
-                      values={exchangeCredValues}
-                      onChange={setExchangeCredValues}
-                    />
-                  </div>
-                )}
-
-              {schema.credentials_schema && selectedApiInfo?.has_auth && (
-                <div className="mt-4 p-3 text-sm rounded-md bg-emerald-50 text-emerald-700">
-                  Credentials for this exchange API are already configured.
+              {schema.credentials_schema && (
+                <div className="mt-6">
+                  <DynamicSchemaFields
+                    title="Exchange Credentials"
+                    subtitle="Your organization's credentials for this exchange. They are used only by this bank and are never shown again after saving."
+                    fields={schema.credentials_schema.fields}
+                    values={exchangeCredValues}
+                    onChange={setExchangeCredValues}
+                  />
                 </div>
               )}
             </>
