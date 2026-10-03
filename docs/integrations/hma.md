@@ -36,6 +36,22 @@ Banks created directly in HMA (via the HMA UI or seed scripts) will not appear i
 
 You can use the HMA UI to manually add content to any bank for local testing, regardless of how the bank was created.
 
+### Exchange credentials
+
+When you connect a bank to an exchange (NCMEC, StopNCII, ThreatExchange, ...) in Coop, the credentials you enter are stored on that bank's exchange only. Other organizations on the same instance can't see or use them. Coop requires credentials when creating a bank for an exchange that uses them, and never shows them again after saving. To rotate them, open the bank and choose **Update Credentials**.
+
+A bank tagged **Using Shared Credentials** is fetching with credentials configured on the HMA server (an API-level default, environment variable, or file) rather than your organization's own.
+
+#### Upgrading from HMA 1.1.x
+
+Coop requires HMA 1.2.0 or later. Upgrading HMA requires running its database migrations before starting the new version:
+
+```bash
+MIGRATION_COMMAND=1 flask --app OpenMediaMatch.app db upgrade --directory OpenMediaMatch/migrations
+```
+
+The local `hma` Docker image runs this on startup; other deployments must run it themselves. The 1.2.0 migration copies each API type's shared credentials onto every existing exchange of that type, so existing banks keep fetching. Those copies are whichever organization last set credentials for that API type. On multi-organization instances, every organization with an existing exchange-connected bank should re-enter its own credentials with **Update Credentials**.
+
 ## NCMEC Hash Sharing
 
 For Coop to match against NCMEC's database of known CSAM hashes, you need credentials for NCMEC's [Hash Sharing API](https://report.cybertip.org/ws-hashsharing/v2/documentation/).

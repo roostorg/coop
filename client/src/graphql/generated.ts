@@ -1164,6 +1164,7 @@ export type GQLError = {
 
 export type GQLExchangeApiInfo = {
   readonly __typename: 'ExchangeApiInfo';
+  /** @deprecated Field no longer supported */
   readonly has_auth: Scalars['Boolean']['output'];
   readonly name: Scalars['String']['output'];
   readonly supports_auth: Scalars['Boolean']['output'];
@@ -1181,6 +1182,13 @@ export type GQLExchangeConfigInput = {
   readonly credentials_json?: InputMaybe<Scalars['String']['input']>;
 };
 
+export type GQLExchangeCredentialStatus = {
+  readonly __typename: 'ExchangeCredentialStatus';
+  readonly has_credentials: Scalars['Boolean']['output'];
+  readonly source?: Maybe<Scalars['String']['output']>;
+  readonly supports_auth: Scalars['Boolean']['output'];
+};
+
 export type GQLExchangeFieldDescriptor = {
   readonly __typename: 'ExchangeFieldDescriptor';
   readonly choices?: Maybe<ReadonlyArray<Scalars['String']['output']>>;
@@ -1194,6 +1202,7 @@ export type GQLExchangeFieldDescriptor = {
 export type GQLExchangeInfo = {
   readonly __typename: 'ExchangeInfo';
   readonly api: Scalars['String']['output'];
+  readonly credential_source?: Maybe<Scalars['String']['output']>;
   readonly enabled: Scalars['Boolean']['output'];
   readonly error?: Maybe<Scalars['String']['output']>;
   readonly fetched_items?: Maybe<Scalars['Int']['output']>;
@@ -2569,10 +2578,12 @@ export type GQLMutation = {
   readonly updateAppealSettings: GQLAppealSettings;
   readonly updateContentItemType: GQLMutateContentItemTypeResponse;
   readonly updateContentRule: GQLUpdateContentRuleResponse;
+  /** @deprecated Field no longer supported */
   readonly updateExchangeCredentials: Scalars['Boolean']['output'];
   readonly updateHasAppealsEnabled: Scalars['Boolean']['output'];
   readonly updateHasReportingRulesEnabled: Scalars['Boolean']['output'];
   readonly updateHashBank: GQLMutateHashBankResponse;
+  readonly updateHashBankExchangeCredentials: GQLExchangeCredentialStatus;
   readonly updateHideSkipButtonForNonAdmins: Scalars['Boolean']['output'];
   readonly updateIgnoreCallbackUrl: Scalars['Boolean']['output'];
   readonly updateLocationBank: GQLMutateLocationBankResponse;
@@ -2882,6 +2893,11 @@ export type GQLMutationUpdateHasReportingRulesEnabledArgs = {
 
 export type GQLMutationUpdateHashBankArgs = {
   input: GQLUpdateHashBankInput;
+};
+
+export type GQLMutationUpdateHashBankExchangeCredentialsArgs = {
+  bankId: Scalars['ID']['input'];
+  credentialsJson?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type GQLMutationUpdateHideSkipButtonForNonAdminsArgs = {
@@ -5407,6 +5423,7 @@ export type GQLHashBankByIdQuery = {
       readonly api: string;
       readonly enabled: boolean;
       readonly has_auth: boolean;
+      readonly credential_source?: string | null;
       readonly error?: string | null;
       readonly last_fetch_succeeded?: boolean | null;
       readonly last_fetch_time?: string | null;
@@ -5425,7 +5442,6 @@ export type GQLExchangeApisQuery = {
     readonly __typename: 'ExchangeApiInfo';
     readonly name: string;
     readonly supports_auth: boolean;
-    readonly has_auth: boolean;
   }>;
 };
 
@@ -5534,14 +5550,19 @@ export type GQLDeleteHashBankMutation = {
   readonly deleteHashBank: boolean;
 };
 
-export type GQLUpdateExchangeCredentialsMutationVariables = Exact<{
-  apiName: Scalars['String']['input'];
-  credentialsJson: Scalars['String']['input'];
+export type GQLUpdateHashBankExchangeCredentialsMutationVariables = Exact<{
+  bankId: Scalars['ID']['input'];
+  credentialsJson?: InputMaybe<Scalars['String']['input']>;
 }>;
 
-export type GQLUpdateExchangeCredentialsMutation = {
+export type GQLUpdateHashBankExchangeCredentialsMutation = {
   readonly __typename: 'Mutation';
-  readonly updateExchangeCredentials: boolean;
+  readonly updateHashBankExchangeCredentials: {
+    readonly __typename: 'ExchangeCredentialStatus';
+    readonly supports_auth: boolean;
+    readonly has_credentials: boolean;
+    readonly source?: string | null;
+  };
 };
 
 export type GQLPasswordRequirementsQueryVariables = Exact<{
@@ -26747,6 +26768,7 @@ export const GQLHashBankByIdDocument = gql`
         api
         enabled
         has_auth
+        credential_source
         error
         last_fetch_succeeded
         last_fetch_time
@@ -26858,7 +26880,6 @@ export const GQLExchangeApisDocument = gql`
     exchangeApis {
       name
       supports_auth
-      has_auth
     }
   }
 `;
@@ -27258,61 +27279,66 @@ export type GQLDeleteHashBankMutationOptions = Apollo.BaseMutationOptions<
   GQLDeleteHashBankMutation,
   GQLDeleteHashBankMutationVariables
 >;
-export const GQLUpdateExchangeCredentialsDocument = gql`
-  mutation UpdateExchangeCredentials(
-    $apiName: String!
-    $credentialsJson: String!
+export const GQLUpdateHashBankExchangeCredentialsDocument = gql`
+  mutation UpdateHashBankExchangeCredentials(
+    $bankId: ID!
+    $credentialsJson: String
   ) {
-    updateExchangeCredentials(
-      apiName: $apiName
+    updateHashBankExchangeCredentials(
+      bankId: $bankId
       credentialsJson: $credentialsJson
-    )
+    ) {
+      supports_auth
+      has_credentials
+      source
+    }
   }
 `;
-export type GQLUpdateExchangeCredentialsMutationFn = Apollo.MutationFunction<
-  GQLUpdateExchangeCredentialsMutation,
-  GQLUpdateExchangeCredentialsMutationVariables
->;
+export type GQLUpdateHashBankExchangeCredentialsMutationFn =
+  Apollo.MutationFunction<
+    GQLUpdateHashBankExchangeCredentialsMutation,
+    GQLUpdateHashBankExchangeCredentialsMutationVariables
+  >;
 
 /**
- * __useGQLUpdateExchangeCredentialsMutation__
+ * __useGQLUpdateHashBankExchangeCredentialsMutation__
  *
- * To run a mutation, you first call `useGQLUpdateExchangeCredentialsMutation` within a React component and pass it any options that fit your needs.
- * When your component renders, `useGQLUpdateExchangeCredentialsMutation` returns a tuple that includes:
+ * To run a mutation, you first call `useGQLUpdateHashBankExchangeCredentialsMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLUpdateHashBankExchangeCredentialsMutation` returns a tuple that includes:
  * - A mutate function that you can call at any time to execute the mutation
  * - An object with fields that represent the current status of the mutation's execution
  *
  * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
  *
  * @example
- * const [gqlUpdateExchangeCredentialsMutation, { data, loading, error }] = useGQLUpdateExchangeCredentialsMutation({
+ * const [gqlUpdateHashBankExchangeCredentialsMutation, { data, loading, error }] = useGQLUpdateHashBankExchangeCredentialsMutation({
  *   variables: {
- *      apiName: // value for 'apiName'
+ *      bankId: // value for 'bankId'
  *      credentialsJson: // value for 'credentialsJson'
  *   },
  * });
  */
-export function useGQLUpdateExchangeCredentialsMutation(
+export function useGQLUpdateHashBankExchangeCredentialsMutation(
   baseOptions?: Apollo.MutationHookOptions<
-    GQLUpdateExchangeCredentialsMutation,
-    GQLUpdateExchangeCredentialsMutationVariables
+    GQLUpdateHashBankExchangeCredentialsMutation,
+    GQLUpdateHashBankExchangeCredentialsMutationVariables
   >,
 ) {
   const options = { ...defaultOptions, ...baseOptions };
   return Apollo.useMutation<
-    GQLUpdateExchangeCredentialsMutation,
-    GQLUpdateExchangeCredentialsMutationVariables
-  >(GQLUpdateExchangeCredentialsDocument, options);
+    GQLUpdateHashBankExchangeCredentialsMutation,
+    GQLUpdateHashBankExchangeCredentialsMutationVariables
+  >(GQLUpdateHashBankExchangeCredentialsDocument, options);
 }
-export type GQLUpdateExchangeCredentialsMutationHookResult = ReturnType<
-  typeof useGQLUpdateExchangeCredentialsMutation
+export type GQLUpdateHashBankExchangeCredentialsMutationHookResult = ReturnType<
+  typeof useGQLUpdateHashBankExchangeCredentialsMutation
 >;
-export type GQLUpdateExchangeCredentialsMutationResult =
-  Apollo.MutationResult<GQLUpdateExchangeCredentialsMutation>;
-export type GQLUpdateExchangeCredentialsMutationOptions =
+export type GQLUpdateHashBankExchangeCredentialsMutationResult =
+  Apollo.MutationResult<GQLUpdateHashBankExchangeCredentialsMutation>;
+export type GQLUpdateHashBankExchangeCredentialsMutationOptions =
   Apollo.BaseMutationOptions<
-    GQLUpdateExchangeCredentialsMutation,
-    GQLUpdateExchangeCredentialsMutationVariables
+    GQLUpdateHashBankExchangeCredentialsMutation,
+    GQLUpdateHashBankExchangeCredentialsMutationVariables
   >;
 export const GQLPasswordRequirementsDocument = gql`
   query PasswordRequirements {
@@ -45913,7 +45939,7 @@ export const namedOperations = {
     CreateHashBank: 'CreateHashBank',
     UpdateHashBank: 'UpdateHashBank',
     DeleteHashBank: 'DeleteHashBank',
-    UpdateExchangeCredentials: 'UpdateExchangeCredentials',
+    UpdateHashBankExchangeCredentials: 'UpdateHashBankExchangeCredentials',
     Login: 'Login',
     DeleteRejectedUser: 'DeleteRejectedUser',
     SignUp: 'SignUp',
