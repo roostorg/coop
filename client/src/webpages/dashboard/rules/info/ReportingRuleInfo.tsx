@@ -7,10 +7,12 @@ import CoopButton from '../../components/CoopButton';
 import NavHeader from '../../components/NavHeader';
 
 import { useGQLReportingRuleInfoQuery } from '../../../../graphql/generated';
+import ReportingRuleInsights from './insights/ReportingRuleInsights';
 
 gql`
   query ReportingRuleInfo($id: ID!) {
     reportingRule(id: $id) {
+      id
       name
     }
   }
@@ -59,6 +61,7 @@ export default function ReportingRuleInfo() {
           destination={`/dashboard/rules/report/form/${ruleId}`}
         />
       </div>
+      <ReportingRuleInsights ruleId={ruleId} />
     </div>
   );
 }
