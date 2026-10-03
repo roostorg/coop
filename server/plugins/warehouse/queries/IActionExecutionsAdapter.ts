@@ -37,6 +37,73 @@ export interface ItemActionHistoryInput {
   itemSubmissionTime?: Date;
 }
 
+export interface ModeratorActionCursor {
+  /** `max(ts)` of the last group already returned. */
+  ts: Date;
+  correlationId: string;
+}
+
+export interface RecentModeratorActionsInput {
+  orgId: string;
+  /** Absent for the newest page. */
+  cursor?: ModeratorActionCursor;
+  /** Inclusive lower bound on `max(ts)`, from a user-set date range. */
+  after?: Date;
+  /** Inclusive upper bound on `max(ts)`, from a user-set date range. */
+  before?: Date;
+  limit: number;
+  /** Restrict to actions taken by these moderators. */
+  actorIds?: readonly string[];
+  /** Restrict to actions carrying at least one of these policies. */
+  policyIds?: readonly string[];
+  /** Restrict to operations that touched this item. */
+  itemId?: string;
+}
+
+/**
+ * One moderator operation, collapsed from the many `(item, action)` rows it
+ * wrote. A single bulk submit of 500 ids with 2 actions selected produces 1,000
+ * rows sharing one `correlation_id`; this is that operation as one record.
+ */
+export interface ModeratorActionGroupRecord {
+  correlationId: string;
+  actorId: string | null;
+  itemTypeId: string | null;
+  actionIds: readonly string[];
+  policyIds: readonly string[];
+  actorNote: string | null;
+  /** Distinct items the operation touched. Exact, not estimated. */
+  itemCount: number;
+  /** Distinct items with an execution that failed after retries. */
+  failedCount: number;
+  occurredAt: Date;
+}
+
+export interface ManualActionItemsInput {
+  orgId: string;
+  correlationId: string;
+  /**
+   * `max(ts)` of the operation, from the feed row. Caps the partition scan at
+   * the run's own day. There is deliberately no lower bound: the scan must
+   * never be narrower than the feed's, or this panel would list fewer items
+   * than the row it was opened from claims.
+   */
+  occurredAt: Date;
+  limit: number;
+  offset: number;
+}
+
+export interface ManualActionItemRecord {
+  itemId: string;
+  itemTypeId: string | null;
+  failed: boolean;
+}
+
+export interface ManualActionItemsResult {
+  items: readonly ManualActionItemRecord[];
+  totalCount: number;
+}
+
 export interface UserStrikeActionsInput {
   orgId: string;
   filterBy?: {
@@ -76,6 +143,20 @@ export interface IActionExecutionsAdapter {
   getItemActionHistory(
     input: ItemActionHistoryInput,
   ): Promise<ReadonlyArray<ItemActionHistoryRecord>>;
+
+  /**
+   * Feed of actions a moderator took outside a review job — from Bulk
+   * Actioning or Investigation. These never produce a `manual_review_decisions`
+   * row, so this is the only record of them.
+   */
+  getRecentModeratorActions(
+    input: RecentModeratorActionsInput,
+  ): Promise<ReadonlyArray<ModeratorActionGroupRecord>>;
+
+  /** Every item one moderator operation touched, paged. */
+  getManualActionItems(
+    input: ManualActionItemsInput,
+  ): Promise<ManualActionItemsResult>;
 
   getRecentUserStrikeActions(
     input: UserStrikeActionsInput,
