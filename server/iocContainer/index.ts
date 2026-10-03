@@ -982,6 +982,7 @@ export default async function getBottle(
         reviewerEmail,
         decisionReason,
         suppressUserReportSweep,
+        validatedNcmecTarget,
       }) {
         const { orgId } = job;
         const { itemId, itemTypeIdentifier, data } = job.payload.item;
@@ -1407,6 +1408,7 @@ export default async function getBottle(
                           correlationId,
                           item: job.payload.item,
                           reenqueuedFrom: { jobId: job.id },
+                          validatedNcmecTarget,
                         },
                       );
                       break;

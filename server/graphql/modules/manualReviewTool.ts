@@ -392,6 +392,15 @@ const typeDefs = /* GraphQL */ `
     requestId: String
   }
 
+  type NcmecEscalationUnavailableError implements Error {
+    title: String!
+    status: Int!
+    type: [String!]!
+    pointer: String
+    detail: String
+    requestId: String
+  }
+
   union SubmitDecisionResponse =
     | SubmitDecisionSuccessResponse
     | JobHasAlreadyBeenSubmittedError
@@ -400,6 +409,7 @@ const typeDefs = /* GraphQL */ `
     | RecordingJobDecisionFailedError
     | MissingRequiredDecisionReasonError
     | MissingRequiredPolicyForDecisionError
+    | NcmecEscalationUnavailableError
 
   union DequeueManualReviewJobResponse = DequeueManualReviewJobSuccessResponse
 
@@ -2520,7 +2530,8 @@ const Mutation: GQLMutationResolvers = {
         isCoopErrorOfType(e, 'NoJobWithIdInQueueError') ||
         isCoopErrorOfType(e, 'RecordingJobDecisionFailedError') ||
         isCoopErrorOfType(e, 'MissingRequiredDecisionReasonError') ||
-        isCoopErrorOfType(e, 'MissingRequiredPolicyForDecisionError')
+        isCoopErrorOfType(e, 'MissingRequiredPolicyForDecisionError') ||
+        isCoopErrorOfType(e, 'NcmecEscalationUnavailableError')
       ) {
         return gqlErrorResult(e);
       }

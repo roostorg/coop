@@ -226,6 +226,12 @@ gql`
         status
         type
       }
+      ... on NcmecEscalationUnavailableError {
+        title
+        status
+        type
+        detail
+      }
     }
   }
 
@@ -651,6 +657,22 @@ function ManualReviewJobReviewImpl(props: {
               visible: true,
               modalBody:
                 'This org requires every decision to include at least one policy. Pick a policy and resubmit.',
+              footer: [
+                {
+                  title: 'Ok',
+                  type: 'primary',
+                  onClick: hideModal,
+                },
+              ],
+            });
+            break;
+          }
+          case 'NcmecEscalationUnavailableError': {
+            setModalInfo({
+              visible: true,
+              modalBody:
+                response.submitManualReviewDecision.detail ??
+                response.submitManualReviewDecision.title,
               footer: [
                 {
                   title: 'Ok',
@@ -1242,10 +1264,25 @@ function ManualReviewJobReviewImpl(props: {
             );
           }
 
-          const isNcmecDisabled =
-            'type' in action &&
-            action.type === BuiltInActionType.EnqueueToNcmec &&
-            !org.hasNCMECReportingEnabled;
+          const ncmecDisabledReason = (() => {
+            if (
+              !('type' in action) ||
+              action.type !== BuiltInActionType.EnqueueToNcmec
+            ) {
+              return undefined;
+            }
+            if (!org.hasNCMECReportingEnabled) {
+              return 'NCMEC reporting is not enabled for your organization.';
+            }
+            if (
+              reportedItem.__typename === 'ContentItem' &&
+              getFieldValueForRole(reportedItem, 'creatorId') == null
+            ) {
+              return 'This content item has no creator. NCMEC review jobs must be linked to a user.';
+            }
+            return undefined;
+          })();
+          const isNcmecDisabled = ncmecDisabledReason != null;
 
           // Show a pencil only for selected CustomActions whose spec has at
           // least one parameter — that's exactly when re-editing has any
@@ -1354,10 +1391,7 @@ function ManualReviewJobReviewImpl(props: {
             </div>
           );
           return isNcmecDisabled ? (
-            <Tooltip
-              key={key}
-              title="NCMEC reporting is not enabled for your organization."
-            >
+            <Tooltip key={key} title={ncmecDisabledReason}>
               {actionDiv}
             </Tooltip>
           ) : (
