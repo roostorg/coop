@@ -436,6 +436,7 @@ export default function ItemInvestigation(props: {
             />
             <ItemInvestigationRuleResults
               itemIdentifier={{ id: item.id, typeId: item.type.id }}
+              itemTypes={(allItemTypes as GQLItemType[] | undefined) ?? []}
               submissionTime={item.submissionTime?.toString()}
               rules={allRules ?? []}
             />
