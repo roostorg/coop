@@ -62,7 +62,7 @@ export default function IntegrationConfigApiCredentialsSection(props: {
 
     const updateLabelerVersion = (
       index: number,
-      field: 'id' | 'label',
+      field: 'id' | 'label' | 'labelerId',
       value: string,
     ) => {
       const updated = labelerVersions.map((v, i) =>
@@ -76,7 +76,12 @@ export default function IntegrationConfigApiCredentialsSection(props: {
         ...apiCredential,
         labelerVersions: [
           ...labelerVersions,
-          { __typename: 'ZentropiLabelerVersion' as const, id: '', label: '' },
+          {
+            __typename: 'ZentropiLabelerVersion' as const,
+            id: '',
+            label: '',
+            labelerId: '',
+          },
         ],
       });
     };
@@ -109,6 +114,14 @@ export default function IntegrationConfigApiCredentialsSection(props: {
               key={index}
               className={`flex gap-2 mb-2 ${compact ? 'flex-col' : 'flex-row items-center'}`}
             >
+              <Input
+                placeholder="Labeler ID"
+                value={version.labelerId ?? ''}
+                onChange={(event) =>
+                  updateLabelerVersion(index, 'labelerId', event.target.value)
+                }
+                className="flex-1"
+              />
               <Input
                 placeholder="Version ID"
                 value={version.id}

@@ -33,6 +33,7 @@ const typeDefs = /* GraphQL */ `
   type ZentropiLabelerVersion {
     id: String!
     label: String!
+    labelerId: String
   }
 
   type ZentropiIntegrationApiCredential {
@@ -106,6 +107,7 @@ const typeDefs = /* GraphQL */ `
   input ZentropiLabelerVersionInput {
     id: String!
     label: String!
+    labelerId: String!
   }
 
   input ZentropiIntegrationApiCredentialInput {

@@ -1,9 +1,13 @@
 import { ScalarTypes } from '@roostorg/coop-types';
 import { vi } from 'vitest';
 
+import { jsonStringify } from '../../../../../utils/encoding.js';
 import { isCoopErrorOfType } from '../../../../../utils/errors.js';
 import { type FetchHTTP } from '../../../../networkingService/index.js';
-import { type GetCredentials } from '../../../../signalAuthService/signalAuthService.js';
+import {
+  type GetCredentials,
+  type ZentropiLabelerVersion,
+} from '../../../../signalAuthService/signalAuthService.js';
 import { type SignalInput } from '../../SignalBase.js';
 import {
   getZentropiScores,
@@ -29,10 +33,14 @@ function makeInput(
 
 function makeCredentialGetter(
   apiKey: string | null = 'test-api-key',
+  labelerVersions: ZentropiLabelerVersion[] = [
+    { id: 'lv_abc123', labelerId: 'lb_xyz789', label: 'Spam' },
+    { id: 'lv_custom_123', labelerId: 'lb_custom', label: 'Custom' },
+  ],
 ): GetCredentials<'ZENTROPI'> {
   return vi
     .fn<GetCredentials<'ZENTROPI'>>()
-    .mockResolvedValue(apiKey ? { apiKey } : undefined);
+    .mockResolvedValue(apiKey ? { apiKey, labelerVersions } : undefined);
 }
 
 describe('zentropiUtils', () => {
@@ -165,10 +173,50 @@ describe('zentropiUtils', () => {
           makeInput({ subcategory: undefined }),
           fetchScores,
         ),
-      ).rejects.toThrow('Missing labeler_version_id in subcategory');
+      ).rejects.toSatisfy(
+        (e) =>
+          isCoopErrorOfType(e, 'SignalPermanentError') &&
+          e.title === 'Missing Zentropi labeler version',
+      );
     });
 
-    it('passes labelerVersionId from subcategory to fetcher', async () => {
+    it('throws a permanent error when the subcategory is not configured', async () => {
+      const fetchScores: FetchZentropiScores = vi.fn();
+
+      await expect(
+        runZentropiLabelerImpl(
+          makeCredentialGetter(),
+          makeInput({ subcategory: 'lv_unknown' }),
+          fetchScores,
+        ),
+      ).rejects.toSatisfy(
+        (e) =>
+          isCoopErrorOfType(e, 'SignalPermanentError') &&
+          e.title === 'Missing Zentropi labeler ID',
+      );
+      expect(fetchScores).not.toHaveBeenCalled();
+    });
+
+    it('throws a permanent error for entries saved without a labeler ID', async () => {
+      const fetchScores: FetchZentropiScores = vi.fn();
+
+      await expect(
+        runZentropiLabelerImpl(
+          makeCredentialGetter('test-api-key', [
+            { id: 'lv_abc123', label: 'Saved before labeler IDs' },
+          ]),
+          makeInput(),
+          fetchScores,
+        ),
+      ).rejects.toSatisfy(
+        (e) =>
+          isCoopErrorOfType(e, 'SignalPermanentError') &&
+          e.title === 'Missing Zentropi labeler ID',
+      );
+      expect(fetchScores).not.toHaveBeenCalled();
+    });
+
+    it('passes the configured labeler and version IDs to fetcher', async () => {
       const fetchScores: FetchZentropiScores = vi.fn().mockResolvedValue({
         label: 0,
         confidence: 0.9,
@@ -183,6 +231,7 @@ describe('zentropiUtils', () => {
       expect(fetchScores).toHaveBeenCalledWith({
         text: 'test content',
         apiKey: 'test-api-key',
+        labelerId: 'lb_custom',
         labelerVersionId: 'lv_custom_123',
       });
     });
@@ -199,6 +248,7 @@ describe('zentropiUtils', () => {
         getZentropiScores(mockFetchHTTP, {
           text: 'test',
           apiKey: 'key',
+          labelerId: 'lb_123',
           labelerVersionId: 'lv_bad',
         }),
       ).rejects.toSatisfy((e) => isCoopErrorOfType(e, 'SignalPermanentError'));
@@ -214,6 +264,7 @@ describe('zentropiUtils', () => {
         getZentropiScores(mockFetchHTTP, {
           text: 'test',
           apiKey: 'bad-key',
+          labelerId: 'lb_123',
           labelerVersionId: 'lv_123',
         }),
       ).rejects.toSatisfy((e) => isCoopErrorOfType(e, 'SignalPermanentError'));
@@ -229,6 +280,7 @@ describe('zentropiUtils', () => {
         getZentropiScores(mockFetchHTTP, {
           text: 'test',
           apiKey: 'key',
+          labelerId: 'lb_123',
           labelerVersionId: 'lv_123',
         }),
       ).rejects.toThrow('Zentropi API error: 500');
@@ -238,6 +290,7 @@ describe('zentropiUtils', () => {
         getZentropiScores(mockFetchHTTP, {
           text: 'test',
           apiKey: 'key',
+          labelerId: 'lb_123',
           labelerVersionId: 'lv_123',
         }),
       ).rejects.not.toSatisfy((e) =>
@@ -260,6 +313,7 @@ describe('zentropiUtils', () => {
       const result = await getZentropiScores(mockFetchHTTP, {
         text: 'test content',
         apiKey: 'key',
+        labelerId: 'lb_123',
         labelerVersionId: 'lv_123',
       });
 
@@ -275,6 +329,62 @@ describe('zentropiUtils', () => {
           handleResponseBody: 'as-json',
           timeoutMs: 5_000,
         }),
+      );
+    });
+
+    it('sends both labeler_id and labeler_version_id', async () => {
+      // Zentropi rejects requests that have a labeler_version_id but no
+      // labeler_id.
+      const mockFetchHTTP = vi.fn().mockResolvedValue({
+        ok: true,
+        body: { label: 0, confidence: 0.9 },
+      }) as unknown as FetchHTTP;
+
+      await getZentropiScores(mockFetchHTTP, {
+        text: 'test content',
+        apiKey: 'key',
+        labelerId: 'lb_123',
+        labelerVersionId: 'lv_123',
+      });
+
+      expect(mockFetchHTTP).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: jsonStringify({
+            content_text: 'test content',
+            labeler_id: 'lb_123',
+            labeler_version_id: 'lv_123',
+          }),
+        }),
+      );
+    });
+
+    it('returns SignalPermanentError with the API message for 422', async () => {
+      const mockFetchHTTP = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 422,
+        body: {
+          detail: [
+            {
+              type: 'value_error',
+              loc: ['body'],
+              msg: 'Value error, Exactly one of labeler_id or criteria_text must be provided',
+            },
+          ],
+        },
+      }) as unknown as FetchHTTP;
+
+      await expect(
+        getZentropiScores(mockFetchHTTP, {
+          text: 'test',
+          apiKey: 'key',
+          labelerId: 'lb_123',
+          labelerVersionId: 'lv_123',
+        }),
+      ).rejects.toSatisfy(
+        (e) =>
+          isCoopErrorOfType(e, 'SignalPermanentError') &&
+          e.detail ===
+            'Value error, Exactly one of labeler_id or criteria_text must be provided',
       );
     });
   });

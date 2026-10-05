@@ -24,7 +24,13 @@ export type Credentials<T extends ConfigurableIntegration> = {
 
 export type GoogleContentSafetyCredential = { apiKey: string };
 export type OpenAICredential = { apiKey: string };
-export type ZentropiLabelerVersion = { id: string; label: string };
+// `id` is the Zentropi labeler version ID. `labelerId` is missing on entries
+// saved before Coop collected it.
+export type ZentropiLabelerVersion = {
+  id: string;
+  label: string;
+  labelerId?: string;
+};
 export type ZentropiCredential = {
   apiKey: string;
   labelerVersions?: ZentropiLabelerVersion[];

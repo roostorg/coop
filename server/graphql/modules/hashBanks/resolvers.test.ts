@@ -1,7 +1,10 @@
 import { vi, type Mock } from 'vitest';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { HashBank } from '../../../services/hmaService/index.js';
+import {
+  ExchangeCredentialsMultiTenantError,
+  type HashBank,
+} from '../../../services/hmaService/index.js';
 import { resolvers } from './resolvers.js';
 
 const MOCK_BANK: HashBank = {
@@ -118,6 +121,34 @@ describe('hashBanks resolvers', () => {
       expect(result.warning).toContain('credentials could not be set');
     });
 
+    it('returns the multi-tenant warning when the instance has multiple orgs', async () => {
+      const ctx = makeContext({
+        setExchangeCredentials: vi
+          .fn()
+          .mockRejectedValue(new ExchangeCredentialsMultiTenantError()),
+      });
+      const input = {
+        name: 'test bank',
+        description: 'desc',
+        enabled_ratio: 1.0,
+        exchange: {
+          api_name: 'ncmec',
+          config_json: '{"environment":"https://test.ncmec.org"}',
+          credentials_json: '{"user":"u","password":"p"}',
+        },
+      };
+
+      const result = await (resolvers.Mutation as any).createHashBank(
+        {},
+        { input },
+        ctx,
+      );
+
+      expect(result).toHaveProperty('data');
+      expect(result.warning).toContain('multiple organizations');
+      expect(result.warning).not.toContain('credentials could not be set');
+    });
+
     it('does not set credentials when credentials_json is absent', async () => {
       const ctx = makeContext();
       const input = {
@@ -154,6 +185,22 @@ describe('hashBanks resolvers', () => {
       expect(
         ctx.services.HMAHashBankService.setExchangeCredentials,
       ).toHaveBeenCalledWith('ncmec', { user: 'u', password: 'p' });
+    });
+
+    it('rejects with FORBIDDEN when the instance is multi-tenant', async () => {
+      const ctx = makeContext({
+        setExchangeCredentials: vi
+          .fn()
+          .mockRejectedValue(new ExchangeCredentialsMultiTenantError()),
+      });
+
+      await expect(
+        (resolvers.Mutation as any).updateExchangeCredentials(
+          {},
+          { apiName: 'ncmec', credentialsJson: '{"user":"u"}' },
+          ctx,
+        ),
+      ).rejects.toMatchObject({ extensions: { code: 'FORBIDDEN' } });
     });
   });
 
