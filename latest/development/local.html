@@ -40,7 +40,7 @@
             const path_to_root = "../";
             const default_light_theme = "roost";
             const default_dark_theme = "roost";
-            window.path_to_searchindex_js = "../searchindex-7ece0e58.js";
+            window.path_to_searchindex_js = "../searchindex-57fe5977.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-33b43635.js"></script>
@@ -350,6 +350,7 @@ npm run check:prepush
 <tr><td><code>check_formatting</code></td><td><code>npm ci &amp;&amp; npm run prettier</code></td></tr>
 <tr><td><code>check_generated_graphql</code></td><td><code>npm ci &amp;&amp; npm run generate &amp;&amp; test -z "$(git status --porcelain)"</code></td></tr>
 <tr><td><code>check_api_server</code> (lint)</td><td><code>docker compose run --rm backend npm run lint</code></td></tr>
+<tr><td><code>check_api_server</code> (typecheck)</td><td><code>docker compose run --rm backend npm run typecheck</code></td></tr>
 <tr><td><code>check_api_server</code> (build)</td><td><code>docker compose run --rm backend npm run build</code></td></tr>
 <tr><td><code>run_frontend_checks_if_changed</code> (lint)</td><td><code>docker compose run --rm client npm run lint</code></td></tr>
 <tr><td><code>run_frontend_checks_if_changed</code> (build)</td><td><code>docker compose run --rm client npm run build</code></td></tr>
@@ -361,6 +362,7 @@ npm run check:prepush
 <pre><code class="language-sh">npm ci &amp;&amp; npm run prettier \
   &amp;&amp; npm run generate &amp;&amp; test -z "$(git status --porcelain)" \
   &amp;&amp; docker compose run --rm backend npm run lint \
+  &amp;&amp; docker compose run --rm backend npm run typecheck \
   &amp;&amp; docker compose run --rm backend npm run build \
   &amp;&amp; docker compose run --rm client npm run lint \
   &amp;&amp; docker compose run --rm client npm run build \
