@@ -10,7 +10,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Added
 
-- On-demand per-queue pending counts and reported oldest age in Review Analytics (by [@sunilatlas](https://github.com/sunilatlas))
+- On-demand per-queue pending counts and reported oldest age in Review Analytics ([#1362](https://github.com/roostorg/coop/pull/1362) by [@sunilatlas](https://github.com/sunilatlas))
 
 ### Fixed
 
