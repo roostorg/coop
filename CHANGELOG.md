@@ -10,7 +10,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Added
 
-- Eligible item types column and filtering on the Actions dashboard.
+- Eligible item types column and filtering on the Actions dashboard ([#1369](https://github.com/roostorg/coop/pull/1369) by [@taobojlen](https://github.com/taobojlen))
 
 ### Fixed
 
