@@ -380,7 +380,7 @@ export default function ManualReviewQueuesDashboard() {
         <span
           role="img"
           aria-label="Pending appeals"
-          className="w-2 h-2 rounded-full bg-red-500"
+          className="w-2 h-2 rounded-full bg-destructive"
         />
       ) : undefined,
   }));
