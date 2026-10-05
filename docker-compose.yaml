@@ -30,7 +30,7 @@ services:
     image: node:24.21.0-bookworm-slim
     command: bash -c 'set -e && npm install -g pnpm@10.34.5
       && pnpm install --filter coop-data-migrator --frozen-lockfile --store-dir /tmp/pnpm-store
-      && ( [ "$$CI" = "true" ] && ( cd db && NODE_OPTIONS="--loader ts-node/esm" node src/index.ts clean --env staging ) || true )
+      && ( [ "${CI:-}" = "true" ] && ( cd db && NODE_OPTIONS="--loader ts-node/esm" node src/index.ts clean --env staging ) || true )
       && for db in api-server-pg scylla clickhouse; do
       ( cd db && NODE_OPTIONS="--loader ts-node/esm" node src/index.ts create --db "$$db" --env staging );
       ( cd db && NODE_OPTIONS="--loader ts-node/esm" node src/index.ts apply --db "$$db" --env staging );

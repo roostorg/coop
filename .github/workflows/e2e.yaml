@@ -136,12 +136,16 @@ jobs:
             sleep 2
           done
 
+      - name: Get Playwright version
+        id: playwright-version
+        run: echo "version=$(cd server && pnpm exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+
       - name: Cache Playwright browsers
         id: playwright-cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
 
       - name: Install Playwright system dependencies
         # OS-level deps live outside the cached browser dir, so install them every run.
