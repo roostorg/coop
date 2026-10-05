@@ -8,6 +8,10 @@ For more information about each release including git tags and artifacts, see [R
 
 ## [Unreleased]
 
+### Added
+
+- On-demand per-queue pending counts and reported oldest age in Review Analytics (by [@sunilatlas](https://github.com/sunilatlas))
+
 ### Fixed
 
 - Zentropi Labeler signal failing on every call; labeler versions now require a labeler ID ([#1335](https://github.com/roostorg/coop/pull/1335) by [@reitblatt](https://github.com/reitblatt))
