@@ -311,7 +311,7 @@ export default function ActionForm() {
     <div className="flex flex-col justify-start">
       <FormSectionHeader
         title="Callback URL"
-        subtitle="To execute this action on your behalf, we'll need you to expose the action through an API endpoint that faces the public internet so that Coop's servers can access it. We will send an HTTP request to that API endpoint to execute the action. Please specify the endpoint's URL below."
+        subtitle="To execute this action, expose it through an API endpoint that is accessible from your Coop instance. Your Coop instance will send an HTTP request to that endpoint to execute the action. Please specify the endpoint's URL below."
       />
       <Input
         placeholder="https://yourwebsite.com/api/your_action..."
