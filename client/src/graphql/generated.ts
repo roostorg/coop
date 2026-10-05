@@ -5962,6 +5962,23 @@ export type GQLActionsQuery = {
           readonly description?: string | null;
           readonly penalty: GQLUserPenaltySeverity;
           readonly applyUserStrikes?: boolean | null;
+          readonly itemTypes: ReadonlyArray<
+            | {
+                readonly __typename: 'ContentItemType';
+                readonly id: string;
+                readonly name: string;
+              }
+            | {
+                readonly __typename: 'ThreadItemType';
+                readonly id: string;
+                readonly name: string;
+              }
+            | {
+                readonly __typename: 'UserItemType';
+                readonly id: string;
+                readonly name: string;
+              }
+          >;
           readonly parameters: ReadonlyArray<{
             readonly __typename: 'ActionParameter';
             readonly name: string;
@@ -5987,6 +6004,23 @@ export type GQLActionsQuery = {
           readonly description?: string | null;
           readonly penalty: GQLUserPenaltySeverity;
           readonly applyUserStrikes: boolean;
+          readonly itemTypes: ReadonlyArray<
+            | {
+                readonly __typename: 'ContentItemType';
+                readonly id: string;
+                readonly name: string;
+              }
+            | {
+                readonly __typename: 'ThreadItemType';
+                readonly id: string;
+                readonly name: string;
+              }
+            | {
+                readonly __typename: 'UserItemType';
+                readonly id: string;
+                readonly name: string;
+              }
+          >;
         }
       | {
           readonly __typename: 'EnqueueToMrtAction';
@@ -5995,6 +6029,23 @@ export type GQLActionsQuery = {
           readonly description?: string | null;
           readonly penalty: GQLUserPenaltySeverity;
           readonly applyUserStrikes?: boolean | null;
+          readonly itemTypes: ReadonlyArray<
+            | {
+                readonly __typename: 'ContentItemType';
+                readonly id: string;
+                readonly name: string;
+              }
+            | {
+                readonly __typename: 'ThreadItemType';
+                readonly id: string;
+                readonly name: string;
+              }
+            | {
+                readonly __typename: 'UserItemType';
+                readonly id: string;
+                readonly name: string;
+              }
+          >;
         }
       | {
           readonly __typename: 'EnqueueToNcmecAction';
@@ -6003,6 +6054,23 @@ export type GQLActionsQuery = {
           readonly description?: string | null;
           readonly penalty: GQLUserPenaltySeverity;
           readonly applyUserStrikes?: boolean | null;
+          readonly itemTypes: ReadonlyArray<
+            | {
+                readonly __typename: 'ContentItemType';
+                readonly id: string;
+                readonly name: string;
+              }
+            | {
+                readonly __typename: 'ThreadItemType';
+                readonly id: string;
+                readonly name: string;
+              }
+            | {
+                readonly __typename: 'UserItemType';
+                readonly id: string;
+                readonly name: string;
+              }
+          >;
         }
     >;
   } | null;
@@ -28781,6 +28849,12 @@ export const GQLActionsDocument = gql`
           description
           penalty
           applyUserStrikes
+          itemTypes {
+            ... on ItemTypeBase {
+              id
+              name
+            }
+          }
         }
         ... on CustomAction {
           parameters {

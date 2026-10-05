@@ -1,3 +1,4 @@
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
 import { gql } from '@apollo/client';
 import { PlayCircle } from 'lucide-react';
 import { MouseEvent, useMemo, useState } from 'react';
@@ -11,7 +12,11 @@ import CoopModal from '../components/CoopModal';
 import DashboardHeader from '../components/DashboardHeader';
 import EmptyDashboard from '../components/EmptyDashboard';
 import RowMutations from '../components/RowMutations';
-import { ColumnProps, DefaultColumnFilter } from '../components/table/filters';
+import {
+  ColumnProps,
+  DefaultColumnFilter,
+  SelectColumnFilter,
+} from '../components/table/filters';
 import { stringSort, userPenaltySeveritySort } from '../components/table/sort';
 import Table from '../components/table/Table';
 
@@ -39,6 +44,12 @@ gql`
           description
           penalty
           applyUserStrikes
+          itemTypes {
+            ... on ItemTypeBase {
+              id
+              name
+            }
+          }
         }
         ... on CustomAction {
           parameters {
@@ -179,6 +190,20 @@ export default function ActionsDashboard() {
         sortFn: stringSort,
       },
       {
+        header: 'Item types',
+        accessorKey: 'itemTypes',
+        meta: {
+          filter: (props: ColumnProps) =>
+            SelectColumnFilter({
+              columnProps: props,
+              accessor: 'itemTypes',
+              placeholder: 'Select item types',
+            }),
+        },
+        filterFn: 'includes' as const,
+        enableSorting: false,
+      },
+      {
         header: 'Penalty',
         accessorKey: 'penalty',
         meta: {
@@ -227,16 +252,29 @@ export default function ActionsDashboard() {
           return a.name.localeCompare(b.name);
         })
         .map((values) => {
+          const itemTypes = values.itemTypes.map((itemType) => itemType.name);
           return {
             name: <div className="font-bold">{values.name}</div>,
             description: values.description,
+            itemTypes: (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="w-48 truncate" tabIndex={0}>
+                    {itemTypes.join(', ')}
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-sm">
+                  {itemTypes.join(', ')}
+                </TooltipContent>
+              </Tooltip>
+            ),
             penalty: titleCaseEnumString(values.penalty),
             id: <CopyTextComponent value={values.id} />,
             mutations: mutations(
               values.id,
               values.__typename === 'CustomAction',
             ),
-            values,
+            values: { ...values, itemTypes },
           };
         });
     },
