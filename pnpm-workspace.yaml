@@ -49,10 +49,9 @@ packageImportMethod: clone-or-copy
 # .bin file with node, which can't parse a shell script.
 preferSymlinkedExecutables: true
 
-# Resolve @roostorg/coop-types from the local workspace rather than the npm registry,
-# even if a newer published version exists. Without this, a stale published version
-# could be silently resolved instead of local changes.
-preferWorkspacePackages: true
+# server/client use the published @roostorg/coop-types and db the published
+# @roostorg/db-migrator, as they did under npm. pnpm links workspace packages
+# only for `workspace:` specifiers, so ./types and ./migrator aren't used here.
 
 # Refuse to install packages published less than 7 days ago (10080 minutes).
 # Mitigates "publish-and-immediately-compromise" supply chain attacks.

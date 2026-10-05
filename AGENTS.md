@@ -9,13 +9,15 @@ This file inherits from the ROOST community policy — read it once:
 
 ## Architecture
 
-Four packages in a **pnpm workspace** — each has its own `package.json`; dependencies are locked in a single root `pnpm-lock.yaml`:
+Six packages in a **pnpm workspace** (listed in `pnpm-workspace.yaml`), plus root scripts — each has its own `package.json`; dependencies are locked in a single root `pnpm-lock.yaml`:
 
 - `/` — root scripts, graphql-codegen, docker compose orchestration
 - `/server` — Express + Apollo GraphQL API (ESM, `"type": "module"`)
 - `/client` — React + Vite + Apollo Client frontend (Ant Design, TailwindCSS)
 - `/db` — migration runner for Postgres, ClickHouse, Scylla
 - `/migrator` — package and CLI tool for database migrations
+- `/types` — shared TypeScript types, published to npm as `@roostorg/coop-types`
+- `/nodejs-instrumentation` — OpenTelemetry auto-instrumentation image
 
 Node **24** (`.nvmrc`). Running on Node 20 produces `EBADENGINE` warnings and can fail native builds.
 

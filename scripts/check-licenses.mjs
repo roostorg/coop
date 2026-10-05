@@ -25,14 +25,57 @@ const input = readFileSync(0, 'utf8').trim();
 // pnpm prints a plain message instead of JSON when there are no dependencies.
 const byLicense = input.startsWith('{') ? JSON.parse(input) : {};
 
-// "(MIT OR CC0-1.0)" passes if any alternative passes; "MIT AND ISC" needs all.
-const isAllowed = (expr) =>
-  expr
-    .replace(/[()]/g, '')
-    .split(/\s+OR\s+/)
-    .some((alt) =>
-      alt.split(/\s+AND\s+/).every((id) => allowed.has(id.trim())),
-    );
+// Evaluates an SPDX expression: OR passes if any side passes, AND needs both,
+// and AND binds tighter than OR unless parentheses say otherwise. A
+// `<license> WITH <exception>` term must be allowed as written.
+const isAllowed = (expr) => {
+  const tokens = expr.match(/\(|\)|[^\s()]+/g) ?? [];
+  let pos = 0;
+  const peek = () => tokens[pos];
+  const next = () => tokens[pos++];
+  const parseOr = () => {
+    let ok = parseAnd();
+    while (peek() === 'OR') {
+      next();
+      ok = parseAnd() || ok;
+    }
+    return ok;
+  };
+  const parseAnd = () => {
+    let ok = parseTerm();
+    while (peek() === 'AND') {
+      next();
+      ok = parseTerm() && ok;
+    }
+    return ok;
+  };
+  const parseTerm = () => {
+    const token = next();
+    if (token === '(') {
+      const ok = parseOr();
+      if (next() !== ')') throw new Error(`unbalanced parentheses: ${expr}`);
+      return ok;
+    }
+    if (
+      token === undefined ||
+      token === ')' ||
+      token === 'AND' ||
+      token === 'OR'
+    )
+      throw new Error(`malformed license expression: ${expr}`);
+    if (peek() === 'WITH') {
+      next();
+      return allowed.has(`${token} WITH ${next()}`);
+    }
+    return allowed.has(token);
+  };
+  try {
+    const ok = parseOr();
+    return pos === tokens.length && ok;
+  } catch {
+    return false;
+  }
+};
 
 const failures = [];
 let count = 0;

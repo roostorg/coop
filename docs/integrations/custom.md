@@ -10,7 +10,7 @@ You build a package that exports a **plugin** (manifest + optional signals). The
 
 ## For adopters
 
-1. **Install** the integration package (e.g. `pnpm --filter server add @roostorg/coop-integration-example`).
+1. **Install** the integration package (e.g. `pnpm --filter server add @roostorg/coop-integration-example` from the repo root).
 2. **Enable it** in the integrations config file. The server reads `server/integrations.config.json` by default, or the path in `INTEGRATIONS_CONFIG_PATH`. Example shape:
 
    ```json
