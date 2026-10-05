@@ -66,7 +66,7 @@ export default function Login() {
     onCompleted: (response) => {
       switch (response.login.__typename) {
         case 'LoginSuccessResponse':
-          client.resetStore().then(() => navigate('/dashboard'));
+          client.resetStore().then(async () => navigate('/dashboard'));
           break;
         case 'LoginIncorrectPasswordError':
         case 'LoginUserDoesNotExistError':
