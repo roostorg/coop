@@ -9,7 +9,7 @@ These docs are split into a few guides, depending on who you are and what you're
 - [API Reference](api/): technical reference for Coop's API
 - [Integrations](integrations/): specific details on included integrations
 
-Note that the docs are versioned; other versions can be found at the [documentation site index](https://roostorg.github.io/coop/).
+Use the version dropdown to choose documentation for your release. [Stable documentation](https://roostorg.github.io/coop/stable/) covers the newest release; [latest documentation](https://roostorg.github.io/coop/latest/) covers unreleased development.
 
 ## Contributing
 

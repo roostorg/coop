@@ -19,6 +19,7 @@ For more information about each release including git tags and artifacts, see [R
 ### Changed
 
 - Require HMA 1.2.0 or later ([#1360](https://github.com/roostorg/coop/pull/1360) by [@juanmrad](https://github.com/juanmrad))
+- Documentation uses VitePress for all versions, with a version switcher, stable URLs, and version notices.
 
 ### Fixed
 

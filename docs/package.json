@@ -1,0 +1,14 @@
+{
+  "name": "coop-docs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node .vitepress/build.mjs",
+    "preview": "vitepress preview . --host 127.0.0.1 --port 4173"
+  },
+  "devDependencies": {
+    "@viteplus/versions": "2.2.0",
+    "vitepress": "2.0.0-alpha.20",
+    "vue": "3.5.41"
+  }
+}

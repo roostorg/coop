@@ -9,17 +9,20 @@ This file inherits from the ROOST community policy — read it once:
 
 ## Architecture
 
-Four independent packages, **not an npm workspace** — each has its own `package.json` and lockfile:
+Independent packages, **not an npm workspace** — each has its own `package.json` and lockfile:
 
 - `/` — root scripts, graphql-codegen, docker compose orchestration
 - `/server` — Express + Apollo GraphQL API (ESM, `"type": "module"`)
 - `/client` — React + Vite + Apollo Client frontend (Ant Design, TailwindCSS)
 - `/db` — migration runner for Postgres, ClickHouse, Scylla
 - `/migrator` — package and CLI tool for database migrations
+- `/docs` — VitePress documentation, version navigation, and complete GitHub Pages artifact build
 
 Node **24** (`.nvmrc`). Running on Node 20 produces `EBADENGINE` warnings and can fail native builds.
 
 Reference files: `README.md` (getting started), `server/bin/README.md` (utility scripts), `docs/` (architecture, ADRs).
+
+Documentation checks: `npm ci --prefix docs` and `npm run build --prefix docs`. The build needs all release tags and uses the shared VitePress renderer for every version. `npm run preview --prefix docs` serves the artifact on port 4173. Each tag supplies its own Markdown, images, and `SUMMARY.md`; preserve version URLs, heading anchors, and original Markdown downloads.
 
 ## Design
 

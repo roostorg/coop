@@ -1,0 +1,56 @@
+:root {
+  --vp-c-brand-1: #52631d;
+  --vp-c-brand-2: #687d23;
+  --vp-c-brand-3: #52631d;
+  --vp-c-brand-soft: #e5d98840;
+  --vp-c-bg: #fafaf8;
+  --vp-c-bg-alt: #f0f0e9;
+  --vp-font-family-base: 'Inter', sans-serif;
+}
+
+.dark {
+  --vp-c-brand-1: #eeee00;
+  --vp-c-brand-2: #e5d988;
+  --vp-c-brand-3: #eeee00;
+  --vp-c-bg: #24291a;
+  --vp-c-bg-alt: #1c2115;
+  --vp-c-bg-elv: #303625;
+  --vp-c-bg-soft: #303625;
+}
+
+.VPNavBarTitle .title {
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+.vp-doc h1 {
+  letter-spacing: -0.045em;
+}
+
+.vp-doc img {
+  border-radius: 8px;
+}
+
+.coop-versions {
+  margin-left: 20px;
+}
+
+@media (max-width: 767px) {
+  .coop-versions {
+    margin-left: 8px;
+  }
+}
+
+@media (forced-colors: active) {
+  .vp-doc div[class*='language-'] {
+    border: 1px solid CanvasText;
+    background: Canvas;
+  }
+
+  .vp-doc pre code,
+  .vp-doc pre code span {
+    /* Override Shiki's inline token colours, including dark-mode !important rules. */
+    color: CanvasText !important;
+    background-color: Canvas !important;
+  }
+}
