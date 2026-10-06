@@ -22,7 +22,7 @@ export default function ManualReviewJobDequeueErrorComponent() {
         <div className="flex flex-row items-center space-x-2">
           <CoopButton
             title="Back to All Queues"
-            onClick={() => navigate('/dashboard/manual_review/queues')}
+            onClick={async () => navigate('/dashboard/manual_review/queues')}
           />
         </div>
       </div>

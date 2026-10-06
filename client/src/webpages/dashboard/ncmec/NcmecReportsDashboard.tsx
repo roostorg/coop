@@ -696,7 +696,7 @@ export default function NcmecReportsDashboard() {
               Manual Review Tool.
             </div>
             <CoopButton
-              onClick={() => navigate('/dashboard/manual_review/queues')}
+              onClick={async () => navigate('/dashboard/manual_review/queues')}
               title="Back to Manual Review"
             />
           </div>

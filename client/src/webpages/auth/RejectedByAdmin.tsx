@@ -32,7 +32,7 @@ export default function RejectedByAdmin() {
 
   const [deleteUser] = useGQLDeleteRejectedUserMutation({
     onError: () => setErrorModalVisible(true),
-    onCompleted: () => navigate('/signup'),
+    onCompleted: async () => navigate('/signup'),
   });
 
   if (loading) {

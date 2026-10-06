@@ -344,7 +344,7 @@ export default function ManualReviewQueuesDashboard() {
       return (
         <Button
           className="flex items-center justify-center w-full p-4 text-sm text-gray-600 bg-white border border-gray-200 border-solid shadow-none cursor-pointer rounded-md drop-shadow-none hover:border-gray-200 focus:border-gray-200 hover:bg-gray-100 hover:text-gray-600 focus:text-gray-600"
-          onClick={() => navigate(`review/${id}`)}
+          onClick={async () => navigate(`review/${id}`)}
           disabled={pendingJobCount === 0}
         >
           Start Reviewing
@@ -764,7 +764,7 @@ export default function ManualReviewQueuesDashboard() {
                         previewJobs: (
                           <Button
                             className="flex items-center justify-center w-full p-4 text-sm text-gray-600 bg-white border border-gray-200 border-solid shadow-none cursor-pointer rounded-md drop-shadow-none hover:border-gray-200 focus:border-gray-200 hover:bg-gray-100 hover:text-gray-600 focus:text-gray-600"
-                            onClick={() => navigate(`jobs/${id}`)}
+                            onClick={async () => navigate(`jobs/${id}`)}
                             disabled={pendingJobCount === 0}
                           >
                             Preview jobs
