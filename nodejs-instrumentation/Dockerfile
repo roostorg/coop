@@ -13,7 +13,7 @@ FROM node:24.21.0 AS build
 
 WORKDIR /operator-build
 
-RUN npm install -g pnpm@10.34.5
+RUN npm install -g pnpm@12.8.1
 
 # The lockfile and workspace config live at the repo root, so this image builds
 # with the repo root as its context and installs only this package.
