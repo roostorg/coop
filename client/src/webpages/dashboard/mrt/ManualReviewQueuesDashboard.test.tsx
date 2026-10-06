@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { HelmetProvider } from 'react-helmet-async';
 import { MemoryRouter } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
@@ -52,6 +52,15 @@ function appealsQueue(pendingJobCount: number) {
   };
 }
 
+function reportsQueue(pendingJobCount: number) {
+  return {
+    ...appealsQueue(pendingJobCount),
+    id: 'reports-queue',
+    name: 'Reports Queue',
+    isAppealsQueue: false,
+  };
+}
+
 function renderDashboard() {
   render(
     <HelmetProvider>
@@ -66,13 +75,18 @@ describe('ManualReviewQueuesDashboard appeals tab indicator', () => {
   it('shows a dot on the Appeals tab when an appeals queue has pending jobs', () => {
     reviewableQueues = [appealsQueue(3)];
     renderDashboard();
-    expect(screen.getByLabelText('Pending appeals')).toBeInTheDocument();
+    const appealsTab = screen.getByRole('tab', { name: /Appeals$/ });
+    expect(
+      within(appealsTab).getByRole('img', { name: 'Pending appeals' }),
+    ).toBeInTheDocument();
   });
 
-  it('hides the dot when appeals queues are empty', () => {
-    reviewableQueues = [appealsQueue(0)];
+  it('hides the dot when only non-appeals queues have pending jobs', () => {
+    reviewableQueues = [appealsQueue(0), reportsQueue(5)];
     renderDashboard();
-    expect(screen.getByText('Appeals')).toBeInTheDocument();
-    expect(screen.queryByLabelText('Pending appeals')).not.toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Appeals' })).toBeInTheDocument();
+    expect(
+      screen.queryByRole('img', { name: 'Pending appeals' }),
+    ).not.toBeInTheDocument();
   });
 });
