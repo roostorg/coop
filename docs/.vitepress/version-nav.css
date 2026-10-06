@@ -1,0 +1,64 @@
+.coop-versions .VPMenu {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.coop-versions a {
+  display: block;
+  padding: 9px 10px;
+  color: inherit;
+  text-decoration: none;
+  border-radius: 6px;
+}
+
+.coop-versions a:hover,
+.coop-versions a:focus-visible,
+.coop-versions a[aria-current] {
+  background: var(--vp-c-brand-soft, #a5a55a25);
+}
+
+.coop-versions a[aria-current]::after {
+  content: '✓';
+  float: right;
+}
+
+.coop-version-notice {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 0 0 28px;
+  padding: 14px 18px;
+  border-left: 3px solid #a5a541;
+  border-radius: 0 8px 8px 0;
+  background: var(--vp-c-brand-soft, #a5a55a25);
+  font:
+    14px/1.6 system-ui,
+    sans-serif;
+}
+
+.coop-version-notice a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+@media (forced-colors: active) {
+  .coop-versions button,
+  .coop-versions .VPMenu,
+  .coop-version-notice {
+    border: 1px solid CanvasText;
+    background: Canvas;
+    color: CanvasText;
+  }
+
+  .coop-versions a[aria-current] {
+    border: 2px solid Highlight;
+    font-weight: 700;
+  }
+
+  .coop-versions button:focus-visible,
+  .coop-versions a:focus-visible,
+  .coop-version-notice a:focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+}
