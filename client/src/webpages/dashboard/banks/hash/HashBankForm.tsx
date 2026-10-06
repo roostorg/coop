@@ -39,7 +39,7 @@ function userInputErrorMessage(
 
 function credentialTag(exchange: {
   has_auth: boolean;
-  credential_source?: string | null;
+  has_own_credentials: boolean;
 }): { color: string; label: string; prompt?: string } {
   if (!exchange.has_auth) {
     return {
@@ -49,7 +49,7 @@ function credentialTag(exchange: {
         'This exchange has no credentials. Add your organization’s credentials to start fetching.',
     };
   }
-  if (exchange.credential_source === 'exchange') {
+  if (exchange.has_own_credentials) {
     return { color: 'green', label: 'Credentials Set' };
   }
   return {

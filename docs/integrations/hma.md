@@ -6,7 +6,7 @@ Hash matching works by computing a perceptual fingerprint (PDQ for images, MD5 f
 
 ## Requirements
 
-1. **A running HMA instance** accessible from your Coop server
+1. **A running HMA instance** (version 1.2.0 or later) accessible from your Coop server
 
 2. **API credentials for any third-party hash banks** you want to use; for example, NCMEC provides Hash Sharing API credentials, Tech Against Terrorism provides access to their hash bank.
 
@@ -26,7 +26,7 @@ Hash banks are collections of known-harmful media fingerprints that you can refe
 
 The recommended approach is to create banks through **Settings** → **Matching Banks** in Coop. This registers the bank in both HMA and Coop's database automatically, making it immediately available in the rule builder.
 
-Banks created through Coop are named in HMA using the convention `COOP_<ORGID>_<NORMALIZED_NAME>`, for example a bank named "Test Bank" for org `abcdef12345` becomes `COOP_ABCDEF12345_TEST_BANK` in HMA. This is what you will see in the HMA UI.
+Banks created through Coop are named in HMA using the convention `COOP_<ORGID>_<NORMALIZED_NAME>`, for example a bank named "Test Bank" for org `abcdef12345` becomes `COOP_ABCDEF12345_TEST_BANK` in HMA. If that name is already taken, Coop adds a numeric suffix (`_2`, `_3`, ...). This is what you will see in the HMA UI.
 
 ### Banks created directly in HMA
 
@@ -38,19 +38,9 @@ You can use the HMA UI to manually add content to any bank for local testing, re
 
 ### Exchange credentials
 
-When you connect a bank to an exchange (NCMEC, StopNCII, ThreatExchange, ...) in Coop, the credentials you enter are stored on that bank's exchange only. Other organizations on the same instance can't see or use them. Coop requires credentials when creating a bank for an exchange that uses them, and never shows them again after saving. To rotate them, open the bank and choose **Update Credentials**.
+When you connect a bank to an exchange (NCMEC, StopNCII, ThreatExchange, ...), Coop asks for that exchange's credentials and saves them with the bank. They're never shown again after saving. To change them, open the bank and choose **Update Credentials**.
 
-A bank tagged **Using Shared Credentials** is fetching with credentials configured on the HMA server (an API-level default, environment variable, or file) rather than your organization's own.
-
-#### Upgrading from HMA 1.1.x
-
-Coop requires HMA 1.2.0 or later. Upgrading HMA requires running its database migrations before starting the new version:
-
-```bash
-MIGRATION_COMMAND=1 flask --app OpenMediaMatch.app db upgrade --directory OpenMediaMatch/migrations
-```
-
-The local `hma` Docker image runs this on startup; other deployments must run it themselves. The 1.2.0 migration copies each API type's shared credentials onto every existing exchange of that type, so existing banks keep fetching. Those copies are whichever organization last set credentials for that API type. On multi-organization instances, every organization with an existing exchange-connected bank should re-enter its own credentials with **Update Credentials**.
+If a bank shows **Using Shared Credentials**, it has no credentials of its own and is falling back to ones configured on the HMA server. Choose **Update Credentials** to save your organization's credentials with the bank.
 
 ## NCMEC Hash Sharing
 

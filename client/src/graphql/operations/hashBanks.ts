@@ -26,7 +26,7 @@ export const HASH_BANK_BY_ID_QUERY = gql`
         api
         enabled
         has_auth
-        credential_source
+        has_own_credentials
         error
         last_fetch_succeeded
         last_fetch_time
@@ -134,15 +134,14 @@ export const DELETE_HASH_BANK_MUTATION = gql`
 export const UPDATE_HASH_BANK_EXCHANGE_CREDENTIALS_MUTATION = gql`
   mutation UpdateHashBankExchangeCredentials(
     $bankId: ID!
-    $credentialsJson: String
+    $credentialsJson: String!
   ) {
     updateHashBankExchangeCredentials(
       bankId: $bankId
       credentialsJson: $credentialsJson
     ) {
-      supports_auth
       has_credentials
-      source
+      has_own_credentials
     }
   }
 `;

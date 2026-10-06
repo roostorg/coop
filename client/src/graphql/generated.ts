@@ -1185,8 +1185,7 @@ export type GQLExchangeConfigInput = {
 export type GQLExchangeCredentialStatus = {
   readonly __typename: 'ExchangeCredentialStatus';
   readonly has_credentials: Scalars['Boolean']['output'];
-  readonly source?: Maybe<Scalars['String']['output']>;
-  readonly supports_auth: Scalars['Boolean']['output'];
+  readonly has_own_credentials: Scalars['Boolean']['output'];
 };
 
 export type GQLExchangeFieldDescriptor = {
@@ -1202,11 +1201,11 @@ export type GQLExchangeFieldDescriptor = {
 export type GQLExchangeInfo = {
   readonly __typename: 'ExchangeInfo';
   readonly api: Scalars['String']['output'];
-  readonly credential_source?: Maybe<Scalars['String']['output']>;
   readonly enabled: Scalars['Boolean']['output'];
   readonly error?: Maybe<Scalars['String']['output']>;
   readonly fetched_items?: Maybe<Scalars['Int']['output']>;
   readonly has_auth: Scalars['Boolean']['output'];
+  readonly has_own_credentials: Scalars['Boolean']['output'];
   readonly is_fetching?: Maybe<Scalars['Boolean']['output']>;
   readonly last_fetch_succeeded?: Maybe<Scalars['Boolean']['output']>;
   readonly last_fetch_time?: Maybe<Scalars['String']['output']>;
@@ -2897,7 +2896,7 @@ export type GQLMutationUpdateHashBankArgs = {
 
 export type GQLMutationUpdateHashBankExchangeCredentialsArgs = {
   bankId: Scalars['ID']['input'];
-  credentialsJson?: InputMaybe<Scalars['String']['input']>;
+  credentialsJson: Scalars['String']['input'];
 };
 
 export type GQLMutationUpdateHideSkipButtonForNonAdminsArgs = {
@@ -5423,7 +5422,7 @@ export type GQLHashBankByIdQuery = {
       readonly api: string;
       readonly enabled: boolean;
       readonly has_auth: boolean;
-      readonly credential_source?: string | null;
+      readonly has_own_credentials: boolean;
       readonly error?: string | null;
       readonly last_fetch_succeeded?: boolean | null;
       readonly last_fetch_time?: string | null;
@@ -5552,16 +5551,15 @@ export type GQLDeleteHashBankMutation = {
 
 export type GQLUpdateHashBankExchangeCredentialsMutationVariables = Exact<{
   bankId: Scalars['ID']['input'];
-  credentialsJson?: InputMaybe<Scalars['String']['input']>;
+  credentialsJson: Scalars['String']['input'];
 }>;
 
 export type GQLUpdateHashBankExchangeCredentialsMutation = {
   readonly __typename: 'Mutation';
   readonly updateHashBankExchangeCredentials: {
     readonly __typename: 'ExchangeCredentialStatus';
-    readonly supports_auth: boolean;
     readonly has_credentials: boolean;
-    readonly source?: string | null;
+    readonly has_own_credentials: boolean;
   };
 };
 
@@ -26768,7 +26766,7 @@ export const GQLHashBankByIdDocument = gql`
         api
         enabled
         has_auth
-        credential_source
+        has_own_credentials
         error
         last_fetch_succeeded
         last_fetch_time
@@ -27282,15 +27280,14 @@ export type GQLDeleteHashBankMutationOptions = Apollo.BaseMutationOptions<
 export const GQLUpdateHashBankExchangeCredentialsDocument = gql`
   mutation UpdateHashBankExchangeCredentials(
     $bankId: ID!
-    $credentialsJson: String
+    $credentialsJson: String!
   ) {
     updateHashBankExchangeCredentials(
       bankId: $bankId
       credentialsJson: $credentialsJson
     ) {
-      supports_auth
       has_credentials
-      source
+      has_own_credentials
     }
   }
 `;

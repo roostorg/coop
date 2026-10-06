@@ -256,14 +256,10 @@ const Mutation: GQLMutationResolvers<Context> = {
     );
   },
 
-  // A null credentialsJson clears the exchange's credentials. Only the
-  // resulting status is returned, never credential values.
+  // Only the resulting status is returned, never credential values.
   async updateHashBankExchangeCredentials(
     _: unknown,
-    {
-      bankId,
-      credentialsJson,
-    }: { bankId: string; credentialsJson?: string | null },
+    { bankId, credentialsJson }: { bankId: string; credentialsJson: string },
     context: Context,
   ) {
     const user = context.getUser();
@@ -276,10 +272,10 @@ const Mutation: GQLMutationResolvers<Context> = {
       throw userInputError('Hash bank not found.');
     }
 
-    const credentialJson =
-      credentialsJson == null
-        ? null
-        : parseCredentialJson(credentialsJson, 'credentialsJson');
+    const credentialJson = parseCredentialJson(
+      credentialsJson,
+      'credentialsJson',
+    );
 
     try {
       return await context.services.HMAHashBankService.setBankExchangeCredentials(

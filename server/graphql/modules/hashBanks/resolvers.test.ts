@@ -28,9 +28,8 @@ function makeContext(overrides: Record<string, Mock> = {}) {
         createBank: vi.fn().mockResolvedValue(MOCK_BANK),
         setExchangeCredentials: vi.fn(),
         setBankExchangeCredentials: vi.fn().mockResolvedValue({
-          supports_auth: true,
           has_credentials: true,
-          source: 'exchange',
+          has_own_credentials: true,
         }),
         getExchangeForBank: vi.fn().mockResolvedValue(null),
         getExchangeApis: vi
@@ -205,27 +204,12 @@ describe('hashBanks resolvers', () => {
       );
 
       expect(result).toEqual({
-        supports_auth: true,
         has_credentials: true,
-        source: 'exchange',
+        has_own_credentials: true,
       });
       expect(
         ctx.services.HMAHashBankService.setBankExchangeCredentials,
       ).toHaveBeenCalledWith('org1', 1, { user: 'u', password: 'p' });
-    });
-
-    it('clears credentials when credentialsJson is null', async () => {
-      const ctx = makeContext();
-
-      await (resolvers.Mutation as any).updateHashBankExchangeCredentials(
-        {},
-        { bankId: '1', credentialsJson: null },
-        ctx,
-      );
-
-      expect(
-        ctx.services.HMAHashBankService.setBankExchangeCredentials,
-      ).toHaveBeenCalledWith('org1', 1, null);
     });
 
     it("returns not-found for another org's bank", async () => {
@@ -270,7 +254,7 @@ describe('hashBanks resolvers', () => {
       await expect(
         (resolvers.Mutation as any).updateHashBankExchangeCredentials(
           {},
-          { bankId: '1', credentialsJson: null },
+          { bankId: '1', credentialsJson: '{"user":"u"}' },
           ctx,
         ),
       ).rejects.toMatchObject({ extensions: { code: 'UNAUTHENTICATED' } });
@@ -315,7 +299,7 @@ describe('hashBanks resolvers', () => {
         api: 'fb_threatexchange',
         enabled: true,
         has_auth: true,
-        credential_source: 'exchange',
+        has_own_credentials: true,
         last_fetch_succeeded: true,
       };
       const ctx = makeContext({

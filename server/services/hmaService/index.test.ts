@@ -2,7 +2,12 @@ import { vi, type Mock } from 'vitest';
 
 import { jsonParse } from '../../utils/encoding.js';
 import type { HashBank } from './dbTypes.js';
-import { HashBankUserError, HmaService, type ExchangeInfo } from './index.js';
+import {
+  HashBankUserError,
+  HmaService,
+  type ExchangeInfo,
+  type HashBankService,
+} from './index.js';
 
 const MOCK_BANK: HashBank = {
   id: 1,
@@ -46,33 +51,55 @@ const NO_AUTH_SCHEMA = {
   credentials_schema: null,
 };
 
+type MockDbOpts = {
+  // Makes inserts and updates reject.
+  writesFail?: boolean;
+  // hma_names already used by some bank, in any org.
+  takenHmaNames?: string[];
+};
+
 /**
- * Minimal Kysely stand-in. Lookups only find MOCK_BANK when the query filters
- * on MOCK_BANK's org, so org scoping is exercised rather than assumed.
+ * Minimal Kysely stand-in holding MOCK_BANK. Lookups apply their filters, so
+ * a query only finds MOCK_BANK when it's scoped to MOCK_BANK's org.
  */
-function makeMockKyselyPg(opts: { insertFails?: boolean } = {}) {
+function makeMockKyselyPg(opts: MockDbOpts = {}) {
+  const set = vi.fn();
   const makeChain = () => {
-    let orgFilter: unknown;
+    let filters: Record<string, unknown> = {};
     const chain = {
       values: vi.fn().mockReturnThis(),
       returningAll: vi.fn().mockReturnThis(),
-      executeTakeFirstOrThrow: opts.insertFails
-        ? vi.fn().mockRejectedValue(new Error('insert failed'))
+      executeTakeFirstOrThrow: opts.writesFail
+        ? vi.fn().mockRejectedValue(new Error('write failed'))
         : vi.fn().mockResolvedValue(MOCK_BANK),
       selectAll: vi.fn().mockReturnThis(),
       select: vi.fn().mockReturnThis(),
       limit: vi.fn().mockReturnThis(),
       where: vi.fn((col: string, _op: string, val: unknown) => {
-        if (col === 'org_id') {
-          orgFilter = val;
-        }
+        filters = { ...filters, [col]: val };
         return chain;
       }),
-      executeTakeFirst: vi.fn(async () =>
-        orgFilter === MOCK_BANK.org_id ? MOCK_BANK : undefined,
-      ),
+      executeTakeFirst: vi.fn(async () => {
+        if ('hma_name' in filters) {
+          const hmaName = String(filters.hma_name);
+          return hmaName === MOCK_BANK.hma_name ||
+            (opts.takenHmaNames ?? []).includes(hmaName)
+            ? { id: 99 }
+            : undefined;
+        }
+        if (filters.org_id !== MOCK_BANK.org_id) {
+          return undefined;
+        }
+        if ('name' in filters && filters.name !== MOCK_BANK.name) {
+          return undefined;
+        }
+        return MOCK_BANK;
+      }),
       execute: vi.fn().mockResolvedValue([]),
-      set: vi.fn().mockReturnThis(),
+      set: vi.fn((values: unknown) => {
+        set(values);
+        return chain;
+      }),
     };
     return chain;
   };
@@ -85,14 +112,28 @@ function makeMockKyselyPg(opts: { insertFails?: boolean } = {}) {
       deleteFrom,
     } as unknown as ConstructorParameters<typeof HmaService>[1],
     deleteFrom,
+    // Values passed to each UPDATE ... SET so far.
+    updates: () => set.mock.calls.map(([values]) => values as unknown),
+  };
+}
+
+function makeTracer() {
+  return {
+    logActiveSpanFailedIfAny: vi.fn(),
+  } as unknown as ConstructorParameters<typeof HmaService>[2] & {
+    logActiveSpanFailedIfAny: Mock;
   };
 }
 
 function makeService(
   fetchHTTP: Mock,
-  opts: { insertFails?: boolean } = {},
+  opts: MockDbOpts & { tracer?: ReturnType<typeof makeTracer> } = {},
 ): HmaService {
-  return new HmaService(fetchHTTP as never, makeMockKyselyPg(opts).db);
+  return new HmaService(
+    fetchHTTP as never,
+    makeMockKyselyPg(opts).db,
+    opts.tracer ?? makeTracer(),
+  );
 }
 
 type Res = { ok: boolean; status: number; body: unknown; headers: object };
@@ -109,12 +150,21 @@ function fail(status: number, body?: unknown): Res {
   return { ok: false, status, body, headers: {} };
 }
 
-/** Routes fetchHTTP calls by "METHOD path" (path relative to the HMA URL). */
+/**
+ * Routes fetchHTTP calls by "METHOD path" (path relative to the HMA URL).
+ * Unless a test says otherwise, HMA has no bank named COOP_ORG1_MY_BANK or
+ * COOP_ORG1_RENAMED, so those names are free.
+ */
 function routeFetch(routes: Partial<Record<string, Res | (() => Res)>>): Mock {
+  const allRoutes: Partial<Record<string, Res | (() => Res)>> = {
+    'GET /c/bank/COOP_ORG1_MY_BANK': fail(404),
+    'GET /c/bank/COOP_ORG1_RENAMED': fail(404),
+    ...routes,
+  };
   return vi.fn(async (req: { url: string; method: string }) => {
     const path = new URL(req.url).pathname.replace(/^\/+/, '/');
     const key = `${req.method.toUpperCase()} ${path}`;
-    const route = routes[key];
+    const route = allRoutes[key];
     if (route === undefined) {
       throw new Error(`Unexpected request: ${key}`);
     }
@@ -155,7 +205,58 @@ describe('HmaService', () => {
       const result = await svc.createBank('org1', 'My Bank', 'desc', 1.0);
 
       expect(result).toMatchObject({ name: 'test bank' });
-      expect(fetchHTTP).toHaveBeenCalledTimes(1);
+      const [call] = callsTo(fetchHTTP, 'post', '/c/banks');
+      expect(jsonParse(call.body!)).toMatchObject({
+        name: 'COOP_ORG1_MY_BANK',
+      });
+    });
+
+    it('rejects a display name the org already uses without calling HMA', async () => {
+      const fetchHTTP = routeFetch({});
+      const svc = makeService(fetchHTTP);
+
+      await expect(
+        svc.createBank('org1', MOCK_BANK.name, 'desc', 1.0),
+      ).rejects.toMatchObject({ name: 'MatchingBankNameExistsError' });
+      expect(fetchHTTP).not.toHaveBeenCalled();
+    });
+
+    it('adds a suffix when the normalized HMA name is taken in Coop', async () => {
+      const fetchHTTP = routeFetch({
+        'GET /c/bank/COOP_ORG1_MY_BANK_2': fail(404),
+        'POST /c/banks': ok({}),
+      });
+      const svc = makeService(fetchHTTP, {
+        takenHmaNames: ['COOP_ORG1_MY_BANK'],
+      });
+
+      await svc.createBank('org1', 'my-bank', 'desc', 1.0);
+
+      const [call] = callsTo(fetchHTTP, 'post', '/c/banks');
+      expect(jsonParse(call.body!)).toMatchObject({
+        name: 'COOP_ORG1_MY_BANK_2',
+      });
+    });
+
+    it('adds a suffix when HMA already has a bank with the normalized name', async () => {
+      const fetchHTTP = routeFetch({
+        'GET /c/bank/COOP_ORG1_MY_BANK': ok({}),
+        'GET /c/bank/COOP_ORG1_MY_BANK_2': fail(404),
+        'GET /c/exchanges/api/ncmec/schema': ok(NCMEC_SCHEMA),
+        'POST /c/exchanges': created(),
+      });
+      const svc = makeService(fetchHTTP);
+
+      await svc.createBank('org1', 'My Bank', 'desc', 1.0, {
+        apiName: 'ncmec',
+        apiJson: {},
+        credentialJson: { user: 'u', password: 'p' },
+      });
+
+      const [call] = callsTo(fetchHTTP, 'post', '/c/exchanges');
+      expect(jsonParse(call.body!)).toMatchObject({
+        bank: 'COOP_ORG1_MY_BANK_2',
+      });
     });
 
     it('sends credential_json in POST /c/exchanges when credentials are provided', async () => {
@@ -337,7 +438,7 @@ describe('HmaService', () => {
         );
 
         expect(text).not.toContain(SECRET);
-        expect(text).toMatch(/status=\d+|rejected the credentials/);
+        expect(text).toMatch(/status=\d+|rejected the configuration/);
       },
     );
 
@@ -358,7 +459,7 @@ describe('HmaService', () => {
         'DELETE /c/exchange/COOP_ORG1_MY_BANK': ok({}),
       });
       const { db, deleteFrom } = makeMockKyselyPg();
-      const svc = new HmaService(fetchHTTP as never, db);
+      const svc = new HmaService(fetchHTTP as never, db, makeTracer());
 
       await expect(
         svc.createBank('org1', 'My Bank', 'desc', 0.5, {
@@ -375,15 +476,13 @@ describe('HmaService', () => {
     });
 
     it('still surfaces the original error when the rollback delete fails', async () => {
-      const consoleError = vi
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
+      const tracer = makeTracer();
       const fetchHTTP = routeFetch({
         'GET /c/exchanges/api/ncmec/schema': ok(NCMEC_SCHEMA),
         'POST /c/exchanges': created(),
         'DELETE /c/exchange/COOP_ORG1_MY_BANK': fail(500),
       });
-      const svc = makeService(fetchHTTP, { insertFails: true });
+      const svc = makeService(fetchHTTP, { writesFail: true, tracer });
 
       await expect(
         svc.createBank('org1', 'My Bank', 'desc', 1.0, {
@@ -391,13 +490,69 @@ describe('HmaService', () => {
           apiJson: {},
           credentialJson: { user: 'u', password: SECRET },
         }),
-      ).rejects.toThrow('insert failed');
+      ).rejects.toThrow('write failed');
 
-      const logged = consoleError.mock.calls.flat().map(String).join(' ');
-      expect(logged).toContain('status=500');
-      expect(logged).not.toContain(SECRET);
-      consoleError.mockRestore();
+      expect(tracer.logActiveSpanFailedIfAny).toHaveBeenCalledTimes(1);
+      const [logged] = tracer.logActiveSpanFailedIfAny.mock.calls[0];
+      expect(String(logged)).toContain('status=500');
+      expect(String(logged)).not.toContain(SECRET);
     });
+
+    it.each([
+      [
+        'a network error',
+        async () => {
+          throw new Error('socket hang up');
+        },
+      ],
+      ['a 5xx', async () => fail(502)],
+    ])(
+      'rolls back the exchange when its creation fails with %s',
+      async (_label, createResponse) => {
+        const fetchHTTP = vi.fn(
+          async (req: { url: string; method: string }) => {
+            if (req.url.endsWith('/schema')) return ok(NCMEC_SCHEMA);
+            if (req.method === 'get') return fail(404);
+            if (req.method === 'post') return createResponse();
+            return ok({});
+          },
+        );
+        const svc = makeService(fetchHTTP);
+
+        await expect(
+          svc.createBank('org1', 'My Bank', 'desc', 1.0, {
+            apiName: 'ncmec',
+            apiJson: {},
+            credentialJson: { user: 'u', password: 'p' },
+          }),
+        ).rejects.toThrow();
+
+        expect(
+          callsTo(fetchHTTP, 'delete', '/c/exchange/COOP_ORG1_MY_BANK'),
+        ).toHaveLength(1);
+      },
+    );
+
+    it.each([400, 409])(
+      'does not delete by name when HMA rejects the creation with %i',
+      async (status) => {
+        const fetchHTTP = routeFetch({
+          'GET /c/exchanges/api/ncmec/schema': ok(NCMEC_SCHEMA),
+          'POST /c/exchanges': fail(status),
+        });
+        const svc = makeService(fetchHTTP);
+
+        await expect(
+          svc.createBank('org1', 'My Bank', 'desc', 1.0, {
+            apiName: 'ncmec',
+            apiJson: {},
+            credentialJson: { user: 'u', password: 'p' },
+          }),
+        ).rejects.toThrow();
+
+        expect(callsTo(fetchHTTP, 'delete', '/')).toHaveLength(0);
+      },
+    );
 
     it('rolls back through DELETE /c/exchange when the local insert fails', async () => {
       const fetchHTTP = routeFetch({
@@ -405,7 +560,7 @@ describe('HmaService', () => {
         'POST /c/exchanges': created(),
         'DELETE /c/exchange/COOP_ORG1_MY_BANK': ok({}),
       });
-      const svc = makeService(fetchHTTP, { insertFails: true });
+      const svc = makeService(fetchHTTP, { writesFail: true });
 
       await expect(
         svc.createBank('org1', 'My Bank', 'desc', 1.0, {
@@ -413,7 +568,7 @@ describe('HmaService', () => {
           apiJson: {},
           credentialJson: { user: 'u', password: 'p' },
         }),
-      ).rejects.toThrow('insert failed');
+      ).rejects.toThrow('write failed');
 
       expect(
         callsTo(fetchHTTP, 'delete', '/c/exchange/COOP_ORG1_MY_BANK'),
@@ -422,76 +577,15 @@ describe('HmaService', () => {
     });
   });
 
-  describe('setExchangeCredentials', () => {
-    const statusBody = {
-      supports_auth: true,
-      has_credentials: true,
-      source: 'exchange',
+  describe('setBankExchangeCredentials', () => {
+    const exchangeRoutes = {
+      'GET /c/exchange/COOP_ORG1_TEST_BANK': ok({ api: 'ncmec' }),
+      'GET /c/exchanges/api/ncmec/schema': ok(NCMEC_SCHEMA),
     };
 
     it('posts to /c/exchange/<hma_name>/credentials and returns the status', async () => {
       const fetchHTTP = routeFetch({
-        'POST /c/exchange/COOP_ORG1_TEST_BANK/credentials': ok(statusBody),
-      });
-      const svc = makeService(fetchHTTP);
-
-      const status = await svc.setExchangeCredentials('COOP_ORG1_TEST_BANK', {
-        user: 'u',
-        password: 'p',
-      });
-
-      expect(status).toEqual(statusBody);
-      const [call] = callsTo(fetchHTTP, 'post', '/credentials');
-      expect(jsonParse(call.body!)).toEqual({
-        credential_json: { user: 'u', password: 'p' },
-      });
-    });
-
-    it('clears credentials with credential_json: null', async () => {
-      const fetchHTTP = routeFetch({
-        'POST /c/exchange/COOP_ORG1_TEST_BANK/credentials': ok({
-          supports_auth: true,
-          has_credentials: false,
-          source: null,
-        }),
-      });
-      const svc = makeService(fetchHTTP);
-
-      const status = await svc.setExchangeCredentials(
-        'COOP_ORG1_TEST_BANK',
-        null,
-      );
-
-      expect(status.has_credentials).toBe(false);
-      const [call] = callsTo(fetchHTTP, 'post', '/credentials');
-      expect(jsonParse(call.body!)).toEqual({ credential_json: null });
-    });
-
-    it.each([400, 404, 500, 501])(
-      'never includes credential values when HMA returns %i',
-      async (status) => {
-        const fetchHTTP = routeFetch({
-          'POST /c/exchange/COOP_ORG1_TEST_BANK/credentials': fail(status, {
-            message: SECRET,
-          }),
-        });
-        const svc = makeService(fetchHTTP);
-
-        const text = await errorText(
-          svc.setExchangeCredentials('COOP_ORG1_TEST_BANK', {
-            user: 'u',
-            password: SECRET,
-          }),
-        );
-
-        expect(text).not.toContain(SECRET);
-      },
-    );
-  });
-
-  describe('setBankExchangeCredentials', () => {
-    it("resolves the bank's hma_name within the caller's org", async () => {
-      const fetchHTTP = routeFetch({
+        ...exchangeRoutes,
         'POST /c/exchange/COOP_ORG1_TEST_BANK/credentials': ok({
           supports_auth: true,
           has_credentials: true,
@@ -500,9 +594,19 @@ describe('HmaService', () => {
       });
       const svc = makeService(fetchHTTP);
 
-      await svc.setBankExchangeCredentials('org1', 1, { user: 'u' });
+      const status = await svc.setBankExchangeCredentials('org1', 1, {
+        user: 'u',
+        password: 'p',
+      });
 
-      expect(callsTo(fetchHTTP, 'post', '/credentials')).toHaveLength(1);
+      expect(status).toEqual({
+        has_credentials: true,
+        has_own_credentials: true,
+      });
+      const [call] = callsTo(fetchHTTP, 'post', '/credentials');
+      expect(jsonParse(call.body!)).toEqual({
+        credential_json: { user: 'u', password: 'p' },
+      });
     });
 
     it("refuses another org's bank without calling HMA", async () => {
@@ -515,15 +619,63 @@ describe('HmaService', () => {
       expect(fetchHTTP).not.toHaveBeenCalled();
     });
 
-    it('does not turn an all-empty submission into a clear', async () => {
-      const fetchHTTP = routeFetch({});
+    it('refuses banks that are not connected to an exchange', async () => {
+      const fetchHTTP = routeFetch({
+        'GET /c/exchange/COOP_ORG1_TEST_BANK': fail(404),
+      });
       const svc = makeService(fetchHTTP);
 
       await expect(
-        svc.setBankExchangeCredentials('org1', 1, { user: '', password: '' }),
-      ).rejects.toBeInstanceOf(HashBankUserError);
-      expect(fetchHTTP).not.toHaveBeenCalled();
+        svc.setBankExchangeCredentials('org1', 1, { user: 'u' }),
+      ).rejects.toThrow('not connected to an exchange');
+      expect(callsTo(fetchHTTP, 'post', '/credentials')).toHaveLength(0);
     });
+
+    it.each([
+      ['missing required fields', { user: 'u' }, 'Missing: password'],
+      [
+        'unknown fields',
+        { user: 'u', password: 'p', token: SECRET },
+        'Unexpected credential fields',
+      ],
+      ['an all-empty submission', { user: '', password: '' }, 'Missing'],
+    ])(
+      'validates against the API schema and rejects %s',
+      async (_label, credentials, message) => {
+        const fetchHTTP = routeFetch(exchangeRoutes);
+        const svc = makeService(fetchHTTP);
+
+        const text = await errorText(
+          svc.setBankExchangeCredentials('org1', 1, credentials),
+        );
+
+        expect(text).toContain(message);
+        expect(text).not.toContain(SECRET);
+        expect(callsTo(fetchHTTP, 'post', '/credentials')).toHaveLength(0);
+      },
+    );
+
+    it.each([400, 404, 500, 501])(
+      'never includes credential values when HMA returns %i',
+      async (status) => {
+        const fetchHTTP = routeFetch({
+          ...exchangeRoutes,
+          'POST /c/exchange/COOP_ORG1_TEST_BANK/credentials': fail(status, {
+            message: SECRET,
+          }),
+        });
+        const svc = makeService(fetchHTTP);
+
+        const text = await errorText(
+          svc.setBankExchangeCredentials('org1', 1, {
+            user: 'u',
+            password: SECRET,
+          }),
+        );
+
+        expect(text).not.toContain(SECRET);
+      },
+    );
   });
 
   describe('getExchangeApis', () => {
@@ -578,7 +730,7 @@ describe('HmaService', () => {
       expect(result!.error).toContain('ECONNREFUSED');
     });
 
-    it('maps credential_status to has_auth and credential_source', async () => {
+    it('maps credential_status to has_auth and has_own_credentials', async () => {
       const fetchHTTP = routeFetch({
         'GET /c/exchange/COOP_ORG1_BANK': ok({
           api: 'ncmec',
@@ -600,7 +752,7 @@ describe('HmaService', () => {
         api: 'ncmec',
         enabled: true,
         has_auth: true,
-        credential_source: 'exchange',
+        has_own_credentials: true,
         last_fetch_succeeded: true,
         last_fetch_time: new Date(1700000000 * 1000).toISOString(),
         up_to_date: true,
@@ -630,7 +782,7 @@ describe('HmaService', () => {
         const result = await svc.getExchangeForBank('COOP_ORG1_BANK');
 
         expect(result!.has_auth).toBe(true);
-        expect(result!.credential_source).toBe(source);
+        expect(result!.has_own_credentials).toBe(false);
       },
     );
 
@@ -648,7 +800,7 @@ describe('HmaService', () => {
       const result = await svc.getExchangeForBank('COOP_ORG1_BANK');
 
       expect(result!.has_auth).toBe(false);
-      expect(result!.credential_source).toBeNull();
+      expect(result!.has_own_credentials).toBe(false);
     });
 
     it('detects active fetch in progress', async () => {
@@ -723,7 +875,7 @@ describe('HmaService', () => {
         'DELETE /c/exchange/COOP_ORG1_TEST_BANK': fail(500),
       });
       const { db, deleteFrom } = makeMockKyselyPg();
-      const svc = new HmaService(fetchHTTP as never, db);
+      const svc = new HmaService(fetchHTTP as never, db, makeTracer());
 
       await expect(svc.deleteBank('org1', '1')).rejects.toThrow(
         'Failed to delete HMA bank',
@@ -749,7 +901,7 @@ describe('HmaService', () => {
         'DELETE /c/exchange/COOP_ORG1_TEST_BANK': ok({}),
       });
       const { db, deleteFrom } = makeMockKyselyPg();
-      const svc = new HmaService(fetchHTTP as never, db);
+      const svc = new HmaService(fetchHTTP as never, db, makeTracer());
 
       expect(await svc.getBankById('org1', 1)).toBeNull();
       expect(
@@ -764,7 +916,7 @@ describe('HmaService', () => {
         'DELETE /c/exchange/COOP_ORG1_TEST_BANK': fail(500),
       });
       const { db, deleteFrom } = makeMockKyselyPg();
-      const svc = new HmaService(fetchHTTP as never, db);
+      const svc = new HmaService(fetchHTTP as never, db, makeTracer());
 
       expect(await svc.getBankById('org1', 1)).toEqual(MOCK_BANK);
       expect(deleteFrom).not.toHaveBeenCalled();
@@ -772,16 +924,144 @@ describe('HmaService', () => {
   });
 
   describe('updateBank', () => {
-    it('refuses to rename an exchange-backed bank', async () => {
+    it('renames a plain bank in place in HMA so it keeps its content', async () => {
+      const fetchHTTP = routeFetch({
+        'GET /c/exchange/COOP_ORG1_TEST_BANK': fail(404),
+        'PUT /c/bank/COOP_ORG1_TEST_BANK': ok({}),
+      });
+      const { db, updates } = makeMockKyselyPg();
+      const svc = new HmaService(fetchHTTP as never, db, makeTracer());
+
+      await svc.updateBank('org1', '1', { name: 'renamed' });
+
+      const [call] = callsTo(fetchHTTP, 'put', '/c/bank/COOP_ORG1_TEST_BANK');
+      expect(jsonParse(call.body!)).toEqual({ name: 'COOP_ORG1_RENAMED' });
+      expect(callsTo(fetchHTTP, 'post', '/')).toHaveLength(0);
+      expect(callsTo(fetchHTTP, 'delete', '/')).toHaveLength(0);
+      expect(updates()).toEqual([
+        { name: 'renamed', hma_name: 'COOP_ORG1_RENAMED' },
+      ]);
+    });
+
+    it('renames only the display name of an exchange-backed bank', async () => {
       const fetchHTTP = routeFetch({
         'GET /c/exchange/COOP_ORG1_TEST_BANK': ok({ api: 'ncmec' }),
       });
-      const svc = makeService(fetchHTTP);
+      const { db, updates } = makeMockKyselyPg();
+      const svc = new HmaService(fetchHTTP as never, db, makeTracer());
+
+      await svc.updateBank('org1', '1', { name: 'renamed' });
+
+      expect(callsTo(fetchHTTP, 'put', '/')).toHaveLength(0);
+      expect(updates()).toEqual([{ name: 'renamed' }]);
+    });
+
+    it('adds a suffix when the new normalized HMA name is taken', async () => {
+      const fetchHTTP = routeFetch({
+        'GET /c/exchange/COOP_ORG1_TEST_BANK': fail(404),
+        'GET /c/bank/COOP_ORG1_RENAMED_2': fail(404),
+        'PUT /c/bank/COOP_ORG1_TEST_BANK': ok({}),
+      });
+      const { db, updates } = makeMockKyselyPg({
+        takenHmaNames: ['COOP_ORG1_RENAMED'],
+      });
+      const svc = new HmaService(fetchHTTP as never, db, makeTracer());
+
+      await svc.updateBank('org1', '1', { name: 'Renamed!' });
+
+      const [call] = callsTo(fetchHTTP, 'put', '/c/bank/COOP_ORG1_TEST_BANK');
+      expect(jsonParse(call.body!)).toEqual({ name: 'COOP_ORG1_RENAMED_2' });
+      expect(updates()).toEqual([
+        { name: 'Renamed!', hma_name: 'COOP_ORG1_RENAMED_2' },
+      ]);
+    });
+
+    it('keeps its HMA name when a rename normalizes to the same one', async () => {
+      const fetchHTTP = routeFetch({
+        'GET /c/exchange/COOP_ORG1_TEST_BANK': fail(404),
+      });
+      const { db, updates } = makeMockKyselyPg();
+      const svc = new HmaService(fetchHTTP as never, db, makeTracer());
+
+      await svc.updateBank('org1', '1', { name: 'Test Bank' });
+
+      expect(callsTo(fetchHTTP, 'put', '/')).toHaveLength(0);
+      expect(updates()).toEqual([{ name: 'Test Bank' }]);
+    });
+
+    it('maps HMA’s 403 for a taken bank name to the name-exists error', async () => {
+      const fetchHTTP = routeFetch({
+        'GET /c/exchange/COOP_ORG1_TEST_BANK': fail(404),
+        'PUT /c/bank/COOP_ORG1_TEST_BANK': fail(403),
+      });
+      const { db, updates } = makeMockKyselyPg();
+      const svc = new HmaService(fetchHTTP as never, db, makeTracer());
 
       await expect(
         svc.updateBank('org1', '1', { name: 'renamed' }),
-      ).rejects.toBeInstanceOf(HashBankUserError);
-      expect(callsTo(fetchHTTP, 'post', '/c/banks')).toHaveLength(0);
+      ).rejects.toMatchObject({ name: 'MatchingBankNameExistsError' });
+      expect(updates()).toHaveLength(0);
+    });
+
+    it('renames the HMA bank back if the local update fails', async () => {
+      const fetchHTTP = routeFetch({
+        'GET /c/exchange/COOP_ORG1_TEST_BANK': fail(404),
+        'PUT /c/bank/COOP_ORG1_TEST_BANK': ok({}),
+        'PUT /c/bank/COOP_ORG1_RENAMED': ok({}),
+      });
+      const svc = makeService(fetchHTTP, { writesFail: true });
+
+      await expect(
+        svc.updateBank('org1', '1', { name: 'renamed' }),
+      ).rejects.toThrow('write failed');
+
+      const [revert] = callsTo(fetchHTTP, 'put', '/c/bank/COOP_ORG1_RENAMED');
+      expect(jsonParse(revert.body!)).toEqual({ name: 'COOP_ORG1_TEST_BANK' });
+    });
+
+    it('rejects renaming to a name the org already uses', async () => {
+      const fetchHTTP = routeFetch({});
+      const { db, updates } = makeMockKyselyPg();
+      const svc = new HmaService(fetchHTTP as never, db, makeTracer());
+      const otherBank = { ...MOCK_BANK, id: 2, name: 'other' };
+      vi.spyOn(
+        (svc as unknown as { hashBankService: HashBankService })
+          .hashBankService,
+        'findById',
+      ).mockResolvedValue(otherBank);
+
+      await expect(
+        svc.updateBank('org1', '2', { name: MOCK_BANK.name }),
+      ).rejects.toMatchObject({ name: 'MatchingBankNameExistsError' });
+      expect(updates()).toHaveLength(0);
+    });
+
+    it('sends the rename and enabled_ratio to HMA in one update', async () => {
+      const fetchHTTP = routeFetch({
+        'GET /c/exchange/COOP_ORG1_TEST_BANK': fail(404),
+        'PUT /c/bank/COOP_ORG1_TEST_BANK': ok({}),
+      });
+      const { db, updates } = makeMockKyselyPg();
+      const svc = new HmaService(fetchHTTP as never, db, makeTracer());
+
+      await svc.updateBank('org1', '1', {
+        name: 'renamed',
+        enabled_ratio: 0.5,
+      });
+
+      const calls = callsTo(fetchHTTP, 'put', '/c/bank/COOP_ORG1_TEST_BANK');
+      expect(calls).toHaveLength(1);
+      expect(jsonParse(calls[0].body!)).toEqual({
+        name: 'COOP_ORG1_RENAMED',
+        enabled_ratio: 0.5,
+      });
+      expect(updates()).toEqual([
+        {
+          name: 'renamed',
+          hma_name: 'COOP_ORG1_RENAMED',
+          enabled_ratio: 0.5,
+        },
+      ]);
     });
   });
 

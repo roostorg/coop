@@ -5,11 +5,15 @@ import { FormData } from 'undici';
 import type { Dependencies } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
 import { jsonStringify } from '../../utils/encoding.js';
+import { isUniqueViolationError } from '../../utils/kysely.js';
+import { makeMatchingBankNameExistsError } from '../moderationConfigService/modules/MatchingBankOperations.js';
 import type { HashBank } from './dbTypes.js';
+import { HashBankUserError, HmaRequestError } from './errors.js';
 import { HashBankService } from './hashBankService.js';
 
 // Export types for external use
 export type { HashBank } from './dbTypes.js';
+export { HashBankUserError } from './errors.js';
 export { HashBankService } from './hashBankService.js';
 
 export type ContentType = 'photo' | 'video';
@@ -55,15 +59,11 @@ export interface ExchangeApiInfo {
   supports_auth: boolean;
 }
 
-// 'exchange' means the exchange has its own credentials; the other values mean
-// it falls back to credentials shared by the HMA server.
-export type ExchangeCredentialSource =
-  'exchange' | 'api' | 'environment' | 'file' | null;
-
 export interface ExchangeCredentialStatus {
-  supports_auth: boolean;
   has_credentials: boolean;
-  source: ExchangeCredentialSource;
+  // False when the exchange falls back to credentials configured on the HMA
+  // server itself, which every org on the instance shares.
+  has_own_credentials: boolean;
 }
 
 export type ExchangeCredentialJson = Record<
@@ -75,7 +75,7 @@ export interface ExchangeInfo {
   api: string;
   enabled: boolean;
   has_auth: boolean;
-  credential_source?: ExchangeCredentialSource;
+  has_own_credentials: boolean;
   error?: string | null;
   last_fetch_succeeded?: boolean | null;
   last_fetch_time?: string | null;
@@ -193,34 +193,13 @@ const KNOWN_EXCHANGE_SCHEMAS: Partial<Record<string, ExchangeApiSchema>> = {
   },
 };
 
-/**
- * An error whose message is safe to show to the requesting user. Messages must
- * never contain credential values; name fields instead.
- */
-export class HashBankUserError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'HashBankUserError';
-  }
-}
-
-const CREDENTIAL_SOURCES: ReadonlySet<string> = new Set([
-  'exchange',
-  'api',
-  'environment',
-  'file',
-]);
-
 function parseCredentialStatus(raw: unknown): ExchangeCredentialStatus {
   const status = (raw ?? {}) as Record<string, unknown>;
-  const source =
-    typeof status.source === 'string' && CREDENTIAL_SOURCES.has(status.source)
-      ? (status.source as ExchangeCredentialSource)
-      : null;
+  const hasCredentials = status.has_credentials === true;
   return {
-    supports_auth: status.supports_auth === true,
-    has_credentials: status.has_credentials === true,
-    source,
+    has_credentials: hasCredentials,
+    // HMA's other sources (api, environment, file) are all server-wide.
+    has_own_credentials: hasCredentials && status.source === 'exchange',
   };
 }
 
@@ -278,6 +257,7 @@ export class HmaService {
   constructor(
     private readonly fetchHTTP: Dependencies['fetchHTTP'],
     kyselyPg: Dependencies['KyselyPg'],
+    private readonly tracer: Dependencies['Tracer'],
   ) {
     this.hmaServiceUrl =
       process.env.HMA_SERVICE_URL ?? 'http://localhost:9876/';
@@ -295,6 +275,49 @@ export class HmaService {
     return `COOP_${orgId.toUpperCase()}_${normalizedName}`;
   }
 
+  /**
+   * The HMA name for a bank called `name`: the normalized name, or with a
+   * numeric suffix (`_2`, `_3`, ...) when that's taken. Different display
+   * names can normalize to the same HMA name ("My Bank" and "my-bank"), and a
+   * renamed exchange-backed bank keeps its original one. `currentHmaName` is
+   * the renaming bank's own name, which counts as free.
+   */
+  private async pickHmaName(
+    orgId: string,
+    name: string,
+    currentHmaName?: string,
+  ): Promise<string> {
+    const base = this.getHmaName(orgId, name);
+    for (let attempt = 1; attempt <= 50; attempt++) {
+      const candidate = attempt === 1 ? base : `${base}_${attempt}`;
+      if (candidate === currentHmaName) {
+        return candidate;
+      }
+      if (
+        !(await this.hashBankService.isHmaNameTaken(candidate)) &&
+        !(await this.hmaBankExists(candidate))
+      ) {
+        return candidate;
+      }
+    }
+    throw new Error(`No free HMA bank name for ${base}`);
+  }
+
+  private async hmaBankExists(hmaName: string): Promise<boolean> {
+    const response = await this.fetchHTTP({
+      url: `${this.hmaServiceUrl}/c/bank/${encodeURIComponent(hmaName)}`,
+      method: 'get',
+      handleResponseBody: 'discard',
+    });
+    if (response.status === 404) {
+      return false;
+    }
+    if (!response.ok) {
+      throw new HmaRequestError('Failed to look up HMA bank', response.status);
+    }
+    return true;
+  }
+
   async createBank(
     orgId: string,
     name: string,
@@ -306,7 +329,10 @@ export class HmaService {
       credentialJson?: ExchangeCredentialJson;
     },
   ): Promise<HashBank> {
-    const hmaName = this.getHmaName(orgId, name);
+    if (await this.hashBankService.findByName(name, orgId)) {
+      throw makeMatchingBankNameExistsError({ shouldErrorSpan: false });
+    }
+    const hmaName = await this.pickHmaName(orgId, name);
 
     if (exchange) {
       const credentialJson = validateExchangeCredentials(
@@ -315,12 +341,24 @@ export class HmaService {
         exchange.credentialJson,
       );
 
-      await this.createExchange(
-        hmaName,
-        exchange.apiName,
-        exchange.apiJson,
-        credentialJson,
-      );
+      try {
+        await this.createExchange(
+          hmaName,
+          exchange.apiName,
+          exchange.apiJson,
+          credentialJson,
+        );
+      } catch (error) {
+        // A 4xx means HMA created nothing. Deleting by name then could remove
+        // an exchange that an earlier request created under the same name.
+        const rejected =
+          error instanceof HashBankUserError ||
+          (error instanceof HmaRequestError && error.status < 500);
+        if (!rejected) {
+          await this.deleteHmaBank(hmaName, true);
+        }
+        throw error;
+      }
     } else {
       const requestBody = {
         name: hmaName,
@@ -376,29 +414,39 @@ export class HmaService {
 
       return bank;
     } catch (error) {
-      try {
-        // Deleting only the bank would leave an exchange and its credentials.
-        const cleanupResponse = await this.fetchHTTP({
-          url: exchange
-            ? `${this.hmaServiceUrl}/c/exchange/${encodeURIComponent(hmaName)}`
-            : `${this.hmaServiceUrl}/c/bank/${hmaName}`,
-          method: 'delete',
-          handleResponseBody: 'discard',
-        });
-        if (!cleanupResponse.ok && cleanupResponse.status !== 404) {
-          // eslint-disable-next-line no-console
-          console.error(
-            `Failed to clean up HMA bank ${hmaName} after creation failed: status=${cleanupResponse.status}`,
-          );
-        }
-      } catch (cleanupError) {
-        // eslint-disable-next-line no-console
-        console.error(
-          'Failed to clean up HMA bank after local creation failed:',
-          cleanupError,
+      await this.deleteHmaBank(hmaName, exchange != null);
+      throw isUniqueViolationError(error)
+        ? makeMatchingBankNameExistsError({ shouldErrorSpan: false })
+        : error;
+    }
+  }
+
+  /**
+   * Best-effort removal of a bank created during a failed createBank. Failures
+   * are recorded on the active span rather than thrown, so the caller's
+   * original error is the one surfaced.
+   */
+  private async deleteHmaBank(
+    hmaName: string,
+    isExchange: boolean,
+  ): Promise<void> {
+    try {
+      // Deleting only the bank would leave an exchange and its credentials.
+      const response = await this.fetchHTTP({
+        url: isExchange
+          ? `${this.hmaServiceUrl}/c/exchange/${encodeURIComponent(hmaName)}`
+          : `${this.hmaServiceUrl}/c/bank/${encodeURIComponent(hmaName)}`,
+        method: 'delete',
+        handleResponseBody: 'discard',
+      });
+      if (!response.ok && response.status !== 404) {
+        throw new HmaRequestError(
+          `Failed to clean up HMA bank ${hmaName}`,
+          response.status,
         );
       }
-      throw error;
+    } catch (cleanupError) {
+      this.tracer.logActiveSpanFailedIfAny(cleanupError);
     }
   }
 
@@ -414,109 +462,38 @@ export class HmaService {
       throw new Error('Bank not found');
     }
 
-    // If name is being updated, we need to update the HMA bank name
-    if (updates.name && updates.name !== bank.name) {
-      // Recreating as a plain bank would drop the exchange and orphan its
-      // credentials in HMA.
-      if (await this.hasExchange(bank.hma_name)) {
-        throw new HashBankUserError(
-          'Banks connected to an exchange cannot be renamed.',
-        );
-      }
-
-      const newHmaName = this.getHmaName(orgId, updates.name);
-
-      // Create new bank in HMA with new name
-      const createRequestBody = {
-        name: newHmaName,
-        enabled_ratio: (updates.enabled_ratio ?? bank.enabled_ratio).toString(),
-      };
-
-      const createResponse = await this.fetchHTTP({
-        url: `${this.hmaServiceUrl}/c/banks`,
-        method: 'post',
-        body: jsonStringify(createRequestBody),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        handleResponseBody: 'as-json',
-      });
-
-      if (!createResponse.ok) {
-        const errorDetails = {
-          status: createResponse.status,
-          responseBody: createResponse.body,
-          requestBody: createRequestBody,
-          url: `${this.hmaServiceUrl}/c/banks`,
-          headers: createResponse.headers,
-        };
-        throw new Error(
-          `Failed to create new HMA bank: ${jsonStringify(errorDetails)}`,
-        );
-      }
-
-      // Delete old HMA bank
-      try {
-        await this.fetchHTTP({
-          url: `${this.hmaServiceUrl}/c/bank/${bank.hma_name}`,
-          method: 'delete',
-          handleResponseBody: 'discard',
-        });
-      } catch (deleteError) {
-        // eslint-disable-next-line no-console
-        console.error('Failed to delete old HMA bank:', deleteError);
-      }
-
-      // Update local bank with new name and HMA name
-      const updatedBank = await this.hashBankService.update(
-        Number(bank.id),
-        orgId,
-        {
-          name: updates.name,
-          hma_name: newHmaName,
-          description: updates.description,
-          enabled_ratio: updates.enabled_ratio,
-        },
-      );
-      return updatedBank;
-    } else if (
+    const newName =
+      updates.name != null && updates.name !== bank.name
+        ? updates.name
+        : undefined;
+    const newHmaName =
+      newName != null ? await this.renamedHmaName(bank, newName) : undefined;
+    const newRatio =
       updates.enabled_ratio !== undefined &&
       updates.enabled_ratio !== bank.enabled_ratio
-    ) {
-      // If only enabled_ratio is being updated, use PUT to update HMA service
-      const updateRequestBody = {
-        enabled_ratio: updates.enabled_ratio,
-      };
+        ? updates.enabled_ratio
+        : undefined;
 
-      const updateResponse = await this.fetchHTTP({
-        url: `${this.hmaServiceUrl}/c/bank/${bank.hma_name}`,
-        method: 'put',
-        body: jsonStringify(updateRequestBody),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        handleResponseBody: 'as-json',
+    // PUT /c/bank renames in place, so the bank keeps its hashed content.
+    if (newHmaName != null || newRatio != null) {
+      await this.updateHmaBank(bank.hma_name, {
+        ...(newHmaName != null ? { name: newHmaName } : {}),
+        ...(newRatio != null ? { enabled_ratio: newRatio } : {}),
       });
-
-      if (!updateResponse.ok) {
-        const errorDetails = {
-          status: updateResponse.status,
-          responseBody: updateResponse.body,
-          requestBody: updateRequestBody,
-          url: `${this.hmaServiceUrl}/c/bank/${bank.hma_name}`,
-          headers: updateResponse.headers,
-        };
-        throw new Error(
-          `Failed to update HMA bank: ${jsonStringify(errorDetails)}`,
-        );
-      }
     }
 
-    // Update other fields if they weren't already updated above
     const fieldsToUpdate: {
+      name?: string;
+      hma_name?: string;
       description?: string | null;
       enabled_ratio?: number;
     } = {};
+    if (newName != null) {
+      fieldsToUpdate.name = newName;
+    }
+    if (newHmaName != null) {
+      fieldsToUpdate.hma_name = newHmaName;
+    }
     if (updates.description !== undefined) {
       fieldsToUpdate.description = updates.description;
     }
@@ -524,16 +501,74 @@ export class HmaService {
       fieldsToUpdate.enabled_ratio = updates.enabled_ratio;
     }
 
-    if (Object.keys(fieldsToUpdate).length > 0) {
-      const updatedBank = await this.hashBankService.update(
+    if (Object.keys(fieldsToUpdate).length === 0) {
+      return bank;
+    }
+
+    try {
+      return await this.hashBankService.update(
         Number(bank.id),
         orgId,
         fieldsToUpdate,
       );
-      return updatedBank;
+    } catch (error) {
+      if (newHmaName != null) {
+        // Without this, Coop's row would point at a name HMA no longer has.
+        await this.updateHmaBank(newHmaName, { name: bank.hma_name }).catch(
+          (revertError: unknown) => {
+            this.tracer.logActiveSpanFailedIfAny(revertError);
+          },
+        );
+      }
+      throw isUniqueViolationError(error)
+        ? makeMatchingBankNameExistsError({ shouldErrorSpan: false })
+        : error;
     }
+  }
 
-    return bank;
+  /**
+   * The HMA name a bank should have after being renamed to newName, or
+   * undefined if it keeps its current one. Throws if the org already has a
+   * bank called newName.
+   */
+  private async renamedHmaName(
+    bank: HashBank,
+    newName: string,
+  ): Promise<string | undefined> {
+    if (await this.hashBankService.findByName(newName, bank.org_id)) {
+      throw makeMatchingBankNameExistsError({ shouldErrorSpan: false });
+    }
+    // HMA can't rename an exchange, and Coop finds a bank's exchange by its
+    // HMA name, so exchange-backed banks keep their original one.
+    if (await this.hasExchange(bank.hma_name)) {
+      return undefined;
+    }
+    const newHmaName = await this.pickHmaName(
+      bank.org_id,
+      newName,
+      bank.hma_name,
+    );
+    return newHmaName === bank.hma_name ? undefined : newHmaName;
+  }
+
+  private async updateHmaBank(
+    hmaName: string,
+    changes: { name?: string; enabled_ratio?: number },
+  ): Promise<void> {
+    const response = await this.fetchHTTP({
+      url: `${this.hmaServiceUrl}/c/bank/${encodeURIComponent(hmaName)}`,
+      method: 'put',
+      body: jsonStringify(changes),
+      headers: { 'Content-Type': 'application/json' },
+      handleResponseBody: 'discard',
+    });
+    if (!response.ok) {
+      // HMA answers 403 when the new name belongs to another bank.
+      if (response.status === 403 && changes.name != null) {
+        throw makeMatchingBankNameExistsError({ shouldErrorSpan: false });
+      }
+      throw new HmaRequestError('Failed to update HMA bank', response.status);
+    }
   }
 
   async deleteBank(orgId: string, id: string): Promise<void> {
@@ -566,20 +601,27 @@ export class HmaService {
   }
 
   private async hasExchange(hmaName: string): Promise<boolean> {
+    return (await this.getExchangeApiName(hmaName)) != null;
+  }
+
+  /** The exchange API type of an exchange-backed bank, or null for plain banks. */
+  private async getExchangeApiName(hmaName: string): Promise<string | null> {
     const response = await this.fetchHTTP({
       url: `${this.hmaServiceUrl}/c/exchange/${encodeURIComponent(hmaName)}`,
       method: 'get',
-      handleResponseBody: 'discard',
+      handleResponseBody: 'as-json',
     });
     if (response.status === 404) {
-      return false;
+      return null;
     }
     if (!response.ok) {
-      throw new Error(
-        `Failed to look up HMA exchange: status=${response.status}`,
+      throw new HmaRequestError(
+        'Failed to look up HMA exchange',
+        response.status,
       );
     }
-    return true;
+    const body = response.body as unknown as { api?: unknown };
+    return typeof body.api === 'string' ? body.api : '';
   }
 
   async getBank(orgId: string, name: string): Promise<HashBank | null> {
@@ -629,9 +671,11 @@ export class HmaService {
       handleResponseBody: 'discard',
     });
     if (!response.ok && response.status !== 404) {
-      // eslint-disable-next-line no-console
-      console.error(
-        `Failed to delete leftover HMA exchange ${bank.hma_name}: ${response.status}`,
+      this.tracer.logActiveSpanFailedIfAny(
+        new HmaRequestError(
+          `Failed to delete leftover HMA exchange ${bank.hma_name}`,
+          response.status,
+        ),
       );
       return false;
     }
@@ -814,25 +858,27 @@ export class HmaService {
     });
 
     if (!response.ok) {
-      if (response.status === 400 && hasCredentials) {
+      // HMA's 400 can come from api_json or credential_json, and its message
+      // isn't passed through in case it ever quotes a value.
+      if (response.status === 400) {
         throw new HashBankUserError(
-          `The exchange rejected the credentials for '${apiType}'. Check the values for: ${Object.keys(credentialJson).join(', ')}.`,
+          `The exchange rejected the configuration${hasCredentials ? ' or credentials' : ''} for '${apiType}'. Check the submitted fields.`,
         );
       }
-      throw new Error(
-        `Failed to create exchange in HMA: status=${response.status} api=${apiType}`,
+      throw new HmaRequestError(
+        `Failed to create exchange in HMA for '${apiType}'`,
+        response.status,
       );
     }
   }
 
   /**
-   * Sets, replaces, or (with null) clears the credentials of a single
-   * exchange. Callers must have already checked that hmaName belongs to the
-   * requesting org.
+   * Sets or replaces the credentials of a single exchange. Only call this
+   * after checking that hmaName belongs to the requesting org.
    */
-  async setExchangeCredentials(
+  private async setExchangeCredentials(
     hmaName: string,
-    credentialJson: ExchangeCredentialJson | null,
+    credentialJson: ExchangeCredentialJson,
   ): Promise<ExchangeCredentialStatus> {
     const response = await this.fetchHTTP({
       url: `${this.hmaServiceUrl}/c/exchange/${encodeURIComponent(hmaName)}/credentials`,
@@ -845,7 +891,7 @@ export class HmaService {
     if (!response.ok) {
       if (response.status === 400) {
         throw new HashBankUserError(
-          `The exchange rejected the credentials. Check the values for: ${Object.keys(credentialJson ?? {}).join(', ')}.`,
+          `The exchange rejected the credentials. Check the values for: ${Object.keys(credentialJson).join(', ')}.`,
         );
       }
       if (response.status === 404) {
@@ -853,38 +899,40 @@ export class HmaService {
           'This bank is not connected to an exchange.',
         );
       }
-      throw new Error(
-        `Failed to set exchange credentials: status=${response.status}`,
+      throw new HmaRequestError(
+        'Failed to set exchange credentials',
+        response.status,
       );
     }
 
     return parseCredentialStatus(response.body);
   }
 
-  /** Org-scoped wrapper around setExchangeCredentials. */
   async setBankExchangeCredentials(
     orgId: string,
     bankId: number,
-    credentialJson: ExchangeCredentialJson | null,
+    credentialJson: ExchangeCredentialJson,
   ): Promise<ExchangeCredentialStatus> {
     const bank = await this.hashBankService.findById(bankId, orgId);
     if (!bank) {
       throw new HashBankUserError('Hash bank not found.');
     }
 
-    if (credentialJson === null) {
-      return this.setExchangeCredentials(bank.hma_name, null);
+    const apiName = await this.getExchangeApiName(bank.hma_name);
+    if (apiName == null) {
+      throw new HashBankUserError('This bank is not connected to an exchange.');
     }
-    // HMA treats {} as "clear", so an all-empty submission must not reach it.
-    const nonEmpty = Object.fromEntries(
-      Object.entries(credentialJson).filter(
-        ([, value]) => value != null && value !== '',
-      ),
+
+    const validated = validateExchangeCredentials(
+      apiName,
+      await this.getExchangeApiSchema(apiName),
+      credentialJson,
     );
-    if (Object.keys(nonEmpty).length === 0) {
+    // HMA treats {} as "clear", so an empty submission must not reach it.
+    if (validated == null) {
       throw new HashBankUserError('Enter at least one credential value.');
     }
-    return this.setExchangeCredentials(bank.hma_name, nonEmpty);
+    return this.setExchangeCredentials(bank.hma_name, validated);
   }
 
   async getExchangeForBank(hmaName: string): Promise<ExchangeInfo | null> {
@@ -900,6 +948,7 @@ export class HmaService {
         api: '',
         enabled: false,
         has_auth: false,
+        has_own_credentials: false,
         error: `Unable to reach HMA service: ${err instanceof Error ? err.message : String(err)}`,
       };
     }
@@ -913,6 +962,7 @@ export class HmaService {
         api: '',
         enabled: false,
         has_auth: false,
+        has_own_credentials: false,
         error: `Failed to fetch exchange info from HMA (status ${response.status})`,
       };
     }
@@ -924,7 +974,7 @@ export class HmaService {
       api: String(body.api ?? ''),
       enabled: Boolean(body.enabled),
       has_auth: credentialStatus.has_credentials,
-      credential_source: credentialStatus.source,
+      has_own_credentials: credentialStatus.has_own_credentials,
     };
 
     try {
@@ -1131,4 +1181,4 @@ export class HmaService {
   }
 }
 
-export default inject(['fetchHTTP', 'KyselyPg'], HmaService);
+export default inject(['fetchHTTP', 'KyselyPg', 'Tracer'], HmaService);

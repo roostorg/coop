@@ -10,19 +10,15 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Security
 
-- Store hash-exchange credentials per bank so organizations no longer share or overwrite each other's credentials ([#TBD](https://github.com/roostorg/coop/pull/TBD) by [@juanmrad](https://github.com/juanmrad))
+- Store hash-exchange credentials per bank ([#1360](https://github.com/roostorg/coop/pull/1360) by [@juanmrad](https://github.com/juanmrad))
 
 ### Changed
 
-- Require HMA 1.2.0 or later; upgrading HMA requires running its database migrations ([#TBD](https://github.com/roostorg/coop/pull/TBD) by [@juanmrad](https://github.com/juanmrad))
-- Hash banks connected to an exchange can no longer be renamed ([#TBD](https://github.com/roostorg/coop/pull/TBD) by [@juanmrad](https://github.com/juanmrad))
-
-### Deprecated
-
-- `updateExchangeCredentials` mutation and `ExchangeApiInfo.has_auth`; use `updateHashBankExchangeCredentials` and `HashBank.exchange.has_auth` ([#TBD](https://github.com/roostorg/coop/pull/TBD) by [@juanmrad](https://github.com/juanmrad))
+- Require HMA 1.2.0 or later ([#1360](https://github.com/roostorg/coop/pull/1360) by [@juanmrad](https://github.com/juanmrad))
 
 ### Fixed
 
+- Renaming a hash bank no longer discards its hashed content ([#1360](https://github.com/roostorg/coop/pull/1360) by [@juanmrad](https://github.com/juanmrad))
 - Zentropi Labeler signal failing on every call; labeler versions now require a labeler ID ([#1335](https://github.com/roostorg/coop/pull/1335) by [@reitblatt](https://github.com/reitblatt))
 
 ## [1.1.1] - 2026-10-01
