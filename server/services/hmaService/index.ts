@@ -645,14 +645,15 @@ export class HmaService {
       }
 
       if (!response.ok) {
-        // eslint-disable-next-line no-console
-        console.error(
-          `Failed to verify bank ${bank.hma_name} in HMA service: ${response.status}`,
+        this.tracer.logActiveSpanFailedIfAny(
+          new HmaRequestError(
+            `Failed to verify bank ${bank.hma_name} in HMA`,
+            response.status,
+          ),
         );
       }
     } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error(`Network error verifying bank ${bank.hma_name}:`, error);
+      this.tracer.logActiveSpanFailedIfAny(error);
     }
 
     return bank;
@@ -704,14 +705,15 @@ export class HmaService {
       }
 
       if (!response.ok) {
-        // eslint-disable-next-line no-console
-        console.error(
-          `Failed to verify bank ${bank.hma_name} in HMA service: ${response.status}`,
+        this.tracer.logActiveSpanFailedIfAny(
+          new HmaRequestError(
+            `Failed to verify bank ${bank.hma_name} in HMA`,
+            response.status,
+          ),
         );
       }
     } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error(`Network error verifying bank ${bank.hma_name}:`, error);
+      this.tracer.logActiveSpanFailedIfAny(error);
     }
 
     return bank;
@@ -743,19 +745,17 @@ export class HmaService {
             }
 
             if (!response.ok) {
-              // eslint-disable-next-line no-console
-              console.error(
-                `Failed to verify bank ${bank.hma_name} in HMA service: ${response.status}`,
+              this.tracer.logActiveSpanFailedIfAny(
+                new HmaRequestError(
+                  `Failed to verify bank ${bank.hma_name} in HMA`,
+                  response.status,
+                ),
               );
             }
 
             return bank;
           } catch (error) {
-            // eslint-disable-next-line no-console
-            console.error(
-              `Network error verifying bank ${bank.hma_name}:`,
-              error,
-            );
+            this.tracer.logActiveSpanFailedIfAny(error);
             return bank;
           }
         }),
