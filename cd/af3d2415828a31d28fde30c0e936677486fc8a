@@ -1,0 +1,20 @@
+server/services/hmaService/index.ts
+  s_02a909a5859353::t_9d9abca131f3fd 748-752,758
+  s_02a909a5859353::t_25e6f950066e15 648-652,656,708-712,716
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cdaf3d2415828a31d28fde30c0e936677486fc8a",
+  "prompts": {},
+  "sessions": {
+    "s_02a909a5859353": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "77ddafe3-8a68-4f2b-b7fe-d80c19b5a781",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
