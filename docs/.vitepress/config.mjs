@@ -6,7 +6,7 @@ import { configureMarkdown, headingId, sidebar } from './site.mjs';
 
 export default () => {
   const output = { base: '/coop/', outDir: resolve('.vitepress/dist') };
-  if (process.argv[2] === 'preview') return output;
+  if (process.env.npm_lifecycle_event === 'preview') return output;
 
   const source = resolve('.vitepress/work');
   const manifest = JSON.parse(
