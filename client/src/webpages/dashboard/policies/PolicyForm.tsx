@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router';
 
 import CoopModal from '../components/CoopModal';
 import ComponentLoading from '@/components/common/ComponentLoading';

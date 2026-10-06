@@ -4,7 +4,7 @@ import {
   ArrowDownWideNarrow as SortAmountDsc,
 } from 'lucide-react';
 import { ReactNode, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
 import { features, TableColumnDef, TableData, TableRow } from './tableFeatures';
 import TableFilter from './TableFilter';

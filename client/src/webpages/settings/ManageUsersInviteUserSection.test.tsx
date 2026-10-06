@@ -5,7 +5,7 @@ import {
 } from '@/graphql/generated';
 import { MockedProvider, MockedResponse } from '@apollo/client/testing';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 
 import ManageUsersInviteUserSection from './ManageUsersInviteUserSection';
 

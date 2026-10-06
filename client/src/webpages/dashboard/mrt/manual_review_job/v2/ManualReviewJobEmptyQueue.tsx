@@ -1,5 +1,5 @@
 import { CheckCircle } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 
 import CoopButton from '@/webpages/dashboard/components/CoopButton';
 

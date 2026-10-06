@@ -14,7 +14,7 @@ import {
   useLocation,
   useMatches,
   useNavigate,
-} from 'react-router-dom';
+} from 'react-router';
 
 import FullScreenLoading from '../../components/common/FullScreenLoading';
 

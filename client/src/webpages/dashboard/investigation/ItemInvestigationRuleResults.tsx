@@ -3,7 +3,7 @@ import { Button } from 'antd';
 import capitalize from 'lodash/capitalize';
 import lowerCase from 'lodash/lowerCase';
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 
 import ComponentLoading from '../../../components/common/ComponentLoading';
 import CoopBadge from '../components/CoopBadge';

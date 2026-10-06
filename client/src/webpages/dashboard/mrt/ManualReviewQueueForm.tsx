@@ -6,7 +6,7 @@ import difference from 'lodash/difference';
 import orderBy from 'lodash/orderBy';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router';
 
 import FullScreenLoading from '../../../components/common/FullScreenLoading';
 import { selectFilterByLabelOption } from '../components/antDesignUtils';

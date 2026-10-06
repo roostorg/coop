@@ -2,7 +2,7 @@ import { gql } from '@apollo/client';
 import { Button } from 'antd';
 import { XCircle } from 'lucide-react';
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 
 import FullScreenLoading from '../../components/common/FullScreenLoading';
 import CoopModal from '../dashboard/components/CoopModal';

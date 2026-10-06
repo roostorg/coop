@@ -4,7 +4,7 @@ import { Input, Select } from 'antd';
 import Link from 'antd/lib/typography/Link';
 import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router';
 
 import FullScreenLoading from '../../../components/common/FullScreenLoading';
 import { selectFilterByLabelOption } from '../components/antDesignUtils';

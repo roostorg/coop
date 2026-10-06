@@ -22,7 +22,7 @@ import {
   type ReactNode,
 } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 
 import CopyTextComponent from '../../../components/common/CopyTextComponent';
 import FullScreenLoading from '../../../components/common/FullScreenLoading';

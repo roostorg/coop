@@ -1,7 +1,7 @@
 import { Button, Form, Input, Select, Slider, Switch, Tag } from 'antd';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router';
 
 import FullScreenLoading from '../../../../components/common/FullScreenLoading';
 import CoopButton from '../../components/CoopButton';

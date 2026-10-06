@@ -8,7 +8,7 @@ import { Heading, Text } from '@/coop-ui/Typography';
 import { Clipboard, Eye, EyeClosed, RotateCcw } from 'lucide-react';
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 
 import FullScreenLoading from '../../components/common/FullScreenLoading';
 

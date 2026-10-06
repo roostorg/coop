@@ -9,7 +9,7 @@ import { Tree, treeFromList, TreeNode } from '@/utils/tree';
 import omit from 'lodash/omit';
 import { Check, ChevronDown, ChevronUp, Pencil, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 
 import CoopModal from '../components/CoopModal';
 import Table from '../components/table/Table';

@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { HelmetProvider } from 'react-helmet-async';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import ManualReviewCurrentJobsComponent from './manual_review_job/v2/user/ManualReviewJobCurrentJobsComponent';

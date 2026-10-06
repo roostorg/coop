@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router';
 
 import DashboardHeader from '../dashboard/components/DashboardHeader';
 

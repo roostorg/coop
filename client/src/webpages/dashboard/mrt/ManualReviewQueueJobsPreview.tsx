@@ -1,7 +1,7 @@
 import { safeFormat } from '@/utils/time';
 import { gql } from '@apollo/client';
 import { useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams } from 'react-router';
 
 import ComponentLoading from '../../../components/common/ComponentLoading';
 import DashboardHeader from '../components/DashboardHeader';

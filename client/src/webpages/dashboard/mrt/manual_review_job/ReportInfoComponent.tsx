@@ -16,7 +16,7 @@ import { selectPreferredUserItem } from '@/utils/manualReviewTool';
 import { safeFormat } from '@/utils/time';
 import { ExternalLink } from 'lucide-react';
 import { useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
 import CopyTextComponent from '@/components/common/CopyTextComponent';
 

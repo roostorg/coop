@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router';
 
 import ComponentLoading from '../../../../components/common/ComponentLoading';
 import CopyTextComponent from '../../../../components/common/CopyTextComponent';

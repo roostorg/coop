@@ -11,7 +11,7 @@ import isPlainObject from 'lodash/isPlainObject';
 import { ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 import ReactPlayer from 'react-player/lazy';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
 import ComponentLoading from '../../../../../components/common/ComponentLoading';
 import CollapsibleText from '@/webpages/dashboard/mrt/manual_review_job/v2/components/CollapsibleText';
