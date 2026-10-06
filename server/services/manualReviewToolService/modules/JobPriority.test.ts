@@ -10,6 +10,7 @@ import {
   getJobPrioritiesForItems,
   getJobPriorityForItem,
   JobSortType,
+  MAX_JOB_PRIORITY_WEIGHT,
   toBullPriority,
   userScoreKey,
   type JobPropertyKey,
@@ -142,15 +143,15 @@ describe('JobPriority', () => {
   });
 
   describe('getJobPriorityForItem — WEIGHTED', () => {
-    // Contributions are linear (weight × value) and the score is scaled by
-    // 1000 before inverting, so expected priorities are exact.
+    // Contributions are linear (weight × value), so expected priorities are
+    // exact.
     test('each report adds its weight to the score', async () => {
       const priority = await priorityFor({
         sortType: JobSortType.WEIGHTED,
         reports: 5,
         weights: new Map([['numReports', 2]]),
       });
-      expect(priority).toBe(MAX_BULL_PRIORITY - 5 * 2 * 1000);
+      expect(priority).toBe(MAX_BULL_PRIORITY - 5 * 2);
     });
 
     test('a higher weight on the same signal dequeues sooner', async () => {
@@ -167,10 +168,15 @@ describe('JobPriority', () => {
       expect(heavy).toBeLessThan(light!);
     });
 
-    test('a worst-offender user contributes the full userScore weight; a clean user none', async () => {
+    test('each step below a clean user score adds the userScore weight', async () => {
       const worst = await priorityFor({
         sortType: JobSortType.WEIGHTED,
         userScore: 1,
+        weights: new Map([['userScore', 3]]),
+      });
+      const middling = await priorityFor({
+        sortType: JobSortType.WEIGHTED,
+        userScore: 3,
         weights: new Map([['userScore', 3]]),
       });
       const clean = await priorityFor({
@@ -178,8 +184,27 @@ describe('JobPriority', () => {
         userScore: 5,
         weights: new Map([['userScore', 3]]),
       });
-      expect(worst).toBe(MAX_BULL_PRIORITY - 3 * 1000);
+      expect(worst).toBe(MAX_BULL_PRIORITY - 4 * 3);
+      expect(middling).toBe(MAX_BULL_PRIORITY - 2 * 3);
       expect(clean).toBe(MAX_BULL_PRIORITY);
+    });
+
+    test('high report counts at the max weight still rank distinctly', async () => {
+      const weights = new Map<JobPropertyKey, number>([
+        ['numReports', MAX_JOB_PRIORITY_WEIGHT],
+      ]);
+      const fewer = await priorityFor({
+        sortType: JobSortType.WEIGHTED,
+        reports: 9_999,
+        weights,
+      });
+      const more = await priorityFor({
+        sortType: JobSortType.WEIGHTED,
+        reports: 10_000,
+        weights,
+      });
+      expect(more).toBeLessThan(fewer!);
+      expect(more).toBeGreaterThan(1);
     });
 
     test('signals combine additively', async () => {
@@ -192,8 +217,8 @@ describe('JobPriority', () => {
           ['userScore', 4],
         ]),
       });
-      // 2 reports × 1 + worst user × 4 = 6 points.
-      expect(priority).toBe(MAX_BULL_PRIORITY - 6 * 1000);
+      // 2 reports × 1 + 4 steps below clean × 4 = 18 points.
+      expect(priority).toBe(MAX_BULL_PRIORITY - 18);
     });
 
     test('with no weights configured, every job ties at MAX (arrival order)', async () => {
@@ -359,8 +384,9 @@ describe('JobPriority', () => {
         ]),
       });
 
-      // a: 2 reports × 1 + worst user × 4 = 6 points; b: clean, unreported.
-      expect(priorities.get('a')).toBe(MAX_BULL_PRIORITY - 6 * 1000);
+      // a: 2 reports × 1 + 4 steps below clean × 4 = 18 points; b: clean,
+      // unreported.
+      expect(priorities.get('a')).toBe(MAX_BULL_PRIORITY - 18);
       expect(priorities.get('b')).toBe(MAX_BULL_PRIORITY);
       expect(countLookups()).toBe(1);
       expect(scoreLookups()).toBe(1);

@@ -21,7 +21,7 @@ export const JOB_PRIORITY_PROPERTY_LABELS: ReadonlyArray<{
   {
     property: GQLJobPriorityProperty.UserScore,
     label: 'User Score',
-    help: "Items from users with a history of policy violations are reviewed sooner. Coop assigns each user a moderation score from 1 to 5 based on the ratio of penalties they've received to total submissions. 1 means many penalties (likely a repeat offender), 5 is the default for new or clean users. Set to 0 to ignore user history.",
+    help: 'Items from users with a history of policy violations are reviewed sooner. Set to 0 to ignore user history.',
     example: (w) =>
       w === 0
         ? "Currently disabled: user history won't affect queue order."

@@ -2,6 +2,7 @@ import { uid } from 'uid';
 
 import createOrg from '../../../test/fixtureHelpers/createOrg.js';
 import { makeTransactionalTestWithFixture } from '../../../test/harness/transactionalTest.js';
+import { MAX_JOB_PRIORITY_WEIGHT } from './JobPriority.js';
 import JobPriorityWeights from './JobPriorityWeights.js';
 
 describe('JobPriorityWeights', () => {
@@ -168,6 +169,32 @@ describe('JobPriorityWeights', () => {
             }),
           ).rejects.toMatchObject({ name: 'BadRequestError' });
         }
+      },
+    );
+
+    testWithFixtures(
+      'rejects fractional weights',
+      async ({ mrtService, orgId }) => {
+        await expect(
+          mrtService.setJobPriorityWeights({
+            orgId,
+            weights: [{ property: 'numReports', weight: 1.5 }],
+          }),
+        ).rejects.toMatchObject({ name: 'BadRequestError' });
+      },
+    );
+
+    testWithFixtures(
+      'rejects weights above the maximum',
+      async ({ mrtService, orgId }) => {
+        await expect(
+          mrtService.setJobPriorityWeights({
+            orgId,
+            weights: [
+              { property: 'numReports', weight: MAX_JOB_PRIORITY_WEIGHT + 1 },
+            ],
+          }),
+        ).rejects.toMatchObject({ name: 'BadRequestError' });
       },
     );
 

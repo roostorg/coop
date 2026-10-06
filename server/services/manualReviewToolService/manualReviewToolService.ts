@@ -68,6 +68,7 @@ import {
   getJobPrioritiesForItems,
   getJobPriorityForItem,
   JobSortType,
+  MAX_JOB_PRIORITY_WEIGHT,
   type JobPropertyKey,
 } from './modules/JobPriority.js';
 import JobPriorityWeights from './modules/JobPriorityWeights.js';
@@ -1060,9 +1061,13 @@ export class ManualReviewToolService {
   }) {
     const seen = new Set<JobPropertyKey>();
     for (const { property, weight } of opts.weights) {
-      if (!Number.isFinite(weight) || weight < 0) {
+      if (
+        !Number.isInteger(weight) ||
+        weight < 0 ||
+        weight > MAX_JOB_PRIORITY_WEIGHT
+      ) {
         throw makeBadRequestError(
-          `Invalid job priority weight for "${property}": must be a non-negative, finite number.`,
+          `Invalid job priority weight for "${property}": must be a whole number from 0 to ${MAX_JOB_PRIORITY_WEIGHT}.`,
           { shouldErrorSpan: true },
         );
       }
@@ -1084,7 +1089,7 @@ export class ManualReviewToolService {
         opts.orgId,
       );
     for (const queue of queues) {
-      if (queue.isAppealsQueue || queue.jobSortType !== JobSortType.WEIGHTED) {
+      if (queue.jobSortType !== JobSortType.WEIGHTED) {
         continue;
       }
       this.#scheduleQueuePriorityRecompute({

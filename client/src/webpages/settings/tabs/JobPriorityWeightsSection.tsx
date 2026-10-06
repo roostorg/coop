@@ -6,7 +6,6 @@ import {
   JOB_PRIORITY_PROPERTY_LABELS,
   JobPriorityWeightMap,
 } from '@/webpages/settings/jobPriorityWeights';
-import { summarizeWeighting } from '@/webpages/settings/jobPriorityWeightSummary';
 
 // Controlled section rendered inside the Review Console settings tab. State,
 // hydration and saving are owned by the parent tab so this shares the tab's
@@ -62,17 +61,6 @@ export default function JobPriorityWeightsSection({
             );
           },
         )}
-      </div>
-
-      <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
-        <Text className="text-sm text-slate-600">
-          {summarizeWeighting(
-            JOB_PRIORITY_PROPERTY_LABELS.map(({ property, label }) => ({
-              label,
-              weight: weights.get(property) ?? 0,
-            })),
-          )}
-        </Text>
       </div>
     </div>
   );

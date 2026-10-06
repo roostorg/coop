@@ -82,8 +82,7 @@ export function internalMakeUserStatisticsService(
     /**
      * Scores for many users in one query, keyed by `"${typeId}\x00${id}"`.
      * Users with no cached score are absent from the map (callers treat them
-     * as `initialUserScore`). Used by the queue priority sweep, where a
-     * per-user lookup would be an N+1 against the replica.
+     * as `initialUserScore`).
      */
     async getUserScoresForUsers(opts: {
       orgId: string;
@@ -99,13 +98,10 @@ export function internalMakeUserStatisticsService(
           .select(['user_type_id', 'user_id', 'score'])
           .where('org_id', '=', opts.orgId)
           .where((eb) =>
-            eb.or(
-              chunk.map((user) =>
-                eb.and([
-                  eb('user_type_id', '=', user.typeId),
-                  eb('user_id', '=', user.id),
-                ]),
-              ),
+            eb(
+              eb.refTuple('user_type_id', 'user_id'),
+              'in',
+              chunk.map((user) => eb.tuple(user.typeId, user.id)),
             ),
           )
           .execute();

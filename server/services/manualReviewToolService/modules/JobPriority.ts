@@ -55,14 +55,7 @@ export function toBullPriority(score: number): number {
   return Math.max(1, MAX_BULL_PRIORITY - Math.round(clamped));
 }
 
-// Lowest possible user score. 1 = repeat offender; 5 (`initialUserScore`) is
-// a clean user.
-const MIN_USER_SCORE = 1;
-
-// A weighted score is scaled up by this factor before becoming an (integer)
-// BullMQ priority, so fractional contributions — a user score maps onto
-// [0, 1] — survive rounding instead of collapsing into ties.
-const WEIGHTED_SCORE_SCALE = 1_000;
+export const MAX_JOB_PRIORITY_WEIGHT = 10;
 
 // Content/thread items are scored by their author; user items by the user
 // itself.
@@ -73,18 +66,12 @@ export function userIdentifierFromItem(
   return { id: item.itemId, typeId: item.itemTypeIdentifier.id };
 }
 
-// A user score mapped onto [0, 1]: worst offender (MIN_USER_SCORE) = 1,
-// clean user (initialUserScore) = 0.
-function normalizedUserScore(score: number): number {
-  return (initialUserScore - score) / (initialUserScore - MIN_USER_SCORE);
-}
-
-// The weighted score for one job, BEFORE scaling. Weights multiply linearly:
-// `weight × value` points each.
+// The weighted score for one job. Weights multiply linearly: `weight × value`
+// points each.
 //   - numReports: the raw report count, so a weight means "points per report".
-//   - userScore: mapped onto [0, 1], so a weight means "points when the user
-//     is at their worst". At equal weights, a worst-offender user counts like
-//     one report.
+//   - userScore: steps below a clean user (0 to 4), so a weight means "points
+//     per step". At equal weights, a worst-offender user counts like four
+//     reports.
 // A signal with no weight (or weight 0) contributes nothing, and if every
 // signal is unweighted all jobs tie, i.e. arrival order.
 function weightedScore(opts: {
@@ -96,7 +83,7 @@ function weightedScore(opts: {
   const userScoreWeight = opts.weights.get('userScore') ?? 0;
   return (
     reportsWeight * opts.numReports +
-    userScoreWeight * normalizedUserScore(opts.userScore)
+    userScoreWeight * (initialUserScore - opts.userScore)
   );
 }
 
@@ -135,8 +122,7 @@ export async function getJobPriorityForItem(opts: {
       deps.getUserScore(orgId, userIdentifierFromItem(item)),
     ]);
     return toBullPriority(
-      weightedScore({ weights, numReports: numReports ?? 0, userScore }) *
-        WEIGHTED_SCORE_SCALE,
+      weightedScore({ weights, numReports: numReports ?? 0, userScore }),
     );
   }
 
@@ -215,7 +201,7 @@ export async function getJobPrioritiesForItems(opts: {
           numReports: counts.get(itemId) ?? 0,
           // Users with no score row are clean, i.e. contribute nothing.
           userScore: scores.get(userScoreKey(user)) ?? initialUserScore,
-        }) * WEIGHTED_SCORE_SCALE,
+        }),
       ),
     ]),
   );
