@@ -58,6 +58,14 @@ minimumReleaseAgeExclude:
   - '@roostorg/coop-types'
   - '@roostorg/db-migrator'
 
+# Don't let pnpm switch itself to the `packageManager` version. With the
+# default (`download`), pnpm writes a second YAML document to pnpm-lock.yaml
+# that locks its own binaries, and GitHub's dependency graph reads only that
+# document, so Dependabot alerts see no dependencies
+# (dependabot/dependabot-core#15904). CI (pnpm/setup) and the Dockerfiles
+# install the pinned version themselves.
+pmOnFail: ignore
+
 # Block transitive dependencies from resolving via git repos or tarball URLs.
 # Ensures all deps come from the official registry, not arbitrary remote sources.
 blockExoticSubdeps: true
