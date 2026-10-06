@@ -1,7 +1,7 @@
-// Fails if any production dependency of a workspace package has a license
+// Fails if any production dependency of the workspace packages has a license
 // outside ALLOWED_LICENSES (semicolon-separated SPDX ids).
 //
-// Usage: pnpm licenses list --prod --json --filter ./server | node scripts/check-licenses.mjs
+// Usage: pnpm licenses list --prod --json -r | node scripts/check-licenses.mjs
 //
 // Replaces license-checker, which only walks nested node_modules and so sees a
 // fraction of the tree under pnpm's symlinked layout.
@@ -21,9 +21,7 @@ if (allowed.size === 0) {
   process.exit(1);
 }
 
-const input = readFileSync(0, 'utf8').trim();
-// pnpm prints a plain message instead of JSON when there are no dependencies.
-const byLicense = input.startsWith('{') ? JSON.parse(input) : {};
+const byLicense = JSON.parse(readFileSync(0, 'utf8'));
 
 // Evaluates an SPDX expression: OR passes if any side passes, AND needs both,
 // and AND binds tighter than OR unless parentheses say otherwise. A
@@ -92,6 +90,12 @@ for (const [license, pkgs] of Object.entries(byLicense)) {
 }
 
 console.log(`Checked ${count} production packages.`);
+if (count === 0) {
+  console.error(
+    'No packages to check; is the input from `pnpm licenses list`?',
+  );
+  process.exit(1);
+}
 if (failures.length > 0) {
   console.error(`Disallowed licenses:\n  ${failures.join('\n  ')}`);
   process.exit(1);

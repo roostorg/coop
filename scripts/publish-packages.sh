@@ -67,7 +67,7 @@ publish_if_needed() {
     fi
 
     echo "📦 Publishing $package_name@$version..."
-    pnpm install --frozen-lockfile
+    pnpm install --frozen-lockfile --filter "$package_name"
     pnpm run build
     pnpm publish --otp="$NPM_OTP"
     cd ..

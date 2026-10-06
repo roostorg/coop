@@ -147,37 +147,6 @@ docker compose down -v     # also drop DB volumes (fresh DBs next run)
 
 Note: `check_migration_order` runs only in GitHub Actions — it's GitHub-specific and not needed locally. When adding a migration, use `date -u +"%Y.%m.%dT%H.%M.%S"` for the filename prefix.
 
-## Things to know about pnpm
-
-This repo uses **pnpm workspaces** with a single root `pnpm-lock.yaml` (replaces per-package `package-lock.json` files).
-
-**Day-to-day commands:**
-
-```bash
-pnpm install                          # install all workspaces from root
-pnpm --filter server add <dep>        # add dep to server/package.json
-pnpm --filter client add -D <dep>     # add devDep to client/package.json
-pnpm --filter server run test         # run a script in one workspace
-pnpm -r run build                     # run a script across all workspaces
-```
-
-**Supply-chain guards (configured in `pnpm-workspace.yaml`):**
-
-- `minimumReleaseAge: 10080` — pnpm refuses packages published less than 7 days ago. If an install fails with `ERR_PNPM_INVALID_PACKAGE_RELEASE_AGE`, wait or pin an older version.
-- `blockExoticSubdeps: true` — transitive deps resolved via git URLs or tarballs are blocked. If a transitive dep uses this, it must be overridden at the root.
-- `allowBuilds` — dependency install scripts run only for packages set to `true`; packages set to `false` or unlisted are skipped (`pnpm ignored-builds` lists the skipped ones). Add a new native dep to `allowBuilds` in `pnpm-workspace.yaml`.
-
-**Lockfile conflicts:**
-
-Never hand-merge `pnpm-lock.yaml`. Take one side and regenerate:
-
-```bash
-git checkout --ours pnpm-lock.yaml   # or --theirs
-pnpm install
-```
-
-**Adding a new dependency** still requires human approval (see Human-approval-required actions below). After approval: `pnpm --filter <pkg> add <dep>`, then commit both `<pkg>/package.json` and `pnpm-lock.yaml`.
-
 ## Security
 
 - No secrets in code or committed files. Use environment variables via `.env` (gitignored).
@@ -219,6 +188,7 @@ pnpm install
 - Dependencies are declared in each package's `package.json` and locked in the root `pnpm-lock.yaml`. Add a dep with `pnpm --filter <pkg> add <dep>` and commit the updated lockfile.
 - Every new or upgraded package including transitive dependencies requires human approval. Confirm the license is compatible with `LICENSE` (Apache 2.0) and that there are no known CVEs.
 - Lockfile conflict on `pnpm-lock.yaml`: take one side with `git checkout --ours|--theirs pnpm-lock.yaml`, then run `pnpm install` from root to reconcile.
+- `pnpm-workspace.yaml` refuses packages published less than 7 days ago (`minimumReleaseAge`) and runs dependency install scripts only for packages set to `true` in `allowBuilds`; a new dependency with an install script needs an `allowBuilds` entry.
 
 **Install gotchas:**
 
