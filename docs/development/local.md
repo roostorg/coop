@@ -11,7 +11,7 @@ These docs focus on providing more detailed information and reference. See the [
 
 - **Operating System**: macOS, Linux, or Windows with WSL2
 - **git** for cloning and contributing
-- **Node.js 24**, **nvm**, and **pnpm** (the version is pinned by `packageManager` in the root `package.json`)
+- **Node.js 24**, **nvm**, and **pnpm 12** (CI and the Docker images use the exact version in `packageManager` in the root `package.json`; pnpm doesn't switch to it automatically)
 - **Docker** and **Docker Compose**
 - **4 GiB RAM** minimum for a bare instance, 8 GiB or more recommended for development
 
