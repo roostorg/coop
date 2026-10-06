@@ -151,7 +151,7 @@ const ReportingRule: GQLReportingRuleResolvers = {
       ),
     );
 
-    return policies;
+    return policies.filter((policy) => policy !== undefined);
   },
   async insights(rule, _, context) {
     // just return the rule, which then becomes the parent/source for the
