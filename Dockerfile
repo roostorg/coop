@@ -10,7 +10,7 @@
 FROM node:24.21.0-bookworm-slim AS server_base
 WORKDIR /app
 
-RUN npm install -g pnpm@12.9.1
+RUN npm install -g pnpm@11.28.2
 
 # The lockfile and workspace config live at the repo root, so install from
 # there and filter to the server package.
@@ -30,7 +30,7 @@ RUN pnpm run build
 FROM node:24.21.0-bookworm-slim AS backend_base
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends dumb-init && rm -rf /var/lib/apt/lists/*
-RUN npm install -g pnpm@12.9.1
+RUN npm install -g pnpm@11.28.2
 COPY ["pnpm-lock.yaml", "pnpm-workspace.yaml", "package.json", "./"]
 COPY ["server/package.json", "./server/"]
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --filter server --prod --frozen-lockfile --ignore-scripts && \
