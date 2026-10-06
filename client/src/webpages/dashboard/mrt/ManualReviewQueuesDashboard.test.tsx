@@ -1,5 +1,3 @@
-import '@testing-library/jest-dom';
-
 import { render, screen } from '@testing-library/react';
 import { HelmetProvider } from 'react-helmet-async';
 import { MemoryRouter } from 'react-router-dom';
