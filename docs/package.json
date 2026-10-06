@@ -1,0 +1,14 @@
+{
+  "name": "coop-docs",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node .vitepress/build.mjs",
+    "preview": "node .vitepress/preview.mjs"
+  },
+  "devDependencies": {
+    "@viteplus/versions": "2.2.0",
+    "vitepress": "2.0.0-alpha.20",
+    "vue": "3.5.41"
+  }
+}

@@ -15,6 +15,10 @@ client/coverage/
 
 # docs
 docs/book/
+docs/.vitepress/cache/
+docs/.vitepress/dist/
+docs/.vitepress/work/
+docs/.vitepress/.temp/
 
 # misc
 .DS_Store
