@@ -12,6 +12,10 @@ For more information about each release including git tags and artifacts, see [R
 
 - Zentropi Labeler signal failing on every call; labeler versions now require a labeler ID ([#1335](https://github.com/roostorg/coop/pull/1335) by [@reitblatt](https://github.com/reitblatt))
 
+### Changed
+
+- Item type writes validate schemas, field roles, and hidden fields ([#1272](https://github.com/roostorg/coop/pull/1272) by [@taobojlen](https://github.com/taobojlen))
+
 ## [1.1.1] - 2026-10-01
 
 ### Security
