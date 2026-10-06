@@ -11,7 +11,7 @@ export default {
   extends: DefaultTheme,
   Layout: {
     setup() {
-      const { theme } = useData();
+      const { theme, page } = useData();
       const manifest = shallowRef(theme.value.docsVersions);
       onMounted(async () => {
         const response = await fetch(`${manifest.value.base}versions.json`);
@@ -20,7 +20,9 @@ export default {
       return () =>
         h(DefaultTheme.Layout, null, {
           'nav-bar-content-after': () =>
-            h(VersionNavigation, { manifest: manifest.value }),
+            page.value.isNotFound
+              ? null
+              : h(VersionNavigation, { manifest: manifest.value }),
           'doc-before': () =>
             h(VersionNavigation, { manifest: manifest.value, notice: true }),
         });

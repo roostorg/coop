@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "node .vitepress/build.mjs",
-    "preview": "vitepress preview . --host 127.0.0.1 --port 4173"
+    "preview": "node .vitepress/preview.mjs"
   },
   "devDependencies": {
     "@viteplus/versions": "2.2.0",
