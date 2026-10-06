@@ -528,7 +528,8 @@ function ManualReviewJobReviewImpl(props: {
     open: false,
   });
 
-  const goBackToQueuesPage = () => navigate('/dashboard/manual_review/queues');
+  const goBackToQueuesPage = async () =>
+    navigate('/dashboard/manual_review/queues');
   const hideModal = () => setModalInfo({ ...modalInfo, visible: false });
 
   const [submitDecision, { loading: submissionLoading }] =

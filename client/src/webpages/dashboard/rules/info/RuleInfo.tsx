@@ -53,11 +53,11 @@ export default function RuleInfo() {
           buttons={[
             {
               title: 'Rules',
-              onClick: () => navigate('/dashboard/rules/proactive'),
+              onClick: async () => navigate('/dashboard/rules/proactive'),
             },
             {
               title: `Rule: ${name}`,
-              onClick: () =>
+              onClick: async () =>
                 navigate(`/dashboard/rules/proactive/form/${ruleId}`),
             },
             { title: 'Insights' },

@@ -188,7 +188,7 @@ export default function PolicyForm() {
       footer={[
         {
           title: 'Done',
-          onClick: () => navigate('/dashboard/policies'),
+          onClick: async () => navigate('/dashboard/policies'),
         },
       ]}
     >

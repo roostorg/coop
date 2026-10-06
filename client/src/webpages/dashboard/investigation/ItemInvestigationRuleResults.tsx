@@ -227,7 +227,7 @@ export default function ItemInvestigationRuleResults(props: {
               <Button
                 className="rounded-lg cursor-pointer"
                 size="middle"
-                onClick={() =>
+                onClick={async () =>
                   navigate(
                     `/dashboard/rules/proactive/form/${ruleResult.ruleId}`,
                   )
