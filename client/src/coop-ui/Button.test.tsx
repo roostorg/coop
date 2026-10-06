@@ -89,4 +89,15 @@ describe('Button component', () => {
     expect(link).toBeInTheDocument();
     expect(link).toHaveAttribute('href', '/home');
   });
+
+  it('passes its classes and props through to an asChild child', () => {
+    render(
+      <Button asChild className="custom-class" data-testid="slotted">
+        <a href="/home">Home</a>
+      </Button>,
+    );
+    const link = screen.getByRole('link', { name: /home/i });
+    expect(link).toHaveClass('custom-class');
+    expect(link).toHaveAttribute('data-testid', 'slotted');
+  });
 });

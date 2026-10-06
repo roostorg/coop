@@ -1,7 +1,8 @@
 import { Checkbox } from '@/coop-ui/Checkbox';
+import { Input } from '@/coop-ui/Input';
 import { Label } from '@/coop-ui/Label';
+import { PasswordInput } from '@/coop-ui/PasswordInput';
 import { gql } from '@apollo/client';
-import { Input } from 'antd';
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link, useNavigate } from 'react-router-dom';
@@ -117,7 +118,7 @@ export default function Login() {
   const passwordInput = (
     <div className="flex flex-col mb-4">
       <div className="mb-1">Password</div>
-      <Input.Password
+      <PasswordInput
         className="w-full rounded-lg"
         onChange={(e) => setPassword(e.target.value)}
         onKeyDown={(e) => {

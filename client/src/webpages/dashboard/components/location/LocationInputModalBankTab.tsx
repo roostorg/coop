@@ -1,12 +1,10 @@
+import { MultiCombobox } from '@/coop-ui/Combobox';
 import { gql } from '@apollo/client';
-import { Select } from 'antd';
 
 import ComponentLoading from '../../../../components/common/ComponentLoading';
 
 import { useGQLMatchingBankIdsQuery } from '../../../../graphql/generated';
 import { locationSectionHeader } from './LocationInputModal';
-
-const { Option } = Select;
 
 gql`
   query MatchingBankIds {
@@ -39,10 +37,11 @@ gql`
 
 export default function LocationInputModalBankTab(props: {
   bankIds: readonly string[];
-  addBank: (bankId: string) => void;
-  removeBank: (bankId: string) => void;
+  // One callback for the whole list: clearing removes several banks at once,
+  // and per-bank callbacks would each rebuild from the same stale state.
+  setBankIds: (bankIds: string[]) => void;
 }) {
-  const { bankIds, addBank, removeBank } = props;
+  const { bankIds, setBankIds } = props;
 
   const { loading, error, data } = useGQLMatchingBankIdsQuery();
 
@@ -64,29 +63,20 @@ export default function LocationInputModalBankTab(props: {
       {locationSectionHeader(
         'Select the location banks you would like to match on:',
       )}
-      <Select
-        mode="multiple"
+      <MultiCombobox
+        aria-label="Select the location banks you would like to match on"
         className="flex cursor-pointer !w-full"
-        key="banks-select"
         placeholder={`Select a bank`}
-        defaultValue={bankIds as string[]}
-        value={bankIds as string[]}
-        onSelect={(value: string) => {
-          addBank(value);
-        }}
-        onDeselect={(value: string) => {
-          removeBank(value);
-        }}
+        value={[...bankIds]}
+        onValueChange={setBankIds}
         allowClear
-        showSearch
-        dropdownMatchSelectWidth={false}
-      >
-        {locationBanks?.map((bank) => (
-          <Option key={bank.id} value={bank.id}>
-            {bank.name}
-          </Option>
-        ))}
-      </Select>
+        options={
+          locationBanks?.map((bank) => ({
+            value: bank.id,
+            label: bank.name,
+          })) ?? []
+        }
+      />
     </div>
   );
 }

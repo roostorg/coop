@@ -1,4 +1,4 @@
-import { Input } from 'antd';
+import { Input } from '@/coop-ui/Input';
 import { useState } from 'react';
 
 export default function NameDescriptionInput(props: {

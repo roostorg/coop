@@ -1,6 +1,6 @@
 import { Button } from '@/coop-ui/Button';
+import { Input } from '@/coop-ui/Input';
 import { treeFromList } from '@/utils/tree';
-import { Input } from 'antd';
 import {
   Check as CheckmarkFilled,
   Plus as PlusFilled,

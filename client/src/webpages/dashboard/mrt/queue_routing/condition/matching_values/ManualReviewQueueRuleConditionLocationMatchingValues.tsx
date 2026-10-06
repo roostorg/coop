@@ -1,4 +1,4 @@
-import { Button } from 'antd';
+import { Button } from '@/coop-ui/Button';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
 
@@ -73,16 +73,9 @@ export default function ManualReviewQueueRuleConditionLocationMatchingValues(pro
         (it) => !areLocationAreasEqual(it, location),
       ),
     });
-  const addBank = (bankId: string) => {
-    if (matchingValues?.locationBankIds?.includes(bankId)) {
-      return;
-    }
+  const setBankIds = (bankIds: string[]) =>
+    onUpdateMatchingValues({ ...matchingValues, locationBankIds: bankIds });
 
-    onUpdateMatchingValues({
-      ...matchingValues,
-      locationBankIds: [...(matchingValues?.locationBankIds ?? []), bankId],
-    });
-  };
   const removeBank = (bankId: string) =>
     onUpdateMatchingValues({
       ...matchingValues,
@@ -100,8 +93,7 @@ export default function ManualReviewQueueRuleConditionLocationMatchingValues(pro
       updateCallbacks={{
         addLocation: addLocationArea,
         removeLocation: removeLocationArea,
-        addBank,
-        removeBank,
+        setBankIds,
       }}
       showBanksTab={true}
     />
@@ -111,8 +103,10 @@ export default function ManualReviewQueueRuleConditionLocationMatchingValues(pro
     return (
       <div className="ml-3">
         <Button
+          variant="outline"
+          color="gray"
           className="font-semibold rounded-lg text-primary hover:border hover:border-solid hover:border-slate-200 hover:bg-slate-100"
-          icon={<Plus className="w-4 h-4" />}
+          startIcon={Plus}
           onClick={() => setModalVisible(true)}
         >
           Select Locations
@@ -153,10 +147,15 @@ export default function ManualReviewQueueRuleConditionLocationMatchingValues(pro
                   );
                 })}
                 <Button
-                  className="rounded-lg p-0 ml-[2px] mr-[2px]"
+                  variant="outline"
+                  color="gray"
+                  size="icon"
+                  className="rounded-lg ml-[2px] mr-[2px]"
+                  aria-label="Add location"
                   onClick={() => setModalVisible(true)}
-                  icon={<Plus className="w-4 h-4" />}
-                />
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
               </>
             ) : (
               <ManualReviewQueueRoutingStaticTokenField

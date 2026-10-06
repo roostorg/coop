@@ -1,3 +1,4 @@
+import { Button } from '@/coop-ui/Button';
 import {
   useGQLGetDecidedJobFromJobIdLazyQuery,
   useGQLGetRecentDecisionsQuery,
@@ -7,7 +8,6 @@ import {
 import { parseDatetimeToReadableStringInCurrentTimeZone } from '@/utils/time';
 import { gql } from '@apollo/client';
 import { ItemIdentifier } from '@roostorg/coop-types';
-import { Button } from 'antd';
 import { useCallback, useMemo, useState } from 'react';
 
 import CoopModal from '../components/CoopModal';
@@ -330,7 +330,7 @@ export default function ItemActionHistory(props: {
             source: jobId ? (
               <Button
                 className="!px-0"
-                type="link"
+                variant="link"
                 onClick={() => {
                   getDecidedJob({ variables: { id: jobId } });
                   setIsModalOpen(true);
@@ -342,13 +342,14 @@ export default function ItemActionHistory(props: {
               value.ruleIds.map((ruleId) => (
                 <div className="whitespace-nowrap" key={ruleId}>
                   Rule:
-                  <Button
-                    className="!pl-1 !pr-0"
-                    type="link"
-                    href={`/dashboard/rules/proactive/form/${ruleId}`}
-                    target="_blank"
-                  >
-                    {getRuleName(ruleId)}
+                  <Button asChild className="!pl-1 !pr-0" variant="link">
+                    <a
+                      href={`/dashboard/rules/proactive/form/${ruleId}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      {getRuleName(ruleId)}
+                    </a>
                   </Button>
                 </div>
               ))

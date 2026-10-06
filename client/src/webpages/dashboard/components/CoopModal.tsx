@@ -1,4 +1,4 @@
-import { Modal as AntModal } from 'antd';
+import { Dialog, DialogContent, DialogTitle } from '@/coop-ui/Dialog';
 import { ChevronLeft as LeftOutlined } from 'lucide-react';
 
 import CloseButton from '@/components/common/CloseButton';
@@ -11,7 +11,7 @@ export default function CoopModal({
 }: {
   children: React.ReactNode;
   visible: boolean;
-  onClose?: (e: React.MouseEvent<HTMLElement>) => void;
+  onClose?: () => void;
   title?: string;
   footer?: CoopModalFooterButtonProps[];
   showBack?: boolean;
@@ -45,30 +45,47 @@ export default function CoopModal({
   );
 
   return (
-    <AntModal
-      className={`p-8 rounded-lg max-w-5xl ${className ?? ''}`}
-      centered
-      width="auto"
+    <Dialog
       open={visible}
-      onCancel={onClose}
-      footer={null}
-      closable={false}
+      onOpenChange={(open) => {
+        if (!open) {
+          onClose?.();
+        }
+      }}
     >
-      <div className="flex flex-row min-w-[24rem] justify-between items-start pb-6">
-        <div className="flex flex-row items-center justify-start">
-          {showBack && backButton}
-          {title && (
-            <div className="mr-12 text-2xl font-bold text-start">{title}</div>
+      <DialogContent
+        // Also override the base Dialog's `sm:w-full` — otherwise it wins the
+        // cascade at any desktop viewport and the modal always fills
+        // max-width instead of shrinking to fit its content, unlike antd's
+        // old `width="auto"` Modal.
+        className={`w-auto sm:w-auto max-w-5xl p-8 ${className ?? ''}`}
+        // The wrapper renders its own header/close affordance below.
+        // Focus the dialog itself rather than its first control, so focus
+        // still moves into the modal for keyboard users.
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          (e.currentTarget as HTMLElement | null)?.focus();
+        }}
+      >
+        {/* Visually-hidden title satisfies the Radix Dialog a11y requirement;
+            the visible heading is rendered in the header row below. */}
+        <DialogTitle className="sr-only">{title ?? 'Dialog'}</DialogTitle>
+        <div className="flex flex-row min-w-[24rem] justify-between items-start pb-6">
+          <div className="flex flex-row items-center justify-start">
+            {showBack && backButton}
+            {title && (
+              <div className="mr-12 text-2xl font-bold text-start">{title}</div>
+            )}
+          </div>
+          {hideCloseButton || !onClose ? null : (
+            <div className="flex flex-col items-center justify-center h-full pb-0">
+              <CloseButton onClose={() => onClose()} customWidth="w-5" />
+            </div>
           )}
         </div>
-        {hideCloseButton || !onClose ? null : (
-          <div className="flex flex-col items-center justify-center h-full pb-0">
-            <CloseButton onClose={onClose} customWidth="w-5" />
-          </div>
-        )}
-      </div>
-      {children}
-      {footer && <CoopModalFooter buttons={footer} />}
-    </AntModal>
+        {children}
+        {footer && <CoopModalFooter buttons={footer} />}
+      </DialogContent>
+    </Dialog>
   );
 }

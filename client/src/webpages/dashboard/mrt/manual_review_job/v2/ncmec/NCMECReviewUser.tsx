@@ -1,7 +1,7 @@
+import { Button } from '@/coop-ui/Button';
 import { isTypingInEditableElement } from '@/utils/misc';
 import { gql } from '@apollo/client';
 import { ItemIdentifier, MediaKind, TaggedScalar } from '@roostorg/coop-types';
-import { Button } from 'antd';
 import clsx from 'clsx';
 import pick from 'lodash/pick';
 import uniqBy from 'lodash/uniqBy';
@@ -715,6 +715,8 @@ export default function NCMECReviewUser(
             </div>
           </div>
           <Button
+            variant="outline"
+            color="gray"
             className="shrink-0"
             onClick={() => setUnblurAllMediaInConfirmation((prev) => !prev)}
           >
@@ -923,8 +925,9 @@ export default function NCMECReviewUser(
           <div className="flex gap-2">
             {isActionable ? (
               <Button
+                variant="outline"
+                color="red"
                 className="rounded-md"
-                danger
                 onClick={() => {
                   navigate('/dashboard/manual_review/queues');
                 }}
@@ -933,6 +936,8 @@ export default function NCMECReviewUser(
               </Button>
             ) : null}
             <Button
+              variant="outline"
+              color="gray"
               className="rounded-md"
               onClick={() => setBlurAll(!shouldBlurAll)}
             >

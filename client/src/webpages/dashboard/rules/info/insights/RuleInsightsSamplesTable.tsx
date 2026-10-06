@@ -1,6 +1,12 @@
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/coop-ui/Select';
 import { gql } from '@apollo/client';
 import type { ItemIdentifier } from '@roostorg/coop-types';
-import { Select } from 'antd';
 import capitalize from 'lodash/capitalize';
 import omit from 'lodash/omit';
 import uniq from 'lodash/uniq';
@@ -37,8 +43,6 @@ import RuleInsightsEmptyCard from './RuleInsightsEmptyCard';
 import { RuleInsightsSamplesPlayVideoButton } from './RuleInsightsSamplesPlayVideoButton';
 import RuleInsightsSamplesVideoModal from './RuleInsightsSamplesVideoModal';
 import RuleInsightsSampleDetailView from './sample_details/RuleInsightsSampleDetailView';
-
-const { Option } = Select;
 
 export type DetailViewData = {
   visible: boolean;
@@ -648,11 +652,21 @@ export default function RuleInsightsSamplesTable(props: { ruleId: string }) {
       <div className="flex items-center pr-2 text-base font-medium text-slate-500">
         Show Samples Matching:
       </div>
-      <Select value={lookback} onChange={(value) => updateLookback(value)}>
-        <Option value={LookbackVersion.LATEST}>
-          Rule's Current Conditions
-        </Option>
-        <Option value={LookbackVersion.PRIOR}>Prior Rule Version</Option>
+      <Select
+        value={lookback}
+        onValueChange={(value) => updateLookback(value as LookbackVersion)}
+      >
+        <SelectTrigger className="w-auto min-w-[12rem]">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={LookbackVersion.LATEST}>
+            Rule's Current Conditions
+          </SelectItem>
+          <SelectItem value={LookbackVersion.PRIOR}>
+            Prior Rule Version
+          </SelectItem>
+        </SelectContent>
       </Select>
     </div>
   );

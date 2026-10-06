@@ -1,4 +1,4 @@
-import { Button } from 'antd';
+import { Button } from '@/coop-ui/Button';
 import { Plus } from 'lucide-react';
 import { useState } from 'react';
 
@@ -75,15 +75,8 @@ export default function RuleFormConditionLocationMatchingValues(props: {
     });
   };
 
-  const addBank = (bankId: string) => {
-    if (matchingValues?.locationBankIds?.includes(bankId)) {
-      return;
-    }
-    onUpdateMatchingValues({
-      ...matchingValues,
-      locationBankIds: [...(matchingValues?.locationBankIds ?? []), bankId],
-    });
-  };
+  const setBankIds = (bankIds: string[]) =>
+    onUpdateMatchingValues({ ...matchingValues, locationBankIds: bankIds });
 
   const removeBank = (bankId: string) => {
     onUpdateMatchingValues({
@@ -103,8 +96,7 @@ export default function RuleFormConditionLocationMatchingValues(props: {
       updateCallbacks={{
         addLocation: addLocationArea,
         removeLocation: removeLocationArea,
-        addBank,
-        removeBank,
+        setBankIds,
       }}
       showBanksTab={true}
     />
@@ -114,8 +106,11 @@ export default function RuleFormConditionLocationMatchingValues(props: {
     return (
       <div className="ml-3">
         <Button
+          type="button"
+          variant="outline"
+          color="gray"
           className="!text-slate-500"
-          icon={<Plus className="w-4 h-4" />}
+          startIcon={Plus}
           onClick={() => setModalVisible(true)}
         >
           Select Locations
@@ -152,9 +147,15 @@ export default function RuleFormConditionLocationMatchingValues(props: {
               );
             })}
             <Button
+              type="button"
+              variant="outline"
+              color="gray"
+              size="icon"
+              aria-label="Add location"
               onClick={() => setModalVisible(true)}
-              icon={<Plus className="w-4 h-4" />}
-            />
+            >
+              <Plus className="w-4 h-4" />
+            </Button>
           </div>
         </div>
         <div className="invisible pb-1 text-xs font-bold">

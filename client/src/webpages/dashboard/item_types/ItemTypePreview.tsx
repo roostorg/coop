@@ -1,5 +1,5 @@
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
 import { ItemTypeKind } from '@roostorg/coop-types';
-import { Tooltip } from 'antd';
 
 import { getDisplayStringForRole, SchemaFieldRoles } from './itemTypeUtils';
 
@@ -90,12 +90,11 @@ function ItemTypePreviewTooltip(props: {
   const { children, role, value, kind } = props;
 
   return (
-    <Tooltip
-      title={<ItemTypeTooltipContent role={role} value={value} kind={kind} />}
-      showArrow={false}
-      overlayInnerStyle={{ borderRadius: '8px' }}
-    >
-      {children}
+    <Tooltip>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent className="rounded-lg bg-white p-0 text-black shadow-md ring-1 ring-gray-200">
+        <ItemTypeTooltipContent role={role} value={value} kind={kind} />
+      </TooltipContent>
     </Tooltip>
   );
 }

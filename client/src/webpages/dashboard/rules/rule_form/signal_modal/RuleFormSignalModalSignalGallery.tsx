@@ -1,5 +1,5 @@
+import { Input } from '@/coop-ui/Input';
 import { GQLSignal, useGQLIsDemoOrgQuery } from '@/graphql/generated';
-import { Input } from 'antd';
 import { Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
@@ -20,6 +20,8 @@ export default function RuleFormSignalModalSignalGallery(props: {
 
   const [searchTerm, setSearchTerm] = useState<string>('');
 
+  // Show what the user typed; lowercase only for matching.
+  const normalizedSearch = searchTerm.toLocaleLowerCase();
   const filteredSignals = useMemo(
     () =>
       allSignals
@@ -38,12 +40,12 @@ export default function RuleFormSignalModalSignalGallery(props: {
         // Then filter out based on search term
         .filter(
           (signal) =>
-            signal.name.toLocaleLowerCase().includes(searchTerm) ||
-            signal.description.toLocaleLowerCase().includes(searchTerm),
+            signal.name.toLocaleLowerCase().includes(normalizedSearch) ||
+            signal.description.toLocaleLowerCase().includes(normalizedSearch),
         )
         // Filter out 3rd party signals for demo orgs
         .filter((signal) => !(isDemoOrg && signal.integration)),
-    [allSignals, isDemoOrg, searchTerm],
+    [allSignals, isDemoOrg, normalizedSearch],
   );
 
   return (
@@ -52,11 +54,14 @@ export default function RuleFormSignalModalSignalGallery(props: {
         <Input
           className="max-w-xs rounded-lg"
           placeholder="Search"
-          prefix={<Search className="w-4 h-4" />}
-          allowClear
-          onChange={(event) =>
-            setSearchTerm(event.target.value.toLocaleLowerCase())
+          startSlot={
+            <span className="flex items-center px-3 border border-r-0 border-gray-200 rounded-l-lg bg-white text-gray-400">
+              <Search className="w-4 h-4" />
+            </span>
           }
+          value={searchTerm}
+          allowClear
+          onChange={(event) => setSearchTerm(event.target.value)}
         />
       </div>
       {filteredSignals?.length ? (

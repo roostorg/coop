@@ -7,7 +7,7 @@ test('a user can log in and their session persists until logout', async ({
   const admin = await seed.orgWithAdmin();
 
   await page.goto('/login');
-  await page.locator('input[type="text"]').fill(admin.email);
+  await page.getByRole('textbox').first().fill(admin.email);
   await page.locator('input[type="password"]').fill(admin.password);
   await page.getByRole('button', { name: 'Sign In' }).click();
 

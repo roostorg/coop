@@ -1,5 +1,5 @@
+import { Input } from '@/coop-ui/Input';
 import { gql } from '@apollo/client';
-import { Input } from 'antd';
 import {
   ChevronDown,
   ChevronUp,

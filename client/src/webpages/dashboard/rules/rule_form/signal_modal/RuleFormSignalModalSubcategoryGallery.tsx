@@ -1,5 +1,6 @@
+import { Combobox } from '@/coop-ui/Combobox';
+import { Input } from '@/coop-ui/Input';
 import { GQLSignal, GQLSignalSubcategory } from '@/graphql/generated';
-import { Input, Select } from 'antd';
 import omit from 'lodash/omit';
 import { Search } from 'lucide-react';
 import { useState } from 'react';
@@ -15,6 +16,9 @@ export function RuleFormSignalModalSubcategoryGallery(props: {
 }) {
   const { subcategories, onSelectSubcategoryOption } = props;
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [selectedFlatSubcategory, setSelectedFlatSubcategory] = useState<
+    string | undefined
+  >(undefined);
 
   const stripped = subcategories.map((subcategory) =>
     omit(subcategory, '__typename'),
@@ -29,10 +33,17 @@ export function RuleFormSignalModalSubcategoryGallery(props: {
     return (
       <div className="flex flex-col">
         <div className="pb-3 text-2xl font-medium">Select Subcategory</div>
-        <Select
+        <Combobox
+          aria-label="Select Subcategory"
           className="max-w-xs"
           placeholder="Select a labeler version"
-          onChange={(value: string) => onSelectSubcategoryOption(value)}
+          value={selectedFlatSubcategory}
+          onValueChange={(value) => {
+            setSelectedFlatSubcategory(value);
+            if (value) {
+              onSelectSubcategoryOption(value);
+            }
+          }}
           options={stripped.map((s) => ({
             value: s.id,
             label: s.label,
@@ -45,7 +56,9 @@ export function RuleFormSignalModalSubcategoryGallery(props: {
   // Hive subcategories are snake_case, but we display them like this: "Snake Case".
   // So we need to allow a search term like "snake case" match against the subcategory
   // "snake_case". To do this, we add a snake case search term.
-  const snakeCaseSearchTerm = searchTerm.replaceAll('_', ' ');
+  // Show what the user typed; lowercase only for matching.
+  const normalizedSearch = searchTerm.toLocaleLowerCase();
+  const snakeCaseSearchTerm = normalizedSearch.replaceAll('_', ' ');
   const eligibleSubcategories = rebuildSubcategoryTreeFromGraphQLResponse(
     stripped,
   )
@@ -53,12 +66,12 @@ export function RuleFormSignalModalSubcategoryGallery(props: {
 
     .filter(
       (subcategory) =>
-        subcategory.id.includes(searchTerm) ||
+        subcategory.id.includes(normalizedSearch) ||
         subcategory.id.includes(snakeCaseSearchTerm) ||
-        subcategory.label.includes(searchTerm) ||
+        subcategory.label.includes(normalizedSearch) ||
         subcategory.label.includes(snakeCaseSearchTerm) ||
         (subcategory.description &&
-          (subcategory.description.includes(searchTerm) ||
+          (subcategory.description.includes(normalizedSearch) ||
             subcategory.description.includes(snakeCaseSearchTerm))),
     );
 
@@ -68,11 +81,14 @@ export function RuleFormSignalModalSubcategoryGallery(props: {
       <Input
         className="max-w-xs mb-2 rounded-lg"
         placeholder="Search"
-        prefix={<Search className="w-4 h-4" />}
-        allowClear
-        onChange={(event) =>
-          setSearchTerm(event.target.value.toLocaleLowerCase())
+        startSlot={
+          <span className="flex items-center px-3 border border-r-0 border-gray-200 rounded-l-lg bg-white text-gray-400">
+            <Search className="w-4 h-4" />
+          </span>
         }
+        value={searchTerm}
+        allowClear
+        onChange={(event) => setSearchTerm(event.target.value)}
       />
       {eligibleSubcategories.map((subcategory) => (
         <RuleFormSignalModalSubcategory

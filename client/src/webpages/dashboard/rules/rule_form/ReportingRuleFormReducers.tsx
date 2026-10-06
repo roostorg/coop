@@ -1,4 +1,3 @@
-import { FormInstance } from 'antd';
 import cloneDeep from 'lodash/cloneDeep';
 import omit from 'lodash/omit';
 import uniqBy from 'lodash/uniqBy';
@@ -100,7 +99,6 @@ export type ReportingRuleFormReducerAction =
         selectedItemTypes: ReportingRuleFormOrgDataResponse['itemTypes'];
         allActions: ReportingRuleFormOrgDataResponse['actions'];
         allSignals: readonly GQLSignal[];
-        form: FormInstance<any>;
       };
     }
   | {

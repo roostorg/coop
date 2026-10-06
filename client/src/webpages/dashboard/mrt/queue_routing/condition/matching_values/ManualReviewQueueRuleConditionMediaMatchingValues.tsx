@@ -1,13 +1,10 @@
-import { Select } from 'antd';
+import { MultiCombobox } from '@/coop-ui/Combobox';
 
 import ComponentLoading from '../../../../../../components/common/ComponentLoading';
-import { selectFilterByLabelOption } from '@/webpages/dashboard/components/antDesignUtils';
 
 import { useGQLHashBanksQuery } from '../../../../../../graphql/generated';
 import { RuleFormLeafCondition } from '../../../../rules/types';
 import { ManualReviewQueueRoutingStaticTokenField } from '../../ManualReviewQueueRoutingStaticField';
-
-const { Option } = Select;
 
 export default function ManualReviewQueueRuleConditionMediaMatchingValues(props: {
   condition: RuleFormLeafCondition;
@@ -42,27 +39,25 @@ export default function ManualReviewQueueRuleConditionMediaMatchingValues(props:
   return (
     <div className="flex flex-col items-start">
       {editing ? (
-        <Select
+        <MultiCombobox
+          aria-label="Select media bank(s)"
           placeholder="Select media bank(s)"
-          defaultValue={condition.matchingValues?.imageBankIds}
-          value={condition.matchingValues?.imageBankIds}
-          onChange={(values) => onUpdateSelectedBankIds([...values])}
+          value={[...(condition.matchingValues?.imageBankIds ?? [])]}
+          onValueChange={(values) => onUpdateSelectedBankIds(values)}
           allowClear
-          showSearch
-          filterOption={selectFilterByLabelOption}
-          dropdownMatchSelectWidth={false}
-        >
-          {hashBanks.map((bank) => (
-            <Option
-              key={bank.id}
-              value={bank.id}
-              label={bank.name}
-              disabled={selectedBankIds.has(bank.id)}
-            >
-              {bank.name}
-            </Option>
-          ))}
-        </Select>
+          options={[
+            ...hashBanks.map((bank) => ({
+              value: bank.id,
+              label: bank.name,
+              disabled: selectedBankIds.has(bank.id),
+            })),
+            // A saved rule can still reference a since-deleted bank; list its
+            // raw ID so it's visible and removable.
+            ...(condition.matchingValues?.imageBankIds ?? [])
+              .filter((id) => !hashBanks.some((bank) => bank.id === id))
+              .map((id) => ({ value: id, label: id })),
+          ]}
+        />
       ) : (
         <ManualReviewQueueRoutingStaticTokenField
           tokens={

@@ -1,4 +1,4 @@
-import { Tooltip } from 'antd';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
 import { Link } from 'react-router-dom';
 
 import CoopButton from './CoopButton';
@@ -43,8 +43,13 @@ export default function EmptyDashboard(
   const createButtonWrapped = (() => {
     if (buttonDisabled && disabledTooltipTitle) {
       return (
-        <Tooltip title={disabledTooltipTitle} placement="bottom">
-          {createButton}
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span tabIndex={0} className="inline-flex">
+              {createButton}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">{disabledTooltipTitle}</TooltipContent>
         </Tooltip>
       );
     }

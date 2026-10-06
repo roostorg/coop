@@ -1,4 +1,4 @@
-import { Tooltip } from 'antd';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
 import { ReactNode } from 'react';
 
 import CoopButton from '../../components/CoopButton';
@@ -41,7 +41,12 @@ export default function ManualReviewQueueRoutingSaveButtonPanel(props: {
         onClick={onCancel}
       />
       {saveDisabled ? (
-        <Tooltip title={disabledTooltip}>{saveButton}</Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span>{saveButton}</span>
+          </TooltipTrigger>
+          <TooltipContent>{disabledTooltip}</TooltipContent>
+        </Tooltip>
       ) : (
         saveButton
       )}
