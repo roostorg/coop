@@ -40,7 +40,7 @@
             const path_to_root = "../";
             const default_light_theme = "roost";
             const default_dark_theme = "roost";
-            window.path_to_searchindex_js = "../searchindex-539e5ec5.js";
+            window.path_to_searchindex_js = "../searchindex-8f9ec48f.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-33b43635.js"></script>
@@ -196,7 +196,7 @@
 <h2 id="requirements"><a class="header" href="#requirements">Requirements</a></h2>
 <ol>
 <li>
-<p><strong>A running HMA instance</strong> accessible from your Coop server</p>
+<p><strong>A running HMA instance</strong> (version 1.2.0 or later) accessible from your Coop server</p>
 </li>
 <li>
 <p><strong>API credentials for any third-party hash banks</strong> you want to use; for example, NCMEC provides Hash Sharing API credentials, Tech Against Terrorism provides access to their hash bank.</p>
@@ -214,11 +214,14 @@
 <p><img src="../images/hma.png" alt="Matching banks page showing a test hash bank created in the Coop UI"></p>
 <h3 id="creating-banks-through-coop"><a class="header" href="#creating-banks-through-coop">Creating banks through Coop</a></h3>
 <p>The recommended approach is to create banks through <strong>Settings</strong> → <strong>Matching Banks</strong> in Coop. This registers the bank in both HMA and Coop’s database automatically, making it immediately available in the rule builder.</p>
-<p>Banks created through Coop are named in HMA using the convention <code>COOP_&lt;ORGID&gt;_&lt;NORMALIZED_NAME&gt;</code>, for example a bank named “Test Bank” for org <code>abcdef12345</code> becomes <code>COOP_ABCDEF12345_TEST_BANK</code> in HMA. This is what you will see in the HMA UI.</p>
+<p>Banks created through Coop are named in HMA using the convention <code>COOP_&lt;ORGID&gt;_&lt;NORMALIZED_NAME&gt;</code>, for example a bank named “Test Bank” for org <code>abcdef12345</code> becomes <code>COOP_ABCDEF12345_TEST_BANK</code> in HMA. If that name is already taken, Coop adds a numeric suffix (<code>_2</code>, <code>_3</code>, …). This is what you will see in the HMA UI.</p>
 <h3 id="banks-created-directly-in-hma"><a class="header" href="#banks-created-directly-in-hma">Banks created directly in HMA</a></h3>
 <p>Banks created directly in HMA (via the HMA UI or seed scripts) will not appear in Coop’s Matching Banks UI unless they are also registered in the <code>hash_banks</code> table. If you need to use an HMA-native bank in Coop rules, create a matching bank in the Coop UI first.</p>
 <p><img src="../images/hma-ui-coop-banks.png" alt="HMA UI showing the bank created in Coop, along with a modal that appears if you manually upload media to the matching bank"></p>
 <p>You can use the HMA UI to manually add content to any bank for local testing, regardless of how the bank was created.</p>
+<h3 id="exchange-credentials"><a class="header" href="#exchange-credentials">Exchange credentials</a></h3>
+<p>When you connect a bank to an exchange (NCMEC, StopNCII, ThreatExchange, …), Coop asks for that exchange’s credentials and saves them with the bank. They’re never shown again after saving. To change them, open the bank and choose <strong>Update Credentials</strong>.</p>
+<p>If a bank shows <strong>Using Shared Credentials</strong>, it has no credentials of its own and is falling back to ones configured on the HMA server. Choose <strong>Update Credentials</strong> to save your organization’s credentials with the bank.</p>
 <h2 id="ncmec-hash-sharing"><a class="header" href="#ncmec-hash-sharing">NCMEC Hash Sharing</a></h2>
 <p>For Coop to match against NCMEC’s database of known CSAM hashes, you need credentials for NCMEC’s <a href="https://report.cybertip.org/ws-hashsharing/v2/documentation/">Hash Sharing API</a>.</p>
 <p>In HMA, create a bank sourced from the NCMEC exchange. HMA will begin syncing hashes on its background fetch schedule (every 5 minutes by default). The NCMEC-sourced bank will appear in Coop’s <strong>Matching Banks</strong> once synced.</p>
