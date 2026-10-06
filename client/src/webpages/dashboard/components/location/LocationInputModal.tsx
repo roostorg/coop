@@ -27,8 +27,8 @@ export default function LocationInputModal(props: {
   updateCallbacks: {
     addLocation: (place: LocationFormLocation) => void;
     removeLocation: (place: LocationFormLocation) => void;
-    addBank?: (bankId: string) => void;
-    removeBank?: (bankId: string) => void;
+    /** Replaces the whole bank selection in one update. */
+    setBankIds?: (bankIds: string[]) => void;
   };
   showBanksTab?: boolean;
   locations: readonly LocationFormLocation[];
@@ -96,12 +96,10 @@ export default function LocationInputModal(props: {
         />
       )}
       {activeTab === LocationInputModalTab.LOCATION_BANK &&
-        updateCallbacks.addBank &&
-        updateCallbacks.removeBank && (
+        updateCallbacks.setBankIds && (
           <LocationInputModalBankTab
             bankIds={locationBankIds}
-            addBank={updateCallbacks.addBank}
-            removeBank={updateCallbacks.removeBank}
+            setBankIds={updateCallbacks.setBankIds}
           />
         )}
     </CoopModal>

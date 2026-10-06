@@ -1,4 +1,5 @@
 import { Checkbox } from '@/coop-ui/Checkbox';
+import { joinWithOverflowCount } from '@/coop-ui/Combobox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/coop-ui/Popover';
 import { cn } from '@/lib/utils';
 import sortBy from 'lodash/sortBy';
@@ -85,6 +86,8 @@ export default function PolicyDropdown<SelectMultiple extends boolean>(props: {
   multiple: SelectMultiple;
   className?: string;
   disabled?: boolean;
+  /** Multi-select only: labels shown in the trigger before `+N`. */
+  maxTagCount?: number;
   'aria-label'?: string;
 }) {
   const {
@@ -95,11 +98,14 @@ export default function PolicyDropdown<SelectMultiple extends boolean>(props: {
     multiple,
     className,
     disabled,
+    maxTagCount,
     'aria-label': ariaLabel,
   } = props;
 
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
+  // Roving tabindex: only one tree row is a Tab stop; arrows move between rows.
+  const [activeId, setActiveId] = useState<string | null>(null);
   // Explicit per-node expand/collapse choices. Anything not in here falls
   // back to the auto-expand state (so a node holding a selected policy opens
   // by default, but the user can still collapse it).
@@ -194,10 +200,10 @@ export default function PolicyDropdown<SelectMultiple extends boolean>(props: {
   }, [policies]);
 
   const selectedLabel = multiple
-    ? [...selectedIds]
-        .map((id) => idToName.get(id))
-        .filter(Boolean)
-        .join(', ') || undefined
+    ? joinWithOverflowCount(
+        [...selectedIds].flatMap((id) => idToName.get(id) ?? []),
+        maxTagCount,
+      ) || undefined
     : idToName.get(normalizedSelectedIds[0] ?? '');
 
   const renderNode = (
@@ -221,7 +227,11 @@ export default function PolicyDropdown<SelectMultiple extends boolean>(props: {
       <div key={id}>
         <div
           role="treeitem"
-          tabIndex={0}
+          tabIndex={id === tabStopId ? 0 : -1}
+          onFocus={() => setActiveId(id)}
+          // Nesting is visual only (child rows aren't DOM children of their
+          // parent row), so expose the hierarchy via aria-level.
+          aria-level={depth + 1}
           aria-selected={selected}
           aria-expanded={hasChildren ? expanded : undefined}
           className={cn(
@@ -294,6 +304,8 @@ export default function PolicyDropdown<SelectMultiple extends boolean>(props: {
           )}
           {multiple ? (
             <Checkbox
+              tabIndex={-1}
+              aria-label={node.value.name}
               checked={selected}
               onCheckedChange={() => selectNode(id)}
               onClick={(e) => e.stopPropagation()}
@@ -309,7 +321,7 @@ export default function PolicyDropdown<SelectMultiple extends boolean>(props: {
           <span className="truncate">{node.value.name}</span>
         </div>
         {hasChildren && expanded && (
-          <div role="group" className="ml-3 border-l border-gray-200">
+          <div className="ml-3 border-l border-gray-200">
             {children.map((child) => renderNode(child, depth + 1))}
           </div>
         )}
@@ -323,6 +335,25 @@ export default function PolicyDropdown<SelectMultiple extends boolean>(props: {
         (n) => n.value.id != null && searchExpand.has(n.value.id),
       )
     : topLevelNodes;
+
+  const visibleIds: string[] = [];
+  const collectVisibleIds = (nodes: readonly CustomTreeNode<Policy>[]) => {
+    for (const node of sortBy(nodes, (n) => n.value.name)) {
+      const id = node.value.id;
+      if (id == null || (isSearching && !searchExpand.has(id))) {
+        continue;
+      }
+      visibleIds.push(id);
+      if (node.children.length > 0 && isExpanded(id)) {
+        collectVisibleIds(node.children);
+      }
+    }
+  };
+  collectVisibleIds(visibleTopLevelNodes);
+  const tabStopId =
+    activeId != null && visibleIds.includes(activeId)
+      ? activeId
+      : visibleIds[0];
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

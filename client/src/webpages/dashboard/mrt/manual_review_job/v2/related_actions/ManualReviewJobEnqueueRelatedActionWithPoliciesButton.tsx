@@ -47,7 +47,13 @@ export default function ManualReviewJobEnqueueRelatedActionWithPoliciesButton(pr
             variant="outline"
             color="gray"
             className="rounded-md"
-            onClick={() => {
+            onClick={(e) => {
+              // Hover already opened the picker; don't let the trigger's
+              // click toggle it shut. (Keyboard users, with it closed,
+              // still open it by clicking.)
+              if (menuVisible) {
+                e.preventDefault();
+              }
               if (!requirePolicySelection) {
                 onChangeSelectedPolicies(selectedPolicyIds);
               }

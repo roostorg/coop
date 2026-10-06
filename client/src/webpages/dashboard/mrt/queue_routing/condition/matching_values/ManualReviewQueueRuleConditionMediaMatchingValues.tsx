@@ -45,11 +45,18 @@ export default function ManualReviewQueueRuleConditionMediaMatchingValues(props:
           value={[...(condition.matchingValues?.imageBankIds ?? [])]}
           onValueChange={(values) => onUpdateSelectedBankIds(values)}
           allowClear
-          options={hashBanks.map((bank) => ({
-            value: bank.id,
-            label: bank.name,
-            disabled: selectedBankIds.has(bank.id),
-          }))}
+          options={[
+            ...hashBanks.map((bank) => ({
+              value: bank.id,
+              label: bank.name,
+              disabled: selectedBankIds.has(bank.id),
+            })),
+            // A saved rule can still reference a since-deleted bank; list its
+            // raw ID so it's visible and removable.
+            ...(condition.matchingValues?.imageBankIds ?? [])
+              .filter((id) => !hashBanks.some((bank) => bank.id === id))
+              .map((id) => ({ value: id, label: id })),
+          ]}
         />
       ) : (
         <ManualReviewQueueRoutingStaticTokenField

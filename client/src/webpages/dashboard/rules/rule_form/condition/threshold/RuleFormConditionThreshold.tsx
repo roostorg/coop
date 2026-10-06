@@ -63,10 +63,12 @@ export default function RuleFormConditionThreshold(props: {
       key={`RuleFormCondition-threshold-input_set_index_${conditionSetIndex}_index_${conditionIndex}`}
       value={condition.threshold ?? ''}
       placeholder="Input a threshold"
-      className={`rounded-lg ${hasInvalidThreshold ? 'border-red-500' : ''}`}
+      // No radius override: Input rounds only its outer edge when the
+      // error icon slot is present.
+      className={hasInvalidThreshold ? 'border-red-500' : undefined}
       startSlot={
         hasInvalidThreshold ? (
-          <span className="flex items-center px-3 border border-r-0 border-red-500 bg-white">
+          <span className="flex items-center px-3 border border-r-0 border-red-500 rounded-l-lg bg-white">
             <Tooltip>
               <TooltipTrigger asChild>
                 <AlertCircle className="w-4 h-4 text-red-500" />

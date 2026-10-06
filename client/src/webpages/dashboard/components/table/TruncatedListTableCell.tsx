@@ -40,7 +40,7 @@ export default function TruncatedListTableCell(props: { list: string[] }) {
                 <div>{itemsThatFit.join(separator)}</div>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <span>{remainingIndicator}</span>
+                    <span tabIndex={0}>{remainingIndicator}</span>
                   </TooltipTrigger>
                   <TooltipContent side="top">
                     {difference(list, itemsThatFit).join(', ')}
@@ -57,7 +57,7 @@ export default function TruncatedListTableCell(props: { list: string[] }) {
                 {remainingCount > 1 ? (
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <span>{remainingIndicator}</span>
+                      <span tabIndex={0}>{remainingIndicator}</span>
                     </TooltipTrigger>
                     <TooltipContent side="top">
                       {difference(list, itemsThatFit).join(', ')}

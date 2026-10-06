@@ -36,6 +36,17 @@ export type ComboboxOption = {
   group?: string;
 };
 
+/** Joins labels, collapsing any past `max` into a trailing `+N`. */
+export function joinWithOverflowCount(
+  labels: readonly string[],
+  max?: number,
+): string {
+  if (max == null || labels.length <= max) {
+    return labels.join(', ');
+  }
+  return `${labels.slice(0, max).join(', ')} +${labels.length - max}`;
+}
+
 /** Buckets options by `group`, preserving first-seen order of both groups and options. */
 function groupOptions(options: ComboboxOption[]) {
   const groups = new Map<string | undefined, ComboboxOption[]>();
@@ -172,7 +183,9 @@ const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
         </PopoverTrigger>
         <PopoverContent
           className={cn(
-            'w-[--radix-popover-trigger-width] p-0',
+            // At least trigger-wide, but free to grow so long labels aren't
+            // truncated (antd's `dropdownMatchSelectWidth={false}`).
+            'w-max min-w-[--radix-popover-trigger-width] max-w-sm p-0',
             contentClassName,
           )}
           align="start"
@@ -205,6 +218,11 @@ const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
                         )}
                       />
                       <span className="flex-1 truncate">{option.label}</span>
+                      {option.description && (
+                        // The hover tooltip below isn't keyboard-reachable;
+                        // expose the description in the option's name too.
+                        <span className="sr-only">{option.description}</span>
+                      )}
                       {option.description && (
                         <Tooltip>
                           <TooltipTrigger
@@ -251,6 +269,11 @@ export type MultiComboboxProps = TriggerProps & {
   emptyText?: React.ReactNode;
   allowClear?: boolean;
   contentClassName?: string;
+  /**
+   * Show at most this many selected labels in the trigger, then `+N`.
+   * Mirrors antd `maxTagCount`.
+   */
+  maxTagCount?: number;
 };
 
 const MultiCombobox = React.forwardRef<HTMLButtonElement, MultiComboboxProps>(
@@ -266,6 +289,7 @@ const MultiCombobox = React.forwardRef<HTMLButtonElement, MultiComboboxProps>(
       disabled,
       className,
       contentClassName,
+      maxTagCount,
       id,
       onClick,
       ...rest
@@ -307,7 +331,7 @@ const MultiCombobox = React.forwardRef<HTMLButtonElement, MultiComboboxProps>(
               )}
             >
               {selectedLabels.length > 0
-                ? selectedLabels.join(', ')
+                ? joinWithOverflowCount(selectedLabels, maxTagCount)
                 : placeholder}
             </span>
             <span className="flex shrink-0 items-center gap-1">
@@ -325,7 +349,9 @@ const MultiCombobox = React.forwardRef<HTMLButtonElement, MultiComboboxProps>(
         </PopoverTrigger>
         <PopoverContent
           className={cn(
-            'w-[--radix-popover-trigger-width] p-0',
+            // At least trigger-wide, but free to grow so long labels aren't
+            // truncated (antd's `dropdownMatchSelectWidth={false}`).
+            'w-max min-w-[--radix-popover-trigger-width] max-w-sm p-0',
             contentClassName,
           )}
           align="start"
@@ -334,60 +360,67 @@ const MultiCombobox = React.forwardRef<HTMLButtonElement, MultiComboboxProps>(
             <CommandInput placeholder={searchPlaceholder} />
             <CommandList>
               <CommandEmpty>{emptyText}</CommandEmpty>
-              <CommandGroup>
-                {options.map((option) => {
-                  const isSelected = value.includes(option.value);
-                  return (
-                    <CommandItem
-                      key={option.value}
-                      value={option.value}
-                      keywords={
-                        option.description
-                          ? [option.label, option.description]
-                          : [option.label]
-                      }
-                      // A disabled option can still be individually removed
-                      // once selected (e.g. it became incompatible after
-                      // selection) — only block adding a *new* disabled one.
-                      // `alwaysDisabled` opts out of that carve-out entirely.
-                      disabled={
-                        option.alwaysDisabled ||
-                        (option.disabled && !isSelected)
-                      }
-                      onSelect={() => toggle(option.value)}
-                    >
-                      <Check
-                        className={cn(
-                          'mr-2 h-4 w-4 shrink-0',
-                          isSelected ? 'opacity-100' : 'opacity-0',
+              {groupOptions(options).map(([group, groupedOptions]) => (
+                <CommandGroup key={group ?? ''} heading={group}>
+                  {groupedOptions.map((option) => {
+                    const isSelected = value.includes(option.value);
+                    return (
+                      <CommandItem
+                        key={option.value}
+                        value={option.value}
+                        keywords={
+                          option.description
+                            ? [option.label, option.description]
+                            : [option.label]
+                        }
+                        // A disabled option can still be individually removed
+                        // once selected (e.g. it became incompatible after
+                        // selection) — only block adding a *new* disabled one.
+                        // `alwaysDisabled` opts out of that carve-out entirely.
+                        disabled={
+                          option.alwaysDisabled ||
+                          (option.disabled && !isSelected)
+                        }
+                        onSelect={() => toggle(option.value)}
+                      >
+                        <Check
+                          className={cn(
+                            'mr-2 h-4 w-4 shrink-0',
+                            isSelected ? 'opacity-100' : 'opacity-0',
+                          )}
+                        />
+                        <span className="flex-1 truncate">{option.label}</span>
+                        {option.description && (
+                          // The hover tooltip below isn't keyboard-reachable;
+                          // expose the description in the option's name too.
+                          <span className="sr-only">{option.description}</span>
                         )}
-                      />
-                      <span className="flex-1 truncate">{option.label}</span>
-                      {option.description && (
-                        <Tooltip>
-                          <TooltipTrigger
-                            asChild
-                            // Keep the info icon from also acting as the
-                            // row's select target.
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Info
-                              // Row-level `data-[disabled=true]:pointer-events-none`
-                              // (see Command.tsx) would otherwise also block
-                              // hovering this icon — override it back on so a
-                              // disabled option's tooltip stays reachable.
-                              className="ml-2 h-4 w-4 shrink-0 pointer-events-auto text-gray-400"
-                            />
-                          </TooltipTrigger>
-                          <TooltipContent side="right">
-                            {option.description}
-                          </TooltipContent>
-                        </Tooltip>
-                      )}
-                    </CommandItem>
-                  );
-                })}
-              </CommandGroup>
+                        {option.description && (
+                          <Tooltip>
+                            <TooltipTrigger
+                              asChild
+                              // Keep the info icon from also acting as the
+                              // row's select target.
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Info
+                                // Row-level `data-[disabled=true]:pointer-events-none`
+                                // (see Command.tsx) would otherwise also block
+                                // hovering this icon — override it back on so a
+                                // disabled option's tooltip stays reachable.
+                                className="ml-2 h-4 w-4 shrink-0 pointer-events-auto text-gray-400"
+                              />
+                            </TooltipTrigger>
+                            <TooltipContent side="right">
+                              {option.description}
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                      </CommandItem>
+                    );
+                  })}
+                </CommandGroup>
+              ))}
             </CommandList>
           </Command>
         </PopoverContent>

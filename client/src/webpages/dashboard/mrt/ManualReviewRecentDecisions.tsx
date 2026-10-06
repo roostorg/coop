@@ -653,7 +653,7 @@ export default function ManualReviewRecentDecisions() {
             decisionReason: value.decisionReason ? (
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="max-w-xs truncate">
+                  <div tabIndex={0} className="max-w-xs truncate">
                     {value.decisionReason.length >
                     DECISION_REASON_PREVIEW_LENGTH
                       ? `${value.decisionReason.slice(
@@ -663,7 +663,9 @@ export default function ManualReviewRecentDecisions() {
                       : value.decisionReason}
                   </div>
                 </TooltipTrigger>
-                <TooltipContent>{value.decisionReason}</TooltipContent>
+                <TooltipContent className="max-h-64 overflow-y-auto">
+                  {value.decisionReason}
+                </TooltipContent>
               </Tooltip>
             ) : (
               <div className="text-slate-400">—</div>

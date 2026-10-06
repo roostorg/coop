@@ -2,6 +2,7 @@ import { Input } from '@/coop-ui/Input';
 import { Label } from '@/coop-ui/Label';
 import { RadioGroup, RadioGroupItem } from '@/coop-ui/RadioGroup';
 import { Trash2 } from 'lucide-react';
+import { useId } from 'react';
 
 import { GQLManualReviewChartMetric } from '../../../../graphql/generated';
 import {
@@ -23,76 +24,82 @@ const ManualReviewCustomChartBuilder = ({
   chart,
   updateChart,
   deleteChart,
-}: ManualReviewCustomChartBuilderProps) => (
-  <div className="flex flex-col rounded border border-solid border-slate-200 bg-white w-full h-full min-h-[400px]">
-    <div className="flex flex-col p-6 gap-4">
-      <div className="flex items-center">
-        <Input
-          className="px-4 py-2 text-base rounded"
-          placeholder="Choose a title"
-          onChange={(e) => {
-            updateChart({
-              ...chart,
-              title: e.target.value,
-            });
-          }}
-          value={chart.title}
-        />
-        <div
-          className="flex items-center justify-center p-1 text-white rounded cursor-pointer gap-2 bg-coop-alert-red hover:bg-coop-alert-red-hover h-fit whitespace-nowrap"
-          onClick={() => deleteChart(chart)}
-        >
-          <Trash2 className="w-4 h-4 flex items-center justify-center rounded-full" />{' '}
-          Delete Chart
+}: ManualReviewCustomChartBuilderProps) => {
+  // Several builders can be on screen at once; keep radio/label IDs unique.
+  const radioIdPrefix = useId();
+  return (
+    <div className="flex flex-col rounded border border-solid border-slate-200 bg-white w-full h-full min-h-[400px]">
+      <div className="flex flex-col p-6 gap-4">
+        <div className="flex items-center">
+          <Input
+            className="px-4 py-2 text-base rounded"
+            placeholder="Choose a title"
+            onChange={(e) => {
+              updateChart({
+                ...chart,
+                title: e.target.value,
+              });
+            }}
+            value={chart.title}
+          />
+          <div
+            className="flex items-center justify-center p-1 text-white rounded cursor-pointer gap-2 bg-coop-alert-red hover:bg-coop-alert-red-hover h-fit whitespace-nowrap"
+            onClick={() => deleteChart(chart)}
+          >
+            <Trash2 className="w-4 h-4 flex items-center justify-center rounded-full" />{' '}
+            Delete Chart
+          </div>
+        </div>
+        <div className="flex items-center">
+          <div className="pr-3 font-medium text-slate-500">
+            Select a metric:
+          </div>
+          <RadioGroup
+            className="flex items-center justify-end"
+            onValueChange={(value) =>
+              updateChart({
+                ...chart,
+                metric: value as GQLManualReviewChartMetric,
+              })
+            }
+            value={chart.metric ?? undefined}
+          >
+            <div className="flex items-center gap-2">
+              <RadioGroupItem
+                value={GQLManualReviewChartMetric.Decisions}
+                id={`${radioIdPrefix}-decisions`}
+              />
+              <Label htmlFor={`${radioIdPrefix}-decisions`}>Decisions</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <RadioGroupItem
+                value={GQLManualReviewChartMetric.Jobs}
+                id={`${radioIdPrefix}-jobs`}
+              />
+              <Label htmlFor={`${radioIdPrefix}-jobs`}>Jobs</Label>
+            </div>
+          </RadioGroup>
         </div>
       </div>
-      <div className="flex items-center">
-        <div className="pr-3 font-medium text-slate-500">Select a metric:</div>
-        <RadioGroup
-          className="flex items-center justify-end"
-          onValueChange={(value) =>
-            updateChart({
-              ...chart,
-              metric: value as GQLManualReviewChartMetric,
-            })
+      <div className="flex h-px mx-6 bg-slate-200" />
+      {chart.metric != null ? (
+        <ManualReviewDashboardInsightsChart
+          timeWindow={timeWindow}
+          initialChartType={ChartType.LINE}
+          initialGroupBy={undefined}
+          metric={chart.metric}
+          hideTotal
+          hideChartSelection
+          hideBorder
+          hideOptions
+          onSelectGroupBy={(groupBy) => updateChart({ ...chart, groupBy })}
+          onUpdateFilterBy={(filterBy) => updateChart({ ...chart, filterBy })}
+          onSelectTimeDivision={(timeDivision) =>
+            updateChart({ ...chart, timeDivision })
           }
-          value={chart.metric ?? undefined}
-        >
-          <div className="flex items-center gap-2">
-            <RadioGroupItem
-              value={GQLManualReviewChartMetric.Decisions}
-              id="chart-metric-decisions"
-            />
-            <Label htmlFor="chart-metric-decisions">Decisions</Label>
-          </div>
-          <div className="flex items-center gap-2">
-            <RadioGroupItem
-              value={GQLManualReviewChartMetric.Jobs}
-              id="chart-metric-jobs"
-            />
-            <Label htmlFor="chart-metric-jobs">Jobs</Label>
-          </div>
-        </RadioGroup>
-      </div>
+        />
+      ) : null}
     </div>
-    <div className="flex h-px mx-6 bg-slate-200" />
-    {chart.metric != null ? (
-      <ManualReviewDashboardInsightsChart
-        timeWindow={timeWindow}
-        initialChartType={ChartType.LINE}
-        initialGroupBy={undefined}
-        metric={chart.metric}
-        hideTotal
-        hideChartSelection
-        hideBorder
-        hideOptions
-        onSelectGroupBy={(groupBy) => updateChart({ ...chart, groupBy })}
-        onUpdateFilterBy={(filterBy) => updateChart({ ...chart, filterBy })}
-        onSelectTimeDivision={(timeDivision) =>
-          updateChart({ ...chart, timeDivision })
-        }
-      />
-    ) : null}
-  </div>
-);
+  );
+};
 export default ManualReviewCustomChartBuilder;

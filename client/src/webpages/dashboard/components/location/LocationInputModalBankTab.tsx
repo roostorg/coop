@@ -37,10 +37,11 @@ gql`
 
 export default function LocationInputModalBankTab(props: {
   bankIds: readonly string[];
-  addBank: (bankId: string) => void;
-  removeBank: (bankId: string) => void;
+  // One callback for the whole list: clearing removes several banks at once,
+  // and per-bank callbacks would each rebuild from the same stale state.
+  setBankIds: (bankIds: string[]) => void;
 }) {
-  const { bankIds, addBank, removeBank } = props;
+  const { bankIds, setBankIds } = props;
 
   const { loading, error, data } = useGQLMatchingBankIdsQuery();
 
@@ -67,11 +68,7 @@ export default function LocationInputModalBankTab(props: {
         className="flex cursor-pointer !w-full"
         placeholder={`Select a bank`}
         value={[...bankIds]}
-        onValueChange={(next) => {
-          const prev = [...bankIds];
-          next.filter((id) => !prev.includes(id)).forEach(addBank);
-          prev.filter((id) => !next.includes(id)).forEach(removeBank);
-        }}
+        onValueChange={setBankIds}
         allowClear
         options={
           locationBanks?.map((bank) => ({

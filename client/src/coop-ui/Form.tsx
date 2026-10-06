@@ -50,7 +50,8 @@ const useFormField = () => {
   const fieldContext = React.useContext(FormFieldContext);
   const itemContext = React.useContext(FormItemContext);
 
-  if (!fieldContext) {
+  // The context default is `{}`, so check for a field name, not the object.
+  if (!fieldContext.name) {
     throw new Error('useFormField should be used within <FormField>');
   }
 

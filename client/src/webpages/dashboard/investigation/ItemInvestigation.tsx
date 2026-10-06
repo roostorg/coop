@@ -375,7 +375,10 @@ export default function ItemInvestigation(props: {
     const item = selectedWrapper.latest;
     const isSynthetic = selectedWrapper.isSynthetic === true;
     const syntheticBanner = isSynthetic ? (
-      <div className="flex w-full gap-2 p-3 mb-4 text-sm border rounded-lg bg-blue-50 border-blue-200 text-blue-800">
+      <div
+        role="status"
+        className="flex w-full gap-2 p-3 mb-4 text-sm border rounded-lg bg-blue-50 border-blue-200 text-blue-800"
+      >
         <Info className="w-4 h-4 mt-0.5 shrink-0" />
         <div>
           <div className="font-medium">

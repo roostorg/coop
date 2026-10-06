@@ -10,11 +10,11 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Changed
 
-- Replaced Ant Design with coop-ui primitives (Radix UI + cmdk) across the entire client UI
+- Replaced Ant Design with coop-ui primitives (Radix UI + cmdk) across the client UI ([#1209](https://github.com/roostorg/coop/pull/1209) by [@serendipty01](https://github.com/serendipty01))
 
 ### Removed
 
-- `antd` client dependency and its vendored stylesheets (`public/styles/antd.min.css`, `public/styles/legacyStyles.css`)
+- `antd` client dependency, the vendored `public/styles/antd.min.css`, and the Ant Design rules in `public/styles/legacyStyles.css` ([#1209](https://github.com/roostorg/coop/pull/1209) by [@serendipty01](https://github.com/serendipty01))
 
 ### Fixed
 

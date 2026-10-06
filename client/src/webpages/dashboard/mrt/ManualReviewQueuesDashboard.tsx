@@ -879,7 +879,7 @@ export default function ManualReviewQueuesDashboard() {
         className={`font-semibold text-base rounded ${
           visibleColumnsCount === Object.keys(columnLabels).length
             ? 'bg-white text-gray-600 hover:bg-white hover:text-gray-600'
-            : 'bg-gray-600 text-white border-none hover:bg-gray-500'
+            : 'bg-gray-600 text-white border-none hover:bg-gray-500 hover:text-white focus:text-white'
         }`}
         onClick={() => setColumnsMenuVisible(!columnsMenuVisible)}
       >

@@ -708,15 +708,15 @@ export default function ManageUsers() {
         value={effectiveTab}
         onValueChange={(value) => onTabClick(value as ManageUsersTab)}
       >
-        {tabs.length > 1 && (
-          <TabsList className="mb-4">
-            {tabs.map((tab) => (
-              <TabsTrigger key={tab.value} value={tab.value}>
-                {tab.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        )}
+        {/* Always render the triggers (hidden when there's only one tab) so
+            each panel's aria-labelledby resolves. */}
+        <TabsList className={tabs.length > 1 ? 'mb-4' : 'hidden'}>
+          {tabs.map((tab) => (
+            <TabsTrigger key={tab.value} value={tab.value}>
+              {tab.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
         <TabsContent value="users">
           {/* @ts-ignore */}
           <Table columns={columns} data={tableData} />

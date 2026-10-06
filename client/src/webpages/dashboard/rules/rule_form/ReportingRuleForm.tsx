@@ -10,7 +10,7 @@ import {
 } from '@/coop-ui/Tooltip';
 import { gql } from '@apollo/client';
 import { Copy as CopyAlt, Plus, Trash2 as TrashCan } from 'lucide-react';
-import { useMemo, useReducer } from 'react';
+import { useEffect, useMemo, useReducer } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Controller, FormProvider, useForm, useWatch } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -305,6 +305,11 @@ export default function RuleForm() {
           policyIds: rule.policies.map((it) => it.id),
         },
       });
+    }
+  }, [rule, allItemTypes.length, allSignals, allActions]);
+
+  useEffect(() => {
+    if (rule != null && allItemTypes.length > 0 && allSignals) {
       // `useForm`'s `defaultValues` are only read on the first render, but
       // `rule` isn't available until this query resolves — without this,
       // editing an existing rule would leave status/itemTypes/actions at
@@ -316,7 +321,7 @@ export default function RuleForm() {
         actions: rule.actions?.map((a) => a.id) ?? [],
       });
     }
-  }, [rule, allItemTypes.length, allSignals, allActions, form]);
+  }, [rule, allItemTypes.length, allSignals, form]);
 
   const showRuleMutationError = (isUpdate: boolean) => {
     dispatch({

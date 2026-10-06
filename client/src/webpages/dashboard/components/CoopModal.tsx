@@ -11,7 +11,7 @@ export default function CoopModal({
 }: {
   children: React.ReactNode;
   visible: boolean;
-  onClose?: (e: React.MouseEvent<HTMLElement>) => void;
+  onClose?: () => void;
   title?: string;
   footer?: CoopModalFooterButtonProps[];
   showBack?: boolean;
@@ -49,7 +49,7 @@ export default function CoopModal({
       open={visible}
       onOpenChange={(open) => {
         if (!open) {
-          onClose?.({} as React.MouseEvent<HTMLElement>);
+          onClose?.();
         }
       }}
     >
@@ -60,7 +60,12 @@ export default function CoopModal({
         // old `width="auto"` Modal.
         className={`w-auto sm:w-auto max-w-5xl p-8 ${className ?? ''}`}
         // The wrapper renders its own header/close affordance below.
-        onOpenAutoFocus={(e) => e.preventDefault()}
+        // Focus the dialog itself rather than its first control, so focus
+        // still moves into the modal for keyboard users.
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          (e.currentTarget as HTMLElement | null)?.focus();
+        }}
       >
         {/* Visually-hidden title satisfies the Radix Dialog a11y requirement;
             the visible heading is rendered in the header row below. */}
@@ -74,7 +79,7 @@ export default function CoopModal({
           </div>
           {hideCloseButton || !onClose ? null : (
             <div className="flex flex-col items-center justify-center h-full pb-0">
-              <CloseButton onClose={onClose} customWidth="w-5" />
+              <CloseButton onClose={() => onClose()} customWidth="w-5" />
             </div>
           )}
         </div>

@@ -36,7 +36,7 @@ import {
   Plus,
   Trash2 as TrashCan,
 } from 'lucide-react';
-import { useMemo, useReducer } from 'react';
+import { useEffect, useMemo, useReducer } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Controller, FormProvider, useForm, useWatch } from 'react-hook-form';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -790,6 +790,27 @@ export default function RuleForm() {
               : RuleType.USER,
         },
       });
+    }
+  }, [
+    rule,
+    allItemTypes.length,
+    allSignals,
+    textBanks,
+    locationBanks,
+    policies,
+    duplicateId,
+    allActions,
+  ]);
+
+  useEffect(() => {
+    if (
+      rule != null &&
+      allItemTypes.length > 0 &&
+      allSignals &&
+      textBanks &&
+      locationBanks &&
+      policies
+    ) {
       // `useForm`'s `defaultValues` are only read on the first render, but
       // `rule` isn't available until this query resolves — without this,
       // editing an existing rule would leave status/itemTypes/actions at
@@ -811,8 +832,6 @@ export default function RuleForm() {
     textBanks,
     locationBanks,
     policies,
-    duplicateId,
-    allActions,
     form,
     initialActionParameters,
   ]);

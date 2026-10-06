@@ -1187,68 +1187,84 @@ function ManualReviewJobReviewImpl(props: {
                     : undefined
                 }
               >
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild disabled={selected}>
-                    <button
-                      type="button"
-                      className={`self-stretch text-start cursor-pointer text-gray-600 font-semibold p-3 ${
-                        selected
-                          ? 'bg-sky-100 text-sky-600'
-                          : 'bg-white hover:bg-gray-100'
-                      }`}
-                    >
-                      Move <ChevronDown className="w-4 h-4 inline" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
-                    {(org.mrtQueues ?? [])
-                      .filter((it) => isAppeal === it.isAppealsQueue)
-                      .filter((it) => it.id !== queueId)
-                      .sort((a, b) => a.name.localeCompare(b.name))
-                      .map((queue) => (
-                        <DropdownMenuItem
-                          key={queue.id}
-                          onSelect={() => {
-                            // Deselect Ignore if a user action is
-                            // selected
-                            setSelectedPrimaryActions([
-                              ...selectedPrimaryActions.filter(
-                                (action) =>
-                                  !(
-                                    'type' in action.action &&
-                                    (action.action.type === 'IGNORE' ||
-                                      action.action.type === 'REJECT_APPEAL' ||
-                                      action.action.type === 'ACCEPT_APPEAL')
-                                  ),
-                              ),
-                              {
-                                action: {
-                                  type: 'MOVE',
-                                  newQueueId: queue.id,
-                                  label: 'Move',
-                                },
-                                target: {
-                                  identifier: {
-                                    itemId: reportedItem.id,
-                                    itemTypeId: reportedItem.type.id,
+                {selected ? (
+                  // Selected: a plain button, so the click reaches the
+                  // wrapper's deselect handler instead of opening the menu.
+                  <button
+                    type="button"
+                    className={`self-stretch text-start cursor-pointer text-gray-600 font-semibold p-3 ${
+                      selected
+                        ? 'bg-sky-100 text-sky-600'
+                        : 'bg-white hover:bg-gray-100'
+                    }`}
+                  >
+                    Move <ChevronDown className="w-4 h-4 inline" />
+                  </button>
+                ) : (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        className={`self-stretch text-start cursor-pointer text-gray-600 font-semibold p-3 ${
+                          selected
+                            ? 'bg-sky-100 text-sky-600'
+                            : 'bg-white hover:bg-gray-100'
+                        }`}
+                      >
+                        Move <ChevronDown className="w-4 h-4 inline" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      {(org.mrtQueues ?? [])
+                        .filter((it) => isAppeal === it.isAppealsQueue)
+                        .filter((it) => it.id !== queueId)
+                        .sort((a, b) => a.name.localeCompare(b.name))
+                        .map((queue) => (
+                          <DropdownMenuItem
+                            key={queue.id}
+                            onSelect={() => {
+                              // Deselect Ignore if a user action is
+                              // selected
+                              setSelectedPrimaryActions([
+                                ...selectedPrimaryActions.filter(
+                                  (action) =>
+                                    !(
+                                      'type' in action.action &&
+                                      (action.action.type === 'IGNORE' ||
+                                        action.action.type ===
+                                          'REJECT_APPEAL' ||
+                                        action.action.type === 'ACCEPT_APPEAL')
+                                    ),
+                                ),
+                                {
+                                  action: {
+                                    type: 'MOVE',
+                                    newQueueId: queue.id,
+                                    label: 'Move',
                                   },
-                                  displayName:
-                                    getFieldValueForRole<
-                                      GQLSchemaFieldRoles,
-                                      keyof GQLSchemaFieldRoles
-                                    >(reportedItem, 'displayName') ??
-                                    reportedItem.id,
+                                  target: {
+                                    identifier: {
+                                      itemId: reportedItem.id,
+                                      itemTypeId: reportedItem.type.id,
+                                    },
+                                    displayName:
+                                      getFieldValueForRole<
+                                        GQLSchemaFieldRoles,
+                                        keyof GQLSchemaFieldRoles
+                                      >(reportedItem, 'displayName') ??
+                                      reportedItem.id,
+                                  },
+                                  policies: selectedPrimaryPolicies,
                                 },
-                                policies: selectedPrimaryPolicies,
-                              },
-                            ]);
-                          }}
-                        >
-                          {queue.name}
-                        </DropdownMenuItem>
-                      ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                              ]);
+                            }}
+                          >
+                            {queue.name}
+                          </DropdownMenuItem>
+                        ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </div>
             );
           }
@@ -1486,7 +1502,10 @@ function ManualReviewJobReviewImpl(props: {
           // more details.
           const policyId = policyIds satisfies
             string | readonly string[] as string;
-          setSelectedPrimaryPolicies(policiesFromIds([policyId]));
+          // A cleared single-select emits `''`, not a policy ID.
+          setSelectedPrimaryPolicies(
+            policiesFromIds(policyId ? [policyId] : []),
+          );
           setSelectedPrimaryActions(
             selectedPrimaryActions.map((action) => ({
               ...action,

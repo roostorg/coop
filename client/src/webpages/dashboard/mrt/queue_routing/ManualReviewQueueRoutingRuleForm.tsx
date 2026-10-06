@@ -254,7 +254,10 @@ export default function ManualReviewQueueRoutingRuleForm(props: {
           {editing ? (
             <Combobox
               aria-label="Condition set conjunction"
-              className="py-2"
+              // The wrapper's pl-16 leaves ~32px; let the trigger overflow
+              // it (centered on the connector line) instead of squeezing.
+              className="w-20 shrink-0"
+              showSearch={false}
               value={conjunction}
               onValueChange={(value) => {
                 if (value != null) {

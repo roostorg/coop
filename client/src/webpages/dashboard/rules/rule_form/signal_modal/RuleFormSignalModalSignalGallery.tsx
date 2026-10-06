@@ -20,6 +20,8 @@ export default function RuleFormSignalModalSignalGallery(props: {
 
   const [searchTerm, setSearchTerm] = useState<string>('');
 
+  // Show what the user typed; lowercase only for matching.
+  const normalizedSearch = searchTerm.toLocaleLowerCase();
   const filteredSignals = useMemo(
     () =>
       allSignals
@@ -38,12 +40,12 @@ export default function RuleFormSignalModalSignalGallery(props: {
         // Then filter out based on search term
         .filter(
           (signal) =>
-            signal.name.toLocaleLowerCase().includes(searchTerm) ||
-            signal.description.toLocaleLowerCase().includes(searchTerm),
+            signal.name.toLocaleLowerCase().includes(normalizedSearch) ||
+            signal.description.toLocaleLowerCase().includes(normalizedSearch),
         )
         // Filter out 3rd party signals for demo orgs
         .filter((signal) => !(isDemoOrg && signal.integration)),
-    [allSignals, isDemoOrg, searchTerm],
+    [allSignals, isDemoOrg, normalizedSearch],
   );
 
   return (
@@ -59,9 +61,7 @@ export default function RuleFormSignalModalSignalGallery(props: {
           }
           value={searchTerm}
           allowClear
-          onChange={(event) =>
-            setSearchTerm(event.target.value.toLocaleLowerCase())
-          }
+          onChange={(event) => setSearchTerm(event.target.value)}
         />
       </div>
       {filteredSignals?.length ? (

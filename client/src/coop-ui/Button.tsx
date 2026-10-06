@@ -264,8 +264,19 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const finalColor =
       variant === 'white' && !color ? 'gray' : (color ?? 'indigo');
 
-    const content = (
-      <>
+    return (
+      <Comp
+        className={cn(
+          buttonVariants({ variant, size, color: finalColor }),
+          className,
+          loading && 'pointer-events-none',
+        )}
+        ref={ref}
+        disabled={loading || disabled}
+        {...props}
+      >
+        {/* Keep these as direct children: Radix `Slot` only finds
+            `Slottable` among its direct children, not inside a fragment. */}
         {loading && (
           <LoaderCircle
             data-testid="loading-spinner"
@@ -297,21 +308,6 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             {<EndIcon className="w-4 h-4" />}
           </span>
         )}
-      </>
-    );
-
-    return (
-      <Comp
-        className={cn(
-          buttonVariants({ variant, size, color: finalColor }),
-          className,
-          loading && 'pointer-events-none',
-        )}
-        ref={ref}
-        disabled={loading || disabled}
-        {...props}
-      >
-        {content}
       </Comp>
     );
   },

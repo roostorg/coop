@@ -66,7 +66,9 @@ export default function ResetPassword() {
     <>
       <PasswordInput
         className={
-          isPasswordTooShort ? 'rounded-lg border-red-500' : 'rounded-lg'
+          isPasswordTooShort
+            ? 'rounded-lg border-red-500 focus:border-red-500'
+            : 'rounded-lg'
         }
         placeholder={`Enter new password (min ${minPasswordLength} characters)`}
         value={newPassword}
@@ -93,7 +95,9 @@ export default function ResetPassword() {
     <>
       <PasswordInput
         className={
-          doPasswordsMismatch ? 'rounded-lg border-red-500' : 'rounded-lg'
+          doPasswordsMismatch
+            ? 'rounded-lg border-red-500 focus:border-red-500'
+            : 'rounded-lg'
         }
         placeholder="Confirm new password"
         value={confirmPassword}

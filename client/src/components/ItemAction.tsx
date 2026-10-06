@@ -171,7 +171,8 @@ export default function ItemAction(props: {
         // more details.
         const policyId = policyIds satisfies
           string | readonly string[] as string;
-        setSelectedPolicyIds([policyId]);
+        // A cleared single-select emits `''`, not a policy ID.
+        setSelectedPolicyIds(policyId ? [policyId] : []);
       }
     },
     [],
@@ -235,6 +236,7 @@ export default function ItemAction(props: {
               aria-label="Actions"
               className="w-80 max-w-full"
               placeholder="Select action"
+              maxTagCount={1}
               value={selectedActionIds}
               onValueChange={selectOnChange}
               options={orderBy(eligibleActions, ['name']).map((action) => ({
@@ -250,6 +252,7 @@ export default function ItemAction(props: {
               aria-label="Policies"
               className="w-80 max-w-full"
               policies={policiesMemo}
+              maxTagCount={1}
               onChange={policiesDropdownOnChange}
               selectedPolicyIds={selectedPolicyIds}
               multiple={

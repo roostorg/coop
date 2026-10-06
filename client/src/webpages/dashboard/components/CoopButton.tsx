@@ -160,7 +160,17 @@ export default function CoopButton(
   const finalButtonPossiblyWithTooltip = tooltipTitleToShow ? (
     <TooltipProvider>
       <Tooltip>
-        <TooltipTrigger asChild>{buttonPossiblyWithLinkWrapper}</TooltipTrigger>
+        <TooltipTrigger asChild>
+          {showingDisabledTooltip ? (
+            // A disabled button gets no pointer or focus events, so the
+            // tooltip needs a focusable wrapper to explain why.
+            <span tabIndex={0} className="inline-flex w-min">
+              {buttonPossiblyWithLinkWrapper}
+            </span>
+          ) : (
+            buttonPossiblyWithLinkWrapper
+          )}
+        </TooltipTrigger>
         <TooltipContent
           className={tooltipContentClassName}
           {...placementToSideAlign(

@@ -198,7 +198,12 @@ export default function BulkActioningDashboard() {
         placeholder="Select Item Type"
         allowClear
         value={selectedItemTypeId ?? undefined}
-        onValueChange={setSelectedItemTypeId}
+        onValueChange={(itemTypeId) => {
+          setSelectedItemTypeId(itemTypeId);
+          // Actions are scoped to an item type; stale IDs would be hidden by
+          // the actions picker but still submitted.
+          setSelectedActionIds([]);
+        }}
         options={orderBy(allItemTypes, ['name']).map((itemType) => ({
           value: itemType.id,
           label: itemType.name,
@@ -256,6 +261,8 @@ export default function BulkActioningDashboard() {
     <div className="text-coop-alert-red">
       Please select at least one Item Type first
     </div>
+  ) : actions.length > 0 ? (
+    'No matching actions.'
   ) : (
     <div className="text-coop-alert-red">
       No actions available for {selectedItemType?.name ?? 'this Item Type'}. Add
@@ -293,7 +300,8 @@ export default function BulkActioningDashboard() {
           // more details.
           const policyId = policyIds satisfies
             string | readonly string[] as string;
-          setSelectedPolicyIds([policyId]);
+          // A cleared single-select emits `''`, not a policy ID.
+          setSelectedPolicyIds(policyId ? [policyId] : []);
         }
       }}
       selectedPolicyIds={selectedPolicyIds}

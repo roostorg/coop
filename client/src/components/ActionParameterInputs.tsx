@@ -95,7 +95,12 @@ function ParameterInput({
       {labelTooltip && (
         <Tooltip>
           <TooltipTrigger asChild>
-            <span className="ml-1 inline-flex">
+            <span
+              className="ml-1 inline-flex"
+              // Inside a <label>, a click would also activate the field
+              // (opening a Combobox); this icon is only a tooltip target.
+              onClick={(e) => e.preventDefault()}
+            >
               <Info className="w-4 h-4 text-gray-400" />
             </span>
           </TooltipTrigger>
@@ -143,14 +148,24 @@ function ParameterInput({
               if (Number.isNaN(parsed)) {
                 return;
               }
+              // Keep the in-progress value (with min 10, typing "1" on the
+              // way to "10" must not jump to 10); bounds apply on blur.
+              onChange(parsed);
+            }}
+            onBlur={() => {
               // The native min/max attrs only affect validity styling, not
               // the value itself — clamp so out-of-range input can't reach
-              // the mutation payload.
+              // the mutation payload. Blur fires before a submit click.
+              if (typeof value !== 'number') {
+                return;
+              }
               const clamped = Math.min(
                 param.max ?? Infinity,
-                Math.max(param.min ?? -Infinity, parsed),
+                Math.max(param.min ?? -Infinity, value),
               );
-              onChange(clamped);
+              if (clamped !== value) {
+                onChange(clamped);
+              }
             }}
           />
         );

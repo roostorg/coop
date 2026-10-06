@@ -20,7 +20,6 @@ const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
         endSlot={
           <button
             type="button"
-            tabIndex={-1}
             aria-label={visible ? 'Hide password' : 'Show password'}
             className="flex items-center px-3 text-gray-400 hover:text-gray-600 border border-l-0 border-gray-200 rounded-r-lg bg-white"
             onClick={() => setVisible((v) => !v)}

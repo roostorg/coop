@@ -56,7 +56,9 @@ export function RuleFormSignalModalSubcategoryGallery(props: {
   // Hive subcategories are snake_case, but we display them like this: "Snake Case".
   // So we need to allow a search term like "snake case" match against the subcategory
   // "snake_case". To do this, we add a snake case search term.
-  const snakeCaseSearchTerm = searchTerm.replaceAll('_', ' ');
+  // Show what the user typed; lowercase only for matching.
+  const normalizedSearch = searchTerm.toLocaleLowerCase();
+  const snakeCaseSearchTerm = normalizedSearch.replaceAll('_', ' ');
   const eligibleSubcategories = rebuildSubcategoryTreeFromGraphQLResponse(
     stripped,
   )
@@ -64,12 +66,12 @@ export function RuleFormSignalModalSubcategoryGallery(props: {
 
     .filter(
       (subcategory) =>
-        subcategory.id.includes(searchTerm) ||
+        subcategory.id.includes(normalizedSearch) ||
         subcategory.id.includes(snakeCaseSearchTerm) ||
-        subcategory.label.includes(searchTerm) ||
+        subcategory.label.includes(normalizedSearch) ||
         subcategory.label.includes(snakeCaseSearchTerm) ||
         (subcategory.description &&
-          (subcategory.description.includes(searchTerm) ||
+          (subcategory.description.includes(normalizedSearch) ||
             subcategory.description.includes(snakeCaseSearchTerm))),
     );
 
@@ -86,9 +88,7 @@ export function RuleFormSignalModalSubcategoryGallery(props: {
         }
         value={searchTerm}
         allowClear
-        onChange={(event) =>
-          setSearchTerm(event.target.value.toLocaleLowerCase())
-        }
+        onChange={(event) => setSearchTerm(event.target.value)}
       />
       {eligibleSubcategories.map((subcategory) => (
         <RuleFormSignalModalSubcategory

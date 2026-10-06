@@ -75,15 +75,8 @@ export default function RuleFormConditionLocationMatchingValues(props: {
     });
   };
 
-  const addBank = (bankId: string) => {
-    if (matchingValues?.locationBankIds?.includes(bankId)) {
-      return;
-    }
-    onUpdateMatchingValues({
-      ...matchingValues,
-      locationBankIds: [...(matchingValues?.locationBankIds ?? []), bankId],
-    });
-  };
+  const setBankIds = (bankIds: string[]) =>
+    onUpdateMatchingValues({ ...matchingValues, locationBankIds: bankIds });
 
   const removeBank = (bankId: string) => {
     onUpdateMatchingValues({
@@ -103,8 +96,7 @@ export default function RuleFormConditionLocationMatchingValues(props: {
       updateCallbacks={{
         addLocation: addLocationArea,
         removeLocation: removeLocationArea,
-        addBank,
-        removeBank,
+        setBankIds,
       }}
       showBanksTab={true}
     />

@@ -18,6 +18,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       endSlot,
       allowClear = false,
       value,
+      onChange,
       ...props
     },
     ref,
@@ -35,7 +36,14 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       [ref],
     );
 
-    const showClear = allowClear && value != null && value !== '';
+    // Uncontrolled inputs (no `value`) track emptiness themselves so the
+    // clear button can still appear as the user types.
+    const [uncontrolledHasValue, setUncontrolledHasValue] = React.useState(
+      props.defaultValue != null && props.defaultValue !== '',
+    );
+    const hasValue = value != null ? value !== '' : uncontrolledHasValue;
+    const showClear =
+      allowClear && hasValue && !props.disabled && !props.readOnly;
 
     const inputClasses = cn(
       'py-2 px-3 w-full text-sm font-medium transition-colors placeholder:text-gray-400 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400 disabled:pointer-events-none',
@@ -81,12 +89,17 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             className={inputClasses}
             value={value}
             ref={setRefs}
+            onChange={(e) => {
+              if (value == null) {
+                setUncontrolledHasValue(e.target.value !== '');
+              }
+              onChange?.(e);
+            }}
             {...props}
           />
           {showClear && (
             <button
               type="button"
-              tabIndex={-1}
               aria-label="Clear"
               className="absolute right-2 text-gray-400 hover:text-gray-600"
               onClick={handleClear}

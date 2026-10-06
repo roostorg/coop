@@ -80,6 +80,7 @@ export default function ManualReviewQueueRuleFormCondition(props: {
       ) : editing ? (
         <Combobox
           aria-label="Condition conjunction"
+          showSearch={false}
           value={parentConditionSet.conjunction}
           onValueChange={(rawValue) => {
             if (rawValue == null) {

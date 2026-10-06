@@ -63,7 +63,7 @@ export default function TruncatedTextTableCell(props: {
       {truncatedText.endsWith(ellipsis) && !hideTooltip ? (
         <Tooltip>
           <TooltipTrigger asChild>
-            <span>{truncatedText}</span>
+            <span tabIndex={0}>{truncatedText}</span>
           </TooltipTrigger>
           <TooltipContent side="top">{text}</TooltipContent>
         </Tooltip>

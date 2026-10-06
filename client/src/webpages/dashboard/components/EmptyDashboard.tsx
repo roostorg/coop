@@ -45,7 +45,9 @@ export default function EmptyDashboard(
       return (
         <Tooltip>
           <TooltipTrigger asChild>
-            <span>{createButton}</span>
+            <span tabIndex={0} className="inline-flex">
+              {createButton}
+            </span>
           </TooltipTrigger>
           <TooltipContent side="bottom">{disabledTooltipTitle}</TooltipContent>
         </Tooltip>

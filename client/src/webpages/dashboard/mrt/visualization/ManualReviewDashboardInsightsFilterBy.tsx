@@ -181,9 +181,16 @@ export default function ManualReviewDashboardInsightsFilterBy(props: {
 
   useEffect(() => {
     const handleOutsideClick = (event: MouseEvent) => {
+      const target = event.target as Element;
+      // Combobox popups are portaled outside componentRef (and may already be
+      // unmounted after a pick); treat clicks in them as inside the menu.
+      const inPortaledPopup =
+        !document.contains(target) ||
+        target.closest('[data-radix-popper-content-wrapper]') != null;
       if (
         componentRef.current &&
-        !componentRef.current.contains(event.target as Node)
+        !componentRef.current.contains(target) &&
+        !inPortaledPopup
       ) {
         if (filterByMenuVisible) {
           setFilterByMenuVisible(false);

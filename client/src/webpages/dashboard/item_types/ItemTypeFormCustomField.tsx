@@ -182,7 +182,7 @@ export default function ItemTypeFormCustomField<T extends ItemTypeKind>(props: {
         </div>
         <Button
           variant="outline"
-          color="gray"
+          color="red"
           size="icon"
           className="self-end ml-2"
           aria-label="Delete field"

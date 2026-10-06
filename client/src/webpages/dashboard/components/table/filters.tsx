@@ -136,10 +136,13 @@ export function SelectColumnFilter(props: FilterProps) {
         onValueChange={(value) => {
           setUnsavedFilterValue(value.length > 0 ? value : undefined);
         }}
-        options={uniqueOptions.map((option) => ({
-          value: String(option),
-          label: String(option),
-        }))}
+        // Nullish cells would become an unmatchable "undefined" option.
+        options={uniqueOptions
+          .filter((option) => option != null)
+          .map((option) => ({
+            value: String(option),
+            label: String(option),
+          }))}
       />
     </div>
   );

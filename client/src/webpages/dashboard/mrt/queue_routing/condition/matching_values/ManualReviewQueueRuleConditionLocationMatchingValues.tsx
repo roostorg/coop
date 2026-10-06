@@ -73,16 +73,9 @@ export default function ManualReviewQueueRuleConditionLocationMatchingValues(pro
         (it) => !areLocationAreasEqual(it, location),
       ),
     });
-  const addBank = (bankId: string) => {
-    if (matchingValues?.locationBankIds?.includes(bankId)) {
-      return;
-    }
+  const setBankIds = (bankIds: string[]) =>
+    onUpdateMatchingValues({ ...matchingValues, locationBankIds: bankIds });
 
-    onUpdateMatchingValues({
-      ...matchingValues,
-      locationBankIds: [...(matchingValues?.locationBankIds ?? []), bankId],
-    });
-  };
   const removeBank = (bankId: string) =>
     onUpdateMatchingValues({
       ...matchingValues,
@@ -100,8 +93,7 @@ export default function ManualReviewQueueRuleConditionLocationMatchingValues(pro
       updateCallbacks={{
         addLocation: addLocationArea,
         removeLocation: removeLocationArea,
-        addBank,
-        removeBank,
+        setBankIds,
       }}
       showBanksTab={true}
     />
@@ -158,7 +150,7 @@ export default function ManualReviewQueueRuleConditionLocationMatchingValues(pro
                   variant="outline"
                   color="gray"
                   size="icon"
-                  className="rounded-lg p-0 ml-[2px] mr-[2px]"
+                  className="rounded-lg ml-[2px] mr-[2px]"
                   aria-label="Add location"
                   onClick={() => setModalVisible(true)}
                 >
