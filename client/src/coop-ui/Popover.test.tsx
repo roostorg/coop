@@ -1,9 +1,6 @@
+import { Button } from '@/coop-ui/Button';
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
-
-import '@testing-library/jest-dom/extend-expect';
-
-import { Button } from '@/coop-ui/Button';
 
 import {
   Popover,

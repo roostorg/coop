@@ -1,8 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-
-import '@testing-library/jest-dom/extend-expect';
-
 import { ItemTypeKind } from '@roostorg/coop-types';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { vi } from 'vitest';
 
 import { GQLScalarType } from '../../../graphql/generated';

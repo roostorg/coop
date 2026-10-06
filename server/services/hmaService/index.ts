@@ -177,13 +177,27 @@ const KNOWN_EXCHANGE_SCHEMAS: Partial<Record<string, ExchangeApiSchema>> = {
   },
 };
 
+/**
+ * Thrown when exchange credentials are written while the instance hosts more
+ * than one organization. HMA stores exchange credentials globally (one set per
+ * exchange API), so any org writing them would overwrite every other org's.
+ */
+export class ExchangeCredentialsMultiTenantError extends Error {
+  constructor() {
+    super(
+      'Exchange credentials are shared across all organizations on this instance and cannot be changed from Coop when it hosts multiple organizations. Configure them in HMA directly.',
+    );
+    this.name = 'ExchangeCredentialsMultiTenantError';
+  }
+}
+
 export class HmaService {
   private readonly hmaServiceUrl: string;
   private readonly hashBankService: HashBankService;
 
   constructor(
     private readonly fetchHTTP: Dependencies['fetchHTTP'],
-    kyselyPg: Dependencies['KyselyPg'],
+    private readonly kyselyPg: Dependencies['KyselyPg'],
   ) {
     this.hmaServiceUrl =
       process.env.HMA_SERVICE_URL ?? 'http://localhost:9876/';
@@ -673,6 +687,18 @@ export class HmaService {
     apiName: string,
     credentialJson: Record<string, unknown>,
   ): Promise<void> {
+    // Coop has no explicit tenancy mode, so infer it: more than one row in
+    // `public.orgs` means multi-tenant. Checked on every call (no caching) so
+    // creating a second org immediately closes this off.
+    const orgs = await this.kyselyPg
+      .selectFrom('public.orgs')
+      .select('id')
+      .limit(2)
+      .execute();
+    if (orgs.length > 1) {
+      throw new ExchangeCredentialsMultiTenantError();
+    }
+
     const requestBody = { credential_json: credentialJson };
 
     const response = await this.fetchHTTP({

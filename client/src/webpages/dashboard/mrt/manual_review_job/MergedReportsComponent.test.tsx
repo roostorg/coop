@@ -1,14 +1,11 @@
-import { MockedProvider } from '@apollo/client/testing';
-import { fireEvent, render, screen, within } from '@testing-library/react';
-import React from 'react';
-import { MemoryRouter } from 'react-router-dom';
-
-import '@testing-library/jest-dom/extend-expect';
-
 import {
   GQLGetUserItemsDocument,
   GQLPoliciesDocument,
 } from '@/graphql/generated';
+import { MockedProvider } from '@apollo/client/testing';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import React from 'react';
+import { MemoryRouter } from 'react-router-dom';
 
 import MergedReportsComponent from './MergedReportsComponent';
 

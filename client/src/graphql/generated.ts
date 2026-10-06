@@ -5303,11 +5303,13 @@ export type GQLZentropiLabelerVersion = {
   readonly __typename: 'ZentropiLabelerVersion';
   readonly id: Scalars['String']['output'];
   readonly label: Scalars['String']['output'];
+  readonly labelerId?: Maybe<Scalars['String']['output']>;
 };
 
 export type GQLZentropiLabelerVersionInput = {
   readonly id: Scalars['String']['input'];
   readonly label: Scalars['String']['input'];
+  readonly labelerId: Scalars['String']['input'];
 };
 
 export type GQLApiAuthQueryVariables = Exact<{ [key: string]: never }>;
@@ -6555,6 +6557,7 @@ export type GQLIntegrationConfigQuery = {
                   readonly __typename: 'ZentropiLabelerVersion';
                   readonly id: string;
                   readonly label: string;
+                  readonly labelerId?: string | null;
                 }>;
               };
         } | null;
@@ -30404,6 +30407,7 @@ export const GQLIntegrationConfigDocument = gql`
               labelerVersions {
                 id
                 label
+                labelerId
               }
             }
             ... on PluginIntegrationApiCredential {
