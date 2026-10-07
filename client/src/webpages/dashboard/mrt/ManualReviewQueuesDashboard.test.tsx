@@ -1,7 +1,7 @@
 import { TooltipProvider } from '@/coop-ui/Tooltip';
 import { render, screen, within } from '@testing-library/react';
 import { HelmetProvider } from 'react-helmet-async';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
 
 import ManualReviewQueuesDashboard from './ManualReviewQueuesDashboard';
