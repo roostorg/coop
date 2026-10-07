@@ -1,0 +1,22 @@
+types/integration.ts
+  s_9fec762e193d5b::t_05289627b219c5 535-536,541-544
+  s_9fec762e193d5b::t_49eb644a2295d6 118-122
+CHANGELOG.md
+  s_9fec762e193d5b::t_9382edfe5f82be 11-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d65aff335cd81cb24c77414e87806009b7f4170c",
+  "prompts": {},
+  "sessions": {
+    "s_9fec762e193d5b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b0e09479-679d-4cb5-a6e9-495a82f0dd36",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
