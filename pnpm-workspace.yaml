@@ -48,9 +48,9 @@ preferSymlinkedExecutables: true
 # published @roostorg/db-migrator. pnpm links workspace packages only for
 # `workspace:` specifiers, so ./types and ./migrator aren't linked.
 
-# Refuse to install packages published less than 7 days ago (10080 minutes).
+# Refuse to install packages published less than 3 days ago (4320 minutes).
 # Mitigates "publish-and-immediately-compromise" supply chain attacks.
-minimumReleaseAge: 10080
+minimumReleaseAge: 4320
 
 # First-party roostorg packages are exempt: they're published from this repo and
 # trusted by definition; the age gate adds no supply-chain protection for them.
