@@ -1,0 +1,78 @@
+types/package.json
+  h_228f5682388812 4
+  s_9fec762e193d5b::t_4f205c43ed7638 24-25
+types/index.ts
+  s_9fec762e193d5b::t_554c39c444d975 316
+  s_9fec762e193d5b::t_e1d10327a0af35 317
+  s_9fec762e193d5b::t_361d47d95531d5 315
+  h_228f5682388812 322-324,333-338
+types/integration.ts
+  s_9fec762e193d5b::t_14198936115660 183,186,249,252,318,321,455-458,463,465-469,471-473
+  s_9fec762e193d5b::t_e1d10327a0af35 12-13
+  s_9fec762e193d5b::t_ad13ca19be2ba1 401-408
+  s_9fec762e193d5b::t_3dc613b9a4a05d 470
+  s_9fec762e193d5b::t_c6133f49fb85ef 312
+  s_9fec762e193d5b::t_b238d1800bd27c 383-387,392
+  s_9fec762e193d5b::t_74697e8b685784 108-123
+  s_9fec762e193d5b::t_d11f5dc0b848dc 459-462,464
+  s_9fec762e193d5b::t_49982a9f282947 238-242
+  s_9fec762e193d5b::t_1981ffb6bf26e3 284,287,374-382,388-391,393-398,410
+  s_9fec762e193d5b::t_1dc2dda812ee67 139,144,149,159,237,243,256,270,272,277,294,296,299,314,356,361,371,373,447-454
+  s_9fec762e193d5b::t_88a543d7a6968a 426-432
+  s_9fec762e193d5b::t_063e25915a3222 273-275
+  s_9fec762e193d5b::t_2a3f39d91bd9a7 136-138
+  s_9fec762e193d5b::t_531100841ee08e 140-143
+  s_9fec762e193d5b::t_65df94fd62067b 145-148
+  s_9fec762e193d5b::t_bc1d80ca89ef07 150-152,156-158
+  s_9fec762e193d5b::t_40aa71e0bdb9a2 160
+  s_9fec762e193d5b::t_18b4b2b2a04d02 184-185
+  s_9fec762e193d5b::t_5866a17c4cb076 187
+  s_9fec762e193d5b::t_48c74bc4c889c0 244-248
+  s_9fec762e193d5b::t_865bafe93f0a3d 250-251
+  s_9fec762e193d5b::t_2e95e0811d9fbb 253-255
+  s_9fec762e193d5b::t_e6bcf09a232876 257-259,267-269
+  s_9fec762e193d5b::t_1d30d94d65c0d2 271
+  s_9fec762e193d5b::t_94531a0ac7918e 276
+  s_9fec762e193d5b::t_8870e2a7b952a3 278-283
+  s_9fec762e193d5b::t_4b0e7bd9b90b5a 285-286
+  s_9fec762e193d5b::t_135d1527f0a470 288-293
+  s_9fec762e193d5b::t_4700c96e4e5f75 295
+  s_9fec762e193d5b::t_01f0bb112561ec 297-298
+  s_9fec762e193d5b::t_5dcd38a636137e 300-302,309-311
+  s_9fec762e193d5b::t_bbfe66fb282b72 313
+  s_9fec762e193d5b::t_2450cc3194d5a2 315
+  s_9fec762e193d5b::t_59cf07cf7e188a 319-320
+  s_9fec762e193d5b::t_6585729b86431b 354-355
+  s_9fec762e193d5b::t_7fcd8cc8284b53 357-360
+  s_9fec762e193d5b::t_18d1de3df0d6ef 362-364,368-370
+  s_9fec762e193d5b::t_9e54b1cf8f4464 372
+  s_9fec762e193d5b::t_9ef8a168d2c3cf 399-400
+  s_9fec762e193d5b::t_cb61cff4e3d2eb 409
+  s_9fec762e193d5b::t_9945d87378095b 446
+  h_228f5682388812 153-155,191-192,260-266,303-308,335-336,365-367
+types/tsconfig.json
+  s_9fec762e193d5b::t_fe990f83c7cb41 12
+types/package-lock.json
+  s_9fec762e193d5b::t_b304e6f514ec85 3,9,16-17,21-28,54-56,58,64,66-72,77-83,96-104
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e4e8df399d891a5380aeab4f8d93f7179b53f82b",
+  "prompts": {},
+  "humans": {
+    "h_228f5682388812": {
+      "author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_9fec762e193d5b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b0e09479-679d-4cb5-a6e9-495a82f0dd36",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
