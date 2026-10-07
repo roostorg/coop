@@ -188,7 +188,7 @@ Note: `check_migration_order` runs only in GitHub Actions — it's GitHub-specif
 - Dependencies are declared in each package's `package.json` and locked in the root `pnpm-lock.yaml`. Add a dep with `pnpm --filter <pkg> add <dep>` and commit the updated lockfile.
 - Every new or upgraded package including transitive dependencies requires human approval. Confirm the license is compatible with `LICENSE` (Apache 2.0) and that there are no known CVEs.
 - Lockfile conflict on `pnpm-lock.yaml`: take one side with `git checkout --ours|--theirs pnpm-lock.yaml`, then run `pnpm install` from root to reconcile.
-- `pnpm-workspace.yaml` refuses packages published less than 7 days ago (`minimumReleaseAge`) and runs dependency install scripts only for packages set to `true` in `allowBuilds`; a new dependency with an install script needs an `allowBuilds` entry.
+- `pnpm-workspace.yaml` refuses packages published less than 3 days ago (`minimumReleaseAge`) and runs dependency install scripts only for packages set to `true` in `allowBuilds`; a new dependency with an install script needs an `allowBuilds` entry.
 
 **Install gotchas:**
 
