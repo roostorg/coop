@@ -184,9 +184,9 @@ describe('QueueOperations job priorities', () => {
       await queueOps.recomputePrioritiesForQueue({
         orgId: org.id,
         queueId: queue.id,
-        getPriorities: async (itemIds) =>
+        getPriorities: async (items) =>
           new Map(
-            itemIds.map((itemId) => [
+            items.map(({ itemId }) => [
               itemId,
               itemId === 'item-A' ? 2000 : 1000,
             ]),
@@ -412,8 +412,8 @@ describe('QueueOperations job priorities', () => {
       const result = await queueOps.recomputePrioritiesForQueue({
         orgId: org.id,
         queueId: queue.id,
-        getPriorities: async (itemIds) =>
-          new Map(itemIds.map((itemId) => [itemId, 2000])),
+        getPriorities: async (items) =>
+          new Map(items.map(({ itemId }) => [itemId, 2000])),
         shouldContinue: () => false,
       });
       expect(result.aborted).toBe(true);

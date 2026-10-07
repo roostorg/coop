@@ -471,6 +471,12 @@ export function DashboardRoutes() {
           <Navigate replace to="/dashboard/settings?tab=partial-items" />
         ),
       },
+      {
+        path: 'settings/job_priorities',
+        element: (
+          <Navigate replace to="/dashboard/settings?tab=review-console" />
+        ),
+      },
       // Account
       {
         path: 'account',
