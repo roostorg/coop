@@ -32,7 +32,23 @@ Security findings are the highest-value comments you can leave. When you spot on
 - **Unsafe deserialization or evaluation.** `eval`, `new Function`, `setTimeout`/`setInterval` with string arguments, and `yaml.load` without a safe schema are risky.
 - **Removing security controls.** If a diff disables CSRF, CORS, rate limits, authentication, or authorization, ask whether it's intentional and justified.
 
-Path-specific concerns (resolvers, `server/api.ts`, client, raw SQL in ClickHouse/Scylla, migrations, dependency manifests) are scoped in [`.coderabbit.yaml`](../.coderabbit.yaml) under `reviews.path_instructions`. When reviewing those areas, apply the same general principles — ownership checks on resolver-supplied IDs, parameterized queries, XSS care on the client, license/CVE attention on dependency bumps.
+## Path-specific concerns
+
+- **`server/graphql/modules/**`**
+  - N+1: flag `await` inside loops over user-supplied IDs. DataLoader or a single batched query is the fix.
+  - IDOR / authorization: verify each resolver checks that the caller owns or can access the specific resource ID, not just that they are authenticated.
+  - Input validation: GraphQL schema shape is not enough — look for length, range, allowlist, and canonicalization checks on resolver arguments.
+  - Schema stability: removing or renaming a GraphQL type or field breaks Apollo cache and downstream consumers. Additive changes are usually safe; removals deserve a migration plan.
+- **`server/api.ts`** — Auth, session, CSRF, CORS, and rate-limit middleware live here. `AGENTS.md` requires a maintainer for changes to this file — surface them even when the diff is small. Flag any change that disables a security control.
+- **`server/**/Clickhouse*.ts`** — Raw SQL is expected in the ClickHouse adapter files. Flag any string interpolation of user input — bound parameters are required.
+- **`server/scylla/**`** — Cassandra driver queries must use bound parameters. Flag string-built CQL with user input.
+- **`server/iocContainer/**`** — Services are registered here for BottleJS DI. Direct imports of service singletons elsewhere bypass test mocking and should be flagged.
+- **`db/src/scripts/**`** — Migrations are forward-only. Editing a migration that has already shipped is a red flag — add a new forward migration instead. Postgres role grants must use `CURRENT_USER`. New filenames use the `date -u +"%Y.%m.%dT%H.%M.%S"` prefix.
+- **`client/**/*.{ts,tsx}`**
+  - XSS: flag `dangerouslySetInnerHTML`, `innerHTML`, `document.write`, `javascript:` URLs, and unsanitized `href`/`src` from user input. Prefer `textContent`; sanitize with DOMPurify when raw HTML is unavoidable.
+  - Token storage: auth tokens belong in HttpOnly, Secure, SameSite cookies — flag `localStorage` or `sessionStorage` use for tokens.
+  - Open redirects: redirecting to a user-supplied URL without an allowlist is risky.
+- **`package.json` / `package-lock.json`** — Dependency additions, removals, or upgrades (including transitive bumps) require human approval for license (Apache 2.0) and CVE review per `AGENTS.md` > "Human-approval-required actions". Surface every change so reviewers don't miss it.
 
 ## Code quality (cross-cutting)
 
