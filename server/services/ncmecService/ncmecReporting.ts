@@ -36,6 +36,16 @@ import {
 } from './ncmecDebug.js';
 import { summarizeNcmecErrorForReviewer } from './ncmecReviewerErrors.js';
 
+// NCMEC's CyberTipline endpoints are fixed by NCMEC, not per-deployment
+// config, so these are consts rather than env vars. Which one applies is
+// determined by NCMEC_ENV (see the `isTest` flag threaded through this file).
+// See https://report.cybertip.org/ispws/documentation/index.html#access for
+// NCMEC's documentation of both environments.
+const NCMEC_CYBERTIP_BASE_URL = {
+  test: 'https://exttest.cybertip.org/ispws',
+  production: 'https://report.cybertip.org/ispws',
+} as const;
+
 export const NCMECEvent = makeEnumLike([
   'Login',
   'Registration',
@@ -1434,6 +1444,13 @@ export default class NcmecReporting {
     userId: ItemIdentifier,
     reportedMedia: readonly ItemIdentifier[],
   ) {
+    // The message-preservation backend is deployment-specific. Without a
+    // configured endpoint there is nothing to fetch, so the NCMEC Messages
+    // tab simply shows no threads.
+    const ncmecMessagesUrl = process.env.NCMEC_MESSAGES_URL;
+    if (!ncmecMessagesUrl) {
+      return [];
+    }
     const fetchWithRetries = withRetries(
       {
         maxRetries: 5,
@@ -1443,7 +1460,7 @@ export default class NcmecReporting {
       },
       async () => {
         const response = await this.fetchHTTP({
-          url: 'https://tas-infra-ml.net/data/coop/content/pre-preserve/get',
+          url: ncmecMessagesUrl,
           method: 'post',
           body: jsonStringify({
             userId: userId.id,
@@ -2506,9 +2523,6 @@ export default class NcmecReporting {
     const username = cybertipAuthenticationCredentials.username;
     const password = cybertipAuthenticationCredentials.password;
 
-    // TODO: update this to https://report.cybertip.org/ispws when we want to submit
-    // real reports
-
     const sendCyberTipRequestWithRetries = withRetries(
       {
         maxRetries: 5,
@@ -2517,9 +2531,7 @@ export default class NcmecReporting {
         jitter: true,
       },
       async () => {
-        const url = isTest
-          ? `https://exttest.cybertip.org/ispws${route}`
-          : `https://report.cybertip.org/ispws${route}`;
+        const url = `${NCMEC_CYBERTIP_BASE_URL[isTest ? 'test' : 'production']}${route}`;
         ncmecDebugLog('cybertip.request', {
           route,
           isTest,

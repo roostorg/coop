@@ -38,7 +38,12 @@ export class GoogleContentSafetyClient {
   private readonly apiKey: string;
   private readonly timeoutMs: number;
   private readonly fetchHTTP: FetchHTTP;
+  // Overridable so deployments can point at a different Content Safety
+  // API endpoint instead of contentsafety.googleapis.com. `||` so an empty
+  // value in .env falls back to the default.
   private readonly baseUrl =
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- `||` on purpose: an empty value must also fall back
+    process.env.GOOGLE_CONTENT_SAFETY_BASE_URL ||
     'https://contentsafety.googleapis.com/v1beta1/images:classify';
 
   constructor(options: GoogleContentSafetyOptions) {

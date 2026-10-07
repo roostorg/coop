@@ -49,6 +49,17 @@ export type OpenAiImageModelName = Extract<
 
 const OPEN_AI_MODERATION_MODEL = 'omni-moderation-latest';
 
+// Overridable so deployments can point at any endpoint that implements
+// OpenAI's API contract (same routes and bearer-token auth) instead of
+// api.openai.com. `||` so an empty value in .env falls back to the default;
+// trailing slashes are stripped so the paths appended below don't double up.
+const OPEN_AI_BASE_URL =
+  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- `||` on purpose: an empty value must also fall back
+  (process.env.OPEN_AI_BASE_URL || 'https://api.openai.com/v1').replace(
+    /\/+$/,
+    '',
+  );
+
 export function openAiModerationDocsUrl() {
   return 'https://beta.openai.com/docs/guides/moderation/overview';
 }
@@ -252,7 +263,7 @@ export async function getOpenAiModerationScores(
   const reqBody = { model: OPEN_AI_MODERATION_MODEL, input };
   try {
     const response = await fetchHTTP({
-      url: 'https://api.openai.com/v1/moderations',
+      url: `${OPEN_AI_BASE_URL}/moderations`,
       method: 'post',
       headers: {
         'Content-Type': 'application/json',
