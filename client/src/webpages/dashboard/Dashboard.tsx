@@ -507,7 +507,7 @@ export default function Dashboard() {
   const [logout, { client }] = useGQLLogoutMutation({
     onError: () => {},
     onCompleted: (_data) => {
-      client.clearStore().then(() => navigate('/'));
+      client.clearStore().then(async () => navigate('/'));
     },
     refetchQueries: [namedOperations.Query.PermissionGatedRouteLoggedInUser],
   });

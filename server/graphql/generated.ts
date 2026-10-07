@@ -1235,6 +1235,7 @@ export type GQLError = {
 
 export type GQLExchangeApiInfo = {
   readonly __typename?: 'ExchangeApiInfo';
+  /** @deprecated Field no longer supported */
   readonly has_auth: Scalars['Boolean']['output'];
   readonly name: Scalars['String']['output'];
   readonly supports_auth: Scalars['Boolean']['output'];
@@ -1250,6 +1251,12 @@ export type GQLExchangeConfigInput = {
   readonly api_name: Scalars['String']['input'];
   readonly config_json: Scalars['String']['input'];
   readonly credentials_json?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type GQLExchangeCredentialStatus = {
+  readonly __typename?: 'ExchangeCredentialStatus';
+  readonly has_credentials: Scalars['Boolean']['output'];
+  readonly has_own_credentials: Scalars['Boolean']['output'];
 };
 
 export type GQLExchangeFieldDescriptor = {
@@ -1269,6 +1276,7 @@ export type GQLExchangeInfo = {
   readonly error?: Maybe<Scalars['String']['output']>;
   readonly fetched_items?: Maybe<Scalars['Int']['output']>;
   readonly has_auth: Scalars['Boolean']['output'];
+  readonly has_own_credentials: Scalars['Boolean']['output'];
   readonly is_fetching?: Maybe<Scalars['Boolean']['output']>;
   readonly last_fetch_succeeded?: Maybe<Scalars['Boolean']['output']>;
   readonly last_fetch_time?: Maybe<Scalars['String']['output']>;
@@ -2668,10 +2676,12 @@ export type GQLMutation = {
   readonly updateAppealSettings: GQLAppealSettings;
   readonly updateContentItemType: GQLMutateContentItemTypeResponse;
   readonly updateContentRule: GQLUpdateContentRuleResponse;
+  /** @deprecated Field no longer supported */
   readonly updateExchangeCredentials: Scalars['Boolean']['output'];
   readonly updateHasAppealsEnabled: Scalars['Boolean']['output'];
   readonly updateHasReportingRulesEnabled: Scalars['Boolean']['output'];
   readonly updateHashBank: GQLMutateHashBankResponse;
+  readonly updateHashBankExchangeCredentials: GQLExchangeCredentialStatus;
   readonly updateHideSkipButtonForNonAdmins: Scalars['Boolean']['output'];
   readonly updateIgnoreCallbackUrl: Scalars['Boolean']['output'];
   readonly updateLocationBank: GQLMutateLocationBankResponse;
@@ -2985,6 +2995,11 @@ export type GQLMutationUpdateHasReportingRulesEnabledArgs = {
 
 export type GQLMutationUpdateHashBankArgs = {
   input: GQLUpdateHashBankInput;
+};
+
+export type GQLMutationUpdateHashBankExchangeCredentialsArgs = {
+  bankId: Scalars['ID']['input'];
+  credentialsJson: Scalars['String']['input'];
 };
 
 export type GQLMutationUpdateHideSkipButtonForNonAdminsArgs = {
@@ -6067,6 +6082,7 @@ export type GQLResolversTypes = {
   ExchangeApiInfo: ResolverTypeWrapper<GQLExchangeApiInfo>;
   ExchangeApiSchema: ResolverTypeWrapper<GQLExchangeApiSchema>;
   ExchangeConfigInput: GQLExchangeConfigInput;
+  ExchangeCredentialStatus: ResolverTypeWrapper<GQLExchangeCredentialStatus>;
   ExchangeFieldDescriptor: ResolverTypeWrapper<GQLExchangeFieldDescriptor>;
   ExchangeInfo: ResolverTypeWrapper<GQLExchangeInfo>;
   ExchangeSchemaSection: ResolverTypeWrapper<GQLExchangeSchemaSection>;
@@ -6885,6 +6901,7 @@ export type GQLResolversParentTypes = {
   ExchangeApiInfo: GQLExchangeApiInfo;
   ExchangeApiSchema: GQLExchangeApiSchema;
   ExchangeConfigInput: GQLExchangeConfigInput;
+  ExchangeCredentialStatus: GQLExchangeCredentialStatus;
   ExchangeFieldDescriptor: GQLExchangeFieldDescriptor;
   ExchangeInfo: GQLExchangeInfo;
   ExchangeSchemaSection: GQLExchangeSchemaSection;
@@ -9143,6 +9160,23 @@ export type GQLExchangeApiSchemaResolvers<
   >;
 };
 
+export type GQLExchangeCredentialStatusResolvers<
+  ContextType = Context,
+  ParentType extends GQLResolversParentTypes['ExchangeCredentialStatus'] =
+    GQLResolversParentTypes['ExchangeCredentialStatus'],
+> = {
+  has_credentials?: Resolver<
+    GQLResolversTypes['Boolean'],
+    ParentType,
+    ContextType
+  >;
+  has_own_credentials?: Resolver<
+    GQLResolversTypes['Boolean'],
+    ParentType,
+    ContextType
+  >;
+};
+
 export type GQLExchangeFieldDescriptorResolvers<
   ContextType = Context,
   ParentType extends GQLResolversParentTypes['ExchangeFieldDescriptor'] =
@@ -9174,6 +9208,11 @@ export type GQLExchangeInfoResolvers<
     ContextType
   >;
   has_auth?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
+  has_own_credentials?: Resolver<
+    GQLResolversTypes['Boolean'],
+    ParentType,
+    ContextType
+  >;
   is_fetching?: Resolver<
     Maybe<GQLResolversTypes['Boolean']>,
     ParentType,
@@ -11602,6 +11641,15 @@ export type GQLMutationResolvers<
     ParentType,
     ContextType,
     RequireFields<GQLMutationUpdateHashBankArgs, 'input'>
+  >;
+  updateHashBankExchangeCredentials?: Resolver<
+    GQLResolversTypes['ExchangeCredentialStatus'],
+    ParentType,
+    ContextType,
+    RequireFields<
+      GQLMutationUpdateHashBankExchangeCredentialsArgs,
+      'bankId' | 'credentialsJson'
+    >
   >;
   updateHideSkipButtonForNonAdmins?: Resolver<
     GQLResolversTypes['Boolean'],
@@ -15397,6 +15445,7 @@ export type GQLResolvers<ContextType = Context> = {
   Error?: GQLErrorResolvers<ContextType>;
   ExchangeApiInfo?: GQLExchangeApiInfoResolvers<ContextType>;
   ExchangeApiSchema?: GQLExchangeApiSchemaResolvers<ContextType>;
+  ExchangeCredentialStatus?: GQLExchangeCredentialStatusResolvers<ContextType>;
   ExchangeFieldDescriptor?: GQLExchangeFieldDescriptorResolvers<ContextType>;
   ExchangeInfo?: GQLExchangeInfoResolvers<ContextType>;
   ExchangeSchemaSection?: GQLExchangeSchemaSectionResolvers<ContextType>;

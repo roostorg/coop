@@ -390,7 +390,7 @@ export default function PolicyScoresTab() {
     return (
       <div className="flex flex-col items-center justify-center w-full gap-4 py-16">
         <div className="text-slate-400">No policies configured</div>
-        <Button onClick={() => navigate('/dashboard/policies/form')}>
+        <Button onClick={async () => navigate('/dashboard/policies/form')}>
           Create Policy
         </Button>
       </div>

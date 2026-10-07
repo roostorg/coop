@@ -45,11 +45,12 @@ export default function ReportingRuleInfo() {
           buttons={[
             {
               title: 'Report Rules',
-              onClick: () => navigate('/dashboard/rules/report'),
+              onClick: async () => navigate('/dashboard/rules/report'),
             },
             {
               title: `Report Rule: ${name}`,
-              onClick: () => navigate(`/dashboard/rules/report/form/${ruleId}`),
+              onClick: async () =>
+                navigate(`/dashboard/rules/report/form/${ruleId}`),
             },
             { title: 'Insights' },
           ]}

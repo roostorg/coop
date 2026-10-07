@@ -180,7 +180,7 @@ export default function ManualReviewQueueForm() {
             title: 'Queue Created',
             body: 'Your Queue was successfully created!',
             buttonText: 'Done',
-            onClickDone: () => navigate(-1),
+            onClickDone: async () => navigate(-1),
           });
 
           break;

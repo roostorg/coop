@@ -350,7 +350,7 @@ export default function ManualReviewQueuesDashboard() {
       return (
         <Button
           className="flex items-center justify-center w-full p-4 text-sm text-gray-600 bg-white border border-gray-200 border-solid shadow-none cursor-pointer rounded-md drop-shadow-none hover:border-gray-200 focus:border-gray-200 hover:bg-gray-100 hover:text-gray-600 focus:text-gray-600"
-          onClick={() => navigate(`review/${id}`)}
+          onClick={async () => navigate(`review/${id}`)}
           disabled={pendingJobCount === 0}
         >
           Start Reviewing
@@ -370,6 +370,8 @@ export default function ManualReviewQueuesDashboard() {
     }
   };
   const hasAppealsEnabled = data?.myOrg?.hasAppealsEnabled ?? false;
+  const hasPendingAppeals =
+    queues?.some((it) => it.isAppealsQueue && it.pendingJobCount > 0) ?? false;
   const tabs = MRTQueuesDashboardTabs.filter((x) => {
     if (hasAppealsEnabled) {
       return x;
@@ -379,6 +381,14 @@ export default function ManualReviewQueuesDashboard() {
   }).map((value) => ({
     label: labelForTab(value),
     value,
+    icon:
+      value === 'APPEALS' && hasPendingAppeals ? (
+        <span
+          role="img"
+          aria-label="Pending appeals"
+          className="w-2 h-2 rounded-full bg-destructive"
+        />
+      ) : undefined,
   }));
   const tabBar = (
     <TabBar
@@ -783,7 +793,7 @@ export default function ManualReviewQueuesDashboard() {
                         previewJobs: (
                           <Button
                             className="flex items-center justify-center w-full p-4 text-sm text-gray-600 bg-white border border-gray-200 border-solid shadow-none cursor-pointer rounded-md drop-shadow-none hover:border-gray-200 focus:border-gray-200 hover:bg-gray-100 hover:text-gray-600 focus:text-gray-600"
-                            onClick={() => navigate(`jobs/${id}`)}
+                            onClick={async () => navigate(`jobs/${id}`)}
                             disabled={pendingJobCount === 0}
                           >
                             Preview jobs
