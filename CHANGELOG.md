@@ -8,6 +8,10 @@ For more information about each release including git tags and artifacts, see [R
 
 ## [Unreleased]
 
+### Added
+
+- Org-specific signal catalogs, provider policies, and evaluation context types in `@roostorg/coop-types` (v3.0.0) ([#1384](https://github.com/roostorg/coop/pull/1384) by [@juanmrad](https://github.com/juanmrad))
+
 ### Fixed
 
 - Zentropi Labeler signal failing on every call; labeler versions now require a labeler ID ([#1335](https://github.com/roostorg/coop/pull/1335) by [@reitblatt](https://github.com/reitblatt))

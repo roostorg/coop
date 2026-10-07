@@ -115,8 +115,11 @@ export type IntegrationConfigField = IntegrationConfigFieldBase &
     | Readonly<{
         /** Renders a dropdown of `options`. */
         inputType: 'select';
-        /** Must be non-empty; the stored value is `option.value`. */
-        options: readonly IntegrationConfigFieldOption[];
+        /** The stored value is `option.value`. */
+        options: readonly [
+          IntegrationConfigFieldOption,
+          ...IntegrationConfigFieldOption[],
+        ];
       }>
   );
 
@@ -529,10 +532,15 @@ export function isCoopIntegrationPlugin(
     return false;
   }
   const m = o.manifest as Record<string, unknown>;
+  const hasCatalogHooks =
+    o.refreshCatalog !== undefined || o.createCatalogSignal !== undefined;
   return (
     typeof m.id === 'string' &&
     typeof m.name === 'string' &&
     typeof m.version === 'string' &&
-    typeof m.requiresConfig === 'boolean'
+    typeof m.requiresConfig === 'boolean' &&
+    (!hasCatalogHooks ||
+      (typeof o.refreshCatalog === 'function' &&
+        typeof o.createCatalogSignal === 'function'))
   );
 }
