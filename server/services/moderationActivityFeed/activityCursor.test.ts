@@ -4,16 +4,11 @@ import {
 } from './activityCursor.js';
 
 describe('activityCursor', () => {
-  it('round-trips both store positions', () => {
+  it('round-trips a cursor that ends on a decision', () => {
     const cursor = {
-      decisions: {
-        ts: new Date('2026-08-05T12:00:00.000Z'),
-        id: '3f1a5c7e-0000-4000-8000-000000000001',
-      },
-      actions: {
-        ts: new Date('2026-08-05T11:00:00.000Z'),
-        id: 'manual-action-run:abc',
-      },
+      ts: new Date('2026-08-05T12:00:00.000Z'),
+      decisionId: '3f1a5c7e-0000-4000-8000-000000000001',
+      actionId: null,
     };
 
     expect(parseActivityCursor(serializeActivityCursor(cursor))).toEqual(
@@ -21,13 +16,11 @@ describe('activityCursor', () => {
     );
   });
 
-  it('round-trips a cursor where one store is exhausted', () => {
+  it('round-trips a cursor that ends on a manual action', () => {
     const cursor = {
-      decisions: null,
-      actions: {
-        ts: new Date('2026-08-05T11:00:00.000Z'),
-        id: 'manual-action-run:abc',
-      },
+      ts: new Date('2026-08-05T11:00:00.000Z'),
+      decisionId: null,
+      actionId: 'manual-action-run:abc',
     };
 
     expect(parseActivityCursor(serializeActivityCursor(cursor))).toEqual(
@@ -40,20 +33,18 @@ describe('activityCursor', () => {
     expect(parseActivityCursor(null)).toBeUndefined();
   });
 
-  it('rejects a malformed cursor rather than silently restarting the feed', () => {
-    // Silently returning "newest page" would make a paging bug look like the
-    // reader simply reached the top again.
+  it('rejects a malformed cursor', () => {
+    const ts = '2026-08-05T12:00:00.000Z';
     expect(() => parseActivityCursor('not-an-object')).toThrow(/cursor/i);
     expect(() => parseActivityCursor({})).toThrow(/cursor/i);
     expect(() =>
-      parseActivityCursor({
-        decisions: { ts: 'nonsense', id: 'x' },
-        actions: null,
-      }),
+      parseActivityCursor({ ts: 'nonsense', decisionId: 'x', actionId: null }),
     ).toThrow(/cursor/i);
-    // A bare single-position cursor is the old broken shape; reject it.
     expect(() =>
-      parseActivityCursor({ ts: '2026-08-05T12:00:00.000Z', id: 'x' }),
+      parseActivityCursor({ ts, decisionId: null, actionId: null }),
+    ).toThrow(/cursor/i);
+    expect(() =>
+      parseActivityCursor({ ts, decisionId: 'x', actionId: 'y' }),
     ).toThrow(/cursor/i);
   });
 });

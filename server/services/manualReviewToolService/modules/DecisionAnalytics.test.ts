@@ -138,6 +138,25 @@ describe('DecisionAnalytics', () => {
   );
 
   testWithDecisions()(
+    'a cursor without an id returns only decisions strictly before its time',
+    async ({ org, mrtService, insertDecision }) => {
+      const before = await insertDecision(minutesAfterBase(0));
+      await insertDecision(minutesAfterBase(1));
+      await insertDecision(minutesAfterBase(1));
+
+      const page = await mrtService.getDecisionsForActivityFeed({
+        userPermissions: [],
+        orgId: org.id,
+        input: {},
+        cursor: { ts: minutesAfterBase(1), id: null },
+        limit: 10,
+      });
+
+      expect(page.map((d) => d.id)).toEqual([before]);
+    },
+  );
+
+  testWithDecisions()(
     'returns every seeded decision exactly once across pages, with no gaps',
     async ({ org, mrtService, insertDecision }) => {
       const ids = await Promise.all([

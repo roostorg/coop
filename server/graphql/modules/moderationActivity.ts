@@ -1,5 +1,8 @@
 import { type ItemInvestigationService } from '../../services/itemInvestigationService/index.js';
-import { type ManualReviewToolService } from '../../services/manualReviewToolService/index.js';
+import {
+  RECENT_DECISIONS_PAGE_SIZE,
+  type ManualReviewToolService,
+} from '../../services/manualReviewToolService/index.js';
 import { type ActivityFeedFilterInput } from '../../services/moderationActivityFeed/index.js';
 import { UserPermission } from '../../services/userManagementService/index.js';
 import { filterNullOrUndefined } from '../../utils/collections.js';
@@ -12,17 +15,9 @@ import {
 } from '../generated.js';
 import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
 
-/** Matches the decisions feed's page size so the two merge evenly. */
-const DEFAULT_PAGE_SIZE = 100;
 const MAX_PAGE_SIZE = 200;
 const DEFAULT_ITEM_PAGE_SIZE = 100;
-/**
- * Covers any run Bulk Actioning can produce — its 1000-item limit is enforced
- * client-side only (`BulkActioningDashboard`), and `bulkExecuteActions` caps
- * nothing server-side, so a programmatic caller can still exceed this. The
- * panel keeps its truncation notice for that case rather than pretending the
- * list is always complete.
- */
+/** Bulk Actioning submits at most 1000 items per run. */
 const MAX_ITEM_PAGE_SIZE = 1000;
 
 const typeDefs = /* GraphQL */ `
@@ -133,12 +128,7 @@ type DecisionFilterEntry = NonNullable<
   ActivityFeedFilterInput['decisions']
 >[number];
 
-/**
- * Maps the GraphQL oneof-style decision filter to the service's tagged-union
- * shape. Mirrors the equivalent mapping in `manualReviewTool.ts`'s
- * `getRecentDecisions` resolver — kept separate rather than shared, since
- * touching that resolver is out of scope here.
- */
+/** Maps the GraphQL oneof-style decision filter to the service's shape. */
 function toDecisionFilterEntry(
   it: GQLRecentManualReviewDecisionType,
 ): DecisionFilterEntry | undefined {
@@ -203,11 +193,9 @@ const Query: GQLQueryResolvers = {
       },
       view: input.view ?? 'ALL',
       limit: Math.min(
-        Math.max(1, input.limit ?? DEFAULT_PAGE_SIZE),
+        Math.max(1, input.limit ?? RECENT_DECISIONS_PAGE_SIZE),
         MAX_PAGE_SIZE,
       ),
-      // Already decoded by the `Cursor` scalar; `parseActivityCursor` handles
-      // shape validation from here.
       cursor: input.cursor ?? undefined,
     });
   },
@@ -219,9 +207,6 @@ const Query: GQLQueryResolvers = {
     }
     // Manual actions are only ever taken from Investigation or Bulk Actioning,
     // so viewing them requires the permission that gates Investigation itself.
-    // EXTERNAL_MODERATOR — read-only access for external moderation partners —
-    // is the only role without it, and this resolver returns the full item-id
-    // list of a run, which is the one thing such an account must not enumerate.
     if (!user.getPermissions().includes(UserPermission.VIEW_INVESTIGATION)) {
       throw forbiddenError(
         'VIEW_INVESTIGATION permission required to view manual action items.',
@@ -236,11 +221,6 @@ const Query: GQLQueryResolvers = {
         Math.max(1, input.limit ?? DEFAULT_ITEM_PAGE_SIZE),
         MAX_ITEM_PAGE_SIZE,
       ),
-      // `offset` stays internal, not part of the public schema:
-      // `totalCount` rides on a `count() OVER ()` window over the returned
-      // rows, so paging past the end would make it report 0 — indistinguishable
-      // from "this operation had no items".
-      offset: 0,
     });
   },
 };

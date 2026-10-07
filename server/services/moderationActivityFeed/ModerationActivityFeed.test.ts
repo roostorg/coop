@@ -1,12 +1,9 @@
 import { vi } from 'vitest';
 
 import { UserPermission } from '../userManagementService/index.js';
+import { serializeActivityCursor } from './activityCursor.js';
 import { ModerationActivityFeed } from './ModerationActivityFeed.js';
 
-/**
- * Manual actions require VIEW_INVESTIGATION. Every role except
- * EXTERNAL_MODERATOR holds it, so this is the ordinary case.
- */
 const CAN_VIEW_ACTIONS = [UserPermission.VIEW_INVESTIGATION];
 
 const mrt = (decisions: unknown[]) => ({
@@ -148,11 +145,6 @@ describe('ModerationActivityFeed.getPage', () => {
   });
 
   it('hides manual actions from a caller without VIEW_INVESTIGATION', async () => {
-    // EXTERNAL_MODERATOR (read-only access for external moderation partners)
-    // is the only role lacking this permission, and holds VIEW_MRT alone.
-    // Manual actions are by construction taken from Investigation or Bulk
-    // Actioning, so such an account must not see them — nor be able to expand
-    // one into an enumeration of the item ids it touched.
     const m = mrt([decisionRow('d-1', '2026-08-05T14:00:00Z')]);
     const i = investigation([actionRow('a-1', '2026-08-05T13:00:00Z')]);
     const feed = new ModerationActivityFeed(m as never, i as never);
@@ -184,5 +176,190 @@ describe('ModerationActivityFeed.getPage', () => {
 
     expect(i.getRecentModeratorActions).not.toHaveBeenCalled();
     expect(page.rows).toEqual([]);
+  });
+
+  describe('cursor', () => {
+    const ts = new Date('2026-08-05T13:00:00.000Z');
+
+    it('after a decision, resumes decisions past it and includes actions at its time', async () => {
+      const m = mrt([]);
+      const i = investigation([]);
+      const feed = new ModerationActivityFeed(m as never, i as never);
+
+      await feed.getPage({
+        userPermissions: CAN_VIEW_ACTIONS,
+        orgId: 'org-1',
+        input: {},
+        view: 'ALL',
+        limit: 100,
+        cursor: serializeActivityCursor({
+          ts,
+          decisionId: 'd-1',
+          actionId: null,
+        }),
+      });
+
+      expect(m.getDecisionsForActivityFeed.mock.calls[0][0]).toMatchObject({
+        cursor: { ts, id: 'd-1' },
+      });
+      const actionsCall = i.getRecentModeratorActions.mock.calls[0][0] as {
+        cursor?: unknown;
+        before?: Date;
+      };
+      expect(actionsCall.cursor).toBeUndefined();
+      expect(actionsCall.before).toEqual(ts);
+    });
+
+    it('after an action, resumes actions past it and takes decisions before its time', async () => {
+      const m = mrt([]);
+      const i = investigation([]);
+      const feed = new ModerationActivityFeed(m as never, i as never);
+
+      await feed.getPage({
+        userPermissions: CAN_VIEW_ACTIONS,
+        orgId: 'org-1',
+        input: {},
+        view: 'ALL',
+        limit: 100,
+        cursor: serializeActivityCursor({
+          ts,
+          decisionId: null,
+          actionId: 'a-1',
+        }),
+      });
+
+      expect(m.getDecisionsForActivityFeed.mock.calls[0][0]).toMatchObject({
+        cursor: { ts, id: null },
+      });
+      expect(i.getRecentModeratorActions.mock.calls[0][0]).toMatchObject({
+        cursor: { ts, correlationId: 'a-1' },
+      });
+    });
+
+    it('keeps an end date that is earlier than the cursor', async () => {
+      const m = mrt([]);
+      const i = investigation([]);
+      const feed = new ModerationActivityFeed(m as never, i as never);
+      const endTime = new Date('2026-08-05T12:00:00.000Z');
+
+      await feed.getPage({
+        userPermissions: CAN_VIEW_ACTIONS,
+        orgId: 'org-1',
+        input: { endTime },
+        view: 'ALL',
+        limit: 100,
+        cursor: serializeActivityCursor({
+          ts,
+          decisionId: 'd-1',
+          actionId: null,
+        }),
+      });
+
+      const actionsCall = i.getRecentModeratorActions.mock.calls[0][0] as {
+        before?: Date;
+      };
+      expect(actionsCall.before).toEqual(endTime);
+    });
+  });
+
+  it('pages through a mixed feed with shared timestamps, returning every row once', async () => {
+    const at = (minute: number) =>
+      new Date(Date.UTC(2026, 7, 5, 12, minute)).toISOString();
+    const decisions = [
+      decisionRow('d-1', at(0)),
+      decisionRow('d-2', at(1)),
+      decisionRow('d-3', at(1)),
+      decisionRow('d-4', at(2)),
+      decisionRow('d-5', at(3)),
+    ];
+    const actions = [
+      actionRow('a-1', at(1)),
+      actionRow('a-2', at(1)),
+      actionRow('a-3', at(2)),
+      actionRow('a-4', at(4)),
+    ];
+    const byTimeThenIdDesc = (
+      x: { ts: number; id: string },
+      y: { ts: number; id: string },
+    ) => y.ts - x.ts || (x.id < y.id ? 1 : x.id > y.id ? -1 : 0);
+
+    const m = {
+      getDecisionsForActivityFeed: vi.fn(
+        async (opts: {
+          cursor?: { ts: Date; id: string | null };
+          limit: number;
+        }) =>
+          decisions
+            .map((d) => ({ d, ts: new Date(d.createdAt).valueOf(), id: d.id }))
+            .filter(({ ts, id }) => {
+              const c = opts.cursor;
+              if (!c) return true;
+              if (c.id === null) return ts < c.ts.valueOf();
+              return (
+                ts < c.ts.valueOf() || (ts === c.ts.valueOf() && id < c.id)
+              );
+            })
+            .sort(byTimeThenIdDesc)
+            .slice(0, opts.limit)
+            .map(({ d }) => d),
+      ),
+    };
+    const i = {
+      getRecentModeratorActions: vi.fn(
+        async (opts: {
+          cursor?: { ts: Date; correlationId: string };
+          before?: Date;
+          limit: number;
+        }) =>
+          actions
+            .map((a) => ({
+              a,
+              ts: a.occurredAt.valueOf(),
+              id: a.correlationId,
+            }))
+            .filter(({ ts, id }) => {
+              const { cursor, before } = opts;
+              if (before && ts > before.valueOf()) return false;
+              if (!cursor) return true;
+              return (
+                ts < cursor.ts.valueOf() ||
+                (ts === cursor.ts.valueOf() && id < cursor.correlationId)
+              );
+            })
+            .sort(byTimeThenIdDesc)
+            .slice(0, opts.limit)
+            .map(({ a }) => a),
+      ),
+      getManualActionItems: vi.fn(),
+    };
+    const feed = new ModerationActivityFeed(m as never, i as never);
+
+    let seen: string[] = [];
+    let cursor: Parameters<typeof feed.getPage>[0]['cursor'];
+    for (let pageCount = 0; pageCount < 20; pageCount++) {
+      const page = await feed.getPage({
+        userPermissions: CAN_VIEW_ACTIONS,
+        orgId: 'org-1',
+        input: {},
+        view: 'ALL',
+        limit: 2,
+        cursor,
+      });
+      seen = [...seen, ...page.rows.map((r) => r.id)];
+      if (page.nextCursor === null) break;
+      cursor = page.nextCursor;
+    }
+
+    expect(seen).toEqual([
+      'a-4',
+      'd-5',
+      'd-4',
+      'a-3',
+      'd-3',
+      'd-2',
+      'a-2',
+      'a-1',
+      'd-1',
+    ]);
   });
 });
