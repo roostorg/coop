@@ -39,7 +39,7 @@ Many other settings are only required if you are enabling specific features or c
 
 - Third-party integration keys in `server/.env.example` are generally optional unless you are enabling the corresponding integration.
 
-- Tracing and metrics are optional. The published server and worker images don't load the OpenTelemetry SDK, so they export nothing by default. See [Observability](observability.md#how-it-works).
+- Tracing and metrics are optional. The published server and worker images don't load the OpenTelemetry SDK, so they export nothing by default. See [Observability](observability.md#deployments).
 
 ### Before going live
 

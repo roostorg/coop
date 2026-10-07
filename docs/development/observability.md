@@ -37,6 +37,8 @@ Keep in mind that spans can contain user content. SQL text and Redis commands ar
 
 ## How it works
 
+### Loading the SDK
+
 Application code only uses `@opentelemetry/api`, which does nothing on its own. `npm run start:trace` brings it to life by preloading `nodejs-instrumentation` with `node --require`, so the SDK can patch libraries like `http`, `pg`, and `ioredis` before the app imports them.
 
 From there, the SDK (`nodejs-instrumentation/src/autoinstrumentation.ts`):
@@ -45,13 +47,25 @@ From there, the SDK (`nodejs-instrumentation/src/autoinstrumentation.ts`):
 - Propagates context with the AWS X-Ray header (`X-Amzn-Trace-Id`), not W3C `traceparent`.
 - Enables the standard Node.js auto-instrumentations (HTTP, Express, GraphQL, Postgres, Redis, Cassandra, AWS SDK). Outgoing HTTP spans are named `METHOD origin`, `/api/v1/ready` is ignored, and long Redis arguments are truncated.
 
+### Request tracing
+
 Most spans come from auto-instrumentation, so a typical request already shows its middleware, resolvers, and queries. Unhandled REST errors are also recorded, on a `handleError:app` span from the Express error handler in `server/api.ts`.
+
+### Background jobs
 
 The trail stops at the job queue. Trace context isn't passed through BullMQ, so `ItemProcessingWorker` jobs start a new trace rather than continuing the request that enqueued them.
 
-In deployments, note that the published Docker images don't include the SDK. Instead, `nodejs-instrumentation/Dockerfile` builds an image for injecting it with an init container, such as the OpenTelemetry Operator.
+### Frontend tracing
 
-## Adding spans
+Tracing can also start in the browser. Building the client with `VITE_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` enables `client/src/FrontendTracer.ts`, which traces requests as `coop-ui` and adds the X-Ray header so server spans join the browser's trace. Like `LOG_REQUEST_BODY`, it records request bodies. To use it locally, publish the collector's port 4318 and configure CORS on it.
+
+### Deployments
+
+The published Docker images don't include the SDK. Instead, `nodejs-instrumentation/Dockerfile` builds an image for injecting it with an init container, such as the OpenTelemetry Operator.
+
+## Instrumenting code
+
+### Adding spans
 
 Auto-instrumentation shows what the infrastructure did, but not what the work meant. To add that context, inject `Tracer` (`SafeTracer`), which ends spans and records errors for you. See the server [README](https://github.com/roostorg/coop/blob/main/server/README.md#tracinglogging) for more examples.
 
@@ -85,19 +99,15 @@ If an error is thrown inside a span, the span is marked as failed, unless the er
 
 Spans that describe meaningful operations belong in the codebase, and spans added only to investigate a problem should be removed before opening a PR.
 
-## Metrics
+### Metrics
 
 Where traces follow individual requests, metrics track totals over time. `Meter` (`CoopMeter`) defines the server's counters and histograms, named `coop-api.*`, for item submissions and processing, reports, appeals, and manual review. See [Manual-review Telemetry](deployment.md#manual-review-telemetry) for the manual-review metrics.
 
 Since the local collector doesn't accept them, collecting metrics means pointing `OTEL_EXPORTER_OTLP_METRICS_ENDPOINT` at a collector with a metrics pipeline.
 
-## Logging
+### Logging
 
 Coop leans on spans rather than log lines. `console` is disallowed by ESLint in server code, so diagnostic detail goes on spans as attributes or `span.addEvent()`, where it stays tied to the request. `logJson` and `logErrorJson` in `server/utils/logging.ts` cover startup, before the tracer exists.
-
-## Frontend tracing
-
-Tracing can also start in the browser. Building the client with `VITE_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` enables `client/src/FrontendTracer.ts`, which traces requests as `coop-ui` and adds the X-Ray header so server spans join the browser's trace. Like `LOG_REQUEST_BODY`, it records request bodies. To use it locally, publish the collector's port 4318 and configure CORS on it.
 
 ## Available IOC Services
 
