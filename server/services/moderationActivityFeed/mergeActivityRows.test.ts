@@ -27,7 +27,6 @@ describe('mergeActivityRows', () => {
         action('a-3', '2026-08-05T13:51:00Z'),
       ],
       10,
-      undefined,
     );
 
     expect(result.rows.map((r) => r.id)).toEqual(['d-9', 'a-4', 'a-3', 'd-8']);
@@ -38,13 +37,12 @@ describe('mergeActivityRows', () => {
       [decision('d-9', '2026-08-05T14:02:00Z')],
       [],
       10,
-      undefined,
     );
 
     expect(result.nextCursor).toBeNull();
   });
 
-  it('advances each store to its own last surviving row', () => {
+  it('points the next cursor at the last row when it is a manual action', () => {
     const result = mergeActivityRows(
       [
         decision('d-9', '2026-08-05T14:02:00Z'),
@@ -52,24 +50,17 @@ describe('mergeActivityRows', () => {
       ],
       [action('a-4', '2026-08-05T13:58:00Z')],
       2,
-      undefined,
     );
 
     expect(result.rows.map((r) => r.id)).toEqual(['d-9', 'a-4']);
     expect(parseActivityCursor(result.nextCursor)).toEqual({
-      decisions: { ts: new Date('2026-08-05T14:02:00Z'), id: 'd-9' },
-      actions: { ts: new Date('2026-08-05T13:58:00Z'), id: 'a-4' },
+      ts: new Date('2026-08-05T13:58:00Z'),
+      decisionId: null,
+      actionId: 'a-4',
     });
   });
 
-  it('keeps a store’s incoming position when it contributes nothing', () => {
-    // Resetting an idle store to null would restart it from the newest row and
-    // replay everything the reader has already paged past.
-    const incoming = {
-      decisions: null,
-      actions: { ts: new Date('2026-08-05T09:00:00Z'), id: 'a-1' },
-    };
-
+  it('points the next cursor at the last row when it is a decision', () => {
     const result = mergeActivityRows(
       [
         decision('d-3', '2026-08-05T13:00:00Z'),
@@ -78,13 +69,27 @@ describe('mergeActivityRows', () => {
       ],
       [],
       2,
-      incoming,
     );
 
     expect(parseActivityCursor(result.nextCursor)).toEqual({
-      decisions: { ts: new Date('2026-08-05T12:00:00Z'), id: 'd-2' },
-      actions: { ts: new Date('2026-08-05T09:00:00Z'), id: 'a-1' },
+      ts: new Date('2026-08-05T12:00:00Z'),
+      decisionId: 'd-2',
+      actionId: null,
     });
+  });
+
+  it('has more when the two sources together exceed the limit', () => {
+    const result = mergeActivityRows(
+      [
+        decision('d-2', '2026-08-05T12:00:00Z'),
+        decision('d-1', '2026-08-05T11:00:00Z'),
+      ],
+      [action('a-1', '2026-08-05T11:30:00Z')],
+      2,
+    );
+
+    expect(result.rows.map((r) => r.id)).toEqual(['d-2', 'a-1']);
+    expect(result.nextCursor).not.toBeNull();
   });
 
   it('never compares ids across stores on a timestamp tie', () => {
@@ -99,7 +104,6 @@ describe('mergeActivityRows', () => {
       ],
       [action('manual-action-run:zzz', '2026-08-05T13:00:00Z')],
       10,
-      undefined,
     );
 
     expect(result.rows.map((r) => r.kind)).toEqual([
@@ -117,7 +121,6 @@ describe('mergeActivityRows', () => {
       ],
       [],
       2,
-      undefined,
     );
 
     expect(result.rows.map((r) => r.id)).toEqual(['d-3', 'd-2']);
@@ -125,7 +128,7 @@ describe('mergeActivityRows', () => {
   });
 
   it('returns an empty page with no cursor', () => {
-    expect(mergeActivityRows([], [], 10, undefined)).toEqual({
+    expect(mergeActivityRows([], [], 10)).toEqual({
       rows: [],
       nextCursor: null,
     });

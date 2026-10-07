@@ -34,7 +34,9 @@ export type RecentDecisionsFilterInput = {
   page: number;
 };
 
-export type ActivityFeedDecisionCursor = { ts: Date; id: string };
+export const RECENT_DECISIONS_PAGE_SIZE = 100;
+
+export type ActivityFeedDecisionCursor = { ts: Date; id: string | null };
 
 const MAX_DECISIONS_LIMIT = 200;
 
@@ -432,7 +434,7 @@ export default class DecisionAnalytics {
   }) {
     const { userPermissions, orgId, input } = opts;
     const { page } = input;
-    const limit = 100;
+    const limit = RECENT_DECISIONS_PAGE_SIZE;
     const decisions = await this.buildRecentDecisionsQuery({
       userPermissions,
       orgId,
@@ -467,15 +469,18 @@ export default class DecisionAnalytics {
       input,
       limit,
     });
-    const pagedQuery = cursor
-      ? baseQuery.where(
-          sql`(created_at, id)`,
-          '<',
-          // `id` is uuid. Without the cast Postgres infers the bind type from
-          // the column, and a non-uuid string raises a Postgres error.
-          sql`(${cursor.ts}, ${cursor.id}::uuid)`,
-        )
-      : baseQuery;
+    const pagedQuery =
+      cursor === undefined
+        ? baseQuery
+        : cursor.id === null
+          ? baseQuery.where('created_at', '<', cursor.ts)
+          : baseQuery.where(
+              sql`(created_at, id)`,
+              '<',
+              // `id` is uuid. Without the cast Postgres infers the bind type
+              // from the column, and a non-uuid string raises a Postgres error.
+              sql`(${cursor.ts}, ${cursor.id}::uuid)`,
+            );
     const decisions = await pagedQuery
       .orderBy('created_at', 'desc')
       .orderBy('id', 'desc')
