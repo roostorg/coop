@@ -6,10 +6,12 @@ import { isForeignKeyViolationError } from '../../../utils/kysely.js';
 import type { ReadonlyDeep } from '../../../utils/typescript-types.js';
 import { type ManualReviewToolServicePg } from '../dbTypes.js';
 import type { RecentDecisionsFilterInput } from './DecisionAnalytics.js';
+import type QueueOperations from './QueueOperations.js';
 
 export default class SkipOperations {
   constructor(
     private readonly pgQuery: Kysely<ManualReviewToolServicePg>,
+    private readonly queueOps: QueueOperations,
     private readonly meter?: Dependencies['Meter'],
   ) {}
 
@@ -43,6 +45,13 @@ export default class SkipOperations {
 
       throw e;
     }
+
+    await this.queueOps.recordReviewerSkip({
+      orgId,
+      queueId,
+      reviewerId: userId,
+      jobId,
+    });
   }
 
   async getSkippedJobCount(input: SkippedJobCountInput) {

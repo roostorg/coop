@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router';
 
 import DashboardHeader from '../dashboard/components/DashboardHeader';
 
@@ -43,6 +43,10 @@ gql`
       ignoreCallbackUrl
       partialItemsEndpoint
       partialItemsRequestHeaders
+      jobPriorityWeights {
+        property
+        weight
+      }
     }
     appealSettings {
       appealsCallbackUrl
@@ -80,6 +84,13 @@ gql`
   }
   mutation UpdateIgnoreCallbackUrl($url: String) {
     updateIgnoreCallbackUrl(url: $url)
+  }
+  mutation SetJobPriorityWeights($input: SetJobPriorityWeightsInput!) {
+    setJobPriorityWeights(input: $input) {
+      ... on SetJobPriorityWeightsSuccessResponse {
+        _
+      }
+    }
   }
 `;
 

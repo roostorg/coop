@@ -11,7 +11,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import React, { ReactElement, useEffect, useMemo, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router';
 
 import DashboardMenuButton from '@/webpages/dashboard/components/DashboardMenuButton';
 

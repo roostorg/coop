@@ -14,7 +14,7 @@ import {
   useLocation,
   useMatches,
   useNavigate,
-} from 'react-router-dom';
+} from 'react-router';
 
 import FullScreenLoading from '../../components/common/FullScreenLoading';
 
@@ -471,6 +471,12 @@ export function DashboardRoutes() {
           <Navigate replace to="/dashboard/settings?tab=partial-items" />
         ),
       },
+      {
+        path: 'settings/job_priorities',
+        element: (
+          <Navigate replace to="/dashboard/settings?tab=review-console" />
+        ),
+      },
       // Account
       {
         path: 'account',
@@ -501,7 +507,7 @@ export default function Dashboard() {
   const [logout, { client }] = useGQLLogoutMutation({
     onError: () => {},
     onCompleted: (_data) => {
-      client.clearStore().then(() => navigate('/'));
+      client.clearStore().then(async () => navigate('/'));
     },
     refetchQueries: [namedOperations.Query.PermissionGatedRouteLoggedInUser],
   });

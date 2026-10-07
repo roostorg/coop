@@ -40,8 +40,8 @@ const harness = vi.hoisted<Harness>(() => ({
   onSubmit: undefined,
 }));
 
-vi.mock('react-router-dom', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('react-router-dom')>()),
+vi.mock('react-router', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('react-router')>()),
   useParams: () => harness.route,
   useNavigate: () => harness.navigate,
 }));

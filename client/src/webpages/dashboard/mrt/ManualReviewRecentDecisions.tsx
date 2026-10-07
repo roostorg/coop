@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 
 import ComponentLoading from '../../../components/common/ComponentLoading';
 import CoopBadge, { type BadgeColorVariant } from '../components/CoopBadge';

@@ -13,7 +13,7 @@ import {
   within,
 } from '@testing-library/react';
 import { HelmetProvider } from 'react-helmet-async';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 
 import ManageUsers from './ManageUsers';
 

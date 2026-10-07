@@ -2,7 +2,7 @@ import { gql } from '@apollo/client';
 import { ItemIdentifier } from '@roostorg/coop-types';
 import { Alert, Input } from 'antd';
 import { useEffect, useState, type ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 
 import ComponentLoading from '../../../components/common/ComponentLoading';
 import CoopButton from '../components/CoopButton';
