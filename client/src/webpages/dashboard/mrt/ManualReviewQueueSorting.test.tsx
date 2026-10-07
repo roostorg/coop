@@ -12,21 +12,22 @@ const queues = [
   { id: 'queue-mike', name: 'Mike' },
 ];
 
-const recentDecisions = queues.map((queue, index) => ({
-  __typename: 'ManualReviewDecision',
+const recentActivityRows = queues.map((queue, index) => ({
+  __typename: 'ReviewJobDecisionRow',
   id: `decision-${index}`,
+  ts: `2026-08-${18 - index}T12:00:00.000Z`,
   jobId: `job-${index}`,
   queueId: queue.id,
   reviewerId: null,
   itemId: `item-${index}`,
   itemTypeId: 'user',
   decisions: [{ __typename: 'IgnoreDecisionComponent', type: 'IGNORE' }],
-  relatedActions: [],
-  createdAt: `2026-08-${18 - index}T12:00:00.000Z`,
   decisionReason: null,
+  assignedAt: null,
+  jobCreatedAt: null,
 }));
 
-const getRecentDecisions = vi.fn();
+const getModerationActivity = vi.fn();
 
 vi.mock('../../../graphql/generated', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../../graphql/generated')>()),
@@ -46,12 +47,17 @@ vi.mock('../../../graphql/generated', async (importOriginal) => ({
     },
   }),
   useGQLGetDecidedJobFromJobIdQuery: () => ({ data: undefined }),
-  useGQLGetRecentDecisionsLazyQuery: () => [
-    getRecentDecisions,
+  useGQLGetRecentModerationActivityLazyQuery: () => [
+    getModerationActivity,
     {
       loading: false,
       error: undefined,
-      data: { getRecentDecisions: recentDecisions },
+      data: {
+        recentModerationActivity: {
+          rows: recentActivityRows,
+          nextCursor: null,
+        },
+      },
     },
   ],
   useGQLGetSkipsForRecentDecisionsLazyQuery: () => [vi.fn()],
@@ -89,7 +95,7 @@ function expectQueueSorting() {
 describe('manual review queue sorting', () => {
   beforeEach(() => {
     localStorage.clear();
-    getRecentDecisions.mockClear();
+    getModerationActivity.mockClear();
   });
 
   it('sorts current jobs by the rendered queue name', () => {

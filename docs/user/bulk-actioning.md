@@ -33,3 +33,14 @@ For routine moderation, prefer queue review, which gives reviewers per-item cont
 ## Logging
 
 Bulk actions appear in the **Recent Decisions** log alongside queue-based decisions, so there is a full audit trail of what was actioned, by whom, and under which policies.
+
+Use the **Show** control there to switch between all activity, queue decisions only, or manual actions only. The **Origin** column marks where each row came from — `Review Job` for a queue decision, `Manual Action` for anything taken from Bulk Actioning or Investigation.
+
+A few things specific to manual action rows:
+
+- Each bulk run is **one row**, not one per item, with a count of the items it touched. Expand the row to see every item the run touched, with failures marked.
+- If any action failed to reach your platform, the row shows how many failed. The failure reason is not recorded.
+- Manual actions have no queue and no decision type, so applying a **Queue** or **decision-type** filter switches the log's Show control to `Decisions` and explains why. Clearing the filter restores your previous view.
+- Manual actions are **not** filtered by child-safety permissions — unlike review-job decisions on NCMEC jobs, which stay restricted to reviewers with the child-safety permission.
+- When manual actions are included, the log only covers a bounded recent window; switch to `Decisions` for unbounded history.
+- The **Download** button exports whatever the Show control is set to. A decisions-only export keeps the original columns, so existing tooling is unaffected.
