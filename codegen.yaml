@@ -157,3 +157,9 @@ generates:
         ManualReviewJob: ../services/manualReviewToolService/index.js#ManualReviewJobOrAppeal
         SignalWithScore: ../services/analyticsQueries/RuleActionInsights.js#SignalWithScore
         ReportingRuleInsights: ../services/reportingService/ReportingRules.js#ReportingRuleWithoutVersion
+        # The merged activity feed returns one shared `ActivityRow` shape for
+        # both rows kinds; each type's field resolvers project out of its
+        # `payload`. See `moderationActivityFeed/mergeActivityRows.ts`.
+        ModerationActivityRow: ../services/moderationActivityFeed/index.js#ActivityRow
+        ReviewJobDecisionRow: ../services/moderationActivityFeed/index.js#ActivityRow
+        ManualActionRow: ../services/moderationActivityFeed/index.js#ActivityRow
