@@ -1,0 +1,19 @@
+.github/copilot-instructions.md
+  s_83bc2ecd014bff::t_055afc2de7c3d9 35-51
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6539ac9809c3a41af323c53fa2164c349769aa82",
+  "prompts": {},
+  "sessions": {
+    "s_83bc2ecd014bff": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "c1970117-7426-41d2-a40f-2c083a933b75",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
