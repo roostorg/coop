@@ -40,7 +40,7 @@
             const path_to_root = "../";
             const default_light_theme = "roost";
             const default_dark_theme = "roost";
-            window.path_to_searchindex_js = "../searchindex-8f9ec48f.js";
+            window.path_to_searchindex_js = "../searchindex-cf229e23.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-33b43635.js"></script>
@@ -208,7 +208,7 @@
 <p><strong>Inbound report flagged as CSAM</strong>: When your platform sends a user report to Coop flagged as CSAM, Coop routes it directly to the NCMEC queue without evaluating normal routing rules.</p>
 </li>
 <li>
-<p><strong>Manual escalation</strong>: In any review job, moderators with NCMEC access can select <strong>Enqueue to NCMEC</strong> from the action list. This immediately moves the job to the NCMEC queue.</p>
+<p><strong>Manual escalation</strong>: In a User review job, or a Content review job linked to a User through its <code>creatorId</code> role, moderators with NCMEC access can select <strong>Enqueue to NCMEC</strong> from the action list. For Content without a creator value, the action is disabled because NCMEC jobs must be linked to a user. If the creator cannot be resolved to a User ItemType, the decision is rejected and the original review job stays in its queue.</p>
 </li>
 </ol>
 <p>See <a href="../integrations/ncmec.html#routing-content-to-ncmec">Routing Content to NCMEC</a> for setup.</p>

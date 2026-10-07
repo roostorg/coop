@@ -40,7 +40,7 @@
             const path_to_root = "../";
             const default_light_theme = "roost";
             const default_dark_theme = "roost";
-            window.path_to_searchindex_js = "../searchindex-8f9ec48f.js";
+            window.path_to_searchindex_js = "../searchindex-cf229e23.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-33b43635.js"></script>
@@ -203,7 +203,7 @@
 <p><strong>CyberTipline API credentials</strong>: username and password from NCMEC to submit reports to the <a href="https://report.cybertip.org/ispws/documentation/index.html">CyberTipline API</a>.</p>
 </li>
 <li>
-<p><strong>“User” ItemType with a <code>creatorId</code> field</strong>: NCMEC jobs are centered on a user, not individual pieces of content. Coop extracts the user from a content item via a <code>creatorId</code> field (a <code>RELATED_ITEM</code> field referencing the User Item Type), then aggregates all media associated with that user into a single NCMEC review job.</p>
+<p><strong>Content ItemTypes with a <code>creatorId</code> schema field role</strong>: NCMEC jobs are centered on a user, not individual pieces of content. For every Content ItemType that can be escalated to NCMEC, map <code>creatorId</code> to a <code>RELATED_ITEM</code> field that references a User ItemType. Coop uses that field to identify the user and aggregate their media into a single NCMEC review job. User items can be escalated directly and do not need this role.</p>
 </li>
 <li>
 <p><strong>Dedicated NCMEC manual review queue</strong> for Coop to route jobs to. Whether decisions made from this queue submit real CyberTips or go to NCMEC’s sandbox is controlled by the <code>NCMEC_ENV</code> environment variable on the Coop server; see <a href="#test-vs-production-submissions">Test vs. Production Submissions</a>.</p>
@@ -271,7 +271,7 @@
 }
 </code></pre>
 <h3 id="4-manual-escalation"><a class="header" href="#4-manual-escalation">4. Manual escalation</a></h3>
-<p>In any review job, moderators with NCMEC access can select <strong>Enqueue to NCMEC</strong> from the action list. This immediately moves the job to the NCMEC queue.</p>
+<p>In a User review job, or a Content review job whose item resolves to a User through its <code>creatorId</code> role, moderators with NCMEC access can select <strong>Enqueue to NCMEC</strong> from the action list. If a Content item has no creator value, the action is disabled and explains that the job must be linked to a user. The server also rejects the decision if the creator cannot be resolved to a User ItemType, leaving the original review job in its queue.</p>
 <h2 id="cybertip-submission-flow"><a class="header" href="#cybertip-submission-flow">CyberTip submission flow</a></h2>
 <p>When a reviewer submits a CyberTip, Coop performs the following steps:</p>
 <ol>
