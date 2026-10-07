@@ -1,0 +1,293 @@
+README.md
+  s_9fec762e193d5b::t_c7efe82be4a54e 31
+client/package-lock.json
+  s_9fec762e193d5b::t_eaae012a8be3d1 58,3775-3779,6502-6507,9169-9171,11105-11107,11110-11111,11114,11117-11118,11120-11123,11736-11738
+client/package.json
+  s_9fec762e193d5b::t_f2a8276c724d1d 67
+client/src/components/ErrorBoundary.tsx
+  s_9fec762e193d5b::t_cfe2dd8ab5970c 4
+client/src/components/LegacyCSSProvider.tsx
+  s_9fec762e193d5b::t_61bd1e16ef2979 2
+client/src/components/Sidebar.test.tsx
+  s_9fec762e193d5b::t_50d72639439e79 4
+client/src/components/Sidebar.tsx
+  s_9fec762e193d5b::t_b231b4cd99a626 14
+client/src/coop-ui/Button.test.tsx
+  s_9fec762e193d5b::t_cc09fd09d93155 4
+client/src/graphql/generated.ts
+  s_9fec762e193d5b::t_a495fd0c3a9443 793,1168,1186-1191,1209,1798-1823,2291,2596,2609,2614,2860-2863,2930-2934,3319,4389-4400,4916,5472,5599-5600,5604,5606-5610,10040,10131,10137,10655,25239-25243,25343-25354,26828,27339-27341,27344-27345,27347-27350,27353-27357,27360,27362-27363,27370,27372,27377,27379-27380,27385-27387,27389-27390,27392-27394,27396-27397,33147,33400,33405,33575,44756-44759,45351-45403,46011,46095
+client/src/graphql/operations/hashBanks.ts
+  s_9fec762e193d5b::t_296102344d4a81 29,134-136,139-140,142-145
+client/src/routing/auth.tsx
+  s_9fec762e193d5b::t_5915bd71fc695e 3
+client/src/routing/useRouteQueryParams.ts
+  s_9fec762e193d5b::t_b1298d546f4273 2
+client/src/webpages/App.tsx
+  s_9fec762e193d5b::t_0eb1fbf0e02008 2-3
+client/src/webpages/auth/Login.tsx
+  s_9fec762e193d5b::t_211101441256a9 7,69
+client/src/webpages/auth/LoginSSO.tsx
+  s_9fec762e193d5b::t_1ab999261812e4 8
+client/src/webpages/auth/RejectedByAdmin.tsx
+  s_9fec762e193d5b::t_e8252b9678f286 5,35
+client/src/webpages/auth/SignUp.tsx
+  s_9fec762e193d5b::t_89fb8301fcde2c 5
+client/src/webpages/auth/forgot_password/ForgotPassword.tsx
+  s_9fec762e193d5b::t_66821a89b68860 5
+client/src/webpages/auth/forgot_password/ResetPassword.tsx
+  s_9fec762e193d5b::t_437e86df1f1c7f 5
+client/src/webpages/dashboard/Dashboard.tsx
+  s_9fec762e193d5b::t_d446029a8b8da9 17,474-479,510
+client/src/webpages/dashboard/Layout.tsx
+  s_9fec762e193d5b::t_6a5ad5a09527cf 3
+client/src/webpages/dashboard/actions/ActionForm.tsx
+  s_9fec762e193d5b::t_d2fbdb2a3e83d5 7
+client/src/webpages/dashboard/actions/ActionsDashboard.tsx
+  s_9fec762e193d5b::t_1162f1fbd6650b 5
+client/src/webpages/dashboard/banks/MatchingBanksDashboard.tsx
+  s_9fec762e193d5b::t_9e58bf9fbdae28 6
+client/src/webpages/dashboard/banks/hash/HashBankForm.tsx
+  s_9fec762e193d5b::t_4f4648cecf98d3 4,20,25-62,286,289-292,332,335-338,391,395-396,398,434-436,471,474,539-542,578-582,602-606,754-762
+client/src/webpages/dashboard/banks/hash/HashBanksDashboard.tsx
+  s_9fec762e193d5b::t_316fed2cadebfd 5
+client/src/webpages/dashboard/banks/location/LocationBankForm.tsx
+  s_9fec762e193d5b::t_ee5c23e8e7736b 6
+client/src/webpages/dashboard/banks/location/LocationBanksDashboard.tsx
+  s_9fec762e193d5b::t_b88a5b428a5662 5
+client/src/webpages/dashboard/banks/text/TextBankForm.tsx
+  s_9fec762e193d5b::t_c3e2889a9442ba 6
+client/src/webpages/dashboard/banks/text/TextBanksDashboard.tsx
+  s_9fec762e193d5b::t_368be1d4942a7c 6
+client/src/webpages/dashboard/bulk_actioning/BulkActioningDashboard.tsx
+  s_9fec762e193d5b::t_f4c8ef2610f8c8 6
+client/src/webpages/dashboard/components/CoopButton.tsx
+  s_9fec762e193d5b::t_5735f901ef563d 4
+client/src/webpages/dashboard/components/DashboardMenuButton.tsx
+  s_9fec762e193d5b::t_d9274c1dba2470 3
+client/src/webpages/dashboard/components/EmptyDashboard.tsx
+  s_9fec762e193d5b::t_268a63bf432852 2
+client/src/webpages/dashboard/components/SubmitButton.tsx
+  s_9fec762e193d5b::t_a5ce3d65791f61 4
+client/src/webpages/dashboard/components/table/Table.test.tsx
+  s_9fec762e193d5b::t_152f28af1cd9a2 5
+client/src/webpages/dashboard/components/table/Table.tsx
+  s_9fec762e193d5b::t_b023c39e74a43d 7,29-30,51,69
+client/src/webpages/dashboard/components/table/sort.test.tsx
+  s_9fec762e193d5b::t_c53a8478dfcdec 1-35
+client/src/webpages/dashboard/components/table/sort.tsx
+  s_9fec762e193d5b::t_b740dabb3e9982 39-51
+client/src/webpages/dashboard/integrations/IntegrationCard.tsx
+  s_9fec762e193d5b::t_12d2b51d668509 2
+client/src/webpages/dashboard/integrations/IntegrationConfigForm.tsx
+  s_9fec762e193d5b::t_92654694f17c3b 4
+client/src/webpages/dashboard/investigation/InvestigationDashboard.tsx
+  s_9fec762e193d5b::t_5f573d76c871cf 3
+client/src/webpages/dashboard/investigation/ItemInvestigation.tsx
+  s_9fec762e193d5b::t_0ae0a4bf75567a 5
+client/src/webpages/dashboard/investigation/ItemInvestigationRuleResults.tsx
+  s_9fec762e193d5b::t_dd67d943d85f77 6,230
+client/src/webpages/dashboard/investigation/ItemsByIpAddress.tsx
+  s_9fec762e193d5b::t_58277e296315a2 3
+client/src/webpages/dashboard/item_types/ItemTypeForm.tsx
+  s_9fec762e193d5b::t_c5dd987d517aa8 10
+client/src/webpages/dashboard/item_types/ItemTypesDashboard.tsx
+  s_9fec762e193d5b::t_eab5d7e855bfdf 15
+client/src/webpages/dashboard/mrt/ManualReviewQueueForm.tsx
+  s_9fec762e193d5b::t_0f0bb98f0acbab 9,19,83,156,183,316,352,364,397,409,656-690
+client/src/webpages/dashboard/mrt/ManualReviewQueueJobsPreview.tsx
+  s_9fec762e193d5b::t_a382dfe5e36a76 4,13,16-19,42,47,140-145,171,215,243-247,251-256
+client/src/webpages/dashboard/mrt/ManualReviewQueueSorting.test.tsx
+  s_9fec762e193d5b::t_6db56b584f8585 3
+client/src/webpages/dashboard/mrt/ManualReviewQueuesDashboard.test.tsx
+  s_9fec762e193d5b::t_8f85252e7e60b0 1-95
+client/src/webpages/dashboard/mrt/ManualReviewQueuesDashboard.tsx
+  s_9fec762e193d5b::t_d8a60502330565 1,9,23,71,185,200,214,353,373-374,384-391,626-632,683,696-710,796,872-885,891
+client/src/webpages/dashboard/mrt/ManualReviewRecentDecisions.tsx
+  s_9fec762e193d5b::t_24da9ec3e95079 14
+client/src/webpages/dashboard/mrt/manual_review_job/ManualReviewJobDequeueErrorComponent.tsx
+  s_9fec762e193d5b::t_25411acd428a28 2,25
+client/src/webpages/dashboard/mrt/manual_review_job/ManualReviewJobReview.test.tsx
+  s_9fec762e193d5b::t_1f2adc3dbc4861 43-44
+client/src/webpages/dashboard/mrt/manual_review_job/ManualReviewJobReview.tsx
+  s_9fec762e193d5b::t_868daddff91426 17,392,397,526-527,799,828,841-845
+client/src/webpages/dashboard/mrt/manual_review_job/MergedReportsComponent.test.tsx
+  s_9fec762e193d5b::t_faed85a2a21dd7 8
+client/src/webpages/dashboard/mrt/manual_review_job/MergedReportsComponent.tsx
+  s_9fec762e193d5b::t_2f97e11085c7a8 11
+client/src/webpages/dashboard/mrt/manual_review_job/ReportInfoComponent.tsx
+  s_9fec762e193d5b::t_2e5e74bab913cd 19
+client/src/webpages/dashboard/mrt/manual_review_job/v2/ManualReviewJobEmptyQueue.tsx
+  s_9fec762e193d5b::t_c469f4895a2606 2,19-22
+client/src/webpages/dashboard/mrt/manual_review_job/v2/ManualReviewJobFieldsComponent.tsx
+  s_9fec762e193d5b::t_008ba2f147178c 14
+client/src/webpages/dashboard/mrt/manual_review_job/v2/ncmec/NCMECReviewUser.tsx
+  s_9fec762e193d5b::t_4ff2677a36535e 11
+client/src/webpages/dashboard/mrt/visualization/ManualReviewDashboardInsightsCard.tsx
+  s_9fec762e193d5b::t_9c7cbc12a0d680 11
+client/src/webpages/dashboard/ncmec/NcmecReportsDashboard.tsx
+  s_9fec762e193d5b::t_7f8101d1be7b8b 25,699
+client/src/webpages/dashboard/policies/PoliciesDashboard.tsx
+  s_9fec762e193d5b::t_183eac17bed9c1 12,263,274,404
+client/src/webpages/dashboard/policies/PolicyForm.tsx
+  s_9fec762e193d5b::t_2daa795dd0b41a 11,191
+client/src/webpages/dashboard/rules/dashboard/ReportingRulesDashboard.tsx
+  s_9fec762e193d5b::t_d24910bd68e883 7
+client/src/webpages/dashboard/rules/dashboard/RulesDashboard.tsx
+  s_9fec762e193d5b::t_bdf0b1a1c7bcbe 16
+client/src/webpages/dashboard/rules/info/ReportingRuleInfo.tsx
+  s_9fec762e193d5b::t_ddcd4bd3cf75ce 3,48,52-53
+client/src/webpages/dashboard/rules/info/RuleInfo.tsx
+  s_9fec762e193d5b::t_855301cea74343 4,56,60
+client/src/webpages/dashboard/rules/info/insights/ReportingRuleInsightsSamplesTable.tsx
+  s_9fec762e193d5b::t_d21185a33a1211 9
+client/src/webpages/dashboard/rules/info/insights/RuleInsightsSamplesTable.tsx
+  s_9fec762e193d5b::t_7e693ea0101d40 10
+client/src/webpages/dashboard/rules/rule_form/ReportingRuleForm.tsx
+  s_9fec762e193d5b::t_f5016d59601ba3 7
+client/src/webpages/dashboard/rules/rule_form/RuleForm.tsx
+  s_9fec762e193d5b::t_e9d9f24feea914 33
+client/src/webpages/dashboard/userStrikes/PolicyScoresTab.test.tsx
+  s_9fec762e193d5b::t_8629c0f227e307 2
+client/src/webpages/dashboard/userStrikes/PolicyScoresTab.tsx
+  s_9fec762e193d5b::t_dd3b6353633e9d 12,393
+client/src/webpages/dashboard/userStrikes/StrikeAnalyticsTab.tsx
+  s_9fec762e193d5b::t_1a6bb14d35cdd8 10
+client/src/webpages/settings/AccountSettings.tsx
+  s_9fec762e193d5b::t_0d1e50c62da4e3 27
+client/src/webpages/settings/ApiAuthenticationSettings.tsx
+  s_9fec762e193d5b::t_5603934ec42e65 11
+client/src/webpages/settings/ManageUsers.test.tsx
+  s_9fec762e193d5b::t_93dc65edc32386 16
+client/src/webpages/settings/ManageUsers.tsx
+  s_9fec762e193d5b::t_059d12dff225dd 6
+client/src/webpages/settings/ManageUsersInviteUserSection.test.tsx
+  s_9fec762e193d5b::t_fc020b11137e02 8
+client/src/webpages/settings/NCMECSettings.tsx
+  s_9fec762e193d5b::t_40c46f7c0c2b16 24
+client/src/webpages/settings/SettingsPage.test.tsx
+  s_9fec762e193d5b::t_c60db30dda93e9 26,102,513,521-539
+client/src/webpages/settings/SettingsPage.tsx
+  s_9fec762e193d5b::t_65eec3be2e7bc9 12,46-49,88-94
+client/src/webpages/settings/jobPriorityWeights.test.ts
+  s_9fec762e193d5b::t_df23bcf6b1b3e2 1-93
+client/src/webpages/settings/jobPriorityWeights.ts
+  s_9fec762e193d5b::t_29f8e98e1a3ab1 1-65
+client/src/webpages/settings/tabs/JobPriorityWeightsSection.tsx
+  s_9fec762e193d5b::t_592bb84d307c1e 1-67
+client/src/webpages/settings/tabs/ReviewConsoleTab.tsx
+  s_9fec762e193d5b::t_500aa3e3a3262d 7,9,19-24,29-30,46,57,61-64,91-92,103-109,118-119,147-151,272-273
+client/tsconfig.json
+  s_9fec762e193d5b::t_05a50e3f5e398a 15
+db/package-lock.json
+  s_9fec762e193d5b::t_12a673dc4b12a9 1791-1793
+db/src/scripts/api-server-pg/2026.09.26T01.32.20.add_sort_type_to_mrt_queues.sql
+  s_9fec762e193d5b::t_0b033f8003ba3f 1-9
+db/src/scripts/api-server-pg/2026.10.06T12.25.15.add_weighted_sort_type.sql
+  s_9fec762e193d5b::t_b3d8f79ab70277 1-8
+db/src/scripts/api-server-pg/2026.10.06T12.25.16.add_job_priority_weights_table.sql
+  s_9fec762e193d5b::t_e75bf46deccf46 1-18
+docs/images/adopters/README.md
+  s_9fec762e193d5b::t_f510ee9876c91f 3-11
+docs/images/adopters/kyodo.svg
+  s_9fec762e193d5b::t_171c8ff2991125 1-46
+docs/images/adopters/musubi.svg
+  s_9fec762e193d5b::t_a0ec76576bf9f9 1-46
+docs/images/adopters/notion.svg
+  s_9fec762e193d5b::t_92e267fdbe209a 1-46
+docs/integrations/hma.md
+  s_9fec762e193d5b::t_97bc05b231a358 9,29,39-44
+docs/user/appeals.md
+  s_9fec762e193d5b::t_3b3e096615170f 13-14
+hma/Dockerfile
+  s_9fec762e193d5b::t_10d98539bb3863 1
+migrator/package-lock.json
+  s_9fec762e193d5b::t_df1dc2353765f1 1426-1428,1430,2601-2603
+package-lock.json
+  s_9fec762e193d5b::t_7e1323b1e0eada 1310-1312,1316,1320,1329-1360,4957-4959
+server/graphql/generated.ts
+  s_9fec762e193d5b::t_3c3d1c19cd62b0 863,1238,1256-1261,1279,1868-1893,2361,2666,2679,2684,2930-2933,3000-3004,3389,4459-4470,4986,5741,6085,6210-6213,6575-6579,6904,6994-6995,7270-7272,9163-9179,9211-9215,10117-10129,10667-10671,11528-11533,11645-11653,12230-12234,14004-14025,15448,15499,15638-15639
+server/graphql/modules/hashBanks/resolvers.test.ts
+  s_9fec762e193d5b::t_c567783e8818e5 5,21-22,29-33,35-37,44-52,60,74,79,84,99,104-109,113,116-117,120-121,124,126-132,135-136,139,142-143,147-148,151-153,156,160,162,164,168-171,173-190,194-195,200,202,206-209,211-212,215,217,219-230,232-266,275-292,302
+server/graphql/modules/hashBanks/resolvers.ts
+  s_9fec762e193d5b::t_38affea80d9108 1-4,11-15,24-68,123-127,164-178,180,189,194,232,246-260,262,270-279,281-284,287
+server/graphql/modules/hashBanks/schema.ts
+  s_9fec762e193d5b::t_39d1e61bd40e93 6,46-51,107-111
+server/graphql/modules/manualReviewTool.resolver.test.ts
+  s_9fec762e193d5b::t_b146e337a88957 29-32,80-84,113-116,140-141,146-221
+server/graphql/modules/manualReviewTool.ts
+  s_9fec762e193d5b::t_55309e5aa122a5 48,64-94,119,474,488,1096-1098,1975-1981,2588,2605,2647,2665,2880-2898
+server/graphql/modules/org.jobPriorityWeights.resolver.test.ts
+  s_9fec762e193d5b::t_7fe5f741654ff7 1-107
+server/graphql/modules/org.ts
+  s_9fec762e193d5b::t_198bbffcd000cc 93,814-832
+server/graphql/utils/manualReviewJobReportCounts.ts
+  s_9fec762e193d5b::t_09418618f1d1d7 1-31
+server/iocContainer/index.ts
+  s_9fec762e193d5b::t_d168fa117eeb86 961-965
+server/package-lock.json
+  s_9fec762e193d5b::t_54683d97d9c398 19-21,1616-1619,1621,1624-1625,1631-1635,1637-1638,1641-1642,1649-1652,1655-1656,1659-1661,1670,12556-12558,12564,17183-17186,17193-17196,17977-17979,17990-17992
+server/package.json
+  s_9fec762e193d5b::t_4cb77b9f2b2c96 37-39
+server/plugins/warehouse/queries/ClickhouseReportingAnalyticsAdapter.ts
+  s_9fec762e193d5b::t_3a6a3d263487a3 193-232
+server/plugins/warehouse/queries/IReportingAnalyticsAdapter.ts
+  s_9fec762e193d5b::t_e15d7c387be901 73-82
+server/services/hmaService/errors.ts
+  s_9fec762e193d5b::t_cc1b62427db915 1-21
+server/services/hmaService/hashBankService.ts
+  s_9fec762e193d5b::t_76c5ef476c84d7 51-62
+server/services/hmaService/index.test.ts
+  s_9fec762e193d5b::t_1923d231dcce63 6,9,23-104,106,108-117,120-135,139-141,145,149,153-196,200-202,208-211,214-215,218-230,233-238,241-247,250-294,299-300,303-390,396-397,399-417,420-444,446,454-462,464-470,472-475,478-563,566-576,580-584,586-595,597,601-609,612-614,617-618,622-626,629-694,699-707,712,733-746,752,755,762,765-769,772-776,778-797,803,807-813,822-835,845-1067,1070,1073,1075
+server/services/hmaService/index.ts
+  s_9fec762e193d5b::t_6669ab7e743a9c 8-9,11,16,62-73,78,196-205,207-209,211-236,239-250,259-260,278-320,326-330,332-335,338-342,344-349,351-360,391-406,417-445,448-449,465-471,474-481,486-487,491-496,504-509,514-525,527,529-571,582-586,588-597,603-626,643,648-652,656,662-686,703,708-712,716,740-743,748-752,758,792-793,798,803,832-836,841,843-844,849,857,861-870,875-882,884,886,888,892-904,907-935,951,965,971,974,976-977,1184
+server/services/manualReviewToolService/dbTypes.ts
+  s_9fec762e193d5b::t_34e8e0a831391c 1,32,89-95,105-111
+server/services/manualReviewToolService/manualReviewToolService.ts
+  s_9fec762e193d5b::t_27e51c3c34e09d 14,67-74,83-85,100-105,324,336,339-344,368,410,413,527-539,558,568-612,1002,1019,1024-1355
+server/services/manualReviewToolService/modules/JobPriority.test.ts
+  s_9fec762e193d5b::t_d704921d65daeb 1-440
+server/services/manualReviewToolService/modules/JobPriority.ts
+  s_9fec762e193d5b::t_7e0e7e51cadd4d 1-208
+server/services/manualReviewToolService/modules/JobPriorityWeights.test.ts
+  s_9fec762e193d5b::t_834204c7ff7e97 1-264
+server/services/manualReviewToolService/modules/JobPriorityWeights.ts
+  s_9fec762e193d5b::t_a3fdb73fadfae4 1-47
+server/services/manualReviewToolService/modules/PriorityRecomputeLock.test.ts
+  s_9fec762e193d5b::t_fef631ce5df5ea 1-204
+server/services/manualReviewToolService/modules/PriorityRecomputeLock.ts
+  s_9fec762e193d5b::t_e1d7ae706be5c6 1-160
+server/services/manualReviewToolService/modules/QueueOperations.priorities.test.ts
+  s_9fec762e193d5b::t_9d7248115e0635 1-609
+server/services/manualReviewToolService/modules/QueueOperations.reviewerSkips.test.ts
+  s_9fec762e193d5b::t_9d40a9c9070d25 1-188
+server/services/manualReviewToolService/modules/QueueOperations.ts
+  s_9fec762e193d5b::t_a3f0d6e331cd29 68-72,83,89-92,102,182,265,278,285-288,326,375,390,415,698,872,874-881,904-908,1080-1245,1273,1284,1482-1485,1491-1492,1500,1503-1511,1528-1537,1539-1541,1543-1549,1551,1553-1565,1572-1585,1588-1637,1914,1958-1969,1972,1975-1981,1985-1989,2247-2248,2250-2253
+server/services/manualReviewToolService/modules/SkipOperations.ts
+  s_9fec762e193d5b::t_a846e6f526e25c 9,14,48-54
+server/services/reportingService/reportingService.ts
+  s_9fec762e193d5b::t_29cb483600700e 381-391
+server/services/userStatisticsService/getUserScoresForUsers.test.ts
+  s_9fec762e193d5b::t_3502f7660a18dc 1-130
+server/services/userStatisticsService/userStatisticsService.ts
+  s_9fec762e193d5b::t_63ef8287eb3401 82-117
+server/test/fixtureHelpers/createActions.ts
+  s_9fec762e193d5b::t_2cd65fbc1bd616 2,17-18
+server/test/harness/transactionalTest.ts
+  s_9fec762e193d5b::t_11e292bdb30158 25-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "88b6dd5109184e217324e5205d6260296e0d0591",
+  "prompts": {},
+  "sessions": {
+    "s_9fec762e193d5b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b0e09479-679d-4cb5-a6e9-495a82f0dd36",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
