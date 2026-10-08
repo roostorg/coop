@@ -55,11 +55,11 @@ Most spans come from auto-instrumentation, so a typical request already shows it
 
 ### Background jobs
 
-The trail stops at the job queue. Trace context isn't passed through BullMQ, so `ItemProcessingWorker` jobs start a new trace rather than continuing the request that enqueued them.
+The trail stops at the job queue. Locally, workers started with `npm run runWorkerOrJob` aren't traced at all. When the SDK is loaded into a worker, as in a deployment that injects it, its jobs start a new trace rather than continuing the request that enqueued them, because trace context isn't passed through BullMQ.
 
 ### Frontend tracing
 
-Tracing can also start in the browser. Building the client with `VITE_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` enables `client/src/FrontendTracer.ts`, which traces requests as `coop-ui` and adds the X-Ray header so server spans join the browser's trace. It also records request bodies. To use it locally, publish the collector's port 4318 and configure CORS on it.
+Tracing can also start in the browser. Building the client with `VITE_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` enables `client/src/FrontendTracer.ts`, which traces requests as `coop-ui` and adds the X-Ray header so server spans join the browser's trace. It also records request bodies. To use it locally, publish the collector's port 4318 in `docker-compose.yaml` and add a `cors` block to the OTLP HTTP receiver in `otel-collector.yaml`, since neither is set up for browser traffic.
 
 ### Deployments
 
