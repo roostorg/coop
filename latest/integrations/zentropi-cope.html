@@ -40,7 +40,7 @@
             const path_to_root = "../";
             const default_light_theme = "roost";
             const default_dark_theme = "roost";
-            window.path_to_searchindex_js = "../searchindex-cf229e23.js";
+            window.path_to_searchindex_js = "../searchindex-170eb158.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-33b43635.js"></script>
@@ -202,11 +202,11 @@
 <p>In Coop, go to <strong>Settings → Integrations</strong> and add your Zentropi credentials:</p>
 <ul>
 <li><strong>API Key</strong>: your Zentropi API key</li>
-<li><strong>Labeler Versions</strong>: one entry per deployed labeler version you want to use in rules, each with its <strong>Labeler ID</strong>, <strong>Version ID</strong>, and a display name. You can find both IDs in the Zentropi UI.</li>
+<li><strong>Labeler Versions</strong>: one entry per deployed labeler version you want to use in rules, each with its <strong>Version ID</strong> and a display name. <strong>Labeler ID</strong> is optional when using a specific version ID. You can find both IDs in the Zentropi UI.</li>
 </ul>
 <h2 id="signals"><a class="header" href="#signals">Signals</a></h2>
 <p>Each labeler version configured in the integration settings is available as a subcategory of the Zentropi Labeler signal. When building a rule condition, select the Zentropi signal and pick the labeler version by name in the <strong>subcategory</strong> field.</p>
-<p>Labeler versions saved before Coop collected labeler IDs fail with a “Missing Zentropi labeler ID” error. Edit the integration settings and add the labeler ID to each entry; existing rules keep working without changes.</p>
+<p>Existing version-only configurations continue to work without changes. Coop always sends the selected version ID to Zentropi and includes the labeler ID only when it is nonblank; it does not replace the selected version with the latest version.</p>
 <p>Coop sends the text field value to the Zentropi API and receives a score between 0 and 1:</p>
 <ul>
 <li><strong>0</strong> = confidently safe (model is confident the content does <em>not</em> violate your policy)</li>
