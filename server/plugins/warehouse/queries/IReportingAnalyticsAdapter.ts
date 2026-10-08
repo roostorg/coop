@@ -46,6 +46,8 @@ export interface ReportingRulePassingContentSampleInput {
   orgId: string;
   ruleId: string;
   itemIds?: ReadonlyArray<string>;
+  itemTypeIds?: ReadonlyArray<string>;
+  executionTimestamp?: Date;
   numSamples: number;
   filter: ReportingRuleSampleFilter;
 }
