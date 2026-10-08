@@ -381,7 +381,12 @@ export default function ReportingRulesDashboard() {
     <CoopButton title="Create Report Rule" destination="form" />
   );
   const table = (
-    <Table columns={columns} data={tableData} rowLinkTo={rowLinkTo} />
+    <Table
+      columns={columns}
+      data={tableData}
+      rowLinkTo={rowLinkTo}
+      containerClassName="w-full"
+    />
   );
 
   const emptyDashboard = (
