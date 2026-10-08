@@ -30,22 +30,24 @@ You'll see a `metrics export failed (... 12 UNIMPLEMENTED ...)` message every 60
 | `OTEL_SERVICE_NAME`                       | Server         | Service name in Jaeger                                     |
 | `OTEL_EXPORTER_OTLP_*`                    | Server         | Standard OTLP exporter settings (default `localhost:4317`) |
 | `GIT_COMMIT_SHA`, `GIT_REPOSITORY_URL`    | Server         | Added to the trace resource                                |
-| `LOG_REQUEST_BODY`                        | Server         | `true` records Express request bodies on spans             |
+| `LOG_REQUEST_BODY`                        | Server         | Meant to record request bodies; currently has no effect    |
 | `VITE_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | Client (build) | Enables frontend tracing                                   |
 
-Keep in mind that spans can contain user content. SQL text and Redis commands are recorded by default, and `server/.env.example` sets `LOG_REQUEST_BODY=true`, so unset it before sending traces to a shared backend.
+Keep in mind that spans can contain user content. SQL text and Redis commands are recorded by default, so review what they contain before sending traces to a shared backend.
 
 ## How it works
 
 ### Loading the SDK
 
-Application code only uses `@opentelemetry/api`, which does nothing on its own. `npm run start:trace` brings it to life by preloading `nodejs-instrumentation` with `node --require`, so the SDK can patch libraries like `http`, `pg`, and `ioredis` before the app imports them.
+Application code only uses `@opentelemetry/api`, which does nothing on its own. `npm run start:trace` brings it to life by preloading `nodejs-instrumentation` with `node --require`, so the SDK is in place before the app starts and can patch libraries such as `http` and `pg`.
 
 From there, the SDK (`nodejs-instrumentation/src/autoinstrumentation.ts`):
 
 - Exports over OTLP/gRPC, batching spans every 500 ms and metrics every 60 seconds. Pending spans are flushed on `SIGTERM`.
 - Propagates context with the AWS X-Ray header (`X-Amzn-Trace-Id`), not W3C `traceparent`.
-- Enables the standard Node.js auto-instrumentations (HTTP, Express, GraphQL, Postgres, Redis, Cassandra, AWS SDK). Outgoing HTTP spans are named `METHOD origin`, `/api/v1/ready` is ignored, and long Redis arguments are truncated.
+- Enables the standard Node.js auto-instrumentations. Outgoing HTTP spans are named `METHOD origin`, `/api/v1/ready` is ignored, and long Redis arguments are truncated.
+
+Because the server is an ES module and the SDK is loaded with `--require` rather than OpenTelemetry's ESM loader hook, instrumentations only patch modules that are loaded with `require`. Postgres and Redis are still traced, since their code is loaded that way (Redis through BullMQ's CommonJS build), but Express isn't: its middleware spans come from the router instrumentation, so Coop's Express hook for `LOG_REQUEST_BODY` never runs. Redis commands are only traced inside an existing span, such as a request.
 
 ### Request tracing
 
@@ -57,7 +59,7 @@ The trail stops at the job queue. Trace context isn't passed through BullMQ, so 
 
 ### Frontend tracing
 
-Tracing can also start in the browser. Building the client with `VITE_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` enables `client/src/FrontendTracer.ts`, which traces requests as `coop-ui` and adds the X-Ray header so server spans join the browser's trace. Like `LOG_REQUEST_BODY`, it records request bodies. To use it locally, publish the collector's port 4318 and configure CORS on it.
+Tracing can also start in the browser. Building the client with `VITE_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` enables `client/src/FrontendTracer.ts`, which traces requests as `coop-ui` and adds the X-Ray header so server spans join the browser's trace. It also records request bodies. To use it locally, publish the collector's port 4318 and configure CORS on it.
 
 ### Deployments
 
