@@ -287,11 +287,12 @@ export async function runLeafCondition(
   // matchedValue or score).
   const bestResult =
     signalResultsWithOutcomes.find(
-      (result) =>
-        outcomeToNullableBool(result.outcome) === true ||
-        result.matchedValue != null ||
-        result.score != null,
-    ) ?? signalResultsWithOutcomes[0];
+      (result) => outcomeToNullableBool(result.outcome) === true,
+    ) ??
+    signalResultsWithOutcomes.find(
+      (result) => result.matchedValue != null || result.score != null,
+    ) ??
+    signalResultsWithOutcomes[0];
 
   // convert the best signalResultWithOutcome to our ConditionResult.
   // We write it like this, which is a tad awkward, to help TS narrow properly.

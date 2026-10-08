@@ -22,6 +22,7 @@ import CopyTextComponent from '@/components/common/CopyTextComponent';
 
 import InvalidateReportsButton from './InvalidateReportsButton';
 import { ManualReviewJobPayload } from './ManualReviewJobReview';
+import { reportContextEntries } from './reportContext';
 import ManualReviewJobCommentSection from './v2/ManualReviewJobCommentSection';
 
 export default function ReportInfoComponent(props: {
@@ -80,6 +81,11 @@ export default function ReportInfoComponent(props: {
   const latestReporterIdentifier =
     reportedForReasons[reportedForReasons.length - 1]?.reporterId ?? undefined;
   const latestReportReason = reportedForReasons[reportedForReasons.length - 1];
+  // reportHistory[0] is the primary report; the rest are shown as merged
+  // reports alongside this component.
+  const primaryReportContextEntries = reportContextEntries(
+    'reportHistory' in payload ? payload.reportHistory[0]?.context : undefined,
+  );
 
   const getItemTypeName = useCallback(
     (itemTypeId: string) =>
@@ -256,6 +262,20 @@ export default function ReportInfoComponent(props: {
                     </td>
                   </tr>
                 )}
+              {primaryReportContextEntries.length > 0 && (
+                <tr>
+                  <th className="py-1 mr-4 font-bold align-top text-start whitespace-nowrap">
+                    Report Context
+                  </th>
+                  <td className="py-1 align-top text-start text-slate-500">
+                    {primaryReportContextEntries.map(({ label, value }) => (
+                      <div key={label} className="break-all">
+                        <span className="font-semibold">{label}:</span> {value}
+                      </div>
+                    ))}
+                  </td>
+                </tr>
+              )}
               {'appealReason' in payload && payload.appealReason && (
                 <tr>
                   <th className="py-1 mr-4 font-bold align-top text-start whitespace-nowrap">

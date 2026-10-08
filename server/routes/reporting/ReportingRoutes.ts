@@ -4,6 +4,10 @@ import {
   rawItemSubmissionSchema,
   type RawItemSubmission,
 } from '../../services/itemProcessingService/index.js';
+import {
+  reportContextSchema,
+  type ReportContextInput,
+} from '../../services/reportingService/index.js';
 import { createApiKeyMiddleware } from '../../utils/apiKeyMiddleware.js';
 import { route } from '../../utils/route-helpers.js';
 import { type Controller } from '../index.js';
@@ -23,6 +27,7 @@ export type ReportItemInput = {
   reportedItemThread?: RawItemSubmission[];
   reportedItemsInThread?: ItemIdentifier[];
   additionalItems?: RawItemSubmission[];
+  reportContext?: ReportContextInput;
 };
 
 export type AppealItemInput = {
@@ -95,6 +100,7 @@ export default {
               type: 'array',
               items: rawItemSubmissionSchema,
             },
+            reportContext: reportContextSchema,
           },
           required: ['reporter', 'reportedAt', 'reportedItem'],
         },

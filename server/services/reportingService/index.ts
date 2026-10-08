@@ -9,4 +9,11 @@ export {
   type ReportingRuleExecutionCorrelationId,
 } from './reportingService.js';
 
+export {
+  normalizeReportContext,
+  reportContextSchema,
+  type ReportContext,
+  type ReportContextInput,
+} from './reportContext.js';
+
 export type ReportingServiceErrorType = ReportingRuleErrorType;

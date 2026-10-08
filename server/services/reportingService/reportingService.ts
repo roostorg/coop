@@ -22,6 +22,10 @@ import {
   type ItemSubmission,
 } from '../itemProcessingService/index.js';
 import { type ReportingServicePg } from './dbTypes.js';
+import {
+  reportContextToWarehouseColumns,
+  type ReportContext,
+} from './reportContext.js';
 import ReportingRuleEngine from './reportingRuleEngine.js';
 import {
   buildSimplifiedHistoryQuery,
@@ -52,6 +56,7 @@ export type ReportSubmission = {
   reportedItemThread?: ItemSubmission[];
   reportedItemsInThread?: ItemIdentifier[];
   additionalItemSubmissions?: ItemSubmission[];
+  reportContext?: ReportContext;
   skipJobEnqueue: boolean;
 };
 
@@ -106,6 +111,7 @@ function makeReportingService(
         reportedItemThread,
         reportedItemsInThread,
         additionalItemSubmissions,
+        reportContext,
         skipJobEnqueue,
       } = submission;
 
@@ -157,6 +163,7 @@ function makeReportingService(
         ...(reportedForReason?.reason
           ? { reported_for_reason: reportedForReason.reason }
           : {}),
+        ...reportContextToWarehouseColumns(reportContext),
         skip_job_enqueue: skipJobEnqueue,
       } satisfies Record<string, unknown>;
 

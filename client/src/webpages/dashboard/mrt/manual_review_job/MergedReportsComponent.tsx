@@ -14,6 +14,7 @@ import { dateSort, stringSort } from '../../components/table/sort';
 import Table from '../../components/table/Table';
 
 import InvalidateReportsButton from './InvalidateReportsButton';
+import { formatReportContext, type ReportContextFields } from './reportContext';
 
 export default function MergedReportsComponent(props: {
   primaryReportId?: string | null;
@@ -26,6 +27,7 @@ export default function MergedReportsComponent(props: {
       id: string;
       typeId: string;
     } | null;
+    context?: ReportContextFields | null;
   }>;
   // Parent gates this on EDIT_MRT_QUEUES and non-appeal.
   canInvalidateReports?: boolean;
@@ -123,6 +125,12 @@ export default function MergedReportsComponent(props: {
         sortDescFirst: false,
       },
       {
+        header: 'Context',
+        accessorKey: 'context',
+        sortFn: stringSort,
+        sortDescFirst: false,
+      },
+      {
         header: 'Report Time',
         accessorKey: 'reportTime',
         sortFn: dateSort('reportTime'),
@@ -164,6 +172,7 @@ export default function MergedReportsComponent(props: {
           : '';
       const reportedFor = policy?.name ?? '—';
       const reason = report.reason?.trim() || '—';
+      const context = formatReportContext(report.context) ?? '—';
       return {
         reportedBy: (
           <div className="flex flex-wrap items-center gap-x-2">
@@ -224,6 +233,7 @@ export default function MergedReportsComponent(props: {
           '—'
         ),
         reason,
+        context,
         reportTime: parseDatetimeToReadableStringInCurrentTimeZone(
           report.reportedAt,
         ),
@@ -231,6 +241,7 @@ export default function MergedReportsComponent(props: {
           reportedBy: `${reportedByPrefix}${reportedByLabel}`,
           reportedFor,
           reason,
+          context,
           reportTime: report.reportedAt,
         },
       };

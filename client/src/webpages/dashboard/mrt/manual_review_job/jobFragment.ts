@@ -20,6 +20,15 @@ export const JOB_FRAGMENT = gql`
           reportId
           reason
           reportedAt
+          context {
+            surface
+            client {
+              name
+              version
+              platform
+            }
+            attributes
+          }
         }
         item {
           ... on ItemBase {
@@ -80,6 +89,15 @@ export const JOB_FRAGMENT = gql`
           policyId
           reason
           reportedAt
+          context {
+            surface
+            client {
+              name
+              version
+              platform
+            }
+            attributes
+          }
         }
         item {
           ... on ItemBase {
@@ -147,6 +165,15 @@ export const JOB_FRAGMENT = gql`
           policyId
           reason
           reportedAt
+          context {
+            surface
+            client {
+              name
+              version
+              platform
+            }
+            attributes
+          }
         }
         item {
           ... on ItemBase {

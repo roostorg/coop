@@ -8,6 +8,7 @@ import {
   rawItemSubmissionToItemSubmission,
   type ItemSubmission,
 } from '../../services/itemProcessingService/index.js';
+import { normalizeReportContext } from '../../services/reportingService/index.js';
 import { hasOrgId } from '../../utils/apiKeyMiddleware.js';
 import {
   fromCorrelationId,
@@ -88,6 +89,7 @@ export default function submitReport({
           ? { id: req.body.reporter.id, typeId: req.body.reporter.typeId }
           : undefined;
       const reportedItem = req.body.reportedItem;
+      const reportContext = normalizeReportContext(req.body.reportContext);
 
       // TODO: error handling. Our controllers still need much better error
       // handling abstractions.
@@ -304,6 +306,7 @@ export default function submitReport({
         reportedItemsInThread: req.body.reportedItemsInThread,
         additionalItemSubmissions:
           additionalItemSubmissions?.map((it) => it.itemSubmission) ?? [],
+        reportContext,
         skipJobEnqueue: true,
       };
 
@@ -416,6 +419,7 @@ export default function submitReport({
                           reportId,
                           reportedAt: report.reportedAt,
                           policyId: reportedForReason?.policyId ?? undefined,
+                          ...(reportContext ? { context: reportContext } : {}),
                         },
                       ],
                     },

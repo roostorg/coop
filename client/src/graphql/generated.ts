@@ -3977,6 +3977,20 @@ export type GQLReorderRoutingRulesInput = {
 export type GQLReorderRoutingRulesResponse =
   GQLMutateRoutingRulesOrderSuccessResponse;
 
+export type GQLReportContext = {
+  readonly __typename: 'ReportContext';
+  readonly attributes?: Maybe<Scalars['JSONObject']['output']>;
+  readonly client?: Maybe<GQLReportContextClient>;
+  readonly surface?: Maybe<Scalars['String']['output']>;
+};
+
+export type GQLReportContextClient = {
+  readonly __typename: 'ReportContextClient';
+  readonly name?: Maybe<Scalars['String']['output']>;
+  readonly platform?: Maybe<Scalars['String']['output']>;
+  readonly version?: Maybe<Scalars['String']['output']>;
+};
+
 export type GQLReportEnqueueSourceInfo = {
   readonly __typename: 'ReportEnqueueSourceInfo';
   readonly kind: GQLJobCreationSourceOptions;
@@ -3984,6 +3998,7 @@ export type GQLReportEnqueueSourceInfo = {
 
 export type GQLReportHistoryEntry = {
   readonly __typename: 'ReportHistoryEntry';
+  readonly context?: Maybe<GQLReportContext>;
   readonly policyId?: Maybe<Scalars['ID']['output']>;
   readonly reason?: Maybe<Scalars['String']['output']>;
   readonly reportId: Scalars['ID']['output'];
@@ -8623,6 +8638,17 @@ export type GQLGetDecidedJobFromJobIdQuery = {
                 readonly id: string;
                 readonly typeId: string;
               } | null;
+              readonly context?: {
+                readonly __typename: 'ReportContext';
+                readonly surface?: string | null;
+                readonly attributes?: JsonObject | null;
+                readonly client?: {
+                  readonly __typename: 'ReportContextClient';
+                  readonly name?: string | null;
+                  readonly version?: string | null;
+                  readonly platform?: string | null;
+                } | null;
+              } | null;
             }>;
             readonly item: {
               readonly __typename: 'ContentItem';
@@ -9268,6 +9294,17 @@ export type GQLGetDecidedJobFromJobIdQuery = {
                 readonly id: string;
                 readonly typeId: string;
               } | null;
+              readonly context?: {
+                readonly __typename: 'ReportContext';
+                readonly surface?: string | null;
+                readonly attributes?: JsonObject | null;
+                readonly client?: {
+                  readonly __typename: 'ReportContextClient';
+                  readonly name?: string | null;
+                  readonly version?: string | null;
+                  readonly platform?: string | null;
+                } | null;
+              } | null;
             }>;
             readonly item: {
               readonly __typename: 'ThreadItem';
@@ -9536,6 +9573,17 @@ export type GQLGetDecidedJobFromJobIdQuery = {
                 readonly __typename: 'ItemIdentifier';
                 readonly id: string;
                 readonly typeId: string;
+              } | null;
+              readonly context?: {
+                readonly __typename: 'ReportContext';
+                readonly surface?: string | null;
+                readonly attributes?: JsonObject | null;
+                readonly client?: {
+                  readonly __typename: 'ReportContextClient';
+                  readonly name?: string | null;
+                  readonly version?: string | null;
+                  readonly platform?: string | null;
+                } | null;
               } | null;
             }>;
             readonly item: {
@@ -11238,6 +11286,17 @@ export type GQLGetDecidedJobQuery = {
               readonly id: string;
               readonly typeId: string;
             } | null;
+            readonly context?: {
+              readonly __typename: 'ReportContext';
+              readonly surface?: string | null;
+              readonly attributes?: JsonObject | null;
+              readonly client?: {
+                readonly __typename: 'ReportContextClient';
+                readonly name?: string | null;
+                readonly version?: string | null;
+                readonly platform?: string | null;
+              } | null;
+            } | null;
           }>;
           readonly item: {
             readonly __typename: 'ContentItem';
@@ -11883,6 +11942,17 @@ export type GQLGetDecidedJobQuery = {
               readonly id: string;
               readonly typeId: string;
             } | null;
+            readonly context?: {
+              readonly __typename: 'ReportContext';
+              readonly surface?: string | null;
+              readonly attributes?: JsonObject | null;
+              readonly client?: {
+                readonly __typename: 'ReportContextClient';
+                readonly name?: string | null;
+                readonly version?: string | null;
+                readonly platform?: string | null;
+              } | null;
+            } | null;
           }>;
           readonly item: {
             readonly __typename: 'ThreadItem';
@@ -12151,6 +12221,17 @@ export type GQLGetDecidedJobQuery = {
               readonly __typename: 'ItemIdentifier';
               readonly id: string;
               readonly typeId: string;
+            } | null;
+            readonly context?: {
+              readonly __typename: 'ReportContext';
+              readonly surface?: string | null;
+              readonly attributes?: JsonObject | null;
+              readonly client?: {
+                readonly __typename: 'ReportContextClient';
+                readonly name?: string | null;
+                readonly version?: string | null;
+                readonly platform?: string | null;
+              } | null;
             } | null;
           }>;
           readonly item: {
@@ -12953,6 +13034,17 @@ export type GQLManualReviewJobInfoQuery = {
                   readonly id: string;
                   readonly typeId: string;
                 } | null;
+                readonly context?: {
+                  readonly __typename: 'ReportContext';
+                  readonly surface?: string | null;
+                  readonly attributes?: JsonObject | null;
+                  readonly client?: {
+                    readonly __typename: 'ReportContextClient';
+                    readonly name?: string | null;
+                    readonly version?: string | null;
+                    readonly platform?: string | null;
+                  } | null;
+                } | null;
               }>;
               readonly item: {
                 readonly __typename: 'ContentItem';
@@ -13598,6 +13690,17 @@ export type GQLManualReviewJobInfoQuery = {
                   readonly id: string;
                   readonly typeId: string;
                 } | null;
+                readonly context?: {
+                  readonly __typename: 'ReportContext';
+                  readonly surface?: string | null;
+                  readonly attributes?: JsonObject | null;
+                  readonly client?: {
+                    readonly __typename: 'ReportContextClient';
+                    readonly name?: string | null;
+                    readonly version?: string | null;
+                    readonly platform?: string | null;
+                  } | null;
+                } | null;
               }>;
               readonly item: {
                 readonly __typename: 'ThreadItem';
@@ -13866,6 +13969,17 @@ export type GQLManualReviewJobInfoQuery = {
                   readonly __typename: 'ItemIdentifier';
                   readonly id: string;
                   readonly typeId: string;
+                } | null;
+                readonly context?: {
+                  readonly __typename: 'ReportContext';
+                  readonly surface?: string | null;
+                  readonly attributes?: JsonObject | null;
+                  readonly client?: {
+                    readonly __typename: 'ReportContextClient';
+                    readonly name?: string | null;
+                    readonly version?: string | null;
+                    readonly platform?: string | null;
+                  } | null;
                 } | null;
               }>;
               readonly item: {
@@ -14298,6 +14412,17 @@ export type GQLDequeueManualReviewJobMutation = {
                 readonly __typename: 'ItemIdentifier';
                 readonly id: string;
                 readonly typeId: string;
+              } | null;
+              readonly context?: {
+                readonly __typename: 'ReportContext';
+                readonly surface?: string | null;
+                readonly attributes?: JsonObject | null;
+                readonly client?: {
+                  readonly __typename: 'ReportContextClient';
+                  readonly name?: string | null;
+                  readonly version?: string | null;
+                  readonly platform?: string | null;
+                } | null;
               } | null;
             }>;
             readonly item: {
@@ -14944,6 +15069,17 @@ export type GQLDequeueManualReviewJobMutation = {
                 readonly id: string;
                 readonly typeId: string;
               } | null;
+              readonly context?: {
+                readonly __typename: 'ReportContext';
+                readonly surface?: string | null;
+                readonly attributes?: JsonObject | null;
+                readonly client?: {
+                  readonly __typename: 'ReportContextClient';
+                  readonly name?: string | null;
+                  readonly version?: string | null;
+                  readonly platform?: string | null;
+                } | null;
+              } | null;
             }>;
             readonly item: {
               readonly __typename: 'ThreadItem';
@@ -15212,6 +15348,17 @@ export type GQLDequeueManualReviewJobMutation = {
                 readonly __typename: 'ItemIdentifier';
                 readonly id: string;
                 readonly typeId: string;
+              } | null;
+              readonly context?: {
+                readonly __typename: 'ReportContext';
+                readonly surface?: string | null;
+                readonly attributes?: JsonObject | null;
+                readonly client?: {
+                  readonly __typename: 'ReportContextClient';
+                  readonly name?: string | null;
+                  readonly version?: string | null;
+                  readonly platform?: string | null;
+                } | null;
               } | null;
             }>;
             readonly item: {
@@ -15700,6 +15847,17 @@ export type GQLJobFieldsFragment = {
             readonly __typename: 'ItemIdentifier';
             readonly id: string;
             readonly typeId: string;
+          } | null;
+          readonly context?: {
+            readonly __typename: 'ReportContext';
+            readonly surface?: string | null;
+            readonly attributes?: JsonObject | null;
+            readonly client?: {
+              readonly __typename: 'ReportContextClient';
+              readonly name?: string | null;
+              readonly version?: string | null;
+              readonly platform?: string | null;
+            } | null;
           } | null;
         }>;
         readonly item: {
@@ -16346,6 +16504,17 @@ export type GQLJobFieldsFragment = {
             readonly id: string;
             readonly typeId: string;
           } | null;
+          readonly context?: {
+            readonly __typename: 'ReportContext';
+            readonly surface?: string | null;
+            readonly attributes?: JsonObject | null;
+            readonly client?: {
+              readonly __typename: 'ReportContextClient';
+              readonly name?: string | null;
+              readonly version?: string | null;
+              readonly platform?: string | null;
+            } | null;
+          } | null;
         }>;
         readonly item: {
           readonly __typename: 'ThreadItem';
@@ -16614,6 +16783,17 @@ export type GQLJobFieldsFragment = {
             readonly __typename: 'ItemIdentifier';
             readonly id: string;
             readonly typeId: string;
+          } | null;
+          readonly context?: {
+            readonly __typename: 'ReportContext';
+            readonly surface?: string | null;
+            readonly attributes?: JsonObject | null;
+            readonly client?: {
+              readonly __typename: 'ReportContextClient';
+              readonly name?: string | null;
+              readonly version?: string | null;
+              readonly platform?: string | null;
+            } | null;
           } | null;
         }>;
         readonly item: {
@@ -25667,6 +25847,15 @@ export const GQLJobFieldsFragmentDoc = gql`
           reportId
           reason
           reportedAt
+          context {
+            surface
+            client {
+              name
+              version
+              platform
+            }
+            attributes
+          }
         }
         item {
           ... on ItemBase {
@@ -25727,6 +25916,15 @@ export const GQLJobFieldsFragmentDoc = gql`
           policyId
           reason
           reportedAt
+          context {
+            surface
+            client {
+              name
+              version
+              platform
+            }
+            attributes
+          }
         }
         item {
           ... on ItemBase {
@@ -25794,6 +25992,15 @@ export const GQLJobFieldsFragmentDoc = gql`
           policyId
           reason
           reportedAt
+          context {
+            surface
+            client {
+              name
+              version
+              platform
+            }
+            attributes
+          }
         }
         item {
           ... on ItemBase {

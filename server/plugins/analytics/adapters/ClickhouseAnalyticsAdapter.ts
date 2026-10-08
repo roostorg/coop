@@ -370,6 +370,7 @@ export class ClickhouseAnalyticsAdapter implements IAnalyticsAdapter {
       'item_type_schema', // various tables - array of objects
       'actioned_item_type_schema', // REPORTING_SERVICE.APPEALS - array of objects
       'additional_items', // REPORTING_SERVICE.REPORTS/APPEALS - array of objects
+      'report_context_attributes', // REPORTING_SERVICE.REPORTS - object
     ];
 
     if (stringifyFields.includes(key) && value != null) {

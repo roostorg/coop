@@ -179,12 +179,25 @@ const typeDefs = /* GraphQL */ `
     reason: String
   }
 
+  type ReportContextClient {
+    name: String
+    version: String
+    platform: String
+  }
+
+  type ReportContext {
+    surface: String
+    client: ReportContextClient
+    attributes: JSONObject
+  }
+
   type ReportHistoryEntry {
     reportId: ID!
     reporterId: ItemIdentifier
     reason: String
     reportedAt: DateTime!
     policyId: ID
+    context: ReportContext
   }
 
   type ContentManualReviewJobPayload {

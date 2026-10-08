@@ -216,3 +216,44 @@ describe('MergedReportsComponent sorting', () => {
     },
   );
 });
+
+describe('MergedReportsComponent report context', () => {
+  it('shows each merged report’s context, with a dash when absent', () => {
+    render(
+      <MemoryRouter>
+        <MockedProvider mocks={baseMocks}>
+          <MergedReportsComponent
+            primaryReportId="r_primary"
+            reportHistory={reportHistory.map((report) =>
+              report.reportId === 'r_other_1'
+                ? {
+                    ...report,
+                    context: {
+                      surface: 'profile',
+                      client: { name: 'Ivory', version: '2.3.1' },
+                      attributes: null,
+                    },
+                  }
+                : report,
+            )}
+          />
+        </MockedProvider>
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /show/i }));
+
+    const contextColumnIdx = screen
+      .getAllByRole('columnheader')
+      .findIndex((it) => it.textContent === 'Context');
+    const contextCells = within(screen.getAllByRole('rowgroup')[1])
+      .getAllByRole('row')
+      .map(
+        (row) => within(row).getAllByRole('cell')[contextColumnIdx].textContent,
+      );
+
+    expect(contextCells).toEqual([
+      'Surface: profile · Client: Ivory 2.3.1',
+      '—',
+    ]);
+  });
+});

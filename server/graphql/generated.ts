@@ -4047,6 +4047,20 @@ export type GQLReorderRoutingRulesInput = {
 export type GQLReorderRoutingRulesResponse =
   GQLMutateRoutingRulesOrderSuccessResponse;
 
+export type GQLReportContext = {
+  readonly __typename?: 'ReportContext';
+  readonly attributes?: Maybe<Scalars['JSONObject']['output']>;
+  readonly client?: Maybe<GQLReportContextClient>;
+  readonly surface?: Maybe<Scalars['String']['output']>;
+};
+
+export type GQLReportContextClient = {
+  readonly __typename?: 'ReportContextClient';
+  readonly name?: Maybe<Scalars['String']['output']>;
+  readonly platform?: Maybe<Scalars['String']['output']>;
+  readonly version?: Maybe<Scalars['String']['output']>;
+};
+
 export type GQLReportEnqueueSourceInfo = {
   readonly __typename?: 'ReportEnqueueSourceInfo';
   readonly kind: GQLJobCreationSourceOptions;
@@ -4054,6 +4068,7 @@ export type GQLReportEnqueueSourceInfo = {
 
 export type GQLReportHistoryEntry = {
   readonly __typename?: 'ReportHistoryEntry';
+  readonly context?: Maybe<GQLReportContext>;
   readonly policyId?: Maybe<Scalars['ID']['output']>;
   readonly reason?: Maybe<Scalars['String']['output']>;
   readonly reportId: Scalars['ID']['output'];
@@ -6495,6 +6510,8 @@ export type GQLResolversTypes = {
   ReorderRoutingRulesResponse: ResolverTypeWrapper<
     GQLResolversUnionTypes<GQLResolversTypes>['ReorderRoutingRulesResponse']
   >;
+  ReportContext: ResolverTypeWrapper<GQLReportContext>;
+  ReportContextClient: ResolverTypeWrapper<GQLReportContextClient>;
   ReportEnqueueSourceInfo: ResolverTypeWrapper<GQLReportEnqueueSourceInfo>;
   ReportHistoryEntry: ResolverTypeWrapper<GQLReportHistoryEntry>;
   ReportHistoryEntryInput: GQLReportHistoryEntryInput;
@@ -7207,6 +7224,8 @@ export type GQLResolversParentTypes = {
   RenameRoleInput: GQLRenameRoleInput;
   ReorderRoutingRulesInput: GQLReorderRoutingRulesInput;
   ReorderRoutingRulesResponse: GQLResolversUnionTypes<GQLResolversParentTypes>['ReorderRoutingRulesResponse'];
+  ReportContext: GQLReportContext;
+  ReportContextClient: GQLReportContextClient;
   ReportEnqueueSourceInfo: GQLReportEnqueueSourceInfo;
   ReportHistoryEntry: GQLReportHistoryEntry;
   ReportHistoryEntryInput: GQLReportHistoryEntryInput;
@@ -13306,6 +13325,46 @@ export type GQLReorderRoutingRulesResponseResolvers<
   >;
 };
 
+export type GQLReportContextResolvers<
+  ContextType = Context,
+  ParentType extends GQLResolversParentTypes['ReportContext'] =
+    GQLResolversParentTypes['ReportContext'],
+> = {
+  attributes?: Resolver<
+    Maybe<GQLResolversTypes['JSONObject']>,
+    ParentType,
+    ContextType
+  >;
+  client?: Resolver<
+    Maybe<GQLResolversTypes['ReportContextClient']>,
+    ParentType,
+    ContextType
+  >;
+  surface?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+};
+
+export type GQLReportContextClientResolvers<
+  ContextType = Context,
+  ParentType extends GQLResolversParentTypes['ReportContextClient'] =
+    GQLResolversParentTypes['ReportContextClient'],
+> = {
+  name?: Resolver<Maybe<GQLResolversTypes['String']>, ParentType, ContextType>;
+  platform?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  version?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+};
+
 export type GQLReportEnqueueSourceInfoResolvers<
   ContextType = Context,
   ParentType extends GQLResolversParentTypes['ReportEnqueueSourceInfo'] =
@@ -13324,6 +13383,11 @@ export type GQLReportHistoryEntryResolvers<
   ParentType extends GQLResolversParentTypes['ReportHistoryEntry'] =
     GQLResolversParentTypes['ReportHistoryEntry'],
 > = {
+  context?: Resolver<
+    Maybe<GQLResolversTypes['ReportContext']>,
+    ParentType,
+    ContextType
+  >;
   policyId?: Resolver<Maybe<GQLResolversTypes['ID']>, ParentType, ContextType>;
   reason?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -15647,6 +15711,8 @@ export type GQLResolvers<ContextType = Context> = {
   RemoveFavoriteRuleResponse?: GQLRemoveFavoriteRuleResponseResolvers<ContextType>;
   RemoveFavoriteRuleSuccessResponse?: GQLRemoveFavoriteRuleSuccessResponseResolvers<ContextType>;
   ReorderRoutingRulesResponse?: GQLReorderRoutingRulesResponseResolvers<ContextType>;
+  ReportContext?: GQLReportContextResolvers<ContextType>;
+  ReportContextClient?: GQLReportContextClientResolvers<ContextType>;
   ReportEnqueueSourceInfo?: GQLReportEnqueueSourceInfoResolvers<ContextType>;
   ReportHistoryEntry?: GQLReportHistoryEntryResolvers<ContextType>;
   ReportedForReason?: GQLReportedForReasonResolvers<ContextType>;

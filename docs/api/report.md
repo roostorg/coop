@@ -44,7 +44,12 @@ Authentication: `X-API-KEY` header. See [API Keys & Authentication](../developme
   ],
   "additionalItems": [
     { "id": "additional-context-item", "data": {}, "typeId": "item-type-id" }
-  ]
+  ],
+  "reportContext": {
+    "surface": "profile",
+    "client": { "name": "ExampleApp", "version": "2.3.1", "platform": "ios" },
+    "attributes": { "experimentArm": "new_report_flow" }
+  }
 }
 ```
 
@@ -60,6 +65,7 @@ Authentication: `X-API-KEY` header. See [API Keys & Authentication](../developme
 | `reportedItemThread`       | Array\<ReportedItem\>   | Optional  | Other items in the same thread (e.g. surrounding messages in a DM thread). Coop uses this to show reviewers full context |
 | `reportedItemsInThread`    | Array\<ItemIdentifier\> | Optional  | Items within `reportedItemThread` that were specifically reported (tagged in the review UI)                              |
 | `additionalItems`          | Array\<ReportedItem\>   | Optional  | Other content to display alongside the report for context (e.g. the author's recent posts)                               |
+| `reportContext`            | ReportContext           | Optional  | Where in your app the report was made and which client sent it. Shown to reviewers and recorded for analytics            |
 
 **Reporter schema:**
 
@@ -93,6 +99,22 @@ Authentication: `X-API-KEY` header. See [API Keys & Authentication](../developme
 | `policyId` | String  | Optional  | The ID of the policy being violated, if the reporter selected a reason that maps to a policy     |
 | `reason`   | String  | Optional  | Freeform text from the reporter explaining why they submitted the report                         |
 | `csam`     | Boolean | Optional  | When `true`, Coop routes the job directly to the NCMEC queue instead of the default review queue |
+
+**ReportContext schema:**
+
+All fields are optional. String values are limited to 256 characters.
+
+| Field             | Type   | Description                                                                                                                                                    |
+| :---------------- | :----- | :------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `surface`         | String | Where in your app the report was made, e.g. `feed`, `profile`, `post`, `dm`. Choose a small, stable set of values so reports can be compared across surfaces   |
+| `client.name`     | String | The app or integration the reporter used, e.g. your iOS app or a third-party client                                                                            |
+| `client.version`  | String | The version of that app                                                                                                                                        |
+| `client.platform` | String | The platform the app runs on, e.g. `ios`, `android`, `web`                                                                                                     |
+| `attributes`      | Object | Any other context, as up to 50 keys with string, number, boolean or `null` values. Nested objects and arrays are rejected. Shown to reviewers but not to rules |
+
+Send `client` from your own request body rather than forwarding an HTTP `User-Agent`: the request to Coop comes from your backend, not the reporter's app.
+
+> If you use the PostgreSQL data warehouse adapter, add `report_surface`, `report_client_name`, `report_client_version`, `report_client_platform` and `report_context_attributes` (text, default `''`) to your `REPORTING_SERVICE.REPORTS` table before sending `reportContext`. ClickHouse deployments get these columns from the bundled migration.
 
 ## Response
 

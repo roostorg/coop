@@ -22,6 +22,7 @@ import {
   type ThreadSchemaFieldRoles,
   type UserSchemaFieldRoles,
 } from '../moderationConfigService/index.js';
+import { type ReportContextAttributeValue } from './reportContext.js';
 import { type ReportingRuleStatus } from './ReportingRules.js';
 import { type ReporterKind } from './reportingService.js';
 
@@ -58,6 +59,16 @@ export type ReportSubmissionsRow = {
   REPORTED_ITEM_TYPE_SCHEMA_VARIANT: ItemTypeSchemaVariant;
   REPORTED_ITEM_TYPE_SCHEMA: ItemSchema;
   SKIP_JOB_ENQUEUE: boolean;
+  // Report context columns default to '' for rows written without context.
+  REPORT_SURFACE: string;
+  REPORT_CLIENT_NAME: string;
+  REPORT_CLIENT_VERSION: string;
+  REPORT_CLIENT_PLATFORM: string;
+  REPORT_CONTEXT_ATTRIBUTES:
+    | JsonOf<{
+        [key: string]: ReportContextAttributeValue;
+      }>
+    | '';
 } & (
   | {
       REPORTED_ITEM_TYPE_KIND: 'CONTENT';

@@ -12,6 +12,7 @@ For more information about each release including git tags and artifacts, see [R
 
 - Indicator on the Appeals queue tab when appeals are pending ([#1329](https://github.com/roostorg/coop/pull/1329) by [@madheesunp](https://github.com/madheesunp))
 - Per-queue job sort order for manual review queues with support for sorting by number of reports ([#718](https://github.com/roostorg/coop/pull/718) by [@calebmcquaid](https://github.com/calebmcquaid), closes [#670](https://github.com/roostorg/coop/issues/670))
+- Optional `reportContext` (reporting surface, client, attributes) on the Report API, shown in the review console ([#1334](https://github.com/roostorg/coop/pull/1334) by [@reitblatt](https://github.com/reitblatt))
 
 ### Changed
 
@@ -22,6 +23,7 @@ For more information about each release including git tags and artifacts, see [R
 - Renaming a hash bank no longer discards its hashed content ([#1360](https://github.com/roostorg/coop/pull/1360) by [@juanmrad](https://github.com/juanmrad))
 - Zentropi Labeler signal failing on every call; labeler versions now require a labeler ID ([#1335](https://github.com/roostorg/coop/pull/1335) by [@reitblatt](https://github.com/reitblatt))
 - NCMEC review escalations silently succeeding when the item cannot resolve to a user ([#1331](https://github.com/roostorg/coop/pull/1331) by [@Joseph-Mutua](https://github.com/Joseph-Mutua))
+- Rule conditions on inputs with several values, such as "Any image" or a job's policies, now match when any value matches (including "is not equal to") instead of checking only the first value ([#1389](https://github.com/roostorg/coop/pull/1389) by [@reitblatt](https://github.com/reitblatt))
 
 ### Security
 

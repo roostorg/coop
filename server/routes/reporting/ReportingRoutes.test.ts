@@ -554,6 +554,146 @@ describe('POST Report', () => {
   );
 
   testWithFixture(
+    'Should record report context in the warehouse and MRT report history',
+    async ({
+      request,
+      apiKey,
+      orgId,
+      contentTypeId,
+      userTypeId,
+      getBulkWriteMock,
+      deps,
+    }) => {
+      const payload = {
+        reporter: { kind: 'user', id: '5123521', typeId: userTypeId },
+        reportedAt: new Date().toISOString(),
+        reportedItem: {
+          id: '21342135',
+          typeId: contentTypeId,
+          data: { name: 'Some name' },
+        },
+        reportContext: {
+          surface: 'profile',
+          client: { name: 'Ivory', version: '2.3.1', platform: null },
+          attributes: { experimentArm: 'new_flow_b', retried: false },
+        },
+      };
+
+      const enqueueSpy = vi.spyOn(deps.ManualReviewToolService, 'enqueue');
+
+      try {
+        await request
+          .post('/api/v1/report')
+          .set('x-api-key', apiKey)
+          .send(payload)
+          .expect(201);
+
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        const expectedContext = {
+          surface: 'profile',
+          client: { name: 'Ivory', version: '2.3.1' },
+          attributes: { experimentArm: 'new_flow_b', retried: false },
+        };
+
+        expect(getBulkWriteMock().mock.calls[0]).toMatchObject([
+          'REPORTING_SERVICE.REPORTS',
+          [
+            {
+              org_id: orgId,
+              reported_item_id: '21342135',
+              report_surface: 'profile',
+              report_client_name: 'Ivory',
+              report_client_version: '2.3.1',
+              report_context_attributes: expectedContext.attributes,
+            },
+          ],
+        ]);
+        // Null fields are omitted so the column keeps its '' default.
+        expect(getBulkWriteMock().mock.calls[0]?.[1]?.[0]).not.toHaveProperty(
+          'report_client_platform',
+        );
+
+        expect(enqueueSpy).toHaveBeenCalled();
+        const enqueueArg = enqueueSpy.mock.calls[0]?.[0] as
+          { payload?: { reportHistory?: ReadonlyArray<unknown> } } | undefined;
+        expect(enqueueArg?.payload?.reportHistory).toEqual([
+          expect.objectContaining({ context: expectedContext }),
+        ]);
+      } finally {
+        enqueueSpy.mockRestore();
+      }
+    },
+  );
+
+  testWithFixture(
+    'Should not write report context columns when no context is sent',
+    async ({
+      request,
+      apiKey,
+      contentTypeId,
+      userTypeId,
+      getBulkWriteMock,
+    }) => {
+      await request
+        .post('/api/v1/report')
+        .set('x-api-key', apiKey)
+        .send({
+          reporter: { kind: 'user', id: '5123521', typeId: userTypeId },
+          reportedAt: new Date().toISOString(),
+          reportedItem: {
+            id: '21342135',
+            typeId: contentTypeId,
+            data: { name: 'Some name' },
+          },
+        })
+        .expect(201);
+
+      const row = getBulkWriteMock().mock.calls[0]?.[1]?.[0];
+      for (const column of [
+        'report_surface',
+        'report_client_name',
+        'report_client_version',
+        'report_client_platform',
+        'report_context_attributes',
+      ]) {
+        expect(row).not.toHaveProperty(column);
+      }
+    },
+  );
+
+  testWithFixture(
+    'Should reject invalid report context',
+    async ({ request, apiKey, contentTypeId, userTypeId }) => {
+      const basePayload = {
+        reporter: { kind: 'user', id: '5123521', typeId: userTypeId },
+        reportedAt: new Date().toISOString(),
+        reportedItem: {
+          id: '21342135',
+          typeId: contentTypeId,
+          data: { name: 'Some name' },
+        },
+      };
+
+      for (const reportContext of [
+        { surface: 'x'.repeat(257) },
+        { attributes: { nested: { not: 'allowed' } } },
+        {
+          attributes: Object.fromEntries(
+            Array.from({ length: 51 }, (_, i) => [`key${i}`, i]),
+          ),
+        },
+      ]) {
+        await request
+          .post('/api/v1/report')
+          .set('x-api-key', apiKey)
+          .send({ ...basePayload, reportContext })
+          .expect(400);
+      }
+    },
+  );
+
+  testWithFixture(
     'Should fail invalid reportedAt date',
     async ({ request, apiKey, contentTypeId, userTypeId }) => {
       const payload = {

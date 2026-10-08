@@ -29,6 +29,7 @@ import {
 } from '../manualReviewContentResolver.js';
 import { type ModerationConfigService } from '../moderationConfigService/index.js';
 import { type PartialItemsService } from '../partialItemsService/index.js';
+import { type ReportContext } from '../reportingService/index.js';
 import {
   UserPermission,
   type Invoker,
@@ -185,6 +186,7 @@ export type ReportHistory = Array<{
   reportId: string;
   reportedAt: Date;
   policyId?: string;
+  context?: ReportContext;
 }>;
 
 export type ContentManualReviewJobPayload = {
