@@ -1165,6 +1165,7 @@ export type GQLError = {
 
 export type GQLExchangeApiInfo = {
   readonly __typename: 'ExchangeApiInfo';
+  /** @deprecated Field no longer supported */
   readonly has_auth: Scalars['Boolean']['output'];
   readonly name: Scalars['String']['output'];
   readonly supports_auth: Scalars['Boolean']['output'];
@@ -1180,6 +1181,12 @@ export type GQLExchangeConfigInput = {
   readonly api_name: Scalars['String']['input'];
   readonly config_json: Scalars['String']['input'];
   readonly credentials_json?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type GQLExchangeCredentialStatus = {
+  readonly __typename: 'ExchangeCredentialStatus';
+  readonly has_credentials: Scalars['Boolean']['output'];
+  readonly has_own_credentials: Scalars['Boolean']['output'];
 };
 
 export type GQLExchangeFieldDescriptor = {
@@ -1199,6 +1206,7 @@ export type GQLExchangeInfo = {
   readonly error?: Maybe<Scalars['String']['output']>;
   readonly fetched_items?: Maybe<Scalars['Int']['output']>;
   readonly has_auth: Scalars['Boolean']['output'];
+  readonly has_own_credentials: Scalars['Boolean']['output'];
   readonly is_fetching?: Maybe<Scalars['Boolean']['output']>;
   readonly last_fetch_succeeded?: Maybe<Scalars['Boolean']['output']>;
   readonly last_fetch_time?: Maybe<Scalars['String']['output']>;
@@ -1595,6 +1603,12 @@ export type GQLItemAction = {
   readonly itemId: Scalars['ID']['output'];
   readonly itemTypeId: Scalars['ID']['output'];
   readonly jobId?: Maybe<Scalars['ID']['output']>;
+  /**
+   * Moderator-supplied parameter values this action ran with, keyed by the
+   * parameter's `name`. Empty when the action takes no parameters or the
+   * execution predates parameter capture.
+   */
+  readonly parameters: Scalars['JSONObject']['output'];
   readonly policies: ReadonlyArray<Scalars['String']['output']>;
   readonly ruleIds: ReadonlyArray<Scalars['ID']['output']>;
   readonly ts: Scalars['DateTime']['output'];
@@ -1781,9 +1795,28 @@ export type GQLJobHasAlreadyBeenSubmittedError = GQLError & {
   readonly type: ReadonlyArray<Scalars['String']['output']>;
 };
 
+export const GQLJobPriorityProperty = {
+  NumReports: 'numReports',
+  UserScore: 'userScore',
+} as const;
+
+export type GQLJobPriorityProperty =
+  (typeof GQLJobPriorityProperty)[keyof typeof GQLJobPriorityProperty];
+export type GQLJobPriorityWeight = {
+  readonly __typename: 'JobPriorityWeight';
+  readonly property: GQLJobPriorityProperty;
+  readonly weight: Scalars['Float']['output'];
+};
+
+export type GQLJobPriorityWeightInput = {
+  readonly property: GQLJobPriorityProperty;
+  readonly weight: Scalars['Float']['input'];
+};
+
 export const GQLJobSortType = {
   Fifo: 'FIFO',
   NumReports: 'NUM_REPORTS',
+  Weighted: 'WEIGHTED',
 } as const;
 
 export type GQLJobSortType =
@@ -2266,6 +2299,7 @@ export type GQLManualReviewQueue = {
 export type GQLManualReviewQueueJobsArgs = {
   ids?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
   limit?: InputMaybe<Scalars['Int']['input']>;
+  lockToken?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type GQLManualReviewQueueNameExistsError = GQLError & {
@@ -2559,6 +2593,7 @@ export type GQLMutation = {
   readonly sendPasswordReset: Scalars['Boolean']['output'];
   readonly setAllUserStrikeThresholds: GQLSetAllUserStrikeThresholdsSuccessResponse;
   readonly setIntegrationConfig: GQLSetIntegrationConfigResponse;
+  readonly setJobPriorityWeights: GQLSetJobPriorityWeightsResponse;
   readonly setModeratorSafetySettings?: Maybe<GQLSetModeratorSafetySettingsSuccessResponse>;
   readonly setMrtChartConfigurationSettings?: Maybe<GQLSetMrtChartConfigurationSettingsSuccessResponse>;
   readonly setOrgDefaultSafetySettings?: Maybe<GQLSetModeratorSafetySettingsSuccessResponse>;
@@ -2571,10 +2606,12 @@ export type GQLMutation = {
   readonly updateAppealSettings: GQLAppealSettings;
   readonly updateContentItemType: GQLMutateContentItemTypeResponse;
   readonly updateContentRule: GQLUpdateContentRuleResponse;
+  /** @deprecated Field no longer supported */
   readonly updateExchangeCredentials: Scalars['Boolean']['output'];
   readonly updateHasAppealsEnabled: Scalars['Boolean']['output'];
   readonly updateHasReportingRulesEnabled: Scalars['Boolean']['output'];
   readonly updateHashBank: GQLMutateHashBankResponse;
+  readonly updateHashBankExchangeCredentials: GQLExchangeCredentialStatus;
   readonly updateHideSkipButtonForNonAdmins: Scalars['Boolean']['output'];
   readonly updateIgnoreCallbackUrl: Scalars['Boolean']['output'];
   readonly updateLocationBank: GQLMutateLocationBankResponse;
@@ -2820,6 +2857,10 @@ export type GQLMutationSetIntegrationConfigArgs = {
   input: GQLSetIntegrationConfigInput;
 };
 
+export type GQLMutationSetJobPriorityWeightsArgs = {
+  input: GQLSetJobPriorityWeightsInput;
+};
+
 export type GQLMutationSetModeratorSafetySettingsArgs = {
   moderatorSafetySettings: GQLModeratorSafetySettingsInput;
 };
@@ -2884,6 +2925,11 @@ export type GQLMutationUpdateHasReportingRulesEnabledArgs = {
 
 export type GQLMutationUpdateHashBankArgs = {
   input: GQLUpdateHashBankInput;
+};
+
+export type GQLMutationUpdateHashBankExchangeCredentialsArgs = {
+  bankId: Scalars['ID']['input'];
+  credentialsJson: Scalars['String']['input'];
 };
 
 export type GQLMutationUpdateHideSkipButtonForNonAdminsArgs = {
@@ -3042,6 +3088,16 @@ export type GQLNcmecContentItem = {
   readonly contentItem: GQLItem;
   readonly isConfirmedCSAM: Scalars['Boolean']['output'];
   readonly isReported: Scalars['Boolean']['output'];
+};
+
+export type GQLNcmecEscalationUnavailableError = GQLError & {
+  readonly __typename: 'NcmecEscalationUnavailableError';
+  readonly detail?: Maybe<Scalars['String']['output']>;
+  readonly pointer?: Maybe<Scalars['String']['output']>;
+  readonly requestId?: Maybe<Scalars['String']['output']>;
+  readonly status: Scalars['Int']['output'];
+  readonly title: Scalars['String']['output'];
+  readonly type: ReadonlyArray<Scalars['String']['output']>;
 };
 
 /**
@@ -3270,6 +3326,7 @@ export type GQLOrg = {
   readonly integrationConfigs: ReadonlyArray<GQLIntegrationConfig>;
   readonly isDemoOrg: Scalars['Boolean']['output'];
   readonly itemTypes: ReadonlyArray<GQLItemType>;
+  readonly jobPriorityWeights: ReadonlyArray<GQLJobPriorityWeight>;
   readonly mrtQueues: ReadonlyArray<GQLManualReviewQueue>;
   readonly name: Scalars['String']['output'];
   /**
@@ -4056,10 +4113,8 @@ export type GQLRole = {
   readonly __typename: 'Role';
   readonly description?: Maybe<Scalars['String']['output']>;
   readonly displayName: Scalars['String']['output'];
-  /** Persisted public.roles.id, or null when the row is materialized lazily on first save. */
-  readonly id?: Maybe<Scalars['ID']['output']>;
-  /** True when permissions/metadata come from the static fallback rather than public.roles. */
-  readonly isFallback: Scalars['Boolean']['output'];
+  /** Persisted public.roles.id. */
+  readonly id: Scalars['ID']['output'];
   readonly isSystem: Scalars['Boolean']['output'];
   /** Stable role identifier (matches UserRole). */
   readonly key: GQLUserRole;
@@ -4341,6 +4396,18 @@ export type GQLSetIntegrationConfigSuccessResponse = {
   readonly config: GQLIntegrationConfig;
 };
 
+export type GQLSetJobPriorityWeightsInput = {
+  readonly weights: ReadonlyArray<GQLJobPriorityWeightInput>;
+};
+
+export type GQLSetJobPriorityWeightsResponse =
+  GQLSetJobPriorityWeightsSuccessResponse;
+
+export type GQLSetJobPriorityWeightsSuccessResponse = {
+  readonly __typename: 'SetJobPriorityWeightsSuccessResponse';
+  readonly _?: Maybe<Scalars['Boolean']['output']>;
+};
+
 export type GQLSetModeratorSafetySettingsSuccessResponse = {
   readonly __typename: 'SetModeratorSafetySettingsSuccessResponse';
   readonly _?: Maybe<Scalars['Boolean']['output']>;
@@ -4595,6 +4662,7 @@ export type GQLSubmitDecisionResponse =
   | GQLJobHasAlreadyBeenSubmittedError
   | GQLMissingRequiredDecisionReasonError
   | GQLMissingRequiredPolicyForDecisionError
+  | GQLNcmecEscalationUnavailableError
   | GQLNoJobWithIdInQueueError
   | GQLRecordingJobDecisionFailedError
   | GQLSubmitDecisionSuccessResponse
@@ -5028,7 +5096,6 @@ export type GQLUser = {
   readonly notifications: GQLUserNotifications;
   readonly orgId: Scalars['ID']['output'];
   readonly permissions: ReadonlyArray<GQLUserPermission>;
-  readonly readMeJWT?: Maybe<Scalars['String']['output']>;
   readonly rejectedByAdmin?: Maybe<Scalars['Boolean']['output']>;
   readonly reviewableQueues: ReadonlyArray<GQLManualReviewQueue>;
   readonly role?: Maybe<GQLUserRole>;
@@ -5299,11 +5366,13 @@ export type GQLZentropiLabelerVersion = {
   readonly __typename: 'ZentropiLabelerVersion';
   readonly id: Scalars['String']['output'];
   readonly label: Scalars['String']['output'];
+  readonly labelerId?: Maybe<Scalars['String']['output']>;
 };
 
 export type GQLZentropiLabelerVersionInput = {
   readonly id: Scalars['String']['input'];
   readonly label: Scalars['String']['input'];
+  readonly labelerId: Scalars['String']['input'];
 };
 
 export type GQLApiAuthQueryVariables = Exact<{ [key: string]: never }>;
@@ -5411,6 +5480,7 @@ export type GQLHashBankByIdQuery = {
       readonly api: string;
       readonly enabled: boolean;
       readonly has_auth: boolean;
+      readonly has_own_credentials: boolean;
       readonly error?: string | null;
       readonly last_fetch_succeeded?: boolean | null;
       readonly last_fetch_time?: string | null;
@@ -5429,7 +5499,6 @@ export type GQLExchangeApisQuery = {
     readonly __typename: 'ExchangeApiInfo';
     readonly name: string;
     readonly supports_auth: boolean;
-    readonly has_auth: boolean;
   }>;
 };
 
@@ -5538,14 +5607,18 @@ export type GQLDeleteHashBankMutation = {
   readonly deleteHashBank: boolean;
 };
 
-export type GQLUpdateExchangeCredentialsMutationVariables = Exact<{
-  apiName: Scalars['String']['input'];
+export type GQLUpdateHashBankExchangeCredentialsMutationVariables = Exact<{
+  bankId: Scalars['ID']['input'];
   credentialsJson: Scalars['String']['input'];
 }>;
 
-export type GQLUpdateExchangeCredentialsMutation = {
+export type GQLUpdateHashBankExchangeCredentialsMutation = {
   readonly __typename: 'Mutation';
-  readonly updateExchangeCredentials: boolean;
+  readonly updateHashBankExchangeCredentials: {
+    readonly __typename: 'ExchangeCredentialStatus';
+    readonly has_credentials: boolean;
+    readonly has_own_credentials: boolean;
+  };
 };
 
 export type GQLPasswordRequirementsQueryVariables = Exact<{
@@ -6551,6 +6624,7 @@ export type GQLIntegrationConfigQuery = {
                   readonly __typename: 'ZentropiLabelerVersion';
                   readonly id: string;
                   readonly label: string;
+                  readonly labelerId?: string | null;
                 }>;
               };
         } | null;
@@ -8302,6 +8376,7 @@ export type GQLItemActionHistoryQuery = {
     readonly jobId?: string | null;
     readonly policies: ReadonlyArray<string>;
     readonly ruleIds: ReadonlyArray<string>;
+    readonly parameters: JsonObject;
     readonly ts: Date | string;
   }>;
   readonly myOrg?: {
@@ -10064,6 +10139,7 @@ export type GQLManualReviewQueueJobsPreviewQuery = {
       readonly name: string;
       readonly description?: string | null;
       readonly pendingJobCount: number;
+      readonly jobSortType: GQLJobSortType;
       readonly jobs: ReadonlyArray<{
         readonly __typename: 'ManualReviewJob';
         readonly id: string;
@@ -12378,6 +12454,7 @@ export type GQLManualReviewJobInfoQueryVariables = Exact<{
   jobIds?: InputMaybe<
     ReadonlyArray<Scalars['ID']['input']> | Scalars['ID']['input']
   >;
+  lockToken?: InputMaybe<Scalars['String']['input']>;
 }>;
 
 export type GQLManualReviewJobInfoQuery = {
@@ -15414,6 +15491,13 @@ export type GQLSubmitManualReviewDecisionMutation = {
         readonly type: ReadonlyArray<string>;
       }
     | {
+        readonly __typename: 'NcmecEscalationUnavailableError';
+        readonly title: string;
+        readonly status: number;
+        readonly type: ReadonlyArray<string>;
+        readonly detail?: string | null;
+      }
+    | {
         readonly __typename: 'NoJobWithIdInQueueError';
         readonly title: string;
         readonly status: number;
@@ -15446,15 +15530,6 @@ export type GQLLogSkipMutationVariables = Exact<{
 export type GQLLogSkipMutation = {
   readonly __typename: 'Mutation';
   readonly logSkip: boolean;
-};
-
-export type GQLReleaseJobLockMutationVariables = Exact<{
-  input: GQLReleaseJobLockInput;
-}>;
-
-export type GQLReleaseJobLockMutation = {
-  readonly __typename: 'Mutation';
-  readonly releaseJobLock: boolean;
 };
 
 export type GQLJobFieldsFragment = {
@@ -24922,12 +24997,11 @@ export type GQLRolesForOrgQuery = {
   readonly __typename: 'Query';
   readonly rolesForOrg: ReadonlyArray<{
     readonly __typename: 'Role';
-    readonly id?: string | null;
+    readonly id: string;
     readonly key: GQLUserRole;
     readonly displayName: string;
     readonly description?: string | null;
     readonly isSystem: boolean;
-    readonly isFallback: boolean;
     readonly permissions: ReadonlyArray<GQLUserPermission>;
     readonly userCount: number;
   }>;
@@ -25123,12 +25197,11 @@ export type GQLUpdateRolePermissionsMutation = {
   readonly __typename: 'Mutation';
   readonly updateRolePermissions: {
     readonly __typename: 'Role';
-    readonly id?: string | null;
+    readonly id: string;
     readonly key: GQLUserRole;
     readonly displayName: string;
     readonly description?: string | null;
     readonly isSystem: boolean;
-    readonly isFallback: boolean;
     readonly permissions: ReadonlyArray<GQLUserPermission>;
     readonly userCount: number;
   };
@@ -25142,12 +25215,11 @@ export type GQLRenameRoleMutation = {
   readonly __typename: 'Mutation';
   readonly renameRole: {
     readonly __typename: 'Role';
-    readonly id?: string | null;
+    readonly id: string;
     readonly key: GQLUserRole;
     readonly displayName: string;
     readonly description?: string | null;
     readonly isSystem: boolean;
-    readonly isFallback: boolean;
     readonly permissions: ReadonlyArray<GQLUserPermission>;
     readonly userCount: number;
   };
@@ -25182,6 +25254,11 @@ export type GQLDeploymentSettingsQuery = {
     readonly ignoreCallbackUrl?: string | null;
     readonly partialItemsEndpoint?: string | null;
     readonly partialItemsRequestHeaders?: JsonObject | null;
+    readonly jobPriorityWeights: ReadonlyArray<{
+      readonly __typename: 'JobPriorityWeight';
+      readonly property: GQLJobPriorityProperty;
+      readonly weight: number;
+    }>;
   } | null;
   readonly appealSettings?: {
     readonly __typename: 'AppealSettings';
@@ -25279,6 +25356,18 @@ export type GQLUpdateIgnoreCallbackUrlMutationVariables = Exact<{
 export type GQLUpdateIgnoreCallbackUrlMutation = {
   readonly __typename: 'Mutation';
   readonly updateIgnoreCallbackUrl: boolean;
+};
+
+export type GQLSetJobPriorityWeightsMutationVariables = Exact<{
+  input: GQLSetJobPriorityWeightsInput;
+}>;
+
+export type GQLSetJobPriorityWeightsMutation = {
+  readonly __typename: 'Mutation';
+  readonly setJobPriorityWeights: {
+    readonly __typename: 'SetJobPriorityWeightsSuccessResponse';
+    readonly _?: boolean | null;
+  };
 };
 
 export type GQLUpdateAppealSettingsMutationVariables = Exact<{
@@ -26754,6 +26843,7 @@ export const GQLHashBankByIdDocument = gql`
         api
         enabled
         has_auth
+        has_own_credentials
         error
         last_fetch_succeeded
         last_fetch_time
@@ -26865,7 +26955,6 @@ export const GQLExchangeApisDocument = gql`
     exchangeApis {
       name
       supports_auth
-      has_auth
     }
   }
 `;
@@ -27265,61 +27354,65 @@ export type GQLDeleteHashBankMutationOptions = Apollo.BaseMutationOptions<
   GQLDeleteHashBankMutation,
   GQLDeleteHashBankMutationVariables
 >;
-export const GQLUpdateExchangeCredentialsDocument = gql`
-  mutation UpdateExchangeCredentials(
-    $apiName: String!
+export const GQLUpdateHashBankExchangeCredentialsDocument = gql`
+  mutation UpdateHashBankExchangeCredentials(
+    $bankId: ID!
     $credentialsJson: String!
   ) {
-    updateExchangeCredentials(
-      apiName: $apiName
+    updateHashBankExchangeCredentials(
+      bankId: $bankId
       credentialsJson: $credentialsJson
-    )
+    ) {
+      has_credentials
+      has_own_credentials
+    }
   }
 `;
-export type GQLUpdateExchangeCredentialsMutationFn = Apollo.MutationFunction<
-  GQLUpdateExchangeCredentialsMutation,
-  GQLUpdateExchangeCredentialsMutationVariables
->;
+export type GQLUpdateHashBankExchangeCredentialsMutationFn =
+  Apollo.MutationFunction<
+    GQLUpdateHashBankExchangeCredentialsMutation,
+    GQLUpdateHashBankExchangeCredentialsMutationVariables
+  >;
 
 /**
- * __useGQLUpdateExchangeCredentialsMutation__
+ * __useGQLUpdateHashBankExchangeCredentialsMutation__
  *
- * To run a mutation, you first call `useGQLUpdateExchangeCredentialsMutation` within a React component and pass it any options that fit your needs.
- * When your component renders, `useGQLUpdateExchangeCredentialsMutation` returns a tuple that includes:
+ * To run a mutation, you first call `useGQLUpdateHashBankExchangeCredentialsMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLUpdateHashBankExchangeCredentialsMutation` returns a tuple that includes:
  * - A mutate function that you can call at any time to execute the mutation
  * - An object with fields that represent the current status of the mutation's execution
  *
  * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
  *
  * @example
- * const [gqlUpdateExchangeCredentialsMutation, { data, loading, error }] = useGQLUpdateExchangeCredentialsMutation({
+ * const [gqlUpdateHashBankExchangeCredentialsMutation, { data, loading, error }] = useGQLUpdateHashBankExchangeCredentialsMutation({
  *   variables: {
- *      apiName: // value for 'apiName'
+ *      bankId: // value for 'bankId'
  *      credentialsJson: // value for 'credentialsJson'
  *   },
  * });
  */
-export function useGQLUpdateExchangeCredentialsMutation(
+export function useGQLUpdateHashBankExchangeCredentialsMutation(
   baseOptions?: Apollo.MutationHookOptions<
-    GQLUpdateExchangeCredentialsMutation,
-    GQLUpdateExchangeCredentialsMutationVariables
+    GQLUpdateHashBankExchangeCredentialsMutation,
+    GQLUpdateHashBankExchangeCredentialsMutationVariables
   >,
 ) {
   const options = { ...defaultOptions, ...baseOptions };
   return Apollo.useMutation<
-    GQLUpdateExchangeCredentialsMutation,
-    GQLUpdateExchangeCredentialsMutationVariables
-  >(GQLUpdateExchangeCredentialsDocument, options);
+    GQLUpdateHashBankExchangeCredentialsMutation,
+    GQLUpdateHashBankExchangeCredentialsMutationVariables
+  >(GQLUpdateHashBankExchangeCredentialsDocument, options);
 }
-export type GQLUpdateExchangeCredentialsMutationHookResult = ReturnType<
-  typeof useGQLUpdateExchangeCredentialsMutation
+export type GQLUpdateHashBankExchangeCredentialsMutationHookResult = ReturnType<
+  typeof useGQLUpdateHashBankExchangeCredentialsMutation
 >;
-export type GQLUpdateExchangeCredentialsMutationResult =
-  Apollo.MutationResult<GQLUpdateExchangeCredentialsMutation>;
-export type GQLUpdateExchangeCredentialsMutationOptions =
+export type GQLUpdateHashBankExchangeCredentialsMutationResult =
+  Apollo.MutationResult<GQLUpdateHashBankExchangeCredentialsMutation>;
+export type GQLUpdateHashBankExchangeCredentialsMutationOptions =
   Apollo.BaseMutationOptions<
-    GQLUpdateExchangeCredentialsMutation,
-    GQLUpdateExchangeCredentialsMutationVariables
+    GQLUpdateHashBankExchangeCredentialsMutation,
+    GQLUpdateHashBankExchangeCredentialsMutationVariables
   >;
 export const GQLPasswordRequirementsDocument = gql`
   query PasswordRequirements {
@@ -30400,6 +30493,7 @@ export const GQLIntegrationConfigDocument = gql`
               labelerVersions {
                 id
                 label
+                labelerId
               }
             }
             ... on PluginIntegrationApiCredential {
@@ -32238,6 +32332,7 @@ export const GQLItemActionHistoryDocument = gql`
         jobId
         policies
         ruleIds
+        parameters
         ts
       }
     }
@@ -33320,6 +33415,7 @@ export const GQLManualReviewQueueJobsPreviewDocument = gql`
         name
         description
         pendingJobCount
+        jobSortType
         jobs {
           id
           createdAt
@@ -34900,7 +34996,7 @@ export type GQLInvalidateReportsFromReporterMutationOptions =
     GQLInvalidateReportsFromReporterMutationVariables
   >;
 export const GQLManualReviewJobInfoDocument = gql`
-  query ManualReviewJobInfo($jobIds: [ID!]) {
+  query ManualReviewJobInfo($jobIds: [ID!], $lockToken: String) {
     myOrg {
       id
       policies {
@@ -34973,7 +35069,7 @@ export const GQLManualReviewJobInfoDocument = gql`
         name
         pendingJobCount
         hiddenActionIds
-        jobs(ids: $jobIds) {
+        jobs(ids: $jobIds, lockToken: $lockToken) {
           ...JobFields
         }
       }
@@ -34997,6 +35093,7 @@ export const GQLManualReviewJobInfoDocument = gql`
  * const { data, loading, error } = useGQLManualReviewJobInfoQuery({
  *   variables: {
  *      jobIds: // value for 'jobIds'
+ *      lockToken: // value for 'lockToken'
  *   },
  * });
  */
@@ -35171,6 +35268,12 @@ export const GQLSubmitManualReviewDecisionDocument = gql`
         status
         type
       }
+      ... on NcmecEscalationUnavailableError {
+        title
+        status
+        type
+        detail
+      }
     }
   }
 `;
@@ -35265,54 +35368,6 @@ export type GQLLogSkipMutationResult =
 export type GQLLogSkipMutationOptions = Apollo.BaseMutationOptions<
   GQLLogSkipMutation,
   GQLLogSkipMutationVariables
->;
-export const GQLReleaseJobLockDocument = gql`
-  mutation ReleaseJobLock($input: ReleaseJobLockInput!) {
-    releaseJobLock(input: $input)
-  }
-`;
-export type GQLReleaseJobLockMutationFn = Apollo.MutationFunction<
-  GQLReleaseJobLockMutation,
-  GQLReleaseJobLockMutationVariables
->;
-
-/**
- * __useGQLReleaseJobLockMutation__
- *
- * To run a mutation, you first call `useGQLReleaseJobLockMutation` within a React component and pass it any options that fit your needs.
- * When your component renders, `useGQLReleaseJobLockMutation` returns a tuple that includes:
- * - A mutate function that you can call at any time to execute the mutation
- * - An object with fields that represent the current status of the mutation's execution
- *
- * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
- *
- * @example
- * const [gqlReleaseJobLockMutation, { data, loading, error }] = useGQLReleaseJobLockMutation({
- *   variables: {
- *      input: // value for 'input'
- *   },
- * });
- */
-export function useGQLReleaseJobLockMutation(
-  baseOptions?: Apollo.MutationHookOptions<
-    GQLReleaseJobLockMutation,
-    GQLReleaseJobLockMutationVariables
-  >,
-) {
-  const options = { ...defaultOptions, ...baseOptions };
-  return Apollo.useMutation<
-    GQLReleaseJobLockMutation,
-    GQLReleaseJobLockMutationVariables
-  >(GQLReleaseJobLockDocument, options);
-}
-export type GQLReleaseJobLockMutationHookResult = ReturnType<
-  typeof useGQLReleaseJobLockMutation
->;
-export type GQLReleaseJobLockMutationResult =
-  Apollo.MutationResult<GQLReleaseJobLockMutation>;
-export type GQLReleaseJobLockMutationOptions = Apollo.BaseMutationOptions<
-  GQLReleaseJobLockMutation,
-  GQLReleaseJobLockMutationVariables
 >;
 export const GQLGetCommentsForJobDocument = gql`
   query GetCommentsForJob($jobId: ID!) {
@@ -43652,7 +43707,6 @@ export const GQLRolesForOrgDocument = gql`
       displayName
       description
       isSystem
-      isFallback
       permissions
       userCount
     }
@@ -44595,7 +44649,6 @@ export const GQLUpdateRolePermissionsDocument = gql`
       displayName
       description
       isSystem
-      isFallback
       permissions
       userCount
     }
@@ -44653,7 +44706,6 @@ export const GQLRenameRoleDocument = gql`
       displayName
       description
       isSystem
-      isFallback
       permissions
       userCount
     }
@@ -44725,6 +44777,10 @@ export const GQLDeploymentSettingsDocument = gql`
       ignoreCallbackUrl
       partialItemsEndpoint
       partialItemsRequestHeaders
+      jobPriorityWeights {
+        property
+        weight
+      }
     }
     appealSettings {
       appealsCallbackUrl
@@ -45315,6 +45371,59 @@ export type GQLUpdateIgnoreCallbackUrlMutationOptions =
   Apollo.BaseMutationOptions<
     GQLUpdateIgnoreCallbackUrlMutation,
     GQLUpdateIgnoreCallbackUrlMutationVariables
+  >;
+export const GQLSetJobPriorityWeightsDocument = gql`
+  mutation SetJobPriorityWeights($input: SetJobPriorityWeightsInput!) {
+    setJobPriorityWeights(input: $input) {
+      ... on SetJobPriorityWeightsSuccessResponse {
+        _
+      }
+    }
+  }
+`;
+export type GQLSetJobPriorityWeightsMutationFn = Apollo.MutationFunction<
+  GQLSetJobPriorityWeightsMutation,
+  GQLSetJobPriorityWeightsMutationVariables
+>;
+
+/**
+ * __useGQLSetJobPriorityWeightsMutation__
+ *
+ * To run a mutation, you first call `useGQLSetJobPriorityWeightsMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLSetJobPriorityWeightsMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlSetJobPriorityWeightsMutation, { data, loading, error }] = useGQLSetJobPriorityWeightsMutation({
+ *   variables: {
+ *      input: // value for 'input'
+ *   },
+ * });
+ */
+export function useGQLSetJobPriorityWeightsMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLSetJobPriorityWeightsMutation,
+    GQLSetJobPriorityWeightsMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLSetJobPriorityWeightsMutation,
+    GQLSetJobPriorityWeightsMutationVariables
+  >(GQLSetJobPriorityWeightsDocument, options);
+}
+export type GQLSetJobPriorityWeightsMutationHookResult = ReturnType<
+  typeof useGQLSetJobPriorityWeightsMutation
+>;
+export type GQLSetJobPriorityWeightsMutationResult =
+  Apollo.MutationResult<GQLSetJobPriorityWeightsMutation>;
+export type GQLSetJobPriorityWeightsMutationOptions =
+  Apollo.BaseMutationOptions<
+    GQLSetJobPriorityWeightsMutation,
+    GQLSetJobPriorityWeightsMutationVariables
   >;
 export const GQLUpdateAppealSettingsDocument = gql`
   mutation UpdateAppealSettings($input: AppealSettingsInput!) {
@@ -45923,7 +46032,7 @@ export const namedOperations = {
     CreateHashBank: 'CreateHashBank',
     UpdateHashBank: 'UpdateHashBank',
     DeleteHashBank: 'DeleteHashBank',
-    UpdateExchangeCredentials: 'UpdateExchangeCredentials',
+    UpdateHashBankExchangeCredentials: 'UpdateHashBankExchangeCredentials',
     Login: 'Login',
     DeleteRejectedUser: 'DeleteRejectedUser',
     SignUp: 'SignUp',
@@ -45960,7 +46069,6 @@ export const namedOperations = {
     DequeueManualReviewJob: 'DequeueManualReviewJob',
     SubmitManualReviewDecision: 'SubmitManualReviewDecision',
     LogSkip: 'LogSkip',
-    ReleaseJobLock: 'ReleaseJobLock',
     AddJobComment: 'AddJobComment',
     DeleteJobComment: 'DeleteJobComment',
     DeleteRoutingRule: 'DeleteRoutingRule',
@@ -46008,6 +46116,7 @@ export const namedOperations = {
     UpdateHideSkipButtonForNonAdmins: 'UpdateHideSkipButtonForNonAdmins',
     UpdatePreviewJobsViewEnabled: 'UpdatePreviewJobsViewEnabled',
     UpdateIgnoreCallbackUrl: 'UpdateIgnoreCallbackUrl',
+    SetJobPriorityWeights: 'SetJobPriorityWeights',
     UpdateAppealSettings: 'UpdateAppealSettings',
     UpdateOrgInfo: 'UpdateOrgInfo',
     UpdatePartialItemsSettings: 'UpdatePartialItemsSettings',

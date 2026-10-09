@@ -31,20 +31,18 @@ class UserManagementService {
     private readonly configService: Dependencies['ConfigService'],
   ) {}
 
-  // Returns null for orgs without seeded role rows; the read path falls
-  // back to UserPermissionsForRole defaults.
   async #lookupSystemRoleId(opts: {
     orgId: string;
     role: UserRole;
-  }): Promise<string | null> {
+  }): Promise<string> {
     const row = await this.pgQuery
       .selectFrom('public.roles')
       .select('id')
       .where('org_id', '=', opts.orgId)
       .where('key', '=', opts.role)
       .where('is_system', '=', true)
-      .executeTakeFirst();
-    return row?.id ?? null;
+      .executeTakeFirstOrThrow();
+    return row.id;
   }
 
   async getUserInterfaceSettings(opts: { userId: string; orgId: string }) {
@@ -94,8 +92,18 @@ class UserManagementService {
     const { token } = opts;
     const tokenRow = await this.pgQuery
       .selectFrom('public.invite_user_tokens')
-      .selectAll()
-      .where('token', '=', token)
+      .innerJoin('public.roles', (join) =>
+        join
+          .onRef('public.roles.id', '=', 'public.invite_user_tokens.role_id')
+          .onRef(
+            'public.roles.org_id',
+            '=',
+            'public.invite_user_tokens.org_id',
+          ),
+      )
+      .selectAll('public.invite_user_tokens')
+      .select('public.roles.key as role')
+      .where('public.invite_user_tokens.token', '=', token)
       .executeTakeFirst();
 
     if (tokenRow == null) {
@@ -128,7 +136,7 @@ class UserManagementService {
     const token = (await asyncRandomBytes(32)).toString('hex');
     await this.pgQuery
       .insertInto('public.invite_user_tokens')
-      .values({ token, email, role, role_id: roleId, org_id: orgId })
+      .values({ token, email, role_id: roleId, org_id: orgId })
       .execute();
     return token;
   }
@@ -140,9 +148,19 @@ class UserManagementService {
   > {
     const result = await this.pgQuery
       .selectFrom('public.invite_user_tokens')
-      .selectAll()
-      .where('org_id', '=', orgId)
-      .orderBy('created_at', 'desc')
+      .innerJoin('public.roles', (join) =>
+        join
+          .onRef('public.roles.id', '=', 'public.invite_user_tokens.role_id')
+          .onRef(
+            'public.roles.org_id',
+            '=',
+            'public.invite_user_tokens.org_id',
+          ),
+      )
+      .selectAll('public.invite_user_tokens')
+      .select('public.roles.key as role')
+      .where('public.invite_user_tokens.org_id', '=', orgId)
+      .orderBy('public.invite_user_tokens.created_at', 'desc')
       .execute();
 
     return result.map((row) => ({
@@ -323,7 +341,7 @@ class UserManagementService {
 
     const result = await this.pgQuery
       .updateTable('public.users')
-      .set({ role: newRole, role_id: newRoleId })
+      .set({ role_id: newRoleId })
       .where('id', '=', userId)
       .where('org_id', '=', invoker.orgId)
       .executeTakeFirst();
@@ -503,16 +521,21 @@ class UserManagementService {
   async getUsersForOrg(orgId: string) {
     return this.pgQuery
       .selectFrom('public.users')
+      .innerJoin('public.roles', (join) =>
+        join
+          .onRef('public.roles.id', '=', 'public.users.role_id')
+          .onRef('public.roles.org_id', '=', 'public.users.org_id'),
+      )
       .select([
-        'id',
-        'email',
-        'first_name as firstName',
-        'last_name as lastName',
-        'role',
+        'public.users.id',
+        'public.users.email',
+        'public.users.first_name as firstName',
+        'public.users.last_name as lastName',
+        'public.roles.key as role',
       ])
-      .where('org_id', '=', orgId)
-      .where('rejected_by_admin', '=', false)
-      .where('approved_by_admin', '=', true)
+      .where('public.users.org_id', '=', orgId)
+      .where('public.users.rejected_by_admin', '=', false)
+      .where('public.users.approved_by_admin', '=', true)
       .execute();
   }
 }

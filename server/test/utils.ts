@@ -1,3 +1,5 @@
+import { type TestFunction } from 'vitest';
+
 /**
  * Jest doesn't always do a good job surfacing thrown errors (or promise
  * rejections), so we use this helper a lot to log them w/ the test results.
@@ -167,7 +169,7 @@ export function makeTestWithFixture<T extends Record<string, unknown>>(
 
 function _makeTestWithFixture<T extends Record<string, unknown>>(
   makeSetupTeardown: () => Promise<Fixture<T>> | Fixture<T>,
-  jestFn = it,
+  jestFn: typeof it | typeof it.only = it,
 ) {
   return (
     name: string,
@@ -216,7 +218,7 @@ function _makeTestWithFixture<T extends Record<string, unknown>>(
             throw e;
           },
         );
-      }) as jest.ProvidesCallback,
+      }) as TestFunction,
       /* eslint-enable @typescript-eslint/promise-function-async */
       timeout,
     );

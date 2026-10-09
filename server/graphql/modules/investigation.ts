@@ -2,12 +2,16 @@
 import { isIP } from 'node:net';
 import { type DateString } from '@roostorg/coop-types';
 import _ from 'lodash';
+import type { JsonObject } from 'type-fest';
 
 import {
   getFieldValueForRole,
   type ItemSubmission,
 } from '../../services/itemProcessingService/index.js';
-import { type ConditionSetWithResult } from '../../services/moderationConfigService/index.js';
+import {
+  parseStoredParameters,
+  type ConditionSetWithResult,
+} from '../../services/moderationConfigService/index.js';
 import {
   asyncIterableToArray,
   asyncIterableToArrayWithTimeout,
@@ -137,6 +141,12 @@ const typeDefs = /* GraphQL */ `
     jobId: ID
     policies: [String!]!
     ruleIds: [ID!]!
+    """
+    Moderator-supplied parameter values this action ran with, keyed by the
+    parameter's \`name\`. Empty when the action takes no parameters or the
+    execution predates parameter capture.
+    """
+    parameters: JSONObject!
     ts: DateTime!
   }
 `;
@@ -689,19 +699,96 @@ const Query: GQLQueryResolvers = {
     );
   },
 
-  async itemActionHistory(_, { itemIdentifier, submissionTime }, context) {
+  // Parent arg is `__` so it doesn't shadow the lodash import, matching
+  // `latestItemsCreatedByWithThread` above.
+  async itemActionHistory(__, { itemIdentifier, submissionTime }, context) {
     const user = context.getUser();
     if (user == null) {
       throw unauthenticatedError('Unauthenticated User');
     }
-    return context.services.ItemInvestigationService.getItemActionHistory({
+    const history =
+      await context.services.ItemInvestigationService.getItemActionHistory({
+        orgId: user.orgId,
+        itemId: itemIdentifier.id,
+        itemTypeId: itemIdentifier.typeId,
+        itemSubmissionTime: submissionTime
+          ? new Date(submissionTime)
+          : undefined,
+      });
+
+    // Skip the Postgres round trip for an item with no action history, as
+    // `ActionAPI.getGraphQLActionsFromIds` does for empty ids.
+    if (history.length === 0) {
+      return [];
+    }
+
+    const actions = await context.services.ModerationConfigService.getActions({
       orgId: user.orgId,
-      itemId: itemIdentifier.id,
-      itemTypeId: itemIdentifier.typeId,
-      itemSubmissionTime: submissionTime ? new Date(submissionTime) : undefined,
+      ids: _.uniq(history.map((it) => it.actionId)),
     });
+    const declaredNamesByAction = new Map(
+      actions.map((action) => [
+        action.id,
+        new Set(
+          (action.actionType === 'CUSTOM_ACTION'
+            ? parseStoredParameters(action.customMrtApiParams)
+            : []
+          ).map((parameter) => parameter.name),
+        ),
+      ]),
+    );
+
+    return history.map((it) => ({
+      ...it,
+      parameters: narrowToDeclaredParameters(
+        declaredNamesByAction.get(it.actionId),
+        it.parameters,
+      ),
+    }));
   },
 };
+
+/**
+ * Keys the DEFAULT manual-review decision path merges into the action payload
+ * for the webhook's benefit (`iocContainer`, flagged there as temporary). They
+ * are never moderator-supplied parameters.
+ */
+const CALLBACK_ONLY_PARAMETER_KEYS = ['reportHistory'] as const;
+
+/**
+ * Keep only the values the action declares as parameters.
+ *
+ * `ACTION_EXECUTIONS.parameters` is not limited to declared parameters: the
+ * DEFAULT manual review decision path merges callback-only fields
+ * (`reportHistory`, and a `reason` that shadows any declared one) into the
+ * payload before it is logged — see the block in `iocContainer` flagged there
+ * as temporary. Exposing the raw map would leak webhook plumbing through the
+ * API as though a moderator had supplied it.
+ *
+ * Uses the action's *current* spec, not the one in force when the execution
+ * was recorded, so a since-renamed parameter drops out. That is preferable to
+ * showing it under a name that no longer means the same thing.
+ *
+ * When the action is unknown — deleted, most likely — there is no spec to
+ * allowlist against, so the stored values are kept (this is an audit surface,
+ * and hiding them would recreate the gap this field exists to close) minus the
+ * known callback-only keys.
+ */
+function narrowToDeclaredParameters(
+  declaredNames: ReadonlySet<string> | undefined,
+  parameters: JsonObject,
+): JsonObject {
+  if (declaredNames === undefined) {
+    // Without a spec there is no allowlist, but `reportHistory` is never a
+    // moderator parameter: it is injected by the DEFAULT decision path and
+    // carries reporter ids. `reason` stays, since it is also a common declared
+    // parameter name and there is no spec here to tell the two apart.
+    return _.omit(parameters, CALLBACK_ONLY_PARAMETER_KEYS);
+  }
+  return Object.fromEntries(
+    Object.entries(parameters).filter(([name]) => declaredNames.has(name)),
+  );
+}
 
 const resolvers = {
   Query,

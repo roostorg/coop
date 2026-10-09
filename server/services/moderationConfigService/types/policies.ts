@@ -28,6 +28,7 @@ export type Policy = {
   createdAt: Date;
   updatedAt: Date;
   policyText: string | null;
+  enforcementGuidelines: string | null;
   policyType: PolicyType | null;
   semanticVersion: number;
   userStrikeCount: number;

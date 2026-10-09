@@ -1,9 +1,6 @@
+import { Switch } from '@/coop-ui/Switch';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-
-import '@testing-library/jest-dom/extend-expect';
-
-import { Switch } from '@/coop-ui/Switch';
 
 describe('Switch Component', () => {
   test('renders the switch component', () => {

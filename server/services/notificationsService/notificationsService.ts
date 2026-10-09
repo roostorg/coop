@@ -4,7 +4,8 @@ import _ from 'lodash';
 import { type ReadonlyDeep } from 'type-fest';
 import { uid } from 'uid';
 
-import { inject, type Dependencies } from '../../iocContainer/index.js';
+import { type Dependencies } from '../../iocContainer/index.js';
+import { inject } from '../../iocContainer/utils.js';
 import { type NonEmptyArray } from '../../utils/typescript-types.js';
 import { CoopEmailAddress } from '../sendEmailService/sendEmailService.js';
 import { type NotificationsServicePg } from './dbTypes.js';

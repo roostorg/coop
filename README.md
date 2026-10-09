@@ -28,7 +28,7 @@ A few things that shape how we build it:
 
 Coop is used by:
 
-| ![Kyodo](docs/images/adopters/kyodo.png) | ![Notion](docs/images/adopters/notion.png) | ![Musubi](docs/images/adopters/musubi.png) |
+| ![Kyodo](docs/images/adopters/kyodo.svg) | ![Notion](docs/images/adopters/notion.svg) | ![Musubi](docs/images/adopters/musubi.svg) |
 | ---------------------------------------- | ------------------------------------------ | ------------------------------------------ |
 
 Using Coop and want to add your project/organization to this list? [Open a pull request!](https://github.com/roostorg/coop/edit/main/README.md)

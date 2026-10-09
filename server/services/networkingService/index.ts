@@ -9,7 +9,7 @@ import { Agent, fetch, type FormData, type Headers } from 'undici';
 import { xml2json } from 'xml-js';
 
 import { b64EncodeArrayBuffer, jsonStringify } from '../../utils/encoding.js';
-import { JSON } from '../../utils/json-schema-types.js';
+import type { JSON } from '../../utils/json-schema-types.js';
 import { assertUnreachable } from '../../utils/misc.js';
 import type SafeTracer from '../../utils/SafeTracer.js';
 import { MINUTE_MS } from '../../utils/time.js';

@@ -4,7 +4,7 @@ import { useForm } from 'antd/lib/form/Form';
 import { Copy as CopyAlt, Plus, Trash2 as TrashCan } from 'lucide-react';
 import { useMemo, useReducer } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router';
 
 import FullScreenLoading from '../../../../components/common/FullScreenLoading';
 import { selectFilterByLabelOption } from '../../components/antDesignUtils';

@@ -2,6 +2,7 @@
 import _ from 'lodash';
 
 import { itemSubmissionWithTypeIdentifierToItemSubmission } from '../../services/itemProcessingService/index.js';
+import { actionableRelatedActions } from '../../services/manualReviewToolService/index.js';
 import { NCMECIncidentType as NCMECIncidentTypeValues } from '../../services/ncmecService/index.js';
 import { UserPermission } from '../../services/userManagementService/index.js';
 import {
@@ -20,6 +21,7 @@ import {
   type GQLDequeueManualReviewJobResponseResolvers,
   type GQLManualReviewChartSettingsResolvers,
   type GQLManualReviewDecisionComponentResolvers,
+  type GQLManualReviewDecisionResolvers,
   type GQLManualReviewJobCommentResolvers,
   type GQLManualReviewJobEnqueueSourceInfoResolvers,
   type GQLManualReviewJobPayloadResolvers,
@@ -35,6 +37,7 @@ import {
   type GQLUserManualReviewJobPayloadResolvers,
 } from '../generated.js';
 import { formatItemSubmissionForGQL } from '../types.js';
+import { beforeContentAccess } from '../utils/contentAccess.js';
 import {
   forbiddenError,
   unauthenticatedError,
@@ -42,14 +45,52 @@ import {
 } from '../utils/errors.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 import { oneOfInputToTaggedUnion } from '../utils/inputHelpers.js';
+import { getManualReviewJobReportCountLoader } from '../utils/manualReviewJobReportCounts.js';
+import { assertQueueIsReviewable } from '../utils/manualReviewQueueAuthorization.js';
 
 const { omit, sumBy } = _;
+
+export const MAX_MANUAL_REVIEW_JOB_IDS = 10;
+
+export function assertManualReviewJobIdsWithinLimit(jobIds: readonly string[]) {
+  if (jobIds.length > MAX_MANUAL_REVIEW_JOB_IDS) {
+    throw userInputError(
+      `At most ${MAX_MANUAL_REVIEW_JOB_IDS} job IDs may be requested.`,
+    );
+  }
+}
 
 const typeDefs = /* GraphQL */ `
   enum JobSortType {
     FIFO
     NUM_REPORTS
+    WEIGHTED
   }
+
+  enum JobPriorityProperty {
+    numReports
+    userScore
+  }
+
+  type JobPriorityWeight {
+    property: JobPriorityProperty!
+    weight: Float!
+  }
+
+  input JobPriorityWeightInput {
+    property: JobPriorityProperty!
+    weight: Float!
+  }
+
+  input SetJobPriorityWeightsInput {
+    weights: [JobPriorityWeightInput!]!
+  }
+
+  type SetJobPriorityWeightsSuccessResponse {
+    _: Boolean
+  }
+
+  union SetJobPriorityWeightsResponse = SetJobPriorityWeightsSuccessResponse
 
   enum MrtClearReportsDisposition {
     AUTOMATIC_CLOSE
@@ -68,7 +109,7 @@ const typeDefs = /* GraphQL */ `
     description: String
     orgId: ID!
     isDefaultQueue: Boolean!
-    jobs(ids: [ID!], limit: Int): [ManualReviewJob!]!
+    jobs(ids: [ID!], limit: Int, lockToken: String): [ManualReviewJob!]!
     pendingJobCount: Int!
     oldestJobCreatedAt: DateTime
     explicitlyAssignedReviewers: [User!]!
@@ -384,6 +425,15 @@ const typeDefs = /* GraphQL */ `
     requestId: String
   }
 
+  type NcmecEscalationUnavailableError implements Error {
+    title: String!
+    status: Int!
+    type: [String!]!
+    pointer: String
+    detail: String
+    requestId: String
+  }
+
   union SubmitDecisionResponse =
     | SubmitDecisionSuccessResponse
     | JobHasAlreadyBeenSubmittedError
@@ -392,6 +442,7 @@ const typeDefs = /* GraphQL */ `
     | RecordingJobDecisionFailedError
     | MissingRequiredDecisionReasonError
     | MissingRequiredPolicyForDecisionError
+    | NcmecEscalationUnavailableError
 
   union DequeueManualReviewJobResponse = DequeueManualReviewJobSuccessResponse
 
@@ -1052,6 +1103,9 @@ const typeDefs = /* GraphQL */ `
     ): Boolean!
     logSkip(input: LogSkipInput!): Boolean!
     releaseJobLock(input: ReleaseJobLockInput!): Boolean!
+    setJobPriorityWeights(
+      input: SetJobPriorityWeightsInput!
+    ): SetJobPriorityWeightsResponse!
   }
 `;
 
@@ -1755,7 +1809,9 @@ const NcmecManualReviewJobPayload: GQLNcmecManualReviewJobPayloadResolvers = {
 };
 
 const ManualReviewQueue: GQLManualReviewQueueResolvers = {
-  async jobs(queue, { ids: jobIds, limit }, context) {
+  async jobs(queue, { ids: jobIds, limit, lockToken }, context) {
+    const user = await assertQueueIsReviewable(queue, context);
+
     const { orgId, id: queueId } = queue;
 
     if (jobIds == null) {
@@ -1765,20 +1821,43 @@ const ManualReviewQueue: GQLManualReviewQueueResolvers = {
         limit: limit ?? undefined,
       });
     }
+    assertManualReviewJobIdsWithinLimit(jobIds);
+
     // Empty array means "filter to no IDs" -> result is always []. Short-circuit
     // so we don't open a Bull/Redis queue handle per reviewable queue on every
     // MRT page load before a job has been dequeued.
     if (jobIds.length === 0) {
       return [];
     }
-    return context.services.ManualReviewToolService.getJobsForQueue({
-      orgId,
-      queueId,
-      jobIds,
-      isAppealsQueue: queue.isAppealsQueue,
-    });
+
+    const jobs = await context.services.ManualReviewToolService.getJobsForQueue(
+      {
+        orgId,
+        queueId,
+        jobIds,
+        isAppealsQueue: queue.isAppealsQueue,
+      },
+    );
+    if (lockToken == null) {
+      return jobs;
+    }
+
+    return Promise.all(
+      jobs.map(async (job) =>
+        context.services.ManualReviewToolService.resolveContentForReview({
+          job,
+          queueId,
+          reviewerId: user.id,
+          reviewerOrgId: user.orgId,
+          lockToken,
+          isAppealsQueue: queue.isAppealsQueue,
+        }),
+      ),
+    );
   },
   async pendingJobCount(queue, _, context) {
+    await assertQueueIsReviewable(queue, context);
+
     const { orgId, id: queueId } = queue;
     return context.services.ManualReviewToolService.getPendingJobCount({
       orgId,
@@ -1786,6 +1865,8 @@ const ManualReviewQueue: GQLManualReviewQueueResolvers = {
     });
   },
   async oldestJobCreatedAt(queue, _, context) {
+    await assertQueueIsReviewable(queue, context);
+
     const { orgId, id: queueId } = queue;
     return context.services.ManualReviewToolService.getOldestJobCreatedAt({
       orgId,
@@ -1794,10 +1875,7 @@ const ManualReviewQueue: GQLManualReviewQueueResolvers = {
     });
   },
   async explicitlyAssignedReviewers(queue, _, context) {
-    const user = context.getUser();
-    if (user == null) {
-      throw unauthenticatedError('User required.');
-    }
+    const user = await assertQueueIsReviewable(queue, context);
     const { id: userId, orgId } = user;
 
     const userIds = (
@@ -1810,10 +1888,7 @@ const ManualReviewQueue: GQLManualReviewQueueResolvers = {
     return context.dataSources.userAPI.getGraphQLUsersFromIds(userIds);
   },
   async hiddenActionIds(queue, _, context) {
-    const user = context.getUser();
-    if (user == null) {
-      throw unauthenticatedError('User required.');
-    }
+    const user = await assertQueueIsReviewable(queue, context);
     const { orgId } = user;
     const { id: queueId } = queue;
 
@@ -1823,10 +1898,7 @@ const ManualReviewQueue: GQLManualReviewQueueResolvers = {
     });
   },
   async clearReportsTriggerActionIds(queue, _, context) {
-    const user = context.getUser();
-    if (user == null) {
-      throw unauthenticatedError('User required.');
-    }
+    const user = await assertQueueIsReviewable(queue, context);
     return context.services.ManualReviewToolService.getClearReportsTriggerActionsForQueue(
       {
         orgId: user.orgId,
@@ -1836,7 +1908,37 @@ const ManualReviewQueue: GQLManualReviewQueueResolvers = {
   },
 };
 
+const ManualReviewDecision: GQLManualReviewDecisionResolvers = {
+  async decisionReason(decision, _, context) {
+    if (!context.services.ContentAccessService.enabled)
+      return decision.decisionReason ?? null;
+    const user = context.getUser();
+    if (user == null) throw unauthenticatedError('Authenticated user required');
+    if (decision.decisionReason == null) return null;
+    // DecisionAnalytics scopes these records to the authenticated organization.
+    await beforeContentAccess(context, user.orgId, {
+      resourceType: 'review_decision',
+      resourceId: decision.id,
+      field: 'decisionReason',
+    });
+    return decision.decisionReason;
+  },
+};
+
 const ManualReviewJobComment: GQLManualReviewJobCommentResolvers = {
+  async commentText(comment, _, context) {
+    if (!context.services.ContentAccessService.enabled)
+      return comment.commentText;
+    const user = context.getUser();
+    if (user == null) throw unauthenticatedError('Authenticated user required');
+    // CommentOperations scopes these records to the authenticated organization.
+    await beforeContentAccess(context, user.orgId, {
+      resourceType: 'review_comment',
+      resourceId: comment.id,
+      field: 'commentText',
+    });
+    return comment.commentText;
+  },
   async author(comment, _, context) {
     const user = context.getUser();
     if (user == null) {
@@ -1855,6 +1957,14 @@ const ManualReviewJobComment: GQLManualReviewJobCommentResolvers = {
 };
 
 const ManualReviewJob: GQLManualReviewJobResolvers = {
+  async payload(job, _, context) {
+    await beforeContentAccess(context, job.orgId, {
+      resourceType: 'review_job',
+      resourceId: job.id,
+      field: 'payload',
+    });
+    return job.payload;
+  },
   async comments(job, _, context) {
     const user = context.getUser();
     if (user == null) {
@@ -1872,10 +1982,13 @@ const ManualReviewJob: GQLManualReviewJobResolvers = {
       throw new Error('No user found on context');
     }
 
-    return context.services.ReportingService.getNumTimesReported({
-      orgId: user.orgId,
-      itemId: job.payload.item.itemId,
-    });
+    const item = job.payload.item;
+    const itemId =
+      'itemId' in item ? item.itemId : (item as { id?: string }).id;
+    if (typeof itemId !== 'string' || itemId === '') {
+      return 0;
+    }
+    return getManualReviewJobReportCountLoader(context).load(itemId);
   },
 };
 
@@ -2091,14 +2204,20 @@ const Query: GQLQueryResolvers = {
     if (user == null) {
       throw unauthenticatedError('Authenticated user required');
     }
-    const allQueues =
-      await context.services.ManualReviewToolService.getAllQueuesForOrgAndDangerouslyBypassPermissioning(
-        { orgId: user.orgId },
+    const reviewableQueues =
+      await context.services.ManualReviewToolService.getReviewableQueuesForUser(
+        {
+          invoker: {
+            userId: user.id,
+            permissions: user.getPermissions(),
+            orgId: user.orgId,
+          },
+        },
       );
 
     return context.services.ManualReviewToolService.getTotalPendingJobCountForQueues(
       user.orgId,
-      allQueues.map((q) => q.id),
+      reviewableQueues.map((q) => q.id),
     );
   },
 
@@ -2184,11 +2303,18 @@ const Query: GQLQueryResolvers = {
       throw unauthenticatedError('User required.');
     }
 
-    const queue =
-      await context.services.ManualReviewToolService.getQueueForOrgAndDangerouslyBypassPermissioning(
-        { orgId: user.orgId, queueId: id },
+    const reviewableQueues =
+      await context.services.ManualReviewToolService.getReviewableQueuesForUser(
+        {
+          invoker: {
+            userId: user.id,
+            permissions: user.getPermissions(),
+            orgId: user.orgId,
+          },
+          queueIds: [id],
+        },
       );
-    return queue ?? null;
+    return reviewableQueues[0] ?? null;
   },
   async getCommentsForJob(_: unknown, { jobId }, context) {
     const user = context.getUser();
@@ -2206,10 +2332,22 @@ const Query: GQLQueryResolvers = {
       throw unauthenticatedError('Authenticated user required');
     }
 
+    const reviewableQueues =
+      await context.services.ManualReviewToolService.getReviewableQueuesForUser(
+        {
+          invoker: {
+            userId: user.id,
+            permissions: user.getPermissions(),
+            orgId: user.orgId,
+          },
+        },
+      );
+
     return context.services.ManualReviewToolService.getExistingJobsForItem({
       orgId: user.orgId,
       itemId: params.itemId,
       itemTypeId: params.itemTypeId,
+      queueIds: reviewableQueues.map((queue) => queue.id),
     });
   },
   async getDecisionsTable(_, params, context) {
@@ -2283,6 +2421,21 @@ const Mutation: GQLMutationResolvers = {
       throw unauthenticatedError('User required.');
     }
 
+    const reviewableQueues =
+      await context.services.ManualReviewToolService.getReviewableQueuesForUser(
+        {
+          invoker: {
+            userId: user.id,
+            permissions: user.getPermissions(),
+            orgId: user.orgId,
+          },
+          queueIds: [queueId],
+        },
+      );
+    if (reviewableQueues.length === 0) {
+      throw forbiddenError('User does not have access to this queue');
+    }
+
     const { id: userId, orgId } = user;
     const nextJob =
       await context.services.ManualReviewToolService.dequeueNextJob({
@@ -2321,6 +2474,8 @@ const Mutation: GQLMutationResolvers = {
       decisionReason,
       reportHistory,
     } = params.input;
+
+    await assertQueueIsReviewable({ id: queueId, orgId }, context);
 
     const decisionPayloads = reportedItemDecisionComponents.map(
       (reportedItemDecisionComponent) => {
@@ -2386,7 +2541,20 @@ const Mutation: GQLMutationResolvers = {
           jobId,
           lockToken,
           decisionComponents: decisionPayloads,
-          relatedActions: [...relatedItemActions],
+          relatedActions: actionableRelatedActions(
+            relatedItemActions.map((relatedAction) => ({
+              actionIds: [...relatedAction.actionIds],
+              itemIds: [...relatedAction.itemIds],
+              itemTypeId: relatedAction.itemTypeId,
+              policyIds: [...relatedAction.policyIds],
+              ...(relatedAction.actionIdsToMrtApiParamDecisionPayload != null
+                ? {
+                    actionIdsToMrtApiParamDecisionPayload:
+                      relatedAction.actionIdsToMrtApiParamDecisionPayload,
+                  }
+                : {}),
+            })),
+          ),
           reviewerId: userId,
           reviewerEmail: userEmail,
           orgId,
@@ -2403,9 +2571,13 @@ const Mutation: GQLMutationResolvers = {
         isCoopErrorOfType(e, 'NoJobWithIdInQueueError') ||
         isCoopErrorOfType(e, 'RecordingJobDecisionFailedError') ||
         isCoopErrorOfType(e, 'MissingRequiredDecisionReasonError') ||
-        isCoopErrorOfType(e, 'MissingRequiredPolicyForDecisionError')
+        isCoopErrorOfType(e, 'MissingRequiredPolicyForDecisionError') ||
+        isCoopErrorOfType(e, 'NcmecEscalationUnavailableError')
       ) {
         return gqlErrorResult(e);
+      }
+      if (isCoopErrorOfType(e, 'BadRequestError')) {
+        throw userInputError(e.detail ?? e.title);
       }
 
       throw e;
@@ -2716,6 +2888,25 @@ const Mutation: GQLMutationResolvers = {
       return false;
     }
   },
+  async setJobPriorityWeights(_, params, context) {
+    const user = context.getUser();
+    if (user == null) {
+      throw unauthenticatedError('Authenticated user required');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to manage org settings',
+      );
+    }
+    await context.services.ManualReviewToolService.setJobPriorityWeights({
+      orgId: user.orgId,
+      weights: params.input.weights,
+    });
+    return gqlSuccessResult(
+      { _: true },
+      'SetJobPriorityWeightsSuccessResponse',
+    );
+  },
 };
 
 const ManualReviewDecisionComponent: GQLManualReviewDecisionComponentResolvers =
@@ -2788,6 +2979,7 @@ const resolvers = {
   ThreadManualReviewJobPayload,
   NcmecManualReviewJobPayload,
   ManualReviewDecisionComponent,
+  ManualReviewDecision,
   ManualReviewChartSettings,
   ManualReviewJobComment,
   ManualReviewJob,

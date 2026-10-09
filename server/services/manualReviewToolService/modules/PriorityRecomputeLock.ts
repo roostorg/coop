@@ -5,9 +5,7 @@ import { v1 as uuidv1 } from 'uuid';
 type RedisClient = IORedis.Redis | Cluster;
 
 /**
- * Releases the lock only if it still holds our token. Without the check, a
- * sweep that overran its TTL would delete a lock another instance has since
- * legitimately acquired.
+ * Releases the lock only if it still holds our token.
  */
 const RELEASE_IF_OWNED = `
 if redis.call("GET", KEYS[1]) == ARGV[1] then
@@ -18,8 +16,18 @@ end
 `;
 
 /**
- * How long a held lock survives without the holder releasing it. Long enough
- * to cover a sweep, which is one Redis round-trip per pending job.
+ * Extends the lock TTL only if we still own it.
+ */
+const RENEW_IF_OWNED = `
+if redis.call("GET", KEYS[1]) == ARGV[1] then
+  return redis.call("PEXPIRE", KEYS[1], ARGV[2])
+else
+  return 0
+end
+`;
+
+/**
+ * How long a held lock survives without being released.
  */
 export const RECOMPUTE_LOCK_TTL_MS = 5 * 60 * 1000;
 
@@ -27,12 +35,11 @@ export const RECOMPUTE_LOCK_WAIT_TIMEOUT_MS = RECOMPUTE_LOCK_TTL_MS;
 
 export const RECOMPUTE_LOCK_POLL_INTERVAL_MS = 500;
 
+const TIMED_OUT = Symbol('timedOut');
+
 /**
  * A lock per (org, queue) so only one priority sweep runs at a time, no matter
  * how many API processes are deployed.
- *
- * Keys are hash-tagged with the org id to match the sharding QueueOperations
- * uses for its Bull queues, so an org's keys stay on one Redis slot.
  */
 export default class PriorityRecomputeLock {
   constructor(private readonly redis: RedisClient) {}
@@ -55,15 +62,47 @@ export default class PriorityRecomputeLock {
     } = opts;
     const deadline = Date.now() + timeoutMs;
     for (;;) {
-      const token = await this.acquire(acquireOpts);
-      // eslint-disable-next-line security/detect-possible-timing-attacks
-      if (token != null) {
-        return token;
-      }
-      if (Date.now() + pollIntervalMs > deadline) {
+      const remainingMs = deadline - Date.now();
+      if (remainingMs <= 0) {
         return null;
       }
-      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+      let timeout: ReturnType<typeof setTimeout> | undefined;
+      const attempt = this.acquire(acquireOpts);
+      const result = await Promise.race([
+        attempt,
+        new Promise<typeof TIMED_OUT>((resolve) => {
+          timeout = setTimeout(() => resolve(TIMED_OUT), remainingMs);
+        }),
+      ]).finally(() => {
+        if (timeout !== undefined) {
+          clearTimeout(timeout);
+        }
+      });
+      if (result === TIMED_OUT) {
+        // A SET that lands after we gave up would hold the lock for a full
+        // TTL with no owner to release it.
+        attempt
+          .then(async (lateToken) => {
+            if (lateToken != null) {
+              await this.release({
+                orgId: opts.orgId,
+                queueId: opts.queueId,
+                token: lateToken,
+              });
+            }
+          })
+          .catch(() => {});
+        return null;
+      }
+      if (result != null) {
+        return result;
+      }
+      if (Date.now() >= deadline) {
+        return null;
+      }
+      await new Promise((resolve) =>
+        setTimeout(resolve, Math.min(pollIntervalMs, deadline - Date.now())),
+      );
     }
   }
 
@@ -99,5 +138,23 @@ export default class PriorityRecomputeLock {
       token,
     );
     return released === 1;
+  }
+
+  /** Extends the lock TTL if we still own it; returns false if lost. */
+  async renew(opts: {
+    orgId: string;
+    queueId: string;
+    token: string;
+    ttlMs?: number;
+  }): Promise<boolean> {
+    const { orgId, queueId, token, ttlMs = RECOMPUTE_LOCK_TTL_MS } = opts;
+    const renewed = await this.redis.eval(
+      RENEW_IF_OWNED,
+      1,
+      this.#lockKey(orgId, queueId),
+      token,
+      ttlMs,
+    );
+    return renewed === 1;
   }
 }

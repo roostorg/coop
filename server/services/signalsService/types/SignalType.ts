@@ -1,6 +1,6 @@
 import { makeEnumLike } from '@roostorg/coop-types';
 
-import { enumToArbitrary } from '../../../test/propertyTestingHelpers.js';
+import { enumToArbitrary } from '../../../utils/enum.js';
 import { Integration } from './Integration.js';
 
 // Internal signal types are always built-in signals.

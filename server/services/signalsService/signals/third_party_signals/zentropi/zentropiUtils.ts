@@ -4,7 +4,7 @@ import { jsonStringify } from '../../../../../utils/encoding.js';
 import { makeSignalPermanentError } from '../../../../../utils/errors.js';
 import { type Bind1 } from '../../../../../utils/typescript-types.js';
 import { type FetchHTTP } from '../../../../networkingService/index.js';
-import { type CachedGetCredentials } from '../../../../signalAuthService/signalAuthService.js';
+import { type GetCredentials } from '../../../../signalAuthService/signalAuthService.js';
 import { type SignalInput } from '../../SignalBase.js';
 
 export interface ZentropiResponse {
@@ -20,6 +20,7 @@ export async function getZentropiScores(
   params: {
     text: string;
     apiKey: string;
+    labelerId: string;
     labelerVersionId: string;
   },
 ): Promise<ZentropiResponse> {
@@ -32,6 +33,7 @@ export async function getZentropiScores(
     },
     body: jsonStringify({
       content_text: params.text,
+      labeler_id: params.labelerId,
       labeler_version_id: params.labelerVersionId,
     }),
     handleResponseBody: 'as-json',
@@ -43,11 +45,18 @@ export async function getZentropiScores(
       throw makeSignalPermanentError(
         `Zentropi API error: ${response.status}${
           response.status === 404
-            ? ' (invalid labeler_version_id)'
+            ? ' (labeler or version not found, or not deployed)'
             : ' (invalid API key)'
         }`,
         { shouldErrorSpan: true },
       );
+    }
+    // Zentropi rejects malformed requests with a 422; retrying won't help.
+    if (response.status === 422) {
+      throw makeSignalPermanentError('Zentropi API error: 422', {
+        detail: getValidationErrorDetail(response.body),
+        shouldErrorSpan: true,
+      });
     }
     throw new Error(`Zentropi API error: ${response.status}`);
   }
@@ -55,8 +64,29 @@ export async function getZentropiScores(
   return response.body as unknown as ZentropiResponse;
 }
 
+function getValidationErrorDetail(body: unknown): string | undefined {
+  const detail =
+    body != null && typeof body === 'object' && 'detail' in body
+      ? body.detail
+      : undefined;
+  if (typeof detail === 'string') {
+    return detail;
+  }
+  if (Array.isArray(detail)) {
+    const messages = detail
+      .map((it: unknown) =>
+        it != null && typeof it === 'object' && 'msg' in it
+          ? String(it.msg)
+          : undefined,
+      )
+      .filter((it) => it != null);
+    return messages.length > 0 ? messages.join('; ') : undefined;
+  }
+  return undefined;
+}
+
 export async function runZentropiLabelerImpl(
-  getZentropiCredentials: CachedGetCredentials<'ZENTROPI'>,
+  getZentropiCredentials: GetCredentials<'ZENTROPI'>,
   input: SignalInput<ScalarTypes['STRING']>,
   fetchScores: FetchZentropiScores,
 ) {
@@ -69,16 +99,32 @@ export async function runZentropiLabelerImpl(
   }
 
   if (!subcategory) {
-    throw new Error(
-      'Missing labeler_version_id in subcategory. ' +
-        'Specify a Zentropi labeler_version_id in the condition subcategory field.',
-    );
+    throw makeSignalPermanentError('Missing Zentropi labeler version', {
+      detail:
+        'Select a Zentropi labeler version in the condition subcategory field.',
+      shouldErrorSpan: true,
+    });
+  }
+
+  // The subcategory is the version ID of one of the org's configured labeler
+  // versions; Zentropi also needs the ID of the labeler it belongs to.
+  const labelerVersion = credential.labelerVersions?.find(
+    (it) => it.id === subcategory,
+  );
+  if (!labelerVersion?.labelerId) {
+    throw makeSignalPermanentError('Missing Zentropi labeler ID', {
+      detail:
+        `No labeler ID is configured for Zentropi labeler version ` +
+        `${subcategory}. Add it in the Zentropi integration settings.`,
+      shouldErrorSpan: true,
+    });
   }
 
   const response = await fetchScores({
     text: value.value,
     apiKey: credential.apiKey,
-    labelerVersionId: subcategory,
+    labelerId: labelerVersion.labelerId,
+    labelerVersionId: labelerVersion.id,
   });
 
   // Composite score mapping:

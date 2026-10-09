@@ -8,7 +8,6 @@ import {
 export { default as Cache } from './Cache.js';
 export { default as wrapProducer } from './utils/wrapProducer.js';
 export { default as collapsedTaskCreator } from './utils/collapsedTaskCreator.js';
-export { default as RedisStore } from './stores/RedisStore/RedisStore.js';
 export { default as MemoryStore } from './stores/MemoryStore/MemoryStore.js';
 export * from './types/index.js';
 

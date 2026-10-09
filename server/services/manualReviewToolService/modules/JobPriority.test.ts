@@ -1,3 +1,5 @@
+import { vi } from 'vitest';
+
 import { instantiateOpaqueType } from '../../../utils/typescript-types.js';
 import {
   makeSubmissionId,
@@ -8,7 +10,11 @@ import {
   getJobPrioritiesForItems,
   getJobPriorityForItem,
   JobSortType,
+  MAX_JOB_PRIORITY_WEIGHT,
   toBullPriority,
+  userScoreKey,
+  type JobPropertyKey,
+  type UserIdentifier,
 } from './JobPriority.js';
 
 // Hard-coded so that changes to MAX_BULL_PRIORITY require an explicit test update.
@@ -18,6 +24,7 @@ const orgId = 'org-1';
 
 function makeItem(opts?: {
   itemId?: string;
+  creator?: { id: string; typeId: string };
 }): ItemSubmissionWithTypeIdentifier {
   return instantiateOpaqueType<ItemSubmissionWithTypeIdentifier>({
     itemId: opts?.itemId ?? 'item-1',
@@ -26,9 +33,9 @@ function makeItem(opts?: {
       version: '2026-01-01T00:00:00.000Z',
       schemaVariant: 'original',
     },
+    creator: opts?.creator,
     submissionId: makeSubmissionId(),
     submissionTime: new Date(),
-    creator: undefined,
     // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
     data: {} as NormalizedItemData,
   });
@@ -36,7 +43,9 @@ function makeItem(opts?: {
 
 async function priorityFor(opts: {
   reports?: number | null;
+  userScore?: number;
   sortType?: JobSortType;
+  weights?: ReadonlyMap<JobPropertyKey, number>;
 }): Promise<number | undefined> {
   return getJobPriorityForItem({
     orgId,
@@ -44,7 +53,10 @@ async function priorityFor(opts: {
     sortType: opts.sortType ?? JobSortType.NUM_REPORTS,
     deps: {
       getNumTimesReported: async () => opts.reports ?? 0,
+      // 5 = a clean user (initialUserScore); 1 = repeat offender.
+      getUserScore: async () => opts.userScore ?? 5,
     },
+    weights: opts.weights ?? new Map(),
   });
 }
 
@@ -60,7 +72,6 @@ describe('JobPriority', () => {
     });
 
     test('score above MAX clamps to priority 1 (front of the queue)', () => {
-      expect(toBullPriority(MAX_BULL_PRIORITY)).toBe(1);
       expect(toBullPriority(MAX_BULL_PRIORITY + 1)).toBe(1);
       expect(toBullPriority(MAX_BULL_PRIORITY * 1000)).toBe(1);
     });
@@ -89,14 +100,17 @@ describe('JobPriority', () => {
     });
 
     test('does not fetch any property values', async () => {
-      const getNumTimesReported = jest.fn();
+      const getNumTimesReported = vi.fn();
+      const getUserScore = vi.fn();
       await getJobPriorityForItem({
         orgId,
         item: makeItem(),
         sortType: JobSortType.FIFO,
-        deps: { getNumTimesReported },
+        deps: { getNumTimesReported, getUserScore },
+        weights: new Map(),
       });
       expect(getNumTimesReported).not.toHaveBeenCalled();
+      expect(getUserScore).not.toHaveBeenCalled();
     });
   });
 
@@ -128,24 +142,157 @@ describe('JobPriority', () => {
     });
   });
 
+  describe('getJobPriorityForItem — WEIGHTED', () => {
+    // Contributions are linear (weight × value), so expected priorities are
+    // exact.
+    test('each report adds its weight to the score', async () => {
+      const priority = await priorityFor({
+        sortType: JobSortType.WEIGHTED,
+        reports: 5,
+        weights: new Map([['numReports', 2]]),
+      });
+      expect(priority).toBe(MAX_BULL_PRIORITY - 5 * 2);
+    });
+
+    test('a higher weight on the same signal dequeues sooner', async () => {
+      const light = await priorityFor({
+        sortType: JobSortType.WEIGHTED,
+        reports: 5,
+        weights: new Map([['numReports', 1]]),
+      });
+      const heavy = await priorityFor({
+        sortType: JobSortType.WEIGHTED,
+        reports: 5,
+        weights: new Map([['numReports', 10]]),
+      });
+      expect(heavy).toBeLessThan(light!);
+    });
+
+    test('each step below a clean user score adds the userScore weight', async () => {
+      const worst = await priorityFor({
+        sortType: JobSortType.WEIGHTED,
+        userScore: 1,
+        weights: new Map([['userScore', 3]]),
+      });
+      const middling = await priorityFor({
+        sortType: JobSortType.WEIGHTED,
+        userScore: 3,
+        weights: new Map([['userScore', 3]]),
+      });
+      const clean = await priorityFor({
+        sortType: JobSortType.WEIGHTED,
+        userScore: 5,
+        weights: new Map([['userScore', 3]]),
+      });
+      expect(worst).toBe(MAX_BULL_PRIORITY - 4 * 3);
+      expect(middling).toBe(MAX_BULL_PRIORITY - 2 * 3);
+      expect(clean).toBe(MAX_BULL_PRIORITY);
+    });
+
+    test('high report counts at the max weight still rank distinctly', async () => {
+      const weights = new Map<JobPropertyKey, number>([
+        ['numReports', MAX_JOB_PRIORITY_WEIGHT],
+      ]);
+      const fewer = await priorityFor({
+        sortType: JobSortType.WEIGHTED,
+        reports: 9_999,
+        weights,
+      });
+      const more = await priorityFor({
+        sortType: JobSortType.WEIGHTED,
+        reports: 10_000,
+        weights,
+      });
+      expect(more).toBeLessThan(fewer!);
+      expect(more).toBeGreaterThan(1);
+    });
+
+    test('signals combine additively', async () => {
+      const priority = await priorityFor({
+        sortType: JobSortType.WEIGHTED,
+        reports: 2,
+        userScore: 1,
+        weights: new Map([
+          ['numReports', 1],
+          ['userScore', 4],
+        ]),
+      });
+      // 2 reports × 1 + 4 steps below clean × 4 = 18 points.
+      expect(priority).toBe(MAX_BULL_PRIORITY - 18);
+    });
+
+    test('with no weights configured, every job ties at MAX (arrival order)', async () => {
+      const priority = await priorityFor({
+        sortType: JobSortType.WEIGHTED,
+        reports: 100,
+        userScore: 1,
+        weights: new Map(),
+      });
+      expect(priority).toBe(MAX_BULL_PRIORITY);
+    });
+
+    test('content items are scored by their creator', async () => {
+      const getUserScore = vi.fn(async () => 1);
+      await getJobPriorityForItem({
+        orgId,
+        item: makeItem({ creator: { id: 'user-42', typeId: 'user-type-2' } }),
+        sortType: JobSortType.WEIGHTED,
+        deps: { getNumTimesReported: async () => 0, getUserScore },
+        weights: new Map([['userScore', 1]]),
+      });
+      expect(getUserScore).toHaveBeenCalledWith(orgId, {
+        id: 'user-42',
+        typeId: 'user-type-2',
+      });
+    });
+  });
+
   describe('getJobPrioritiesForItems', () => {
     // Re-sorting a queue asks for every pending item's priority at once. The
-    // point of the batch is that it costs one report-count lookup no matter
-    // how many jobs are on the queue.
-    function makeBatchDeps(counts: Record<string, number>) {
-      let lookups = 0;
+    // point of the batch is that it costs one lookup per signal no matter how
+    // many jobs are on the queue.
+    const user = (itemId: string): UserIdentifier => ({
+      id: `u-${itemId}`,
+      typeId: 'user-type',
+    });
+    const items = (...itemIds: string[]) =>
+      itemIds.map((itemId) => ({ itemId, user: user(itemId) }));
+
+    function makeBatchDeps(opts: {
+      counts?: Record<string, number>;
+      // Keyed by item id; translated to the per-user score map internally.
+      scores?: Record<string, number>;
+    }) {
+      let countLookups = 0;
+      let scoreLookups = 0;
       return {
-        lookupCount: () => lookups,
+        countLookups: () => countLookups,
+        scoreLookups: () => scoreLookups,
         deps: {
-          getNumTimesReportedForItems: async (opts: {
+          getNumTimesReportedForItems: async (batch: {
             orgId: string;
             itemIds: readonly string[];
           }) => {
-            lookups = lookups + 1;
+            countLookups += 1;
             return new Map(
-              Object.entries(counts).filter(([itemId]) =>
-                opts.itemIds.includes(itemId),
+              Object.entries(opts.counts ?? {}).filter(([itemId]) =>
+                batch.itemIds.includes(itemId),
               ),
+            );
+          },
+          getUserScoresForUsers: async (batch: {
+            orgId: string;
+            users: readonly UserIdentifier[];
+          }) => {
+            scoreLookups += 1;
+            const wanted = new Set(batch.users.map(userScoreKey));
+            return new Map(
+              Object.entries(opts.scores ?? {})
+                .map(
+                  ([itemId, score]) =>
+                    [userScoreKey(user(itemId)), score] as const,
+                )
+                .filter(([key]) => wanted.has(key)),
             );
           },
         },
@@ -153,64 +300,141 @@ describe('JobPriority', () => {
     }
 
     test('NUM_REPORTS orders items by report count in one lookup', async () => {
-      const { lookupCount, deps } = makeBatchDeps({ a: 2, b: 50 });
+      const { countLookups, deps } = makeBatchDeps({ counts: { a: 2, b: 50 } });
 
       const priorities = await getJobPrioritiesForItems({
         orgId,
-        itemIds: ['a', 'b'],
+        items: items('a', 'b'),
         sortType: JobSortType.NUM_REPORTS,
         deps,
+        weights: new Map(),
       });
 
       expect(priorities.get('b')).toBeLessThan(priorities.get('a')!);
-      expect(lookupCount()).toBe(1);
+      expect(countLookups()).toBe(1);
     });
 
     test('items with no reports fall to the back rather than being skipped', async () => {
       // The batch query only returns rows for items that have reports, so an
       // unreported item is absent from the map. It still needs a priority, or
       // the re-sort would leave its old one in place.
-      const { deps } = makeBatchDeps({ reported: 5 });
+      const { deps } = makeBatchDeps({ counts: { reported: 5 } });
 
       const priorities = await getJobPrioritiesForItems({
         orgId,
-        itemIds: ['reported', 'never-reported'],
+        items: items('reported', 'never-reported'),
         sortType: JobSortType.NUM_REPORTS,
         deps,
+        weights: new Map(),
       });
 
       expect(priorities.get('never-reported')).toBe(MAX_BULL_PRIORITY);
       expect(priorities.size).toBe(2);
     });
 
-    test('FIFO demotes every item to priority 0 without querying reports', async () => {
+    test('FIFO demotes every item to priority 0 without querying anything', async () => {
       // 0 is what moves an already-prioritized job back into the wait list
-      // when a queue switches from NUM_REPORTS to FIFO.
-      const { lookupCount, deps } = makeBatchDeps({ a: 2, b: 50 });
+      // when a queue switches from a sorted mode to FIFO.
+      const { countLookups, scoreLookups, deps } = makeBatchDeps({
+        counts: { a: 2, b: 50 },
+      });
 
       const priorities = await getJobPrioritiesForItems({
         orgId,
-        itemIds: ['a', 'b'],
+        items: items('a', 'b'),
         sortType: JobSortType.FIFO,
         deps,
+        weights: new Map(),
       });
 
       expect(priorities.get('a')).toBe(0);
       expect(priorities.get('b')).toBe(0);
-      expect(lookupCount()).toBe(0);
+      expect(countLookups()).toBe(0);
+      expect(scoreLookups()).toBe(0);
     });
 
     test('agrees with the single-item path', async () => {
-      const { deps } = makeBatchDeps({ a: 7 });
+      const { deps } = makeBatchDeps({ counts: { a: 7 } });
 
       const batched = await getJobPrioritiesForItems({
         orgId,
-        itemIds: ['a'],
+        items: items('a'),
         sortType: JobSortType.NUM_REPORTS,
         deps,
+        weights: new Map(),
       });
 
       expect(batched.get('a')).toBe(toBullPriority(7));
+    });
+
+    test('WEIGHTED combines batched counts and scores in one lookup each', async () => {
+      const { countLookups, scoreLookups, deps } = makeBatchDeps({
+        counts: { a: 2 },
+        scores: { a: 1, b: 5 },
+      });
+
+      const priorities = await getJobPrioritiesForItems({
+        orgId,
+        items: items('a', 'b'),
+        sortType: JobSortType.WEIGHTED,
+        deps,
+        weights: new Map([
+          ['numReports', 1],
+          ['userScore', 4],
+        ]),
+      });
+
+      // a: 2 reports × 1 + 4 steps below clean × 4 = 18 points; b: clean,
+      // unreported.
+      expect(priorities.get('a')).toBe(MAX_BULL_PRIORITY - 18);
+      expect(priorities.get('b')).toBe(MAX_BULL_PRIORITY);
+      expect(countLookups()).toBe(1);
+      expect(scoreLookups()).toBe(1);
+    });
+
+    test('WEIGHTED treats users with no score row as clean', async () => {
+      const { deps } = makeBatchDeps({ counts: {}, scores: {} });
+
+      const priorities = await getJobPrioritiesForItems({
+        orgId,
+        items: items('a'),
+        sortType: JobSortType.WEIGHTED,
+        deps,
+        weights: new Map([['userScore', 10]]),
+      });
+
+      expect(priorities.get('a')).toBe(MAX_BULL_PRIORITY);
+    });
+
+    test('WEIGHTED agrees with the single-item path', async () => {
+      const { deps } = makeBatchDeps({
+        counts: { a: 3 },
+        scores: { a: 1 },
+      });
+      const weights: ReadonlyMap<JobPropertyKey, number> = new Map([
+        ['numReports', 2],
+        ['userScore', 4],
+      ]);
+
+      const batched = await getJobPrioritiesForItems({
+        orgId,
+        items: items('a'),
+        sortType: JobSortType.WEIGHTED,
+        deps,
+        weights,
+      });
+      const single = await getJobPriorityForItem({
+        orgId,
+        item: makeItem({ itemId: 'a', creator: user('a') }),
+        sortType: JobSortType.WEIGHTED,
+        deps: {
+          getNumTimesReported: async () => 3,
+          getUserScore: async () => 1,
+        },
+        weights,
+      });
+
+      expect(batched.get('a')).toBe(single);
     });
   });
 });

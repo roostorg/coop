@@ -2,6 +2,7 @@ import { ScalarTypes } from '@roostorg/coop-types';
 import { uid } from 'uid';
 
 import createContentItemTypes from '../../../test/fixtureHelpers/createContentItemTypes.js';
+import createMrtQueue from '../../../test/fixtureHelpers/createMrtQueue.js';
 import createOrg from '../../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../../test/fixtureHelpers/createUser.js';
 import { makeTransactionalTestWithFixture } from '../../../test/harness/transactionalTest.js';
@@ -218,6 +219,88 @@ describe('JobRouting tests', () => {
         noPolicyQueue,
       };
     },
+  );
+
+  jobRoutingTestWithFixtures(
+    "reorderRoutingRules does not change another organization's routing rules",
+    async ({ manualReviewToolService, org, deps }) => {
+      const { org: otherOrg } = await createOrg(
+        {
+          KyselyPg: deps.KyselyPg,
+          ModerationConfigService: deps.ModerationConfigService,
+          ApiKeyService: deps.ApiKeyService,
+        },
+        uid(),
+      );
+      const { user: otherUser } = await createUser(deps.KyselyPg, otherOrg.id);
+      const { itemTypes: otherItemTypes } = await createContentItemTypes({
+        moderationConfigService: deps.ModerationConfigService,
+        orgId: otherOrg.id,
+        extra: {
+          fields: [
+            {
+              name: 'text',
+              type: ScalarTypes.STRING,
+              required: false,
+              container: null,
+            },
+          ],
+        },
+      });
+      const { queue: otherQueue } = await createMrtQueue({
+        orgId: otherOrg.id,
+        mrtService: manualReviewToolService,
+        userId: otherUser.id,
+      });
+
+      for (const name of ['Other org rule 1', 'Other org rule 2']) {
+        await manualReviewToolService.createRoutingRule({
+          orgId: otherOrg.id,
+          name,
+          status: 'LIVE',
+          itemTypeIds: [otherItemTypes[0].id as NonEmptyString],
+          creatorId: '',
+          conditionSet: {
+            conjunction: 'OR',
+            conditions: [
+              {
+                input: {
+                  type: 'CONTENT_COOP_INPUT',
+                  name: 'Source',
+                },
+                threshold: 'post-actions',
+                comparator: 'EQUALS',
+              },
+            ],
+          },
+          destinationQueueId: otherQueue.id,
+        });
+      }
+
+      const getPersistedRoutingRuleOrder = async (orgId: string) =>
+        (
+          await deps.KyselyPg.selectFrom('manual_review_tool.routing_rules')
+            .select('id')
+            .where('org_id', '=', orgId)
+            .orderBy('sequence_number')
+            .execute()
+        ).map((rule) => rule.id);
+
+      const otherOrgOrder = await getPersistedRoutingRuleOrder(otherOrg.id);
+      const order = await getPersistedRoutingRuleOrder(org.id);
+      const expectedOrder = order.slice().reverse();
+
+      const reorderedRules = await manualReviewToolService.reorderRoutingRules({
+        orgId: org.id,
+        order: expectedOrder,
+      });
+
+      expect(reorderedRules.map((rule) => rule.id)).toEqual(expectedOrder);
+      await expect(getPersistedRoutingRuleOrder(otherOrg.id)).resolves.toEqual(
+        otherOrgOrder,
+      );
+    },
+    10_000,
   );
 
   jobRoutingTestWithFixtures(

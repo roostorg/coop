@@ -2,8 +2,8 @@ import { type CqlSelectOptions, type DBDefinition } from './cqlUtils.js';
 import Scylla from './scylla.js';
 
 /**
- * Parses the `ITEM_INVESTIGATION_AND_STRIKES_ENABLED` feature flag from its raw
- * string value (i.e. `process.env.ITEM_INVESTIGATION_AND_STRIKES_ENABLED`).
+ * Parses the `SCYLLA_ENABLED` feature flag from its raw
+ * string value (i.e. `process.env.SCYLLA_ENABLED`).
  *
  * Shared by the `Scylla` DI factory in `iocContainer` (to decide whether to
  * return a real Scylla or a {@link NoOpScylla}) and by the unit tests. Defaults
@@ -24,7 +24,7 @@ export function itemInvestigationAndStrikesEnabled(
 /**
  * A no-op implementation of {@link Scylla} used when the Scylla-backed features
  * (item investigation and user strikes) are disabled via
- * `ITEM_INVESTIGATION_AND_STRIKES_ENABLED=false`.
+ * `SCYLLA_ENABLED=false`.
  *
  * Scylla has no managed offering on some deployment platforms, and some
  * operators do not need the features that depend on it. Rather than gate the

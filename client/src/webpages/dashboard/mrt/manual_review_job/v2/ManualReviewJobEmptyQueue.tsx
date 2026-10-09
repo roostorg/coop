@@ -1,5 +1,5 @@
 import { CheckCircle } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 
 import CoopButton from '@/webpages/dashboard/components/CoopButton';
 
@@ -16,7 +16,10 @@ export default function ManualReviewJobEmptyQueue() {
           You're all caught up! Great work getting through the jobs quickly.
           This queue is now empty.
         </div>
-        <CoopButton title="Back to All Queues" onClick={() => navigate(-1)} />
+        <CoopButton
+          title="Back to All Queues"
+          onClick={async () => navigate(-1)}
+        />
       </div>
     </div>
   );

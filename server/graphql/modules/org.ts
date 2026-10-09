@@ -20,6 +20,7 @@ import {
   type GQLQueryResolvers,
 } from '../generated.js';
 import { type Context } from '../resolvers.js';
+import { requireChildSafetyPermission } from '../utils/authorization.js';
 import {
   forbiddenError,
   unauthenticatedError,
@@ -89,6 +90,7 @@ const typeDefs = /* GraphQL */ `
     ssoCert: String
     ignoreCallbackUrl: String
     hasPartialItemsEndpoint: Boolean!
+    jobPriorityWeights: [JobPriorityWeight!]!
     partialItemsEndpoint: String
     partialItemsRequestHeaders: JSONObject
   }
@@ -400,11 +402,13 @@ const Org: GQLOrgResolvers = {
     if (!user || user.orgId !== org.id) {
       throw unauthenticatedError('User required');
     }
-    return context.services.ManualReviewToolService.getAllQueuesForOrgAndDangerouslyBypassPermissioning(
-      {
+    return context.services.ManualReviewToolService.getReviewableQueuesForUser({
+      invoker: {
+        userId: user.id,
+        permissions: user.getPermissions(),
         orgId: user.orgId,
       },
-    );
+    });
   },
   async apiKey(org, _, context) {
     const user = context.getUser();
@@ -549,6 +553,7 @@ const Org: GQLOrgResolvers = {
     if (!user || user.orgId !== org.id) {
       throw unauthenticatedError('User required.');
     }
+    requireChildSafetyPermission(user);
     const reports = await context.services.NcmecService.getNcmecReports({
       orgId: user.orgId,
       reviewerId: user.id,
@@ -805,6 +810,25 @@ const Org: GQLOrgResolvers = {
     const partialItemsEndpoint = partialItemsInfo?.partialItemsEndpoint;
 
     return partialItemsEndpoint != null;
+  },
+  async jobPriorityWeights(org, _, context) {
+    const user = context.getUser();
+    if (user == null || user.orgId !== org.id) {
+      throw unauthenticatedError('Authenticated user required');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError(
+        'User does not have permission to view org settings',
+      );
+    }
+    const weightsMap =
+      await context.services.ManualReviewToolService.getJobPriorityWeights({
+        orgId: org.id,
+      });
+    return Array.from(weightsMap, ([property, weight]) => ({
+      property,
+      weight,
+    }));
   },
   async partialItemsEndpoint(org, _, context) {
     const user = context.getUser();

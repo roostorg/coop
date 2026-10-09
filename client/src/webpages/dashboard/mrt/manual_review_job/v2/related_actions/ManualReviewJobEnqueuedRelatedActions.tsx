@@ -29,8 +29,14 @@ export default function ManualReviewJobEnqueuedRelatedActions(props: {
   actionsData: Action[];
   onRemoveAction: (action: Action) => void;
   onEditAction?: (action: Action) => void;
+  policyRequired?: boolean;
 }) {
-  const { actionsData: actions, onRemoveAction, onEditAction } = props;
+  const {
+    actionsData: actions,
+    onRemoveAction,
+    onEditAction,
+    policyRequired = false,
+  } = props;
 
   // Group actions by action Id and associate with list of targets on which that
   // action will be performed
@@ -78,6 +84,7 @@ export default function ManualReviewJobEnqueuedRelatedActions(props: {
                   }}
                   iconUrl={targetWithPolicies.target.iconUrl}
                   policyNames={targetWithPolicies.policyNames}
+                  policyRequired={policyRequired}
                   onRemove={() =>
                     onRemoveAction({
                       ...groupedAction.action,

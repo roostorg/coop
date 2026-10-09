@@ -23,7 +23,7 @@ Reference files: `README.md` (getting started), `server/bin/README.md` (utility 
 
 ## Design
 
-- **API:** REST + GraphQL (Apollo Server); client uses Apollo Client with InMemoryCache; server resolvers live in `server/graphql/resolvers/`.
+- **API:** REST + GraphQL (Apollo Server); client uses Apollo Client with InMemoryCache; server resolvers are aggregated in `server/graphql/resolvers.ts`, with the SDL and per-domain resolvers in `server/graphql/modules/`.
 - **GraphQL authoring:** Inline in resolver files with `/* GraphQL */` comment markers — codegen discovers queries this way. Searching for `gql` or `graphql` alone misses most of it.
 - **GraphQL codegen:** `npm run generate` (from root) regenerates `client/src/graphql/generated.ts` and `server/graphql/generated.ts`. **Never hand-edit** either `generated.ts`. **Never hand-merge** either `generated.ts` during a rebase/merge — pick one side with `git checkout --ours|--theirs <file>`, then run `npm run generate`. Hand-merging produces output that parses but drifts from the schema.
 - **Adding a new built-in `SignalType`:** the type list is hand-mirrored in four files; missing any one ships a signal that's invisible to the dashboard. Update all of:
@@ -34,7 +34,7 @@ Reference files: `README.md` (getting started), `server/bin/README.md` (utility 
 
   After step 3, run `npm run generate` from the repo root to refresh the codegen output.
 
-- **Data model:** Use Knex query builder for Postgres; ClickHouse via raw SQL in `server/clickhouse/`; Scylla via Cassandra driver.
+- **Data model:** Use Kysely query builder for Postgres; ClickHouse via raw SQL in `server/storage/dataWarehouse/ClickhouseAdapter.ts`; Scylla via Cassandra driver.
 - **Dependency injection:** Server uses BottleJS DI (wired in `server/iocContainer/`). Register services in `iocContainer`, don't export singletons from service files. Consumers receive dependencies via DI rather than importing directly. Bypassing `iocContainer` will work at runtime but breaks test mocking patterns.
 
 ## Build and run
@@ -85,13 +85,15 @@ Client: http://localhost:3000 · Server: http://localhost:8080
 
 ## Testing
 
-Integration tests spin up services via docker compose. Unit tests run in-process.
+Both packages use Vitest. Server tests need the local backing services and migrations; client tests run in-process with jsdom.
+
+Always pass `--build` to `docker compose run`. Compose only builds when no image exists yet, so without it your code changes are not in the container and the run silently reports on a stale image.
 
 ```bash
 # Run all tests (via docker compose)
-docker compose run --rm test
+docker compose run --rm --build test
 
-# Server unit tests (no Docker)
+# Server unit tests (backing services must already be running)
 (cd server && npm test)
 
 # Client unit tests (no Docker)
@@ -116,11 +118,12 @@ CI runs entirely via GitHub Actions (`.github/workflows/apply_pr_checks.yaml`). 
 ```bash
 npm ci && npm run prettier
 npm ci && npm run generate && test -z "$(git status --porcelain)"
-docker compose run --rm backend npm run lint
-docker compose run --rm backend npm run build
-docker compose run --rm client npm run lint
-docker compose run --rm client npm run build
-docker compose run --rm test
+docker compose run --rm --build backend npm run lint
+docker compose run --rm --build backend npm run typecheck
+docker compose run --rm --build backend npm run build
+docker compose run --rm --build client npm run lint
+docker compose run --rm --build client npm run build
+docker compose run --rm --build test
 ```
 
 Individual checks:
@@ -129,11 +132,12 @@ Individual checks:
 | ---------------------------------------- | ------------------------------------------------------------------- |
 | `check_formatting`                       | `npm ci && npm run prettier`                                        |
 | `check_generated_graphql`                | `npm ci && npm run generate && test -z "$(git status --porcelain)"` |
-| `check_api_server` (lint)                | `docker compose run --rm backend npm run lint`                      |
-| `check_api_server` (build)               | `docker compose run --rm backend npm run build`                     |
-| `run_frontend_checks_if_changed` (lint)  | `docker compose run --rm client npm run lint`                       |
-| `run_frontend_checks_if_changed` (build) | `docker compose run --rm client npm run build`                      |
-| `check_api_server` (test)                | `docker compose run --rm test`                                      |
+| `check_api_server` (lint)                | `docker compose run --rm --build backend npm run lint`              |
+| `check_api_server` (typecheck)           | `docker compose run --rm --build backend npm run typecheck`         |
+| `check_api_server` (build)               | `docker compose run --rm --build backend npm run build`             |
+| `run_frontend_checks_if_changed` (lint)  | `docker compose run --rm --build client npm run lint`               |
+| `run_frontend_checks_if_changed` (build) | `docker compose run --rm --build client npm run build`              |
+| `check_api_server` (test)                | `docker compose run --rm --build test`                              |
 
 Tear down:
 
@@ -155,7 +159,7 @@ Note: `check_migration_order` runs only in GitHub Actions — it's GitHub-specif
 
 - Keep diffs small and focused; split unrelated changes into separate PRs.
 - PR titles are descriptive and imperative ("Add X", "Fix Y").
-- When opening a GitHub PR, use the template at [`.github/pull_request_template.md`](.github/pull_request_template.md) but do not actually write anything in the PR description. Let your human operator do that.
+- When opening a GitHub PR, use the template at [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md) but do not actually write anything in the PR description. Let your human operator do that.
 - New behavior requires a test. Bug fixes require a regression test.
 - All CI checks (above) must pass before requesting review.
 
@@ -168,7 +172,8 @@ Note: `check_migration_order` runs only in GitHub Actions — it's GitHub-specif
 - Use only the six Keep a Changelog headings — `### Added`, `### Changed`, `### Deprecated`, `### Removed`, `### Fixed`, `### Security` — adding the heading under `## [Unreleased]` if it's missing. Don't invent others.
 - `Fixed` is for behavior that was wrong and is now correct; `Changed` is for intentionally altering behavior that was already correct.
 - Keep each entry to a single concise line, essentially a title: no reasoning, mechanism, or caveats. Anyone who needs the detail follows the PR link.
-- Format: `- Description ([#123](https://github.com/roostorg/coop/pull/123) by [@user](https://github.com/user))`, adding `, closes [#456](...)` where it applies.
+- Format: `- Description ([#123](https://github.com/roostorg/coop/pull/123) by [@user](https://github.com/user))`.
+- Omit related issue links (e.g. `closes [#456](...)`); this information is accessible at the PR link.
 - Removing a GraphQL enum value, type, or field, or removing or renaming an environment variable, always earns an entry.
 - Never edit a released version's section; it's a historical record. Corrections go under `## [Unreleased]`.
 
@@ -205,7 +210,7 @@ Two things differ from a local dev setup:
 
 ## ROOST guiding principles
 
-- **Commands over prose.** Prefer `docker compose run --rm test` over descriptive paragraphs.
+- **Commands over prose.** Prefer `docker compose run --rm --build test` over descriptive paragraphs.
 - **Same review bar.** PRs authored with agent assistance are held to the same standards as any other PR.
 - **Boundaries with alternatives.** When stating a restriction, provide the alternative path (e.g. don't edit `generated.ts` — regenerate via `npm run generate`).
 - **Iterate over time.** Start minimal. When you give an agent the same instruction twice, add it to this file.

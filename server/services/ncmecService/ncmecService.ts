@@ -2,7 +2,8 @@ import { type ItemIdentifier } from '@roostorg/coop-types';
 import _Ajv from 'ajv-draft-04';
 import { sql, type Kysely } from 'kysely';
 
-import { inject, type Dependencies } from '../../iocContainer/index.js';
+import { type Dependencies } from '../../iocContainer/index.js';
+import { inject } from '../../iocContainer/utils.js';
 import { type ActionExecutionCorrelationId } from '../analyticsLoggers/ActionExecutionLogger.js';
 import { type RuleExecutionCorrelationId } from '../analyticsLoggers/ruleExecutionLoggingUtils.js';
 import { type ItemSubmissionWithTypeIdentifier } from '../itemProcessingService/makeItemSubmissionWithTypeIdentifier.js';
@@ -18,6 +19,7 @@ import {
 import { type NcmecReportingServicePg } from './dbTypes.js';
 import NcmecEnqueueToMrt from './ncmecEnqueueToMrt.js';
 import NcmecReporting, { type NCMECReportParams } from './ncmecReporting.js';
+import { type ValidatedNcmecTarget } from './resolveNcmecTargetUser.js';
 import {
   retryNcmecSubmission,
   type RetryNcmecSubmissionResult,
@@ -132,6 +134,7 @@ export class NcmecService {
           enqueueSource: 'MRT_JOB';
           enqueueSourceInfo: MrtJobEnqueueSourceInfo;
           reenqueuedFrom: OriginJobInfo;
+          validatedNcmecTarget?: ValidatedNcmecTarget;
         }
       | {
           enqueueSource: 'RULE_EXECUTION';

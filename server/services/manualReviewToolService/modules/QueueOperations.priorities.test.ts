@@ -184,9 +184,9 @@ describe('QueueOperations job priorities', () => {
       await queueOps.recomputePrioritiesForQueue({
         orgId: org.id,
         queueId: queue.id,
-        getPriorities: async (itemIds) =>
+        getPriorities: async (items) =>
           new Map(
-            itemIds.map((itemId) => [
+            items.map(({ itemId }) => [
               itemId,
               itemId === 'item-A' ? 2000 : 1000,
             ]),
@@ -199,6 +199,233 @@ describe('QueueOperations job priorities', () => {
         lockToken: 'reviewer-1',
       });
       expect(first?.job.payload.item.itemId).toBe('item-B');
+    },
+  );
+
+  testWithQueue()(
+    'recomputePrioritiesForQueue uses Bull arrival order for FIFO ties',
+    async ({ org, queue, mrtService }) => {
+      const queueOps = mrtService['queueOps'];
+      const itemTypeId = uid();
+      const payloadFor = makePayloadFor(itemTypeId);
+
+      await queueOps.addJob({
+        orgId: org.id,
+        queueId: queue.id,
+        enqueueSourceInfo: { kind: 'REPORT' },
+        priority: 2000,
+        jobPayload: {
+          createdAt: new Date('2026-01-02T00:00:00.000Z'),
+          policyIds: [],
+          payload: payloadFor('item-A'),
+        },
+      });
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      await queueOps.addJob({
+        orgId: org.id,
+        queueId: queue.id,
+        enqueueSourceInfo: { kind: 'REPORT' },
+        priority: 1000,
+        jobPayload: {
+          createdAt: new Date('2026-01-01T00:00:00.000Z'),
+          policyIds: [],
+          payload: payloadFor('item-B'),
+        },
+      });
+
+      await queueOps.recomputePrioritiesForQueue({
+        orgId: org.id,
+        queueId: queue.id,
+        getPriorities: async () =>
+          new Map([
+            ['item-A', 1000],
+            ['item-B', 1000],
+          ]),
+      });
+
+      const first = await queueOps.dequeueNextJobWithLock({
+        orgId: org.id,
+        queueId: queue.id,
+        lockToken: 'reviewer-arrival-order',
+      });
+      expect(first?.job.payload.item.itemId).toBe('item-A');
+    },
+  );
+
+  testWithQueue()(
+    'setJobPriority keeps an active job active and applies after release',
+    async ({ org, queue, mrtService }) => {
+      const queueOps = mrtService['queueOps'];
+      const itemTypeId = uid();
+      const payloadFor = makePayloadFor(itemTypeId);
+      await queueOps.addJob({
+        orgId: org.id,
+        queueId: queue.id,
+        enqueueSourceInfo: { kind: 'REPORT' },
+        priority: 1000,
+        jobPayload: { policyIds: [], payload: payloadFor('item-active') },
+      });
+      await queueOps.addJob({
+        orgId: org.id,
+        queueId: queue.id,
+        enqueueSourceInfo: { kind: 'REPORT' },
+        priority: 1500,
+        jobPayload: { policyIds: [], payload: payloadFor('item-other') },
+      });
+
+      const lockToken = 'reviewer-active';
+      const claimed = await queueOps.dequeueNextJobWithLock({
+        orgId: org.id,
+        queueId: queue.id,
+        lockToken,
+      });
+      expect(claimed?.job.payload.item.itemId).toBe('item-active');
+
+      expect(
+        await queueOps.setJobPriority({
+          orgId: org.id,
+          queueId: queue.id,
+          jobId: claimed!.job.id,
+          priority: 2000,
+        }),
+      ).toBe(true);
+
+      const bullQueue = await queueOps['getOrCreateBullQueue']({
+        orgId: org.id,
+        queueId: queue.id,
+      });
+      const bullJob = await bullQueue.getJob(
+        itemIdToBullJobId({ typeId: itemTypeId, id: 'item-active' }),
+      );
+      expect(await bullJob?.getState()).toBe('active');
+      expect(bullJob?.priority).toBe(2000);
+      expect(await bullQueue.getJobCountByTypes('prioritized')).toBe(1);
+
+      await queueOps.releaseJobLock({
+        orgId: org.id,
+        queueId: queue.id,
+        jobId: claimed!.job.id,
+        lockToken,
+      });
+
+      const next = await queueOps.dequeueNextJobWithLock({
+        orgId: org.id,
+        queueId: queue.id,
+        lockToken: 'reviewer-2',
+      });
+      expect(next?.job.payload.item.itemId).toBe('item-other');
+    },
+  );
+
+  testWithQueue()(
+    'setJobPriority with an unchanged priority keeps FIFO order',
+    async ({ org, queue, mrtService }) => {
+      const queueOps = mrtService['queueOps'];
+      const payloadFor = makePayloadFor(uid());
+      const first = await queueOps.addJob({
+        orgId: org.id,
+        queueId: queue.id,
+        enqueueSourceInfo: { kind: 'REPORT' },
+        jobPayload: { policyIds: [], payload: payloadFor('item-first') },
+      });
+      await queueOps.addJob({
+        orgId: org.id,
+        queueId: queue.id,
+        enqueueSourceInfo: { kind: 'REPORT' },
+        jobPayload: { policyIds: [], payload: payloadFor('item-second') },
+      });
+
+      // What a re-report of a FIFO job does.
+      await queueOps.setJobPriority({
+        orgId: org.id,
+        queueId: queue.id,
+        jobId: first.id,
+        priority: 0,
+      });
+
+      const next = await queueOps.dequeueNextJobWithLock({
+        orgId: org.id,
+        queueId: queue.id,
+        lockToken: 'reviewer-fifo',
+      });
+      expect(next?.job.payload.item.itemId).toBe('item-first');
+    },
+  );
+
+  testWithQueue()(
+    'setJobPriority does not overwrite job data',
+    async ({ org, queue, mrtService }) => {
+      const queueOps = mrtService['queueOps'];
+      const itemTypeId = uid();
+      const job = await queueOps.addJob({
+        orgId: org.id,
+        queueId: queue.id,
+        enqueueSourceInfo: { kind: 'REPORT' },
+        priority: 1000,
+        jobPayload: {
+          policyIds: [],
+          payload: makePayloadFor(itemTypeId)('item-merge'),
+        },
+      });
+
+      await queueOps.updateJobForQueue({
+        orgId: org.id,
+        queueId: queue.id,
+        jobId: job.id,
+        data: { ...job, policyIds: ['merged-policy'] },
+      });
+      await queueOps.setJobPriority({
+        orgId: org.id,
+        queueId: queue.id,
+        jobId: job.id,
+        priority: 2000,
+      });
+
+      const bullQueue = await queueOps['getOrCreateBullQueue']({
+        orgId: org.id,
+        queueId: queue.id,
+      });
+      const stored = await bullQueue.getJob(
+        itemIdToBullJobId({ typeId: itemTypeId, id: 'item-merge' }),
+      );
+      expect(stored?.data).toMatchObject({ policyIds: ['merged-policy'] });
+      expect(stored?.priority).toBe(2000);
+    },
+  );
+
+  testWithQueue()(
+    'recomputePrioritiesForQueue stops writing when shouldContinue is false',
+    async ({ org, queue, mrtService }) => {
+      const queueOps = mrtService['queueOps'];
+      const itemTypeId = uid();
+      await queueOps.addJob({
+        orgId: org.id,
+        queueId: queue.id,
+        enqueueSourceInfo: { kind: 'REPORT' },
+        priority: 1000,
+        jobPayload: {
+          policyIds: [],
+          payload: makePayloadFor(itemTypeId)('item-A'),
+        },
+      });
+
+      const result = await queueOps.recomputePrioritiesForQueue({
+        orgId: org.id,
+        queueId: queue.id,
+        getPriorities: async (items) =>
+          new Map(items.map(({ itemId }) => [itemId, 2000])),
+        shouldContinue: () => false,
+      });
+      expect(result.aborted).toBe(true);
+
+      const bullQueue = await queueOps['getOrCreateBullQueue']({
+        orgId: org.id,
+        queueId: queue.id,
+      });
+      const bullJob = await bullQueue.getJob(
+        itemIdToBullJobId({ typeId: itemTypeId, id: 'item-A' }),
+      );
+      expect(bullJob?.priority).toBe(1000);
     },
   );
 
@@ -377,212 +604,6 @@ describe('QueueOperations job priorities', () => {
       });
       expect(oldest).not.toBeNull();
       expect(new Date(oldest!).getTime()).toBe(oldestCreatedAt.getTime());
-    },
-  );
-
-  testWithQueue()(
-    'getOldestJobCreatedAt returns cached value on subsequent calls',
-    async ({ org, queue, mrtService }) => {
-      const queueOps = mrtService['queueOps'];
-      const payloadFor = makePayloadFor(uid());
-
-      const base = new Date('2026-01-01T00:00:00.000Z').getTime();
-
-      for (const [itemId, priority, offset] of [
-        ['item-A', 3000, 0],
-        ['item-B', 1000, 60_000],
-      ] as const) {
-        await queueOps.addJob({
-          orgId: org.id,
-          queueId: queue.id,
-          enqueueSourceInfo: { kind: 'REPORT' },
-          priority,
-          jobPayload: {
-            createdAt: new Date(base + offset),
-            policyIds: [],
-            payload: payloadFor(itemId),
-          },
-        });
-      }
-
-      const first = await queueOps.getOldestJobCreatedAt({
-        orgId: org.id,
-        queueId: queue.id,
-        isAppealsQueue: false,
-      });
-      const second = await queueOps.getOldestJobCreatedAt({
-        orgId: org.id,
-        queueId: queue.id,
-        isAppealsQueue: false,
-      });
-
-      expect(first).not.toBeNull();
-      expect(second).toEqual(first);
-    },
-  );
-
-  testWithQueue()(
-    'getOldestJobCreatedAt updates after the oldest job is dequeued',
-    async ({ org, queue, mrtService }) => {
-      const queueOps = mrtService['queueOps'];
-      const payloadFor = makePayloadFor(uid());
-
-      const base = new Date('2026-01-01T00:00:00.000Z').getTime();
-      const oldestCreatedAt = new Date(base);
-      const secondOldest = new Date(base + 60_000);
-
-      for (const [itemId, createdAt] of [
-        ['item-oldest', oldestCreatedAt],
-        ['item-second', secondOldest],
-        ['item-newest', new Date(base + 120_000)],
-      ] as const) {
-        await queueOps.addJob({
-          orgId: org.id,
-          queueId: queue.id,
-          enqueueSourceInfo: { kind: 'REPORT' },
-          jobPayload: {
-            createdAt,
-            policyIds: [],
-            payload: payloadFor(itemId),
-          },
-        });
-      }
-
-      // Populate the cache.
-      const before = await queueOps.getOldestJobCreatedAt({
-        orgId: org.id,
-        queueId: queue.id,
-        isAppealsQueue: false,
-      });
-      expect(new Date(before!).getTime()).toBe(oldestCreatedAt.getTime());
-
-      // Dequeue the oldest job (FIFO — oldest is first).
-      await queueOps.dequeueNextJobWithLock({
-        orgId: org.id,
-        queueId: queue.id,
-        lockToken: 'reviewer-1',
-      });
-
-      // The heap should have promoted the second-oldest.
-      const after = await queueOps.getOldestJobCreatedAt({
-        orgId: org.id,
-        queueId: queue.id,
-        isAppealsQueue: false,
-      });
-      expect(new Date(after!).getTime()).toBe(secondOldest.getTime());
-    },
-  );
-
-  testWithQueue()(
-    'getOldestJobCreatedAt returns null after all jobs are dequeued',
-    async ({ org, queue, mrtService }) => {
-      const queueOps = mrtService['queueOps'];
-      const payloadFor = makePayloadFor(uid());
-
-      await queueOps.addJob({
-        orgId: org.id,
-        queueId: queue.id,
-        enqueueSourceInfo: { kind: 'REPORT' },
-        jobPayload: { policyIds: [], payload: payloadFor('only-item') },
-      });
-
-      // Populate the cache.
-      expect(
-        await queueOps.getOldestJobCreatedAt({
-          orgId: org.id,
-          queueId: queue.id,
-          isAppealsQueue: false,
-        }),
-      ).not.toBeNull();
-
-      // Dequeue the only job.
-      await queueOps.dequeueNextJobWithLock({
-        orgId: org.id,
-        queueId: queue.id,
-        lockToken: 'reviewer-1',
-      });
-
-      // Heap is empty, rescan finds nothing.
-      expect(
-        await queueOps.getOldestJobCreatedAt({
-          orgId: org.id,
-          queueId: queue.id,
-          isAppealsQueue: false,
-        }),
-      ).toBeNull();
-    },
-  );
-
-  testWithQueue()(
-    'deleteAllJobsFromQueue clears the oldest job cache',
-    async ({ org, queue, mrtService }) => {
-      const queueOps = mrtService['queueOps'];
-      const payloadFor = makePayloadFor(uid());
-
-      await queueOps.addJob({
-        orgId: org.id,
-        queueId: queue.id,
-        enqueueSourceInfo: { kind: 'REPORT' },
-        jobPayload: { policyIds: [], payload: payloadFor('item-A') },
-      });
-
-      // Populate the cache.
-      expect(
-        await queueOps.getOldestJobCreatedAt({
-          orgId: org.id,
-          queueId: queue.id,
-          isAppealsQueue: false,
-        }),
-      ).not.toBeNull();
-
-      await queueOps.deleteAllJobsFromQueue({
-        orgId: org.id,
-        queueId: queue.id,
-        userPermissions: [UserPermission.MANAGE_ORG],
-      });
-
-      // Cache was cleared; rescan finds nothing.
-      expect(
-        await queueOps.getOldestJobCreatedAt({
-          orgId: org.id,
-          queueId: queue.id,
-          isAppealsQueue: false,
-        }),
-      ).toBeNull();
-    },
-  );
-
-  testWithQueue()(
-    'changePriority is skipped for active jobs during recompute',
-    async ({ org, queue, mrtService }) => {
-      const queueOps = mrtService['queueOps'];
-      const payloadFor = makePayloadFor(uid());
-
-      await queueOps.addJob({
-        orgId: org.id,
-        queueId: queue.id,
-        enqueueSourceInfo: { kind: 'REPORT' },
-        priority: 1000,
-        jobPayload: { policyIds: [], payload: payloadFor('item-A') },
-      });
-
-      // Dequeue to make it active.
-      const dequeued = await queueOps.dequeueNextJobWithLock({
-        orgId: org.id,
-        queueId: queue.id,
-        lockToken: 'reviewer-1',
-      });
-      expect(dequeued).not.toBeNull();
-
-      // Recompute should not throw on the active job.
-      await expect(
-        queueOps.recomputePrioritiesForQueue({
-          orgId: org.id,
-          queueId: queue.id,
-          getPriorities: async (itemIds) =>
-            new Map(itemIds.map((id) => [id, 500])),
-        }),
-      ).resolves.toBeUndefined();
     },
   );
 });

@@ -7,7 +7,6 @@
  * via `npm run db:update`.
  */
 
-import passport from 'passport';
 import * as superTest from 'supertest';
 
 import getBottle, { type Dependencies } from '../../iocContainer/index.js';
@@ -27,24 +26,6 @@ export type MakeIntegrationServerOptions = {
 export async function makeIntegrationServer(
   opts: MakeIntegrationServerOptions = {},
 ): Promise<IntegrationServer> {
-  // passport keeps its state globally so we need to reset it each time we make a new server
-  // there is no public API to reset serializers/deserializers so we resort to clearing them.
-  type PassportInternals = {
-    _serializers: Array<unknown>;
-    _deserializers: Array<unknown>;
-    _strategies: Record<string, unknown>;
-  };
-  const passportInternals = passport as unknown as PassportInternals;
-  // eslint-disable-next-line functional/immutable-data
-  passportInternals._serializers = [];
-  // eslint-disable-next-line functional/immutable-data
-  passportInternals._deserializers = [];
-  for (const key of Object.keys(passportInternals._strategies)) {
-    if (key !== 'session') {
-      passport.unuse(key);
-    }
-  }
-
   const bottle = await getBottle();
   if (opts.mockedDeps != null) {
     for (const [name, value] of Object.entries(opts.mockedDeps)) {

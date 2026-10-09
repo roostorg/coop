@@ -603,6 +603,33 @@ export default class ItemTypeOperations {
     return res.numDeletedRows === 1n;
   }
 
+  async getActionItemTypeIds(opts: { orgId: string }) {
+    const rows = await this.pgQuery
+      .selectFrom('public.actions as a')
+      .innerJoin('public.item_type_versions as it', (join) =>
+        join.onRef('it.org_id', '=', 'a.org_id').on('it.is_current', '=', true)
+          .on(sql<boolean>`(
+            it.kind = ANY(a.applies_to_all_items_of_kind)
+            OR (
+              cardinality(a.applies_to_all_items_of_kind) = 0
+              AND EXISTS (
+                SELECT 1 FROM public.actions_and_item_types AS ait
+                WHERE ait.action_id = a.id AND ait.item_type_id = it.id
+              )
+            )
+          )`),
+      )
+      .where('a.org_id', '=', opts.orgId)
+      .select([
+        'a.id as actionId',
+        sql<string[]>`array_agg(it.id ORDER BY it.id)`.as('itemTypeIds'),
+      ])
+      .groupBy('a.id')
+      .execute();
+
+    return new Map(rows.map((row) => [row.actionId, row.itemTypeIds]));
+  }
+
   async getItemTypesForAction(opts: {
     orgId: string;
     actionId: string;

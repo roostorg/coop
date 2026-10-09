@@ -3,7 +3,7 @@ import { Button } from 'antd';
 import capitalize from 'lodash/capitalize';
 import lowerCase from 'lodash/lowerCase';
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 
 import ComponentLoading from '../../../components/common/ComponentLoading';
 import CoopBadge from '../components/CoopBadge';
@@ -14,11 +14,7 @@ import {
   DefaultColumnFilter,
   SelectColumnFilter,
 } from '../components/table/filters';
-import {
-  conditionOutcomeSort,
-  ruleStatusSort,
-  stringSort,
-} from '../components/table/sort';
+import { stringSort } from '../components/table/sort';
 import Table, { TableRow } from '../components/table/Table';
 
 import {
@@ -107,7 +103,8 @@ export default function ItemInvestigationRuleResults(props: {
             }),
         },
         filterFn: 'includes' as const,
-        sortFn: conditionOutcomeSort,
+        sortFn: stringSort,
+        sortDescFirst: false,
       },
       {
         header: 'Status',
@@ -120,7 +117,8 @@ export default function ItemInvestigationRuleResults(props: {
             }),
         },
         filterFn: 'includes' as const,
-        sortFn: ruleStatusSort,
+        sortFn: stringSort,
+        sortDescFirst: false,
       },
       {
         header: 'Policies',
@@ -177,6 +175,10 @@ export default function ItemInvestigationRuleResults(props: {
         const outcome = ruleResult.passed
           ? GQLConditionOutcome.Passed
           : ruleResult.result?.result?.outcome;
+        const actionNames =
+          rules
+            ?.find((it) => ruleResult.ruleId === it.id)
+            ?.actions?.map((action) => action.name) ?? [];
         return {
           rule: ruleResult.ruleName,
           result: (
@@ -215,11 +217,9 @@ export default function ItemInvestigationRuleResults(props: {
           ),
           actions: (
             <div className="w-48 mr-10 grid gap-y-1">
-              {rules
-                ?.find((it) => ruleResult.ruleId === it.id)
-                ?.actions?.map((action, i) => (
-                  <InvestigationTag title={action.name} key={i} />
-                ))}
+              {actionNames.map((actionName, i) => (
+                <InvestigationTag title={actionName} key={i} />
+              ))}
             </div>
           ),
           edit: (
@@ -227,7 +227,7 @@ export default function ItemInvestigationRuleResults(props: {
               <Button
                 className="rounded-lg cursor-pointer"
                 size="middle"
-                onClick={() =>
+                onClick={async () =>
                   navigate(
                     `/dashboard/rules/proactive/form/${ruleResult.ruleId}`,
                   )
@@ -238,7 +238,14 @@ export default function ItemInvestigationRuleResults(props: {
             </div>
           ),
           ruleExecutionResult: ruleResult.result,
-          values: ruleResult,
+          values: {
+            rule: ruleResult.ruleName,
+            result: getDisplayName(outcome),
+            status: capitalize(lowerCase(ruleResult.environment)),
+            policies: ruleResult.policies,
+            tags: ruleResult.tags,
+            actions: actionNames,
+          },
         };
       }),
     [ruleExecutionsHistory, navigate, rules],

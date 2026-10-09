@@ -521,9 +521,13 @@ export class ItemInvestigationService {
       ],
     }).catch((_) => []);
 
-    if (queryResults.length) {
+    // The global item_identifier index cannot also constrain org_id in CQL.
+    // Filter before partitioning so neither latest nor prior submissions leak.
+    const orgSubmissions = queryResults.filter((row) => row.org_id === orgId);
+
+    if (orgSubmissions.length) {
       const { latestSubmission, priorSubmissions } =
-        partitionLatestAndPriorSubmissions(queryResults);
+        partitionLatestAndPriorSubmissions(orgSubmissions);
 
       return scyllaSubmissionsForItemToSubmissionsForItemWithTypeIdentifier({
         latestSubmission,
@@ -1119,6 +1123,11 @@ export class ItemInvestigationService {
     throw new Error('Not Implemented');
   }
 
+  /**
+   * The item's action history, shaped for GraphQL. Records missing an item id
+   * or type id are dropped rather than surfaced partially, since the pair is
+   * what identifies an item.
+   */
   async getItemActionHistory(opts: {
     orgId: string;
     itemId: string;
@@ -1150,6 +1159,7 @@ export class ItemInvestigationService {
           itemCreatorTypeId: record.userTypeId ?? undefined,
           policies: record.policies,
           ruleIds: record.ruleIds,
+          parameters: record.parameters,
           ts: record.occurredAt,
         };
       }),

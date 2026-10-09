@@ -5,7 +5,7 @@ import Scylla from './scylla.js';
 
 /**
  * Tests for the Scylla-disabled path used when
- * `ITEM_INVESTIGATION_AND_STRIKES_ENABLED=false`.
+ * `SCYLLA_ENABLED=false`.
  *
  * Two things are covered:
  *  1. The behavioural contract of {@link NoOpScylla} (drops writes, empty reads,
@@ -16,7 +16,7 @@ import Scylla from './scylla.js';
  *     default-enabled (upstream-preserving) behaviour is guarded by a test.
  */
 
-describe('ITEM_INVESTIGATION_AND_STRIKES_ENABLED gate predicate', () => {
+describe('SCYLLA_ENABLED gate predicate', () => {
   test('defaults to enabled when unset (preserves upstream behaviour)', () => {
     expect(itemInvestigationAndStrikesEnabled(undefined)).toBe(true);
     expect(itemInvestigationAndStrikesEnabled('')).toBe(true);

@@ -9,7 +9,7 @@ import { Tree, treeFromList, TreeNode } from '@/utils/tree';
 import omit from 'lodash/omit';
 import { Check, ChevronDown, ChevronUp, Pencil, Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 
 import CoopModal from '../components/CoopModal';
 import Table from '../components/table/Table';
@@ -390,7 +390,7 @@ export default function PolicyScoresTab() {
     return (
       <div className="flex flex-col items-center justify-center w-full gap-4 py-16">
         <div className="text-slate-400">No policies configured</div>
-        <Button onClick={() => navigate('/dashboard/policies/form')}>
+        <Button onClick={async () => navigate('/dashboard/policies/form')}>
           Create Policy
         </Button>
       </div>

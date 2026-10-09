@@ -1,11 +1,12 @@
 import { ProxyTracerProvider } from '@opentelemetry/api';
+import { vi } from 'vitest';
 
 import type { IDataWarehouse } from '../../../storage/dataWarehouse/IDataWarehouse.js';
 import SafeTracer from '../../../utils/SafeTracer.js';
 import { ClickhouseActionExecutionsAdapter } from './ClickhouseActionExecutionsAdapter.js';
 
 function makeWarehouse(rows: ReadonlyArray<Record<string, unknown>>) {
-  const query = jest.fn(
+  const query = vi.fn(
     async (
       _q: string,
       _t: SafeTracer,
@@ -14,10 +15,10 @@ function makeWarehouse(rows: ReadonlyArray<Record<string, unknown>>) {
   );
   const warehouse: IDataWarehouse = {
     query,
-    transaction: jest.fn(),
-    start: jest.fn(),
-    close: jest.fn(),
-    getProvider: jest.fn(),
+    transaction: vi.fn(),
+    start: vi.fn(),
+    close: vi.fn(),
+    getProvider: vi.fn(),
   };
   return { warehouse, query };
 }
@@ -343,5 +344,93 @@ describe('ClickhouseActionExecutionsAdapter.findContentCreatorIdentity', () => {
 
     const sentSql = query.mock.calls[0][0];
     expect(sentSql).toContain('content-type-PHOTO');
+  });
+});
+
+describe('ClickhouseActionExecutionsAdapter.getItemActionHistory', () => {
+  const historyInput = {
+    orgId: 'org-1',
+    itemId: 'user-1',
+    itemTypeId: 'user-type-A',
+    itemSubmissionTime: undefined,
+  };
+
+  function actionRow(overrides: Record<string, unknown> = {}) {
+    return {
+      ts: '2026-06-01T10:00:00.000Z',
+      item_id: 'user-1',
+      item_type_id: 'user-type-A',
+      item_creator_id: null,
+      item_creator_type_id: null,
+      actor_id: 'moderator-1',
+      job_id: null,
+      policies: '[]',
+      rules: '[]',
+      action_id: 'action-ban',
+      ...overrides,
+    };
+  }
+
+  it('exposes the moderator-supplied parameters for the execution', async () => {
+    const { adapter } = makeAdapter([
+      actionRow({ parameters: '{"num_days":7,"reason":"spam"}' }),
+    ]);
+
+    const results = await adapter.getItemActionHistory(historyInput);
+
+    expect(results).toHaveLength(1);
+    expect(results[0]?.parameters).toEqual({ num_days: 7, reason: 'spam' });
+  });
+
+  it('returns an empty object when the action took no parameters', async () => {
+    const { adapter } = makeAdapter([actionRow({ parameters: '{}' })]);
+
+    const results = await adapter.getItemActionHistory(historyInput);
+
+    expect(results[0]?.parameters).toEqual({});
+  });
+
+  it.each([
+    ['missing', undefined],
+    ['null', null],
+    ['empty string', ''],
+  ])(
+    'returns an empty object when the stored value is %s',
+    async (_label, stored) => {
+      const { adapter } = makeAdapter([actionRow({ parameters: stored })]);
+
+      const results = await adapter.getItemActionHistory(historyInput);
+
+      expect(results[0]?.parameters).toEqual({});
+    },
+  );
+
+  it.each([
+    ['unparseable text', 'not-json'],
+    ['a JSON array', '[1,2,3]'],
+    ['a JSON scalar', '42'],
+  ])(
+    'returns an empty object without failing the query when the value is %s',
+    async (_label, stored) => {
+      const { adapter } = makeAdapter([
+        actionRow({ action_id: 'action-a', parameters: stored }),
+        actionRow({ action_id: 'action-b', parameters: '{"num_days":3}' }),
+      ]);
+
+      const results = await adapter.getItemActionHistory(historyInput);
+
+      expect(results).toHaveLength(2);
+      expect(results[0]?.parameters).toEqual({});
+      // The sibling row in the same result set stays intact.
+      expect(results[1]?.parameters).toEqual({ num_days: 3 });
+    },
+  );
+
+  it('selects the parameters column in the SQL', async () => {
+    const { adapter, query } = makeAdapter([]);
+
+    await adapter.getItemActionHistory(historyInput);
+
+    expect(query.mock.calls[0]?.[0]).toMatch(/\bparameters\b/);
   });
 });

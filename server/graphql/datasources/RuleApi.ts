@@ -6,8 +6,8 @@ import { type Kysely } from 'kysely';
 import { type JsonObject } from 'type-fest';
 import { uid } from 'uid';
 
-import { inject, type Dependencies } from '../../iocContainer/index.js';
-import { safeGetEnvInt } from '../../iocContainer/utils.js';
+import { type Dependencies } from '../../iocContainer/index.js';
+import { inject, safeGetEnvInt } from '../../iocContainer/utils.js';
 import { type ActionCountsInput } from '../../services/actionStatisticsService/index.js';
 import { type AggregationClause } from '../../services/aggregationsService/index.js';
 import { type ConditionSetWithResultAsLogged } from '../../services/analyticsLoggers/index.js';
