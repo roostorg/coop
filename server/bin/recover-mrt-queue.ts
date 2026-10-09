@@ -21,7 +21,7 @@
  * override (rare).
  *
  * Usage:
- *   npm run recover-mrt-queue -- \
+ *   pnpm run recover-mrt-queue \
  *     --orgId "<orgId>" \
  *     --queueId "<queueId>" \
  *     [--mode default|ncmec] \

@@ -28,9 +28,13 @@ services:
   # Runs all migrations from scratch, after clearing the database(s).
   migrations:
     image: node:24.21.0-bookworm-slim
-    command: bash -c 'set -e
-      npm i && ( [ "$CI" = "true" ] && npm run db:clean -- --env staging || true )
-      && for db in api-server-pg scylla clickhouse; do npm run db:create -- --db "$$db" --env staging; npm run db:update -- --db "$$db" --env staging; done'
+    command: bash -c 'set -e && npm install -g pnpm@11.28.2
+      && pnpm install --filter coop-data-migrator --frozen-lockfile --store-dir /tmp/pnpm-store
+      && if [ "${CI:-}" = "true" ]; then ( cd db && NODE_OPTIONS="--loader ts-node/esm" node src/index.ts clean --env staging ); fi
+      && for db in api-server-pg scylla clickhouse; do
+      ( cd db && NODE_OPTIONS="--loader ts-node/esm" node src/index.ts create --db "$$db" --env staging );
+      ( cd db && NODE_OPTIONS="--loader ts-node/esm" node src/index.ts apply --db "$$db" --env staging );
+      done'
     working_dir: /src
     env_file: ./.env.githubci
     environment:
@@ -38,6 +42,16 @@ services:
       - CLICKHOUSE_DATABASE
     volumes:
       - .:/src
+      # The container's pnpm install would otherwise replace the host's
+      # node_modules (a filtered install prunes the other packages), so give
+      # each workspace package its own container-only node_modules.
+      - /src/node_modules
+      - /src/client/node_modules
+      - /src/server/node_modules
+      - /src/types/node_modules
+      - /src/db/node_modules
+      - /src/migrator/node_modules
+      - /src/nodejs-instrumentation/node_modules
     depends_on:
       postgres:
         condition: service_healthy
@@ -48,7 +62,7 @@ services:
 
   drop_dbs:
     image: node:24.21.0-bookworm-slim
-    command: bash -c 'npm i && npm run db:drop -- --env staging'
+    command: bash -c 'npm install -g pnpm@11.28.2 && pnpm install --filter coop-data-migrator --frozen-lockfile --store-dir /tmp/pnpm-store && ( cd db && NODE_OPTIONS="--loader ts-node/esm" node src/index.ts drop --env staging )'
     working_dir: /src
     env_file: ./.env.githubci
     environment:
@@ -56,6 +70,16 @@ services:
       - MIGRATOR_DB_NAME
     volumes:
       - .:/src
+      # The container's pnpm install would otherwise replace the host's
+      # node_modules (a filtered install prunes the other packages), so give
+      # each workspace package its own container-only node_modules.
+      - /src/node_modules
+      - /src/client/node_modules
+      - /src/server/node_modules
+      - /src/types/node_modules
+      - /src/db/node_modules
+      - /src/migrator/node_modules
+      - /src/nodejs-instrumentation/node_modules
     depends_on:
       - postgres
 
@@ -120,10 +144,11 @@ services:
       context: .
       dockerfile: Dockerfile
       target: server_base
-    command: bash -c 'npm run test:ci'
-    working_dir: /app
+    init: true
+    command: bash -c 'pnpm run test:ci'
+    working_dir: /app/server
     volumes:
-      - ./server/reports:/app/reports
+      - ./server/reports:/app/server/reports
     env_file: ./.env.githubci
     depends_on:
       migrations:
@@ -136,15 +161,20 @@ services:
       context: .
       dockerfile: Dockerfile
       target: server_base
+    init: true
+    command: pnpm run lint
 
   client:
     build:
-      context: client
+      context: .
+      dockerfile: client/Dockerfile
       target: client_base
+    command: pnpm run lint
+    working_dir: /app/client
     volumes:
-      - ./client/eslint:/app/eslint
-      - ./client/.eslintrc.cjs:/app/.eslintrc.cjs
-      - ./client/eslint.config.mjs:/app/eslint.config.mjs
+      - ./client/eslint:/app/client/eslint
+      - ./client/.eslintrc.cjs:/app/client/.eslintrc.cjs
+      - ./client/eslint.config.mjs:/app/client/eslint.config.mjs
 
   jaeger:
     image: jaegertracing/all-in-one:1.76.0

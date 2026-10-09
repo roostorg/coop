@@ -10,7 +10,7 @@ const eslintInPackage = (pkg) => (files) => {
   const eslintBin = path.join(pkgRoot, 'node_modules', '.bin', 'eslint');
   if (!fs.existsSync(eslintBin)) {
     console.warn(
-      `[lint-staged] skipping eslint in ${pkg}/: run "(cd ${pkg} && npm install)" to enable.`,
+      `[lint-staged] skipping eslint in ${pkg}/: run "pnpm install" to enable.`,
     );
     return [];
   }

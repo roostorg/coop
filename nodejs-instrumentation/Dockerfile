@@ -13,20 +13,28 @@ FROM node:24.21.0 AS build
 
 WORKDIR /operator-build
 
-COPY package*.json .
+RUN npm install -g pnpm@11.28.2
 
-RUN --mount=type=cache,target=/root/.npm npm ci --prefer-offline
+# The lockfile and workspace config live at the repo root, so this image builds
+# with the repo root as its context and installs only this package.
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY nodejs-instrumentation/package.json ./nodejs-instrumentation/
 
-COPY . .
+RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --filter nodejs-instrumentation --frozen-lockfile --ignore-scripts && \
+    pnpm rebuild --filter nodejs-instrumentation
 
-RUN npm run build
+COPY nodejs-instrumentation/ ./nodejs-instrumentation/
 
-RUN npm prune --omit=dev
+RUN pnpm --filter nodejs-instrumentation run build
+
+# The operator copies /autoinstrumentation into the app container, so its
+# node_modules must be real directories, not pnpm's symlinks into a store.
+RUN pnpm --filter nodejs-instrumentation deploy --legacy --prod --config.node-linker=hoisted /deploy
 
 FROM busybox:1.38.0
 
-COPY --from=build /operator-build/node_modules /autoinstrumentation/node_modules
-COPY --from=build /operator-build/transpiled/ /autoinstrumentation
+COPY --from=build /deploy/node_modules /autoinstrumentation/node_modules
+COPY --from=build /operator-build/nodejs-instrumentation/transpiled/ /autoinstrumentation
 
 RUN chmod -R go+r /autoinstrumentation
 

@@ -38,7 +38,8 @@ jobs:
               # Root-level files the workflow steps below depend on.
               - '.nvmrc'
               - 'package.json'
-              - 'package-lock.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
               - 'docker-compose.yaml'
 
   e2e:
@@ -51,9 +52,11 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - name: Setup pnpm and Node.js, install dependencies
+        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
         with:
-          node-version-file: .nvmrc
+          cache: true
+          require-lockfile: true
 
       - name: Configure Docker Hub mirror
         # Route docker.io pulls through Google's pull-through cache to avoid
@@ -84,27 +87,20 @@ jobs:
           cp client/.env.example client/.env
           sed -i "s/^ITEM_QUEUE_TRAFFIC_PERCENTAGE=.*/ITEM_QUEUE_TRAFFIC_PERCENTAGE='1'/" server/.env
 
-      - name: Install dependencies
-        run: |
-          npm ci
-          (cd server && npm ci)
-          (cd client && npm ci)
-          (cd db && npm ci)
-
       - name: Create databases
         run: |
-          npm run db:create -- --env staging --db api-server-pg
-          npm run db:create -- --env staging --db scylla
-          npm run db:create -- --env staging --db clickhouse
+          pnpm run db:create --env staging --db api-server-pg
+          pnpm run db:create --env staging --db scylla
+          pnpm run db:create --env staging --db clickhouse
 
       - name: Run migrations
         run: |
-          npm run db:update -- --env staging --db api-server-pg
-          npm run db:update -- --env staging --db scylla
-          npm run db:update -- --env staging --db clickhouse
+          pnpm run db:update --env staging --db api-server-pg
+          pnpm run db:update --env staging --db scylla
+          pnpm run db:update --env staging --db clickhouse
 
       - name: Build server
-        run: npm --prefix server run build
+        run: pnpm --dir server run build
 
       - name: Build E2E seed helpers
         # The production build excludes test/fixtureHelpers, which the
@@ -117,7 +113,7 @@ jobs:
         # step's stdout pipe open (which would hang the step).
         run: |
           (cd server && node --env-file=.env transpiled/bin/www.js) > /tmp/server.log 2>&1 &
-          (cd client && npm start) > /tmp/client.log 2>&1 &
+          (cd client && pnpm start) > /tmp/client.log 2>&1 &
           # Wait (up to 120s) for the API (tcp 8080) and client (http 3000) to be
           # ready. A built-in shell loop avoids fetching an undeclared dependency
           # at runtime, which would bypass the committed lockfile.
@@ -133,23 +129,27 @@ jobs:
             sleep 2
           done
 
+      - name: Get Playwright version
+        id: playwright-version
+        run: echo "version=$(cd server && pnpm exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+
       - name: Cache Playwright browsers
         id: playwright-cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('server/package-lock.json') }}
+          key: playwright-${{ runner.os }}-${{ steps.playwright-version.outputs.version }}
 
       - name: Install Playwright system dependencies
         # OS-level deps live outside the cached browser dir, so install them every run.
-        run: cd server && npx playwright install-deps chromium
+        run: cd server && pnpm exec playwright install-deps chromium
 
       - name: Install Playwright browsers
         if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: cd server && npx playwright install chromium
+        run: cd server && pnpm exec playwright install chromium
 
       - name: Run E2E suite
-        run: cd server && npm run test:e2e
+        run: cd server && pnpm run test:e2e
         env:
           PLAYWRIGHT_BASE_URL: http://localhost:3000
 

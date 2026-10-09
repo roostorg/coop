@@ -3,3 +3,12 @@ client/build/
 server/signals/text_matching/fuzzy_matching/homoglyphReplacements.*
 .dockerignore
 .github/pull_request_template.md
+
+# pnpm's lockfile is regenerated deterministically by `pnpm install`; letting
+# Prettier reformat it would fight that and break the frozen-lockfile check.
+pnpm-lock.yaml
+
+# pnpm's content-addressable store. pnpm creates it at the repo root when its
+# default store is on another filesystem (e.g. a bind mount); the compose
+# services avoid that with --store-dir.
+.pnpm-store/

@@ -9,13 +9,15 @@ This file inherits from the ROOST community policy — read it once:
 
 ## Architecture
 
-Four independent packages, **not an npm workspace** — each has its own `package.json` and lockfile:
+Six packages in a **pnpm workspace** (listed in `pnpm-workspace.yaml`), plus root scripts — each has its own `package.json`; dependencies are locked in a single root `pnpm-lock.yaml`:
 
 - `/` — root scripts, graphql-codegen, docker compose orchestration
 - `/server` — Express + Apollo GraphQL API (ESM, `"type": "module"`)
 - `/client` — React + Vite + Apollo Client frontend (Ant Design, TailwindCSS)
 - `/db` — migration runner for Postgres, ClickHouse, Scylla
 - `/migrator` — package and CLI tool for database migrations
+- `/types` — shared TypeScript types, published to npm as `@roostorg/coop-types`
+- `/nodejs-instrumentation` — OpenTelemetry auto-instrumentation image
 
 Node **24** (`.nvmrc`). Running on Node 20 produces `EBADENGINE` warnings and can fail native builds.
 
@@ -25,14 +27,14 @@ Reference files: `README.md` (getting started), `server/bin/README.md` (utility 
 
 - **API:** REST + GraphQL (Apollo Server); client uses Apollo Client with InMemoryCache; server resolvers are aggregated in `server/graphql/resolvers.ts`, with the SDL and per-domain resolvers in `server/graphql/modules/`.
 - **GraphQL authoring:** Inline in resolver files with `/* GraphQL */` comment markers — codegen discovers queries this way. Searching for `gql` or `graphql` alone misses most of it.
-- **GraphQL codegen:** `npm run generate` (from root) regenerates `client/src/graphql/generated.ts` and `server/graphql/generated.ts`. **Never hand-edit** either `generated.ts`. **Never hand-merge** either `generated.ts` during a rebase/merge — pick one side with `git checkout --ours|--theirs <file>`, then run `npm run generate`. Hand-merging produces output that parses but drifts from the schema.
+- **GraphQL codegen:** `pnpm run generate` (from root) regenerates `client/src/graphql/generated.ts` and `server/graphql/generated.ts`. **Never hand-edit** either `generated.ts`. **Never hand-merge** either `generated.ts` during a rebase/merge — pick one side with `git checkout --ours|--theirs <file>`, then run `pnpm run generate`. Hand-merging produces output that parses but drifts from the schema.
 - **Adding a new built-in `SignalType`:** the type list is hand-mirrored in four files; missing any one ships a signal that's invisible to the dashboard. Update all of:
   1. `server/services/signalsService/types/SignalType.ts` — the canonical TS enum-like object (`BuiltInExternalSignalType` or `BuiltInThirdPartySignalType`) and the `integrationForSignalType` switch.
   2. `server/services/signalsService/types/SignalArgsByType.ts` — both `SignalArgsByType` and `RuntimeSignalArgsByType` (the `Satisfies<>` will fail compile until you do).
   3. `server/graphql/modules/signal.ts` — the `enum SignalType { ... }` block inside the SDL string. The `signal.test.ts` coverage test fails if you miss this.
   4. `client/src/models/signal.ts` — the `integrationForSignalType` switch (the server's switch is the source of truth for which `Integration` a type belongs to).
 
-  After step 3, run `npm run generate` from the repo root to refresh the codegen output.
+  After step 3, run `pnpm run generate` from the repo root to refresh the codegen output.
 
 - **Data model:** Use Kysely query builder for Postgres; ClickHouse via raw SQL in `server/storage/dataWarehouse/ClickhouseAdapter.ts`; Scylla via Cassandra driver.
 - **Dependency injection:** Server uses BottleJS DI (wired in `server/iocContainer/`). Register services in `iocContainer`, don't export singletons from service files. Consumers receive dependencies via DI rather than importing directly. Bypassing `iocContainer` will work at runtime but breaks test mocking patterns.
@@ -42,14 +44,11 @@ Reference files: `README.md` (getting started), `server/bin/README.md` (utility 
 Prerequisites: Node 24 (`.nvmrc`), Docker + Docker Compose v2, 8 GiB RAM recommended (running an instance requires 4 GiB, the rest will be used by development tools).
 
 ```bash
-# Start backing services (Postgres, ClickHouse, Scylla, Redis)
-npm run up
+# Start backing services (Postgres, ClickHouse, Scylla, Redis, HMA, otel-collector)
+pnpm run up
 
-# Install dependencies in all packages
-npm install
-(cd client && npm install)
-(cd server && npm install)
-(cd db && npm install)
+# Install all workspace packages from the root (single command — no per-package cd needed)
+pnpm install
 
 # Copy .env files for /server, /db, and /client (defaults work for local dev)
 cp server/.env.example server/.env
@@ -58,16 +57,16 @@ cp client/.env.example client/.env
 
 # Create databases, then run migrations.
 
-npm run db:create -- --env staging --db api-server-pg
-npm run db:create -- --env staging --db scylla
-npm run db:create -- --env staging --db clickhouse
+pnpm run db:create --env staging --db api-server-pg
+pnpm run db:create --env staging --db scylla
+pnpm run db:create --env staging --db clickhouse
 
-npm run db:update -- --env staging --db api-server-pg
-npm run db:update -- --env staging --db scylla
-npm run db:update -- --env staging --db clickhouse
+pnpm run db:update --env staging --db api-server-pg
+pnpm run db:update --env staging --db scylla
+pnpm run db:update --env staging --db clickhouse
 
 # Create organization and admin user (all flags required)
-npm run create-org -- \
+pnpm run create-org \
   --name "Test Org" \
   --email "admin@example.com" \
   --website "https://example.com" \
@@ -76,9 +75,9 @@ npm run create-org -- \
   --password "your-password"
 
 # Start dev servers (separate terminals recommended)
-npm run client:start        # React dev server
-npm run server:start        # Express + GraphQL API
-npm run generate:watch      # (optional) watch GraphQL changes
+pnpm run client:start        # React dev server
+pnpm run server:start        # Express + GraphQL API
+pnpm run generate:watch      # (optional) watch GraphQL changes
 ```
 
 Client: http://localhost:3000 · Server: http://localhost:8080
@@ -94,19 +93,19 @@ Always pass `--build` to `docker compose run`. Compose only builds when no image
 docker compose run --rm --build test
 
 # Server unit tests (backing services must already be running)
-(cd server && npm test)
+pnpm --filter server test
 
 # Client unit tests (no Docker)
-(cd client && npm test)
+pnpm --filter client test
 ```
 
 Lint / format / type-check (no Docker needed):
 
 ```bash
-npm run lint           # lint all packages
-npm run prettier:fix  # format all packages (alias: npm run format)
-(cd server && npm run lint)
-(cd client && npm run lint)
+pnpm run lint           # lint all packages
+pnpm run prettier:fix   # format all packages (alias: pnpm run format)
+pnpm --filter server run lint
+pnpm --filter client run lint
 ```
 
 If tests fail with database errors, check migration logs via `docker compose logs migrations`.
@@ -116,28 +115,28 @@ If tests fail with database errors, check migration logs via `docker compose log
 CI runs entirely via GitHub Actions (`.github/workflows/apply_pr_checks.yaml`). Most PR checks are defined as `docker compose` services so you can reproduce any CI job locally; formatting and GraphQL codegen run directly via `actions/setup-node`. Run them in your shell (paste-as-is — each command's exit code matches the corresponding CI step's exit code):
 
 ```bash
-npm ci && npm run prettier
-npm ci && npm run generate && test -z "$(git status --porcelain)"
-docker compose run --rm --build backend npm run lint
-docker compose run --rm --build backend npm run typecheck
-docker compose run --rm --build backend npm run build
-docker compose run --rm --build client npm run lint
-docker compose run --rm --build client npm run build
+pnpm install --frozen-lockfile && pnpm run prettier
+pnpm install --frozen-lockfile && pnpm run generate && test -z "$(git status --porcelain)"
+docker compose run --rm --build backend pnpm run lint
+docker compose run --rm --build backend pnpm run typecheck
+docker compose run --rm --build backend pnpm run build
+docker compose run --rm --build client pnpm run lint
+docker compose run --rm --build client pnpm run build
 docker compose run --rm --build test
 ```
 
 Individual checks:
 
-| CI job                                   | Local command                                                       |
-| ---------------------------------------- | ------------------------------------------------------------------- |
-| `check_formatting`                       | `npm ci && npm run prettier`                                        |
-| `check_generated_graphql`                | `npm ci && npm run generate && test -z "$(git status --porcelain)"` |
-| `check_api_server` (lint)                | `docker compose run --rm --build backend npm run lint`              |
-| `check_api_server` (typecheck)           | `docker compose run --rm --build backend npm run typecheck`         |
-| `check_api_server` (build)               | `docker compose run --rm --build backend npm run build`             |
-| `run_frontend_checks_if_changed` (lint)  | `docker compose run --rm --build client npm run lint`               |
-| `run_frontend_checks_if_changed` (build) | `docker compose run --rm --build client npm run build`              |
-| `check_api_server` (test)                | `docker compose run --rm --build test`                              |
+| CI job                                   | Local command                                                                                |
+| ---------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `check_formatting`                       | `pnpm install --frozen-lockfile && pnpm run prettier`                                        |
+| `check_generated_graphql`                | `pnpm install --frozen-lockfile && pnpm run generate && test -z "$(git status --porcelain)"` |
+| `check_api_server` (lint)                | `docker compose run --rm --build backend pnpm run lint`                                      |
+| `check_api_server` (typecheck)           | `docker compose run --rm --build backend pnpm run typecheck`                                 |
+| `check_api_server` (build)               | `docker compose run --rm --build backend pnpm run build`                                     |
+| `run_frontend_checks_if_changed` (lint)  | `docker compose run --rm --build client pnpm run lint`                                       |
+| `run_frontend_checks_if_changed` (build) | `docker compose run --rm --build client pnpm run build`                                      |
+| `check_api_server` (test)                | `docker compose run --rm --build test`                                                       |
 
 Tear down:
 
@@ -179,46 +178,47 @@ Note: `check_migration_order` runs only in GitHub Actions — it's GitHub-specif
 
 ## Code style
 
-- **TypeScript:** ESLint + Prettier (Prettier config at root `.prettierrc`; ESLint configs per package in `server/` and `client/`). Run `npm run lint` and `npm run prettier:fix` from root.
+- **TypeScript:** ESLint + Prettier (Prettier config at root `.prettierrc`; ESLint configs per package in `server/` and `client/`). Run `pnpm run lint` and `pnpm run prettier:fix` from root.
 - **Naming:** Use camelCase for variables/functions; PascalCase for components/classes; SCREAMING_SNAKE_CASE for constants.
 - **GraphQL:** Type-safe resolvers and queries via codegen; never hand-edit `generated.ts`.
 - **Imports:** Absolute imports configured via `tsconfig.json` paths; prefer `@/` prefix over relative paths where configured.
 
 ## Dependencies
 
-- Dependencies are declared in each package's `package.json` and locked in `package-lock.json`. Add with `npm install --save <pkg>` and commit the updated lockfile.
+- Dependencies are declared in each package's `package.json` and locked in the root `pnpm-lock.yaml`. Add a dep with `pnpm --filter <pkg> add <dep>` and commit the updated lockfile.
 - Every new or upgraded package including transitive dependencies requires human approval. Confirm the license is compatible with `LICENSE` (Apache 2.0) and that there are no known CVEs.
-- Same conflict-resolution rule applies to any `package-lock.json`: take one side with `git checkout --ours|--theirs <file>`, then run `npm install` in that package to reconcile.
+- Lockfile conflict on `pnpm-lock.yaml`: take one side with `git checkout --ours|--theirs pnpm-lock.yaml`, then run `pnpm install` from root to reconcile.
+- `pnpm-workspace.yaml` refuses packages published less than 3 days ago (`minimumReleaseAge`) and runs dependency install scripts only for packages set to `true` in `allowBuilds`; a new dependency with an install script needs an `allowBuilds` entry.
 
 **Install gotchas:**
 
-CI runs `npm ci` from root. If `npm ci` hits `ERESOLVE` in any package, the lockfile has drifted from `package.json` — regenerate it against a known-good base:
+CI runs `pnpm install --frozen-lockfile` from root. If it fails with resolution errors, the lockfile has drifted — regenerate against a known-good base:
 
 ```bash
-git checkout main -- <pkg>/package-lock.json
-(cd <pkg> && npm install)
+git checkout main -- pnpm-lock.yaml
+pnpm install
 ```
 
-**Do not reach for `--legacy-peer-deps`** as a fix — it papers over real peer violations and CI's `npm ci` will fail on the next agent's machine.
+**Do not reach for `--legacy-peer-deps`** as a fix — it papers over real peer violations and CI's frozen-lockfile install will fail on the next machine.
 
 ## Codespaces
 
 Two things differ from a local dev setup:
 
-1. **Use the production client build**, not the vite dev server: `(cd client && npm run build)`, then `npm run server:start` serves the built assets. Vite's HMR websocket does not reliably traverse the Codespace port proxy.
+1. **Use the production client build**, not the vite dev server: `(cd client && pnpm run build)`, then `pnpm run server:start` serves the built assets. Vite's HMR websocket does not reliably traverse the Codespace port proxy.
 2. **Apollo's GraphQL URI must be relative** (`/api/v1/graphql`). Hard-coded `http://localhost:3000/...` breaks because the Codespace proxies to a different host. Source of truth is the `HttpLink` in `client/src/index.tsx`.
 
 ## ROOST guiding principles
 
 - **Commands over prose.** Prefer `docker compose run --rm --build test` over descriptive paragraphs.
 - **Same review bar.** PRs authored with agent assistance are held to the same standards as any other PR.
-- **Boundaries with alternatives.** When stating a restriction, provide the alternative path (e.g. don't edit `generated.ts` — regenerate via `npm run generate`).
+- **Boundaries with alternatives.** When stating a restriction, provide the alternative path (e.g. don't edit `generated.ts` — regenerate via `pnpm run generate`).
 - **Iterate over time.** Start minimal. When you give an agent the same instruction twice, add it to this file.
 - **Contributors update `AGENTS.md`.** When you find a gap, update this file as part of your PR.
 
 ## Human-approval-required actions
 
-Routine local setup and verification commands, including `npm ci` and existing build/test/lint/format/check scripts, do not require approval; the gates below apply to the changes being made, not merely to running commands.
+Routine local setup and verification commands, including `pnpm install --frozen-lockfile` and existing build/test/lint/format/check scripts, do not require approval; the gates below apply to the changes being made, not merely to running commands.
 
 Stop and get explicit human approval before:
 
@@ -228,7 +228,7 @@ Stop and get explicit human approval before:
 - Deleting or renaming an existing GraphQL type or field — this breaks cached Apollo client state and any downstream consumer. Additive changes are usually safe; removals need a migration plan.
 - Rewiring `server/iocContainer` in a way that changes service lifecycles or startup order — cascading effects on tests and boot.
 - Auth, session, or request middleware (under `server/api.ts`) — security-sensitive; prefer a small, reviewable PR with explicit callouts.
-- Adding, removing, or upgrading any dependency (including transitive dependencies in `package-lock.json`) — confirm licenses are compatible with Apache 2.0 and that there are no known CVEs.
+- Adding, removing, or upgrading any dependency (including transitive dependencies in `pnpm-lock.yaml`) — confirm licenses are compatible with Apache 2.0 and that there are no known CVEs.
 - Multi-thousand-line diffs — ROOST policy is that reviewers can digest the change. Split into reviewable PRs; regenerated codegen and lockfile bumps are the only exceptions.
 
 ## Commit attribution
@@ -243,8 +243,9 @@ Coop is open source and contributions flow upstream; attribution matters for mai
 
 ## Don't
 
-- Hand-merge `generated.ts` or lockfiles.
+- Hand-merge `generated.ts` or `pnpm-lock.yaml`.
 - Install with `--legacy-peer-deps` as a workaround.
+- Use `npm install` / `npm ci` — always use `pnpm`.
 - Commit `.env`, credentials, or API keys.
 - Bypass `iocContainer` by importing server singletons directly.
 - Silently modify a migration file that has already been applied to a shared environment — add a new forward migration instead.

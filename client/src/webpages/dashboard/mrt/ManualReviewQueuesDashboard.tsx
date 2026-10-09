@@ -442,7 +442,7 @@ export default function ManualReviewQueuesDashboard() {
           the queue&apos;s pending items in Redis and{' '}
           <strong>cannot be undone from the UI</strong>. Recovery is only
           possible by re-running the items through{' '}
-          <code>npm run recover-mrt-queue</code> on the server.
+          <code>pnpm run recover-mrt-queue</code> on the server.
         </p>
         <p>
           To confirm, type the queue name{' '}

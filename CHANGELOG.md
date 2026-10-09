@@ -16,6 +16,7 @@ For more information about each release including git tags and artifacts, see [R
 ### Changed
 
 - Require HMA 1.2.0 or later ([#1360](https://github.com/roostorg/coop/pull/1360) by [@juanmrad](https://github.com/juanmrad))
+- Switch the package manager from npm to pnpm ([#669](https://github.com/roostorg/coop/pull/669) by [@serendipty01](https://github.com/serendipty01))
 
 ### Fixed
 

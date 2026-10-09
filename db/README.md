@@ -5,7 +5,7 @@ A Node.js CLI for running database migrations and seeds.
 ## Quick Start
 
 ```
-npm install
+pnpm install
 node --env-file-if-exists=.env --loader ts-node/esm index.ts
 ```
 

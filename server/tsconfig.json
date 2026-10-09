@@ -1,5 +1,5 @@
 {
-  // Default config for editors, npm start, and tests. It includes Vitest globals.
+  // Default config for editors, pnpm start, and tests. It includes Vitest globals.
   // Production builds use tsconfig.build.json, which excludes tests and Vitest globals.
   "compilerOptions": {
     "target": "ES2022",
@@ -23,7 +23,7 @@
     // `vitest.config.ts` sets `globals: true`, so test files use `describe`,
     // `it` and `expect` without importing them. tsconfig.build.json drops
     // `vitest/globals` from this list, so production code that reaches for one
-    // fails `npm run typecheck`.
+    // fails `pnpm run typecheck`.
     "types": ["node", "vitest/globals"],
     "skipLibCheck": true,
     "sourceMap": true

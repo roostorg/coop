@@ -20,8 +20,8 @@
  * leaks cached rule lists from earlier tests, masking whether a freshly created
  * rule is actually being picked up.
  *
- * Run with: npm run test:integ
- * Requires: `npm run up && npm run db:update`
+ * Run with: pnpm run test:integ
+ * Requires: `pnpm run up && pnpm run db:update`
  */
 import { ScalarTypes } from '@roostorg/coop-types';
 import { type Kysely } from 'kysely';
