@@ -1,0 +1,37 @@
+server/services/manualReviewToolService/modules/QueueOperations.ts
+  s_45257d559bf1ad::t_dde34a07dc9619 948-956
+  s_45257d559bf1ad::t_b6060e9e05e579 2113,2115-2124
+  s_45257d559bf1ad::t_847d6c7f819908 73,94-102,187-188,199,314,316,378-386,568-570,583,920-928,947,957-958,1120-1127,1453-1455,1490,1502,1920,1933,2016-2046,2048-2112,2114,2125-2193
+  s_45257d559bf1ad::t_bcd02bb6e76577 2047
+  s_45257d559bf1ad::t_1cbfc3070d6e81 1528-1530
+server/services/manualReviewToolService/modules/JobPriority.test.ts
+  s_45257d559bf1ad::t_a9a4f99ca67b92 75
+server/services/manualReviewToolService/modules/QueueOperations.priorities.test.ts
+  s_45257d559bf1ad::t_61c64e1b80e3c1 807-808
+  s_45257d559bf1ad::t_289a46c45f2be3 823
+  s_45257d559bf1ad::t_03ca0966118a98 740
+  s_45257d559bf1ad::t_b667c212872684 710-723
+  s_45257d559bf1ad::t_d7611e900098a4 613-709,724-739,741-806,809-822,824-849,852-853,903-942
+  s_45257d559bf1ad::t_d21eec416bca86 17-20
+  s_45257d559bf1ad::t_504187bc3a2f8a 2
+  s_45257d559bf1ad::t_0ae727d25af147 850-851,854-902
+server/services/manualReviewToolService/modules/PendingJobIndex.ts
+  s_45257d559bf1ad::t_847d6c7f819908 1-101,104,107-108
+  s_45257d559bf1ad::t_2598231676679d 102-103,105-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4851855a3407905826f624313835a4b46af6b776",
+  "prompts": {},
+  "sessions": {
+    "s_45257d559bf1ad": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "73b1268b-e428-4b91-a79c-4670a3c6dd48",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
