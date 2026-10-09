@@ -2284,6 +2284,8 @@ export type GQLManualReviewQueue = {
   readonly clearReportsTriggerActionIds: ReadonlyArray<Scalars['ID']['output']>;
   readonly description?: Maybe<Scalars['String']['output']>;
   readonly explicitlyAssignedReviewers: ReadonlyArray<GQLUser>;
+  /** Whether pending jobs remain after applying the current reviewer's skips. */
+  readonly hasUnskippedJobs: Scalars['Boolean']['output'];
   readonly hiddenActionIds: ReadonlyArray<Scalars['ID']['output']>;
   readonly id: Scalars['ID']['output'];
   readonly isAppealsQueue: Scalars['Boolean']['output'];
@@ -10660,6 +10662,7 @@ export type GQLManualReviewQueuesQuery = {
       readonly name: string;
       readonly description?: string | null;
       readonly pendingJobCount: number;
+      readonly hasUnskippedJobs: boolean;
       readonly oldestJobCreatedAt?: Date | string | null;
       readonly isDefaultQueue: boolean;
       readonly isAppealsQueue: boolean;
@@ -33587,6 +33590,7 @@ export const GQLManualReviewQueuesDocument = gql`
         name
         description
         pendingJobCount
+        hasUnskippedJobs
         oldestJobCreatedAt
         isDefaultQueue
         isAppealsQueue

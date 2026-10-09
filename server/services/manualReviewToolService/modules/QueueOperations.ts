@@ -1,5 +1,6 @@
 /* eslint-disable max-lines */
 
+import { createHash } from 'node:crypto';
 import { type ItemIdentifier } from '@roostorg/coop-types';
 import { Queue, Worker, type Job } from 'bullmq';
 import { type Cluster } from 'ioredis';
@@ -128,6 +129,14 @@ export type QueueOperationsErrorType =
 // scaling by orgId, so you need the orgId to find the queue.
 type QueueKey = { orgId: string; queueId: string };
 
+type ReviewerAvailabilityScanKey = QueueKey & {
+  reviewerId: string;
+  waitingCount: number;
+  prioritizedCount: number;
+  dueDelayedCount: number;
+  skipFingerprint: string;
+};
+
 const MANUAL_REVIEW_LOCK_DURATION_MS = 600_000;
 
 /**
@@ -174,6 +183,9 @@ export default class QueueOperations {
     Bind1<typeof getBullWorker<ManualReviewAppealJob>>
   >;
   private readonly transactionWithRetry: KyselyTransactionWithRetry<ManualReviewToolServicePg>;
+  private readonly getUnskippedReadyJobAvailability: Cached<
+    (key: ReviewerAvailabilityScanKey) => Promise<boolean>
+  >;
 
   constructor(
     private readonly pgQuery: Kysely<ManualReviewToolServicePg>,
@@ -184,6 +196,12 @@ export default class QueueOperations {
     private readonly meter?: Dependencies['Meter'],
   ) {
     this.transactionWithRetry = makeKyselyTransactionWithRetry(this.pgQuery);
+    this.getUnskippedReadyJobAvailability = cached({
+      producer: this.#scanUnskippedReadyJobs.bind(this),
+      directives: { freshUntilAge: 30 },
+      collapseOverlappingRequestsTime: 30_000,
+      numItemsLimit: 128,
+    });
     // Reassingment here is a hack to work around TS syntax limitations
     // with generic instantiation expressions.
     const getOrCreateBullQueue_ = getOrCreateBullQueue<StoredManualReviewJob>;
@@ -1925,6 +1943,90 @@ export default class QueueOperations {
   }
 
   /**
+   * Checks jobs dequeue can activate without taking locks. Slow skip scans are
+   * cached for 30 seconds, keyed by tenant, reviewer, ready counts and skips.
+   * Replacing jobs without changing those counts can be stale for that window;
+   * dequeue remains authoritative when a reviewer enters a queue.
+   */
+  async hasUnskippedJobs(opts: {
+    orgId: string;
+    queueId: string;
+    reviewerId: string;
+    isAppealsQueue: boolean;
+  }): Promise<boolean> {
+    const { orgId, queueId, isAppealsQueue } = opts;
+    const queue = isAppealsQueue
+      ? await this.#getBullAppealQueue(orgId, queueId)
+      : await this.#getBullQueue(orgId, queueId);
+    const [counts, dueDelayedCount, paused, maxed] = await Promise.all([
+      queue.getJobCounts('waiting', 'prioritized'),
+      // BullMQ encodes delayed timestamps with 12 low bits for tie-breaking.
+      // Match moveToActive's due cutoff, including immediately released skips.
+      this.redis.zcount(queue.toKey('delayed'), 0, (Date.now() + 1) * 4096 - 1),
+      queue.isPaused(),
+      queue.isMaxed(),
+    ]);
+    const readyCount = counts.waiting + counts.prioritized + dueDelayedCount;
+    if (paused || maxed || readyCount === 0) return false;
+    // Appeal dequeue does not filter per-reviewer skips.
+    if (isAppealsQueue) return true;
+
+    const skips = await this.getActiveReviewerSkips(opts);
+    // Avoid reading job payloads when skips cannot cover all ready jobs.
+    if (readyCount > skips.size) return true;
+
+    return this.getUnskippedReadyJobAvailability({
+      orgId,
+      queueId,
+      reviewerId: opts.reviewerId,
+      waitingCount: counts.waiting,
+      prioritizedCount: counts.prioritized,
+      dueDelayedCount,
+      skipFingerprint: createHash('sha256')
+        .update(jsonStringify([...skips].sort()))
+        .digest('hex'),
+    });
+  }
+
+  async #scanUnskippedReadyJobs(key: ReviewerAvailabilityScanKey) {
+    const [queue, skips] = await Promise.all([
+      this.#getBullQueue(key.orgId, key.queueId),
+      this.getActiveReviewerSkips(key),
+    ]);
+    const states = [
+      { type: 'waiting' as const, count: key.waitingCount },
+      { type: 'prioritized' as const, count: key.prioritizedCount },
+      { type: 'delayed' as const, count: key.dueDelayedCount },
+    ];
+    const concurrency = 4;
+    const limit = pLimit(concurrency);
+    const batchSize = 100;
+    const maxCount = Math.max(...states.map((state) => state.count));
+    for (let start = 0; start < maxCount; start += batchSize * concurrency) {
+      const batches = await Promise.all(
+        states.flatMap(({ type, count }) =>
+          Array.from({ length: concurrency }, (_, i) => start + i * batchSize)
+            .filter((offset) => offset < count)
+            .map(async (offset) =>
+              limit(async () =>
+                queue.getJobs(
+                  [type],
+                  offset,
+                  Math.min(offset + batchSize, count) - 1,
+                  true,
+                ),
+              ),
+            ),
+        ),
+      );
+      if (batches.some((jobs) => jobs.some((job) => !skips.has(job.data.id)))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /**
    * Batched variant that skips per-queue existence checks. The caller
    * must have already verified the queues exist (e.g. via
    * getAllQueuesForOrgAndDangerouslyBypassPermissioning).
@@ -1995,6 +2097,7 @@ export default class QueueOperations {
       this.getBullWorker.close(),
       this.getOrCreateBullAppealQueue.close(),
       this.getBullAppealWorker.close(),
+      this.getUnskippedReadyJobAvailability.close(),
     ]);
   }
 

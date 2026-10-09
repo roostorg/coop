@@ -10,6 +10,8 @@ Coop uses queues to organize review jobs. When content is reported (whether by a
 
 A moderator selects **Start Reviewing** on any queue to begin working through it. Coop pulls the oldest job first, and after you make a decision, the next one loads automatically until the queue is empty or you stop.
 
+**Start Reviewing** is disabled when no jobs are ready for you to review, including when you have skipped all ready report jobs. Hover over or focus the disabled button to see an explanation. Skipped jobs remain available to other reviewers and become available to you again after 30 minutes. Availability refreshes on the queue list; when jobs are replaced without changing the ready counts, an update can take up to 30 seconds plus the next refresh. If no job remains when you enter a queue, Coop returns you to the queue list.
+
 Two moderators will never receive the same job, preventing duplicate work.
 
 Queues can be starred per-user to pin them to the top of the Review Console. Each queue shows a count of pending jobs so you can prioritize accordingly.

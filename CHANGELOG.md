@@ -19,6 +19,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Fixed
 
+- Opening a review queue with no unskipped jobs no longer leaves reviewers on a loading spinner ([#1392](https://github.com/roostorg/coop/pull/1392) by [@Joseph-Mutua](https://github.com/Joseph-Mutua))
 - Renaming a hash bank no longer discards its hashed content ([#1360](https://github.com/roostorg/coop/pull/1360) by [@juanmrad](https://github.com/juanmrad))
 - Zentropi Labeler signal failing on every call ([#1335](https://github.com/roostorg/coop/pull/1335) by [@reitblatt](https://github.com/reitblatt), [#1388](https://github.com/roostorg/coop/pull/1388) by [@Joseph-Mutua](https://github.com/Joseph-Mutua))
 - NCMEC review escalations silently succeeding when the item cannot resolve to a user ([#1331](https://github.com/roostorg/coop/pull/1331) by [@Joseph-Mutua](https://github.com/Joseph-Mutua))

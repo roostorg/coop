@@ -21,6 +21,7 @@ const Mutation = resolvers.Mutation as Record<
 const ManualReviewQueue = resolvers.ManualReviewQueue as Record<
   | 'jobs'
   | 'pendingJobCount'
+  | 'hasUnskippedJobs'
   | 'oldestJobCreatedAt'
   | 'explicitlyAssignedReviewers'
   | 'hiddenActionIds'
@@ -67,6 +68,7 @@ function makeCtx(opts: {
   const getJobsForQueue = vi.fn(async () => []);
   const getExistingJobsForItem = vi.fn(async () => []);
   const getPendingJobCount = vi.fn(async () => 3);
+  const hasUnskippedJobs = vi.fn(async () => false);
   const getOldestJobCreatedAt = vi.fn(async () => new Date(0));
   const getUsersWhoCanSeeQueue = vi.fn(
     async (): Promise<{ userId: string }[]> => [],
@@ -106,6 +108,7 @@ function makeCtx(opts: {
         getJobsForQueue,
         getExistingJobsForItem,
         getPendingJobCount,
+        hasUnskippedJobs,
         getOldestJobCreatedAt,
         getUsersWhoCanSeeQueue,
         getHiddenActionsForQueue,
@@ -133,6 +136,7 @@ function makeCtx(opts: {
     getJobsForQueue,
     getExistingJobsForItem,
     getPendingJobCount,
+    hasUnskippedJobs,
     getOldestJobCreatedAt,
     getUsersWhoCanSeeQueue,
     getHiddenActionsForQueue,
@@ -144,6 +148,56 @@ function makeCtx(opts: {
 }
 
 describe('MRT queue/job resolvers are membership-scoped', () => {
+  describe('ManualReviewQueue.hasUnskippedJobs', () => {
+    it('uses the authenticated reviewer and organization', async () => {
+      const { ctx, hasUnskippedJobs } = makeCtx({
+        reviewableQueueIds: ['q-1'],
+      });
+      hasUnskippedJobs.mockResolvedValueOnce(true);
+      await expect(
+        ManualReviewQueue.hasUnskippedJobs(
+          { orgId: 'org-1', id: 'q-1', isAppealsQueue: false },
+          {},
+          ctx,
+        ),
+      ).resolves.toBe(true);
+      expect(hasUnskippedJobs).toHaveBeenCalledWith({
+        orgId: 'org-1',
+        queueId: 'q-1',
+        reviewerId: 'user-1',
+        isAppealsQueue: false,
+      });
+    });
+
+    it('requires an authenticated user', async () => {
+      const { ctx, hasUnskippedJobs } = makeCtx({
+        reviewableQueueIds: [],
+        user: null,
+      });
+      await expect(
+        ManualReviewQueue.hasUnskippedJobs(
+          { orgId: 'org-1', id: 'q-1' },
+          {},
+          ctx,
+        ),
+      ).rejects.toThrow('User required.');
+      expect(hasUnskippedJobs).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      { orgId: 'org-1', id: 'q-denied' },
+      { orgId: 'org-2', id: 'q-1' },
+    ])('refuses inaccessible queues: %j', async (queue) => {
+      const { ctx, hasUnskippedJobs } = makeCtx({
+        reviewableQueueIds: ['q-1'],
+      });
+      await expect(
+        ManualReviewQueue.hasUnskippedJobs(queue, {}, ctx),
+      ).rejects.toThrow('User does not have access to this queue');
+      expect(hasUnskippedJobs).not.toHaveBeenCalled();
+    });
+  });
+
   describe('ManualReviewJob.numTimesReported', () => {
     const makeJob = (item: Record<string, string>) => ({
       payload: { item },

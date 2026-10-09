@@ -238,6 +238,23 @@ function makeContentQueryData(opts: { hasCreator: boolean }) {
 }
 
 describe('review advancement after a decision', () => {
+  it('returns to queues when initial entry finds only skipped or no pending jobs', async () => {
+    harness.route = {
+      queueId: 'queue-1',
+      jobId: undefined,
+      lockToken: undefined,
+    };
+    const { rerender } = render(<ManualReviewJobReview />);
+    await act(async () => {});
+    rerender(<ManualReviewJobReview />);
+
+    expect(harness.dequeue).toHaveBeenCalledTimes(1);
+    expect(harness.navigate).toHaveBeenCalledWith(
+      '/dashboard/manual_review/queues',
+      { replace: true },
+    );
+  });
+
   it('leaves the last completed review rather than rendering the old query again', async () => {
     const { rerender } = render(<ManualReviewJobReview />);
     expect(screen.getByText('Active review')).toBeTruthy();
@@ -310,7 +327,7 @@ describe('review advancement after a decision', () => {
     );
   });
 
-  it('keeps the initial empty-queue view instead of navigating to a completed job', async () => {
+  it('returns to queues when initial entry has a lock token but no available job', async () => {
     harness.route = {
       queueId: 'queue-1',
       jobId: undefined,
@@ -323,7 +340,10 @@ describe('review advancement after a decision', () => {
     rerender(<ManualReviewJobReview />);
 
     expect(harness.dequeue).toHaveBeenCalledTimes(1);
-    expect(harness.navigate).not.toHaveBeenCalled();
+    expect(harness.navigate).toHaveBeenCalledWith(
+      '/dashboard/manual_review/queues',
+      { replace: true },
+    );
     expect(screen.getByText('No Jobs to Review')).toBeTruthy();
   });
 });

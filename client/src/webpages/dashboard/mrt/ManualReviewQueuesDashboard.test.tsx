@@ -1,5 +1,6 @@
 import { TooltipProvider } from '@/coop-ui/Tooltip';
-import { render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import { type ReactNode } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
@@ -11,6 +12,7 @@ let reviewableQueues: {
   name: string;
   description: string | null;
   pendingJobCount: number;
+  hasUnskippedJobs: boolean;
   oldestJobCreatedAt: string | null;
   isDefaultQueue: boolean;
   isAppealsQueue: boolean;
@@ -47,6 +49,7 @@ function appealsQueue(pendingJobCount: number) {
     name: 'Appeals Queue',
     description: null,
     pendingJobCount,
+    hasUnskippedJobs: pendingJobCount > 0,
     oldestJobCreatedAt: null,
     isDefaultQueue: false,
     isAppealsQueue: true,
@@ -62,16 +65,18 @@ function reportsQueue(pendingJobCount: number) {
   };
 }
 
-function renderDashboard() {
-  render(
+function DashboardWrapper({ children }: { children: ReactNode }) {
+  return (
     <HelmetProvider>
       <TooltipProvider>
-        <MemoryRouter>
-          <ManualReviewQueuesDashboard />
-        </MemoryRouter>
+        <MemoryRouter>{children}</MemoryRouter>
       </TooltipProvider>
-    </HelmetProvider>,
+    </HelmetProvider>
   );
+}
+
+function renderDashboard() {
+  return render(<ManualReviewQueuesDashboard />, { wrapper: DashboardWrapper });
 }
 
 describe('ManualReviewQueuesDashboard appeals tab indicator', () => {
@@ -91,5 +96,49 @@ describe('ManualReviewQueuesDashboard appeals tab indicator', () => {
     expect(
       screen.queryByRole('img', { name: 'Pending appeals' }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('ManualReviewQueuesDashboard review eligibility', () => {
+  it('disables reviewing an empty queue', () => {
+    reviewableQueues = [reportsQueue(0)];
+    renderDashboard();
+    expect(
+      screen.getByRole('button', { name: 'Start Reviewing' }),
+    ).toBeDisabled();
+  });
+
+  it('explains disabled reviewing when all pending jobs are skipped by this reviewer', async () => {
+    reviewableQueues = [{ ...reportsQueue(3), hasUnskippedJobs: false }];
+    renderDashboard();
+    expect(
+      screen.getByRole('button', { name: 'Start Reviewing' }),
+    ).toBeDisabled();
+    expect(screen.getByText('3')).toBeInTheDocument();
+    fireEvent.focus(screen.getByLabelText('Review availability'));
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      'Jobs you skipped become available again after 30 minutes.',
+    );
+  });
+
+  it('enables reviewing when an unskipped job remains', () => {
+    reviewableQueues = [reportsQueue(3)];
+    renderDashboard();
+    expect(
+      screen.getByRole('button', { name: 'Start Reviewing' }),
+    ).toBeEnabled();
+  });
+
+  it('updates eligibility when reviewable queue data changes', () => {
+    reviewableQueues = [{ ...reportsQueue(3), hasUnskippedJobs: false }];
+    const { rerender } = renderDashboard();
+    expect(
+      screen.getByRole('button', { name: 'Start Reviewing' }),
+    ).toBeDisabled();
+    reviewableQueues = [reportsQueue(3)];
+    rerender(<ManualReviewQueuesDashboard />);
+    expect(
+      screen.getByRole('button', { name: 'Start Reviewing' }),
+    ).toBeEnabled();
   });
 });

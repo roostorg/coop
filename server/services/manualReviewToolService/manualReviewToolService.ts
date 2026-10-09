@@ -1630,6 +1630,15 @@ export class ManualReviewToolService {
     return this.queueOps.getPendingJobCount(opts);
   }
 
+  async hasUnskippedJobs(opts: {
+    orgId: string;
+    queueId: string;
+    reviewerId: string;
+    isAppealsQueue: boolean;
+  }) {
+    return this.queueOps.hasUnskippedJobs(opts);
+  }
+
   async getTotalPendingJobCountForQueues(orgId: string, queueIds: string[]) {
     return this.queueOps.getTotalPendingJobCountForQueues(orgId, queueIds);
   }
