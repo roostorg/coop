@@ -1,8 +1,10 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { vi } from 'vitest';
 
 import PolicyScoresTab from './PolicyScoresTab';
+
+const updatePolicy = vi.hoisted(() => vi.fn());
 
 vi.mock('@/graphql/generated', async () => {
   const actual = await vi.importActual<typeof import('@/graphql/generated')>(
@@ -33,6 +35,17 @@ vi.mock('@/graphql/generated', async () => {
           enforcementGuidelines: null,
           policyType: null,
           userStrikeCount: 3,
+          applyUserStrikeCountConfigToChildren: true,
+        },
+        {
+          __typename: 'Policy',
+          id: 'grandchild',
+          name: 'Grandchild policy',
+          parentId: 'child',
+          policyText: null,
+          enforcementGuidelines: null,
+          policyType: null,
+          userStrikeCount: 2,
           applyUserStrikeCountConfigToChildren: false,
         },
       ],
@@ -46,7 +59,7 @@ vi.mock('@/graphql/generated', async () => {
       refetch: vi.fn(),
       data,
     }),
-    useGQLUpdatePolicyMutation: () => [vi.fn()],
+    useGQLUpdatePolicyMutation: () => [updatePolicy],
   };
 });
 
@@ -63,5 +76,30 @@ describe('PolicyScoresTab', () => {
     const scoreInputs = screen.getAllByRole('spinbutton');
     expect(scoreInputs[0]).toHaveValue(4);
     expect(scoreInputs[1]).toHaveValue(3);
+  });
+
+  it("shows and saves a child's apply-to-sub-policies setting", async () => {
+    render(
+      <MemoryRouter>
+        <PolicyScoresTab />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByText('Edit Policy Scores'));
+    const childRow = screen.getByText('Child policy').closest('tr')!;
+    const childSwitch = within(childRow).getByRole('switch');
+    expect(childSwitch).toBeChecked();
+
+    fireEvent.click(childSwitch);
+    fireEvent.click(screen.getByText('Save Policy Scores'));
+
+    expect(updatePolicy).toHaveBeenCalledWith({
+      variables: {
+        input: expect.objectContaining({
+          id: 'child',
+          applyUserStrikeCountConfigToChildren: false,
+        }),
+      },
+    });
   });
 });
