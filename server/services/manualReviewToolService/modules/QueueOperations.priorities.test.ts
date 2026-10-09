@@ -1,4 +1,5 @@
 import { uid } from 'uid';
+import { vi } from 'vitest';
 
 import getBottle from '../../../iocContainer/index.js';
 import createMrtQueue from '../../../test/fixtureHelpers/createMrtQueue.js';
@@ -13,7 +14,10 @@ import {
 import { type ItemSubmissionWithTypeIdentifier } from '../../itemProcessingService/makeItemSubmissionWithTypeIdentifier.js';
 import { UserPermission } from '../../userManagementService/index.js';
 import { type ManualReviewJobPayload } from '../manualReviewToolService.js';
-import { itemIdToBullJobId } from './QueueOperations.js';
+import {
+  bullJobIdtoExternalJobId,
+  itemIdToBullJobId,
+} from './QueueOperations.js';
 
 describe('QueueOperations job priorities', () => {
   const testWithQueue = () =>
@@ -606,4 +610,334 @@ describe('QueueOperations job priorities', () => {
       expect(new Date(oldest!).getTime()).toBe(oldestCreatedAt.getTime());
     },
   );
+
+  describe('pending job index', () => {
+    const indexKey = (orgId: string, queueId: string) =>
+      `{${orgId}}:mrt-pending-by-created:${queueId}`;
+    const base = new Date('2026-01-01T00:00:00.000Z').getTime();
+
+    testWithQueue()(
+      'answers a prioritized queue without scanning the prioritized set',
+      async ({ org, queue, mrtService }) => {
+        const queueOps = mrtService['queueOps'];
+        const payloadFor = makePayloadFor(uid());
+        for (const [itemId, priority, offset] of [
+          ['item-oldest', 5000, 0],
+          ['item-middle', 3000, 60_000],
+          ['item-newest', 1000, 120_000],
+        ] as const) {
+          await queueOps.addJob({
+            orgId: org.id,
+            queueId: queue.id,
+            enqueueSourceInfo: { kind: 'REPORT' },
+            priority,
+            jobPayload: {
+              createdAt: new Date(base + offset),
+              policyIds: [],
+              payload: payloadFor(itemId),
+            },
+          });
+        }
+        const bullQueue = await queueOps['getOrCreateBullQueue']({
+          orgId: org.id,
+          queueId: queue.id,
+        });
+        const getPrioritized = vi.spyOn(bullQueue, 'getPrioritized');
+
+        const oldest = await queueOps.getOldestJobCreatedAt({
+          orgId: org.id,
+          queueId: queue.id,
+          isAppealsQueue: false,
+        });
+
+        expect(oldest?.getTime()).toBe(base);
+        expect(getPrioritized).not.toHaveBeenCalled();
+      },
+    );
+
+    testWithQueue()(
+      'skips a dequeued job and reports it again once it is released',
+      async ({ org, queue, mrtService }) => {
+        const queueOps = mrtService['queueOps'];
+        const payloadFor = makePayloadFor(uid());
+        for (const [itemId, priority, offset] of [
+          ['item-oldest', 1, 0],
+          ['item-newer', 5000, 60_000],
+        ] as const) {
+          await queueOps.addJob({
+            orgId: org.id,
+            queueId: queue.id,
+            enqueueSourceInfo: { kind: 'REPORT' },
+            priority,
+            jobPayload: {
+              createdAt: new Date(base + offset),
+              policyIds: [],
+              payload: payloadFor(itemId),
+            },
+          });
+        }
+        const getOldest = async () =>
+          queueOps.getOldestJobCreatedAt({
+            orgId: org.id,
+            queueId: queue.id,
+            isAppealsQueue: false,
+          });
+
+        const dequeued = await queueOps.dequeueNextJobWithLock({
+          orgId: org.id,
+          queueId: queue.id,
+          lockToken: 'reviewer-1',
+        });
+        expect(dequeued?.job.payload.item.itemId).toBe('item-oldest');
+        expect((await getOldest())?.getTime()).toBe(base + 60_000);
+
+        await queueOps.releaseJobLock({
+          orgId: org.id,
+          queueId: queue.id,
+          jobId: dequeued!.job.id,
+          lockToken: 'reviewer-1',
+        });
+        expect((await getOldest())?.getTime()).toBe(base);
+      },
+    );
+
+    testWithQueue()(
+      'drops the entry of a job removed outside QueueOperations',
+      async ({ org, queue, redis, mrtService }) => {
+        const queueOps = mrtService['queueOps'];
+        const itemTypeId = uid();
+        const payloadFor = makePayloadFor(itemTypeId);
+        const addAt = async (itemId: string, offset: number) =>
+          queueOps.addJob({
+            orgId: org.id,
+            queueId: queue.id,
+            enqueueSourceInfo: { kind: 'REPORT' },
+            priority: 1000,
+            jobPayload: {
+              createdAt: new Date(base + offset),
+              policyIds: [],
+              payload: payloadFor(itemId),
+            },
+          });
+        const removedJob = await addAt('item-oldest', 0);
+        await addAt('item-newer', 60_000);
+        const bullQueue = await queueOps['getOrCreateBullQueue']({
+          orgId: org.id,
+          queueId: queue.id,
+        });
+        await bullQueue.remove(
+          itemIdToBullJobId({ typeId: itemTypeId, id: 'item-oldest' }),
+        );
+
+        const oldest = await queueOps.getOldestJobCreatedAt({
+          orgId: org.id,
+          queueId: queue.id,
+          isAppealsQueue: false,
+        });
+
+        expect(oldest?.getTime()).toBe(base + 60_000);
+        expect(
+          await redis.zscore(indexKey(org.id, queue.id), removedJob.id),
+        ).toBeNull();
+      },
+    );
+
+    testWithQueue()(
+      'ignores a duplicate enqueue that BullMQ dropped',
+      async ({ org, queue, redis, mrtService }) => {
+        const queueOps = mrtService['queueOps'];
+        const payloadFor = makePayloadFor(uid());
+        const payload = payloadFor('item-A');
+        for (const offset of [60_000, 0]) {
+          await queueOps.addJob({
+            orgId: org.id,
+            queueId: queue.id,
+            enqueueSourceInfo: { kind: 'REPORT' },
+            priority: 1000,
+            jobPayload: {
+              createdAt: new Date(base + offset),
+              policyIds: [],
+              payload,
+            },
+          });
+        }
+
+        const oldest = await queueOps.getOldestJobCreatedAt({
+          orgId: org.id,
+          queueId: queue.id,
+          isAppealsQueue: false,
+        });
+
+        expect(oldest?.getTime()).toBe(base + 60_000);
+        // The built marker plus the one stored job.
+        expect(await redis.zcard(indexKey(org.id, queue.id))).toBe(2);
+      },
+    );
+
+    testWithQueue()(
+      'backfills the index for a queue created before it existed',
+      async ({ org, queue, redis, mrtService }) => {
+        const queueOps = mrtService['queueOps'];
+        const payloadFor = makePayloadFor(uid());
+        for (const [itemId, priority, offset] of [
+          ['item-oldest', 5000, 0],
+          ['item-newer', 1000, 60_000],
+        ] as const) {
+          await queueOps.addJob({
+            orgId: org.id,
+            queueId: queue.id,
+            enqueueSourceInfo: { kind: 'REPORT' },
+            priority,
+            jobPayload: {
+              createdAt: new Date(base + offset),
+              policyIds: [],
+              payload: payloadFor(itemId),
+            },
+          });
+        }
+        await redis.del(indexKey(org.id, queue.id));
+
+        const getOldest = async () =>
+          queueOps.getOldestJobCreatedAt({
+            orgId: org.id,
+            queueId: queue.id,
+            isAppealsQueue: false,
+          });
+
+        // Answered by the scan while the backfill runs.
+        expect(new Date((await getOldest())!).getTime()).toBe(base);
+        await queueOps.awaitPendingJobIndexBackfills();
+
+        expect(
+          await queueOps['pendingJobIndex'].isBuilt({
+            orgId: org.id,
+            queueId: queue.id,
+          }),
+        ).toBe(true);
+        expect(await redis.zcard(indexKey(org.id, queue.id))).toBe(3);
+        expect((await getOldest())?.getTime()).toBe(base);
+      },
+    );
+
+    testWithQueue()(
+      'deleting every job makes the index rebuild from BullMQ',
+      async ({ org, queue, redis, mrtService }) => {
+        const queueOps = mrtService['queueOps'];
+        await queueOps.addJob({
+          orgId: org.id,
+          queueId: queue.id,
+          enqueueSourceInfo: { kind: 'REPORT' },
+          priority: 1000,
+          jobPayload: {
+            policyIds: [],
+            payload: makePayloadFor(uid())('item-A'),
+          },
+        });
+
+        await queueOps.deleteAllJobsFromQueue({
+          orgId: org.id,
+          queueId: queue.id,
+          userPermissions: [UserPermission.MANAGE_ORG],
+        });
+
+        expect(
+          await queueOps.getOldestJobCreatedAt({
+            orgId: org.id,
+            queueId: queue.id,
+            isAppealsQueue: false,
+          }),
+        ).toBeNull();
+        await queueOps.awaitPendingJobIndexBackfills();
+        // Only the built marker: the rebuild found no jobs.
+        expect(await redis.zcard(indexKey(org.id, queue.id))).toBe(1);
+      },
+    );
+
+    testWithQueue()(
+      'falls back to the scan when reviewers hold every candidate',
+      async ({ org, queue, mrtService }) => {
+        const queueOps = mrtService['queueOps'];
+        const payloadFor = makePayloadFor(uid());
+        const heldCount = 51;
+        for (let i = 0; i < heldCount; i++) {
+          await queueOps.addJob({
+            orgId: org.id,
+            queueId: queue.id,
+            enqueueSourceInfo: { kind: 'REPORT' },
+            priority: 1,
+            jobPayload: {
+              createdAt: new Date(base + i),
+              policyIds: [],
+              payload: payloadFor(`held-${i}`),
+            },
+          });
+        }
+        await queueOps.addJob({
+          orgId: org.id,
+          queueId: queue.id,
+          enqueueSourceInfo: { kind: 'REPORT' },
+          priority: 5000,
+          jobPayload: {
+            createdAt: new Date(base + 60_000),
+            policyIds: [],
+            payload: payloadFor('pending'),
+          },
+        });
+        for (let i = 0; i < heldCount; i++) {
+          await queueOps.dequeueNextJobWithLock({
+            orgId: org.id,
+            queueId: queue.id,
+            lockToken: `reviewer-${i}`,
+          });
+        }
+
+        const oldest = await queueOps.getOldestJobCreatedAt({
+          orgId: org.id,
+          queueId: queue.id,
+          isAppealsQueue: false,
+        });
+
+        expect(new Date(oldest!).getTime()).toBe(base + 60_000);
+      },
+      30_000,
+    );
+
+    testWithQueue()(
+      'reports unknown rather than an unconfirmed age past the candidate cap',
+      async ({ org, queue, redis, mrtService }) => {
+        const queueOps = mrtService['queueOps'];
+        const itemTypeId = uid();
+        await queueOps.addJob({
+          orgId: org.id,
+          queueId: queue.id,
+          enqueueSourceInfo: { kind: 'REPORT' },
+          priority: 1000,
+          jobPayload: {
+            createdAt: new Date(base + 60_000),
+            policyIds: [],
+            payload: makePayloadFor(itemTypeId)('item-live'),
+          },
+        });
+        // Entries for jobs that no longer exist, all older than the live one.
+        const staleEntries = Array.from({ length: 60 }, (_, i) => [
+          base + i,
+          bullJobIdtoExternalJobId(
+            itemIdToBullJobId({ typeId: itemTypeId, id: `gone-${i}` }),
+          ),
+        ]).flat();
+        await redis.zadd(indexKey(org.id, queue.id), ...staleEntries);
+
+        const getOldest = async () =>
+          queueOps.getOldestJobCreatedAt({
+            orgId: org.id,
+            queueId: queue.id,
+            isAppealsQueue: false,
+          });
+
+        expect(await getOldest()).toBeNull();
+        // The first read pruned what it checked, so the next one gets through.
+        expect((await getOldest())?.getTime()).toBe(base + 60_000);
+      },
+    );
+  });
 });
