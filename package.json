@@ -49,6 +49,6 @@
     "prettier": "^3.9.9",
     "@parcel/watcher": "^2.6.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.0"
+    "typescript": "^6.0.3"
   }
 }

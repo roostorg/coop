@@ -221,7 +221,7 @@ export async function fetchHTTP<T extends HandleResponseBody>(
                   // necessarily just call toString, won't get accidentally
                   // handled incorrectly
                   (castBody satisfies string | URLSearchParams).toString(),
-                );
+                ).buffer;
 
           const { signature } = await query.signWith(bodyBuffer);
           return b64EncodeArrayBuffer(signature);
