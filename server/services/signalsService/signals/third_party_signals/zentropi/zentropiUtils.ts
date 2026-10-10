@@ -20,10 +20,11 @@ export async function getZentropiScores(
   params: {
     text: string;
     apiKey: string;
-    labelerId: string;
+    labelerId?: string | null;
     labelerVersionId: string;
   },
 ): Promise<ZentropiResponse> {
+  const labelerId = params.labelerId?.trim();
   const response = await fetchHTTP({
     url: 'https://api.zentropi.ai/v1/label',
     method: 'post',
@@ -33,7 +34,9 @@ export async function getZentropiScores(
     },
     body: jsonStringify({
       content_text: params.text,
-      labeler_id: params.labelerId,
+      // A specific version ID is sufficient. Omit blank IDs rather than
+      // sending empty strings or null to the API.
+      ...(labelerId ? { labeler_id: labelerId } : {}),
       labeler_version_id: params.labelerVersionId,
     }),
     handleResponseBody: 'as-json',
@@ -107,14 +110,14 @@ export async function runZentropiLabelerImpl(
   }
 
   // The subcategory is the version ID of one of the org's configured labeler
-  // versions; Zentropi also needs the ID of the labeler it belongs to.
+  // versions. Its parent labeler ID is optional for a specific version.
   const labelerVersion = credential.labelerVersions?.find(
     (it) => it.id === subcategory,
   );
-  if (!labelerVersion?.labelerId) {
-    throw makeSignalPermanentError('Missing Zentropi labeler ID', {
+  if (!labelerVersion) {
+    throw makeSignalPermanentError('Missing Zentropi labeler version', {
       detail:
-        `No labeler ID is configured for Zentropi labeler version ` +
+        `No Zentropi labeler version is configured for ` +
         `${subcategory}. Add it in the Zentropi integration settings.`,
       shouldErrorSpan: true,
     });

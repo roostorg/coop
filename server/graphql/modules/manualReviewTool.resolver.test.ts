@@ -1,6 +1,7 @@
 import { vi } from 'vitest';
 
 import { UserPermission } from '../../services/userManagementService/index.js';
+import { CoopError, ErrorType } from '../../utils/errors.js';
 import { resolvers } from './manualReviewTool.js';
 
 type ResolverFn = (
@@ -478,6 +479,49 @@ describe('MRT queue/job resolvers are membership-scoped', () => {
         reviewerEmail: 'user@example.com',
         orgId: 'org-1',
         decisionReason: undefined,
+      });
+    });
+
+    it('returns an in-band error when the item cannot be escalated to NCMEC', async () => {
+      const { ctx, submitDecision } = makeCtx({
+        reviewableQueueIds: ['q-1'],
+      });
+      submitDecision.mockRejectedValueOnce(
+        new CoopError({
+          name: 'NcmecEscalationUnavailableError',
+          status: 400,
+          title: 'This item cannot be enqueued to NCMEC.',
+          type: [ErrorType.InvalidUserInput],
+          detail: 'Content items must have a creator.',
+          shouldErrorSpan: true,
+        }),
+      );
+
+      await expect(
+        Mutation.submitManualReviewDecision(
+          {},
+          {
+            input: {
+              queueId: 'q-1',
+              jobId: 'job-1',
+              lockToken: 'lock-1',
+              reportedItemDecisionComponents: [
+                {
+                  transformJobAndRecreateInQueue: { newJobKind: 'NCMEC' },
+                },
+              ],
+              relatedItemActions: [],
+              reportHistory: [],
+              decisionReason: null,
+            },
+          },
+          ctx,
+        ),
+      ).resolves.toMatchObject({
+        __typename: 'NcmecEscalationUnavailableError',
+        status: 400,
+        title: 'This item cannot be enqueued to NCMEC.',
+        detail: 'Content items must have a creator.',
       });
     });
   });

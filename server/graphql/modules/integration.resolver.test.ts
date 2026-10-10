@@ -1,7 +1,56 @@
+import {
+  assertInputType,
+  buildASTSchema,
+  coerceInputValue,
+  Kind,
+  parse,
+} from 'graphql';
 import { vi } from 'vitest';
 
 import { UserPermission } from '../../services/userManagementService/index.js';
-import { resolvers } from './integration.js';
+import { resolvers, typeDefs } from './integration.js';
+
+describe('Zentropi integration input', () => {
+  // Use the actual SDL so this catches input nullability regressions, not just
+  // resolver behavior after GraphQL has already accepted the request.
+  const document = parse(typeDefs);
+  const schema = buildASTSchema({
+    ...document,
+    definitions: document.definitions.filter(
+      (definition) =>
+        definition.kind === Kind.INPUT_OBJECT_TYPE_DEFINITION &&
+        definition.name.value.startsWith('Zentropi'),
+    ),
+  });
+  const inputType = assertInputType(
+    schema.getType('ZentropiIntegrationApiCredentialInput'),
+  );
+
+  it.each([
+    {},
+    { labelerId: null },
+    { labelerId: '' },
+    { labelerId: 'lb_123' },
+  ])('accepts a version with optional labeler ID: %j', (optionalFields) => {
+    const input = {
+      apiKey: 'test-key',
+      labelerVersions: [{ id: 'lv_123', label: 'Spam', ...optionalFields }],
+    };
+    expect(coerceInputValue(input, inputType)).toEqual(input);
+  });
+
+  it.each([{ id: 'lv_123' }, { label: 'Spam' }])(
+    'still requires the version ID and display name: %j',
+    (version) => {
+      expect(() =>
+        coerceInputValue(
+          { apiKey: 'test-key', labelerVersions: [version] },
+          inputType,
+        ),
+      ).toThrow(/was not provided/);
+    },
+  );
+});
 
 // The MANAGE_ORG check fires before any data-source or integration-registry
 // lookup, so these tests exercise the forbidden path with a minimal mock ctx

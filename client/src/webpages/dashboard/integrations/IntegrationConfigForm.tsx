@@ -317,9 +317,9 @@ export default function IntegrationConfigForm() {
       'zentropi' in mappedApiCredential &&
       (
         mappedApiCredential['zentropi'] as GQLZentropiIntegrationApiCredential
-      ).labelerVersions.some((it) => !it.labelerId || !it.id || !it.label)
+      ).labelerVersions.some((it) => !it.id || !it.label)
     ) {
-      return 'Please input the labeler ID, version ID, and name for each Zentropi labeler version';
+      return 'Please input the version ID and name for each Zentropi labeler version';
     }
 
     return undefined;

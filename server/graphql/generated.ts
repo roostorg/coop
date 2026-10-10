@@ -3160,6 +3160,16 @@ export type GQLNcmecContentItem = {
   readonly isReported: Scalars['Boolean']['output'];
 };
 
+export type GQLNcmecEscalationUnavailableError = GQLError & {
+  readonly __typename?: 'NcmecEscalationUnavailableError';
+  readonly detail?: Maybe<Scalars['String']['output']>;
+  readonly pointer?: Maybe<Scalars['String']['output']>;
+  readonly requestId?: Maybe<Scalars['String']['output']>;
+  readonly status: Scalars['Int']['output'];
+  readonly title: Scalars['String']['output'];
+  readonly type: ReadonlyArray<Scalars['String']['output']>;
+};
+
 /**
  * An NCMEC submission that was decisioned in the MRT but never produced a
  * successful CyberTip report. Reused on the NCMEC Reports dashboard so that
@@ -4722,6 +4732,7 @@ export type GQLSubmitDecisionResponse =
   | GQLJobHasAlreadyBeenSubmittedError
   | GQLMissingRequiredDecisionReasonError
   | GQLMissingRequiredPolicyForDecisionError
+  | GQLNcmecEscalationUnavailableError
   | GQLNoJobWithIdInQueueError
   | GQLRecordingJobDecisionFailedError
   | GQLSubmitDecisionSuccessResponse
@@ -5431,7 +5442,7 @@ export type GQLZentropiLabelerVersion = {
 export type GQLZentropiLabelerVersionInput = {
   readonly id: Scalars['String']['input'];
   readonly label: Scalars['String']['input'];
-  readonly labelerId: Scalars['String']['input'];
+  readonly labelerId?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type ResolverTypeWrapper<T> = Promise<T> | T;
@@ -5752,6 +5763,7 @@ export type GQLResolversUnionTypes<_RefType extends Record<string, unknown>> = {
     | GQLJobHasAlreadyBeenSubmittedError
     | GQLMissingRequiredDecisionReasonError
     | GQLMissingRequiredPolicyForDecisionError
+    | GQLNcmecEscalationUnavailableError
     | GQLNoJobWithIdInQueueError
     | GQLRecordingJobDecisionFailedError
     | GQLSubmitDecisionSuccessResponse
@@ -5825,6 +5837,7 @@ export type GQLResolversInterfaceTypes<
     | GQLMatchingBankNameExistsError
     | GQLMissingRequiredDecisionReasonError
     | GQLMissingRequiredPolicyForDecisionError
+    | GQLNcmecEscalationUnavailableError
     | GQLNoJobWithIdInQueueError
     | GQLNotFoundError
     | GQLPartialItemsEndpointResponseError
@@ -6395,6 +6408,7 @@ export type GQLResolversTypes = {
       contentItem: GQLResolversTypes['Item'];
     }
   >;
+  NcmecEscalationUnavailableError: ResolverTypeWrapper<GQLNcmecEscalationUnavailableError>;
   NcmecFailedSubmission: ResolverTypeWrapper<
     Omit<GQLNcmecFailedSubmission, 'userItemType'> & {
       userItemType: GQLResolversTypes['UserItemType'];
@@ -7125,6 +7139,7 @@ export type GQLResolversParentTypes = {
   NcmecContentItem: Omit<GQLNcmecContentItem, 'contentItem'> & {
     contentItem: GQLResolversParentTypes['Item'];
   };
+  NcmecEscalationUnavailableError: GQLNcmecEscalationUnavailableError;
   NcmecFailedSubmission: Omit<GQLNcmecFailedSubmission, 'userItemType'> & {
     userItemType: GQLResolversParentTypes['UserItemType'];
   };
@@ -9108,6 +9123,7 @@ export type GQLErrorResolvers<
     | 'MatchingBankNameExistsError'
     | 'MissingRequiredDecisionReasonError'
     | 'MissingRequiredPolicyForDecisionError'
+    | 'NcmecEscalationUnavailableError'
     | 'NoJobWithIdInQueueError'
     | 'NotFoundError'
     | 'PartialItemsEndpointResponseError'
@@ -11878,6 +11894,37 @@ export type GQLNcmecContentItemResolvers<
   isReported?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
 };
 
+export type GQLNcmecEscalationUnavailableErrorResolvers<
+  ContextType = Context,
+  ParentType extends
+    GQLResolversParentTypes['NcmecEscalationUnavailableError'] =
+    GQLResolversParentTypes['NcmecEscalationUnavailableError'],
+> = {
+  detail?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  pointer?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  requestId?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  status?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
+  title?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  type?: Resolver<
+    ReadonlyArray<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
 export type GQLNcmecFailedSubmissionResolvers<
   ContextType = Context,
   ParentType extends GQLResolversParentTypes['NcmecFailedSubmission'] =
@@ -14318,6 +14365,7 @@ export type GQLSubmitDecisionResponseResolvers<
     | 'JobHasAlreadyBeenSubmittedError'
     | 'MissingRequiredDecisionReasonError'
     | 'MissingRequiredPolicyForDecisionError'
+    | 'NcmecEscalationUnavailableError'
     | 'NoJobWithIdInQueueError'
     | 'RecordingJobDecisionFailedError'
     | 'SubmitDecisionSuccessResponse'
@@ -15559,6 +15607,7 @@ export type GQLResolvers<ContextType = Context> = {
   NCMECReportedThread?: GQLNcmecReportedThreadResolvers<ContextType>;
   NcmecAdditionalFile?: GQLNcmecAdditionalFileResolvers<ContextType>;
   NcmecContentItem?: GQLNcmecContentItemResolvers<ContextType>;
+  NcmecEscalationUnavailableError?: GQLNcmecEscalationUnavailableErrorResolvers<ContextType>;
   NcmecFailedSubmission?: GQLNcmecFailedSubmissionResolvers<ContextType>;
   NcmecManualReviewJobPayload?: GQLNcmecManualReviewJobPayloadResolvers<ContextType>;
   NcmecOrgSettings?: GQLNcmecOrgSettingsResolvers<ContextType>;

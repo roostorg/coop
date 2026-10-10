@@ -115,7 +115,7 @@ export default function IntegrationConfigApiCredentialsSection(props: {
               className={`flex gap-2 mb-2 ${compact ? 'flex-col' : 'flex-row items-center'}`}
             >
               <Input
-                placeholder="Labeler ID"
+                placeholder="Labeler ID (optional)"
                 value={version.labelerId ?? ''}
                 onChange={(event) =>
                   updateLabelerVersion(index, 'labelerId', event.target.value)

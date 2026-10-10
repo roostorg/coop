@@ -3090,6 +3090,16 @@ export type GQLNcmecContentItem = {
   readonly isReported: Scalars['Boolean']['output'];
 };
 
+export type GQLNcmecEscalationUnavailableError = GQLError & {
+  readonly __typename: 'NcmecEscalationUnavailableError';
+  readonly detail?: Maybe<Scalars['String']['output']>;
+  readonly pointer?: Maybe<Scalars['String']['output']>;
+  readonly requestId?: Maybe<Scalars['String']['output']>;
+  readonly status: Scalars['Int']['output'];
+  readonly title: Scalars['String']['output'];
+  readonly type: ReadonlyArray<Scalars['String']['output']>;
+};
+
 /**
  * An NCMEC submission that was decisioned in the MRT but never produced a
  * successful CyberTip report. Reused on the NCMEC Reports dashboard so that
@@ -4652,6 +4662,7 @@ export type GQLSubmitDecisionResponse =
   | GQLJobHasAlreadyBeenSubmittedError
   | GQLMissingRequiredDecisionReasonError
   | GQLMissingRequiredPolicyForDecisionError
+  | GQLNcmecEscalationUnavailableError
   | GQLNoJobWithIdInQueueError
   | GQLRecordingJobDecisionFailedError
   | GQLSubmitDecisionSuccessResponse
@@ -5361,7 +5372,7 @@ export type GQLZentropiLabelerVersion = {
 export type GQLZentropiLabelerVersionInput = {
   readonly id: Scalars['String']['input'];
   readonly label: Scalars['String']['input'];
-  readonly labelerId: Scalars['String']['input'];
+  readonly labelerId?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type GQLApiAuthQueryVariables = Exact<{ [key: string]: never }>;
@@ -15478,6 +15489,13 @@ export type GQLSubmitManualReviewDecisionMutation = {
         readonly title: string;
         readonly status: number;
         readonly type: ReadonlyArray<string>;
+      }
+    | {
+        readonly __typename: 'NcmecEscalationUnavailableError';
+        readonly title: string;
+        readonly status: number;
+        readonly type: ReadonlyArray<string>;
+        readonly detail?: string | null;
       }
     | {
         readonly __typename: 'NoJobWithIdInQueueError';
@@ -35249,6 +35267,12 @@ export const GQLSubmitManualReviewDecisionDocument = gql`
         title
         status
         type
+      }
+      ... on NcmecEscalationUnavailableError {
+        title
+        status
+        type
+        detail
       }
     }
   }
