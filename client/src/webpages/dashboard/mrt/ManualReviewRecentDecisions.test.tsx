@@ -1,0 +1,204 @@
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import React from 'react';
+import { HelmetProvider } from 'react-helmet-async';
+import { MemoryRouter } from 'react-router-dom';
+
+import '@testing-library/jest-dom/extend-expect';
+
+import ManualReviewRecentDecisions from '@/webpages/dashboard/mrt/ManualReviewRecentDecisions';
+
+const fakeDecision = {
+  __typename: 'ManualReviewDecision',
+  id: 'd1',
+  jobId: 'j1',
+  createdAt: '2026-08-23T00:00:00.000Z',
+  assignedAt: null,
+  jobCreatedAt: null,
+  reviewerId: 'u1',
+  queueId: 'q1',
+  decisionReason: null,
+  decisions: [
+    {
+      __typename: 'IgnoreDecisionComponent',
+      type: 'IGNORE',
+    },
+  ],
+};
+
+let lazyCalls = 0;
+let rejectDownload = false;
+let resolveWithGraphQLError = false;
+let finishDownload: (() => void) | undefined;
+const downloadQuery = vi.fn(async () => {
+  lazyCalls += 1;
+  // The table query runs once on mount. Download pages follow: return a
+  // decision first, then an empty page so pagination stops.
+  if (lazyCalls >= 3) {
+    if (rejectDownload) {
+      throw new Error('download query failed');
+    }
+    if (resolveWithGraphQLError) {
+      // Apollo's default errorPolicy resolves with `error` and no `data`.
+      return { data: undefined, error: new Error('graphql error') };
+    }
+    await new Promise<void>((resolve) => {
+      finishDownload = resolve;
+    });
+    return { data: { getRecentDecisions: [] } };
+  }
+  return { data: { getRecentDecisions: [fakeDecision] } };
+});
+
+vi.mock('../../../graphql/generated', async () => {
+  const actual = await vi.importActual<
+    typeof import('../../../graphql/generated')
+  >('../../../graphql/generated');
+  return {
+    ...actual,
+    useGQLOrgLookupDataQuery: () => ({
+      data: {
+        myOrg: {
+          id: 'org1',
+          actions: [],
+          policies: [],
+          users: [{ id: 'u1', firstName: 'Ada', lastName: 'Lovelace' }],
+          mrtQueues: [{ id: 'q1', name: 'Queue 1' }],
+        },
+      },
+    }),
+    useGQLGetDecidedJobFromJobIdQuery: () => ({ data: undefined }),
+    useGQLGetRecentDecisionsLazyQuery: () => [
+      downloadQuery,
+      {
+        loading: false,
+        error: undefined,
+        data: { getRecentDecisions: [fakeDecision] },
+      },
+    ],
+    useGQLGetSkipsForRecentDecisionsLazyQuery: () => [vi.fn()],
+    useGQLGetDecidedJobLazyQuery: () => [
+      vi.fn(),
+      { loading: false, error: undefined, data: undefined },
+    ],
+  };
+});
+
+const toastError = vi.hoisted(() => vi.fn());
+vi.mock('@/coop-ui/Toast', () => ({
+  Toast: () => null,
+  toast: { error: (...args: unknown[]) => toastError(...args) },
+}));
+
+vi.mock('./ManualReviewRecentDecisionsFilter', () => ({
+  default: function FilterStub() {
+    return <div>filter</div>;
+  },
+}));
+
+describe('Recent Decisions Download spinner', () => {
+  beforeEach(() => {
+    lazyCalls = 0;
+    rejectDownload = false;
+    resolveWithGraphQLError = false;
+    finishDownload = undefined;
+    downloadQuery.mockClear();
+    toastError.mockClear();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it('loads until the CSV download starts', async () => {
+    const createObjectURL = vi.fn(() => 'blob:decisions');
+    const revokeObjectURL = vi.fn();
+    const clickDownload = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => undefined);
+    vi.stubGlobal(
+      'URL',
+      Object.assign(class extends URL {}, { createObjectURL, revokeObjectURL }),
+    );
+
+    render(
+      <HelmetProvider>
+        <MemoryRouter>
+          <ManualReviewRecentDecisions />
+        </MemoryRouter>
+      </HelmetProvider>,
+    );
+
+    const download = await screen.findByRole('button', { name: 'Download' });
+    fireEvent.click(download);
+
+    await waitFor(() => {
+      expect(download).toHaveClass('ant-btn-loading');
+    });
+    expect(finishDownload).toBeDefined();
+    finishDownload?.();
+
+    await waitFor(() => {
+      expect(createObjectURL).toHaveBeenCalledWith(expect.any(Blob));
+      expect(clickDownload).toHaveBeenCalledOnce();
+      expect(revokeObjectURL).toHaveBeenCalledWith('blob:decisions');
+      expect(download).not.toHaveClass('ant-btn-loading');
+    });
+    expect(downloadQuery).toHaveBeenCalledTimes(3);
+  });
+
+  it('reports an error and stops loading when the query fails', async () => {
+    rejectDownload = true;
+
+    render(
+      <HelmetProvider>
+        <MemoryRouter>
+          <ManualReviewRecentDecisions />
+        </MemoryRouter>
+      </HelmetProvider>,
+    );
+
+    const download = await screen.findByRole('button', { name: 'Download' });
+    fireEvent.click(download);
+
+    await waitFor(() => {
+      expect(toastError).toHaveBeenCalledWith(
+        'Could not download recent decisions. Please try again.',
+      );
+      expect(download).not.toHaveClass('ant-btn-loading');
+    });
+    expect(downloadQuery).toHaveBeenCalledTimes(3);
+  });
+
+  it('reports a GraphQL error instead of a partial CSV', async () => {
+    resolveWithGraphQLError = true;
+    const createObjectURL = vi.fn(() => 'blob:decisions');
+    vi.stubGlobal(
+      'URL',
+      Object.assign(class extends URL {}, {
+        createObjectURL,
+        revokeObjectURL: vi.fn(),
+      }),
+    );
+
+    render(
+      <HelmetProvider>
+        <MemoryRouter>
+          <ManualReviewRecentDecisions />
+        </MemoryRouter>
+      </HelmetProvider>,
+    );
+
+    const download = await screen.findByRole('button', { name: 'Download' });
+    fireEvent.click(download);
+
+    await waitFor(() => {
+      expect(toastError).toHaveBeenCalledWith(
+        'Could not download recent decisions. Please try again.',
+      );
+      expect(download).not.toHaveClass('ant-btn-loading');
+    });
+    expect(createObjectURL).not.toHaveBeenCalled();
+    expect(downloadQuery).toHaveBeenCalledTimes(3);
+  });
+});
