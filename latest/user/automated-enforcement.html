@@ -40,7 +40,7 @@
             const path_to_root = "../";
             const default_light_theme = "roost";
             const default_dark_theme = "roost";
-            window.path_to_searchindex_js = "../searchindex-170eb158.js";
+            window.path_to_searchindex_js = "../searchindex-101165bb.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-33b43635.js"></script>
@@ -195,6 +195,13 @@
 <h2 id="rules"><a class="header" href="#rules">Rules</a></h2>
 <p>Both types of rules are built from the same building blocks: conditions that reference <a href="signals.html">Signals</a> and <a href="#matching-banks">Matching Banks</a>. Each rule is scoped to one or more item types, so you can have text-based rules for posts and comments, hash-matching rules for images and videos, or location-based rules for user-submitted content with geographic metadata.</p>
 <p>Rule conditions can be set to <strong>AND</strong> (all must match for the rule to match) or <strong>OR</strong> (the rule matches when any condition matches).</p>
+<h3 id="conditions-with-multiple-values"><a class="header" href="#conditions-with-multiple-values">Conditions with multiple values</a></h3>
+<p>Some condition inputs produce more than one value: <strong>Any image</strong>, <strong>Any video</strong> and <strong>Any geohash</strong>, item fields that hold a list, and <strong>Relevant Policy</strong> when a job was enqueued for several policies. Coop evaluates the condition on each value, and the condition matches if <strong>any</strong> value matches. For example:</p>
+<ul>
+<li><strong>Any image</strong> with a signal score above 0.8 matches if at least one of the item’s images scores above 0.8.</li>
+<li><strong>Relevant Policy</strong> <em>is equal to</em> Harassment matches a job enqueued for Spam and Harassment.</li>
+</ul>
+<p>The exception is <em>is not equal to</em>, which matches only if <strong>no</strong> value matches: <strong>Relevant Policy</strong> <em>is not equal to</em> Spam does not match a job enqueued for Spam and Harassment. A condition can’t currently require that <em>every</em> value matches.</p>
 <h3 id="proactive-rules"><a class="header" href="#proactive-rules">Proactive Rules</a></h3>
 <p>Proactive Rules automate enforcement. When an item is submitted to Coop, every active Proactive Rule is evaluated against it, and any matching rule’s configured action is executed automatically. Configure them under <strong>Automated Enforcement</strong> → <strong>Proactive Rules</strong>.</p>
 <p><img src="../images/proactive-rules.png" alt="Proactive Rules"></p>
