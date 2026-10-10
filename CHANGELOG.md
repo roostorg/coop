@@ -13,6 +13,7 @@ For more information about each release including git tags and artifacts, see [R
 - Eligible item types column and filtering on the Actions dashboard ([#1369](https://github.com/roostorg/coop/pull/1369) by [@taobojlen](https://github.com/taobojlen))
 - Indicator on the Appeals queue tab when appeals are pending ([#1329](https://github.com/roostorg/coop/pull/1329) by [@madheesunp](https://github.com/madheesunp))
 - Per-queue job sort order for manual review queues with support for sorting by number of reports ([#718](https://github.com/roostorg/coop/pull/718) by [@calebmcquaid](https://github.com/calebmcquaid), closes [#670](https://github.com/roostorg/coop/issues/670))
+- Org-specific signal catalogs, provider policies, and evaluation context types in `@roostorg/coop-types` (v3.0.0) ([#1384](https://github.com/roostorg/coop/pull/1384) by [@juanmrad](https://github.com/juanmrad))
 
 ### Changed
 
