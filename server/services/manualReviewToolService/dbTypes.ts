@@ -74,8 +74,9 @@ export type RoutingRuleExecutionsRow = {
 );
 
 export type ManualReviewToolServicePg = {
-  // Shared with CoreAppTablesPg so org-scoping checks can query public.users.
+  // Shared with CoreAppTablesPg so org-scoping checks can query users/roles.
   'public.users': CoreAppTablesPg['public.users'];
+  'public.roles': CoreAppTablesPg['public.roles'];
   'manual_review_tool.manual_review_queues': {
     id: string;
     name: string;
@@ -186,6 +187,10 @@ export type ManualReviewToolServicePg = {
   };
   'manual_review_tool.users_and_accessible_queues': {
     user_id: string;
+    queue_id: string;
+  };
+  'manual_review_tool.roles_and_accessible_queues': {
+    role_id: string;
     queue_id: string;
   };
   'manual_review_tool.dim_mrt_decisions': {
