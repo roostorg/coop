@@ -22,7 +22,7 @@
     "@roostorg/db-migrator": "^1.1.1",
     "cassandra-driver": "^4.10.0",
     "kysely": "^0.29.6",
-    "pg": "^8.23.0",
+    "pg": "^8.23.1",
     "sequelize": "^6.37.8",
     "ts-node": "^10.9.2",
     "umzug": "^3.8.3"
