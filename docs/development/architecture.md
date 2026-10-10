@@ -32,7 +32,7 @@ Coop is built as a monorepo with a React frontend, Node.js backend, and multi-da
 | **Messaging**     | BullMQ (Redis)                                            |
 | **ORM**           | Sequelize, Kysely                                         |
 | **Auth**          | Passport.js, express-session, SAML (SSO)                  |
-| **Observability** | OpenTelemetry                                             |
+| **Observability** | OpenTelemetry, Jaeger ([Details](observability.md))       |
 
 ### Directory structure
 
