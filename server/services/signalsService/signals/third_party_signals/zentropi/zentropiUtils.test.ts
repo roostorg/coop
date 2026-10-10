@@ -192,26 +192,7 @@ describe('zentropiUtils', () => {
       ).rejects.toSatisfy(
         (e) =>
           isCoopErrorOfType(e, 'SignalPermanentError') &&
-          e.title === 'Missing Zentropi labeler ID',
-      );
-      expect(fetchScores).not.toHaveBeenCalled();
-    });
-
-    it('throws a permanent error for entries saved without a labeler ID', async () => {
-      const fetchScores: FetchZentropiScores = vi.fn();
-
-      await expect(
-        runZentropiLabelerImpl(
-          makeCredentialGetter('test-api-key', [
-            { id: 'lv_abc123', label: 'Saved before labeler IDs' },
-          ]),
-          makeInput(),
-          fetchScores,
-        ),
-      ).rejects.toSatisfy(
-        (e) =>
-          isCoopErrorOfType(e, 'SignalPermanentError') &&
-          e.title === 'Missing Zentropi labeler ID',
+          e.title === 'Missing Zentropi labeler version',
       );
       expect(fetchScores).not.toHaveBeenCalled();
     });
@@ -235,6 +216,38 @@ describe('zentropiUtils', () => {
         labelerVersionId: 'lv_custom_123',
       });
     });
+  });
+
+  describe('version-only configurations', () => {
+    it.each([undefined, null, '', '   '])(
+      'runs the saved version and omits labeler_id when it is %j',
+      async (labelerId) => {
+        const mockFetchHTTP = vi.fn().mockResolvedValue({
+          ok: true,
+          body: { label: 0, confidence: 0.9 },
+        }) as unknown as FetchHTTP;
+        const getCredentials = makeCredentialGetter('test-api-key', [
+          { id: 'lv_abc123', label: 'Saved version', labelerId },
+        ]);
+
+        const result = await runZentropiLabelerImpl(
+          getCredentials,
+          makeInput(),
+          async (params) => getZentropiScores(mockFetchHTTP, params),
+        );
+
+        expect(getCredentials).toHaveBeenCalledWith('org-1');
+        expect(mockFetchHTTP).toHaveBeenCalledExactlyOnceWith(
+          expect.objectContaining({
+            body: jsonStringify({
+              content_text: 'test content',
+              labeler_version_id: 'lv_abc123',
+            }),
+          }),
+        );
+        expect(result.score).toBeCloseTo(0.1);
+      },
+    );
   });
 
   describe('getZentropiScores', () => {
@@ -333,8 +346,6 @@ describe('zentropiUtils', () => {
     });
 
     it('sends both labeler_id and labeler_version_id', async () => {
-      // Zentropi rejects requests that have a labeler_version_id but no
-      // labeler_id.
       const mockFetchHTTP = vi.fn().mockResolvedValue({
         ok: true,
         body: { label: 0, confidence: 0.9 },

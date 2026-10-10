@@ -2,7 +2,7 @@ import { gql } from '@apollo/client';
 import { Button, Input } from 'antd';
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams } from 'react-router';
 
 import CoopModal from '@/webpages/dashboard/components/CoopModal';
 

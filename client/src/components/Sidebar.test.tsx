@@ -1,7 +1,7 @@
 import { TooltipProvider } from '@/coop-ui/Tooltip';
 import { GQLUserPermission } from '@/graphql/generated';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 import { vi } from 'vitest';
 
 import Sidebar, { type MenuItem } from './Sidebar';

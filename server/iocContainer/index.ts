@@ -958,6 +958,11 @@ export default async function getBottle(
 
   bottle.factory('ManualReviewToolService', (container) => {
     return new ManualReviewToolService(
+      // Lazy getter to break a circular dependency:
+      // ManualReviewToolService -> ReportingService -> ActionPublisher ->
+      // ManualReviewToolService. Resolved at call time, not construction time.
+      () => container.ReportingService.getNumTimesReported,
+      () => container.ReportingService.getNumTimesReportedForItems,
       container.IORedis,
       container.RuleEvaluator,
       container.RoutingRuleExecutionLogger,
@@ -982,6 +987,7 @@ export default async function getBottle(
         reviewerEmail,
         decisionReason,
         suppressUserReportSweep,
+        validatedNcmecTarget,
       }) {
         const { orgId } = job;
         const { itemId, itemTypeIdentifier, data } = job.payload.item;
@@ -1407,6 +1413,7 @@ export default async function getBottle(
                           correlationId,
                           item: job.payload.item,
                           reenqueuedFrom: { jobId: job.id },
+                          validatedNcmecTarget,
                         },
                       );
                       break;

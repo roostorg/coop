@@ -19,6 +19,10 @@ import { parseStoredParameters } from '../../moderationConfigService/modules/act
 import { validateActionParameterValues } from '../../moderationConfigService/modules/actionParameterValueValidation.js';
 import { type NCMECMediaReport } from '../../ncmecService/ncmecReporting.js';
 import {
+  resolveNcmecTargetUser,
+  type ValidatedNcmecTarget,
+} from '../../ncmecService/resolveNcmecTargetUser.js';
+import {
   type ClearReportsDisposition,
   type ManualReviewToolServicePg,
 } from '../dbTypes.js';
@@ -258,6 +262,7 @@ export type OnRecordDecisionInput = {
   reviewerEmail: string;
   decisionReason?: string;
   suppressUserReportSweep?: boolean;
+  validatedNcmecTarget?: ValidatedNcmecTarget;
 };
 
 export const NCMEC_ESCALATION_SKIP_WARNING =
@@ -363,6 +368,67 @@ export default class JobDecisioning {
     }
   }
 
+  private async assertNcmecEscalationIsSupported(opts: {
+    orgId: string;
+    job: ManualReviewJob | ManualReviewAppealJob;
+    decisionComponents: readonly ManualReviewDecisionComponent[];
+  }): Promise<ValidatedNcmecTarget | undefined> {
+    const { orgId, job, decisionComponents } = opts;
+    const escalatesToNcmec = decisionComponents.some(
+      (decision) =>
+        decision.type === 'TRANSFORM_JOB_AND_RECREATE_IN_QUEUE' &&
+        decision.newJobKind === 'NCMEC',
+    );
+    if (!escalatesToNcmec) {
+      return;
+    }
+
+    const reportedItemType = await this.moderationConfigService.getItemType({
+      orgId,
+      itemTypeSelector: job.payload.item.itemTypeIdentifier,
+    });
+    if (reportedItemType == null) {
+      throw makeNcmecEscalationUnavailableError({
+        detail: "The reported item's type could not be found.",
+        shouldErrorSpan: true,
+      });
+    }
+    const targetUser = await resolveNcmecTargetUser({
+      orgId,
+      itemId: job.payload.item.itemId,
+      itemType: reportedItemType,
+      data: job.payload.item.data,
+      moderationConfigService: this.moderationConfigService,
+    });
+    if (!targetUser.success) {
+      const reason = targetUser.reason;
+      let detail: string;
+      switch (reason) {
+        case 'UNSUPPORTED_ITEM_TYPE':
+          detail =
+            'Only User items and Content items with a User creator can be enqueued to NCMEC.';
+          break;
+        case 'MISSING_CREATOR':
+          detail =
+            'Content items must have a creator ID that references a User item before they can be enqueued to NCMEC.';
+          break;
+        case 'CREATOR_ITEM_TYPE_NOT_FOUND':
+        case 'CREATOR_ITEM_TYPE_NOT_USER':
+          detail =
+            "The content item's creator must reference a User item type before it can be enqueued to NCMEC.";
+          break;
+        default:
+          return assertUnreachable(reason);
+      }
+      throw makeNcmecEscalationUnavailableError({
+        detail,
+        shouldErrorSpan: true,
+      });
+    }
+
+    return { reportedItemType, targetUser };
+  }
+
   async submitDecision(opts: SubmitDecisionInput) {
     const {
       queueId,
@@ -400,6 +466,17 @@ export default class JobDecisioning {
       });
     }
     const decisions = decisionComponents ?? [automaticCloseDecision];
+
+    // NCMEC jobs are user-centric. Validate that the reviewed item can resolve
+    // to a User before recording the decision or removing the original job.
+    // The UI prevents this submission too, but API and stale clients can bypass
+    // that check. Running this before either mutation keeps the review job
+    // available when the escalation cannot be created.
+    const validatedNcmecTarget = await this.assertNcmecEscalationIsSupported({
+      orgId,
+      job,
+      decisionComponents: decisions,
+    });
 
     // If the decision included some actionIds or policyIds, we want to verify
     // that those ids actually correspond to known actions/policies in the org
@@ -646,6 +723,7 @@ export default class JobDecisioning {
         reviewerEmail,
         decisionReason,
         suppressUserReportSweep,
+        validatedNcmecTarget,
       }).catch((error) => {
         this.tracer.addSpan(
           { resource: 'actionPublisher', operation: 'publishAction' },
@@ -671,7 +749,10 @@ export default class JobDecisioning {
     return {
       warnings:
         newDecisionStored && automaticCloseDecision === undefined
-          ? await this.#ncmecEscalationSkipWarnings({ decisionComponents, job })
+          ? await this.#ncmecEscalationSkipWarnings({
+              validatedNcmecTarget,
+              orgId: job.orgId,
+            })
           : [],
     };
   }
@@ -679,31 +760,23 @@ export default class JobDecisioning {
   /**
    * The NCMEC re-enqueue for a TRANSFORM_JOB_AND_RECREATE_IN_QUEUE decision
    * runs asynchronously via onRecordDecision, and it silently no-ops when the
-   * reviewed user already has a submitted NCMEC report (see
+   * resolved user already has a submitted NCMEC report (see
    * NcmecEnqueueToMrt.enqueueForHumanReviewIfApplicable). Predict that skip
    * here, with the same check the enqueue path performs, so the reviewer is
    * told on the decision response instead of believing the escalation went
    * through.
    */
   async #ncmecEscalationSkipWarnings(opts: {
-    decisionComponents: ManualReviewDecisionComponent[];
-    job: {
-      orgId: string;
-      payload: { item: { itemId: string; itemTypeIdentifier: { id: string } } };
-    };
+    validatedNcmecTarget: ValidatedNcmecTarget | undefined;
+    orgId: string;
   }): Promise<string[]> {
-    const escalatesToNcmec = opts.decisionComponents.some(
-      (it) =>
-        it.type === 'TRANSFORM_JOB_AND_RECREATE_IN_QUEUE' &&
-        it.newJobKind === 'NCMEC',
-    );
-    if (!escalatesToNcmec) {
+    if (opts.validatedNcmecTarget == null) {
       return [];
     }
     const hasExistingReport = await this.getUserHasExistingNcmecReport({
-      orgId: opts.job.orgId,
-      userId: opts.job.payload.item.itemId,
-      userItemTypeId: opts.job.payload.item.itemTypeIdentifier.id,
+      orgId: opts.orgId,
+      userId: opts.validatedNcmecTarget.targetUser.userIdentifier.id,
+      userItemTypeId: opts.validatedNcmecTarget.targetUser.userItemType.id,
     });
 
     return hasExistingReport ? [NCMEC_ESCALATION_SKIP_WARNING] : [];
@@ -1156,7 +1229,8 @@ export type SubmitDecisionErrorType =
   | 'NoJobWithIdInQueueError'
   | 'RecordingJobDecisionFailedError'
   | 'MissingRequiredDecisionReasonError'
-  | 'MissingRequiredPolicyForDecisionError';
+  | 'MissingRequiredPolicyForDecisionError'
+  | 'NcmecEscalationUnavailableError';
 
 export const makeJobHasAlreadyBeenSubmittedError = (data: ErrorInstanceData) =>
   new CoopError({
@@ -1215,5 +1289,14 @@ export const makeMissingRequiredPolicyForDecisionError = (
     title:
       'This org requires every decision to include at least one policy. Pick a policy and resubmit.',
     name: 'MissingRequiredPolicyForDecisionError',
+    ...data,
+  });
+
+export const makeNcmecEscalationUnavailableError = (data: ErrorInstanceData) =>
+  new CoopError({
+    status: 400,
+    type: [ErrorType.InvalidUserInput],
+    title: 'This item cannot be enqueued to NCMEC.',
+    name: 'NcmecEscalationUnavailableError',
     ...data,
   });

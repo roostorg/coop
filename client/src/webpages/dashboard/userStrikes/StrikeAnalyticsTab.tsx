@@ -7,7 +7,7 @@ import {
 import { gql } from '@apollo/client';
 import { format } from 'date-fns';
 import { useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import {
   Bar,
   BarChart,

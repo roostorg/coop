@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { Mail } from 'lucide-react';
 import React from 'react';
-import { Link, MemoryRouter } from 'react-router-dom';
+import { Link, MemoryRouter } from 'react-router';
 import { vi } from 'vitest';
 
 import { Button } from './Button';

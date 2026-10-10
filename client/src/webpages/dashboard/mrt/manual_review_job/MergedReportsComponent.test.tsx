@@ -5,7 +5,7 @@ import {
 import { MockedProvider } from '@apollo/client/testing';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import React from 'react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router';
 
 import MergedReportsComponent from './MergedReportsComponent';
 

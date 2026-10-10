@@ -14,13 +14,13 @@ The model powering the integration is **CoPE-A-9B** (version 1.x, released July 
 In Coop, go to **Settings → Integrations** and add your Zentropi credentials:
 
 - **API Key**: your Zentropi API key
-- **Labeler Versions**: one entry per deployed labeler version you want to use in rules, each with its **Labeler ID**, **Version ID**, and a display name. You can find both IDs in the Zentropi UI.
+- **Labeler Versions**: one entry per deployed labeler version you want to use in rules, each with its **Version ID** and a display name. **Labeler ID** is optional when using a specific version ID. You can find both IDs in the Zentropi UI.
 
 ## Signals
 
 Each labeler version configured in the integration settings is available as a subcategory of the Zentropi Labeler signal. When building a rule condition, select the Zentropi signal and pick the labeler version by name in the **subcategory** field.
 
-Labeler versions saved before Coop collected labeler IDs fail with a "Missing Zentropi labeler ID" error. Edit the integration settings and add the labeler ID to each entry; existing rules keep working without changes.
+Existing version-only configurations continue to work without changes. Coop always sends the selected version ID to Zentropi and includes the labeler ID only when it is nonblank; it does not replace the selected version with the latest version.
 
 Coop sends the text field value to the Zentropi API and receives a score between 0 and 1:
 

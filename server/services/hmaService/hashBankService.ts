@@ -48,6 +48,18 @@ export class HashBankService {
     return result ?? null;
   }
 
+  // Not org-scoped: hma_name is unique across all orgs, so this only answers
+  // whether a name is free and never returns another org's bank.
+  async isHmaNameTaken(hmaName: string): Promise<boolean> {
+    const result = await this.db
+      .selectFrom('public.hash_banks')
+      .select('id')
+      .where('hma_name', '=', hmaName)
+      .executeTakeFirst();
+
+    return result !== undefined;
+  }
+
   async findAllByOrgId(orgId: string): Promise<HashBank[]> {
     const results = await this.db
       .selectFrom('public.hash_banks')
