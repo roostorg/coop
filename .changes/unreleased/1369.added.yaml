@@ -1,0 +1,6 @@
+kind: Added
+body: Eligible item types column and filtering on the Actions dashboard
+time: 2026-10-12T00:00:00Z
+custom:
+  pr: '1369'
+  authors: taobojlen

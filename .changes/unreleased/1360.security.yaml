@@ -1,0 +1,6 @@
+kind: Security
+body: Store hash-exchange credentials per bank
+time: 2026-10-12T00:00:10Z
+custom:
+  pr: '1360'
+  authors: juanmrad

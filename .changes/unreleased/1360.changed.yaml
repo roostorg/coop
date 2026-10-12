@@ -1,0 +1,6 @@
+kind: Changed
+body: Require HMA 1.2.0 or later
+time: 2026-10-12T00:00:04Z
+custom:
+  pr: '1360'
+  authors: juanmrad

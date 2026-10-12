@@ -1,0 +1,6 @@
+kind: Fixed
+body: Renaming a hash bank no longer discards its hashed content
+time: 2026-10-12T00:00:06Z
+custom:
+  pr: '1360'
+  authors: juanmrad

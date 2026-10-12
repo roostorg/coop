@@ -1,0 +1,40 @@
+changesDir: .changes
+unreleasedDir: unreleased
+fragmentFileFormat: '{{.Kind}}-{{.Time.Format "20060102-150405.000000000"}}'
+headerPath: header.tpl.md
+changelogPath: CHANGELOG.md
+versionExt: md
+versionFormat: '## [{{.VersionNoPrefix}}](https://github.com/roostorg/coop/compare/{{.PreviousVersion}}...{{.VersionNoPrefix}}) - {{.Time.Format "2006-01-02"}}'
+kindFormat: '### {{.Kind}}'
+changeFormat: >-
+  {{- if not .Custom.pr }}{{ fail "Set the fragment's PR before batching a release" }}{{ end -}}
+  - {{.Body}} ([#{{.Custom.pr}}](https://github.com/roostorg/coop/pull/{{.Custom.pr}}) by
+  {{- range $index, $author := splitList "," (default "" .Custom.authors) -}}
+  {{- $author = trimPrefix "@" (trim $author) -}}
+  {{- if not $author }}{{ fail "Authors must contain one or more comma-separated GitHub usernames" }}{{ end -}}
+  {{- if $index }},{{ end }} [@{{$author}}](https://github.com/{{$author}})
+  {{- end -}})
+custom:
+  - key: pr
+    label: PR number (leave blank until the PR is open)
+    type: int
+    minInt: 1
+    optional: true
+  - key: authors
+    label: GitHub usernames (comma-separated)
+    type: string
+    minLength: 1
+kinds:
+  - label: Added
+  - label: Changed
+  - label: Deprecated
+  - label: Removed
+  - label: Fixed
+  - label: Security
+body:
+  minLength: 1
+newlines:
+  beforeChangelogVersion: 1
+  endOfVersion: 1
+  beforeKind: 1
+  afterKind: 1

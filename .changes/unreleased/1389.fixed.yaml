@@ -1,0 +1,6 @@
+kind: Fixed
+body: Rule conditions on multi-value inputs (e.g. Any image, Relevant Policy) now check every value instead of only the first
+time: 2026-10-12T00:00:09Z
+custom:
+  pr: '1389'
+  authors: reitblatt

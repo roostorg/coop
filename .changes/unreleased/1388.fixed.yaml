@@ -1,0 +1,6 @@
+kind: Fixed
+body: Zentropi Labeler signal failing on every call
+time: 2026-10-12T00:00:07Z
+custom:
+  pr: '1388'
+  authors: Joseph-Mutua

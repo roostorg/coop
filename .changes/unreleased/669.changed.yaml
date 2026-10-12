@@ -1,0 +1,6 @@
+kind: Changed
+body: Switch the package manager from npm to pnpm
+time: 2026-10-13T11:02:25.286304635Z
+custom:
+    authors: serendipty01
+    pr: "669"

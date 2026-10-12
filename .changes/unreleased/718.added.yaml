@@ -1,0 +1,6 @@
+kind: Added
+body: Per-queue job sort order for manual review queues with support for sorting by number of reports
+time: 2026-10-12T00:00:02Z
+custom:
+  pr: '718'
+  authors: calebmcquaid
