@@ -10,6 +10,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Added
 
+- Grant review queue access by role ([#1060](https://github.com/roostorg/coop/pull/1060) by [@julietshen](https://github.com/julietshen) and [@taobojlen](https://github.com/taobojlen)).
 - Eligible item types column and filtering on the Actions dashboard ([#1369](https://github.com/roostorg/coop/pull/1369) by [@taobojlen](https://github.com/taobojlen))
 - Indicator on the Appeals queue tab when appeals are pending ([#1329](https://github.com/roostorg/coop/pull/1329) by [@madheesunp](https://github.com/madheesunp))
 - Per-queue job sort order for manual review queues with support for sorting by number of reports ([#718](https://github.com/roostorg/coop/pull/718) by [@calebmcquaid](https://github.com/calebmcquaid), closes [#670](https://github.com/roostorg/coop/issues/670))
