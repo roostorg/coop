@@ -19,6 +19,7 @@ import {
   GQLJobSortType,
   GQLMrtClearReportsDisposition,
   GQLMrtClearReportsScope,
+  GQLUserPermission,
   namedOperations,
   useGQLCreateManualReviewQueueMutation,
   useGQLManualReviewQueueQuery,
@@ -56,6 +57,7 @@ gql`
     rolesForOrg {
       id
       displayName
+      permissions
     }
     myOrg {
       hasAppealsEnabled
@@ -538,15 +540,22 @@ export default function ManualReviewQueueForm() {
           onChange={onChangeAccess}
         >
           <OptGroup label="Roles">
-            {orgRoles.map((role) => (
-              <Option
-                key={`${ACCESS_ROLE_PREFIX}${role.id}`}
-                value={`${ACCESS_ROLE_PREFIX}${role.id}`}
-                label={role.displayName}
-              >
-                {role.displayName}
-              </Option>
-            ))}
+            {orgRoles.map((role, index) => {
+              const roleCanReviewEveryQueue = role.permissions.includes(
+                GQLUserPermission.EditMrtQueues,
+              );
+              return optionWithTooltip({
+                title: role.displayName,
+                value: `${ACCESS_ROLE_PREFIX}${role.id}`,
+                disabled: roleCanReviewEveryQueue,
+                description: roleCanReviewEveryQueue
+                  ? 'This role already has access to every queue, so it does not need to be assigned to individual queues.'
+                  : undefined,
+                key: `${ACCESS_ROLE_PREFIX}${role.id}`,
+                index,
+                isInOptionGroup: true,
+              });
+            })}
           </OptGroup>
           <OptGroup label="Reviewers">
             {orgUsers.map((user, index) => {

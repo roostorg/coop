@@ -10070,6 +10070,7 @@ export type GQLQueueFormDataQuery = {
     readonly __typename: 'Role';
     readonly id: string;
     readonly displayName: string;
+    readonly permissions: ReadonlyArray<GQLUserPermission>;
   }>;
   readonly myOrg?: {
     readonly __typename: 'Org';
@@ -33124,6 +33125,7 @@ export const GQLQueueFormDataDocument = gql`
     rolesForOrg {
       id
       displayName
+      permissions
     }
     myOrg {
       hasAppealsEnabled
