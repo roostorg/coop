@@ -7,69 +7,26 @@
 // fraction of the tree under pnpm's symlinked layout.
 
 import { readFileSync } from 'node:fs';
+import satisfies from 'spdx-satisfies';
 
 // Packages whose package.json has no license field, checked by hand.
 const MANUALLY_VERIFIED = {
   'pause@0.0.1': 'MIT (stated in Readme.md)',
 };
 
-const allowed = new Set(
-  (process.env.ALLOWED_LICENSES ?? '').split(';').filter(Boolean),
-);
-if (allowed.size === 0) {
+const allowed = (process.env.ALLOWED_LICENSES ?? '').split(';').filter(Boolean);
+if (allowed.length === 0) {
   console.error('ALLOWED_LICENSES is empty');
   process.exit(1);
 }
 
 const byLicense = JSON.parse(readFileSync(0, 'utf8'));
 
-// Evaluates an SPDX expression: OR passes if any side passes, AND needs both,
-// and AND binds tighter than OR unless parentheses say otherwise. A
-// `<license> WITH <exception>` term must be allowed as written.
+// satisfies() throws on anything that isn't a valid SPDX expression, such as
+// pnpm's "Unknown" for packages without a license field.
 const isAllowed = (expr) => {
-  const tokens = expr.match(/\(|\)|[^\s()]+/g) ?? [];
-  let pos = 0;
-  const peek = () => tokens[pos];
-  const next = () => tokens[pos++];
-  const parseOr = () => {
-    let ok = parseAnd();
-    while (peek() === 'OR') {
-      next();
-      ok = parseAnd() || ok;
-    }
-    return ok;
-  };
-  const parseAnd = () => {
-    let ok = parseTerm();
-    while (peek() === 'AND') {
-      next();
-      ok = parseTerm() && ok;
-    }
-    return ok;
-  };
-  const parseTerm = () => {
-    const token = next();
-    if (token === '(') {
-      const ok = parseOr();
-      if (next() !== ')') throw new Error(`unbalanced parentheses: ${expr}`);
-      return ok;
-    }
-    if (
-      token === undefined ||
-      token === ')' ||
-      token === 'AND' ||
-      token === 'OR'
-    )
-      throw new Error(`malformed license expression: ${expr}`);
-    if (peek() === 'WITH') {
-      next();
-      return allowed.has(`${token} WITH ${next()}`);
-    }
-    return allowed.has(token);
-  };
   try {
-    const ok = parseOr();
-    return pos === tokens.length && ok;
+    return satisfies(expr, allowed);
   } catch {
     return false;
   }
