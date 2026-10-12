@@ -1,7 +1,64 @@
+import { mergeAttributes, wrappingInputRule } from '@tiptap/core';
+import {
+  ListItem,
+  OrderedList,
+  orderedListInputRegex,
+} from '@tiptap/extension-list';
 import { Editor, EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { Bold, Italic, List, ListOrdered, Redo, Undo } from 'lucide-react';
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+
+// Use the core deletion keymap for list items.
+const PolicyListItem = ListItem.extend({
+  addExtensions() {
+    return [];
+  },
+});
+
+// Preserve explicit list attributes and treat pasted numbered text as plain text.
+const PolicyOrderedList = OrderedList.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      type: {
+        default: null,
+        parseHTML: (element) => element.getAttribute('type'),
+      },
+    };
+  },
+  renderHTML({ HTMLAttributes }) {
+    const { start, ...attributesWithoutStart } = HTMLAttributes;
+    return [
+      'ol',
+      mergeAttributes(
+        this.options.HTMLAttributes,
+        start === 1 ? attributesWithoutStart : HTMLAttributes,
+      ),
+      0,
+    ];
+  },
+  addProseMirrorPlugins() {
+    return [];
+  },
+  addInputRules() {
+    return [
+      wrappingInputRule({
+        find: orderedListInputRegex,
+        type: this.type,
+        keepMarks: this.options.keepMarks,
+        keepAttributes: this.options.keepAttributes,
+        getAttributes: (match) => ({
+          start: Number(match[1]),
+          ...this.editor.getAttributes('textStyle'),
+        }),
+        joinPredicate: (match, node) =>
+          node.childCount + node.attrs.start === Number(match[1]),
+        editor: this.editor,
+      }),
+    ];
+  },
+});
 
 export default function MarkdownTextInput(props: {
   text?: string;
@@ -16,16 +73,25 @@ export default function MarkdownTextInput(props: {
   const lastText = useRef(text);
   const editor: Editor | null = useEditor(
     {
+      shouldRerenderOnTransaction: true,
       extensions: [
         StarterKit.configure({
+          link: false,
+          underline: false,
+          listItem: false,
+          listKeymap: false,
+          trailingNode: false,
+          codeBlock: { exitOnArrowUp: false },
+          orderedList: false,
           bulletList: {
             keepMarks: true,
             keepAttributes: false, // TODO : Making this as `false` becase marks are not preserved when I try to preserve attrs, awaiting a bit of help
           },
-          orderedList: {
-            keepMarks: true,
-            keepAttributes: false, // TODO : Making this as `false` becase marks are not preserved when I try to preserve attrs, awaiting a bit of help
-          },
+        }),
+        PolicyListItem,
+        PolicyOrderedList.configure({
+          keepMarks: true,
+          keepAttributes: false,
         }),
       ],
       editorProps: {
@@ -85,8 +151,9 @@ export default function MarkdownTextInput(props: {
     // NB: Need this due to weird behavior in tiptap editor.
     // See: https://github.com/ueberdosis/tiptap/issues/4167
     const { from, to } = editor.state.selection;
-    editor.commands.setContent(text ?? '', false, {
-      preserveWhitespace: 'full',
+    editor.commands.setContent(text ?? '', {
+      emitUpdate: false,
+      parseOptions: { preserveWhitespace: 'full' },
     });
     editor.commands.setTextSelection({ from, to });
     // eslint-disable-next-line react-hooks/exhaustive-deps
