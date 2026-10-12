@@ -293,7 +293,7 @@ export default function ItemInvestigationRuleResults(props: {
               conditionSetWithResult={
                 modalInfo.result as unknown as ConditionSetWithResult
               }
-              loading={false}
+              loading={itemTypes.length === 0}
             />
           ) : (
             <div className="m-2 text-red-500">Rule result is unavailable</div>
