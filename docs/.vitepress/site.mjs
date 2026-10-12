@@ -1,3 +1,12 @@
+/**
+ * Filters Git tags to numeric release names (major.minor or major.minor.patch,
+ * with optional prerelease suffixes) and returns them newest first.
+ * Missing patch numbers count as zero; stable releases precede prereleases with
+ * the same numeric version. Remaining ties use numeric-aware string ordering.
+ *
+ * @param {string[]} tags - Git tag names.
+ * @returns {string[]} Release tags in documentation navigation order.
+ */
 export function releaseTags(tags) {
   return tags
     .filter((tag) => /^\d+\.\d+(?:\.\d+)?(?:-[A-Za-z0-9.-]+)?$/.test(tag))
@@ -6,6 +15,7 @@ export function releaseTags(tags) {
       const [bv, bp] = b.split('-');
       const an = av.split('.').map(Number);
       const bn = bv.split('.').map(Number);
+      // Compare version components numerically, so 1.10 sorts ahead of 1.9.
       for (let i = 0; i < 3; i++) {
         const diff = (bn[i] ?? 0) - (an[i] ?? 0);
         if (diff) return diff;
@@ -15,6 +25,7 @@ export function releaseTags(tags) {
     });
 }
 
+/** Maps a Markdown source path to its published HTML path. */
 export function pagePath(source) {
   return source
     .replace(/(^|\/)README\.md$/, '$1index.md')
@@ -30,13 +41,23 @@ export function headingId(text) {
     .replace(/\p{White_Space}/gu, '-');
 }
 
+/**
+ * Configures Markdown rendering to repair release-specific links and escape
+ * placeholders that would otherwise be interpreted as Vue components.
+ * Repairs affect rendered HTML only; Markdown downloads retain their source.
+ *
+ * @param {object} md - VitePress's Markdown renderer. The version plugin supplies
+ * the documentation version in each page's `state.env.localeIndex`.
+ */
 export function configureMarkdown(md) {
+  // Run after inline parsing so links are available as tokens with href attributes.
   md.core.ruler.after('inline', 'documentation-links', (state) => {
     const version = state.env.localeIndex;
     for (const block of state.tokens) {
       for (const token of block.children || []) {
         if (token.type !== 'link_open') continue;
         let href = token.attrGet('href');
+        // These releases link outside docs to the repository's root README.
         if (['0.0', '0.1'].includes(version) && href === '../README.md') {
           href = `https://github.com/roostorg/coop/blob/${version}/README.md`;
         }
@@ -84,6 +105,7 @@ export function configureMarkdown(md) {
   };
 }
 
+/** Converts indented Markdown links in SUMMARY.md into a VitePress sidebar. */
 export function sidebar(summary) {
   const items = [];
   const parents = [{ depth: -1, items }];
@@ -91,6 +113,7 @@ export function sidebar(summary) {
     const match = /^(\s*)- \[([^\]]+)\]\(([^)]+\.md)\)/.exec(line);
     if (!match) continue;
     const depth = match[1].length;
+    // Keep the ancestor stack aligned with this item's indentation level.
     while (parents.at(-1).depth >= depth) parents.pop();
     const item = { text: match[2], link: `/${pagePath(match[3])}` };
     parents.at(-1).items.push(item);
@@ -107,6 +130,10 @@ export function sidebar(summary) {
   return prune(items);
 }
 
+/**
+ * Creates a static redirect page. JavaScript preserves query strings and hashes;
+ * the meta refresh and link provide fallbacks when JavaScript is unavailable.
+ */
 export function redirectPage(target) {
   // Targets are generated from validated version names and repository page paths.
   const escaped = target
