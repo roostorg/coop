@@ -178,7 +178,6 @@ Note: `check_migration_order` runs only in GitHub Actions — it's GitHub-specif
 - Removing a GraphQL enum value, type, or field, or removing or renaming an environment variable, always earns an entry.
 - Never edit a released version's section or source file in `.changes/`; it's a historical record. Corrections go in a new fragment.
 - Only release preparation runs `npm run changie -- batch x.y.z` and `npm run changie -- merge`. Ordinary PRs leave pending fragments unbatched.
-- Verify changelog configuration changes with `node --test scripts/changie.test.mjs`.
 
 ## Code style
 
