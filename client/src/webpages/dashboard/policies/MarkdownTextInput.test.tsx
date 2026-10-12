@@ -31,21 +31,21 @@ describe('MarkdownTextInput', () => {
     );
     await waitFor(() =>
       expect(container.querySelector('.tiptap')!.innerHTML).toBe(
-        '<p>Link underline <strong>bold</strong></p><ol><li><p>Styled item</p></li></ol><ol start="3" type="1"><li><p>Last item</p></li></ol>',
+        '<p>Link underline <strong>bold</strong></p><ol type="I"><li><p>Styled item</p></li></ol><ol start="3"><li><p>Last item</p></li></ol>',
       ),
     );
   });
 
-  it('pastes numbered plain text without converting it to a list and reports the edited HTML', async () => {
+  it('converts numbered plain text to a list and reports the edited HTML', async () => {
     const setText = vi.fn();
     const { container } = render(
-      <MarkdownTextInput text="<p>Start</p>" setText={setText} />,
+      <MarkdownTextInput text="<p></p>" setText={setText} />,
     );
     const content = container.querySelector('.tiptap')!;
-    await waitFor(() => expect(content.innerHTML).toBe('<p>Start</p>'));
+    await waitFor(() => expect(content.querySelector('p')).not.toBeNull());
 
     const getData: DataTransfer['getData'] = (type) =>
-      type === 'text/plain' ? '1. Alpha\n2. Beta' : '';
+      type === 'text/plain' ? '3. Alpha\n4. Beta' : '';
     fireEvent.paste(content, {
       clipboardData: {
         getData,
@@ -55,10 +55,9 @@ describe('MarkdownTextInput', () => {
 
     await waitFor(() =>
       expect(setText).toHaveBeenLastCalledWith(
-        '<p>1. Alpha</p><p>2. BetaStart</p>',
+        '<ol start="3"><li><p>Alpha</p></li><li><p>Beta</p></li></ol>',
       ),
     );
-    expect(content.querySelector('ol')).toBeNull();
   });
 
   it('retains the small and disabled editor states', async () => {
