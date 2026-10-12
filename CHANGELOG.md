@@ -18,7 +18,6 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Changed
 
-- Automatically format pasted numbered lists in policy descriptions ([#1373](https://github.com/roostorg/coop/pull/1373) by [@taobojlen](https://github.com/taobojlen))
 - Require HMA 1.2.0 or later ([#1360](https://github.com/roostorg/coop/pull/1360) by [@juanmrad](https://github.com/juanmrad))
 - Switch the package manager from npm to pnpm ([#669](https://github.com/roostorg/coop/pull/669) by [@serendipty01](https://github.com/serendipty01))
 

@@ -1,14 +1,6 @@
-import { ListItem } from '@tiptap/extension-list';
 import { Editor, EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
-
-// Use the core deletion keymap for list items.
-const PolicyListItem = ListItem.extend({
-  addExtensions() {
-    return [];
-  },
-});
 
 export default function MarkdownTextInput(props: {
   text?: string;
@@ -27,7 +19,6 @@ export default function MarkdownTextInput(props: {
         StarterKit.configure({
           link: false,
           underline: false,
-          listItem: false,
           listKeymap: false,
           trailingNode: false,
           codeBlock: { exitOnArrowUp: false },
@@ -37,10 +28,9 @@ export default function MarkdownTextInput(props: {
           },
           orderedList: {
             keepMarks: true,
-            keepAttributes: false,
+            keepAttributes: false, // TODO : Making this as `false` becase marks are not preserved when I try to preserve attrs, awaiting a bit of help
           },
         }),
-        PolicyListItem,
       ],
       editorProps: {
         attributes: {
