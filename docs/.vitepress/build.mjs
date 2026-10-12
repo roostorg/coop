@@ -14,7 +14,7 @@ const base = '/coop/';
 const git = (...args) =>
   execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
 const tags = releaseTags(git('tag', '--list').split('\n'));
-const stable = tags.find((tag) => !tag.includes('-'));
+const stable = tags.find((tag) => !tag.includes('-')) || 'latest';
 const manifest = { base, stable, versions: [] };
 
 async function files(directory) {
@@ -141,20 +141,19 @@ try {
   }
 
   // Static redirect files work on GitHub Pages without symlinks or server rules.
-  const stableVersion = stable || 'latest';
   for (const page of Object.keys(
-    manifest.versions.find((v) => v.name === stableVersion).pages,
+    manifest.versions.find((v) => v.name === stable).pages,
   )) {
     await put(
       join(output, 'stable', page),
-      redirectPage(`${base}${stableVersion}/${page}`),
+      redirectPage(`${base}${stable}/${page}`),
     );
   }
   await put(join(output, 'index.html'), redirectPage(`${base}stable/`));
   await put(join(output, 'versions.json'), JSON.stringify(manifest));
   await put(join(output, '.nojekyll'), '');
   console.log(
-    `Built ${manifest.versions.length} versions; stable: ${stableVersion}; output: ${output}`,
+    `Built ${manifest.versions.length} versions; stable: ${stable}; output: ${output}`,
   );
 } finally {
   await rm(work, { recursive: true, force: true });
