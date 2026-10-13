@@ -9,11 +9,6 @@
 import { readFileSync } from 'node:fs';
 import satisfies from 'spdx-satisfies';
 
-// Packages whose package.json has no license field, checked by hand.
-const MANUALLY_VERIFIED = {
-  'pause@0.0.1': 'MIT (stated in Readme.md)',
-};
-
 const allowed = (process.env.ALLOWED_LICENSES ?? '').split(';').filter(Boolean);
 if (allowed.length === 0) {
   console.error('ALLOWED_LICENSES is empty');
@@ -39,7 +34,7 @@ for (const [license, pkgs] of Object.entries(byLicense)) {
     for (const version of pkg.versions) {
       count++;
       const id = `${pkg.name}@${version}`;
-      if (!isAllowed(license) && !MANUALLY_VERIFIED[id]) {
+      if (!isAllowed(license)) {
         failures.push(`${id}: ${license}`);
       }
     }

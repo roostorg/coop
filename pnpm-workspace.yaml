@@ -14,6 +14,9 @@ overrides:
   # declares its own `tag` symbol, so its Opaque types stop matching the server's
   # type-fest 4.3.2 helpers.
   '@roostorg/coop-types>type-fest': '4.3.2'
+  # passport pins pause@0.0.1, which has no license field; 0.1.0 is the same
+  # code with an MIT license.
+  'passport>pause': '0.1.0'
 
   '@googlemaps/google-maps-services-js@^3.3.16>retry-axios': 'npm:@ethanresnick/retry-axios@2.6.1'
   'tailwindcss>sucrase': '^3.35.1'
