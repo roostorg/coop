@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import { afterEach, vi } from 'vitest';
 
 import { UserPermission } from '../userManagementService/index.js';
 import { serializeActivityCursor } from './activityCursor.js';
@@ -360,6 +360,118 @@ describe('ModerationActivityFeed.getPage', () => {
       'a-2',
       'a-1',
       'd-1',
+    ]);
+  });
+});
+
+describe('ModerationActivityFeed.iterateAll', () => {
+  const minute = (n: number) =>
+    new Date(Date.UTC(2026, 7, 1, 0, 0, 0) + n * 60_000);
+
+  const decisions = Array.from({ length: 250 }, (_, i) => ({
+    id: `d-${String(i).padStart(3, '0')}`,
+    createdAt: minute(i - (i % 2)).toISOString(),
+  }));
+  const actions = Array.from({ length: 150 }, (_, i) =>
+    actionRow(`a-${String(i).padStart(3, '0')}`, minute(i * 2).toISOString()),
+  );
+
+  const isBefore = (
+    ts: number,
+    id: string,
+    cursor: { ts: Date; id: string | null } | undefined,
+  ) =>
+    cursor === undefined ||
+    ts < cursor.ts.getTime() ||
+    (cursor.id !== null && ts === cursor.ts.getTime() && id < cursor.id);
+
+  const newFeed = () =>
+    new ModerationActivityFeed(
+      {
+        getDecisionsForActivityFeed: async (opts: {
+          cursor?: { ts: Date; id: string | null };
+          limit: number;
+        }) =>
+          decisions
+            .filter((it) =>
+              isBefore(new Date(it.createdAt).getTime(), it.id, opts.cursor),
+            )
+            .sort(
+              (a, b) =>
+                b.createdAt.localeCompare(a.createdAt) ||
+                b.id.localeCompare(a.id),
+            )
+            .slice(0, opts.limit),
+      } as never,
+      {
+        getRecentModeratorActions: async (opts: {
+          cursor?: { ts: Date; correlationId: string };
+          before?: Date;
+          limit: number;
+        }) =>
+          actions
+            .filter(
+              (it) =>
+                (opts.before === undefined || it.occurredAt <= opts.before) &&
+                isBefore(
+                  it.occurredAt.getTime(),
+                  it.correlationId,
+                  opts.cursor && {
+                    ts: opts.cursor.ts,
+                    id: opts.cursor.correlationId,
+                  },
+                ),
+            )
+            .sort(
+              (a, b) =>
+                b.occurredAt.getTime() - a.occurredAt.getTime() ||
+                b.correlationId.localeCompare(a.correlationId),
+            )
+            .slice(0, opts.limit),
+      } as never,
+    );
+
+  const exportAll = (feed: ModerationActivityFeed, endTime?: Date) =>
+    feed.iterateAll({
+      userPermissions: CAN_VIEW_ACTIONS,
+      orgId: 'org-1',
+      input: { endTime },
+      view: 'ALL',
+    });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('returns every decision and action exactly once, newest first', async () => {
+    let rows: { id: string; ts: Date }[] = [];
+    for await (const page of exportAll(newFeed(), minute(1000))) {
+      rows = [...rows, ...page];
+    }
+
+    expect(rows).toHaveLength(400);
+    expect(new Set(rows.map((it) => it.id)).size).toBe(400);
+    expect(
+      rows.every(
+        (row, i) => i === 0 || rows[i - 1].ts.getTime() >= row.ts.getTime(),
+      ),
+    ).toBe(true);
+  });
+
+  it('fixes endTime to the start of the export when none is given', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-10-09T12:00:00Z'));
+    const feed = newFeed();
+    const getPage = vi.spyOn(feed, 'getPage');
+
+    const pages = exportAll(feed);
+    await pages.next();
+    vi.setSystemTime(new Date('2026-10-09T13:00:00Z'));
+    await pages.next();
+
+    expect(getPage.mock.calls.map((it) => it[0].input.endTime)).toEqual([
+      new Date('2026-10-09T12:00:00Z'),
+      new Date('2026-10-09T12:00:00Z'),
     ]);
   });
 });

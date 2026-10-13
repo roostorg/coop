@@ -47,6 +47,11 @@ import {
 } from '../../../utils/time';
 import { jsonParse } from '../../../utils/typescript-types';
 import { ITEM_TYPE_FRAGMENT } from '../rules/rule_form/RuleForm';
+import {
+  buildActivityExportUrl,
+  exportRangeProblem,
+  toExportDecisions,
+} from './activityExportUrl';
 import { JOB_FRAGMENT } from './manual_review_job/jobFragment';
 import ManualReviewJobReview from './manual_review_job/ManualReviewJobReview';
 import ManualActionItemsPanel from './ManualActionItemsPanel';
@@ -54,12 +59,7 @@ import ManualReviewRecentDecisionsFilter, {
   RecentDecisionsFilterInput,
 } from './ManualReviewRecentDecisionsFilter';
 import ManualReviewRecentDecisionSummary from './ManualReviewRecentDecisionSummary';
-import {
-  buildActivityCsv,
-  escapeCsvField,
-  type CsvRow,
-} from './moderationActivityCsv';
-import { getDecisionTimingFields } from './mrtAnalyticsUtils';
+import { escapeCsvField } from './moderationActivityCsv';
 
 gql`
   ${ITEM_TYPE_FRAGMENT}
@@ -265,9 +265,6 @@ const columnLabels: Record<ColumnId, string> = {
 
 const DECISION_REASON_PREVIEW_LENGTH = 50;
 
-// Runaway guard for both CSV exports: stop paging after this many requests
-// even if the server keeps returning more (e.g. `nextCursor` never goes
-// null, or the offset loop never runs dry).
 const CSV_MAX_PAGES = 100;
 
 // Feed view: which rows `recentModerationActivity` returns. Persisted so a
@@ -435,10 +432,6 @@ export default function ManualReviewRecentDecisions() {
     { loading: activityLoading, error: activityError, data: activityData },
   ] = useGQLGetRecentModerationActivityLazyQuery();
 
-  // Separate lazy-query instances from `getModerationActivity` above so a CSV
-  // export's paging loop doesn't clobber the table's own query state (loading
-  // flag, cached data) while it runs.
-  const [getActivityForDownload] = useGQLGetRecentModerationActivityLazyQuery();
   const [getSkipsForRecentDecisions] =
     useGQLGetSkipsForRecentDecisionsLazyQuery();
 
@@ -462,10 +455,6 @@ export default function ManualReviewRecentDecisions() {
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [cursorStack, setCursorStack] = useState<string[]>([]);
 
-  // CSV export loading flags — separate from `activityLoading` (the table's
-  // own query) since a download's paging loop runs on its own lazy-query
-  // instance and shouldn't make the table look like it's refetching.
-  const [downloadingActivity, setDownloadingActivity] = useState(false);
   const [downloadingSkips, setDownloadingSkips] = useState(false);
 
   // Shared by both the cursor-paged activity feed and the offset-paged skips
@@ -880,68 +869,6 @@ export default function ManualReviewRecentDecisions() {
     [getActionName],
   );
 
-  // Normalizes one merged-feed row into the flat, string-only shape the CSV
-  // export writes out. Kept separate from `NormalizedActivityRow` (used by
-  // the table) since the CSV needs raw item/failed counts rather than the
-  // table's pre-rendered JSX.
-  const toCsvRow = useCallback(
-    (row: ActivityRow): CsvRow => {
-      if (row.__typename === 'ManualActionRow') {
-        return {
-          origin: 'Manual Action',
-          outcome: getActionColorNamePairs(row.actionIds).map(
-            ({ name }) => name,
-          ),
-          policies: row.policyIds.map((id) => getPolicyName(id)),
-          reviewer: getReviewerName(row.reviewerId),
-          queue: '',
-          jobCreatedAt: '',
-          claimedAt: '',
-          time: parseDatetimeToReadableStringInUTC(new Date(row.ts)),
-          waitTimeSeconds: '',
-          handleTimeSeconds: '',
-          reason: row.actorNote ?? null,
-          itemCount: row.itemCount,
-          failedCount: row.failedCount,
-          link: '',
-        };
-      }
-      return {
-        origin: 'Review Job',
-        outcome: row.decisions.flatMap((it) =>
-          getDecisionColorNamePairs(it, false).map(({ name }) => name),
-        ),
-        policies: row.decisions.flatMap((it) => getPoliciesFromDecision(it)),
-        reviewer: getReviewerName(row.reviewerId),
-        queue: row.queueId ? getQueueName(row.queueId) : '',
-        jobCreatedAt: row.jobCreatedAt
-          ? parseDatetimeToReadableStringInUTC(new Date(row.jobCreatedAt))
-          : '',
-        claimedAt: row.assignedAt
-          ? parseDatetimeToReadableStringInUTC(new Date(row.assignedAt))
-          : '',
-        time: parseDatetimeToReadableStringInUTC(new Date(row.ts)),
-        ...getDecisionTimingFields({
-          createdAt: row.ts,
-          assignedAt: row.assignedAt,
-          jobCreatedAt: row.jobCreatedAt,
-        }),
-        reason: row.decisionReason ?? null,
-        itemCount: null,
-        failedCount: null,
-        link: `${HOST_URL}/dashboard/manual_review/recent?jobId=${row.jobId ?? ''}`,
-      };
-    },
-    [
-      getActionColorNamePairs,
-      getDecisionColorNamePairs,
-      getPoliciesFromDecision,
-      getPolicyName,
-      getQueueName,
-      getReviewerName,
-    ],
-  );
-
   const tableRows: NormalizedActivityRow[] | undefined = useMemo(() => {
     if (!activityData || !orgLookupData?.myOrg) {
       return undefined;
@@ -1111,65 +1038,31 @@ export default function ManualReviewRecentDecisions() {
     </Button>
   );
 
-  // Activity export: pages the same cursor-paged query the table uses, via
-  // its own lazy-query instance (`getActivityForDownload`), looping until
-  // `nextCursor` is null. Capped at `CSV_MAX_PAGES` as a runaway guard.
+  const exportProblem = exportRangeProblem(unsavedFilterValue?.dateRange);
   const downloadButton = (
-    <Button
-      className="rounded"
-      loading={downloadingActivity}
-      onClick={async () => {
-        setDownloadingActivity(true);
-        try {
-          const collected: CsvRow[] = [];
-          let downloadCursor: string | undefined;
-
-          for (let page = 0; page < CSV_MAX_PAGES; page++) {
-            const result = await getActivityForDownload({
-              variables: {
-                input: buildActivityInput(
-                  unsavedFilterValue ?? {},
-                  downloadCursor,
-                  effectiveView,
-                ),
-              },
-            });
-            const feed = result.data?.recentModerationActivity;
-            if (!feed) {
-              break;
-            }
-            collected.push(...feed.rows.map(toCsvRow));
-            if (!feed.nextCursor) {
-              break;
-            }
-            downloadCursor = feed.nextCursor;
-          }
-
-          const includeActions = effectiveView !== 'DECISIONS';
-          const blob = new Blob([buildActivityCsv(collected, includeActions)], {
-            type: 'text/csv',
-          });
-          const url = URL.createObjectURL(blob);
+    <div className="flex flex-col gap-1">
+      <Button
+        className="rounded"
+        disabled={exportProblem !== undefined}
+        onClick={() => {
           const a = document.createElement('a');
-          a.href = url;
-          a.download = includeActions
-            ? 'moderation-activity.csv'
-            : 'decisions.csv';
+          a.download = '';
+          a.href = buildActivityExportUrl({
+            ...buildFilterInput(unsavedFilterValue ?? {}),
+            decisions: toExportDecisions(unsavedFilterValue?.decisions),
+            view: effectiveView,
+          });
           a.click();
-          URL.revokeObjectURL(url);
-        } finally {
-          setDownloadingActivity(false);
-        }
-      }}
-    >
-      Download
-    </Button>
+        }}
+      >
+        Download
+      </Button>
+      {exportProblem !== undefined ? (
+        <div className="text-xs text-slate-400">{exportProblem}</div>
+      ) : null}
+    </div>
   );
 
-  // Skips export: `getSkipsForRecentDecisions` is untouched in the schema
-  // and still takes `{ filter, page }` — an offset, not the activity feed's
-  // cursor. It shares filters with the activity feed, not a paging
-  // position, so this loop is entirely separate from the one above.
   const downloadSkips = (
     <Button
       className="rounded"
