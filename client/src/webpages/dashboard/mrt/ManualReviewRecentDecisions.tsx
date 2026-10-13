@@ -1,3 +1,4 @@
+import { toast } from '@/coop-ui/Toast';
 import { HOST_URL } from '@/lib/config';
 import { filterNullOrUndefined } from '@/utils/collections';
 import { gql } from '@apollo/client';
@@ -298,6 +299,7 @@ export default function ManualReviewRecentDecisions() {
     useGQLGetSkipsForRecentDecisionsLazyQuery();
 
   const [getRecentDecisionsForDownload] = useGQLGetRecentDecisionsLazyQuery();
+  const [isDownloadingDecisions, setIsDownloadingDecisions] = useState(false);
 
   // Confusingly, getDecidedJob is used to get the job associated with a decision
   // whereas getDecidedJobFromJobId is used to get the decision associated with a job
@@ -698,89 +700,100 @@ export default function ManualReviewRecentDecisions() {
     <Button
       className="rounded"
       onClick={async () => {
-        const decisions: GQLGetRecentDecisionsQuery[] = [];
-        for (let i = 0; i < 100; i++) {
-          const result = await getRecentDecisionsForDownload({
-            variables: {
-              input: getRecentDecisionsInput(
-                unsavedFilterValue ?? {},
-                page + i,
-              ),
-            },
-          });
-          if (result.data) {
+        setIsDownloadingDecisions(true);
+        try {
+          const decisions: GQLGetRecentDecisionsQuery[] = [];
+          for (let i = 0; i < 100; i++) {
+            const result = await getRecentDecisionsForDownload({
+              variables: {
+                input: getRecentDecisionsInput(
+                  unsavedFilterValue ?? {},
+                  page + i,
+                ),
+              },
+            });
+            if (result.error) {
+              throw result.error;
+            }
+            if (!result.data || result.data.getRecentDecisions.length === 0) {
+              break;
+            }
             decisions.push(result.data);
           }
+          const allDecisions = decisions.flatMap((it) => it.getRecentDecisions);
+          const allDecisionsCsv = allDecisions.map((decision) => {
+            const decisions = decision.decisions.flatMap((it) =>
+              getDecisionColorNamePairs(it, false).map(({ name }) => name),
+            );
+            const policies = decision.decisions.flatMap((decision) =>
+              getPoliciesFromDecision(decision),
+            );
+
+            return {
+              jobId: decision.jobId,
+              queue: getQueueName(decision.queueId),
+              reviewer: getReviewerName(decision.reviewerId),
+              decisions,
+              createdAt: parseDatetimeToReadableStringInUTC(
+                new Date(decision.createdAt),
+              ),
+              assignedAt: decision.assignedAt
+                ? parseDatetimeToReadableStringInUTC(
+                    new Date(decision.assignedAt),
+                  )
+                : '',
+              jobCreatedAt: decision.jobCreatedAt
+                ? parseDatetimeToReadableStringInUTC(
+                    new Date(decision.jobCreatedAt),
+                  )
+                : '',
+              ...getDecisionTimingFields(decision),
+              policies,
+              decisionReason: decision.decisionReason ?? '',
+            };
+          });
+          // Define the CSV headers
+          const headers = [...RECENT_DECISIONS_CSV_HEADERS];
+
+          // Map the data to CSV rows
+          const rows = allDecisionsCsv.map((item) => [
+            JSON.stringify(item.decisions),
+            JSON.stringify(item.policies), // Convert array/object to JSON string if necessary
+            item.reviewer,
+            item.queue,
+            item.jobCreatedAt,
+            item.assignedAt,
+            item.createdAt,
+            item.waitTimeSeconds,
+            item.handleTimeSeconds,
+            item.decisionReason,
+            `${HOST_URL}/dashboard/manual_review/recent?jobId=${item.jobId}`,
+          ]);
+
+          // Combine the headers and rows into a CSV string
+          const csvContent = [headers, ...rows]
+            .map((row) => row.map(toCsvField).join(',')) // RFC 4180: quote fields and escape embedded quotes
+            .join('\n');
+
+          // Create a Blob from the CSV content
+          const blob = new Blob([csvContent], { type: 'text/csv' });
+          const url = URL.createObjectURL(blob);
+
+          // Create a temporary link to download the Blob
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = 'decisions.csv'; // Set the desired file name
+          a.click();
+
+          // Clean up
+          URL.revokeObjectURL(url);
+        } catch {
+          toast.error('Could not download recent decisions. Please try again.');
+        } finally {
+          setIsDownloadingDecisions(false);
         }
-        const allDecisions = decisions.flatMap((it) => it.getRecentDecisions);
-        const allDecisionsCsv = allDecisions.map((decision) => {
-          const decisions = decision.decisions.flatMap((it) =>
-            getDecisionColorNamePairs(it, false).map(({ name }) => name),
-          );
-          const policies = decision.decisions.flatMap((decision) =>
-            getPoliciesFromDecision(decision),
-          );
-
-          return {
-            jobId: decision.jobId,
-            queue: getQueueName(decision.queueId),
-            reviewer: getReviewerName(decision.reviewerId),
-            decisions,
-            createdAt: parseDatetimeToReadableStringInUTC(
-              new Date(decision.createdAt),
-            ),
-            assignedAt: decision.assignedAt
-              ? parseDatetimeToReadableStringInUTC(
-                  new Date(decision.assignedAt),
-                )
-              : '',
-            jobCreatedAt: decision.jobCreatedAt
-              ? parseDatetimeToReadableStringInUTC(
-                  new Date(decision.jobCreatedAt),
-                )
-              : '',
-            ...getDecisionTimingFields(decision),
-            policies,
-            decisionReason: decision.decisionReason ?? '',
-          };
-        });
-        // Define the CSV headers
-        const headers = [...RECENT_DECISIONS_CSV_HEADERS];
-
-        // Map the data to CSV rows
-        const rows = allDecisionsCsv.map((item) => [
-          JSON.stringify(item.decisions),
-          JSON.stringify(item.policies), // Convert array/object to JSON string if necessary
-          item.reviewer,
-          item.queue,
-          item.jobCreatedAt,
-          item.assignedAt,
-          item.createdAt,
-          item.waitTimeSeconds,
-          item.handleTimeSeconds,
-          item.decisionReason,
-          `${HOST_URL}/dashboard/manual_review/recent?jobId=${item.jobId}`,
-        ]);
-
-        // Combine the headers and rows into a CSV string
-        const csvContent = [headers, ...rows]
-          .map((row) => row.map(toCsvField).join(',')) // RFC 4180: quote fields and escape embedded quotes
-          .join('\n');
-
-        // Create a Blob from the CSV content
-        const blob = new Blob([csvContent], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-
-        // Create a temporary link to download the Blob
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'decisions.csv'; // Set the desired file name
-        a.click();
-
-        // Clean up
-        URL.revokeObjectURL(url);
       }}
-      loading={allDecisionsLoading || allDecisionsLoading}
+      loading={isDownloadingDecisions}
     >
       Download
     </Button>
