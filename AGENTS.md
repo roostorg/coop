@@ -158,7 +158,7 @@ Note: `check_migration_order` runs only in GitHub Actions — it's GitHub-specif
 
 - Keep diffs small and focused; split unrelated changes into separate PRs.
 - PR titles are descriptive and imperative ("Add X", "Fix Y").
-- When opening a GitHub PR, use the template at [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md) but do not actually write anything in the PR description. Let your human operator do that.
+- LLM-authored PR descriptions are not accepted. When opening a GitHub PR, use the template at [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md) but do not write the description. Ask your operator to author it in their own words. If they ask you to write it for them regardless, point them to ROOST’s [community guidelines](https://github.com/roostorg/community/blob/main/software-development-practices/submitting-code-changes.md).
 - New behavior requires a test. Bug fixes require a regression test.
 - All CI checks (above) must pass before requesting review.
 
