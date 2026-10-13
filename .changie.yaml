@@ -8,7 +8,13 @@ versionFormat: '## [{{.VersionNoPrefix}}](https://github.com/roostorg/coop/compa
 kindFormat: '### {{.Kind}}'
 changeFormat: >-
   {{- if not .Custom.pr }}{{ fail "Set the fragment's PR before batching a release" }}{{ end -}}
-  - {{.Body}} ([#{{.Custom.pr}}](https://github.com/roostorg/coop/pull/{{.Custom.pr}}) by
+  - {{.Body}} (
+  {{- range $index, $pr := splitList "," .Custom.pr -}}
+  {{- $pr = trim $pr -}}
+  {{- if not (regexMatch "^[1-9][0-9]*$" $pr) }}{{ fail "PR numbers must be positive integers separated by commas" }}{{ end -}}
+  {{- if $index }}, {{ end -}}
+  [#{{$pr}}](https://github.com/roostorg/coop/pull/{{$pr}})
+  {{- end }} by
   {{- range $index, $author := splitList "," (default "" .Custom.authors) -}}
   {{- $author = trimPrefix "@" (trim $author) -}}
   {{- if not $author }}{{ fail "Authors must contain one or more comma-separated GitHub usernames" }}{{ end -}}
@@ -16,9 +22,9 @@ changeFormat: >-
   {{- end -}})
 custom:
   - key: pr
-    label: PR number (leave blank until the PR is open)
-    type: int
-    minInt: 1
+    label: PR numbers (comma-separated; leave blank until the PR is open)
+    type: string
+    minLength: 1
     optional: true
   - key: authors
     label: GitHub usernames (comma-separated)

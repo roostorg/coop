@@ -26,7 +26,7 @@ For a notable change, run this from the repository root:
 npm run changie -- new
 ```
 
-Write a concise, user-facing summary in the body. The CLI also prompts for the PR number and one or more comma-separated GitHub usernames. Commit the generated YAML fragment with the change.
+Write a concise, user-facing summary in the body. The CLI also prompts for one or more comma-separated PR numbers and GitHub usernames. Commit the generated YAML fragment with the change.
 
 Do not edit `CHANGELOG.md` directly. Internal refactors, tests, CI changes, and other changes with no notable impact on deployers do not need fragments.
 
@@ -37,6 +37,7 @@ Before cutting a release, ensure:
 - [ ] **CI is passing** for the `main` branch
 - [ ] **You understand the correct version** according to SemVer
 - [ ] **Pending fragments in `.changes/unreleased/` cover the notable changes**
+- [ ] **Every fragment has `custom.pr` filled in**; it can be blank when created, but batching requires it.
 
 Prepare the changelog in a release PR. Replace `x.y.z` with the chosen version:
 
