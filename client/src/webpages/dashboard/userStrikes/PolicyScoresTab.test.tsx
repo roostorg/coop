@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { vi } from 'vitest';
 
@@ -172,6 +178,43 @@ describe('PolicyScoresTab', () => {
       variables: {
         input: expect.objectContaining({ userStrikeCount: 9 }),
       },
+    });
+  });
+
+  it('saves a policy before its sub-policies, one at a time', async () => {
+    let finishParentSave = () => {};
+    updatePolicy.mockImplementationOnce(
+      async () =>
+        new Promise<void>((resolve) => {
+          finishParentSave = resolve;
+        }),
+    );
+    render(
+      <MemoryRouter>
+        <PolicyScoresTab />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByText('Edit Policy Scores'));
+    fireEvent.change(screen.getAllByRole('spinbutton')[0], {
+      target: { value: '5' },
+    });
+    fireEvent.click(
+      within(screen.getByText('Child policy').closest('tr')!).getByRole(
+        'switch',
+      ),
+    );
+    fireEvent.click(screen.getByText('Save Policy Scores'));
+
+    expect(updatePolicy).toHaveBeenCalledTimes(1);
+    expect(updatePolicy).toHaveBeenLastCalledWith({
+      variables: { input: expect.objectContaining({ id: 'parent' }) },
+    });
+
+    finishParentSave();
+    await waitFor(() => expect(updatePolicy).toHaveBeenCalledTimes(2));
+    expect(updatePolicy).toHaveBeenLastCalledWith({
+      variables: { input: expect.objectContaining({ id: 'child' }) },
     });
   });
 });
