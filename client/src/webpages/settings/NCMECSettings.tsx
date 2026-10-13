@@ -21,7 +21,7 @@ import { userHasPermissions } from '@/routing/permissions';
 import { gql } from '@apollo/client';
 import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Navigate } from 'react-router-dom';
+import { Navigate } from 'react-router';
 
 import FullScreenLoading from '@/components/common/FullScreenLoading';
 

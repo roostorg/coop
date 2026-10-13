@@ -144,6 +144,8 @@ export default function ManualReviewJobRelatedUserComponent(props: {
   relatedActions: readonly ManualReviewJobEnqueuedActionData[];
   allPolicies: readonly { id: string; name: string }[];
   onEnqueueAction: (action: ManualReviewJobEnqueuedActionData) => void;
+  onRemoveAction?: (action: ManualReviewJobEnqueuedActionData) => void;
+  onEditParameters?: (action: ManualReviewJobEnqueuedActionData) => void;
   unblurAllMedia: boolean;
   setSelectedUser: (user: RelatedItem) => void;
   isReporter?: boolean;
@@ -160,6 +162,8 @@ export default function ManualReviewJobRelatedUserComponent(props: {
     relatedActions,
     allPolicies,
     onEnqueueAction,
+    onRemoveAction,
+    onEditParameters,
     unblurAllMedia,
     setSelectedUser,
     isReporter = false,
@@ -382,6 +386,8 @@ export default function ManualReviewJobRelatedUserComponent(props: {
           onEnqueueActions={(actions) =>
             actions.map((it) => onEnqueueAction(it))
           }
+          onRemoveAction={onRemoveAction}
+          onEditParameters={onEditParameters}
           isActionable={isActionable}
           requirePolicySelectionToEnqueueAction={
             requirePolicySelectionToEnqueueAction

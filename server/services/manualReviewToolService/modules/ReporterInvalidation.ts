@@ -1,4 +1,4 @@
-import { type ItemIdentifier } from '@roostorg/types';
+import { type ItemIdentifier } from '@roostorg/coop-types';
 
 import { type Dependencies } from '../../../iocContainer/index.js';
 import { jsonStringify } from '../../../utils/encoding.js';

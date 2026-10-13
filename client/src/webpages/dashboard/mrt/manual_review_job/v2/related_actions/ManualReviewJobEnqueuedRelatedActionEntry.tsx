@@ -17,6 +17,7 @@ export default function ManualReviewJobEnqueuedRelatedActionEntry(props: {
   itemIdentifier: ItemIdentifier;
   iconUrl?: string;
   policyNames: readonly string[];
+  policyRequired?: boolean;
   onRemove: () => void;
   // Optional edit affordance for parameterized actions. Hidden when
   // `undefined` so non-parameterized entries stay unchanged.
@@ -28,6 +29,7 @@ export default function ManualReviewJobEnqueuedRelatedActionEntry(props: {
     itemIdentifier,
     iconUrl,
     policyNames,
+    policyRequired = false,
     onRemove,
     onEditParameters,
   } = props;
@@ -63,6 +65,10 @@ export default function ManualReviewJobEnqueuedRelatedActionEntry(props: {
         <div className="pt-1 text-sm">{`${
           policyNames.length > 1 ? 'Policies' : 'Policy'
         }: ${policyNames.join(', ')}`}</div>
+      ) : policyRequired ? (
+        <div className="pt-1 text-sm font-medium text-amber-700">
+          Policy required
+        </div>
       ) : null}
     </div>
   );

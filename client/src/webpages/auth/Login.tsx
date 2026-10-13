@@ -4,7 +4,7 @@ import { gql } from '@apollo/client';
 import { Input } from 'antd';
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router';
 
 import CoopButton from '../dashboard/components/CoopButton';
 import CoopModal from '../dashboard/components/CoopModal';
@@ -66,7 +66,7 @@ export default function Login() {
     onCompleted: (response) => {
       switch (response.login.__typename) {
         case 'LoginSuccessResponse':
-          client.resetStore().then(() => navigate('/dashboard'));
+          client.resetStore().then(async () => navigate('/dashboard'));
           break;
         case 'LoginIncorrectPasswordError':
         case 'LoginUserDoesNotExistError':

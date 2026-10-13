@@ -1,5 +1,5 @@
 import { Tooltip } from 'antd';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
 import CoopButton from './CoopButton';
 

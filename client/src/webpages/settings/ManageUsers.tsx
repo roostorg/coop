@@ -3,7 +3,7 @@ import { gql } from '@apollo/client';
 import { Select } from 'antd';
 import { MouseEvent, useCallback, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router';
 
 import FullScreenLoading from '../../components/common/FullScreenLoading';
 import CoopButton from '../dashboard/components/CoopButton';

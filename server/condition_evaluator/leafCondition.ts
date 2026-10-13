@@ -266,7 +266,8 @@ export async function runLeafCondition(
     };
   });
 
-  // Process the results on an "any pass" assumption, like [].some().
+  // Process the results on an "any pass" assumption, like [].some() (except
+  // for NOT_EQUAL_TO, see below).
   // i.e., if there's a single result that passes, it's gonna return a result
   // with a passing outcome; and otherwise a result with a failing outcome (or
   // inapplicable). This makes sense for our use case, because the rule is gonna
@@ -285,13 +286,22 @@ export async function runLeafCondition(
   // If we have results, prefer to return the first passing condition or, if
   // all failed, then the first failure with some descriptive info (e.g.
   // matchedValue or score).
+  //
+  // NOT_EQUAL_TO is the exception: "is not equal to X" means no value equals X,
+  // so it passes only if every value passes, and otherwise reports the first
+  // value that didn't pass (i.e., the one that equaled the threshold).
   const bestResult =
+    (condition.comparator === ValueComparator.NOT_EQUAL_TO
+      ? (signalResultsWithOutcomes.find(
+          (result) => outcomeToNullableBool(result.outcome) !== true,
+        ) ?? signalResultsWithOutcomes[0])
+      : signalResultsWithOutcomes.find(
+          (result) => outcomeToNullableBool(result.outcome) === true,
+        )) ??
     signalResultsWithOutcomes.find(
-      (result) =>
-        outcomeToNullableBool(result.outcome) === true ||
-        result.matchedValue != null ||
-        result.score != null,
-    ) ?? signalResultsWithOutcomes[0];
+      (result) => result.matchedValue != null || result.score != null,
+    ) ??
+    signalResultsWithOutcomes[0];
 
   // convert the best signalResultWithOutcome to our ConditionResult.
   // We write it like this, which is a tad awkward, to help TS narrow properly.

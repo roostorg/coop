@@ -20,9 +20,11 @@ export async function getZentropiScores(
   params: {
     text: string;
     apiKey: string;
+    labelerId?: string | null;
     labelerVersionId: string;
   },
 ): Promise<ZentropiResponse> {
+  const labelerId = params.labelerId?.trim();
   const response = await fetchHTTP({
     url: 'https://api.zentropi.ai/v1/label',
     method: 'post',
@@ -32,6 +34,9 @@ export async function getZentropiScores(
     },
     body: jsonStringify({
       content_text: params.text,
+      // A specific version ID is sufficient. Omit blank IDs rather than
+      // sending empty strings or null to the API.
+      ...(labelerId ? { labeler_id: labelerId } : {}),
       labeler_version_id: params.labelerVersionId,
     }),
     handleResponseBody: 'as-json',
@@ -43,16 +48,44 @@ export async function getZentropiScores(
       throw makeSignalPermanentError(
         `Zentropi API error: ${response.status}${
           response.status === 404
-            ? ' (invalid labeler_version_id)'
+            ? ' (labeler or version not found, or not deployed)'
             : ' (invalid API key)'
         }`,
         { shouldErrorSpan: true },
       );
     }
+    // Zentropi rejects malformed requests with a 422; retrying won't help.
+    if (response.status === 422) {
+      throw makeSignalPermanentError('Zentropi API error: 422', {
+        detail: getValidationErrorDetail(response.body),
+        shouldErrorSpan: true,
+      });
+    }
     throw new Error(`Zentropi API error: ${response.status}`);
   }
 
   return response.body as unknown as ZentropiResponse;
+}
+
+function getValidationErrorDetail(body: unknown): string | undefined {
+  const detail =
+    body != null && typeof body === 'object' && 'detail' in body
+      ? body.detail
+      : undefined;
+  if (typeof detail === 'string') {
+    return detail;
+  }
+  if (Array.isArray(detail)) {
+    const messages = detail
+      .map((it: unknown) =>
+        it != null && typeof it === 'object' && 'msg' in it
+          ? String(it.msg)
+          : undefined,
+      )
+      .filter((it) => it != null);
+    return messages.length > 0 ? messages.join('; ') : undefined;
+  }
+  return undefined;
 }
 
 export async function runZentropiLabelerImpl(
@@ -69,16 +102,32 @@ export async function runZentropiLabelerImpl(
   }
 
   if (!subcategory) {
-    throw new Error(
-      'Missing labeler_version_id in subcategory. ' +
-        'Specify a Zentropi labeler_version_id in the condition subcategory field.',
-    );
+    throw makeSignalPermanentError('Missing Zentropi labeler version', {
+      detail:
+        'Select a Zentropi labeler version in the condition subcategory field.',
+      shouldErrorSpan: true,
+    });
+  }
+
+  // The subcategory is the version ID of one of the org's configured labeler
+  // versions. Its parent labeler ID is optional for a specific version.
+  const labelerVersion = credential.labelerVersions?.find(
+    (it) => it.id === subcategory,
+  );
+  if (!labelerVersion) {
+    throw makeSignalPermanentError('Missing Zentropi labeler version', {
+      detail:
+        `No Zentropi labeler version is configured for ` +
+        `${subcategory}. Add it in the Zentropi integration settings.`,
+      shouldErrorSpan: true,
+    });
   }
 
   const response = await fetchScores({
     text: value.value,
     apiKey: credential.apiKey,
-    labelerVersionId: subcategory,
+    labelerId: labelerVersion.labelerId,
+    labelerVersionId: labelerVersion.id,
   });
 
   // Composite score mapping:

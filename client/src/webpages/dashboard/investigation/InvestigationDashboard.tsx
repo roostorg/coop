@@ -1,6 +1,6 @@
 import { gql } from '@apollo/client';
 import { Helmet } from 'react-helmet-async';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router';
 
 import DashboardHeader from '../components/DashboardHeader';
 

@@ -1,11 +1,8 @@
+import ManualReviewRecentDecisions from '@/webpages/dashboard/mrt/ManualReviewRecentDecisions';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { HelmetProvider } from 'react-helmet-async';
-import { MemoryRouter } from 'react-router-dom';
-
-import '@testing-library/jest-dom/extend-expect';
-
-import ManualReviewRecentDecisions from '@/webpages/dashboard/mrt/ManualReviewRecentDecisions';
+import { MemoryRouter } from 'react-router';
 
 const fakeDecision = {
   __typename: 'ManualReviewDecision',

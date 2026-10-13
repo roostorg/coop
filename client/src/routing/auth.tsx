@@ -1,6 +1,6 @@
 import { gql } from '@apollo/client';
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate } from 'react-router';
 
 import FullScreenLoading from '../components/common/FullScreenLoading';
 

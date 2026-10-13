@@ -4,7 +4,9 @@ import { Switch } from '@/coop-ui/Switch';
 import { toast } from '@/coop-ui/Toast';
 import { Heading, Text } from '@/coop-ui/Typography';
 import {
+  GQLJobPriorityProperty,
   useGQLDeploymentSettingsQuery,
+  useGQLSetJobPriorityWeightsMutation,
   useGQLUpdateAllowMultiplePoliciesPerActionMutation,
   useGQLUpdateHideSkipButtonForNonAdminsMutation,
   useGQLUpdateIgnoreCallbackUrlMutation,
@@ -14,9 +16,17 @@ import {
   useGQLUpdateRequiresPolicyForDecisionsMutation,
 } from '@/graphql/generated';
 import { isValidUrl } from '@/lib/utils';
+import {
+  jobPriorityRowsToMap,
+  JobPriorityWeightMap,
+  jobPriorityWeightsChanged,
+  jobPriorityWeightsInput,
+} from '@/webpages/settings/jobPriorityWeights';
 import { useEffect, useState } from 'react';
 
 import FullScreenLoading from '@/components/common/FullScreenLoading';
+
+import JobPriorityWeightsSection from './JobPriorityWeightsSection';
 
 export default function ReviewConsoleTab() {
   const { data, loading, error, refetch } = useGQLDeploymentSettingsQuery({
@@ -33,6 +43,7 @@ export default function ReviewConsoleTab() {
   const [hideSkip, setHideSkip] = useState(false);
   const [previewJobs, setPreviewJobs] = useState(false);
   const [ignoreCallbackUrl, setIgnoreCallbackUrl] = useState('');
+  const [weights, setWeights] = useState<JobPriorityWeightMap>(new Map());
 
   useEffect(() => {
     if (org) {
@@ -43,8 +54,13 @@ export default function ReviewConsoleTab() {
       setHideSkip(org.hideSkipButtonForNonAdmins);
       setPreviewJobs(org.previewJobsViewEnabled);
       setIgnoreCallbackUrl(org.ignoreCallbackUrl ?? '');
+      setWeights(jobPriorityRowsToMap(org.jobPriorityWeights));
     }
   }, [org]);
+
+  const updateWeight = (property: GQLJobPriorityProperty, value: number) => {
+    setWeights((prev) => new Map(prev).set(property, value));
+  };
 
   const mutationOpts = {
     onCompleted: () => {
@@ -72,6 +88,8 @@ export default function ReviewConsoleTab() {
     useGQLUpdatePreviewJobsViewEnabledMutation(mutationOpts);
   const [updateIgnoreUrl, { loading: ignoreUrlLoading }] =
     useGQLUpdateIgnoreCallbackUrlMutation(mutationOpts);
+  const [setWeightsMutation, { loading: weightsLoading }] =
+    useGQLSetJobPriorityWeightsMutation(mutationOpts);
   if (loading) return <FullScreenLoading />;
   if (error || !org) return <div>Error loading review console settings</div>;
 
@@ -82,7 +100,13 @@ export default function ReviewConsoleTab() {
     requireReasonOnIgnoreLoading ||
     hideSkipLoading ||
     previewJobsLoading ||
-    ignoreUrlLoading;
+    ignoreUrlLoading ||
+    weightsLoading;
+
+  const weightsHaveChanged = jobPriorityWeightsChanged(
+    org.jobPriorityWeights,
+    weights,
+  );
 
   const hasChanges =
     requirePolicy !== org.requiresPolicyForDecisionsInMrt ||
@@ -91,7 +115,8 @@ export default function ReviewConsoleTab() {
     requireReasonOnIgnore !== org.requiresDecisionReasonOnIgnoreInMrt ||
     hideSkip !== org.hideSkipButtonForNonAdmins ||
     previewJobs !== org.previewJobsViewEnabled ||
-    ignoreCallbackUrl !== (org.ignoreCallbackUrl ?? '');
+    ignoreCallbackUrl !== (org.ignoreCallbackUrl ?? '') ||
+    weightsHaveChanged;
 
   const handleSave = () => {
     if (requirePolicy !== org.requiresPolicyForDecisionsInMrt) {
@@ -117,6 +142,11 @@ export default function ReviewConsoleTab() {
     if (ignoreCallbackUrl !== (org.ignoreCallbackUrl ?? '')) {
       updateIgnoreUrl({
         variables: { url: ignoreCallbackUrl || null },
+      });
+    }
+    if (weightsHaveChanged) {
+      setWeightsMutation({
+        variables: { input: jobPriorityWeightsInput(weights) },
       });
     }
   };
@@ -238,6 +268,8 @@ export default function ReviewConsoleTab() {
           </div>
         </div>
       </div>
+
+      <JobPriorityWeightsSection weights={weights} onChange={updateWeight} />
 
       <div className="flex flex-col gap-4">
         <div className="border-b border-gray-200 py-2">

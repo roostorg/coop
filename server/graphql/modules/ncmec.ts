@@ -5,6 +5,7 @@ import type {
   GQLNcmecOrgSettings,
   GQLQueryResolvers,
 } from '../generated.js';
+import { requireChildSafetyPermission } from '../utils/authorization.js';
 import {
   forbiddenError,
   unauthenticatedError,
@@ -246,10 +247,7 @@ const typeDefs = /* GraphQL */ `
 
 const Query: GQLQueryResolvers = {
   async ncmecReportById(_, { reportId }, context) {
-    const user = context.getUser();
-    if (!user) {
-      throw unauthenticatedError('User required.');
-    }
+    const user = requireChildSafetyPermission(context.getUser());
     const report = await context.services.NcmecService.getNcmecReportById({
       orgId: user.orgId,
       reportId,
@@ -279,10 +277,7 @@ const Query: GQLQueryResolvers = {
     };
   },
   async ncmecThreads(_, { userId, reportedMessages }, context) {
-    const user = context.getUser();
-    if (!user) {
-      throw unauthenticatedError('User required.');
-    }
+    const user = requireChildSafetyPermission(context.getUser());
     const threads = await context.services.NcmecService.getNcmecMessages(
       user.orgId,
       userId,

@@ -1,9 +1,6 @@
+import { Slider } from '@/coop-ui/Slider';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
-
-import '@testing-library/jest-dom/extend-expect';
-
-import { Slider } from '@/coop-ui/Slider';
 
 describe('Slider Component', () => {
   test('renders the slider component', () => {

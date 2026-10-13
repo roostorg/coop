@@ -12,7 +12,7 @@ Before you can review and report content to NCMEC, you must have the following:
 
 2. **CyberTipline API credentials**: username and password from NCMEC to submit reports to the [CyberTipline API](https://report.cybertip.org/ispws/documentation/index.html).
 
-3. **"User" ItemType with a `creatorId` field**: NCMEC jobs are centered on a user, not individual pieces of content. Coop extracts the user from a content item via a `creatorId` field (a `RELATED_ITEM` field referencing the User Item Type), then aggregates all media associated with that user into a single NCMEC review job.
+3. **Content ItemTypes with a `creatorId` schema field role**: NCMEC jobs are centered on a user, not individual pieces of content. For every Content ItemType that can be escalated to NCMEC, map `creatorId` to a `RELATED_ITEM` field that references a User ItemType. Coop uses that field to identify the user and aggregate their media into a single NCMEC review job. User items can be escalated directly and do not need this role.
 
 4. **Dedicated NCMEC manual review queue** for Coop to route jobs to. Whether decisions made from this queue submit real CyberTips or go to NCMEC's sandbox is controlled by the `NCMEC_ENV` environment variable on the Coop server; see [Test vs. Production Submissions](#test-vs-production-submissions).
 
@@ -90,7 +90,7 @@ When your platform sends a user report to Coop's Report API with `reportedForRea
 
 ### 4. Manual escalation
 
-In any review job, moderators with NCMEC access can select **Enqueue to NCMEC** from the action list. This immediately moves the job to the NCMEC queue.
+In a User review job, or a Content review job whose item resolves to a User through its `creatorId` role, moderators with NCMEC access can select **Enqueue to NCMEC** from the action list. If a Content item has no creator value, the action is disabled and explains that the job must be linked to a user. The server also rejects the decision if the creator cannot be resolved to a User ItemType, leaving the original review job in its queue.
 
 ## CyberTip submission flow
 

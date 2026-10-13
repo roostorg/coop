@@ -6,7 +6,7 @@ Hash matching works by computing a perceptual fingerprint (PDQ for images, MD5 f
 
 ## Requirements
 
-1. **A running HMA instance** accessible from your Coop server
+1. **A running HMA instance** (version 1.2.0 or later) accessible from your Coop server
 
 2. **API credentials for any third-party hash banks** you want to use; for example, NCMEC provides Hash Sharing API credentials, Tech Against Terrorism provides access to their hash bank.
 
@@ -26,7 +26,7 @@ Hash banks are collections of known-harmful media fingerprints that you can refe
 
 The recommended approach is to create banks through **Settings** → **Matching Banks** in Coop. This registers the bank in both HMA and Coop's database automatically, making it immediately available in the rule builder.
 
-Banks created through Coop are named in HMA using the convention `COOP_<ORGID>_<NORMALIZED_NAME>`, for example a bank named "Test Bank" for org `abcdef12345` becomes `COOP_ABCDEF12345_TEST_BANK` in HMA. This is what you will see in the HMA UI.
+Banks created through Coop are named in HMA using the convention `COOP_<ORGID>_<NORMALIZED_NAME>`, for example a bank named "Test Bank" for org `abcdef12345` becomes `COOP_ABCDEF12345_TEST_BANK` in HMA. If that name is already taken, Coop adds a numeric suffix (`_2`, `_3`, ...). This is what you will see in the HMA UI.
 
 ### Banks created directly in HMA
 
@@ -35,6 +35,12 @@ Banks created directly in HMA (via the HMA UI or seed scripts) will not appear i
 ![HMA UI showing the bank created in Coop, along with a modal that appears if you manually upload media to the matching bank](../images/hma-ui-coop-banks.png)
 
 You can use the HMA UI to manually add content to any bank for local testing, regardless of how the bank was created.
+
+### Exchange credentials
+
+When you connect a bank to an exchange (NCMEC, StopNCII, ThreatExchange, ...), Coop asks for that exchange's credentials and saves them with the bank. They're never shown again after saving. To change them, open the bank and choose **Update Credentials**.
+
+If a bank shows **Using Shared Credentials**, it has no credentials of its own and is falling back to ones configured on the HMA server. Choose **Update Credentials** to save your organization's credentials with the bank.
 
 ## NCMEC Hash Sharing
 

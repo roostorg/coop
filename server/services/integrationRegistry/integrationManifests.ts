@@ -289,7 +289,7 @@ const ZENTROPI: IntegrationManifestEntry = {
           },
           {
             label: 'Documentation',
-            value: 'https://docs.zentropi.ai',
+            value: 'https://zentropi.ai/api',
           },
           {
             label: 'Research Talk',
@@ -307,7 +307,7 @@ const ZENTROPI: IntegrationManifestEntry = {
   },
   modelCardLearnMoreUrl: 'https://modelcards.withgoogle.com/',
   title: 'Zentropi',
-  docsUrl: 'https://docs.zentropi.ai',
+  docsUrl: 'https://zentropi.ai/api',
   requiresConfig: true,
 };
 

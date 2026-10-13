@@ -13,7 +13,7 @@ import lowerCase from 'lodash/lowerCase';
 import { Scale, Star } from 'lucide-react';
 import { MouseEvent, useCallback, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 
 import FullScreenLoading from '../../../../components/common/FullScreenLoading';
 import CoopButton from '../../components/CoopButton';

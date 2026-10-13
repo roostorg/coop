@@ -70,4 +70,14 @@ export interface IReportingAnalyticsAdapter {
   ): Promise<ReadonlyArray<ReportingRulePassingContentSample>>;
 
   getNumTimesReported(orgId: string, itemId: string): Promise<number | null>;
+
+  /**
+   * Batched variant of `getNumTimesReported`, for callers that need counts for
+   * many items at once (e.g. re-sorting a whole manual review queue). Items
+   * with no reports are omitted from the returned map rather than mapped to 0.
+   */
+  getNumTimesReportedForItems(
+    orgId: string,
+    itemIds: readonly string[],
+  ): Promise<ReadonlyMap<string, number>>;
 }

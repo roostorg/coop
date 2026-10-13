@@ -6,8 +6,10 @@ import {
   type GraphQLSchema,
 } from 'graphql';
 
+import { UserPermission } from '../../services/userManagementService/index.js';
+import { type GraphQLUserParent } from '../datasources/userKyselyPersistence.js';
 import type { Context } from '../resolvers.js';
-import { unauthenticatedError } from './errors.js';
+import { forbiddenError, unauthenticatedError } from './errors.js';
 
 export function shouldSkipAuth(
   schema: GraphQLSchema,
@@ -39,4 +41,18 @@ export function authSchemaWrapper(
           return originalResolver(source, args, context, info);
         },
   };
+}
+
+export function requireChildSafetyPermission(
+  user: GraphQLUserParent | null | undefined,
+): GraphQLUserParent {
+  if (!user) {
+    throw unauthenticatedError('User required.');
+  }
+  if (!user.getPermissions().includes(UserPermission.VIEW_CHILD_SAFETY_DATA)) {
+    throw forbiddenError(
+      'VIEW_CHILD_SAFETY_DATA permission required to view NCMEC data.',
+    );
+  }
+  return user;
 }

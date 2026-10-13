@@ -1,7 +1,7 @@
 import { Tooltip } from 'antd';
 import { TooltipPlacement } from 'antd/lib/tooltip';
 import { Loader2, type LucideIcon } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
 export type CoopButtonSize = 'small' | 'middle' | 'large';
 export type CoopButtonType =
