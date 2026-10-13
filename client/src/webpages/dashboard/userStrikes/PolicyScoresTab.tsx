@@ -168,30 +168,31 @@ export default function PolicyScoresTab() {
 
       const savePolicyScores = async (policyId: string) => {
         // only update this policy and it's child policies, not the whole list
-        // of policies
-        await Promise.all(
-          [policyId, ...childPolicyIds].map(async (key) => {
-            const update = updatedPolicyScores[key];
-            if (update) {
-              // An inherited score is written by the database trigger, so
-              // sending this policy's own score could overwrite it.
-              const childPolicy = flattenedChildPolicies.find(
-                (p) => p.value.id === key,
-              );
-              const scoreInherited =
-                childPolicy !== undefined &&
-                scoreSourcePolicy(childPolicy.parent, updatedPolicyScores) !==
-                  undefined;
-              return updatePolicy({
-                variables: {
-                  input: scoreInherited
-                    ? omit(update, 'userStrikeCount')
-                    : { ...update },
-                },
-              });
-            }
-          }),
-        );
+        // of policies. Save one at a time, parents first: each save runs
+        // database triggers that update the policy's descendants, so
+        // concurrent saves of related policies deadlock.
+        for (const key of [policyId, ...childPolicyIds]) {
+          const update = updatedPolicyScores[key];
+          if (!update) {
+            continue;
+          }
+          // An inherited score is written by the database trigger, so
+          // sending this policy's own score could overwrite it.
+          const childPolicy = flattenedChildPolicies.find(
+            (p) => p.value.id === key,
+          );
+          const scoreInherited =
+            childPolicy !== undefined &&
+            scoreSourcePolicy(childPolicy.parent, updatedPolicyScores) !==
+              undefined;
+          await updatePolicy({
+            variables: {
+              input: scoreInherited
+                ? omit(update, 'userStrikeCount')
+                : { ...update },
+            },
+          });
+        }
       };
 
       const isTopLevel = !policy.parent || policy.parent.value.id === '-1';
