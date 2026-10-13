@@ -109,6 +109,31 @@ gql`
       }
     }
   }
+
+  query GetRecentDecisions($input: RecentDecisionsInput!) {
+    getRecentDecisions(input: $input) {
+      id
+      jobId
+      queueId
+      reviewerId
+      itemId
+      itemTypeId
+      decisions {
+        ... on ManualReviewDecisionComponentBase {
+          ...ManualReviewDecisionComponentFields
+        }
+      }
+      relatedActions {
+        ... on ManualReviewDecisionComponentBase {
+          ...ManualReviewDecisionComponentFields
+        }
+      }
+      createdAt
+      assignedAt
+      jobCreatedAt
+      decisionReason
+    }
+  }
 `;
 /**
  * An executed action paired with the parameter values the moderator supplied.

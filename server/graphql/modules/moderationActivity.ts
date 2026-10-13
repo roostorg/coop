@@ -59,6 +59,8 @@ const typeDefs = /* GraphQL */ `
     itemTypeId: ID
     decisions: [ManualReviewDecisionComponent!]!
     decisionReason: String
+    assignedAt: DateTime
+    jobCreatedAt: DateTime
   }
 
   """
@@ -240,6 +242,8 @@ const ReviewJobDecisionRow: GQLReviewJobDecisionRowResolvers = {
   itemTypeId: (row) => (row.payload as DecisionRowPayload).itemTypeId,
   decisions: (row) => (row.payload as DecisionRowPayload).decisions,
   decisionReason: (row) => (row.payload as DecisionRowPayload).decisionReason,
+  assignedAt: (row) => (row.payload as DecisionRowPayload).assignedAt,
+  jobCreatedAt: (row) => (row.payload as DecisionRowPayload).jobCreatedAt,
 };
 
 const ManualActionRow: GQLManualActionRowResolvers = {

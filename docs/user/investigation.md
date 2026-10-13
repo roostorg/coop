@@ -19,6 +19,8 @@ You can take action on an item directly from Investigation without being in a re
 
 This is useful for acting on content outside of a normal review flow, for example when investigating a user after receiving a report through another channel, or taking a follow-up action after an earlier decision.
 
+Actions taken here are recorded in the [Recent Decisions](metrics.md#recent-decisions) log alongside queue decisions, marked `Manual Action` in the **Origin** column, so supervisors can see work done outside a review queue.
+
 ## Reversing an action
 
 Coop has no built-in undo. To reverse an action (like unbanning a user), you need a custom action in Settings that calls your platform's reverse endpoint, for example an "Unban user" action that calls your platform's unban API.
