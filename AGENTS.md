@@ -84,6 +84,10 @@ Client: http://localhost:3000 · Server: http://localhost:8080
 
 ## Testing
 
+- Prefer integration tests that exercise real components together. Minimize mocking; mock external boundaries when needed to avoid real side effects. Use unit tests when they cover complex logic more clearly or cheaply.
+- Optimize tests for confidence, not coverage numbers. Test observable behavior rather than implementation details, so behavior-preserving refactors can leave tests unchanged. Only add unit tests where they provide confidence beyond existing integration coverage.
+- Be sensible in your testing. Don't write tautological tests e.g. asserting that some constant equals its own value.
+
 Both packages use Vitest. Server tests need the local backing services and migrations; client tests run in-process with jsdom.
 
 Always pass `--build` to `docker compose run`. Compose only builds when no image exists yet, so without it your code changes are not in the container and the run silently reports on a stale image.
@@ -178,6 +182,8 @@ Note: `check_migration_order` runs only in GitHub Actions — it's GitHub-specif
 
 ## Code style
 
+- Never add unnecessary fluff text, subheadings, callouts, and so on. Remember: "Good design is as little design as possible" and "Good design is unobtrusive".
+- Readmes, documentation, and code comments should **never** reference what **was** in the past. It should always reference what **is** currently in the code. For changelogs, just focus on making it useful to future readers.
 - **TypeScript:** ESLint + Prettier (Prettier config at root `.prettierrc`; ESLint configs per package in `server/` and `client/`). Run `pnpm run lint` and `pnpm run prettier:fix` from root.
 - **Naming:** Use camelCase for variables/functions; PascalCase for components/classes; SCREAMING_SNAKE_CASE for constants.
 - **GraphQL:** Type-safe resolvers and queries via codegen; never hand-edit `generated.ts`.
