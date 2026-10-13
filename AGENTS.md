@@ -166,8 +166,8 @@ Note: `check_migration_order` runs only in GitHub Actions — it's GitHub-specif
 
 `CHANGELOG.md` follows [Keep a Changelog](https://keepachangelog.com/en/2.0.0/); Coop versions follow [SemVer](https://semver.org/). Release process: [`docs/development/releases.md`](docs/development/releases.md).
 
-- Add a Changie fragment in `.changes/unreleased/` in the same PR as the change: `npm run changie -- new` from the root. Commit the generated YAML file; do not edit `CHANGELOG.md` directly.
-- For non-interactive use: `npm run changie -- new --kind Fixed --body 'Description' --custom pr=123 --custom authors=user --interactive=false`. For multiple authors, CSV-quote the whole custom argument: `--custom '"authors=alice,bob"'`.
+- Add a Changie fragment in `.changes/unreleased/` in the same PR as the change: `pnpm run changie new` from the root. Commit the generated YAML file; do not edit `CHANGELOG.md` directly.
+- For non-interactive use: `pnpm run changie new --kind Fixed --body 'Description' --custom pr=123 --custom authors=user --interactive=false`. For multiple authors, CSV-quote the whole custom argument: `--custom '"authors=alice,bob"'`.
 - Set `custom.pr` to the PR number and `custom.authors` to one or more comma-separated GitHub usernames. Whitespace and leading `@` signs are accepted. Leave `pr` blank until the PR exists; fill it before batching.
 - Only **notable** changes get an entry: what someone deploying Coop needs to know. Internal refactors, test and CI plumbing, lint fixes, repo hygiene, and dependency bumps with no user-visible impact do not.
 - Use only the six configured kinds: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`, `Security`. Don't invent others.
@@ -177,7 +177,7 @@ Note: `check_migration_order` runs only in GitHub Actions — it's GitHub-specif
 - Omit related issue links (e.g. `closes [#456](...)`); this information is accessible at the PR link.
 - Removing a GraphQL enum value, type, or field, or removing or renaming an environment variable, always earns an entry.
 - Never edit a released version's section or source file in `.changes/`; it's a historical record. Corrections go in a new fragment.
-- Only release preparation runs `npm run changie -- batch x.y.z` and `npm run changie -- merge`. Ordinary PRs leave pending fragments unbatched.
+- Only release preparation runs `pnpm run changie batch x.y.z` and `pnpm run changie merge`. Ordinary PRs leave pending fragments unbatched.
 
 ## Code style
 

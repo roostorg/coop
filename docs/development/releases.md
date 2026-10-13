@@ -23,7 +23,7 @@ Coop uses [Changie](https://changie.dev/) to collect entries in `.changes/unrele
 For a notable change, run this from the repository root:
 
 ```bash
-npm run changie -- new
+pnpm run changie new
 ```
 
 Write a concise, user-facing summary in the body. The CLI also prompts for one or more comma-separated PR numbers and GitHub usernames. Commit the generated YAML fragment with the change.
@@ -42,8 +42,8 @@ Before cutting a release, ensure:
 Prepare the changelog in a release PR. Replace `x.y.z` with the chosen version:
 
 ```bash
-npm run changie -- batch x.y.z
-npm run changie -- merge
+pnpm run changie batch x.y.z
+pnpm run changie merge
 ```
 
 `batch` creates `.changes/x.y.z.md` and deletes the consumed fragments. Review that version file and edit it if needed, then run `merge` again. `merge` generates `CHANGELOG.md`; neither command publishes a release or changes package versions.
