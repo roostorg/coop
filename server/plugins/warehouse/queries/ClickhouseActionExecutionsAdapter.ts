@@ -245,7 +245,7 @@ export class ClickhouseActionExecutionsAdapter implements IActionExecutionsAdapt
         count() OVER () AS total_count
       FROM (${scan})
       GROUP BY item_id
-      ORDER BY item_id ASC
+      ORDER BY failed DESC, item_id ASC
       LIMIT ? OFFSET ?
     `;
 

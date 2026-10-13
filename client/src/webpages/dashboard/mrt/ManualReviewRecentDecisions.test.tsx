@@ -62,8 +62,6 @@ const orgLookupMock = {
   result: {
     data: {
       __typename: 'Query',
-      // Manual actions require VIEW_INVESTIGATION. Every role but
-      // EXTERNAL_MODERATOR holds it, so this is the ordinary reviewer.
       me: {
         __typename: 'User',
         id: 'user-1',
@@ -593,15 +591,15 @@ describe('ManualReviewRecentDecisions', () => {
       ).not.toBeInTheDocument();
     });
 
-    it('states the truncation when the run has more items than the page returned', async () => {
+    it('states the failed count and lists failures first when the run is truncated', async () => {
       renderPage([
-        ...activityMocks([manualActionRow({ itemCount: 84, failedCount: 0 })]),
+        ...activityMocks([manualActionRow({ itemCount: 84, failedCount: 1 })]),
         manualActionItemsMock(
           'manual-action-run:abc',
           '2026-08-05T13:51:00.000Z',
           [
+            { itemId: 'usr_9', itemTypeId: 't-1', failed: true },
             { itemId: 'usr_1', itemTypeId: 't-1', failed: false },
-            { itemId: 'usr_2', itemTypeId: 't-1', failed: false },
           ],
           84,
         ),
@@ -609,14 +607,31 @@ describe('ManualReviewRecentDecisions', () => {
 
       userEvent.click(await screen.findByRole('button', { name: /84 items/i }));
 
-      // Items come back ordered by id, so a truncated list is an arbitrary
-      // slice and failures can fall outside it. The notice has to say so —
-      // a reader who sees a clean list must not conclude nothing failed.
-      expect(await screen.findByText(/84 items/)).toBeInTheDocument();
+      expect(await screen.findByText('1 failed')).toBeInTheDocument();
       expect(
-        await screen.findByText(
-          /showing first 2; some failures may not be listed/,
+        screen.getByText('Showing the first 2. Failed items are listed first.'),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/failures are listed/)).not.toBeInTheDocument();
+    });
+
+    it('says loudly when there are more failures than the panel lists', async () => {
+      renderPage([
+        ...activityMocks([manualActionRow({ itemCount: 84, failedCount: 5 })]),
+        manualActionItemsMock(
+          'manual-action-run:abc',
+          '2026-08-05T13:51:00.000Z',
+          [
+            { itemId: 'usr_8', itemTypeId: 't-1', failed: true },
+            { itemId: 'usr_9', itemTypeId: 't-1', failed: true },
+          ],
+          84,
         ),
+      ]);
+
+      userEvent.click(await screen.findByRole('button', { name: /84 items/i }));
+
+      expect(
+        await screen.findByText('Only 2 of 5 failures are listed.'),
       ).toBeInTheDocument();
     });
 
@@ -688,10 +703,6 @@ describe('ManualReviewRecentDecisions', () => {
   });
 
   it('offers no Show control to a reviewer without VIEW_INVESTIGATION', async () => {
-    // EXTERNAL_MODERATOR — read-only access for external moderation partners —
-    // is the only role lacking it, and holds VIEW_MRT alone. The server refuses
-    // manual actions for such a caller, so every option but Decisions would
-    // return nothing; offer no control rather than two dead choices.
     const externalModeratorOrgMock = {
       request: { query: GQLOrgLookupDataDocument },
       result: {

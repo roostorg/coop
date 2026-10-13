@@ -19,45 +19,21 @@ gql`
   }
 `;
 
-// Server default/cap (see `ManualActionItemsInput` in
-// `server/graphql/modules/moderationActivity.ts`). There is deliberately no
-// `offset` field: `totalCount` rides on the same window function as the
-// returned rows, so paging past the end would report `0` — indistinguishable
-// from a run with no items. We fetch a single page and, when the run has more
-// items than that, say so rather than implying more can be loaded.
-// Bulk Actioning caps a run at 1000 ids, so this covers everything the UI can
-// produce and truncation becomes the exception rather than routine. At 100 a
-// 250-item run hid 22 of its 36 failures, and which items you saw was
-// arbitrary (`ORDER BY item_id`) — failures are the reason this panel exists.
-//
-// That 1000 limit is client-side only and `bulkExecuteActions` caps nothing,
-// so a programmatic caller can still exceed it; the truncation notice below
-// stays for that case.
 const PAGE_SIZE = 1000;
 
-/**
- * The items one bulk (manual-action) run touched, fetched on selection
- * rather than alongside the feed — a run can touch a thousand items, and
- * every feed row would carry that weight if we fetched eagerly.
- *
- * Renders in the page's detail side panel — the same slot a selected
- * decision uses (`ManualReviewRecentDecisionSummary` +
- * `ManualReviewJobReview`) — not inside the feed table, so a wide run's
- * item list has room to breathe instead of wrapping inside a table cell.
- */
 export default function ManualActionItemsPanel({
   correlationId,
   occurredAt,
   actionNames,
   reviewerName,
+  failedCount,
   onClose,
 }: {
   correlationId: string;
   occurredAt: Date | string;
-  /** Names of the action(s) this run applied, for the panel heading. */
   actionNames: readonly string[];
-  /** The moderator (or "Automatic") who ran this action, for the heading. */
   reviewerName: string;
+  failedCount: number;
   onClose?: () => void;
 }) {
   const { data, loading, error } = useGQLManualActionItemsQuery({
@@ -65,6 +41,9 @@ export default function ManualActionItemsPanel({
       input: { correlationId, occurredAt, limit: PAGE_SIZE },
     },
   });
+
+  const failuresListed =
+    data?.manualActionItems?.items.filter((item) => item.failed).length ?? 0;
 
   return (
     <div className="flex w-full flex-col items-start gap-3">
@@ -95,18 +74,27 @@ export default function ManualActionItemsPanel({
             <div className="pb-2 text-sm text-slate-400">
               {data.manualActionItems.totalCount} item
               {data.manualActionItems.totalCount === 1 ? '' : 's'}
-              {data.manualActionItems.totalCount >
-              data.manualActionItems.items.length ? (
-                // Items come back ordered by id, so a truncated list is an
-                // arbitrary slice — failures can fall outside it. Say that
-                // rather than letting the reader assume they see every one.
-                <span className="text-coop-alert-red">
-                  {` — showing first ${data.manualActionItems.items.length}; some failures may not be listed`}
-                </span>
-              ) : (
-                ''
-              )}
+              {failedCount > 0 ? (
+                <>
+                  {', '}
+                  <span className="text-coop-alert-red">
+                    {failedCount} failed
+                  </span>
+                </>
+              ) : null}
             </div>
+            {data.manualActionItems.totalCount >
+            data.manualActionItems.items.length ? (
+              <div className="pb-2 text-xs text-slate-400">
+                Showing the first {data.manualActionItems.items.length}. Failed
+                items are listed first.
+              </div>
+            ) : null}
+            {failuresListed < failedCount ? (
+              <div className="pb-2 text-sm font-medium text-coop-alert-red">
+                Only {failuresListed} of {failedCount} failures are listed.
+              </div>
+            ) : null}
             <ul className="flex max-h-[65vh] flex-col gap-1 overflow-y-auto">
               {data.manualActionItems.items.map((item) => (
                 <li

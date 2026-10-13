@@ -122,40 +122,6 @@ gql`
     }
   }
 
-  # This page no longer queries getRecentDecisions directly (it uses
-  # recentModerationActivity below), but the operation stays defined here:
-  # ItemActionHistory.tsx still calls useGQLGetRecentDecisionsQuery, and
-  # graphql-codegen only generates a hook for an operation whose document
-  # text exists somewhere in the client. Removing this would silently break
-  # that unrelated page's codegen output.
-  query GetRecentDecisions($input: RecentDecisionsInput!) {
-    getRecentDecisions(input: $input) {
-      id
-      jobId
-      queueId
-      reviewerId
-      itemId
-      itemTypeId
-      decisions {
-        ... on ManualReviewDecisionComponentBase {
-          ...ManualReviewDecisionComponentFields
-        }
-      }
-      relatedActions {
-        ... on ManualReviewDecisionComponentBase {
-          ...ManualReviewDecisionComponentFields
-        }
-      }
-      createdAt
-      assignedAt
-      jobCreatedAt
-      decisionReason
-    }
-  }
-
-  # Skips CSV export. This is untouched by the merged-feed cursor paging
-  # above: skips are offset-paged via RecentDecisionsInput { filter, page },
-  # not the activity feed's cursor.
   query getSkipsForRecentDecisions($input: RecentDecisionsInput!) {
     getSkipsForRecentDecisions(input: $input) {
       jobId
@@ -236,25 +202,10 @@ type NormalizedActivityRow = {
   action: ManualActionRowData | undefined;
 };
 
-/**
- * The side panel shows exactly one thing at a time — a decision or a manual
- * action, never both. Modeling the selection as a single discriminated union
- * (rather than two independent `useState`s) makes that invariant structural:
- * setting one always replaces the other, so there's no separate "clear the
- * other one" call to remember at each call site.
- */
 type ActivitySelection =
   | { kind: 'decision'; decision: GQLManualReviewDecision }
   | { kind: 'action'; action: ManualActionRowData };
 
-/**
- * The decision-detail side panel and the `getDecidedJob` lookup both predate
- * the merged feed and still expect a `ManualReviewDecision`-shaped object.
- * `ReviewJobDecisionRow.id` is the same underlying decision id `getRecentDecisions`
- * used to return (see `mapDecisionRow` server-side), so this mapping is safe.
- * `relatedActions` has no equivalent on the row — the merged feed never
- * fetched it — so it's always empty here.
- */
 function toManualReviewDecision(row: ReviewJobRow): GQLManualReviewDecision {
   return {
     __typename: 'ManualReviewDecision',
@@ -450,15 +401,6 @@ export default function ManualReviewRecentDecisions() {
     fetchPolicy: 'cache-and-network',
   });
 
-  // Manual actions are only ever taken from Investigation or Bulk Actioning,
-  // so the server gates them on VIEW_INVESTIGATION. EXTERNAL_MODERATOR — the
-  // read-only role for external moderation partners — is the only role without
-  // it. Mirror the gate here so such a reviewer gets the decisions-only page
-  // they had before this feature, rather than a Show control whose other two
-  // options silently return nothing.
-  // Permissive until permissions actually load, so the common case never
-  // changes the query variables mid-flight and refetches. The server enforces
-  // this gate regardless; this is only about not offering dead controls.
   const loadedPermissions = orgLookupData?.me?.permissions;
   const canViewManualActions =
     loadedPermissions == null ||
@@ -1690,6 +1632,7 @@ export default function ManualReviewRecentDecisions() {
                   selectedAction.actionIds,
                 ).map(({ name }) => name)}
                 reviewerName={getReviewerName(selectedAction.reviewerId)}
+                failedCount={selectedAction.failedCount}
                 onClose={() => {
                   setSelection(undefined);
                   navigate(`/dashboard/manual_review/recent/`, {

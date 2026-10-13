@@ -9919,6 +9919,119 @@ export type GQLGetDecidedJobFromJobIdQuery = {
   } | null;
 };
 
+export type GQLGetRecentDecisionsQueryVariables = Exact<{
+  input: GQLRecentDecisionsInput;
+}>;
+
+export type GQLGetRecentDecisionsQuery = {
+  readonly __typename: 'Query';
+  readonly getRecentDecisions: ReadonlyArray<{
+    readonly __typename: 'ManualReviewDecision';
+    readonly id: string;
+    readonly jobId: string;
+    readonly queueId: string;
+    readonly reviewerId?: string | null;
+    readonly itemId?: string | null;
+    readonly itemTypeId?: string | null;
+    readonly createdAt: Date | string;
+    readonly assignedAt?: Date | string | null;
+    readonly jobCreatedAt?: Date | string | null;
+    readonly decisionReason?: string | null;
+    readonly decisions: ReadonlyArray<
+      | {
+          readonly __typename: 'AcceptAppealDecisionComponent';
+          readonly appealId: string;
+          readonly type: GQLManualReviewDecisionType;
+        }
+      | {
+          readonly __typename: 'AutomaticCloseDecisionComponent';
+          readonly type: GQLManualReviewDecisionType;
+        }
+      | {
+          readonly __typename: 'IgnoreDecisionComponent';
+          readonly type: GQLManualReviewDecisionType;
+        }
+      | {
+          readonly __typename: 'RejectAppealDecisionComponent';
+          readonly appealId: string;
+          readonly type: GQLManualReviewDecisionType;
+        }
+      | {
+          readonly __typename: 'SubmitNCMECReportDecisionComponent';
+          readonly type: GQLManualReviewDecisionType;
+          readonly reportedMedia: ReadonlyArray<{
+            readonly __typename: 'NcmecReportedMediaDetails';
+            readonly id: string;
+            readonly typeId: string;
+            readonly url: string;
+            readonly fileAnnotations: ReadonlyArray<GQLNcmecFileAnnotation>;
+            readonly industryClassification: GQLNcmecIndustryClassification;
+          }>;
+        }
+      | {
+          readonly __typename: 'TransformJobAndRecreateInQueueDecisionComponent';
+          readonly newQueueId?: string | null;
+          readonly originalQueueId?: string | null;
+          readonly type: GQLManualReviewDecisionType;
+        }
+      | {
+          readonly __typename: 'UserOrRelatedActionDecisionComponent';
+          readonly itemTypeId: string;
+          readonly itemIds: ReadonlyArray<string>;
+          readonly actionIds: ReadonlyArray<string>;
+          readonly policyIds: ReadonlyArray<string>;
+          readonly type: GQLManualReviewDecisionType;
+        }
+    >;
+    readonly relatedActions: ReadonlyArray<
+      | {
+          readonly __typename: 'AcceptAppealDecisionComponent';
+          readonly appealId: string;
+          readonly type: GQLManualReviewDecisionType;
+        }
+      | {
+          readonly __typename: 'AutomaticCloseDecisionComponent';
+          readonly type: GQLManualReviewDecisionType;
+        }
+      | {
+          readonly __typename: 'IgnoreDecisionComponent';
+          readonly type: GQLManualReviewDecisionType;
+        }
+      | {
+          readonly __typename: 'RejectAppealDecisionComponent';
+          readonly appealId: string;
+          readonly type: GQLManualReviewDecisionType;
+        }
+      | {
+          readonly __typename: 'SubmitNCMECReportDecisionComponent';
+          readonly type: GQLManualReviewDecisionType;
+          readonly reportedMedia: ReadonlyArray<{
+            readonly __typename: 'NcmecReportedMediaDetails';
+            readonly id: string;
+            readonly typeId: string;
+            readonly url: string;
+            readonly fileAnnotations: ReadonlyArray<GQLNcmecFileAnnotation>;
+            readonly industryClassification: GQLNcmecIndustryClassification;
+          }>;
+        }
+      | {
+          readonly __typename: 'TransformJobAndRecreateInQueueDecisionComponent';
+          readonly newQueueId?: string | null;
+          readonly originalQueueId?: string | null;
+          readonly type: GQLManualReviewDecisionType;
+        }
+      | {
+          readonly __typename: 'UserOrRelatedActionDecisionComponent';
+          readonly itemTypeId: string;
+          readonly itemIds: ReadonlyArray<string>;
+          readonly actionIds: ReadonlyArray<string>;
+          readonly policyIds: ReadonlyArray<string>;
+          readonly type: GQLManualReviewDecisionType;
+        }
+    >;
+  }>;
+};
+
 export type GQLManualActionItemsQueryVariables = Exact<{
   input: GQLManualActionItemsInput;
 }>;
@@ -10977,119 +11090,6 @@ export type GQLOrgLookupDataQuery = {
       readonly name: string;
     }>;
   } | null;
-};
-
-export type GQLGetRecentDecisionsQueryVariables = Exact<{
-  input: GQLRecentDecisionsInput;
-}>;
-
-export type GQLGetRecentDecisionsQuery = {
-  readonly __typename: 'Query';
-  readonly getRecentDecisions: ReadonlyArray<{
-    readonly __typename: 'ManualReviewDecision';
-    readonly id: string;
-    readonly jobId: string;
-    readonly queueId: string;
-    readonly reviewerId?: string | null;
-    readonly itemId?: string | null;
-    readonly itemTypeId?: string | null;
-    readonly createdAt: Date | string;
-    readonly assignedAt?: Date | string | null;
-    readonly jobCreatedAt?: Date | string | null;
-    readonly decisionReason?: string | null;
-    readonly decisions: ReadonlyArray<
-      | {
-          readonly __typename: 'AcceptAppealDecisionComponent';
-          readonly appealId: string;
-          readonly type: GQLManualReviewDecisionType;
-        }
-      | {
-          readonly __typename: 'AutomaticCloseDecisionComponent';
-          readonly type: GQLManualReviewDecisionType;
-        }
-      | {
-          readonly __typename: 'IgnoreDecisionComponent';
-          readonly type: GQLManualReviewDecisionType;
-        }
-      | {
-          readonly __typename: 'RejectAppealDecisionComponent';
-          readonly appealId: string;
-          readonly type: GQLManualReviewDecisionType;
-        }
-      | {
-          readonly __typename: 'SubmitNCMECReportDecisionComponent';
-          readonly type: GQLManualReviewDecisionType;
-          readonly reportedMedia: ReadonlyArray<{
-            readonly __typename: 'NcmecReportedMediaDetails';
-            readonly id: string;
-            readonly typeId: string;
-            readonly url: string;
-            readonly fileAnnotations: ReadonlyArray<GQLNcmecFileAnnotation>;
-            readonly industryClassification: GQLNcmecIndustryClassification;
-          }>;
-        }
-      | {
-          readonly __typename: 'TransformJobAndRecreateInQueueDecisionComponent';
-          readonly newQueueId?: string | null;
-          readonly originalQueueId?: string | null;
-          readonly type: GQLManualReviewDecisionType;
-        }
-      | {
-          readonly __typename: 'UserOrRelatedActionDecisionComponent';
-          readonly itemTypeId: string;
-          readonly itemIds: ReadonlyArray<string>;
-          readonly actionIds: ReadonlyArray<string>;
-          readonly policyIds: ReadonlyArray<string>;
-          readonly type: GQLManualReviewDecisionType;
-        }
-    >;
-    readonly relatedActions: ReadonlyArray<
-      | {
-          readonly __typename: 'AcceptAppealDecisionComponent';
-          readonly appealId: string;
-          readonly type: GQLManualReviewDecisionType;
-        }
-      | {
-          readonly __typename: 'AutomaticCloseDecisionComponent';
-          readonly type: GQLManualReviewDecisionType;
-        }
-      | {
-          readonly __typename: 'IgnoreDecisionComponent';
-          readonly type: GQLManualReviewDecisionType;
-        }
-      | {
-          readonly __typename: 'RejectAppealDecisionComponent';
-          readonly appealId: string;
-          readonly type: GQLManualReviewDecisionType;
-        }
-      | {
-          readonly __typename: 'SubmitNCMECReportDecisionComponent';
-          readonly type: GQLManualReviewDecisionType;
-          readonly reportedMedia: ReadonlyArray<{
-            readonly __typename: 'NcmecReportedMediaDetails';
-            readonly id: string;
-            readonly typeId: string;
-            readonly url: string;
-            readonly fileAnnotations: ReadonlyArray<GQLNcmecFileAnnotation>;
-            readonly industryClassification: GQLNcmecIndustryClassification;
-          }>;
-        }
-      | {
-          readonly __typename: 'TransformJobAndRecreateInQueueDecisionComponent';
-          readonly newQueueId?: string | null;
-          readonly originalQueueId?: string | null;
-          readonly type: GQLManualReviewDecisionType;
-        }
-      | {
-          readonly __typename: 'UserOrRelatedActionDecisionComponent';
-          readonly itemTypeId: string;
-          readonly itemIds: ReadonlyArray<string>;
-          readonly actionIds: ReadonlyArray<string>;
-          readonly policyIds: ReadonlyArray<string>;
-          readonly type: GQLManualReviewDecisionType;
-        }
-    >;
-  }>;
 };
 
 export type GQLGetSkipsForRecentDecisionsQueryVariables = Exact<{
@@ -32707,6 +32707,129 @@ export type GQLGetDecidedJobFromJobIdQueryResult = Apollo.QueryResult<
   GQLGetDecidedJobFromJobIdQuery,
   GQLGetDecidedJobFromJobIdQueryVariables
 >;
+export const GQLGetRecentDecisionsDocument = gql`
+  query GetRecentDecisions($input: RecentDecisionsInput!) {
+    getRecentDecisions(input: $input) {
+      id
+      jobId
+      queueId
+      reviewerId
+      itemId
+      itemTypeId
+      decisions {
+        ... on ManualReviewDecisionComponentBase {
+          ...ManualReviewDecisionComponentFields
+        }
+      }
+      relatedActions {
+        ... on ManualReviewDecisionComponentBase {
+          ...ManualReviewDecisionComponentFields
+        }
+      }
+      createdAt
+      assignedAt
+      jobCreatedAt
+      decisionReason
+    }
+  }
+  ${GQLManualReviewDecisionComponentFieldsFragmentDoc}
+`;
+
+/**
+ * __useGQLGetRecentDecisionsQuery__
+ *
+ * To run a query within a React component, call `useGQLGetRecentDecisionsQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGQLGetRecentDecisionsQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useGQLGetRecentDecisionsQuery({
+ *   variables: {
+ *      input: // value for 'input'
+ *   },
+ * });
+ */
+export function useGQLGetRecentDecisionsQuery(
+  baseOptions: Apollo.QueryHookOptions<
+    GQLGetRecentDecisionsQuery,
+    GQLGetRecentDecisionsQueryVariables
+  > &
+    (
+      | { variables: GQLGetRecentDecisionsQueryVariables; skip?: boolean }
+      | { skip: boolean }
+    ),
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<
+    GQLGetRecentDecisionsQuery,
+    GQLGetRecentDecisionsQueryVariables
+  >(GQLGetRecentDecisionsDocument, options);
+}
+export function useGQLGetRecentDecisionsLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<
+    GQLGetRecentDecisionsQuery,
+    GQLGetRecentDecisionsQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<
+    GQLGetRecentDecisionsQuery,
+    GQLGetRecentDecisionsQueryVariables
+  >(GQLGetRecentDecisionsDocument, options);
+}
+// @ts-ignore
+export function useGQLGetRecentDecisionsSuspenseQuery(
+  baseOptions?: Apollo.SuspenseQueryHookOptions<
+    GQLGetRecentDecisionsQuery,
+    GQLGetRecentDecisionsQueryVariables
+  >,
+): Apollo.UseSuspenseQueryResult<
+  GQLGetRecentDecisionsQuery,
+  GQLGetRecentDecisionsQueryVariables
+>;
+export function useGQLGetRecentDecisionsSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLGetRecentDecisionsQuery,
+        GQLGetRecentDecisionsQueryVariables
+      >,
+): Apollo.UseSuspenseQueryResult<
+  GQLGetRecentDecisionsQuery | undefined,
+  GQLGetRecentDecisionsQueryVariables
+>;
+export function useGQLGetRecentDecisionsSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLGetRecentDecisionsQuery,
+        GQLGetRecentDecisionsQueryVariables
+      >,
+) {
+  const options =
+    baseOptions === Apollo.skipToken
+      ? baseOptions
+      : { ...defaultOptions, ...baseOptions };
+  return Apollo.useSuspenseQuery<
+    GQLGetRecentDecisionsQuery,
+    GQLGetRecentDecisionsQueryVariables
+  >(GQLGetRecentDecisionsDocument, options);
+}
+export type GQLGetRecentDecisionsQueryHookResult = ReturnType<
+  typeof useGQLGetRecentDecisionsQuery
+>;
+export type GQLGetRecentDecisionsLazyQueryHookResult = ReturnType<
+  typeof useGQLGetRecentDecisionsLazyQuery
+>;
+export type GQLGetRecentDecisionsSuspenseQueryHookResult = ReturnType<
+  typeof useGQLGetRecentDecisionsSuspenseQuery
+>;
+export type GQLGetRecentDecisionsQueryResult = Apollo.QueryResult<
+  GQLGetRecentDecisionsQuery,
+  GQLGetRecentDecisionsQueryVariables
+>;
 export const GQLManualActionItemsDocument = gql`
   query ManualActionItems($input: ManualActionItemsInput!) {
     manualActionItems(input: $input) {
@@ -34659,129 +34782,6 @@ export type GQLOrgLookupDataSuspenseQueryHookResult = ReturnType<
 export type GQLOrgLookupDataQueryResult = Apollo.QueryResult<
   GQLOrgLookupDataQuery,
   GQLOrgLookupDataQueryVariables
->;
-export const GQLGetRecentDecisionsDocument = gql`
-  query GetRecentDecisions($input: RecentDecisionsInput!) {
-    getRecentDecisions(input: $input) {
-      id
-      jobId
-      queueId
-      reviewerId
-      itemId
-      itemTypeId
-      decisions {
-        ... on ManualReviewDecisionComponentBase {
-          ...ManualReviewDecisionComponentFields
-        }
-      }
-      relatedActions {
-        ... on ManualReviewDecisionComponentBase {
-          ...ManualReviewDecisionComponentFields
-        }
-      }
-      createdAt
-      assignedAt
-      jobCreatedAt
-      decisionReason
-    }
-  }
-  ${GQLManualReviewDecisionComponentFieldsFragmentDoc}
-`;
-
-/**
- * __useGQLGetRecentDecisionsQuery__
- *
- * To run a query within a React component, call `useGQLGetRecentDecisionsQuery` and pass it any options that fit your needs.
- * When your component renders, `useGQLGetRecentDecisionsQuery` returns an object from Apollo Client that contains loading, error, and data properties
- * you can use to render your UI.
- *
- * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
- *
- * @example
- * const { data, loading, error } = useGQLGetRecentDecisionsQuery({
- *   variables: {
- *      input: // value for 'input'
- *   },
- * });
- */
-export function useGQLGetRecentDecisionsQuery(
-  baseOptions: Apollo.QueryHookOptions<
-    GQLGetRecentDecisionsQuery,
-    GQLGetRecentDecisionsQueryVariables
-  > &
-    (
-      | { variables: GQLGetRecentDecisionsQueryVariables; skip?: boolean }
-      | { skip: boolean }
-    ),
-) {
-  const options = { ...defaultOptions, ...baseOptions };
-  return Apollo.useQuery<
-    GQLGetRecentDecisionsQuery,
-    GQLGetRecentDecisionsQueryVariables
-  >(GQLGetRecentDecisionsDocument, options);
-}
-export function useGQLGetRecentDecisionsLazyQuery(
-  baseOptions?: Apollo.LazyQueryHookOptions<
-    GQLGetRecentDecisionsQuery,
-    GQLGetRecentDecisionsQueryVariables
-  >,
-) {
-  const options = { ...defaultOptions, ...baseOptions };
-  return Apollo.useLazyQuery<
-    GQLGetRecentDecisionsQuery,
-    GQLGetRecentDecisionsQueryVariables
-  >(GQLGetRecentDecisionsDocument, options);
-}
-// @ts-ignore
-export function useGQLGetRecentDecisionsSuspenseQuery(
-  baseOptions?: Apollo.SuspenseQueryHookOptions<
-    GQLGetRecentDecisionsQuery,
-    GQLGetRecentDecisionsQueryVariables
-  >,
-): Apollo.UseSuspenseQueryResult<
-  GQLGetRecentDecisionsQuery,
-  GQLGetRecentDecisionsQueryVariables
->;
-export function useGQLGetRecentDecisionsSuspenseQuery(
-  baseOptions?:
-    | Apollo.SkipToken
-    | Apollo.SuspenseQueryHookOptions<
-        GQLGetRecentDecisionsQuery,
-        GQLGetRecentDecisionsQueryVariables
-      >,
-): Apollo.UseSuspenseQueryResult<
-  GQLGetRecentDecisionsQuery | undefined,
-  GQLGetRecentDecisionsQueryVariables
->;
-export function useGQLGetRecentDecisionsSuspenseQuery(
-  baseOptions?:
-    | Apollo.SkipToken
-    | Apollo.SuspenseQueryHookOptions<
-        GQLGetRecentDecisionsQuery,
-        GQLGetRecentDecisionsQueryVariables
-      >,
-) {
-  const options =
-    baseOptions === Apollo.skipToken
-      ? baseOptions
-      : { ...defaultOptions, ...baseOptions };
-  return Apollo.useSuspenseQuery<
-    GQLGetRecentDecisionsQuery,
-    GQLGetRecentDecisionsQueryVariables
-  >(GQLGetRecentDecisionsDocument, options);
-}
-export type GQLGetRecentDecisionsQueryHookResult = ReturnType<
-  typeof useGQLGetRecentDecisionsQuery
->;
-export type GQLGetRecentDecisionsLazyQueryHookResult = ReturnType<
-  typeof useGQLGetRecentDecisionsLazyQuery
->;
-export type GQLGetRecentDecisionsSuspenseQueryHookResult = ReturnType<
-  typeof useGQLGetRecentDecisionsSuspenseQuery
->;
-export type GQLGetRecentDecisionsQueryResult = Apollo.QueryResult<
-  GQLGetRecentDecisionsQuery,
-  GQLGetRecentDecisionsQueryVariables
 >;
 export const GQLGetSkipsForRecentDecisionsDocument = gql`
   query getSkipsForRecentDecisions($input: RecentDecisionsInput!) {
@@ -46272,6 +46272,7 @@ export const namedOperations = {
     ItemTypes: 'ItemTypes',
     ItemActionHistory: 'ItemActionHistory',
     getDecidedJobFromJobId: 'getDecidedJobFromJobId',
+    GetRecentDecisions: 'GetRecentDecisions',
     ManualActionItems: 'ManualActionItems',
     ManualReviewMetrics: 'ManualReviewMetrics',
     getAverageTimeToReview: 'getAverageTimeToReview',
@@ -46286,7 +46287,6 @@ export const namedOperations = {
     getSkippedJobsForUser: 'getSkippedJobsForUser',
     RecentDecisionsSummaryData: 'RecentDecisionsSummaryData',
     OrgLookupData: 'OrgLookupData',
-    GetRecentDecisions: 'GetRecentDecisions',
     getSkipsForRecentDecisions: 'getSkipsForRecentDecisions',
     GetRecentModerationActivity: 'GetRecentModerationActivity',
     GetDecidedJob: 'GetDecidedJob',
