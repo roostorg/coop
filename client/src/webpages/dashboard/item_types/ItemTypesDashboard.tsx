@@ -496,7 +496,7 @@ export default function ItemTypesDashboard() {
         emptyDashboard
       ) : (
         /* @ts-ignore */
-        <Table columns={columns} data={tableData} />
+        <Table columns={columns} data={tableData} containerClassName="w-full" />
       )}
       {deleteModal}
       {errorModal}
