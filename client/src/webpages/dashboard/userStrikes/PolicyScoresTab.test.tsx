@@ -48,6 +48,17 @@ vi.mock('@/graphql/generated', async () => {
           userStrikeCount: 2,
           applyUserStrikeCountConfigToChildren: false,
         },
+        {
+          __typename: 'Policy',
+          id: 'great-grandchild',
+          name: 'Great-grandchild policy',
+          parentId: 'grandchild',
+          policyText: null,
+          enforcementGuidelines: null,
+          policyType: null,
+          userStrikeCount: 1,
+          applyUserStrikeCountConfigToChildren: false,
+        },
       ],
     },
   };
@@ -63,7 +74,14 @@ vi.mock('@/graphql/generated', async () => {
   };
 });
 
+const scoreInput = (policyName: string) =>
+  within(screen.getByText(policyName).closest('tr')!).getByRole('spinbutton');
+
 describe('PolicyScoresTab', () => {
+  beforeEach(() => {
+    updatePolicy.mockClear();
+  });
+
   it("shows a child's saved score while the policy is not being edited", async () => {
     render(
       <MemoryRouter>
@@ -99,6 +117,60 @@ describe('PolicyScoresTab', () => {
           id: 'child',
           applyUserStrikeCountConfigToChildren: false,
         }),
+      },
+    });
+  });
+
+  it('shows the score of a sub-policy that applies to its sub-policies at every depth below it', async () => {
+    render(
+      <MemoryRouter>
+        <PolicyScoresTab />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByText('Edit Policy Scores'));
+    expect(scoreInput('Child policy')).toBeEnabled();
+    for (const name of ['Grandchild policy', 'Great-grandchild policy']) {
+      expect(scoreInput(name)).toBeDisabled();
+      expect(scoreInput(name)).toHaveValue(3);
+    }
+
+    fireEvent.change(scoreInput('Child policy'), { target: { value: '7' } });
+    expect(scoreInput('Grandchild policy')).toHaveValue(7);
+    expect(scoreInput('Great-grandchild policy')).toHaveValue(7);
+  });
+
+  it('does not save its own score for a policy whose score is inherited', async () => {
+    render(
+      <MemoryRouter>
+        <PolicyScoresTab />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByText('Edit Policy Scores'));
+    const childSwitch = within(
+      screen.getByText('Child policy').closest('tr')!,
+    ).getByRole('switch');
+    fireEvent.click(childSwitch);
+    fireEvent.change(scoreInput('Great-grandchild policy'), {
+      target: { value: '9' },
+    });
+    fireEvent.click(childSwitch);
+    expect(scoreInput('Great-grandchild policy')).toHaveValue(3);
+
+    fireEvent.click(screen.getByText('Save Policy Scores'));
+
+    expect(updatePolicy).toHaveBeenCalledWith({
+      variables: {
+        input: expect.objectContaining({
+          id: 'child',
+          applyUserStrikeCountConfigToChildren: true,
+        }),
+      },
+    });
+    expect(updatePolicy).not.toHaveBeenCalledWith({
+      variables: {
+        input: expect.objectContaining({ userStrikeCount: 9 }),
       },
     });
   });
