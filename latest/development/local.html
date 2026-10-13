@@ -40,7 +40,7 @@
             const path_to_root = "../";
             const default_light_theme = "roost";
             const default_dark_theme = "roost";
-            window.path_to_searchindex_js = "../searchindex-101165bb.js";
+            window.path_to_searchindex_js = "../searchindex-0f5f957b.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-33b43635.js"></script>
@@ -201,7 +201,7 @@
 <ul>
 <li><strong>Operating System</strong>: macOS, Linux, or Windows with WSL2</li>
 <li><strong>git</strong> for cloning and contributing</li>
-<li><strong>Node.js 24</strong>, <strong>nvm</strong>, and <strong>npm</strong></li>
+<li><strong>Node.js 24</strong>, <strong>nvm</strong>, and <strong>pnpm</strong> (the version is pinned by <code>packageManager</code> in the root <code>package.json</code>)</li>
 <li><strong>Docker</strong> and <strong>Docker Compose</strong></li>
 <li><strong>4 GiB RAM</strong> minimum for a bare instance, 8 GiB or more recommended for development</li>
 </ul>
@@ -209,12 +209,8 @@
 <pre><code class="language-sh">nvm install &amp;&amp; nvm use
 </code></pre>
 <h2 id="dependencies"><a class="header" href="#dependencies">Dependencies</a></h2>
-<p>The Coop repository is composed of multiple components, managed as individual npm packages each with their own dependencies.</p>
-<pre><code class="language-sh">npm install
-(cd db &amp;&amp; npm install)
-(cd server &amp;&amp; npm install)
-(cd client &amp;&amp; npm install)
-(cd migrator &amp;&amp; npm install)
+<p>The Coop repository is composed of multiple components, managed as a pnpm workspace: each package has its own <code>package.json</code>, and one <code>pnpm install</code> from the root installs them all.</p>
+<pre><code class="language-sh">pnpm install
 </code></pre>
 <h2 id="environment-setup"><a class="header" href="#environment-setup">Environment setup</a></h2>
 <p>Copy the <code>.env.example</code> files to <code>.env</code> in <code>db/</code>, <code>server/</code>, and <code>client/</code>. Edit for your environment, though the defaults work for local development and demoing. The example files contain all available options with documentation.</p>
@@ -227,7 +223,7 @@
 <p>The content URL pattern (<code>VITE_CONTENT_URL_PATTERN</code>) determines which content URLs (if any) are rendered in an iframe versus just as links in review jobs. Domains in this list (e.g. <code>example.com</code>) match exact domains and subdomains, while substrings (e.g. <code>foo</code>) are substring-matched against content URL hostnames for backward compatibility.</p>
 <p>The content proxy URL (<code>VITE_CONTENT_PROXY_URL</code>) is optional and unset by default; without it, content matching the content URL pattern is loaded directly in an iframe. Implementing a content proxy enables you to implement wellness features that can’t be applied to an iframe otherwise.</p>
 <h2 id="docker-services"><a class="header" href="#docker-services">Docker services</a></h2>
-<p><code>npm run up</code> starts the backing services using Docker:</p>
+<p><code>pnpm run up</code> starts the backing services using Docker:</p>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -248,24 +244,24 @@
 docker logs &lt;container-name&gt;
 </code></pre>
 <p>Stop services:</p>
-<pre><code class="language-sh">npm run down
+<pre><code class="language-sh">pnpm run down
 </code></pre>
 <h2 id="database-operations"><a class="header" href="#database-operations">Database operations</a></h2>
 <h3 id="create-databases"><a class="header" href="#create-databases">Create databases</a></h3>
-<pre><code class="language-sh">npm run db:create -- --env staging --db api-server-pg
-npm run db:create -- --env staging --db scylla
-npm run db:create -- --env staging --db clickhouse
+<pre><code class="language-sh">pnpm run db:create --env staging --db api-server-pg
+pnpm run db:create --env staging --db scylla
+pnpm run db:create --env staging --db clickhouse
 </code></pre>
 <h3 id="run-migrations"><a class="header" href="#run-migrations">Run migrations</a></h3>
-<pre><code class="language-sh">npm run db:update -- --env staging --db api-server-pg
-npm run db:update -- --env staging --db scylla
-npm run db:update -- --env staging --db clickhouse
+<pre><code class="language-sh">pnpm run db:update --env staging --db api-server-pg
+pnpm run db:update --env staging --db scylla
+pnpm run db:update --env staging --db clickhouse
 </code></pre>
 <h3 id="other-commands"><a class="header" href="#other-commands">Other commands</a></h3>
-<pre><code class="language-sh">npm run db:add -- --name &lt;migration-name&gt; --db api-server-pg
-npm run db:clean    # Drop and recreate (destructive)
-npm run db:create   # Create database
-npm run db:drop     # Drop database
+<pre><code class="language-sh">pnpm run db:add --name &lt;migration-name&gt; --db api-server-pg
+pnpm run db:clean    # Drop and recreate (destructive)
+pnpm run db:create   # Create database
+pnpm run db:drop     # Drop database
 </code></pre>
 <h3 id="migration-locations"><a class="header" href="#migration-locations">Migration locations</a></h3>
 <pre><code class="language-text">db/src/scripts/
@@ -274,28 +270,28 @@ npm run db:drop     # Drop database
 └── scylla/           # ScyllaDB
 </code></pre>
 <h2 id="running-the-application"><a class="header" href="#running-the-application">Running the application</a></h2>
-<p>For convenience, the <code>start</code> npm script in the root of the repository will start each of the client, server, and GraphQL codegen, plus open a web browser. The <code>compile</code> script does the same without opening the browser.</p>
-<pre><code class="language-sh">npm run start
+<p>For convenience, the <code>start</code> script in the root of the repository will start each of the client, server, and GraphQL codegen, plus open a web browser. The <code>compile</code> script does the same without opening the browser.</p>
+<pre><code class="language-sh">pnpm run start
 </code></pre>
 <p>or</p>
-<pre><code class="language-sh">npm run compile
+<pre><code class="language-sh">pnpm run compile
 </code></pre>
 <h3 id="individual-services"><a class="header" href="#individual-services">Individual services</a></h3>
-<p>To start services individually (i.e. to aid in debugging), run the <code>start</code> npm script for the <code>server</code> and <code>client</code> packages in individual terminal windows/tabs.</p>
+<p>To start services individually (i.e. to aid in debugging), run the <code>start</code> script for the <code>server</code> and <code>client</code> packages in individual terminal windows/tabs.</p>
 <!-- TODO: confirm and standardize https://github.com/roostorg/coop/issues/476 -->
 <p>Start the server your first terminal:</p>
-<pre><code class="language-sh">cd server &amp;&amp; npm run start
+<pre><code class="language-sh">cd server &amp;&amp; pnpm run start
 </code></pre>
 <p>Start the client in your second terminal:</p>
-<pre><code class="language-sh">cd client &amp;&amp; npm run start
+<pre><code class="language-sh">cd client &amp;&amp; pnpm run start
 </code></pre>
 <p>Optionally, to keep GraphQL schema changes up to date, run in a third terminal:</p>
-<pre><code class="language-sh">npm run generate:watch
+<pre><code class="language-sh">pnpm run generate:watch
 </code></pre>
 <h3 id="background-workers"><a class="header" href="#background-workers">Background workers</a></h3>
 <p>Item submissions are processed asynchronously via a BullMQ worker that consumes from Redis. To process items locally, run the worker in a separate terminal:</p>
 <pre><code class="language-sh">cd server
-npm run runWorkerOrJob ItemProcessingWorker
+pnpm run runWorkerOrJob ItemProcessingWorker
 </code></pre>
 <p>Without this running, submitted items will be enqueued in Redis but not processed. Other available workers/jobs can be found in <code>server/iocContainer/services/workersAndJobs.ts</code>.</p>
 <p>To preview emails locally without configuring SES or SendGrid, add the
@@ -306,7 +302,7 @@ messages can contain user information:</p>
 <pre><code class="language-sh">EMAIL_TRANSPORT=console
 </code></pre>
 <h3 id="with-distributed-tracing"><a class="header" href="#with-distributed-tracing">With distributed tracing</a></h3>
-<pre><code class="language-sh">cd server &amp;&amp; npm run start:trace
+<pre><code class="language-sh">cd server &amp;&amp; pnpm run start:trace
 </code></pre>
 <!-- TODO: Expand on this https://github.com/roostorg/coop/issues/416 -->
 <p>View traces at <a href="http://localhost:16686">localhost:16686</a>.</p>
@@ -327,17 +323,17 @@ messages can contain user information:</p>
 <h2 id="testing"><a class="header" href="#testing">Testing</a></h2>
 <pre><code class="language-sh"># Server
 cd server
-npm run test              # Watch mode
-npm run test:prepush      # Single run
-npm run test:integ        # Integration tests
+pnpm run test              # Watch mode
+pnpm run test:prepush      # Single run
+pnpm run test:integ        # Integration tests
 
 # Client
 cd client
-npm run test              # Watch mode
-npm run test:prepush      # Single run
+pnpm run test              # Watch mode
+pnpm run test:prepush      # Single run
 
 # Full validation (run before pushing)
-npm run check:prepush
+pnpm run check:prepush
 </code></pre>
 <h2 id="running-ci-locally"><a class="header" href="#running-ci-locally">Running CI locally</a></h2>
 <p>Most PR checks are defined as <code>docker compose</code> services so you can reproduce them locally; formatting and GraphQL codegen run on the host Node install.</p>
@@ -347,25 +343,25 @@ npm run check:prepush
 <tr><th>CI job</th><th>Local command</th></tr>
 </thead>
 <tbody>
-<tr><td><code>check_formatting</code></td><td><code>npm ci &amp;&amp; npm run prettier</code></td></tr>
-<tr><td><code>check_generated_graphql</code></td><td><code>npm ci &amp;&amp; npm run generate &amp;&amp; test -z "$(git status --porcelain)"</code></td></tr>
-<tr><td><code>check_api_server</code> (lint)</td><td><code>docker compose run --rm backend npm run lint</code></td></tr>
-<tr><td><code>check_api_server</code> (typecheck)</td><td><code>docker compose run --rm backend npm run typecheck</code></td></tr>
-<tr><td><code>check_api_server</code> (build)</td><td><code>docker compose run --rm backend npm run build</code></td></tr>
-<tr><td><code>run_frontend_checks_if_changed</code> (lint)</td><td><code>docker compose run --rm client npm run lint</code></td></tr>
-<tr><td><code>run_frontend_checks_if_changed</code> (build)</td><td><code>docker compose run --rm client npm run build</code></td></tr>
+<tr><td><code>check_formatting</code></td><td><code>pnpm install --frozen-lockfile &amp;&amp; pnpm run prettier</code></td></tr>
+<tr><td><code>check_generated_graphql</code></td><td><code>pnpm install --frozen-lockfile &amp;&amp; pnpm run generate &amp;&amp; test -z "$(git status --porcelain)"</code></td></tr>
+<tr><td><code>check_api_server</code> (lint)</td><td><code>docker compose run --rm backend pnpm run lint</code></td></tr>
+<tr><td><code>check_api_server</code> (typecheck)</td><td><code>docker compose run --rm backend pnpm run typecheck</code></td></tr>
+<tr><td><code>check_api_server</code> (build)</td><td><code>docker compose run --rm backend pnpm run build</code></td></tr>
+<tr><td><code>run_frontend_checks_if_changed</code> (lint)</td><td><code>docker compose run --rm client pnpm run lint</code></td></tr>
+<tr><td><code>run_frontend_checks_if_changed</code> (build)</td><td><code>docker compose run --rm client pnpm run build</code></td></tr>
 <tr><td><code>check_api_server</code> (test)</td><td><code>docker compose run --rm test</code></td></tr>
 </tbody>
 </table>
 </div>
 <p>Run the full suite (stops at first failure):</p>
-<pre><code class="language-sh">npm ci &amp;&amp; npm run prettier \
-  &amp;&amp; npm run generate &amp;&amp; test -z "$(git status --porcelain)" \
-  &amp;&amp; docker compose run --rm backend npm run lint \
-  &amp;&amp; docker compose run --rm backend npm run typecheck \
-  &amp;&amp; docker compose run --rm backend npm run build \
-  &amp;&amp; docker compose run --rm client npm run lint \
-  &amp;&amp; docker compose run --rm client npm run build \
+<pre><code class="language-sh">pnpm install --frozen-lockfile &amp;&amp; pnpm run prettier \
+  &amp;&amp; pnpm run generate &amp;&amp; test -z "$(git status --porcelain)" \
+  &amp;&amp; docker compose run --rm backend pnpm run lint \
+  &amp;&amp; docker compose run --rm backend pnpm run typecheck \
+  &amp;&amp; docker compose run --rm backend pnpm run build \
+  &amp;&amp; docker compose run --rm client pnpm run lint \
+  &amp;&amp; docker compose run --rm client pnpm run build \
   &amp;&amp; docker compose run --rm test
 </code></pre>
 <p>Tear down:</p>
@@ -375,8 +371,8 @@ docker compose down -v     # also drop DB volumes (fresh DBs next run)
 <p><code>check_migration_order</code> runs only in GitHub Actions; it’s GitHub-specific and not needed locally. When adding a migration, use <code>date -u +"%Y.%m.%dT%H.%M.%S"</code> for the filename prefix and CI will pass.</p>
 <h2 id="graphql-development"><a class="header" href="#graphql-development">GraphQL development</a></h2>
 <p>Coop uses schema-first GraphQL with bidirectional code generation.</p>
-<pre><code class="language-sh">npm run generate          # One-time
-npm run generate:watch    # Watch mode
+<pre><code class="language-sh">pnpm run generate          # One-time
+pnpm run generate:watch    # Watch mode
 </code></pre>
 <p>Generated files:</p>
 <ul>
@@ -388,12 +384,12 @@ npm run generate:watch    # Watch mode
 <h2 id="management-scripts"><a class="header" href="#management-scripts">Management scripts</a></h2>
 <p>Two utility scripts in <code>server/bin/</code> help with common operations:</p>
 <ul>
-<li><strong><code>npm run create-org</code></strong>: creates a new organization with an admin user and API key.</li>
-<li><strong><code>npm run get-invite</code></strong>: retrieves the signup link for a user who has been invited via the UI.</li>
+<li><strong><code>pnpm run create-org</code></strong>: creates a new organization with an admin user and API key.</li>
+<li><strong><code>pnpm run get-invite</code></strong>: retrieves the signup link for a user who has been invited via the UI.</li>
 </ul>
 <p>See <code>server/bin/README.md</code> for detailed usage and examples.</p>
 <h2 id="hma-development"><a class="header" href="#hma-development">HMA development</a></h2>
-<p>HMA is started automatically with <code>npm run up</code> along with the other backing services.</p>
+<p>HMA is started automatically with <code>pnpm run up</code> along with the other backing services.</p>
 <p>HMA is pre-configured in <code>server/.env</code> with <code>HMA_SERVICE_URL=http://localhost:9876</code>. No additional environment setup is needed for local development.</p>
 <h3 id="image-url-accessibility"><a class="header" href="#image-url-accessibility">Image URL accessibility</a></h3>
 <p>When submitting items to Coop, image URLs must be reachable by the HMA Docker container and not just your browser or the Node.js server.
@@ -403,7 +399,7 @@ HMA fetches the image itself to compute the hash. This means localhost URLs will
 <p>Then use <code>host.docker.internal:&lt;port&gt;</code> in image URLs when submitting items. This URL resolves correctly from both the browser and inside Docker.</p>
 <h2 id="troubleshooting"><a class="header" href="#troubleshooting">Troubleshooting</a></h2>
 <h3 id="scylladb-not-ready"><a class="header" href="#scylladb-not-ready">ScyllaDB not ready</a></h3>
-<p>ScyllaDB takes 30-60 seconds to initialize. If migrations fail immediately after <code>npm run up</code>, wait and retry.</p>
+<p>ScyllaDB takes 30-60 seconds to initialize. If migrations fail immediately after <code>pnpm run up</code>, wait and retry.</p>
 <h3 id="clickhouse-migration-fails"><a class="header" href="#clickhouse-migration-fails">ClickHouse migration fails</a></h3>
 <p>Ensure <code>CLICKHOUSE_USERNAME</code> and <code>CLICKHOUSE_PASSWORD</code> are set in your <code>.env</code>.</p>
 <h3 id="port-conflicts"><a class="header" href="#port-conflicts">Port conflicts</a></h3>
@@ -412,12 +408,12 @@ lsof -i :8080    # Server
 lsof -i :5432    # PostgreSQL
 </code></pre>
 <h3 id="reset-everything"><a class="header" href="#reset-everything">Reset everything</a></h3>
-<pre><code class="language-sh">npm run down
+<pre><code class="language-sh">pnpm run down
 docker volume prune    # Warning: removes all Docker volumes
-npm run up
-npm run db:update -- --env staging --db api-server-pg
-npm run db:update -- --env staging --db clickhouse
-npm run create-org
+pnpm run up
+pnpm run db:update --env staging --db api-server-pg
+pnpm run db:update --env staging --db clickhouse
+pnpm run create-org
 </code></pre>
 <h3 id="connecting-to-databases-directly"><a class="header" href="#connecting-to-databases-directly">Connecting to databases directly</a></h3>
 <pre><code class="language-sh"># PostgreSQL
@@ -431,9 +427,9 @@ clickhouse-client --host localhost --user default --password clickhouse
 redis-cli
 </code></pre>
 <h2 id="code-quality"><a class="header" href="#code-quality">Code quality</a></h2>
-<pre><code class="language-sh">npm run lint           # ESLint
-npm run prettier       # Prettier (check only; use `npm run prettier:fix` to write, alias `npm run format`)
-npm run check:prepush    # Run before pushing
+<pre><code class="language-sh">pnpm run lint           # ESLint
+pnpm run prettier       # Prettier (check only; use `pnpm run prettier:fix` to write, alias `pnpm run format`)
+pnpm run check:prepush    # Run before pushing
 </code></pre>
 
                     </main>

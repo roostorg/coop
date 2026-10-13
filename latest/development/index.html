@@ -40,7 +40,7 @@
             const path_to_root = "../";
             const default_light_theme = "roost";
             const default_dark_theme = "roost";
-            window.path_to_searchindex_js = "../searchindex-101165bb.js";
+            window.path_to_searchindex_js = "../searchindex-0f5f957b.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-33b43635.js"></script>
@@ -221,12 +221,9 @@ Docker version 29.4.3, build 055a478
 <p>If you get an error instead, see <a href="local.html#prerequisites">Prerequisites</a>.</p>
 </li>
 <li>
-<p><strong>Install dependencies</strong> with <code>npm</code> in the root folder and for each sub-package.</p>
+<p><strong>Install dependencies</strong> for every package with one <code>pnpm install</code> from the root folder.</p>
 <pre><code class="language-sh"># coop/
-npm install
-(cd db &amp;&amp; npm install)
-(cd server &amp;&amp; npm install)
-(cd client &amp;&amp; npm install)
+pnpm install
 </code></pre>
 </li>
 <li>
@@ -240,27 +237,27 @@ cp client/.env.example client/.env
 <li>
 <p><strong>Start all backing services</strong>, including databases and queues. See <a href="local.html#docker-services">Docker Services</a> for ports and more details.</p>
 <pre><code class="language-sh"># coop/
-npm run up
+pnpm run up
 </code></pre>
 <p>Wait for PostgreSQL, ClickHouse, ScyllaDB, and Redis to be healthy before continuing; you can check progress with <code>docker ps</code>.</p>
 </li>
 <li>
 <p><strong>Create databases</strong> and run migrations to ensure they’re set up correctly:</p>
 <pre><code class="language-sh"># coop/
-npm run db:create -- --env staging --db api-server-pg
-npm run db:create -- --env staging --db scylla
-npm run db:create -- --env staging --db clickhouse
+pnpm run db:create --env staging --db api-server-pg
+pnpm run db:create --env staging --db scylla
+pnpm run db:create --env staging --db clickhouse
 
-npm run db:update -- --env staging --db api-server-pg
-npm run db:update -- --env staging --db scylla
-npm run db:update -- --env staging --db clickhouse
+pnpm run db:update --env staging --db api-server-pg
+pnpm run db:update --env staging --db scylla
+pnpm run db:update --env staging --db clickhouse
 </code></pre>
 </li>
 <li>
 <p><strong>Create an organization and admin user</strong> using the <code>create-org</code> script from the <code>server/</code> folder, providing the appropriate details.</p>
 <p>For example:</p>
 <pre><code class="language-sh"># coop/server/
-npm run create-org -- \
+pnpm run create-org \
   --name "Your Organization" \
   --website "https://example.com" \
   --email "email@example.com" \
@@ -277,7 +274,7 @@ npm run create-org -- \
 cd ..
 
 # coop/
-npm run start
+pnpm run start
 </code></pre>
 <p>Log in at <a href="http://localhost:3000">localhost:3000</a> using the credentials you provided when running <code>create-org</code>. The initial page load may take a moment.</p>
 </li>
