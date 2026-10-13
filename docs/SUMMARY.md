@@ -27,6 +27,7 @@
   - [Docker Images](development/docker.md)
   - [Releases](development/releases.md)
   - [Deployment](development/deployment.md)
+  - [Email](development/email.md)
 
 ---
 
