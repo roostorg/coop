@@ -14,7 +14,6 @@ export default function MarkdownTextInput(props: {
   const editorRef = useRef<Editor | null>(null);
   const editor: Editor | null = useEditor(
     {
-      shouldRerenderOnTransaction: true,
       extensions: [
         StarterKit.configure({
           link: false,
