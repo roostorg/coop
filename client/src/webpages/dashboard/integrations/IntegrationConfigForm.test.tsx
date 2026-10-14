@@ -38,6 +38,7 @@ function renderForm(labelerVersions: GQLZentropiLabelerVersion[]) {
         title: 'Zentropi',
         docsUrl: 'https://zentropi.ai/api',
         requiresConfig: true,
+        configurationFields: [],
         logoUrl: null,
         logoWithBackgroundUrl: null,
         modelCard: {
