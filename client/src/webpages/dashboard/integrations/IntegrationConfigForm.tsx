@@ -78,6 +78,18 @@ gql`
           title
           docsUrl
           requiresConfig
+          configurationFields {
+            key
+            label
+            required
+            inputType
+            options {
+              value
+              label
+            }
+            placeholder
+            description
+          }
           logoUrl
           logoWithBackgroundUrl
           modelCard {
@@ -282,8 +294,21 @@ export default function IntegrationConfigForm() {
     'OPEN_AI',
     'ZENTROPI',
   ].includes(integrationName);
+  const configurationFields = apiConfig?.configurationFields ?? [];
+  const pluginCredential =
+    apiCredential.__typename === 'PluginIntegrationApiCredential'
+      ? (apiCredential.credential ?? {})
+      : {};
   const validationMessage = (() => {
     if (isPluginIntegration) {
+      const missing = configurationFields.find(
+        (field) =>
+          field.required &&
+          String(pluginCredential[field.key] ?? '').trim() === '',
+      );
+      if (missing) {
+        return `Please enter ${missing.label}`;
+      }
       return undefined;
     }
     if (
@@ -338,10 +363,19 @@ export default function IntegrationConfigForm() {
           },
         ];
         if (isPluginIntegration) {
-          const cred =
-            apiCredential.__typename === 'PluginIntegrationApiCredential'
-              ? (apiCredential.credential ?? {})
-              : {};
+          // Blank optional fields are omitted so plugins see them as unset.
+          const optionalKeys = new Set(
+            configurationFields
+              .filter((field) => !field.required)
+              .map((field) => field.key),
+          );
+          const cred = Object.fromEntries(
+            Object.entries(pluginCredential).filter(
+              ([key, value]) =>
+                key !== 'name' &&
+                !(optionalKeys.has(key) && String(value ?? '').trim() === ''),
+            ),
+          );
           await setPluginConfig({
             variables: {
               input: { integrationId: integrationName, credential: cred },
@@ -487,6 +521,7 @@ export default function IntegrationConfigForm() {
               setApiCredential={(cred: GQLIntegrationApiCredential) =>
                 setApiCredential(cred)
               }
+              configurationFields={configurationFields}
               compact
             />
             {saveButton}
@@ -500,6 +535,7 @@ export default function IntegrationConfigForm() {
             setApiCredential={(cred: GQLIntegrationApiCredential) =>
               setApiCredential(cred)
             }
+            configurationFields={configurationFields}
           />
           {saveButton}
         </>

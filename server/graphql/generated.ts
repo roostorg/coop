@@ -1518,6 +1518,11 @@ export type GQLIntegrationApiCredentialInput = {
 export type GQLIntegrationConfig = {
   readonly __typename?: 'IntegrationConfig';
   readonly apiCredential: GQLIntegrationApiCredential;
+  /**
+   * Form fields declared by a plugin manifest. Empty for built-in integrations,
+   * which have custom forms.
+   */
+  readonly configurationFields: ReadonlyArray<GQLIntegrationConfigField>;
   readonly docsUrl: Scalars['String']['output'];
   readonly logoUrl?: Maybe<Scalars['String']['output']>;
   readonly logoWithBackgroundUrl?: Maybe<Scalars['String']['output']>;
@@ -1526,6 +1531,34 @@ export type GQLIntegrationConfig = {
   readonly name: Scalars['String']['output'];
   readonly requiresConfig: Scalars['Boolean']['output'];
   readonly title: Scalars['String']['output'];
+};
+
+export type GQLIntegrationConfigField = {
+  readonly __typename?: 'IntegrationConfigField';
+  readonly description?: Maybe<Scalars['String']['output']>;
+  readonly inputType: GQLIntegrationConfigFieldInputType;
+  readonly key: Scalars['String']['output'];
+  readonly label: Scalars['String']['output'];
+  /** Choices for SELECT fields; null otherwise. */
+  readonly options?: Maybe<ReadonlyArray<GQLIntegrationConfigFieldOption>>;
+  readonly placeholder?: Maybe<Scalars['String']['output']>;
+  readonly required: Scalars['Boolean']['output'];
+};
+
+export const GQLIntegrationConfigFieldInputType = {
+  Array: 'ARRAY',
+  Json: 'JSON',
+  Password: 'PASSWORD',
+  Select: 'SELECT',
+  Text: 'TEXT',
+} as const;
+
+export type GQLIntegrationConfigFieldInputType =
+  (typeof GQLIntegrationConfigFieldInputType)[keyof typeof GQLIntegrationConfigFieldInputType];
+export type GQLIntegrationConfigFieldOption = {
+  readonly __typename?: 'IntegrationConfigFieldOption';
+  readonly label: Scalars['String']['output'];
+  readonly value: Scalars['String']['output'];
 };
 
 export type GQLIntegrationConfigQueryResponse =
@@ -6149,6 +6182,9 @@ export type GQLResolversTypes = {
       apiCredential: GQLResolversTypes['IntegrationApiCredential'];
     }
   >;
+  IntegrationConfigField: ResolverTypeWrapper<GQLIntegrationConfigField>;
+  IntegrationConfigFieldInputType: GQLIntegrationConfigFieldInputType;
+  IntegrationConfigFieldOption: ResolverTypeWrapper<GQLIntegrationConfigFieldOption>;
   IntegrationConfigQueryResponse: ResolverTypeWrapper<
     GQLResolversUnionTypes<GQLResolversTypes>['IntegrationConfigQueryResponse']
   >;
@@ -6955,6 +6991,8 @@ export type GQLResolversParentTypes = {
   IntegrationConfig: Omit<GQLIntegrationConfig, 'apiCredential'> & {
     apiCredential: GQLResolversParentTypes['IntegrationApiCredential'];
   };
+  IntegrationConfigField: GQLIntegrationConfigField;
+  IntegrationConfigFieldOption: GQLIntegrationConfigFieldOption;
   IntegrationConfigQueryResponse: GQLResolversUnionTypes<GQLResolversParentTypes>['IntegrationConfigQueryResponse'];
   IntegrationConfigSuccessResult: Omit<
     GQLIntegrationConfigSuccessResult,
@@ -9484,6 +9522,11 @@ export type GQLIntegrationConfigResolvers<
     ParentType,
     ContextType
   >;
+  configurationFields?: Resolver<
+    ReadonlyArray<GQLResolversTypes['IntegrationConfigField']>,
+    ParentType,
+    ContextType
+  >;
   docsUrl?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   logoUrl?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -9508,6 +9551,45 @@ export type GQLIntegrationConfigResolvers<
     ContextType
   >;
   title?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type GQLIntegrationConfigFieldResolvers<
+  ContextType = Context,
+  ParentType extends GQLResolversParentTypes['IntegrationConfigField'] =
+    GQLResolversParentTypes['IntegrationConfigField'],
+> = {
+  description?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  inputType?: Resolver<
+    GQLResolversTypes['IntegrationConfigFieldInputType'],
+    ParentType,
+    ContextType
+  >;
+  key?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  label?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  options?: Resolver<
+    Maybe<ReadonlyArray<GQLResolversTypes['IntegrationConfigFieldOption']>>,
+    ParentType,
+    ContextType
+  >;
+  placeholder?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  required?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
+};
+
+export type GQLIntegrationConfigFieldOptionResolvers<
+  ContextType = Context,
+  ParentType extends GQLResolversParentTypes['IntegrationConfigFieldOption'] =
+    GQLResolversParentTypes['IntegrationConfigFieldOption'],
+> = {
+  label?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  value?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
 };
 
 export type GQLIntegrationConfigQueryResponseResolvers<
@@ -15520,6 +15602,8 @@ export type GQLResolvers<ContextType = Context> = {
   IgnoreDecisionComponent?: GQLIgnoreDecisionComponentResolvers<ContextType>;
   IntegrationApiCredential?: GQLIntegrationApiCredentialResolvers<ContextType>;
   IntegrationConfig?: GQLIntegrationConfigResolvers<ContextType>;
+  IntegrationConfigField?: GQLIntegrationConfigFieldResolvers<ContextType>;
+  IntegrationConfigFieldOption?: GQLIntegrationConfigFieldOptionResolvers<ContextType>;
   IntegrationConfigQueryResponse?: GQLIntegrationConfigQueryResponseResolvers<ContextType>;
   IntegrationConfigSuccessResult?: GQLIntegrationConfigSuccessResultResolvers<ContextType>;
   IntegrationConfigTooManyCredentialsError?: GQLIntegrationConfigTooManyCredentialsErrorResolvers<ContextType>;
