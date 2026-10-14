@@ -1,0 +1,45 @@
+server/services/integrationRegistry/loadPlugins.ts
+  s_9fec762e193d5b::t_a9d7fa9b864dc1 14-15,41-158,308-311
+server/services/integrationRegistry/integrationManifests.ts
+  s_9fec762e193d5b::t_a9d7fa9b864dc1 9,36-37
+client/src/webpages/dashboard/integrations/IntegrationConfigApiCredentialsSection.tsx
+  s_9fec762e193d5b::t_a9d7fa9b864dc1 1,7-8,11,14-15,21-22,24-29,184-275
+client/src/webpages/dashboard/integrations/IntegrationConfigApiCredentialsSection.test.tsx
+  s_9fec762e193d5b::t_a9d7fa9b864dc1 1-114
+server/package.json
+  s_9fec762e193d5b::t_a9d7fa9b864dc1 45
+docs/integrations/custom.md
+  s_9fec762e193d5b::t_a9d7fa9b864dc1 27-74
+server/services/integrationRegistry/validateConfigurationFields.test.ts
+  s_9fec762e193d5b::t_a9d7fa9b864dc1 1-112
+client/package.json
+  s_9fec762e193d5b::t_a9d7fa9b864dc1 44
+server/graphql/modules/integration.ts
+  s_9fec762e193d5b::t_a9d7fa9b864dc1 1-2,13-14,101-129,301-311,318-334,411
+client/src/webpages/dashboard/integrations/IntegrationConfigForm.test.tsx
+  s_9fec762e193d5b::t_f465de5d111ac9 41
+client/src/webpages/dashboard/integrations/IntegrationConfigForm.tsx
+  s_9fec762e193d5b::t_a9d7fa9b864dc1 81-92,297-301,304-311,366-378,524,538
+client/src/graphql/generated.ts
+  s_9fec762e193d5b::t_57743cf7420024 1451-1455,1466-1493,6687-6700,30593-30604
+pnpm-lock.yaml
+  s_9fec762e193d5b::t_dab68c67804006 163-164,533-534,3592-3593,13042
+server/graphql/generated.ts
+  s_9fec762e193d5b::t_4fb654c00f3e8a 1521-1525,1536-1563,6185-6187,6994-6995,9525-9529,9556-9594,15605-15606
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b5044b7f0321e28e57981e23e254ae278957e18b",
+  "prompts": {},
+  "sessions": {
+    "s_9fec762e193d5b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b0e09479-679d-4cb5-a6e9-495a82f0dd36",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
