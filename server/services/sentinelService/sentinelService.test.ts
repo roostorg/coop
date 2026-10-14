@@ -1,3 +1,5 @@
+import { vi } from 'vitest';
+
 import { type FetchHTTP } from '../networkingService/index.js';
 import {
   makeSentinelService,
@@ -26,7 +28,7 @@ function makeErrorResponse(status: number, body: unknown = undefined) {
 }
 
 function makeFetchHTTPMock() {
-  const mock = jest.fn();
+  const mock = vi.fn();
   return { fetchHTTP: mock as unknown as FetchHTTP, mock };
 }
 
