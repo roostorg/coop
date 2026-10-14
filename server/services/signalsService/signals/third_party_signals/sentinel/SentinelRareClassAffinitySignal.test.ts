@@ -1,5 +1,5 @@
 import { ScalarTypes } from '@roostorg/coop-types';
-import { type Mock, vi } from 'vitest';
+import { vi, type Mock } from 'vitest';
 
 import { jsonParse } from '../../../../../utils/encoding.js';
 import { type ItemInvestigationService } from '../../../../itemInvestigationService/index.js';
