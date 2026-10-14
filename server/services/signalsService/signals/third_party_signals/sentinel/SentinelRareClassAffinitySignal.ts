@@ -15,9 +15,10 @@ import SignalBase, { type SignalInput } from '../../SignalBase.js';
 const SENTINEL_DOCS_URL = 'https://github.com/Roblox/sentinel';
 
 /**
- * How many prior thread items to include in Sentinel scoring, when the org
- * hasn't configured a `threadContextWindowMinutes` override. More context
- * improves recall for pattern detection but adds latency.
+ * Fallback cap on prior thread items included in Sentinel scoring, used when
+ * neither an org-level `threadContextLimit` override nor the
+ * `SENTINEL_THREAD_CONTEXT_LIMIT` deployment default is configured. More
+ * context improves recall for pattern detection but adds latency.
  */
 const DEFAULT_THREAD_CONTEXT_LIMIT = 10;
 
@@ -34,6 +35,7 @@ type SentinelOrgConfig = {
   topK?: number;
   minScoreToConsider?: number;
   threadContextWindowMinutes?: number;
+  threadContextLimit?: number;
 };
 
 /** Cached getter for an org's raw Sentinel config, keyed by orgId. */
@@ -66,6 +68,13 @@ function parseSentinelConfig(
   ) {
     config.threadContextWindowMinutes = raw.threadContextWindowMinutes;
   }
+  if (
+    typeof raw.threadContextLimit === 'number' &&
+    Number.isFinite(raw.threadContextLimit) &&
+    raw.threadContextLimit > 0
+  ) {
+    config.threadContextLimit = raw.threadContextLimit;
+  }
   return config;
 }
 
@@ -79,6 +88,8 @@ export default class SentinelRareClassAffinitySignal extends SignalBase<
     private readonly itemInvestigationService: ItemInvestigationService,
     /** Adopter-level fallback (from SENTINEL_API_URL). Org config, when set, overrides it. */
     private readonly defaultApiUrl?: string,
+    /** Adopter-level fallback (from SENTINEL_THREAD_CONTEXT_LIMIT). Org config, when set, overrides it. */
+    private readonly defaultThreadContextLimit: number = DEFAULT_THREAD_CONTEXT_LIMIT,
   ) {
     super();
   }
@@ -236,7 +247,7 @@ It compares submitted content against labeled positive (rare/harmful) and negati
           this.itemInvestigationService.getThreadSubmissionsByTime({
             orgId,
             threadId: runtimeArgs.threadIdentifier,
-            limit: DEFAULT_THREAD_CONTEXT_LIMIT,
+            limit: config.threadContextLimit ?? this.defaultThreadContextLimit,
             ...(config.threadContextWindowMinutes != null
               ? {
                   oldestReturnedSubmissionDate: new Date(

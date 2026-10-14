@@ -328,11 +328,13 @@ export default function IntegrationConfigApiCredentialsSection(props: {
     topK: 'Top K (nearest neighbors to consider)',
     minScoreToConsider: 'Minimum score to consider (0–1)',
     threadContextWindowMinutes: 'Thread context window (minutes)',
+    threadContextLimit: 'Thread context limit (max prior messages)',
   };
   const SENTINEL_NUMERIC_FIELDS = new Set([
     'topK',
     'minScoreToConsider',
     'threadContextWindowMinutes',
+    'threadContextLimit',
   ]);
 
   // Raw text currently being typed into numeric fields, so e.g. "0." isn't

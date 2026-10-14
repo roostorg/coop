@@ -135,6 +135,7 @@ function makeSignal(options?: {
   fetchHTTP?: FetchHTTP;
   iisOverrides?: Partial<MockItemInvestigationService>;
   defaultApiUrl?: string | undefined;
+  defaultThreadContextLimit?: number;
 }) {
   // Destructuring defaults trigger on an explicit `undefined` value, not
   // just a missing key — and tests need to distinguish "not provided,
@@ -154,6 +155,7 @@ function makeSignal(options?: {
       opts.iisOverrides,
     ) as unknown as ItemInvestigationService,
     defaultApiUrl,
+    opts.defaultThreadContextLimit,
   );
 }
 
@@ -396,6 +398,106 @@ describe('SentinelRareClassAffinitySignal', () => {
       // Should be ~30 minutes (allow slack for test execution time).
       expect(windowMs).toBeGreaterThan(30 * 60_000 - 5_000);
       expect(windowMs).toBeLessThan(30 * 60_000 + 5_000);
+    });
+
+    it('defaults the thread context limit to 10 when nothing is configured', async () => {
+      const { fetchHTTP } = makeFetchHTTP();
+      const getThreadSubmissionsByTime = jest.fn().mockReturnValue(
+        (async function* () {
+          // no items needed; we're only asserting on the call args
+        })(),
+      );
+
+      const signal = makeSignal({
+        fetchHTTP,
+        iisOverrides: { getThreadSubmissionsByTime },
+      });
+
+      await signal.run(
+        makeInput({
+          runtimeArgs: {
+            threadIdentifier: { id: 'thread-1', typeId: 'content-type-1' },
+          },
+        }),
+      );
+
+      expect(getThreadSubmissionsByTime.mock.calls[0][0].limit).toBe(10);
+    });
+
+    it('uses a defaultThreadContextLimit constructor override when the org has not set one', async () => {
+      const { fetchHTTP } = makeFetchHTTP();
+      const getThreadSubmissionsByTime = jest.fn().mockReturnValue(
+        (async function* () {
+          // no items needed; we're only asserting on the call args
+        })(),
+      );
+
+      const signal = makeSignal({
+        fetchHTTP,
+        defaultThreadContextLimit: 25,
+        iisOverrides: { getThreadSubmissionsByTime },
+      });
+
+      await signal.run(
+        makeInput({
+          runtimeArgs: {
+            threadIdentifier: { id: 'thread-1', typeId: 'content-type-1' },
+          },
+        }),
+      );
+
+      expect(getThreadSubmissionsByTime.mock.calls[0][0].limit).toBe(25);
+    });
+
+    it('prefers an org-level threadContextLimit override over the deployment default', async () => {
+      const { fetchHTTP } = makeFetchHTTP();
+      const getThreadSubmissionsByTime = jest.fn().mockReturnValue(
+        (async function* () {
+          // no items needed; we're only asserting on the call args
+        })(),
+      );
+
+      const signal = makeSignal({
+        fetchHTTP,
+        defaultThreadContextLimit: 25,
+        orgConfig: { threadContextLimit: 3 },
+        iisOverrides: { getThreadSubmissionsByTime },
+      });
+
+      await signal.run(
+        makeInput({
+          runtimeArgs: {
+            threadIdentifier: { id: 'thread-1', typeId: 'content-type-1' },
+          },
+        }),
+      );
+
+      expect(getThreadSubmissionsByTime.mock.calls[0][0].limit).toBe(3);
+    });
+
+    it('ignores a non-positive org-level threadContextLimit and falls back to the default', async () => {
+      const { fetchHTTP } = makeFetchHTTP();
+      const getThreadSubmissionsByTime = jest.fn().mockReturnValue(
+        (async function* () {
+          // no items needed; we're only asserting on the call args
+        })(),
+      );
+
+      const signal = makeSignal({
+        fetchHTTP,
+        orgConfig: { threadContextLimit: -5 },
+        iisOverrides: { getThreadSubmissionsByTime },
+      });
+
+      await signal.run(
+        makeInput({
+          runtimeArgs: {
+            threadIdentifier: { id: 'thread-1', typeId: 'content-type-1' },
+          },
+        }),
+      );
+
+      expect(getThreadSubmissionsByTime.mock.calls[0][0].limit).toBe(10);
     });
 
     it('does not double-count the triggering submission when it is echoed back as thread context', async () => {
