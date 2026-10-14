@@ -337,7 +337,7 @@ function rawContentSubmissionToItemSubmission(
   const normalizedDataOrValidationErrors = toNormalizedItemDataOrErrors(
     legalItemTypeIds,
     itemType,
-    content,
+    content as RawItemData,
   );
 
   return Array.isArray(normalizedDataOrValidationErrors)

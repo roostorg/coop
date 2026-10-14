@@ -1,16 +1,18 @@
 type ItemData = { readonly [key: string]: unknown };
 
 /** Coerce a string threadId to { id, typeId } when the content type has that field role. */
-export function coerceStringThreadId<T extends ItemData>(
-  content: T,
-  itemType: { id: string; schemaFieldRoles: { readonly threadId?: string } },
-): T {
-  const threadIdField =
-    'threadId' in itemType.schemaFieldRoles
-      ? itemType.schemaFieldRoles.threadId
-      : undefined;
+export function coerceStringThreadId(
+  content: ItemData,
+  itemType: { readonly id: string; readonly schemaFieldRoles: unknown },
+): ItemData {
+  const roles = itemType.schemaFieldRoles;
+  if (typeof roles !== 'object' || roles === null || !('threadId' in roles)) {
+    return content;
+  }
+
+  const threadIdField = roles.threadId;
   if (
-    !threadIdField ||
+    typeof threadIdField !== 'string' ||
     typeof content[threadIdField] !== 'string' ||
     content[threadIdField].length === 0
   ) {
@@ -23,5 +25,5 @@ export function coerceStringThreadId<T extends ItemData>(
       id: content[threadIdField],
       typeId: itemType.id,
     },
-  } as T;
+  };
 }
