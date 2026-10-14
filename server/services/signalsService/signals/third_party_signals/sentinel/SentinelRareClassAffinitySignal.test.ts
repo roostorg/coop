@@ -1,5 +1,5 @@
 import { ScalarTypes } from '@roostorg/coop-types';
-import { type Mock, vi } from 'vitest';
+import { vi, type Mock } from 'vitest';
 
 import { type ItemInvestigationService } from '../../../../itemInvestigationService/index.js';
 import {
@@ -150,9 +150,7 @@ describe('SentinelRareClassAffinitySignal', () => {
 
     it('returns disabled=true when health check fails', async () => {
       const signal = makeSignal({
-        healthCheck: vi
-          .fn()
-          .mockRejectedValue(new Error('Connection refused')),
+        healthCheck: vi.fn().mockRejectedValue(new Error('Connection refused')),
       });
       const info = await signal.getDisabledInfo('org-1');
       expect(info.disabled).toBe(true);
