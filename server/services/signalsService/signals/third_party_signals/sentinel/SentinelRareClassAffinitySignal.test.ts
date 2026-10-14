@@ -150,7 +150,7 @@ describe('SentinelRareClassAffinitySignal', () => {
 
     it('returns disabled=true when health check fails', async () => {
       const signal = makeSignal({
-        healthCheck: jest
+        healthCheck: vi
           .fn()
           .mockRejectedValue(new Error('Connection refused')),
       });
@@ -161,7 +161,7 @@ describe('SentinelRareClassAffinitySignal', () => {
 
     it('returns disabled=true when health status is not ok', async () => {
       const signal = makeSignal({
-        healthCheck: jest
+        healthCheck: vi
           .fn()
           .mockResolvedValue({ status: 'error', banks_loaded: false }),
       });
@@ -355,7 +355,7 @@ describe('SentinelRareClassAffinitySignal', () => {
 
     it('returns an error result when Sentinel service throws SentinelServiceError', async () => {
       const signal = makeSignal({
-        scoreTexts: jest
+        scoreTexts: vi
           .fn()
           .mockRejectedValue(new SentinelServiceError('Banks not loaded', 503)),
       });
