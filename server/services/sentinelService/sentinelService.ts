@@ -4,9 +4,6 @@
  * Sentinel is a contrastive-learning system for detecting rare text patterns
  * (e.g. grooming, hate speech) by comparing text against positive (rare/harmful)
  * and negative (common/normal) example banks.
- *
- * The factory does NOT read process.env directly — the caller passes in the
- * URL, keeping the module testable and DI-friendly.
  */
 import { jsonStringify } from '../../utils/encoding.js';
 import { type FetchHTTP } from '../networkingService/index.js';
