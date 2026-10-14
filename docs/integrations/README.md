@@ -12,12 +12,14 @@ For specific integration information and detailed requirements, see that integra
 | [Hasher-Matcher-Actioner (HMA)] | Free                   | Your own hashes, and/or access to third-party hash banks[^HMA] |
 | [NCMEC Reporting]               | Free                   | CyberTip API key, approval by NCMEC[^ESP]                      |
 | [OpenAI Moderation API]         | Free[^OAI]             | OpenAI API key                                                 |
+| [Sentinel]                      | Free, self-hosted      | A running `sentinel-api` instance, your own example banks      |
 | [Zentropi CoPE]                 | Free, paid options[^Z] | Zentropi API key                                               |
 
 [Google Content Safety API]: google-content-safety.md
 [Hasher-Matcher-Actioner (HMA)]: hma.md
 [NCMEC Reporting]: ncmec.md
 [OpenAI Moderation API]: openai-moderation.md
+[Sentinel]: sentinel.md
 [Zentropi CoPE]: zentropi-cope.md
 
 [^CSAPI]: Industry and civil society third parties seeking to protect their platform against abuse can [apply to access the Content Safety API](https://protectingchildren.google/toolkit-interest-form/?roost-coop). Mention in your application that you are using the Coop review tool. Applications are subject to approval and require accepting Google's terms and conditions.
