@@ -1,4 +1,5 @@
-import { ScalarTypes } from '@roostorg/types';
+import { ScalarTypes } from '@roostorg/coop-types';
+import { type Mock, vi } from 'vitest';
 
 import { jsonParse } from '../../../../../utils/encoding.js';
 import { type ItemInvestigationService } from '../../../../itemInvestigationService/index.js';
@@ -47,7 +48,7 @@ type EndpointHandlers = {
  */
 function makeFetchHTTP(handlers: EndpointHandlers = {}) {
   type Req = { url: string; body?: string };
-  const mockFetch = jest.fn(async (req: Req) => {
+  const mockFetch = vi.fn(async (req: Req) => {
     if (req.url.endsWith('/health')) {
       return (
         handlers.health?.() ?? {
@@ -95,32 +96,32 @@ function makeFetchHTTP(handlers: EndpointHandlers = {}) {
 }
 
 type MockItemInvestigationService = {
-  insertItem: jest.Mock;
-  getThreadSubmissionsByPosition: jest.Mock;
-  getThreadSubmissionsByTime: jest.Mock;
-  getItemByIdentifier: jest.Mock;
-  getItemByTypeAgnosticIdentifier: jest.Mock;
-  getAncestorItems: jest.Mock;
-  getItemSubmissionsByCreator: jest.Mock;
-  getItemActionHistory: jest.Mock;
+  insertItem: Mock;
+  getThreadSubmissionsByPosition: Mock;
+  getThreadSubmissionsByTime: Mock;
+  getItemByIdentifier: Mock;
+  getItemByTypeAgnosticIdentifier: Mock;
+  getAncestorItems: Mock;
+  getItemSubmissionsByCreator: Mock;
+  getItemActionHistory: Mock;
 };
 
 function makeItemInvestigationService(
   overrides: Partial<MockItemInvestigationService> = {},
 ): MockItemInvestigationService {
   return {
-    insertItem: jest.fn().mockResolvedValue(undefined),
-    getThreadSubmissionsByPosition: jest.fn(),
-    getThreadSubmissionsByTime: jest.fn().mockReturnValue(
+    insertItem: vi.fn().mockResolvedValue(undefined),
+    getThreadSubmissionsByPosition: vi.fn(),
+    getThreadSubmissionsByTime: vi.fn().mockReturnValue(
       (async function* () {
         // Empty async iterable by default
       })(),
     ),
-    getItemByIdentifier: jest.fn(),
-    getItemByTypeAgnosticIdentifier: jest.fn(),
-    getAncestorItems: jest.fn(),
-    getItemSubmissionsByCreator: jest.fn(),
-    getItemActionHistory: jest.fn(),
+    getItemByIdentifier: vi.fn(),
+    getItemByTypeAgnosticIdentifier: vi.fn(),
+    getAncestorItems: vi.fn(),
+    getItemSubmissionsByCreator: vi.fn(),
+    getItemActionHistory: vi.fn(),
     ...overrides,
   };
 }
@@ -149,7 +150,7 @@ function makeSignal(options?: {
   const fetchHTTP = opts.fetchHTTP ?? makeFetchHTTP().fetchHTTP;
 
   return new SentinelRareClassAffinitySignal(
-    jest.fn().mockResolvedValue(orgConfig),
+    vi.fn().mockResolvedValue(orgConfig),
     fetchHTTP,
     makeItemInvestigationService(
       opts.iisOverrides,
@@ -344,7 +345,7 @@ describe('SentinelRareClassAffinitySignal', () => {
     it('includes thread context texts when threadIdentifier is provided', async () => {
       const { fetchHTTP, lastScoreRequest } = makeFetchHTTP();
 
-      const getThreadSubmissionsByTime = jest.fn().mockReturnValue(
+      const getThreadSubmissionsByTime = vi.fn().mockReturnValue(
         (async function* () {
           yield makeThreadItem('prior thread message');
         })(),
@@ -371,7 +372,7 @@ describe('SentinelRareClassAffinitySignal', () => {
 
     it('passes a threadContextWindowMinutes override as an oldestReturnedSubmissionDate bound', async () => {
       const { fetchHTTP } = makeFetchHTTP();
-      const getThreadSubmissionsByTime = jest.fn().mockReturnValue(
+      const getThreadSubmissionsByTime = vi.fn().mockReturnValue(
         (async function* () {
           // no items needed; we're only asserting on the call args
         })(),
@@ -402,7 +403,7 @@ describe('SentinelRareClassAffinitySignal', () => {
 
     it('defaults the thread context limit to 10 when nothing is configured', async () => {
       const { fetchHTTP } = makeFetchHTTP();
-      const getThreadSubmissionsByTime = jest.fn().mockReturnValue(
+      const getThreadSubmissionsByTime = vi.fn().mockReturnValue(
         (async function* () {
           // no items needed; we're only asserting on the call args
         })(),
@@ -426,7 +427,7 @@ describe('SentinelRareClassAffinitySignal', () => {
 
     it('uses a defaultThreadContextLimit constructor override when the org has not set one', async () => {
       const { fetchHTTP } = makeFetchHTTP();
-      const getThreadSubmissionsByTime = jest.fn().mockReturnValue(
+      const getThreadSubmissionsByTime = vi.fn().mockReturnValue(
         (async function* () {
           // no items needed; we're only asserting on the call args
         })(),
@@ -451,7 +452,7 @@ describe('SentinelRareClassAffinitySignal', () => {
 
     it('prefers an org-level threadContextLimit override over the deployment default', async () => {
       const { fetchHTTP } = makeFetchHTTP();
-      const getThreadSubmissionsByTime = jest.fn().mockReturnValue(
+      const getThreadSubmissionsByTime = vi.fn().mockReturnValue(
         (async function* () {
           // no items needed; we're only asserting on the call args
         })(),
@@ -477,7 +478,7 @@ describe('SentinelRareClassAffinitySignal', () => {
 
     it('ignores a non-positive org-level threadContextLimit and falls back to the default', async () => {
       const { fetchHTTP } = makeFetchHTTP();
-      const getThreadSubmissionsByTime = jest.fn().mockReturnValue(
+      const getThreadSubmissionsByTime = vi.fn().mockReturnValue(
         (async function* () {
           // no items needed; we're only asserting on the call args
         })(),
@@ -507,7 +508,7 @@ describe('SentinelRareClassAffinitySignal', () => {
       // this signal run alongside genuine prior messages.
       const { fetchHTTP, lastScoreRequest } = makeFetchHTTP();
 
-      const getThreadSubmissionsByTime = jest.fn().mockReturnValue(
+      const getThreadSubmissionsByTime = vi.fn().mockReturnValue(
         (async function* () {
           yield makeThreadItem('test content'); // echoed-back self item
           yield makeThreadItem('prior thread message');
@@ -535,7 +536,7 @@ describe('SentinelRareClassAffinitySignal', () => {
     it('only drops one occurrence of duplicate text, in case a genuine duplicate message exists', async () => {
       const { fetchHTTP, lastScoreRequest } = makeFetchHTTP();
 
-      const getThreadSubmissionsByTime = jest.fn().mockReturnValue(
+      const getThreadSubmissionsByTime = vi.fn().mockReturnValue(
         (async function* () {
           yield makeThreadItem('test content');
           yield makeThreadItem('test content');
@@ -562,7 +563,7 @@ describe('SentinelRareClassAffinitySignal', () => {
 
     it('still returns a score when thread fetch fails', async () => {
       const { fetchHTTP, lastScoreRequest } = makeFetchHTTP();
-      const getThreadSubmissionsByTime = jest.fn().mockImplementation(() => {
+      const getThreadSubmissionsByTime = vi.fn().mockImplementation(() => {
         throw new Error('Scylla unavailable');
       });
 
