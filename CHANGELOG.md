@@ -28,6 +28,7 @@ For more information about each release including git tags and artifacts, see [R
 - Zentropi Labeler signal failing on every call ([#1335](https://github.com/roostorg/coop/pull/1335) by [@reitblatt](https://github.com/reitblatt), [#1388](https://github.com/roostorg/coop/pull/1388) by [@Joseph-Mutua](https://github.com/Joseph-Mutua))
 - NCMEC review escalations silently succeeding when the item cannot resolve to a user ([#1331](https://github.com/roostorg/coop/pull/1331) by [@Joseph-Mutua](https://github.com/Joseph-Mutua))
 - Rule conditions on multi-value inputs (e.g. Any image, Relevant Policy) now check every value instead of only the first ([#1389](https://github.com/roostorg/coop/pull/1389) by [@reitblatt](https://github.com/reitblatt))
+- Recent Decisions page no longer gets stuck in an infinite loop ([#1422](https://github.com/roostorg/coop/pull/1422) by [@jess-upscrolled](https://github.com/jess-upscrolled))
 
 ### Security
 

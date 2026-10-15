@@ -364,12 +364,7 @@ export default function ManualReviewRecentDecisions() {
         },
       );
     }
-  }, [
-    getDecidedJob,
-    selectedDecision,
-    navigate,
-    decidedJobData?.getDecidedJob,
-  ]);
+  }, [getDecidedJob, selectedDecision, navigate]);
 
   const columns = useMemo(
     () =>
