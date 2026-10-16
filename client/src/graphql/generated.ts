@@ -240,6 +240,7 @@ export type GQLAddManualReviewJobCommentSuccessResponse = {
 
 export type GQLAddPoliciesResponse = {
   readonly __typename: 'AddPoliciesResponse';
+  readonly failureDetails: ReadonlyArray<GQLPolicyCreationFailure>;
   readonly failures: ReadonlyArray<Scalars['String']['output']>;
   readonly policies: ReadonlyArray<GQLPolicy>;
 };
@@ -3491,6 +3492,17 @@ export type GQLPolicyActionCount = {
   readonly count: Scalars['Int']['output'];
   readonly itemSubmissionIds: ReadonlyArray<Scalars['String']['output']>;
   readonly policyId?: Maybe<Scalars['String']['output']>;
+};
+
+export type GQLPolicyCreationFailure = GQLError & {
+  readonly __typename: 'PolicyCreationFailure';
+  readonly detail?: Maybe<Scalars['String']['output']>;
+  readonly name: Scalars['String']['output'];
+  readonly pointer?: Maybe<Scalars['String']['output']>;
+  readonly requestId?: Maybe<Scalars['String']['output']>;
+  readonly status: Scalars['Int']['output'];
+  readonly title: Scalars['String']['output'];
+  readonly type: ReadonlyArray<Scalars['String']['output']>;
 };
 
 export type GQLPolicyNameExistsError = GQLError & {
@@ -19429,6 +19441,12 @@ export type GQLAddPoliciesMutation = {
       readonly policyType?: GQLPolicyType | null;
       readonly userStrikeCount?: number | null;
       readonly applyUserStrikeCountConfigToChildren?: boolean | null;
+    }>;
+    readonly failureDetails: ReadonlyArray<{
+      readonly __typename: 'PolicyCreationFailure';
+      readonly name: string;
+      readonly title: string;
+      readonly detail?: string | null;
     }>;
   };
 };
@@ -39862,6 +39880,11 @@ export const GQLAddPoliciesDocument = gql`
         ...PolicyFields
       }
       failures
+      failureDetails {
+        name
+        title
+        detail
+      }
     }
   }
   ${GQLPolicyFieldsFragmentDoc}

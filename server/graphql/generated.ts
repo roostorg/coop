@@ -310,6 +310,7 @@ export type GQLAddManualReviewJobCommentSuccessResponse = {
 
 export type GQLAddPoliciesResponse = {
   readonly __typename?: 'AddPoliciesResponse';
+  readonly failureDetails: ReadonlyArray<GQLPolicyCreationFailure>;
   readonly failures: ReadonlyArray<Scalars['String']['output']>;
   readonly policies: ReadonlyArray<GQLPolicy>;
 };
@@ -3563,6 +3564,17 @@ export type GQLPolicyActionCount = {
   readonly policyId?: Maybe<Scalars['String']['output']>;
 };
 
+export type GQLPolicyCreationFailure = GQLError & {
+  readonly __typename?: 'PolicyCreationFailure';
+  readonly detail?: Maybe<Scalars['String']['output']>;
+  readonly name: Scalars['String']['output'];
+  readonly pointer?: Maybe<Scalars['String']['output']>;
+  readonly requestId?: Maybe<Scalars['String']['output']>;
+  readonly status: Scalars['Int']['output'];
+  readonly title: Scalars['String']['output'];
+  readonly type: ReadonlyArray<Scalars['String']['output']>;
+};
+
 export type GQLPolicyNameExistsError = GQLError & {
   readonly __typename?: 'PolicyNameExistsError';
   readonly detail?: Maybe<Scalars['String']['output']>;
@@ -5847,6 +5859,7 @@ export type GQLResolversInterfaceTypes<
     | GQLPartialItemsEndpointResponseError
     | GQLPartialItemsInvalidResponseError
     | GQLPartialItemsMissingEndpointError
+    | GQLPolicyCreationFailure
     | GQLPolicyNameExistsError
     | GQLQueueDoesNotExistError
     | GQLRecordingJobDecisionFailedError
@@ -6458,6 +6471,7 @@ export type GQLResolversTypes = {
   PluginIntegrationApiCredential: ResolverTypeWrapper<GQLPluginIntegrationApiCredential>;
   Policy: ResolverTypeWrapper<GQLPolicy>;
   PolicyActionCount: ResolverTypeWrapper<GQLPolicyActionCount>;
+  PolicyCreationFailure: ResolverTypeWrapper<GQLPolicyCreationFailure>;
   PolicyNameExistsError: ResolverTypeWrapper<GQLPolicyNameExistsError>;
   PolicyType: GQLPolicyType;
   PolicyViolationsCount: ResolverTypeWrapper<GQLPolicyViolationsCount>;
@@ -7177,6 +7191,7 @@ export type GQLResolversParentTypes = {
   PluginIntegrationApiCredential: GQLPluginIntegrationApiCredential;
   Policy: GQLPolicy;
   PolicyActionCount: GQLPolicyActionCount;
+  PolicyCreationFailure: GQLPolicyCreationFailure;
   PolicyNameExistsError: GQLPolicyNameExistsError;
   PolicyViolationsCount: GQLPolicyViolationsCount;
   PostActionsEnqueueSourceInfo: GQLPostActionsEnqueueSourceInfo;
@@ -7689,6 +7704,11 @@ export type GQLAddPoliciesResponseResolvers<
   ParentType extends GQLResolversParentTypes['AddPoliciesResponse'] =
     GQLResolversParentTypes['AddPoliciesResponse'],
 > = {
+  failureDetails?: Resolver<
+    ReadonlyArray<GQLResolversTypes['PolicyCreationFailure']>,
+    ParentType,
+    ContextType
+  >;
   failures?: Resolver<
     ReadonlyArray<GQLResolversTypes['String']>,
     ParentType,
@@ -9133,6 +9153,7 @@ export type GQLErrorResolvers<
     | 'PartialItemsEndpointResponseError'
     | 'PartialItemsInvalidResponseError'
     | 'PartialItemsMissingEndpointError'
+    | 'PolicyCreationFailure'
     | 'PolicyNameExistsError'
     | 'QueueDoesNotExistError'
     | 'RecordingJobDecisionFailedError'
@@ -12684,6 +12705,37 @@ export type GQLPolicyActionCountResolvers<
   >;
 };
 
+export type GQLPolicyCreationFailureResolvers<
+  ContextType = Context,
+  ParentType extends GQLResolversParentTypes['PolicyCreationFailure'] =
+    GQLResolversParentTypes['PolicyCreationFailure'],
+> = {
+  detail?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  name?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  pointer?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  requestId?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  status?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
+  title?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  type?: Resolver<
+    ReadonlyArray<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
 export type GQLPolicyNameExistsErrorResolvers<
   ContextType = Context,
   ParentType extends GQLResolversParentTypes['PolicyNameExistsError'] =
@@ -15641,6 +15693,7 @@ export type GQLResolvers<ContextType = Context> = {
   PluginIntegrationApiCredential?: GQLPluginIntegrationApiCredentialResolvers<ContextType>;
   Policy?: GQLPolicyResolvers<ContextType>;
   PolicyActionCount?: GQLPolicyActionCountResolvers<ContextType>;
+  PolicyCreationFailure?: GQLPolicyCreationFailureResolvers<ContextType>;
   PolicyNameExistsError?: GQLPolicyNameExistsErrorResolvers<ContextType>;
   PolicyViolationsCount?: GQLPolicyViolationsCountResolvers<ContextType>;
   PostActionsEnqueueSourceInfo?: GQLPostActionsEnqueueSourceInfoResolvers<ContextType>;
