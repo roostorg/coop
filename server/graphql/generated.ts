@@ -2357,6 +2357,8 @@ export type GQLManualReviewQueue = {
   readonly clearReportsTriggerActionIds: ReadonlyArray<Scalars['ID']['output']>;
   readonly description?: Maybe<Scalars['String']['output']>;
   readonly explicitlyAssignedReviewers: ReadonlyArray<GQLUser>;
+  /** Whether pending jobs remain after applying the current reviewer's skips. */
+  readonly hasUnskippedJobs: Scalars['Boolean']['output'];
   readonly hiddenActionIds: ReadonlyArray<Scalars['ID']['output']>;
   readonly id: Scalars['ID']['output'];
   readonly isAppealsQueue: Scalars['Boolean']['output'];
@@ -10670,6 +10672,11 @@ export type GQLManualReviewQueueResolvers<
   >;
   explicitlyAssignedReviewers?: Resolver<
     ReadonlyArray<GQLResolversTypes['User']>,
+    ParentType,
+    ContextType
+  >;
+  hasUnskippedJobs?: Resolver<
+    GQLResolversTypes['Boolean'],
     ParentType,
     ContextType
   >;

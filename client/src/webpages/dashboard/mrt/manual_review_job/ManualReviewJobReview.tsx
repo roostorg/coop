@@ -425,9 +425,7 @@ function ManualReviewJobReviewImpl(props: {
       // token. That way, users are able to send around the URL to others.
       const { dequeueManualReviewJob } = data;
       if (dequeueManualReviewJob == null) {
-        if (jobId != null) {
-          navigate('/dashboard/manual_review/queues', { replace: true });
-        }
+        navigate('/dashboard/manual_review/queues', { replace: true });
         return;
       }
 
