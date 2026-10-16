@@ -38,6 +38,7 @@ namespace NodeJS {
     SENDGRID_API_KEY?: string;
     GOOGLE_PLACES_API_KEY?: string;
     OPEN_AI_API_KEY?: string;
+    SENTINEL_API_URL?: string;
     SLACK_APP_BEARER_TOKEN?: string;
   }
 }
