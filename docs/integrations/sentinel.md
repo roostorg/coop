@@ -70,7 +70,7 @@ This assumes Coop is already running locally — see [Getting Started](../develo
 
 Submitting test content needs an item type with text and thread fields. If you do not have one, create a `ChatMessage` content type under **Settings → Item Types → Content**, with a `message` (String), `threadId` (Related Item, role **Thread**), and `createdAt` (Datetime, role **Created At**) field.
 
-1. Create a [proactive rule](../user/automated-enforcement.md#proactive-rules) on that item type: condition **Aggregate Inputs → Any text in item**, signal **Sentinel Rare Class Affinity**, comparison **is greater than** a small threshold (for example `0.05`), and a review action of your choice.
+1. Create a [proactive rule](../user/automated-enforcement.md#proactive-rules) on that item type: condition input **message** (the String field), signal **Sentinel Rare Class Affinity**, comparison **is greater than** a small threshold (for example `0.05`), and a review action of your choice. Do not use **Any text in item**. That input does not name a field, so thread history scores the first stored string, which is `createdAt`, and the score stays `0.0`.
 2. Submit content via the [items API](../api/items.md) (`contentType` must be the item type's **name**, e.g. `ChatMessage`) or **Investigation → Submit test item**. A message resembling your positive bank should score higher than a benign one.
 3. Check the result in **Investigation** by searching the submitted item's ID — the signal's raw score is shown there.
 
