@@ -34,7 +34,7 @@
   "devDependencies": {
     "@types/node": "^24.0.0",
     "@types/yargs": "^17.0.24",
-    "knip": "^6.16.1",
+    "knip": "^6.40.0",
     "typescript": "^6.0.3"
   },
   "publishConfig": {
