@@ -10,6 +10,7 @@ import CoopModal from '../components/CoopModal';
 import {
   GQLIntegrationApiCredential,
   GQLIntegrationConfigDocument,
+  GQLIntegrationConfigFieldInputType,
   GQLUserPermission,
   namedOperations,
   useGQLIntegrationConfigQuery,
@@ -178,6 +179,20 @@ export function getNewEmptyApiKey(name: string): GQLIntegrationApiCredential {
   }
 }
 
+const INVALID_JSON = Symbol('invalid JSON');
+
+/** JSON fields are edited as text; saved config holds the parsed value. */
+function parseJsonField<T>(value: T): T | typeof INVALID_JSON {
+  if (typeof value !== 'string') {
+    return value;
+  }
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return INVALID_JSON;
+  }
+}
+
 export default function IntegrationConfigForm() {
   const { name } = useParams<{ name: string | undefined }>();
   if (name == null) {
@@ -295,6 +310,13 @@ export default function IntegrationConfigForm() {
     'ZENTROPI',
   ].includes(integrationName);
   const configurationFields = apiConfig?.configurationFields ?? [];
+  const jsonFieldKeys = new Set(
+    configurationFields
+      .filter(
+        (field) => field.inputType === GQLIntegrationConfigFieldInputType.Json,
+      )
+      .map((field) => field.key),
+  );
   const pluginCredential =
     apiCredential.__typename === 'PluginIntegrationApiCredential'
       ? (apiCredential.credential ?? {})
@@ -308,6 +330,15 @@ export default function IntegrationConfigForm() {
       );
       if (missing) {
         return `Please enter ${missing.label}`;
+      }
+      const invalidJson = configurationFields.find(
+        (field) =>
+          jsonFieldKeys.has(field.key) &&
+          String(pluginCredential[field.key] ?? '').trim() !== '' &&
+          parseJsonField(pluginCredential[field.key]) === INVALID_JSON,
+      );
+      if (invalidJson) {
+        return `${invalidJson.label} must be valid JSON`;
       }
       return undefined;
     }
@@ -370,11 +401,18 @@ export default function IntegrationConfigForm() {
               .map((field) => field.key),
           );
           const cred = Object.fromEntries(
-            Object.entries(pluginCredential).filter(
-              ([key, value]) =>
-                key !== 'name' &&
-                !(optionalKeys.has(key) && String(value ?? '').trim() === ''),
-            ),
+            Object.entries(pluginCredential)
+              .filter(
+                ([key, value]) =>
+                  key !== 'name' &&
+                  !(optionalKeys.has(key) && String(value ?? '').trim() === ''),
+              )
+              .map(([key, value]) => {
+                const parsed = jsonFieldKeys.has(key)
+                  ? parseJsonField(value)
+                  : value;
+                return [key, parsed === INVALID_JSON ? value : parsed];
+              }),
           );
           await setPluginConfig({
             variables: {

@@ -39,6 +39,12 @@ export type LoadPluginsResult = Readonly<{
 const INTEGRATION_LOGOS_PATH_PREFIX = '/api/v1/integration-logos';
 
 const CONFIG_FIELD_KEY = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
+// `name` is metadata the client strips from saved config, and inherited
+// property names (e.g. `constructor`) read as set on an empty config object.
+const RESERVED_CONFIG_FIELD_KEYS = new Set([
+  'name',
+  ...Object.getOwnPropertyNames(Object.prototype),
+]);
 const CONFIG_FIELD_INPUT_TYPES = new Set([
   'text',
   'password',
@@ -86,6 +92,15 @@ function validateSelectOptions(
   return first === undefined ? undefined : [first, ...options.slice(1)];
 }
 
+function isAvailableKey(key: unknown, seen: Set<string>): key is string {
+  return (
+    typeof key === 'string' &&
+    CONFIG_FIELD_KEY.test(key) &&
+    !RESERVED_CONFIG_FIELD_KEYS.has(key) &&
+    !seen.has(key)
+  );
+}
+
 function isOptionalText(
   value: unknown,
   maxLength: number,
@@ -104,22 +119,21 @@ export function validateConfigurationFields(
   integrationId: string,
   value: unknown,
 ): IntegrationConfigField[] {
-  if (value == null) return [];
+  if (value === undefined) return [];
   if (!Array.isArray(value) || value.length > MAX_CONFIG_FIELDS) {
     throw new Error(
       `Integration "${integrationId}" configurationFields must be an array of at most ${MAX_CONFIG_FIELDS} fields.`,
     );
   }
   const seen = new Set<string>();
-  return value.map((raw: unknown, index) => {
+  // Array.from visits holes in sparse arrays, which .map() would skip.
+  return Array.from(value, (raw: unknown, index) => {
     const field = (raw ?? {}) as Record<string, unknown>;
     const { key, label, required, inputType, placeholder, description } = field;
     const options =
       inputType === 'select' ? validateSelectOptions(field.options) : undefined;
     const valid =
-      typeof key === 'string' &&
-      CONFIG_FIELD_KEY.test(key) &&
-      !seen.has(key) &&
+      isAvailableKey(key, seen) &&
       typeof label === 'string' &&
       label.length > 0 &&
       label.length <= 200 &&

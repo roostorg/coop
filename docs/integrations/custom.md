@@ -59,10 +59,15 @@ const manifest: IntegrationManifest = {
 ```
 
 - `inputType` is `text`, `password`, `json`, `array`, or `select`. A `select`
-  field needs between 1 and 100 `options`, and the saved value is the chosen
-  `option.value`.
+  field needs between 1 and 100 `options`; each option needs a unique,
+  non-empty `value` and a non-empty `label` of up to 200 characters. The saved
+  value is the chosen `option.value`.
+- `json` fields are edited as text and saved as the parsed JSON value; invalid
+  JSON blocks saving. `array` fields are saved as a list of strings.
 - Keys must start with a letter and contain only letters, digits, and
-  underscores (up to 64 characters). A manifest can declare up to 50 fields.
+  underscores (up to 64 characters). `name` and built-in object property
+  names such as `constructor` are reserved. A manifest can declare up to 50
+  fields.
   Labels are limited to 200 characters, placeholders to 500, and descriptions
   to 2,000.
 - Coop rejects a plugin with an invalid field when it loads, so mistakes show

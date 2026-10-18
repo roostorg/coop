@@ -181,7 +181,7 @@ export default function IntegrationConfigApiCredentialsSection(props: {
     credential: Record<string, unknown>;
   }) => {
     const credential = pluginCredential.credential ?? {};
-    const setField = (key: string, value: string) =>
+    const setField = (key: string, value: string | string[]) =>
       setApiCredential({
         __typename: 'PluginIntegrationApiCredential',
         credential: {
@@ -234,6 +234,21 @@ export default function IntegrationConfigApiCredentialsSection(props: {
                       label: option.label,
                     }))}
                     onChange={(selected) => setField(field.key, selected ?? '')}
+                  />
+                ) : field.inputType ===
+                  GQLIntegrationConfigFieldInputType.Array ? (
+                  <Select
+                    id={inputId}
+                    mode="tags"
+                    open={false}
+                    suffixIcon={null}
+                    tokenSeparators={[',']}
+                    value={Array.isArray(value) ? value.map(String) : []}
+                    placeholder={
+                      field.placeholder ?? 'Type a value and press Enter'
+                    }
+                    aria-required={field.required}
+                    onChange={(values) => setField(field.key, values)}
                   />
                 ) : field.inputType ===
                   GQLIntegrationConfigFieldInputType.Password ? (

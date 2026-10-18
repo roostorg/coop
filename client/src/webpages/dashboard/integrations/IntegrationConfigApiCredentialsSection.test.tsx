@@ -111,4 +111,115 @@ describe('IntegrationConfigApiCredentialsSection (plugin fields)', () => {
     expect(screen.getByText('Include earlier messages')).toBeTruthy();
     expect(screen.queryByDisplayValue('flatten')).toBeNull();
   });
+
+  it('saves the option value when a select changes', () => {
+    const setApiCredential = vi.fn();
+    render(
+      <IntegrationConfigApiCredentialsSection
+        name="PIGEON"
+        apiCredential={{
+          __typename: 'PluginIntegrationApiCredential',
+          credential: {},
+        }}
+        setApiCredential={setApiCredential}
+        configurationFields={[
+          {
+            key: 'region',
+            label: 'Region',
+            required: true,
+            inputType: 'SELECT' as const,
+            options: [
+              {
+                __typename: 'IntegrationConfigFieldOption',
+                value: 'us',
+                label: 'United States',
+              },
+              {
+                __typename: 'IntegrationConfigFieldOption',
+                value: 'eu',
+                label: 'European Union',
+              },
+            ],
+            placeholder: null,
+            description: null,
+          },
+        ]}
+      />,
+    );
+
+    fireEvent.mouseDown(screen.getByRole('combobox'));
+    fireEvent.click(screen.getByTitle('European Union'));
+
+    expect(setApiCredential).toHaveBeenCalledWith({
+      __typename: 'PluginIntegrationApiCredential',
+      credential: { region: 'eu' },
+    });
+  });
+
+  it('shows JSON values as editable text', () => {
+    const setApiCredential = vi.fn();
+    render(
+      <IntegrationConfigApiCredentialsSection
+        name="PIGEON"
+        apiCredential={{
+          __typename: 'PluginIntegrationApiCredential',
+          credential: { headers: { 'X-Team': 'trust' } },
+        }}
+        setApiCredential={setApiCredential}
+        configurationFields={[
+          {
+            key: 'headers',
+            label: 'Headers',
+            required: false,
+            inputType: 'JSON' as const,
+            placeholder: null,
+            description: null,
+          },
+        ]}
+      />,
+    );
+
+    const textarea = screen.getByLabelText('Headers');
+    expect(textarea.tagName).toBe('TEXTAREA');
+    expect((textarea as HTMLTextAreaElement).value).toBe('{"X-Team":"trust"}');
+
+    fireEvent.change(textarea, { target: { value: '{"X-Team":"safety"}' } });
+    expect(setApiCredential).toHaveBeenCalledWith({
+      __typename: 'PluginIntegrationApiCredential',
+      credential: { headers: '{"X-Team":"safety"}' },
+    });
+  });
+
+  it('edits array fields as a list of values', () => {
+    const setApiCredential = vi.fn();
+    render(
+      <IntegrationConfigApiCredentialsSection
+        name="PIGEON"
+        apiCredential={{
+          __typename: 'PluginIntegrationApiCredential',
+          credential: { languages: ['en'] },
+        }}
+        setApiCredential={setApiCredential}
+        configurationFields={[
+          {
+            key: 'languages',
+            label: 'Languages',
+            required: false,
+            inputType: 'ARRAY' as const,
+            placeholder: null,
+            description: null,
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.getByText('en')).toBeTruthy();
+    const input = screen.getByRole('combobox');
+    fireEvent.change(input, { target: { value: 'fr,' } });
+
+    expect(setApiCredential).toHaveBeenCalledWith({
+      __typename: 'PluginIntegrationApiCredential',
+      credential: { languages: ['en', 'fr'] },
+    });
+  });
 });
