@@ -1448,6 +1448,11 @@ export type GQLIntegrationApiCredentialInput = {
 export type GQLIntegrationConfig = {
   readonly __typename: 'IntegrationConfig';
   readonly apiCredential: GQLIntegrationApiCredential;
+  /**
+   * Form fields declared by a plugin manifest. Empty for built-in integrations,
+   * which have custom forms.
+   */
+  readonly configurationFields: ReadonlyArray<GQLIntegrationConfigField>;
   readonly docsUrl: Scalars['String']['output'];
   readonly logoUrl?: Maybe<Scalars['String']['output']>;
   readonly logoWithBackgroundUrl?: Maybe<Scalars['String']['output']>;
@@ -1456,6 +1461,34 @@ export type GQLIntegrationConfig = {
   readonly name: Scalars['String']['output'];
   readonly requiresConfig: Scalars['Boolean']['output'];
   readonly title: Scalars['String']['output'];
+};
+
+export type GQLIntegrationConfigField = {
+  readonly __typename: 'IntegrationConfigField';
+  readonly description?: Maybe<Scalars['String']['output']>;
+  readonly inputType: GQLIntegrationConfigFieldInputType;
+  readonly key: Scalars['String']['output'];
+  readonly label: Scalars['String']['output'];
+  /** Choices for SELECT fields; null otherwise. */
+  readonly options?: Maybe<ReadonlyArray<GQLIntegrationConfigFieldOption>>;
+  readonly placeholder?: Maybe<Scalars['String']['output']>;
+  readonly required: Scalars['Boolean']['output'];
+};
+
+export const GQLIntegrationConfigFieldInputType = {
+  Array: 'ARRAY',
+  Json: 'JSON',
+  Password: 'PASSWORD',
+  Select: 'SELECT',
+  Text: 'TEXT',
+} as const;
+
+export type GQLIntegrationConfigFieldInputType =
+  (typeof GQLIntegrationConfigFieldInputType)[keyof typeof GQLIntegrationConfigFieldInputType];
+export type GQLIntegrationConfigFieldOption = {
+  readonly __typename: 'IntegrationConfigFieldOption';
+  readonly label: Scalars['String']['output'];
+  readonly value: Scalars['String']['output'];
 };
 
 export type GQLIntegrationConfigQueryResponse =
@@ -6651,6 +6684,20 @@ export type GQLIntegrationConfigQuery = {
           readonly logoUrl?: string | null;
           readonly logoWithBackgroundUrl?: string | null;
           readonly modelCardLearnMoreUrl?: string | null;
+          readonly configurationFields: ReadonlyArray<{
+            readonly __typename: 'IntegrationConfigField';
+            readonly key: string;
+            readonly label: string;
+            readonly required: boolean;
+            readonly inputType: GQLIntegrationConfigFieldInputType;
+            readonly placeholder?: string | null;
+            readonly description?: string | null;
+            readonly options?: ReadonlyArray<{
+              readonly __typename: 'IntegrationConfigFieldOption';
+              readonly value: string;
+              readonly label: string;
+            }> | null;
+          }>;
           readonly modelCard: {
             readonly __typename: 'ModelCard';
             readonly modelName: string;
@@ -30543,6 +30590,18 @@ export const GQLIntegrationConfigDocument = gql`
           title
           docsUrl
           requiresConfig
+          configurationFields {
+            key
+            label
+            required
+            inputType
+            options {
+              value
+              label
+            }
+            placeholder
+            description
+          }
           logoUrl
           logoWithBackgroundUrl
           modelCard {
