@@ -1,0 +1,53 @@
+server/services/integrationRegistry/validateConfigurationFields.test.ts
+  s_2975393364f2c4::t_61a7f2e43f1985 3-8
+  s_2975393364f2c4::t_a4dffcd0339cf3 116-123
+  s_2975393364f2c4::t_79273bf62727bd 44-58,64-71
+server/services/integrationRegistry/loadPlugins.ts
+  s_2975393364f2c4::t_c41c970357f28a 95-103
+  s_2975393364f2c4::t_61c9ded3870eb2 122,129-130,136
+  s_2975393364f2c4::t_7e49a7f8cc3734 42-47
+docs/integrations/custom.md
+  s_2975393364f2c4::t_b2a73a20040020 62-66,68-70
+client/src/webpages/dashboard/integrations/IntegrationConfigApiCredentialsSection.tsx
+  s_2975393364f2c4::t_47a25913335fc3 247-249
+  s_2975393364f2c4::t_8e4e593b01195d 239-246,250,252
+  s_2975393364f2c4::t_1b06cd226dc50c 251
+  s_2975393364f2c4::t_8b96fbb155f9da 184
+  s_2975393364f2c4::t_2dbe72d4ae6f66 238
+client/src/webpages/dashboard/integrations/IntegrationConfigForm.test.tsx
+  s_2975393364f2c4::t_c39bb7be0996dc 7
+  s_2975393364f2c4::t_70e9a612aeb2ab 179
+  s_2975393364f2c4::t_4a9ecc8b86ad55 31-34
+  s_2975393364f2c4::t_79e3d3397fe534 12,18-19
+  s_2975393364f2c4::t_2fe80014e9ea78 178,180-263,268-291
+  s_2975393364f2c4::t_47a25913335fc3 264-267
+client/src/webpages/dashboard/integrations/IntegrationConfigApiCredentialsSection.test.tsx
+  s_2975393364f2c4::t_ca9f1dfb45a84b 218
+  s_2975393364f2c4::t_be3b1c845ed386 114-131,142-217,219-224
+  s_2975393364f2c4::t_ad68be31523867 132-141
+client/src/webpages/dashboard/integrations/IntegrationConfigForm.tsx
+  s_2975393364f2c4::t_3351f6c9c9a9e4 182-184,186-189,191-195
+  s_2975393364f2c4::t_2a7f630a83b898 185,190
+  s_2975393364f2c4::t_c1282a90978436 337
+  s_2975393364f2c4::t_aa8680f1deb060 313-319
+  s_2975393364f2c4::t_9ef9cd16459fae 404-409
+  s_2975393364f2c4::t_3214c3a57f036f 13
+  s_2975393364f2c4::t_41eb79b2c80136 410-415
+  s_2975393364f2c4::t_b9be315eac4cd0 334-336,338-342
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "13e0fc925e1fbd2fd20b6cad6feec2f9028eaf01",
+  "prompts": {},
+  "sessions": {
+    "s_2975393364f2c4": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d1c75203-cb58-49e2-9c8f-132884e369c1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
