@@ -917,8 +917,9 @@ export default class QueueOperations {
     const jobId = bullJobIdtoExternalJobId(bullJobId);
     const createdAt = jobPayload.createdAt ?? new Date();
 
-    // Indexed before the add so the index never misses a live job.
-    if (Number.isFinite(createdAt.getTime())) {
+    const indexable = Number.isFinite(createdAt.getTime());
+    // Indexed before the add so a read never sees the job without an entry.
+    if (indexable) {
       await this.pendingJobIndex.add({
         orgId,
         queueId,
@@ -944,16 +945,30 @@ export default class QueueOperations {
       },
     );
 
-    // BullMQ ignores an add whose BullJobId is already taken, so our entry
-    // names a job that was never stored. Only cleanup: readers would drop the
-    // entry anyway, so a failure here mustn't fail an enqueue that succeeded.
-    try {
-      const storedJob = await queue.getJob(bullJobId);
-      if (storedJob?.data.id !== jobId) {
-        await this.pendingJobIndex.remove({ orgId, queueId, jobIds: [jobId] });
+    // A read that ran while the add was in flight found no BullMQ job for
+    // our entry and dropped it, so write it again now that the job exists.
+    // If BullMQ instead ignored the add because the BullJobId was taken, our
+    // entry names a job that was never stored. A failure here mustn't fail
+    // an enqueue that succeeded.
+    if (indexable) {
+      try {
+        const storedJob = await queue.getJob(bullJobId);
+        if (storedJob?.data.id === jobId) {
+          await this.pendingJobIndex.add({
+            orgId,
+            queueId,
+            entries: [{ jobId, createdAtMs: createdAt.getTime() }],
+          });
+        } else {
+          await this.pendingJobIndex.remove({
+            orgId,
+            queueId,
+            jobIds: [jobId],
+          });
+        }
+      } catch (error: unknown) {
+        this.tracer.logActiveSpanFailedIfAny(error);
       }
-    } catch (error: unknown) {
-      this.tracer.logActiveSpanFailedIfAny(error);
     }
 
     this.meter?.recordManualReviewEvent('enqueue_call_succeeded', {
@@ -2095,13 +2110,14 @@ export default class QueueOperations {
           continue;
         }
         if (createdAt.getTime() !== entry.createdAtMs) {
-          // The entry is out of order; fix it and walk again from the
-          // current position.
+          // The entry is out of order. Its corrected position may be ahead of
+          // entries already skipped, so walk again from the start.
           await this.pendingJobIndex.add({
             orgId,
             queueId,
             entries: [{ jobId: entry.jobId, createdAtMs: createdAt.getTime() }],
           });
+          offset = 0;
           break;
         }
         await this.pendingJobIndex.remove({ orgId, queueId, jobIds: gone });

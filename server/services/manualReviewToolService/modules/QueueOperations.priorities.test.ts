@@ -656,6 +656,102 @@ describe('QueueOperations job priorities', () => {
     );
 
     testWithQueue()(
+      'keeps a job indexed when a read drops its entry mid-enqueue',
+      async ({ org, queue, redis, mrtService }) => {
+        const queueOps = mrtService['queueOps'];
+        const bullQueue = await queueOps['getOrCreateBullQueue']({
+          orgId: org.id,
+          queueId: queue.id,
+        });
+        const getOldest = async () =>
+          queueOps.getOldestJobCreatedAt({
+            orgId: org.id,
+            queueId: queue.id,
+            isAppealsQueue: false,
+          });
+        const realAdd = bullQueue.add.bind(bullQueue);
+        let sizeAfterInFlightRead: number | undefined;
+        vi.spyOn(bullQueue, 'add').mockImplementationOnce(async (...args) => {
+          // The entry exists but its BullMQ job doesn't yet, so this read
+          // drops it.
+          await getOldest();
+          sizeAfterInFlightRead = await redis.zcard(indexKey(org.id, queue.id));
+          return realAdd(...args);
+        });
+
+        const job = await queueOps.addJob({
+          orgId: org.id,
+          queueId: queue.id,
+          enqueueSourceInfo: { kind: 'REPORT' },
+          priority: 1000,
+          jobPayload: {
+            createdAt: new Date(base),
+            policyIds: [],
+            payload: makePayloadFor(uid())('item-A'),
+          },
+        });
+
+        // Only the built marker was left after the in-flight read.
+        expect(sizeAfterInFlightRead).toBe(1);
+        expect(
+          await redis.zscore(indexKey(org.id, queue.id), job.id),
+        ).not.toBeNull();
+        expect((await getOldest())?.getTime()).toBe(base);
+      },
+    );
+
+    testWithQueue()(
+      'finds a corrected entry that moves ahead of skipped active jobs',
+      async ({ org, queue, redis, mrtService }) => {
+        const queueOps = mrtService['queueOps'];
+        const payloadFor = makePayloadFor(uid());
+        const pending = await queueOps.addJob({
+          orgId: org.id,
+          queueId: queue.id,
+          enqueueSourceInfo: { kind: 'REPORT' },
+          priority: 5000,
+          jobPayload: {
+            createdAt: new Date(base),
+            policyIds: [],
+            payload: payloadFor('item-pending'),
+          },
+        });
+        await queueOps.addJob({
+          orgId: org.id,
+          queueId: queue.id,
+          enqueueSourceInfo: { kind: 'REPORT' },
+          priority: 1,
+          jobPayload: {
+            createdAt: new Date(base + 10),
+            policyIds: [],
+            payload: payloadFor('item-held'),
+          },
+        });
+        const held = await queueOps.dequeueNextJobWithLock({
+          orgId: org.id,
+          queueId: queue.id,
+          lockToken: 'reviewer-1',
+        });
+        expect(held?.job.payload.item.itemId).toBe('item-held');
+        // A stale score that sorts the pending job after the held one.
+        await redis.zadd(
+          indexKey(org.id, queue.id),
+          'XX',
+          base + 20,
+          pending.id,
+        );
+
+        const oldest = await queueOps.getOldestJobCreatedAt({
+          orgId: org.id,
+          queueId: queue.id,
+          isAppealsQueue: false,
+        });
+
+        expect(oldest?.getTime()).toBe(base);
+      },
+    );
+
+    testWithQueue()(
       'skips a dequeued job and reports it again once it is released',
       async ({ org, queue, mrtService }) => {
         const queueOps = mrtService['queueOps'];
