@@ -1,0 +1,24 @@
+server/services/manualReviewToolService/modules/QueueOperations.ts
+  s_45257d559bf1ad::t_4a5c563932afbc 948-970
+  s_45257d559bf1ad::t_2504d371d610a1 920-922
+  s_45257d559bf1ad::t_76b7637d64ec0e 2113-2114,2120
+server/services/manualReviewToolService/modules/QueueOperations.priorities.test.ts
+  s_45257d559bf1ad::t_0e518a0050420f 658-751
+  s_45257d559bf1ad::t_e63d1b28e7c9ad 752-753
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e19ca4aef5c069c4e0436f3d91f6f1890e073b47",
+  "prompts": {},
+  "sessions": {
+    "s_45257d559bf1ad": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "73b1268b-e428-4b91-a79c-4670a3c6dd48",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
