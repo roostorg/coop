@@ -1,0 +1,42 @@
+server/services/itemInvestigationService/itemInvestigationServiceAdapter.ts
+  s_4ebcbee0e70290::t_2a256ae7e235b6 210-214,216-221,224-231,234-248,263,267-270,276-279,288-289,292,294-300,305
+  s_4ebcbee0e70290::t_3cb092563617d1 317-318
+server/utils/collections.test.ts
+  s_4ebcbee0e70290::t_38af74a580ac03 63-90,96-106,111-125
+  s_4ebcbee0e70290::t_8b0223d657a355 1-7
+  s_4ebcbee0e70290::t_8267ec9f9f8e6a 91-95,107-110
+server/graphql/modules/investigation.resolver.test.ts
+  s_4ebcbee0e70290::t_ad1cc18b1b45d4 250-252
+server/graphql/modules/investigation.ts
+  s_4ebcbee0e70290::t_683446236bf5b4 17
+  s_4ebcbee0e70290::t_144c1f1d5c1173 329,331
+  s_4ebcbee0e70290::t_67c91e1bd41335 292-293,299,303,305
+server/services/itemInvestigationService/itemInvestigationService.test.ts
+  s_4ebcbee0e70290::t_fcbf97d8c74923 213-215
+  s_4ebcbee0e70290::t_5199d0b0c4cc7e 20
+  s_4ebcbee0e70290::t_0683e94e950b61 223,231
+  s_4ebcbee0e70290::t_f67370c288d441 201-212,216-222,224-230,232-237
+server/utils/collections.ts
+  s_4ebcbee0e70290::t_ed2de4e2bcd0f6 45-50,52,54-55,58-60,62-63,70-72,78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a26975766124aa1caada9561e924dfa71559f58e",
+  "prompts": {},
+  "humans": {
+    "h_228f5682388812": {
+      "author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4ebcbee0e70290": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2c63e5fa-b7d4-47a6-9dc7-9666bda05267",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
