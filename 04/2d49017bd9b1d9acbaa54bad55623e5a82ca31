@@ -1,0 +1,24 @@
+CHANGELOG.md
+  s_4ebcbee0e70290::t_83ba46375f982b 32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "042d49017bd9b1d9acbaa54bad55623e5a82ca31",
+  "prompts": {},
+  "humans": {
+    "h_228f5682388812": {
+      "author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4ebcbee0e70290": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2c63e5fa-b7d4-47a6-9dc7-9666bda05267",
+        "model": "grok-4.7"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
