@@ -59,8 +59,10 @@ export async function asyncIterableToArrayUntilAborted<T>(
     return items;
   }
 
+  let onAbort = () => {};
   const abortPromise = new Promise<void>((resolve) => {
-    signal.addEventListener('abort', () => resolve(), { once: true });
+    onAbort = () => resolve();
+    signal.addEventListener('abort', onAbort, { once: true });
   });
 
   const itemsIterationPromise = (async () => {
@@ -75,6 +77,10 @@ export async function asyncIterableToArrayUntilAborted<T>(
     }
   })();
 
-  await Promise.race([abortPromise, itemsIterationPromise]);
+  try {
+    await Promise.race([abortPromise, itemsIterationPromise]);
+  } finally {
+    signal.removeEventListener('abort', onAbort);
+  }
   return items;
 }

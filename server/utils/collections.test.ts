@@ -111,6 +111,22 @@ describe('Collections utils functions', () => {
       ).resolves.toEqual([1, 2]);
     });
 
+    test('removes its abort listener when the source ends first', async () => {
+      async function* numbers() {
+        yield 1;
+      }
+      const { signal } = new AbortController();
+      const addEventListener = vi.spyOn(signal, 'addEventListener');
+      const removeEventListener = vi.spyOn(signal, 'removeEventListener');
+
+      await asyncIterableToArrayUntilAborted(numbers(), signal);
+
+      expect(removeEventListener).toHaveBeenCalledWith(
+        'abort',
+        addEventListener.mock.calls[0][1],
+      );
+    });
+
     test('returns nothing when the signal is already aborted', async () => {
       const next = vi.fn();
       const source: AsyncIterable<number> = {

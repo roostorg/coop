@@ -307,6 +307,9 @@ export async function resolveItemsWithId(
     );
 
     if (items.length === 0) {
+      if (lookupDeadline.aborted) {
+        return [];
+      }
       const synthetic = await tryBuildSyntheticItemsWithIdResult(
         context.services.ItemInvestigationService,
         user.orgId,
@@ -332,6 +335,10 @@ export async function resolveItemsWithId(
   );
 
   if (items.length === 0) {
+    // The synthesis fallback starts new reads with no deadline of its own.
+    if (lookupDeadline.aborted) {
+      return [];
+    }
     const synthetic = await tryBuildSyntheticItemsWithIdResult(
       context.services.ItemInvestigationService,
       user.orgId,

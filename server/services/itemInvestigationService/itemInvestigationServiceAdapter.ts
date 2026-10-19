@@ -1,4 +1,5 @@
 import { ReadableStream } from 'node:stream/web';
+import { trace } from '@opentelemetry/api';
 import type { ItemIdentifier } from '@roostorg/coop-types';
 
 import { type Dependencies } from '../../iocContainer/index.js';
@@ -249,7 +250,12 @@ export class ItemInvestigationServiceAdapter {
         this.moderationConfigService
           .getItemTypes({ orgId })
           .then(async (itemTypes) => {
-            return Promise.all(
+            // `getItemByIdentifier` starts a Scylla read before its first
+            // signal check, so don't launch lookups once the stream is done.
+            if (finished) {
+              return;
+            }
+            await Promise.all(
               itemTypes.map(async (it) => {
                 const rawSubmissionsForItem =
                   await this.service.getItemByIdentifier({
@@ -259,15 +265,16 @@ export class ItemInvestigationServiceAdapter {
                     signal,
                   });
 
-                if (rawSubmissionsForItem) {
-                  const submissionsForItem =
-                    await this.#convertToSubmissionsForItem(
-                      orgId,
-                      rawSubmissionsForItem,
-                    );
-                  if (!finished) {
-                    streamController.enqueue(submissionsForItem);
-                  }
+                if (rawSubmissionsForItem == null || signal.aborted) {
+                  return;
+                }
+                const submissionsForItem =
+                  await this.#convertToSubmissionsForItem(
+                    orgId,
+                    rawSubmissionsForItem,
+                  );
+                if (!finished) {
+                  streamController.enqueue(submissionsForItem);
                 }
               }),
             );
@@ -294,10 +301,20 @@ export class ItemInvestigationServiceAdapter {
             // If we're in the first case, we need to call
             // `streamController.error()`, to expose the error when the stream
             // is read from in future. In the second case the stream is already
-            // finished, so we don't have to do anything.
+            // finished, so only a failure other than our own abort is worth
+            // recording.
             if (!finished) {
               finish();
               streamController.error(error);
+              return;
+            }
+            const activeSpan = trace.getActiveSpan();
+            if (
+              error !== signal.reason &&
+              error instanceof Error &&
+              activeSpan?.isRecording()
+            ) {
+              activeSpan.recordException(error);
             }
           });
       },
