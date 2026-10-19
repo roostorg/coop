@@ -1,3 +1,5 @@
+import { ReadableStream } from 'node:stream/web';
+
 import { bodyCancellationReason } from './bodyCancellationReason.js';
 import {
   abandonDownload,
@@ -18,9 +20,29 @@ describe('cancelReadableStream', () => {
     await expect(cancelReadableStream(undefined)).resolves.toBeUndefined();
   });
 
-  it('ignores a stream that is already locked or closed', async () => {
+  it('resolves for a stream that is already closed', async () => {
+    const body = new ReadableStream({
+      start(controller) {
+        controller.close();
+      },
+    });
+
+    await expect(cancelReadableStream(body)).resolves.toBeUndefined();
+  });
+
+  it('ignores a stream that is locked by a reader', async () => {
     const body = new ReadableStream();
-    vi.spyOn(body, 'cancel').mockRejectedValue(new TypeError('locked'));
+    body.getReader();
+
+    await expect(cancelReadableStream(body)).resolves.toBeUndefined();
+  });
+
+  it('ignores a stream that has already errored', async () => {
+    const body = new ReadableStream({
+      start(controller) {
+        controller.error(new Error('source failed'));
+      },
+    });
 
     await expect(cancelReadableStream(body)).resolves.toBeUndefined();
   });
@@ -35,7 +57,7 @@ describe('abandonDownload', () => {
     await abandonDownload(download, body);
 
     expect(download.signal.aborted).toBe(true);
-    expect(download.signal.reason).toBe(bodyCancellationReason);
+    expect(download.signal.reason).toEqual(new Error(bodyCancellationReason));
     expect(cancel).toHaveBeenCalledWith(bodyCancellationReason);
   });
 

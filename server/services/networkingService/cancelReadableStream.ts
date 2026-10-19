@@ -1,8 +1,11 @@
+import { type ReadableStream } from 'node:stream/web';
+import { trace } from '@opentelemetry/api';
+
 import { bodyCancellationReason } from './bodyCancellationReason.js';
 
 /**
  * Drop a response body the caller will not finish reading.
- * `cancel()` rejects when the stream is already closed or locked by a reader,
+ * `cancel()` rejects when the stream is locked by a reader or already errored,
  * and that failure must not hide the error that caused us to abandon it.
  */
 export async function cancelReadableStream(
@@ -13,8 +16,11 @@ export async function cancelReadableStream(
   }
   try {
     await body.cancel(bodyCancellationReason);
-  } catch {
-    // Already closed, cancelled, or locked by a reader.
+  } catch (error) {
+    const activeSpan = trace.getActiveSpan();
+    if (activeSpan?.isRecording() && error instanceof Error) {
+      activeSpan.recordException(error);
+    }
   }
 }
 
@@ -28,6 +34,6 @@ export async function abandonDownload(
   download: AbortController,
   body: ReadableStream | undefined,
 ): Promise<void> {
-  download.abort(bodyCancellationReason);
+  download.abort(new Error(bodyCancellationReason));
   await cancelReadableStream(body);
 }

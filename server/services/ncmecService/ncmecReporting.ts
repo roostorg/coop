@@ -1,4 +1,5 @@
 /* eslint-disable max-lines */
+import { type ReadableStream } from 'node:stream/web';
 import type { Exception } from '@opentelemetry/api';
 import { makeEnumLike, type ItemIdentifier } from '@roostorg/coop-types';
 import _Ajv from 'ajv';
@@ -27,6 +28,7 @@ import type {
 import { abandonDownload } from '../networkingService/cancelReadableStream.js';
 import {
   makeFormDataLikeWithStreams,
+  type FetchHTTP,
   type FormDataLikeWithStreams,
 } from '../networkingService/index.js';
 import { type NcmecReportingServicePg } from './dbTypes.js';
@@ -1350,6 +1352,38 @@ const validateNcmecAdditionalInfo = ajv.compile<NcmecAdditionalInfoResponse>({
   required: ['users'],
 } as const satisfies JSONSchemaV4<NcmecAdditionalInfoResponse>);
 
+/**
+ * Download media and hand the body to `send`. If the download is not usable
+ * or `send` throws, abort the request and cancel the body before the caller
+ * retries, so the failed attempt does not keep its stream open.
+ */
+export async function uploadDownloadedMedia<T>(
+  fetchHTTP: FetchHTTP,
+  url: string,
+  send: (body: ReadableStream) => Promise<T>,
+): Promise<T> {
+  const download = new AbortController();
+  let body: ReadableStream | undefined;
+  try {
+    const response = await fetchHTTP({
+      url,
+      method: 'get',
+      handleResponseBody: 'as-readable-stream',
+      maxResponseSize: 'unlimited',
+      iWillConsumeTheResponseBodyStreamQuicklyToAvoidACrash: true,
+      signal: download.signal,
+    });
+    body = response.body;
+    if (!response.ok || response.body == null) {
+      throw new Error(`Cannot download media from ${url}`);
+    }
+    return await send(response.body);
+  } catch (error) {
+    await abandonDownload(download, body);
+    throw error;
+  }
+}
+
 export type NcmecMediaReport = {
   id: string;
   typeId: string;
@@ -2464,35 +2498,11 @@ export default class NcmecReporting {
     }
   }
 
-  /**
-   * Download media and hand the body to `send`. If the download is not usable
-   * or `send` throws, abort the request and cancel the body before the caller
-   * retries, so the failed attempt does not keep its stream open.
-   */
   async #uploadDownloadedMedia<T>(
     url: string,
     send: (body: ReadableStream) => Promise<T>,
   ): Promise<T> {
-    const download = new AbortController();
-    let body: ReadableStream | undefined;
-    try {
-      const response = await this.fetchHTTP({
-        url,
-        method: 'get',
-        handleResponseBody: 'as-readable-stream',
-        maxResponseSize: 'unlimited',
-        iWillConsumeTheResponseBodyStreamQuicklyToAvoidACrash: true,
-        signal: download.signal,
-      });
-      body = response.body;
-      if (!response.ok || response.body == null) {
-        throw new Error(`Cannot download media from ${url}`);
-      }
-      return await send(response.body);
-    } catch (error) {
-      await abandonDownload(download, body);
-      throw error;
-    }
+    return uploadDownloadedMedia(this.fetchHTTP, url, send);
   }
 
   async #sendCyberTipRequest(input: {
