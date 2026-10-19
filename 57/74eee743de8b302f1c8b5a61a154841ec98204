@@ -1,0 +1,38 @@
+server/services/networkingService/index.test.ts
+  s_4ebcbee0e70290::t_6a5cfede43e2d5 212-227
+server/services/ncmecService/ncmecReporting.ts
+  h_228f5682388812 27,2122-2123,2128-2134,2215,2221-2224,2467-2479,2484,2486-2493
+  h_228f5682388812 2124-2127,2135,2137,2216-2220,2225-2228,2230,2480-2483,2485,2494-2497
+server/services/networkingService/index.ts
+  s_4ebcbee0e70290::t_95228ea6fca8a7 201
+  s_4ebcbee0e70290::t_386bd111050ae0 286,302-305
+  s_4ebcbee0e70290::t_6587b53e41d58c 103-108
+server/services/networkingService/cancelReadableStream.test.ts
+  s_4ebcbee0e70290::t_243ef935d9343b 1-49
+server/services/networkingService/cancelReadableStream.ts
+  s_4ebcbee0e70290::t_c68206a598e4bb 1-33
+server/services/signalsService/signals/third_party_signals/open_ai/whisper/OpenAiWhisperTranscriptionSignal.ts
+  s_4ebcbee0e70290::t_13100a507c8bf6 260-261,269,271,309
+  s_4ebcbee0e70290::t_e59d118e1048a0 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5774eee743de8b302f1c8b5a61a154841ec98204",
+  "prompts": {},
+  "humans": {
+    "h_228f5682388812": {
+      "author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4ebcbee0e70290": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2c63e5fa-b7d4-47a6-9dc7-9666bda05267",
+        "model": "grok-4.7"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
