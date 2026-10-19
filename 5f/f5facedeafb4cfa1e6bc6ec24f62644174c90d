@@ -1,0 +1,41 @@
+server/services/itemInvestigationService/itemInvestigationService.test.ts
+  s_4ebcbee0e70290::t_240efecfa6d705 243-301
+  s_4ebcbee0e70290::t_bffa438ab28c3f 210-222
+server/utils/collections.ts
+  s_4ebcbee0e70290::t_d89989e8ee4871 62,64-65
+  s_4ebcbee0e70290::t_243dcecc7ad46a 80-84
+server/services/itemInvestigationService/itemInvestigationServiceAdapter.ts
+  s_4ebcbee0e70290::t_84fd1ec543442d 2
+  s_4ebcbee0e70290::t_5add1ba7ede70e 304-305,309-317
+  s_4ebcbee0e70290::t_75bd0ad685f8f6 268
+  s_4ebcbee0e70290::t_f198adcf847759 253-258,269-277
+server/graphql/modules/investigation.ts
+  s_4ebcbee0e70290::t_aa0362523e3b67 310-312
+  s_4ebcbee0e70290::t_bc549768631a90 338-341
+server/graphql/modules/investigation.resolver.test.ts
+  s_4ebcbee0e70290::t_b455de6a2f2392 243-246
+  s_4ebcbee0e70290::t_05f61349259423 232-242,247-255
+server/utils/collections.test.ts
+  s_4ebcbee0e70290::t_0d2e2e33b2d4c5 114-129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5ff5facedeafb4cfa1e6bc6ec24f62644174c90d",
+  "prompts": {},
+  "humans": {
+    "h_228f5682388812": {
+      "author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_4ebcbee0e70290": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "2c63e5fa-b7d4-47a6-9dc7-9666bda05267",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
