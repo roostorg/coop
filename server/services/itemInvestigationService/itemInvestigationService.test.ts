@@ -17,6 +17,7 @@ import {
 } from '../itemProcessingService/index.js';
 import { type ScyllaItemSubmissionsRow } from './dbTypes.js';
 import { type ItemInvestigationService } from './index.js';
+import { ItemInvestigationService as ItemInvestigationStore } from './itemInvestigationService.js';
 
 describe('Item Investigation Service', () => {
   let container: Dependencies;
@@ -196,6 +197,43 @@ describe('Item Investigation Service', () => {
       }
     },
   );
+
+  test('closes a type-agnostic lookup when the caller deadline passes', async () => {
+    const { org, cleanup } = await createOrg(container);
+    await container.ModerationConfigService.createContentType(org.id, {
+      name: 'Message',
+      description: null,
+      schema: [
+        { name: 'content', type: 'STRING', required: false, container: null },
+      ],
+      schemaFieldRoles: {},
+    });
+    const getItemByIdentifier = vi
+      .spyOn(ItemInvestigationStore.prototype, 'getItemByIdentifier')
+      .mockImplementation(async () => new Promise<null>(() => {}));
+    const lookupSignals = () =>
+      getItemByIdentifier.mock.calls.map(([opts]) => opts.signal);
+
+    try {
+      const deadline = new AbortController();
+      const iterator = itemInvestigationService.getItemByTypeAgnosticIdentifier(
+        { orgId: org.id, itemId: uid(), signal: deadline.signal },
+      );
+      const pendingRead = iterator.next();
+      await vi.waitFor(() => expect(lookupSignals()).not.toHaveLength(0));
+
+      deadline.abort();
+
+      await expect(pendingRead).resolves.toEqual({
+        done: true,
+        value: undefined,
+      });
+      expect(lookupSignals().every((signal) => signal?.aborted)).toBe(true);
+    } finally {
+      getItemByIdentifier.mockRestore();
+      await cleanup();
+    }
+  });
 
   test('ParentStream query should return the correct items', async () => {
     const dummySchema = [

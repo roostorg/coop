@@ -247,6 +247,9 @@ describe('investigation resolvers', () => {
         expect(
           service.synthesizeUserItemFromCreatorReferences,
         ).not.toHaveBeenCalled();
+        expect(service.getItemByTypeAgnosticIdentifier).toHaveBeenCalledWith(
+          expect.objectContaining({ signal: expect.any(AbortSignal) }),
+        );
       });
     });
   });

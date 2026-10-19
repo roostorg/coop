@@ -14,8 +14,7 @@ import {
 } from '../../services/moderationConfigService/index.js';
 import {
   asyncIterableToArray,
-  asyncIterableToArrayWithTimeout,
-  asyncIterableToArrayWithTimeoutAndLimit,
+  asyncIterableToArrayUntilAborted,
   filterNullOrUndefined,
 } from '../../utils/collections.js';
 import { jsonStringify } from '../../utils/encoding.js';
@@ -290,17 +289,20 @@ export async function resolveItemsWithId(
     ];
   }
 
+  // 25s deadline caps slow upstream streams.
+  const lookupDeadline = AbortSignal.timeout(25_000);
   const itemsAsyncIterator =
     context.services.ItemInvestigationService.getItemByTypeAgnosticIdentifier({
       orgId: user.orgId,
       itemId,
       latestSubmissionOnly: true,
+      signal: lookupDeadline,
     });
 
   if (returnFirstResultOnly) {
-    const items = await asyncIterableToArrayWithTimeoutAndLimit(
+    const items = await asyncIterableToArrayUntilAborted(
       itemsAsyncIterator,
-      25_000,
+      lookupDeadline,
       1,
     );
 
@@ -324,10 +326,9 @@ export async function resolveItemsWithId(
     ];
   }
 
-  // 25s timeout caps slow upstream streams.
-  const items = await asyncIterableToArrayWithTimeout(
+  const items = await asyncIterableToArrayUntilAborted(
     itemsAsyncIterator,
-    25_000,
+    lookupDeadline,
   );
 
   if (items.length === 0) {
