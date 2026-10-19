@@ -24,6 +24,7 @@ import type {
   NCMECReportedContentInThread,
   NCMECThreadReport,
 } from '../manualReviewToolService/modules/JobDecisioning.js';
+import { abandonDownload } from '../networkingService/cancelReadableStream.js';
 import {
   makeFormDataLikeWithStreams,
   type FormDataLikeWithStreams,
@@ -2118,36 +2119,22 @@ export default class NcmecReporting {
         maxTimeMsBetweenRetries: 500,
         jitter: true,
       },
-      async () => {
-        // TODO: Handle when this fails because of Unidici's memory limit
-        const response = await this.fetchHTTP({
-          url: additionalFileInfo.fileUrl,
-          method: 'get',
-          handleResponseBody: 'as-readable-stream',
-          maxResponseSize: 'unlimited',
-          iWillConsumeTheResponseBodyStreamQuicklyToAvoidACrash: true,
-        });
-
-        if (!response.ok || !response.body) {
-          throw new Error(
-            `Cannot download media from ${additionalFileInfo.fileUrl}`,
-          );
-        }
-
-        return this.#sendCyberTipRequest({
-          cybertipAuthenticationCredentials,
-          body: makeFormDataLikeWithStreams({
-            id: reportId,
-            file: {
-              data: response.body,
-              fileName: additionalFileInfo.fileName,
-            },
+      async () =>
+        this.#uploadDownloadedMedia(additionalFileInfo.fileUrl, async (file) =>
+          this.#sendCyberTipRequest({
+            cybertipAuthenticationCredentials,
+            body: makeFormDataLikeWithStreams({
+              id: reportId,
+              file: {
+                data: file,
+                fileName: additionalFileInfo.fileName,
+              },
+            }),
+            route: '/upload',
+            includeContentType: false, // remove ContentType header
+            isTest,
           }),
-          route: '/upload',
-          includeContentType: false, // remove ContentType header
-          isTest,
-        });
-      },
+        ),
     );
     const response = await downloadWithRetries();
 
@@ -2218,7 +2205,6 @@ export default class NcmecReporting {
     additionalInfo: MediaAdditionalInfo,
     isTest: boolean,
   ) {
-    // TODO: Handle when this fails because of Unidici's memory limit
     const downloadWithRetries = withRetries(
       {
         maxRetries: 5,
@@ -2226,33 +2212,22 @@ export default class NcmecReporting {
         maxTimeMsBetweenRetries: 500,
         jitter: true,
       },
-      async () => {
-        const response = await this.fetchHTTP({
-          url: media.url,
-          method: 'get',
-          handleResponseBody: 'as-readable-stream',
-          maxResponseSize: 'unlimited',
-          iWillConsumeTheResponseBodyStreamQuicklyToAvoidACrash: true,
-        });
-
-        if (!response.ok || !response.body) {
-          throw new Error(`Cannot download media from ${media.url}`);
-        }
-
-        return this.#sendCyberTipRequest({
-          cybertipAuthenticationCredentials,
-          body: makeFormDataLikeWithStreams({
-            id: reportId,
-            file: {
-              data: response.body,
-              fileName: additionalInfo.fileName,
-            },
+      async () =>
+        this.#uploadDownloadedMedia(media.url, async (file) =>
+          this.#sendCyberTipRequest({
+            cybertipAuthenticationCredentials,
+            body: makeFormDataLikeWithStreams({
+              id: reportId,
+              file: {
+                data: file,
+                fileName: additionalInfo.fileName,
+              },
+            }),
+            route: '/upload',
+            includeContentType: false,
+            isTest,
           }),
-          route: '/upload',
-          includeContentType: false,
-          isTest,
-        });
-      },
+        ),
     );
 
     const response = await downloadWithRetries();
@@ -2486,6 +2461,37 @@ export default class NcmecReporting {
           jobId: opts.jobId,
         }),
       });
+    }
+  }
+
+  /**
+   * Download media and hand the body to `send`. If the download is not usable
+   * or `send` throws, abort the request and cancel the body before the caller
+   * retries, so the failed attempt does not keep its stream open.
+   */
+  async #uploadDownloadedMedia<T>(
+    url: string,
+    send: (body: ReadableStream) => Promise<T>,
+  ): Promise<T> {
+    const download = new AbortController();
+    let body: ReadableStream | undefined;
+    try {
+      const response = await this.fetchHTTP({
+        url,
+        method: 'get',
+        handleResponseBody: 'as-readable-stream',
+        maxResponseSize: 'unlimited',
+        iWillConsumeTheResponseBodyStreamQuicklyToAvoidACrash: true,
+        signal: download.signal,
+      });
+      body = response.body;
+      if (!response.ok || response.body == null) {
+        throw new Error(`Cannot download media from ${url}`);
+      }
+      return await send(response.body);
+    } catch (error) {
+      await abandonDownload(download, body);
+      throw error;
     }
   }
 

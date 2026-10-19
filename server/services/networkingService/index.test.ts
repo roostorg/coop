@@ -209,4 +209,20 @@ describe('fetchHTTP', () => {
       );
     });
   });
+
+  testWithFakeServer(
+    'rejects an in-flight request when the caller aborts',
+    async ({ baseURL, tracer }) => {
+      const download = new AbortController();
+      const pending = fetchHTTP(tracer, {
+        url: new URL('/never-responds', baseURL).toString(),
+        method: 'get',
+        handleResponseBody: 'discard',
+        signal: download.signal,
+      });
+      download.abort();
+
+      await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+    },
+  );
 });
