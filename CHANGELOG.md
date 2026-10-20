@@ -53,7 +53,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Changed
 
-- Item type writes validate schemas, field roles, and hidden fields ([#1272](https://github.com/roostorg/coop/pull/1272) by [@taobojlen](https://github.com/taobojlen))
+- Add validation for changes to item types ([#1272](https://github.com/roostorg/coop/pull/1272) by [@taobojlen](https://github.com/taobojlen))
 
 ## [1.1.1] - 2026-10-01
 
