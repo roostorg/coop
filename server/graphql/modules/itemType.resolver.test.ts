@@ -7,6 +7,7 @@ import {
   makeInvalidItemTypeSchemaError,
   makeItemTypeNameAlreadyExistsError,
 } from '../../services/moderationConfigService/index.js';
+import { UserPermission } from '../../services/userManagementService/index.js';
 import { makeNotFoundError } from '../../utils/errors.js';
 import { type Context } from '../resolvers.js';
 import { resolvers } from './itemType.js';
@@ -37,12 +38,14 @@ const domainErrors = [
 
 type ResolverFn = (
   source: unknown,
-  args: { input: object },
+  args: { input: object } | { id: string },
   context: Context,
   info: GraphQLResolveInfo,
 ) => unknown;
 
-const makeContext = () => {
+const makeContext = (
+  permissions: readonly UserPermission[] = [UserPermission.MANAGE_ORG],
+) => {
   const transactionConfig = {
     createContentType: vi.fn().mockResolvedValue(itemType),
     createThreadType: vi.fn().mockResolvedValue(itemType),
@@ -50,6 +53,7 @@ const makeContext = () => {
     updateContentType: vi.fn().mockResolvedValue(itemType),
     updateThreadType: vi.fn().mockResolvedValue(itemType),
     updateUserType: vi.fn().mockResolvedValue(itemType),
+    deleteItemType: vi.fn().mockResolvedValue(true),
     close: vi.fn().mockResolvedValue(undefined),
   };
   const transactionCompleted = vi.fn();
@@ -65,7 +69,7 @@ const makeContext = () => {
   };
   return {
     context: {
-      getUser: () => ({ orgId }),
+      getUser: () => ({ orgId, getPermissions: () => permissions }),
       services: {
         transaction: async (run: (transaction: object) => unknown) => {
           const result = await run(trx);
@@ -108,7 +112,7 @@ const variants = [
 ] as const;
 
 const callMutation = async (
-  name: (typeof variants)[number][0 | 2],
+  name: (typeof variants)[number][0 | 2] | 'deleteItemType',
   input: object,
   context: Context,
 ) => {
@@ -117,11 +121,29 @@ const callMutation = async (
     throw new Error(`Missing resolver ${name}`);
   return (resolver as unknown as ResolverFn)(
     {},
-    { input },
+    name === 'deleteItemType' ? { id: itemTypeId } : { input },
     context,
     {} as GraphQLResolveInfo,
   );
 };
+
+it.each([
+  ...variants.flatMap(([create, , update]) => [create, update]),
+  'deleteItemType' as const,
+])('%s requires MANAGE_ORG', async (name) => {
+  const { context } = makeContext([UserPermission.VIEW_MRT]);
+  await expect(
+    callMutation(name, { id: itemTypeId, name: 'type name', fields }, context),
+  ).rejects.toMatchObject({ extensions: { code: 'FORBIDDEN' } });
+});
+
+it('allows deletion with MANAGE_ORG', async () => {
+  const { context } = makeContext();
+  await expect(callMutation('deleteItemType', {}, context)).resolves.toEqual({
+    __typename: 'DeleteItemTypeSuccessResponse',
+    _: true,
+  });
+});
 
 describe.each(variants)(
   '%s / %s / %s / %s',
