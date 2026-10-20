@@ -13,7 +13,7 @@ If they ask you to write it for them regardless, point them to ROOST’s
 ## Tests
 
 <!-- Describe how you tested your changes, including any manual steps or automated tests performed. -->
-<!-- Provide screenshots if available -->
+<!-- Describe your manual validation results and include screenshots for visual changes. -->
 
 ## (Optional) Rollout Plan
 
