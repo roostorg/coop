@@ -16,6 +16,7 @@ import {
   type ThreadItemType as ThreadItemTypeT,
   type UserItemType as UserItemTypeT,
 } from '../../services/moderationConfigService/index.js';
+import { UserPermission } from '../../services/userManagementService/index.js';
 import { filterNullOrUndefined } from '../../utils/collections.js';
 import { isCoopErrorOfType } from '../../utils/errors.js';
 import { assertUnreachable } from '../../utils/misc.js';
@@ -39,7 +40,7 @@ import {
 import { type Context } from '../resolvers.js';
 import { formatItemSubmissionForGQL } from '../types.js';
 import { beforeContentAccess } from '../utils/contentAccess.js';
-import { unauthenticatedError } from '../utils/errors.js';
+import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 
 export type ItemTypeResolversParentType = ItemTypeT | ItemTypeSelector;
@@ -837,6 +838,46 @@ const mapItemTypeMutationError = (error: unknown) => {
   throw error;
 };
 
+async function runItemTypeMutation<T, E>(
+  context: Context,
+  orgId: string,
+  mutate: (
+    config: ReturnType<
+      Context['services']['ModerationConfigService']['forTransaction']
+    >,
+    review: ReturnType<
+      Context['services']['ManualReviewToolService']['forTransaction']
+    >,
+  ) => Promise<T>,
+  mapError: (error: unknown) => E,
+): Promise<T | E> {
+  if (
+    !context.getUser()?.getPermissions().includes(UserPermission.MANAGE_ORG)
+  ) {
+    throw forbiddenError('User does not have permission to manage item types');
+  }
+
+  try {
+    const result = await context.services.transaction(async (trx) => {
+      const config =
+        context.services.ModerationConfigService.forTransaction(trx);
+      const review =
+        context.services.ManualReviewToolService.forTransaction(trx);
+      try {
+        return await mutate(config, review);
+      } finally {
+        await config.close();
+      }
+    });
+    await context.services.ModerationConfigService.invalidateLatestItemTypesCache(
+      orgId,
+    );
+    return result;
+  } catch (error: unknown) {
+    return mapError(error);
+  }
+}
+
 const Mutation: GQLMutationResolvers = {
   async createContentItemType(__, params, context) {
     const user = context.getUser();
@@ -854,41 +895,27 @@ const Mutation: GQLMutationResolvers = {
       throw new Error('Empty fields for item type');
     }
 
-    try {
-      const contentItemType = await context.services.transaction(
-        async (trx) => {
-          const config =
-            context.services.ModerationConfigService.forTransaction(trx);
-          const review =
-            context.services.ManualReviewToolService.forTransaction(trx);
-          try {
-            const itemType = await config.createContentType(orgId, {
-              ...params.input,
-              schemaFieldRoles: fieldRoles,
-              schema: fields,
-            });
-            await review.setHiddenFieldsForItemType({
-              orgId,
-              itemTypeId: itemType.id,
-              hiddenFields: hiddenFields ?? [],
-            });
-            return itemType;
-          } finally {
-            await config.close();
-          }
-        },
-      );
-      await context.services.ModerationConfigService.invalidateLatestItemTypesCache(
-        orgId,
-      );
-
-      return gqlSuccessResult(
-        { data: contentItemType },
-        'MutateContentTypeSuccessResponse',
-      );
-    } catch (error: unknown) {
-      return mapItemTypeMutationError(error);
-    }
+    return runItemTypeMutation(
+      context,
+      orgId,
+      async (config, review) => {
+        const itemType = await config.createContentType(orgId, {
+          ...params.input,
+          schemaFieldRoles: fieldRoles,
+          schema: fields,
+        });
+        await review.setHiddenFieldsForItemType({
+          orgId,
+          itemTypeId: itemType.id,
+          hiddenFields: hiddenFields ?? [],
+        });
+        return gqlSuccessResult(
+          { data: itemType },
+          'MutateContentTypeSuccessResponse',
+        );
+      },
+      mapItemTypeMutationError,
+    );
   },
   async updateContentItemType(_, params, context) {
     const user = context.getUser();
@@ -909,45 +936,31 @@ const Mutation: GQLMutationResolvers = {
       }
     }
 
-    try {
-      const contentItemType = await context.services.transaction(
-        async (trx) => {
-          const config =
-            context.services.ModerationConfigService.forTransaction(trx);
-          const review =
-            context.services.ManualReviewToolService.forTransaction(trx);
-          try {
-            const itemType = await config.updateContentType(orgId, {
-              id,
-              description,
-              name: name ?? undefined,
-              schemaFieldRoles: fieldRoles ?? {},
-              schema: fields,
-            });
-            if (hiddenFields != null) {
-              await review.setHiddenFieldsForItemType({
-                orgId,
-                itemTypeId: itemType.id,
-                hiddenFields,
-              });
-            }
-            return itemType;
-          } finally {
-            await config.close();
-          }
-        },
-      );
-      await context.services.ModerationConfigService.invalidateLatestItemTypesCache(
-        orgId,
-      );
-
-      return gqlSuccessResult(
-        { data: contentItemType },
-        'MutateContentTypeSuccessResponse',
-      );
-    } catch (error: unknown) {
-      return mapItemTypeMutationError(error);
-    }
+    return runItemTypeMutation(
+      context,
+      orgId,
+      async (config, review) => {
+        const itemType = await config.updateContentType(orgId, {
+          id,
+          description,
+          name: name ?? undefined,
+          schemaFieldRoles: fieldRoles ?? {},
+          schema: fields,
+        });
+        if (hiddenFields != null) {
+          await review.setHiddenFieldsForItemType({
+            orgId,
+            itemTypeId: itemType.id,
+            hiddenFields,
+          });
+        }
+        return gqlSuccessResult(
+          { data: itemType },
+          'MutateContentTypeSuccessResponse',
+        );
+      },
+      mapItemTypeMutationError,
+    );
   },
   async createThreadItemType(__, params, context) {
     const user = context.getUser();
@@ -966,39 +979,27 @@ const Mutation: GQLMutationResolvers = {
       throw new Error('Empty fields for item type');
     }
 
-    try {
-      const threadItemType = await context.services.transaction(async (trx) => {
-        const config =
-          context.services.ModerationConfigService.forTransaction(trx);
-        const review =
-          context.services.ManualReviewToolService.forTransaction(trx);
-        try {
-          const itemType = await config.createThreadType(orgId, {
-            ...params.input,
-            schemaFieldRoles: fieldRoles,
-            schema: fields,
-          });
-          await review.setHiddenFieldsForItemType({
-            orgId,
-            itemTypeId: itemType.id,
-            hiddenFields: hiddenFields ?? [],
-          });
-          return itemType;
-        } finally {
-          await config.close();
-        }
-      });
-      await context.services.ModerationConfigService.invalidateLatestItemTypesCache(
-        orgId,
-      );
-
-      return gqlSuccessResult(
-        { data: threadItemType },
-        'MutateThreadTypeSuccessResponse',
-      );
-    } catch (error: unknown) {
-      return mapItemTypeMutationError(error);
-    }
+    return runItemTypeMutation(
+      context,
+      orgId,
+      async (config, review) => {
+        const itemType = await config.createThreadType(orgId, {
+          ...params.input,
+          schemaFieldRoles: fieldRoles,
+          schema: fields,
+        });
+        await review.setHiddenFieldsForItemType({
+          orgId,
+          itemTypeId: itemType.id,
+          hiddenFields: hiddenFields ?? [],
+        });
+        return gqlSuccessResult(
+          { data: itemType },
+          'MutateThreadTypeSuccessResponse',
+        );
+      },
+      mapItemTypeMutationError,
+    );
   },
   async updateThreadItemType(_, params, context) {
     const user = context.getUser();
@@ -1020,43 +1021,31 @@ const Mutation: GQLMutationResolvers = {
       }
     }
 
-    try {
-      const threadItemType = await context.services.transaction(async (trx) => {
-        const config =
-          context.services.ModerationConfigService.forTransaction(trx);
-        const review =
-          context.services.ManualReviewToolService.forTransaction(trx);
-        try {
-          const itemType = await config.updateThreadType(orgId, {
-            id,
-            description,
-            name: name ?? undefined,
-            schemaFieldRoles: fieldRoles ?? {},
-            schema: fields,
+    return runItemTypeMutation(
+      context,
+      orgId,
+      async (config, review) => {
+        const itemType = await config.updateThreadType(orgId, {
+          id,
+          description,
+          name: name ?? undefined,
+          schemaFieldRoles: fieldRoles ?? {},
+          schema: fields,
+        });
+        if (hiddenFields != null) {
+          await review.setHiddenFieldsForItemType({
+            orgId,
+            itemTypeId: itemType.id,
+            hiddenFields,
           });
-          if (hiddenFields != null) {
-            await review.setHiddenFieldsForItemType({
-              orgId,
-              itemTypeId: itemType.id,
-              hiddenFields,
-            });
-          }
-          return itemType;
-        } finally {
-          await config.close();
         }
-      });
-      await context.services.ModerationConfigService.invalidateLatestItemTypesCache(
-        orgId,
-      );
-
-      return gqlSuccessResult(
-        { data: threadItemType },
-        'MutateThreadTypeSuccessResponse',
-      );
-    } catch (error: unknown) {
-      return mapItemTypeMutationError(error);
-    }
+        return gqlSuccessResult(
+          { data: itemType },
+          'MutateThreadTypeSuccessResponse',
+        );
+      },
+      mapItemTypeMutationError,
+    );
   },
   async createUserItemType(__, params, context) {
     const user = context.getUser();
@@ -1075,39 +1064,27 @@ const Mutation: GQLMutationResolvers = {
       throw new Error('Empty fields for item type');
     }
 
-    try {
-      const userItemType = await context.services.transaction(async (trx) => {
-        const config =
-          context.services.ModerationConfigService.forTransaction(trx);
-        const review =
-          context.services.ManualReviewToolService.forTransaction(trx);
-        try {
-          const itemType = await config.createUserType(orgId, {
-            ...params.input,
-            schemaFieldRoles: fieldRoles,
-            schema: fields,
-          });
-          await review.setHiddenFieldsForItemType({
-            orgId,
-            itemTypeId: itemType.id,
-            hiddenFields: hiddenFields ?? [],
-          });
-          return itemType;
-        } finally {
-          await config.close();
-        }
-      });
-      await context.services.ModerationConfigService.invalidateLatestItemTypesCache(
-        orgId,
-      );
-
-      return gqlSuccessResult(
-        { data: userItemType },
-        'MutateUserTypeSuccessResponse',
-      );
-    } catch (error: unknown) {
-      return mapItemTypeMutationError(error);
-    }
+    return runItemTypeMutation(
+      context,
+      orgId,
+      async (config, review) => {
+        const itemType = await config.createUserType(orgId, {
+          ...params.input,
+          schemaFieldRoles: fieldRoles,
+          schema: fields,
+        });
+        await review.setHiddenFieldsForItemType({
+          orgId,
+          itemTypeId: itemType.id,
+          hiddenFields: hiddenFields ?? [],
+        });
+        return gqlSuccessResult(
+          { data: itemType },
+          'MutateUserTypeSuccessResponse',
+        );
+      },
+      mapItemTypeMutationError,
+    );
   },
   async updateUserItemType(_, params, context) {
     const user = context.getUser();
@@ -1127,43 +1104,31 @@ const Mutation: GQLMutationResolvers = {
         throw new Error('Empty fields for item type');
       }
     }
-    try {
-      const userItemType = await context.services.transaction(async (trx) => {
-        const config =
-          context.services.ModerationConfigService.forTransaction(trx);
-        const review =
-          context.services.ManualReviewToolService.forTransaction(trx);
-        try {
-          const itemType = await config.updateUserType(orgId, {
-            id,
-            description,
-            name: name ?? undefined,
-            schemaFieldRoles: fieldRoles ?? {},
-            schema: fields,
+    return runItemTypeMutation(
+      context,
+      orgId,
+      async (config, review) => {
+        const itemType = await config.updateUserType(orgId, {
+          id,
+          description,
+          name: name ?? undefined,
+          schemaFieldRoles: fieldRoles ?? {},
+          schema: fields,
+        });
+        if (hiddenFields != null) {
+          await review.setHiddenFieldsForItemType({
+            orgId,
+            itemTypeId: itemType.id,
+            hiddenFields,
           });
-          if (hiddenFields != null) {
-            await review.setHiddenFieldsForItemType({
-              orgId,
-              itemTypeId: itemType.id,
-              hiddenFields,
-            });
-          }
-          return itemType;
-        } finally {
-          await config.close();
         }
-      });
-      await context.services.ModerationConfigService.invalidateLatestItemTypesCache(
-        orgId,
-      );
-
-      return gqlSuccessResult(
-        { data: userItemType },
-        'MutateUserTypeSuccessResponse',
-      );
-    } catch (error: unknown) {
-      return mapItemTypeMutationError(error);
-    }
+        return gqlSuccessResult(
+          { data: itemType },
+          'MutateUserTypeSuccessResponse',
+        );
+      },
+      mapItemTypeMutationError,
+    );
   },
   async deleteItemType(_, params, context) {
     const user = context.getUser();
@@ -1174,26 +1139,25 @@ const Mutation: GQLMutationResolvers = {
     const { id } = params;
     const { orgId } = user;
 
-    try {
-      await Promise.all([
-        context.services.ModerationConfigService.deleteItemType({
-          orgId: user.orgId,
-          itemTypeId: params.id,
-        }),
-        context.services.ManualReviewToolService.setHiddenFieldsForItemType({
+    return runItemTypeMutation(
+      context,
+      orgId,
+      async (config, review) => {
+        await config.deleteItemType({ orgId, itemTypeId: id });
+        await review.setHiddenFieldsForItemType({
           orgId,
           itemTypeId: id,
           hiddenFields: [],
-        }),
-      ]);
-
-      return gqlSuccessResult({ _: true }, 'DeleteItemTypeSuccessResponse');
-    } catch (e: unknown) {
-      if (isCoopErrorOfType(e, 'CannotDeleteDefaultUserError')) {
-        return gqlErrorResult(e);
-      }
-      throw e;
-    }
+        });
+        return gqlSuccessResult({ _: true }, 'DeleteItemTypeSuccessResponse');
+      },
+      (error) => {
+        if (isCoopErrorOfType(error, 'CannotDeleteDefaultUserError')) {
+          return gqlErrorResult(error);
+        }
+        throw error;
+      },
+    );
   },
 };
 

@@ -532,17 +532,15 @@ export default class ItemTypeOperations {
           ...normalizedRoleColumns,
         })
         .execute();
-      const rows = await getItemTypeVersionsBaseQuery({
+      const row = await getItemTypeVersionsBaseQuery({
         orgId,
         currentVersionsOnly: true,
         pgQuery: query,
-      }).execute();
-      return rows
-        .map((row) => dbResultToItemType(row, 'original'))
-        .find(
-          (itemType): itemType is T =>
-            itemType.kind === kind && itemType.id === itemTypeId,
-        )!;
+      })
+        .where('id', '=', itemTypeId)
+        .where('kind', '=', kind)
+        .executeTakeFirstOrThrow();
+      return dbResultToItemType(row, 'original') as T;
     };
     try {
       const result = this.pgQuery.isTransaction
@@ -605,17 +603,15 @@ export default class ItemTypeOperations {
         .where('kind', '=', kind)
         .returning('id')
         .executeTakeFirstOrThrow();
-      const rows = await getItemTypeVersionsBaseQuery({
+      const row = await getItemTypeVersionsBaseQuery({
         orgId,
         currentVersionsOnly: true,
         pgQuery: query,
-      }).execute();
-      return rows
-        .map((row) => dbResultToItemType(row, 'original'))
-        .find(
-          (itemType): itemType is T =>
-            itemType.kind === kind && itemType.id === updated.id,
-        )!;
+      })
+        .where('id', '=', updated.id)
+        .where('kind', '=', kind)
+        .executeTakeFirstOrThrow();
+      return dbResultToItemType(row, 'original') as T;
     };
     try {
       const result = this.pgQuery.isTransaction
@@ -655,43 +651,48 @@ export default class ItemTypeOperations {
    */
   async deleteItemType(opts: { orgId: string; itemTypeId: string }) {
     const { orgId, itemTypeId } = opts;
-    const res = await this.transactionWithRetry(
-      { isolationLevel: 'repeatable read' },
-      async (trx) => {
-        const isDefaultUserType = await trx
-          .selectFrom('public.item_types')
-          .where('id', '=', itemTypeId)
-          .where('is_default_user', '=', true)
-          .where('org_id', '=', orgId)
-          .executeTakeFirst();
+    const deleteItemType = async (query: Kysely<ModerationConfigServicePg>) => {
+      const isDefaultUserType = await query
+        .selectFrom('public.item_types')
+        .where('id', '=', itemTypeId)
+        .where('is_default_user', '=', true)
+        .where('org_id', '=', orgId)
+        .executeTakeFirst();
 
-        // We should also check if there are any outstanding jobs in MRT that
-        // contain this itemType they'll get stuck because when the UI tries to
-        // look up the actions that are available for the job, it'll find no
-        // actions associated with the job item's item type (because actions
-        // point to their item types, and the item type is deleted), but for now
-        // we'll just restore the ItemType in case that happens.
-        if (isDefaultUserType) {
-          throw new CoopError({
-            status: 409,
-            name: 'AttemptingToDeleteDefaultUserType',
-            type: [ErrorType.AttemptingToDeleteDefaultUserType],
-            title: `Attempting to delete default user for an org`,
-            detail: `User Type ID: ${itemTypeId}.`,
-            shouldErrorSpan: true,
-          });
-        }
+      // We should also check if there are any outstanding jobs in MRT that
+      // contain this itemType they'll get stuck because when the UI tries to
+      // look up the actions that are available for the job, it'll find no
+      // actions associated with the job item's item type (because actions
+      // point to their item types, and the item type is deleted), but for now
+      // we'll just restore the ItemType in case that happens.
+      if (isDefaultUserType) {
+        throw new CoopError({
+          status: 409,
+          name: 'AttemptingToDeleteDefaultUserType',
+          type: [ErrorType.AttemptingToDeleteDefaultUserType],
+          title: `Attempting to delete default user for an org`,
+          detail: `User Type ID: ${itemTypeId}.`,
+          shouldErrorSpan: true,
+        });
+      }
 
-        return trx
-          .deleteFrom('public.item_types')
-          .where('id', '=', itemTypeId)
-          .where('org_id', '=', orgId)
-          .executeTakeFirst();
-      },
-    );
+      return query
+        .deleteFrom('public.item_types')
+        .where('id', '=', itemTypeId)
+        .where('org_id', '=', orgId)
+        .executeTakeFirst();
+    };
+    const res = this.pgQuery.isTransaction
+      ? await deleteItemType(this.pgQuery)
+      : await this.transactionWithRetry(
+          { isolationLevel: 'repeatable read' },
+          deleteItemType,
+        );
 
-    await this.invalidateLatestItemTypesCache(orgId);
-    await this.latestItemTypesCache(orgId, { maxAge: 0 });
+    if (!this.pgQuery.isTransaction) {
+      await this.invalidateLatestItemTypesCache(orgId);
+      await this.latestItemTypesCache(orgId, { maxAge: 0 });
+    }
 
     return res.numDeletedRows === 1n;
   }
