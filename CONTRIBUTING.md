@@ -41,22 +41,4 @@ feat(api)!: require a queue identifier
 
 For breaking changes, put `!` immediately before the colon and explain the impact and migration steps in the PR description. Preserve that explanation in the squash commit body, preferably with a `BREAKING CHANGE: <explanation>` footer.
 
-CI checks the PR title, including after title edits. Individual work-in-progress commits are not checked and do not need this format. To validate a title locally:
-
-```sh
-node scripts/check-pr-title.mjs 'fix(client): handle empty review queues'
-```
-
-Use the [PR template](.github/PULL_REQUEST_TEMPLATE.md). Explain the change and its motivation, link the related issue, and describe your testing. Include screenshots for visual changes and a rollout plan when deployment needs special steps. Complete the checklist items that apply.
-
-Update `CHANGELOG.md` under `Unreleased` for notable changes that affect people deploying Coop. Follow its Keep a Changelog categories and existing entry format. Changelog generation is manual; a conventional title does not replace a required changelog entry.
-
-## Maintainer configuration
-
-To enforce this convention in merged history, configure the target repository:
-
-1. Enable squash merging and disable merge commits and rebase merging under **Settings → General → Pull Requests**.
-2. Set the default squash commit message to **Pull request title**.
-3. Add **Check PR title** as a required status check in the ruleset or branch protection rule for `main`.
-
-Squash-merge each PR with its validated title as the commit subject. Preserve the conventional prefix when editing the merge message. CI validates PR titles, not the final message edited by a maintainer.
+CI checks the PR title, including after title edits. Individual work-in-progress commits are not checked and do not need this format.
