@@ -11,6 +11,8 @@ export type ActivityView = 'ALL' | 'DECISIONS' | 'ACTIONS';
 
 export type ActivityFeedFilterInput = Omit<RecentDecisionsFilterInput, 'page'>;
 
+export const EXPORT_PAGE_SIZE = 200;
+
 /**
  * Filters that only a decision can satisfy. A manual action has no queue and no
  * decision type, so running the action query under either one can only ever
@@ -118,6 +120,31 @@ export class ModerationActivityFeed {
       })),
       limit,
     );
+  }
+
+  async *iterateAll(opts: {
+    userPermissions: UserPermission[];
+    orgId: string;
+    input: ActivityFeedFilterInput;
+    view: ActivityView;
+  }): AsyncGenerator<ActivityRow[]> {
+    const input = { ...opts.input, endTime: opts.input.endTime ?? new Date() };
+    let cursor: JsonValue | undefined;
+    for (;;) {
+      const page = await this.getPage({
+        ...opts,
+        input,
+        limit: EXPORT_PAGE_SIZE,
+        cursor,
+      });
+      if (page.rows.length > 0) {
+        yield page.rows;
+      }
+      if (page.nextCursor === null) {
+        return;
+      }
+      cursor = page.nextCursor;
+    }
   }
 
   /** Every item one manual action touched. Callers must check VIEW_INVESTIGATION. */

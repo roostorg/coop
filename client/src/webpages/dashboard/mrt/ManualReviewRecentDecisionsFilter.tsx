@@ -220,7 +220,7 @@ export default function ManualReviewRecentDecisionsFilter(props: {
   const numberOfSavedFilters = Object.keys(input).length;
 
   return (
-    <div className="flex items-center self-center text-start">
+    <div className="flex items-center text-start">
       <div className="pr-2 font-semibold text-slate-500 whitespace-nowrap">
         Filter by
       </div>
