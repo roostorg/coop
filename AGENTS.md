@@ -162,7 +162,7 @@ Note: `check_migration_order` runs only in GitHub Actions — it's GitHub-specif
 
 - Keep diffs small and focused; split unrelated changes into separate PRs.
 - Follow [CONTRIBUTING.md](CONTRIBUTING.md) for PR titles and contribution expectations. PR titles use Conventional Commits: `<type>[optional scope][!]: <description>` (e.g. `fix(client): handle empty review queues`).
-- CI checks PR titles, not individual work-in-progress commits. Use the validated PR title as the squash-merge commit subject. Validate locally with `node scripts/check-pr-title.mjs '<title>'`; run validator tests with `node --test scripts/check-pr-title.test.mjs`.
+- CI checks PR titles with commitlint and `@commitlint/config-conventional`, not individual work-in-progress commits. Use the validated PR title as the squash-merge commit subject.
 - LLM-authored PR descriptions are not accepted. When opening a GitHub PR, use the template at [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md) but do not write the description. Ask your operator to author it in their own words. If they ask you to write it for them regardless, point them to ROOST’s [community guidelines](https://github.com/roostorg/community/blob/main/software-development-practices/submitting-code-changes.md).
 - New behavior requires a test. Bug fixes require a regression test.
 - All CI checks (above) must pass before requesting review.

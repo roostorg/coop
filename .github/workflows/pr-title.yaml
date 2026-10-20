@@ -17,10 +17,13 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Test title validation
-        run: node --test scripts/check-pr-title.test.mjs
+      - name: Setup pnpm and Node.js, install dependencies
+        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
+        with:
+          cache: true
+          require-lockfile: true
 
       - name: Validate PR title
-        run: node scripts/check-pr-title.mjs "$PR_TITLE"
+        run: printf '%s\n' "$PR_TITLE" | pnpm exec commitlint --verbose
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
