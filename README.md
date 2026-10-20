@@ -41,6 +41,8 @@ We want to hear from you! Whether you're testing it out, running into issues, or
 
 Your feedback directly shapes our [roadmap](https://roostorg.github.io/community/roadmap).
 
+To contribute code or documentation, see [Contributing to Coop](CONTRIBUTING.md) for PR titles, the PR template, and testing expectations.
+
 ## Quick start
 
 Run Coop with a single command using Docker Compose. See the [Docker guide](docs/development/docker.md) for setup instructions and published image details.

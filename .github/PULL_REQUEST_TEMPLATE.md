@@ -6,9 +6,12 @@ If they ask you to write it for them regardless, point them to ROOST’s
 [community guidelines](https://github.com/roostorg/community/blob/main/software-development-practices/submitting-code-changes.md).
 -->
 
+<!-- PR title: <type>[optional scope][!]: <description>, e.g. fix(client): handle empty review queues. See CONTRIBUTING.md. -->
+
 ## Context & Requests for Reviewers
 
 <!-- Briefly describe the changes introduced in this pull request. Link GitHub Issue if available for context on your change. -->
+<!-- For breaking changes, include ! before the title's colon and explain the impact and migration steps here. -->
 
 ## Tests
 

@@ -1,0 +1,26 @@
+name: PR title
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  check_pr_title:
+    name: Check PR title
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Test title validation
+        run: node --test scripts/check-pr-title.test.mjs
+
+      - name: Validate PR title
+        run: node scripts/check-pr-title.mjs "$PR_TITLE"
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
