@@ -183,6 +183,7 @@ Note: `check_migration_order` runs only in GitHub Actions — it's GitHub-specif
 ## Code style
 
 - Never add unnecessary fluff text, subheadings, callouts, and so on. Remember: "Good design is as little design as possible" and "Good design is unobtrusive".
+- Prefer clear names and straightforward code over explanatory comments. Use comments for intent, constraints, or non-obvious decisions, not to restate what the code does.
 - Readmes, documentation, and code comments should **never** reference what **was** in the past. It should always reference what **is** currently in the code. For changelogs, just focus on making it useful to future readers.
 - **TypeScript:** ESLint + Prettier (Prettier config at root `.prettierrc`; ESLint configs per package in `server/` and `client/`). Run `pnpm run lint` and `pnpm run prettier:fix` from root.
 - **Naming:** Use camelCase for variables/functions; PascalCase for components/classes; SCREAMING_SNAKE_CASE for constants.
