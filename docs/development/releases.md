@@ -26,13 +26,17 @@ Before cutting a release, ensure:
 
 Then:
 
-1. In GitHub: **Releases** → **Draft a new release**
-2. **Create a tag** in SemVer format `x.y.z` from the `main` branch
-3. **Draft the release notes**, starting from [CHANGELOG.md](https://github.com/roostorg/coop/blob/main/CHANGELOG.md)
-4. Check **Create a discussion for this release** for at least major and minor releases
-5. **Publish** the release
+1. In a PR, promote `## [Unreleased]` in `CHANGELOG.md` to `## [x.y.z] - YYYY-MM-DD`, leave an empty `## [Unreleased]` above it, and update the compare links at the bottom of the file (`[unreleased]` compares `x.y.z...HEAD`; add `[x.y.z]` comparing the previous tag to `x.y.z`). Merge it.
+2. In GitHub: **Releases** → **Draft a new release**
+3. **Create a tag** in SemVer format `x.y.z` (no `v` prefix) from the `main` branch, at or after the changelog PR's merge commit
+4. Title the release `Coop x.y.z` and **draft the release notes**, starting from the new `## [x.y.z]` section of [CHANGELOG.md](https://github.com/roostorg/coop/blob/main/CHANGELOG.md)
+5. Check **Create a discussion for this release** for at least major and minor releases
+6. **Publish** the release. Check **Set as a pre-release** for alpha and beta tags; only non-pre-releases move the `latest` Docker tag.
+7. Confirm the **Publish Docker images** workflow run for the tag succeeds and the version-tagged images exist.
 
 Publishing a release triggers automations:
 
 - **Docker images**: builds and pushes version-tagged Docker images for `coop-server`, `coop-worker`, `coop-client`, and `coop-migrations`
 - **Docs**: adds a folder for the release to the [index](https://roostorg.github.io/coop/) with a snapshot of the docs
+
+`@roostorg/coop-types` and `@roostorg/coop-migrator` are not released this way; they publish to npm from `main` whenever `types/**` or `migrator/**` changes.
