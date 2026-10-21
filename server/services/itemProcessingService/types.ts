@@ -1,71 +1,50 @@
-import { type JSONSchemaV4 } from '../../utils/json-schema-types.js';
-import { type ItemTypeSchemaVariant } from '../moderationConfigService/index.js';
+import * as v from 'valibot';
+
 import { type RawItemData } from './toNormalizedItemDataOrErrors.js';
 
 const rawItemSchemaVariants = ['original', 'partial'] as const;
 
-export type RawItemTypeSelector = {
-  id: string;
-  version?: string;
-  // We don't use ItemTypeSchemaVariant here because we want to keep the raw and
-  // normalized item schema-variant values decoupled.
-  schemaVariant?: (typeof rawItemSchemaVariants)[number];
-};
+export const rawItemTypeSelectorSchema = v.object({
+  id: v.string(),
+  version: v.optional(v.string()),
+  // Keep raw and normalized item schema-variant values decoupled.
+  schemaVariant: v.optional(v.picklist(rawItemSchemaVariants)),
+});
 
-export type RawItemSubmission =
-  | {
-      id: string;
-      data: RawItemData;
-      type: RawItemTypeSelector;
-    }
-  | {
-      id: string;
-      data: RawItemData;
-      typeId: string;
-      typeVersion?: string;
-      typeSchemaVariant?: ItemTypeSchemaVariant;
-    };
+export type RawItemTypeSelector = v.InferOutput<
+  typeof rawItemTypeSelectorSchema
+>;
 
-export const rawItemTypeSelectorSchema = {
-  type: 'object',
-  properties: {
-    id: { type: ['string'] },
-    version: { type: ['string'] },
-    schemaVariant: {
-      type: ['string'],
-      enum: rawItemSchemaVariants,
-    },
-  },
-  required: ['id'],
-} as const satisfies JSONSchemaV4<RawItemTypeSelector>;
+const rawItemDataSchema = v.custom<RawItemData>(
+  (input) =>
+    typeof input === 'object' && input !== null && !Array.isArray(input),
+);
 
-export const rawItemSubmissionSchema = {
-  oneOf: [
-    {
-      type: 'object',
-      properties: {
-        id: { type: 'string' },
-        // NB: the typings break here if we don't have { required: [] },
-        // but actually putting an empty array for `required` in the runtime
-        // value breaks request handling, so we just use a cast.
-        data: { type: 'object' } as unknown as { type: 'object'; required: [] },
-        typeId: { type: 'string' },
-        typeVersion: { type: 'string' },
-        typeSchemaVariant: { type: 'string', enum: rawItemSchemaVariants },
-      },
-      required: ['id', 'data', 'typeId'],
-    },
-    {
-      type: 'object',
-      properties: {
-        id: { type: 'string' },
-        // NB: the typings break here if we don't have { required: [] },
-        // but actually putting an empty array for `required` in the runtime
-        // value breaks request handling, so we just use a cast.
-        data: { type: 'object' } as unknown as { type: 'object'; required: [] },
-        type: rawItemTypeSelectorSchema,
-      },
-      required: ['id', 'data', 'type'],
-    },
-  ],
-} as const satisfies JSONSchemaV4<RawItemSubmission>;
+const rawItemSubmissionVariants = [
+  v.object({
+    id: v.string(),
+    data: rawItemDataSchema,
+    typeId: v.string(),
+    typeVersion: v.optional(v.string()),
+    typeSchemaVariant: v.optional(v.picklist(rawItemSchemaVariants)),
+  }),
+  v.object({
+    id: v.string(),
+    data: rawItemDataSchema,
+    type: rawItemTypeSelectorSchema,
+  }),
+] as const;
+
+export type RawItemSubmission = v.InferInput<
+  v.UnionSchema<typeof rawItemSubmissionVariants, undefined>
+>;
+
+export const rawItemSubmissionSchema = v.pipe(
+  v.custom<RawItemSubmission>(
+    (input) =>
+      rawItemSubmissionVariants.filter(
+        (variant) => v.safeParse(variant, input).success,
+      ).length === 1,
+  ),
+  v.union(rawItemSubmissionVariants),
+);
