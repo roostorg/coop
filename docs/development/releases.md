@@ -26,7 +26,7 @@ Before cutting a release, ensure:
 
 Then:
 
-1. In a PR, promote `## [Unreleased]` in `CHANGELOG.md` to `## [x.y.z] - YYYY-MM-DD`, leave an empty `## [Unreleased]` above it, and update the compare links at the bottom of the file (`[unreleased]` compares `x.y.z...HEAD`; add `[x.y.z]` comparing the previous tag to `x.y.z`). Merge it.
+1. In a PR, promote `## [Unreleased]` in `CHANGELOG.md` to `## [x.y.z] - YYYY-MM-DD`, leave an empty `## [Unreleased]` above it, and update the compare links at the bottom of the file (`[unreleased]` compares `x.y.z...HEAD`; add `[x.y.z]` comparing the previous tag to `x.y.z`). When the version has pre-release sections (e.g. `x.y.z-alpha`), fold their entries into the new section and keep the pre-release sections. Strip related issue links (e.g. `closes [#456](...)`) from entries so each is a single line ending at the PR link. Merge it.
 2. In GitHub: **Releases** → **Draft a new release**
 3. **Create a tag** in SemVer format `x.y.z` (no `v` prefix) from the `main` branch, at or after the changelog PR's merge commit
 4. Title the release `Coop x.y.z` and **draft the release notes**, starting from the new `## [x.y.z]` section of [CHANGELOG.md](https://github.com/roostorg/coop/blob/main/CHANGELOG.md)
