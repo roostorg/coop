@@ -15,6 +15,7 @@ export function makeGqlServices(deps: Dependencies) {
     'ContentAccessService',
     'DataWarehouse',
     'DerivedFieldsService',
+    'getCoopUpdateAvailable',
     'getItemTypeEventuallyConsistent',
     'getEnabledRulesForItemTypeEventuallyConsistent',
     'ItemInvestigationService',
