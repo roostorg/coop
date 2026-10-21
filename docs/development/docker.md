@@ -88,8 +88,6 @@ docker compose -f docker-compose.images.yaml down -v
 
 The client image serves the Vite-built SPA via nginx and proxies `/api/` requests (including `/api/v1/graphql`) to a backend service named `server` on port 8080.
 
-Stable release images embed `COOP_VERSION`. When an organization admin opens Coop, the server checks GitHub for newer stable releases and caches the result for one hour. Set `COOP_UPDATE_NOTIFICATIONS_ENABLED=false` on the server to disable the banner and outbound update checks. Custom builds can supply `COOP_VERSION` as a Docker build argument or server environment variable; unknown and prerelease versions do not check for updates.
-
 ## Running migrations
 
 The `coop-migrations` image bundles the migration scripts under `db/` together
