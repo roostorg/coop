@@ -525,6 +525,12 @@ export default function RulesDashboard() {
       columns={columns}
       data={tableData}
       rowLinkTo={rowLinkTo}
+      // Table.tsx defaults its container to `w-fit` when this isn't set, so
+      // the table only ever took its columns' intrinsic width, leaving a
+      // growing gutter on wide screens. Match the other dashboards (MRT
+      // queues, recent decisions, NCMEC reports, ...) that already opt into
+      // `w-full`.
+      containerClassName="w-full"
       topLeftComponent={
         rulesByStatus.archived?.length ? (
           <TabBar<RuleTableMode>
