@@ -111,6 +111,8 @@ const typeDefs = /* GraphQL */ `
     isDefaultQueue: Boolean!
     jobs(ids: [ID!], limit: Int, lockToken: String): [ManualReviewJob!]!
     pendingJobCount: Int!
+    "Whether pending jobs remain after applying the current reviewer's skips."
+    hasUnskippedJobs: Boolean!
     oldestJobCreatedAt: DateTime
     explicitlyAssignedReviewers: [User!]!
     "Roles whose members can review this queue, in addition to explicitly assigned reviewers."
@@ -1866,6 +1868,15 @@ const ManualReviewQueue: GQLManualReviewQueueResolvers = {
     return context.services.ManualReviewToolService.getPendingJobCount({
       orgId,
       queueId,
+    });
+  },
+  async hasUnskippedJobs(queue, _, context) {
+    const user = await assertQueueIsReviewable(queue, context);
+    return context.services.ManualReviewToolService.hasUnskippedJobs({
+      orgId: user.orgId,
+      queueId: queue.id,
+      reviewerId: user.id,
+      isAppealsQueue: queue.isAppealsQueue,
     });
   },
   async oldestJobCreatedAt(queue, _, context) {

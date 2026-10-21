@@ -23,6 +23,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Fixed
 
+- Opening a review queue with no unskipped jobs no longer leaves reviewers on a loading spinner ([#1392](https://github.com/roostorg/coop/pull/1392) by [@Joseph-Mutua](https://github.com/Joseph-Mutua))
 - Image hashing now applies to every Image field in an item or report, not just an array field named `images` ([#1390](https://github.com/roostorg/coop/pull/1390) by [@reitblatt](https://github.com/reitblatt))
 - Renaming a hash bank no longer discards its hashed content ([#1360](https://github.com/roostorg/coop/pull/1360) by [@juanmrad](https://github.com/juanmrad))
 - Zentropi Labeler signal failing on every call ([#1335](https://github.com/roostorg/coop/pull/1335) by [@reitblatt](https://github.com/reitblatt), [#1388](https://github.com/roostorg/coop/pull/1388) by [@Joseph-Mutua](https://github.com/Joseph-Mutua))
