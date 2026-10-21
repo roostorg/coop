@@ -8,7 +8,7 @@
   "scripts": {
     "build": "tsc",
     "prepublishOnly": "pnpm run build",
-    "test": "pnpm run build && node --test transpiled/test_scripts/"
+    "test": "pnpm run build && node --test 'transpiled/test_scripts/**/*.test.js'"
   },
   "repository": {
     "type": "git",
