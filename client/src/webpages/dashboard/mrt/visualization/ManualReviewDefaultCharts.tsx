@@ -227,9 +227,6 @@ export default function ManualReviewDefaultCharts({
         <TimeToActionByQueueChart
           timeWindow={timeWindow}
           title="Average Time To Review By Queue"
-          hideGroupBy
-          hideTotal
-          narrowMode
           infoText="This chart shows average time from job creation to decision, per queue."
         />
         <HandleTimeByModeratorChart

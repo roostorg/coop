@@ -37,17 +37,10 @@ import { ManualReviewDashboardInsightsGroupByColumns } from './ManualReviewDashb
 interface TimeToActionByQueueChartProps {
   timeWindow: TimeWindow;
   title?: string;
-  isCustomTitle?: boolean;
   initialTimeDivision?: TimeDivisionOptions;
   initialFilterBy?: Partial<GQLTimeToActionFilterByInput>;
-  hideGroupBy?: boolean;
-  hideFilterBy?: boolean;
-  hideTotal?: boolean;
-  hideChartSelection?: boolean;
-  hideBorder?: boolean;
   hideOptions?: boolean;
   infoText?: string;
-  narrowMode?: boolean;
   onEdit?: () => void;
   onDelete?: () => void;
   onSelectGroupBy?: (
@@ -71,10 +64,8 @@ export function getEmptyFilterState(
 export default function TimeToActionByQueueChart({
   timeWindow,
   title,
-  hideBorder = false,
   hideOptions = false,
   infoText,
-  narrowMode = false,
   onEdit,
   onDelete,
 }: TimeToActionByQueueChartProps) {
@@ -247,11 +238,7 @@ export default function TimeToActionByQueueChart({
   );
 
   const optionsMenu = (
-    <div
-      className={`relative inline-block self-center pl-2 ${
-        narrowMode ? 'self-center xl:self-start' : 'self-center'
-      }`}
-    >
+    <div className="relative inline-block self-center pl-2 xl:self-start">
       <div
         className={`${
           optionsVisible ? 'bg-slate-100' : ''
@@ -275,17 +262,9 @@ export default function TimeToActionByQueueChart({
   );
 
   return (
-    <div
-      className={`flex flex-col rounded-lg p-6 bg-white ${
-        narrowMode ? 'flex flex-col justify-between grow' : 'w-full'
-      } ${hideBorder ? '' : 'border border-solid border-slate-200'}`}
-    >
+    <div className="flex flex-col rounded-lg p-6 bg-white justify-between grow border border-solid border-slate-200">
       <div className="flex pb-6">
-        <div
-          className={`flex justify-between gap-2 grow ${
-            narrowMode ? 'flex-row xl:flex-col' : 'flex-row'
-          }`}
-        >
+        <div className="flex justify-between gap-2 grow flex-row xl:flex-col">
           {title && (
             <div className="flex flex-col text-start">
               <div className="pb-2 text-base font-medium text-slate-500">
@@ -303,11 +282,7 @@ export default function TimeToActionByQueueChart({
               </div>
             </div>
           )}
-          <div
-            className={`flex flex-wrap gap-4 ${
-              narrowMode ? 'justify-end xl:justify-start' : 'justify-end'
-            }`}
-          />
+          <div className="flex flex-wrap gap-4 justify-end xl:justify-start" />
         </div>
         {!hideOptions && optionsMenu}
       </div>
