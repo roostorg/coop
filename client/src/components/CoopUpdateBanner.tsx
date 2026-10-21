@@ -19,6 +19,7 @@ export default function CoopUpdateBanner({
   const isAdmin = permissions?.includes(GQLUserPermission.ManageOrg) ?? false;
   const { data, error } = useGQLCoopUpdateAvailableQuery({
     skip: !isAdmin,
+    fetchPolicy: 'network-only',
     pollInterval: 3_600_000,
     errorPolicy: 'ignore',
   });
