@@ -14,6 +14,8 @@ it.each([
   ['1.9.9', '2.0.0', true],
   ['2.0.0', '1.99.99', false],
   ['v1.1.1+vendor.1', '1.1.2', true],
+  ['1.1.1+vendor.1', 'v1.1.1+build.2', false],
+  ['1.1.1', '1.1.2+build..bad', false],
   ['1.1.1', '1.1.2-rc.1', false],
   ['1.1.1', 'invalid', false],
 ])('compares stable versions: %s → %s', async (current, latest, expected) => {
@@ -40,6 +42,7 @@ it.each([
   ['', 'true'],
   ['abc1234', 'true'],
   ['1.2.0-rc.1', 'true'],
+  ['1.1.1+build..bad', 'true'],
 ])(
   'does not contact GitHub for version %s with enabled=%s',
   async (version, enabled) => {
