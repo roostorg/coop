@@ -467,6 +467,7 @@ const typeDefs = /* GraphQL */ `
     inviteUserToken(token: String!): InviteUserTokenResponse! @publicResolver
     allRuleInsights: AllRuleInsights
     isWarehouseAvailable: Boolean!
+    coopUpdateAvailable: Boolean!
     passwordRequirements: PasswordRequirements! @publicResolver
   }
 

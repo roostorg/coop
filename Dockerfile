@@ -47,6 +47,8 @@ ENTRYPOINT ["/usr/bin/dumb-init", "--"]
 # as it always changes.
 ARG BUILD_ID
 ENV BUILD_ID=$BUILD_ID
+ARG COOP_VERSION
+ENV COOP_VERSION=$COOP_VERSION
 
 # Expose 8080 because the backend will run on this port absent a
 # process.env.PORT to the contrary.

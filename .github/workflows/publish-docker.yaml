@@ -51,6 +51,7 @@ jobs:
       server: ${{ steps.filter.outputs.server }}
       client: ${{ steps.filter.outputs.client }}
       db: ${{ steps.filter.outputs.db }}
+      version: ${{ steps.version.outputs.version }}
     steps:
       # Reject arbitrary dispatch input so it can't become an image tag like
       # `coop-server:squirtle`. Passed via env to avoid shell injection.
@@ -67,6 +68,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
 
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
@@ -92,6 +94,27 @@ jobs:
 
       # On release/dispatch, paths-filter is skipped so outputs are empty.
       # The downstream jobs use != 'false', so empty triggers a build.
+
+      - name: Determine Coop version
+        if: steps.filter.outputs.server != 'false'
+        id: version
+        env:
+          COOP_VERSION: ${{ github.event_name == 'release' && github.event.release.tag_name || github.event.inputs.version }}
+        run: |
+          if [[ -z "$COOP_VERSION" ]]; then
+            description=$(git describe --tags --long --abbrev=8 \
+              --match '[0-9]*.[0-9]*.[0-9]*' --match 'v[0-9]*.[0-9]*.[0-9]*' \
+              --exclude '*-*' --exclude '*+*') || \
+              description="0.0.0-$(git rev-list --count HEAD)-g$(git rev-parse --short=8 HEAD)"
+            IFS=- read -r tag distance hash <<< "$description"
+            if [[ "$distance" == '0' ]]; then
+              COOP_VERSION="$tag"
+            else
+              IFS=. read -r major minor patch <<< "${tag#v}"
+              COOP_VERSION="$major.$minor.$((patch + 1))-dev.$distance+$hash"
+            fi
+          fi
+          echo "version=$COOP_VERSION" >> "$GITHUB_OUTPUT"
 
   build-server:
     needs: changes
@@ -138,6 +161,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             BUILD_ID=${{ github.sha }}
+            COOP_VERSION=${{ needs.changes.outputs.version }}
           # server + worker share a Dockerfile/intermediate stages: read both
           # scopes for reuse, write only our own to avoid concurrent-write races.
           cache-from: |
