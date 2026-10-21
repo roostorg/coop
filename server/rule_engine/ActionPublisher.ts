@@ -74,14 +74,6 @@ export type ActionResult<T extends ActionTargetItem> = {
   success: boolean;
 };
 
-export function getUserFromActionTarget(it: ActionTargetItem) {
-  return it.itemType.kind === 'USER'
-    ? { id: it.itemId, typeId: it.itemType.id }
-    : isFullSubmission(it)
-      ? it.creator
-      : undefined;
-}
-
 /**
  * This type represents the types that the Action Publisher can feasibly action on.
  * For now, this is a duplicate type of RuleEngine but are separate in case they
