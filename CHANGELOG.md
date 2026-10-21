@@ -10,6 +10,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Added
 
+- Show update banner to admins when there’s a new Coop release ([#1434](https://github.com/roostorg/coop/pull/1434) by [@taobojlen](https://github.com/taobojlen)).
 - Formatting toolbar for policy definitions and enforcement guidelines ([#1432](https://github.com/roostorg/coop/pull/1432) by [@taobojlen](https://github.com/taobojlen)).
 
 ### Changed

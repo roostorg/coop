@@ -3643,6 +3643,7 @@ export type GQLQuery = {
   readonly apiKey: Scalars['String']['output'];
   readonly appealSettings?: Maybe<GQLAppealSettings>;
   readonly availableIntegrations: ReadonlyArray<GQLIntegrationMetadata>;
+  readonly coopUpdateAvailable: Scalars['Boolean']['output'];
   readonly exchangeApiSchema?: Maybe<GQLExchangeApiSchema>;
   readonly exchangeApis: ReadonlyArray<GQLExchangeApiInfo>;
   readonly getCommentsForJob: ReadonlyArray<GQLManualReviewJobComment>;
@@ -12848,6 +12849,11 @@ export type GQLQueryResolvers<
   >;
   availableIntegrations?: Resolver<
     ReadonlyArray<GQLResolversTypes['IntegrationMetadata']>,
+    ParentType,
+    ContextType
+  >;
+  coopUpdateAvailable?: Resolver<
+    GQLResolversTypes['Boolean'],
     ParentType,
     ContextType
   >;

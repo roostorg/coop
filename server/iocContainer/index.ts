@@ -106,6 +106,7 @@ import {
   type ContentAccessExtension,
   type default as ContentAccessService,
 } from '../services/contentAccessService.js';
+import { makeGetCoopUpdateAvailable } from '../services/coopUpdates.js';
 import {
   makeDerivedFieldsService,
   type DerivedFieldsService,
@@ -450,6 +451,7 @@ export interface Dependencies {
   Meter: CoopMeter;
   KeyValueStore: StringNumberKeyValueStore;
   ConfigService: { uiUrl: string };
+  getCoopUpdateAvailable: ReturnType<typeof makeGetCoopUpdateAvailable>;
 }
 
 // Takes a class and returns a type that just contains its public methods and
@@ -1573,6 +1575,9 @@ export default async function getBottle(
   });
 
   // Networking helper functions
+  bottle.factory('getCoopUpdateAvailable', (container) =>
+    makeGetCoopUpdateAvailable(container),
+  );
   bottle.factory(
     'fetchHTTP',
     (container) => fetchHTTP.bind(null, container.Tracer) as FetchHTTP,
@@ -1828,6 +1833,7 @@ export default async function getBottle(
             'ModerationConfigService',
             'OrgSettingsService',
             'getIgnoreCallbackEventuallyConsistent',
+            'getCoopUpdateAvailable',
           ] as const;
 
           // Only get and shutdown services that have actually been

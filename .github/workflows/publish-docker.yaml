@@ -138,6 +138,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             BUILD_ID=${{ github.sha }}
+            COOP_VERSION=${{ github.event_name == 'release' && github.event.release.tag_name || github.event.inputs.version }}
           # server + worker share a Dockerfile/intermediate stages: read both
           # scopes for reuse, write only our own to avoid concurrent-write races.
           cache-from: |

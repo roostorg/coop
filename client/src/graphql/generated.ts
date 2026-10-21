@@ -3573,6 +3573,7 @@ export type GQLQuery = {
   readonly apiKey: Scalars['String']['output'];
   readonly appealSettings?: Maybe<GQLAppealSettings>;
   readonly availableIntegrations: ReadonlyArray<GQLIntegrationMetadata>;
+  readonly coopUpdateAvailable: Scalars['Boolean']['output'];
   readonly exchangeApiSchema?: Maybe<GQLExchangeApiSchema>;
   readonly exchangeApis: ReadonlyArray<GQLExchangeApiInfo>;
   readonly getCommentsForJob: ReadonlyArray<GQLManualReviewJobComment>;
@@ -5410,6 +5411,15 @@ export type GQLZentropiLabelerVersionInput = {
   readonly id: Scalars['String']['input'];
   readonly label: Scalars['String']['input'];
   readonly labelerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type GQLCoopUpdateAvailableQueryVariables = Exact<{
+  [key: string]: never;
+}>;
+
+export type GQLCoopUpdateAvailableQuery = {
+  readonly __typename: 'Query';
+  readonly coopUpdateAvailable: boolean;
 };
 
 export type GQLApiAuthQueryVariables = Exact<{ [key: string]: never }>;
@@ -26628,6 +26638,102 @@ export const GQLActionFragmentFragmentDoc = gql`
     }
   }
 `;
+export const GQLCoopUpdateAvailableDocument = gql`
+  query CoopUpdateAvailable {
+    coopUpdateAvailable
+  }
+`;
+
+/**
+ * __useGQLCoopUpdateAvailableQuery__
+ *
+ * To run a query within a React component, call `useGQLCoopUpdateAvailableQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGQLCoopUpdateAvailableQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useGQLCoopUpdateAvailableQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useGQLCoopUpdateAvailableQuery(
+  baseOptions?: Apollo.QueryHookOptions<
+    GQLCoopUpdateAvailableQuery,
+    GQLCoopUpdateAvailableQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<
+    GQLCoopUpdateAvailableQuery,
+    GQLCoopUpdateAvailableQueryVariables
+  >(GQLCoopUpdateAvailableDocument, options);
+}
+export function useGQLCoopUpdateAvailableLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<
+    GQLCoopUpdateAvailableQuery,
+    GQLCoopUpdateAvailableQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<
+    GQLCoopUpdateAvailableQuery,
+    GQLCoopUpdateAvailableQueryVariables
+  >(GQLCoopUpdateAvailableDocument, options);
+}
+// @ts-ignore
+export function useGQLCoopUpdateAvailableSuspenseQuery(
+  baseOptions?: Apollo.SuspenseQueryHookOptions<
+    GQLCoopUpdateAvailableQuery,
+    GQLCoopUpdateAvailableQueryVariables
+  >,
+): Apollo.UseSuspenseQueryResult<
+  GQLCoopUpdateAvailableQuery,
+  GQLCoopUpdateAvailableQueryVariables
+>;
+export function useGQLCoopUpdateAvailableSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLCoopUpdateAvailableQuery,
+        GQLCoopUpdateAvailableQueryVariables
+      >,
+): Apollo.UseSuspenseQueryResult<
+  GQLCoopUpdateAvailableQuery | undefined,
+  GQLCoopUpdateAvailableQueryVariables
+>;
+export function useGQLCoopUpdateAvailableSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLCoopUpdateAvailableQuery,
+        GQLCoopUpdateAvailableQueryVariables
+      >,
+) {
+  const options =
+    baseOptions === Apollo.skipToken
+      ? baseOptions
+      : { ...defaultOptions, ...baseOptions };
+  return Apollo.useSuspenseQuery<
+    GQLCoopUpdateAvailableQuery,
+    GQLCoopUpdateAvailableQueryVariables
+  >(GQLCoopUpdateAvailableDocument, options);
+}
+export type GQLCoopUpdateAvailableQueryHookResult = ReturnType<
+  typeof useGQLCoopUpdateAvailableQuery
+>;
+export type GQLCoopUpdateAvailableLazyQueryHookResult = ReturnType<
+  typeof useGQLCoopUpdateAvailableLazyQuery
+>;
+export type GQLCoopUpdateAvailableSuspenseQueryHookResult = ReturnType<
+  typeof useGQLCoopUpdateAvailableSuspenseQuery
+>;
+export type GQLCoopUpdateAvailableQueryResult = Apollo.QueryResult<
+  GQLCoopUpdateAvailableQuery,
+  GQLCoopUpdateAvailableQueryVariables
+>;
 export const GQLApiAuthDocument = gql`
   query ApiAuth {
     apiKey
@@ -46045,6 +46151,7 @@ export type GQLSetOrgDefaultSafetySettingsMutationOptions =
   >;
 export const namedOperations = {
   Query: {
+    CoopUpdateAvailable: 'CoopUpdateAvailable',
     ApiAuth: 'ApiAuth',
     HashBanks: 'HashBanks',
     HashBankById: 'HashBankById',
