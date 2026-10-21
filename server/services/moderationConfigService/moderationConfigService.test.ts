@@ -1045,6 +1045,51 @@ describe('ModerationConfigService', () => {
             expect(saved).toEqual(fetched);
           },
         );
+
+        testWithOrg(
+          'rejects nonexistent item type IDs',
+          async ({ sutWithPrimary, org }) => {
+            await expect(
+              sutWithPrimary.createAction(org.id, {
+                name: faker.string.alphanumeric(16),
+                description: null,
+                type: 'CUSTOM_ACTION',
+                callbackUrl: 'https://example.com',
+                callbackUrlHeaders: null,
+                callbackUrlBody: null,
+                itemTypeIds: ['missing-item-type'],
+              }),
+            ).rejects.toMatchObject({
+              name: 'InvalidActionItemTypeIdsError',
+              status: 400,
+              type: [ErrorType.InvalidUserInput],
+            });
+          },
+        );
+
+        testWithOrg(
+          'rejects item type IDs owned by another organization generically',
+          async ({ sutWithPrimary, deps, org }) => {
+            const { defaultUserItemType: otherItemType } = await setupOrg(deps);
+            await expect(
+              sutWithPrimary.createAction(org.id, {
+                name: faker.string.alphanumeric(16),
+                description: null,
+                type: 'CUSTOM_ACTION',
+                callbackUrl: 'https://example.com',
+                callbackUrlHeaders: null,
+                callbackUrlBody: null,
+                itemTypeIds: [otherItemType.id],
+              }),
+            ).rejects.toMatchObject({
+              name: 'InvalidActionItemTypeIdsError',
+              status: 400,
+              type: [ErrorType.InvalidUserInput],
+              title: 'Invalid action item type IDs',
+              detail: 'One or more item type IDs are invalid',
+            });
+          },
+        );
       });
     });
 
@@ -1228,6 +1273,26 @@ describe('ModerationConfigService', () => {
               applyUserStrikes: false,
             });
             return { ...base, action };
+          },
+        );
+
+        testWithOrg(
+          'rejects updates to built-in actions as not found',
+          async ({ sutWithPrimary, org }) => {
+            const builtIn = (
+              await sutWithPrimary.getActions({ orgId: org.id })
+            ).find((action) => action.actionType !== 'CUSTOM_ACTION')!;
+
+            await expect(
+              sutWithPrimary.updateCustomAction(org.id, {
+                actionId: builtIn.id,
+                patch: { description: 'updated' },
+              }),
+            ).rejects.toMatchObject({
+              name: 'NotFoundError',
+              status: 404,
+              type: [ErrorType.NotFound],
+            });
           },
         );
 
@@ -1424,11 +1489,12 @@ describe('ModerationConfigService', () => {
                 actionId: action.id,
                 patch: { name: other.name },
               }),
-            ).rejects.toThrow(
-              expect.objectContaining({
-                type: [ErrorType.UniqueViolation],
-              }),
-            );
+            ).rejects.toMatchObject({
+              name: 'ActionNameExistsError',
+              status: 409,
+              type: [ErrorType.UniqueViolation],
+              title: 'An action with this name already exists',
+            });
           },
         );
 
@@ -1485,6 +1551,52 @@ describe('ModerationConfigService', () => {
             ).toEqual([]);
           },
         );
+
+        for (const [caseName, ids] of [
+          ['duplicate', (id: string) => [id, id]],
+          ['nonexistent', () => ['missing-item-type']],
+        ] as const) {
+          testWithAction(
+            `rejects ${caseName} item type IDs and rolls back action and associations`,
+            async ({
+              sutWithPrimary,
+              deps,
+              org,
+              action,
+              defaultUserItemType,
+            }) => {
+              await sutWithPrimary.updateCustomAction(org.id, {
+                actionId: action.id,
+                patch: {},
+                itemTypeIds: [defaultUserItemType.id],
+              });
+              await expect(
+                sutWithPrimary.updateCustomAction(org.id, {
+                  actionId: action.id,
+                  patch: { description: 'must roll back' },
+                  itemTypeIds: ids(defaultUserItemType.id),
+                }),
+              ).rejects.toMatchObject({
+                name: 'InvalidActionItemTypeIdsError',
+                status: 400,
+                type: [ErrorType.InvalidUserInput],
+                title: 'Invalid action item type IDs',
+                detail: 'One or more item type IDs are invalid',
+              });
+              const row = await deps.KyselyPg.selectFrom('public.actions')
+                .select('description')
+                .where('id', '=', action.id)
+                .executeTakeFirstOrThrow();
+              expect(row.description).toBe('before');
+              expect(
+                await deps.KyselyPg.selectFrom('public.actions_and_item_types')
+                  .select('item_type_id')
+                  .where('action_id', '=', action.id)
+                  .execute(),
+              ).toEqual([{ item_type_id: defaultUserItemType.id }]);
+            },
+          );
+        }
       });
     });
 
@@ -1800,7 +1912,58 @@ describe('ModerationConfigService', () => {
         async ({ deps }) => {
           const base = await setupOrg(deps);
           const { user } = await createUser(deps.KyselyPg, base.org.id);
-          return { ...base, user };
+          return { ...base, user, deps };
+        },
+      );
+
+      testWithUserAndOrg(
+        'supports user and matching API-key policy invokers while rejecting unauthorized invokers',
+        async ({ sutWithPrimary, org, user }) => {
+          const userInvoker = {
+            orgId: org.id,
+            userId: user.id,
+            permissions: user.getPermissions(),
+          };
+          const created = await sutWithPrimary.createPolicy({
+            orgId: org.id,
+            policy: { name: 'User policy' },
+            invokedBy: userInvoker,
+          });
+          await expect(
+            sutWithPrimary.updatePolicy({
+              orgId: org.id,
+              policy: { id: created.id, name: 'User-updated policy' },
+              invokedBy: userInvoker,
+            }),
+          ).resolves.toMatchObject({ name: 'User-updated policy' });
+          await expect(
+            sutWithPrimary.updatePolicy({
+              orgId: org.id,
+              policy: { id: created.id, name: 'No permission update' },
+              invokedBy: { ...userInvoker, permissions: [] },
+            }),
+          ).rejects.toMatchObject({ name: 'UnauthorizedError', status: 403 });
+          await expect(
+            sutWithPrimary.updatePolicy({
+              orgId: org.id,
+              policy: { id: created.id, name: 'API key policy' },
+              invokedBy: { type: 'organizationApiKey', orgId: org.id },
+            }),
+          ).resolves.toMatchObject({ name: 'API key policy' });
+          await expect(
+            sutWithPrimary.createPolicy({
+              orgId: org.id,
+              policy: { name: 'No permission' },
+              invokedBy: { ...userInvoker, permissions: [] },
+            }),
+          ).rejects.toMatchObject({ name: 'UnauthorizedError', status: 403 });
+          await expect(
+            sutWithPrimary.updatePolicy({
+              orgId: org.id,
+              policy: { id: created.id, name: 'Wrong org' },
+              invokedBy: { type: 'organizationApiKey', orgId: 'wrong-org' },
+            }),
+          ).rejects.toMatchObject({ name: 'UnauthorizedError', status: 403 });
         },
       );
 
@@ -1917,43 +2080,250 @@ describe('ModerationConfigService', () => {
       );
 
       testWithUserAndOrg(
-        'Prevent creation of policy with the same name as an existing policy',
-        async ({ sutWithPrimary, org, user }) => {
-          await sutWithPrimary.createPolicy({
-            orgId: org.id,
+        'rejects missing and cross-org parents without disclosing which case occurred',
+        async ({ sutWithPrimary, org, user, deps }) => {
+          const other = await setupOrg(deps);
+          const { user: otherUser } = await createUser(
+            deps.KyselyPg,
+            other.org.id,
+          );
+          const otherParent = await other.sutWithPrimary.createPolicy({
+            orgId: other.org.id,
             policy: {
-              name: 'Test Policy',
-              policyText: 'Test policy text',
-              enforcementGuidelines: 'Test enforcement guidelines',
-              policyType: PolicyType.DRUG_SALES,
+              name: 'Other parent',
               parentId: null,
+              policyText: null,
+              enforcementGuidelines: null,
+              policyType: null,
             },
             invokedBy: {
-              orgId: org.id,
-              userId: user.id,
-              permissions: user.getPermissions(),
+              orgId: other.org.id,
+              userId: otherUser.id,
+              permissions: otherUser.getPermissions(),
             },
           });
+          const invokedBy = {
+            orgId: org.id,
+            userId: user.id,
+            permissions: user.getPermissions(),
+          };
 
+          const errors = await Promise.all(
+            ['missing-policy', otherParent.id].map(async (parentId) => {
+              try {
+                await sutWithPrimary.createPolicy({
+                  orgId: org.id,
+                  policy: {
+                    name: `Child ${parentId}`,
+                    parentId,
+                    policyText: null,
+                    enforcementGuidelines: null,
+                    policyType: null,
+                  },
+                  invokedBy,
+                });
+                throw new Error('Expected createPolicy to reject');
+              } catch (error) {
+                return error;
+              }
+            }),
+          );
+          for (const error of errors) {
+            expect(error).toEqual(
+              expect.objectContaining({
+                name: 'InvalidPolicyParentError',
+                status: 400,
+              }),
+            );
+          }
+          expect((errors[0] as { title: string }).title).toBe(
+            (errors[1] as { title: string }).title,
+          );
+
+          const root = await sutWithPrimary.createPolicy({
+            orgId: org.id,
+            policy: {
+              name: 'Local root',
+              parentId: null,
+              policyText: null,
+              enforcementGuidelines: null,
+              policyType: null,
+            },
+            invokedBy,
+          });
+          const child = await sutWithPrimary.createPolicy({
+            orgId: org.id,
+            policy: {
+              name: 'Local child',
+              parentId: root.id,
+              policyText: null,
+              enforcementGuidelines: null,
+              policyType: null,
+            },
+            invokedBy,
+          });
+          const updateErrors = await Promise.all(
+            ['missing-policy', otherParent.id].map(async (parentId) => {
+              try {
+                await sutWithPrimary.updatePolicy({
+                  orgId: org.id,
+                  policy: { id: child.id, parentId },
+                  invokedBy,
+                });
+                throw new Error('Expected updatePolicy to reject');
+              } catch (error) {
+                expect(
+                  (await sutWithPrimary.getPolicy({
+                    orgId: org.id,
+                    policyId: child.id,
+                  }))!.parentId,
+                ).toBe(root.id);
+                return error;
+              }
+            }),
+          );
+          expect(updateErrors).toEqual([
+            expect.objectContaining({
+              name: 'InvalidPolicyParentError',
+              status: 400,
+            }),
+            expect.objectContaining({
+              name: 'InvalidPolicyParentError',
+              status: 400,
+            }),
+          ]);
+          expect((updateErrors[0] as { title: string }).title).toBe(
+            (updateErrors[1] as { title: string }).title,
+          );
+        },
+      );
+
+      testWithUserAndOrg(
+        'rejects self, direct, and multi-level policy cycles and preserves the original edge',
+        async ({ sutWithPrimary, org, user }) => {
+          const invokedBy = {
+            orgId: org.id,
+            userId: user.id,
+            permissions: user.getPermissions(),
+          };
+          const create = async (name: string, parentId: string | null) =>
+            sutWithPrimary.createPolicy({
+              orgId: org.id,
+              policy: {
+                name,
+                parentId,
+                policyText: null,
+                enforcementGuidelines: null,
+                policyType: null,
+              },
+              invokedBy,
+            });
+          const root = await create('Root', null);
+          const child = await create('Child', root.id);
+          const grandchild = await create('Grandchild', child.id);
+
+          for (const [id, parentId] of [
+            [root.id, root.id],
+            [root.id, child.id],
+            [root.id, grandchild.id],
+          ]) {
+            await expect(
+              sutWithPrimary.updatePolicy({
+                orgId: org.id,
+                policy: { id, parentId },
+                invokedBy,
+              }),
+            ).rejects.toEqual(
+              expect.objectContaining({
+                name: 'PolicyHierarchyCycleError',
+                status: 409,
+              }),
+            );
+            expect(
+              (await sutWithPrimary.getPolicy({
+                orgId: org.id,
+                policyId: root.id,
+              }))!.parentId,
+            ).toBeNull();
+          }
+        },
+      );
+
+      testWithUserAndOrg(
+        'supports reparenting and clearing while rejecting wrong-org invokers without changes',
+        async ({ sutWithPrimary, org, user }) => {
+          const invokedBy = {
+            orgId: org.id,
+            userId: user.id,
+            permissions: user.getPermissions(),
+          };
+          const create = async (name: string, parentId: string | null) =>
+            sutWithPrimary.createPolicy({
+              orgId: org.id,
+              policy: {
+                name,
+                parentId,
+                policyText: null,
+                enforcementGuidelines: null,
+                policyType: null,
+              },
+              invokedBy,
+            });
+          const first = await create('First', null);
+          const second = await create('Second', null);
+          const child = await create('Child', first.id);
+          expect(
+            (
+              await sutWithPrimary.updatePolicy({
+                orgId: org.id,
+                policy: { id: child.id, parentId: second.id },
+                invokedBy,
+              })
+            ).parentId,
+          ).toBe(second.id);
+          expect(
+            (
+              await sutWithPrimary.updatePolicy({
+                orgId: org.id,
+                policy: { id: child.id, parentId: null },
+                invokedBy,
+              })
+            ).parentId,
+          ).toBeNull();
+
+          await expect(
+            sutWithPrimary.updatePolicy({
+              orgId: org.id,
+              policy: { id: child.id, parentId: first.id },
+              invokedBy: { ...invokedBy, orgId: 'wrong-org' },
+            }),
+          ).rejects.toEqual(
+            expect.objectContaining({ type: [ErrorType.Unauthorized] }),
+          );
+          expect(
+            (await sutWithPrimary.getPolicy({
+              orgId: org.id,
+              policyId: child.id,
+            }))!.parentId,
+          ).toBeNull();
           await expect(
             sutWithPrimary.createPolicy({
               orgId: org.id,
               policy: {
-                name: 'Test Policy',
-                policyText: 'Test policy text',
-                enforcementGuidelines: 'Test enforcement guidelines',
-                policyType: PolicyType.DRUG_SALES,
+                name: 'Unauthorized',
                 parentId: null,
+                policyText: null,
+                enforcementGuidelines: null,
+                policyType: null,
               },
-              invokedBy: {
-                orgId: org.id,
-                userId: user.id,
-                permissions: user.getPermissions(),
-              },
+              invokedBy: { ...invokedBy, orgId: 'wrong-org' },
             }),
-          ).rejects.toThrow(
-            expect.objectContaining({ type: [ErrorType.UniqueViolation] }),
+          ).rejects.toEqual(
+            expect.objectContaining({ type: [ErrorType.Unauthorized] }),
           );
+          expect(
+            await sutWithPrimary.getPolicies({ orgId: org.id }),
+          ).toHaveLength(3);
         },
       );
     });
