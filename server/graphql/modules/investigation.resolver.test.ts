@@ -229,6 +229,30 @@ describe('investigation resolvers', () => {
         expect(result[0]).toMatchObject({ isSynthetic: true });
       });
 
+      it('skips synthesis when the lookup deadline has passed', async () => {
+        const timeout = vi
+          .spyOn(AbortSignal, 'timeout')
+          .mockReturnValue(AbortSignal.abort());
+        const { ctx, service } = makeContext();
+
+        try {
+          await expect(
+            resolveItemsWithId({ itemId: 'i-1' }, ctx),
+          ).resolves.toEqual([]);
+          await expect(
+            resolveItemsWithId(
+              { itemId: 'i-1', returnFirstResultOnly: true },
+              ctx,
+            ),
+          ).resolves.toEqual([]);
+          expect(
+            service.synthesizeUserItemFromCreatorReferences,
+          ).not.toHaveBeenCalled();
+        } finally {
+          timeout.mockRestore();
+        }
+      });
+
       it('returns real submissions and skips synthesis when the stream yields data', async () => {
         const submission = makeSubmission({ itemId: 'i-1' });
         const { ctx, service } = makeContext({
@@ -247,6 +271,9 @@ describe('investigation resolvers', () => {
         expect(
           service.synthesizeUserItemFromCreatorReferences,
         ).not.toHaveBeenCalled();
+        expect(service.getItemByTypeAgnosticIdentifier).toHaveBeenCalledWith(
+          expect.objectContaining({ signal: expect.any(AbortSignal) }),
+        );
       });
     });
   });

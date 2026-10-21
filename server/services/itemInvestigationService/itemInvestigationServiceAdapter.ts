@@ -1,4 +1,5 @@
 import { ReadableStream } from 'node:stream/web';
+import { trace } from '@opentelemetry/api';
 import type { ItemIdentifier } from '@roostorg/coop-types';
 
 import { type Dependencies } from '../../iocContainer/index.js';
@@ -207,17 +208,54 @@ export class ItemInvestigationServiceAdapter {
     orgId: string;
     itemId: string;
     latestSubmissionOnly?: boolean;
+    /**
+     * When this aborts, the remaining lookups are aborted and the stream
+     * closes, so a consumer waiting on the next item is released.
+     */
+    signal?: AbortSignal;
   }): AsyncIterableIterator<SubmissionsForItem> {
-    const { orgId, itemId, latestSubmissionOnly = true } = opts;
+    const {
+      orgId,
+      itemId,
+      latestSubmissionOnly = true,
+      signal: deadline,
+    } = opts;
     const controller = new AbortController();
     const { signal } = controller;
+    // Set once the stream is closed, errored, or canceled; after that the
+    // stream controller must not be touched again.
+    let finished = false;
+    let closeOnDeadline = () => {};
+    const finish = () => {
+      finished = true;
+      deadline?.removeEventListener('abort', closeOnDeadline);
+    };
 
     const stream = new ReadableStream<SubmissionsForItem>({
-      start: (controller) => {
+      start: (streamController) => {
+        closeOnDeadline = () => {
+          if (finished) {
+            return;
+          }
+          finish();
+          controller.abort(deadline?.reason);
+          streamController.close();
+        };
+        if (deadline?.aborted) {
+          closeOnDeadline();
+          return;
+        }
+        deadline?.addEventListener('abort', closeOnDeadline, { once: true });
+
         this.moderationConfigService
           .getItemTypes({ orgId })
           .then(async (itemTypes) => {
-            return Promise.all(
+            // `getItemByIdentifier` starts a Scylla read before its first
+            // signal check, so don't launch lookups once the stream is done.
+            if (finished) {
+              return;
+            }
+            await Promise.all(
               itemTypes.map(async (it) => {
                 const rawSubmissionsForItem =
                   await this.service.getItemByIdentifier({
@@ -227,19 +265,25 @@ export class ItemInvestigationServiceAdapter {
                     signal,
                   });
 
-                if (rawSubmissionsForItem) {
-                  controller.enqueue(
-                    await this.#convertToSubmissionsForItem(
-                      orgId,
-                      rawSubmissionsForItem,
-                    ),
+                if (rawSubmissionsForItem == null || signal.aborted) {
+                  return;
+                }
+                const submissionsForItem =
+                  await this.#convertToSubmissionsForItem(
+                    orgId,
+                    rawSubmissionsForItem,
                   );
+                if (!finished) {
+                  streamController.enqueue(submissionsForItem);
                 }
               }),
             );
           })
           .then(() => {
-            controller.close();
+            if (!finished) {
+              finish();
+              streamController.close();
+            }
           })
           .catch((error: unknown) => {
             // The promise that we're catching here can reject because either:
@@ -248,26 +292,34 @@ export class ItemInvestigationServiceAdapter {
             //    stream (e.g., `getItemTypesForOrgEventuallyConsistent` or
             //    `getItemByIdentifier` threw b/c the db was unreachable); or
             //
-            // 2. The stream was canceled because the consumer was no longer
-            //    interested in it; that cancelation lead us to abort the signal
+            // 2. The stream was canceled by the consumer, or closed because
+            //    the caller's deadline passed. Either way we aborted `signal`
             //    (so that `getItemByIdentifier` would stop doing pointless
             //    work), which lead `getItemByIdentifier` to reject with an
-            //    "AbortError". NB: Because we "own" this signal -- i.e., it's
-            //    created inside `getItemByTypeAgnosticIdentifier` and never
-            //    escapes -- and we only abort it on stream cancelation, the
-            //    signal can only be aborted if the stream was canceled.
+            //    "AbortError".
             //
-            // If we're in the first case, we need to call `controller.error()`,
-            // to expose the error when the stream is read from in future. But,
-            // if we're in the second case (which will be the case iff the
-            // signal is aborted, per comment above), the stream's already
-            // canceled so we don't have to do anything.
-            if (!signal.aborted) {
-              controller.error(error);
+            // If we're in the first case, we need to call
+            // `streamController.error()`, to expose the error when the stream
+            // is read from in future. In the second case the stream is already
+            // finished, so only a failure other than our own abort is worth
+            // recording.
+            if (!finished) {
+              finish();
+              streamController.error(error);
+              return;
+            }
+            const activeSpan = trace.getActiveSpan();
+            if (
+              error !== signal.reason &&
+              error instanceof Error &&
+              activeSpan?.isRecording()
+            ) {
+              activeSpan.recordException(error);
             }
           });
       },
       cancel() {
+        finish();
         controller.abort();
       },
     });
@@ -279,7 +331,8 @@ export class ItemInvestigationServiceAdapter {
     // automatically in various appropriate/common cases (e.g., when a `break`
     // or `throw` happens inside a `for await ... of` loop) -- will cancel the
     // stream, which will abort the signal and save all the unnecessary work in
-    // `getItemByIdentifier`.
+    // `getItemByIdentifier`. `return()` waits for any pending `next()`, so a
+    // consumer that stops while a read is outstanding must use `opts.signal`.
     return stream[Symbol.asyncIterator]();
   }
 
