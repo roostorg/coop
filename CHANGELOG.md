@@ -32,6 +32,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Security
 
+- Update Node.js to 24.22.1 for the October 2026 security release ([#TODO](https://github.com/roostorg/coop/pull/TODO) by [@serendipty01](https://github.com/serendipty01))
 - Store hash-exchange credentials per bank ([#1360](https://github.com/roostorg/coop/pull/1360) by [@juanmrad](https://github.com/juanmrad))
 
 ## [1.1.1] - 2026-10-01
