@@ -29,10 +29,10 @@ Then:
 1. In a PR, replace `## [Unreleased]` in `CHANGELOG.md` with `## [x.y.z] - YYYY-MM-DD`, leaving an empty `## [Unreleased]` , and update the compare links at the bottom of the file. Strip related issue links (e.g. `closes [#456](...)`) from entries so each is a single line ending at the PR link. Merge it before continuing to the next step.
 2. In GitHub: **Releases** → **Draft a new release**
 3. **Create a tag** in SemVer format `x.y.z` (no `v` prefix) from the `main` branch, at or after the changelog PR's merge commit
-4. Title the release `Coop x.y.z` and **draft the release notes**, starting from the new `## [x.y.z]` section of [CHANGELOG.md](https://github.com/roostorg/coop/blob/main/CHANGELOG.md)
+4. Title the release `Coop x.y.z` and **draft the release notes**, starting from [CHANGELOG.md](https://github.com/roostorg/coop/blob/main/CHANGELOG.md)
 5. Check **Create a discussion for this release** for at least major and minor releases
-6. **Publish** the release. Check **Set as a pre-release** for alpha and beta tags; only non-pre-releases move the `latest` Docker tag.
-7. Confirm the **Publish Docker images** workflow run for the tag succeeds and the version-tagged images exist.
+6. **Publish** the release
+7. Confirm the **Publish Docker images** workflow run for the tag succeeds and the version-tagged images exist
 
 Publishing a release triggers automations:
 
