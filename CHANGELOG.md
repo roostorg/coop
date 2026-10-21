@@ -8,6 +8,10 @@ For more information about each release including git tags and artifacts, see [R
 
 ## [Unreleased]
 
+### Added
+
+- Formatting toolbar for policy definitions and enforcement guidelines.
+
 ## [1.2.0] - 2026-10-21
 
 ### Added
