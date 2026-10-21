@@ -10,7 +10,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Added
 
-- Formatting toolbar for policy definitions and enforcement guidelines.
+- Formatting toolbar for policy definitions and enforcement guidelines ([#1432](https://github.com/roostorg/coop/pull/1432) by [@taobojlen](https://github.com/taobojlen)).
 
 ## [1.2.0] - 2026-10-21
 
