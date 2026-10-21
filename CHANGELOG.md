@@ -35,6 +35,10 @@ For more information about each release including git tags and artifacts, see [R
 - Update Node.js to 24.22.1 for the October 2026 security release ([#1436](https://github.com/roostorg/coop/pull/1436) by [@serendipty01](https://github.com/serendipty01))
 - Store hash-exchange credentials per bank ([#1360](https://github.com/roostorg/coop/pull/1360) by [@juanmrad](https://github.com/juanmrad))
 
+### Changed
+
+- Add validation for changes to item types ([#1272](https://github.com/roostorg/coop/pull/1272) by [@taobojlen](https://github.com/taobojlen))
+
 ## [1.1.1] - 2026-10-01
 
 ### Security
