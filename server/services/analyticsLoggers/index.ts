@@ -50,5 +50,4 @@ export {
   type LeafConditionWithResultAsLogged,
   pickConditionPropsToLog,
   pickLeafConditionPropsTolog,
-  signalIdFromLoggedCondition,
 } from './ruleExecutionLoggingUtils.js';

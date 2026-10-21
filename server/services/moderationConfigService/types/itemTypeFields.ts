@@ -1,8 +1,4 @@
-import {
-  ScalarTypes,
-  type ScalarType,
-  type TaggedScalar,
-} from '@roostorg/coop-types';
+import { type ScalarType, type TaggedScalar } from '@roostorg/coop-types';
 
 import { hasOwn } from '../../../utils/misc.js';
 import { type NormalizedItemData } from '../../itemProcessingService/index.js';
@@ -19,22 +15,4 @@ export function isTaggedItemData(
   it: TaggedItemData | TaggedScalar<ScalarType> | unknown[],
 ): it is TaggedItemData {
   return hasOwn(it, 'itemType');
-}
-
-export function isTranscribableType(
-  it: ScalarType,
-): it is ScalarTypes['AUDIO'] | ScalarTypes['VIDEO'] {
-  return it === ScalarTypes.AUDIO || it === ScalarTypes.VIDEO;
-}
-
-export function isTextValue<T extends ScalarType>(
-  it: TaggedScalar<T>,
-): it is TaggedScalar<T & ScalarTypes['STRING']> {
-  return it.type === ScalarTypes.STRING;
-}
-
-export function isTranscribableValue<T extends ScalarType>(
-  it: TaggedScalar<T>,
-): it is TaggedScalar<T & (ScalarTypes['AUDIO'] | ScalarTypes['VIDEO'])> {
-  return isTranscribableType(it.type);
 }

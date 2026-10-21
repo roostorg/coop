@@ -13,7 +13,7 @@ import {
 import { Switch } from '@/coop-ui/Switch';
 import { cn } from '@/lib/utils';
 import { ChevronsUpDown, Plus, Trash2 } from 'lucide-react';
-import { useId, useMemo } from 'react';
+import { useId } from 'react';
 
 import {
   GQLActionParameterType,
@@ -829,18 +829,4 @@ export function fromGraphQLParameters(
     maxLength: p.maxLength ?? undefined,
     defaultValue: p.defaultValue ?? undefined,
   }));
-}
-
-/**
- * Memoize a draft list keyed by the GraphQL response array reference. Avoids
- * blowing away in-progress local edits when the action query refetches.
- */
-export function useParameterDraftsFromAction<
-  T extends Parameters<typeof fromGraphQLParameters>[0],
->(parameters: T | undefined): ActionParameterDraft[] | undefined {
-  return useMemo(
-    () =>
-      parameters === undefined ? undefined : fromGraphQLParameters(parameters),
-    [parameters],
-  );
 }

@@ -2,7 +2,6 @@
 // their consumers into this service and keeping them internal.
 export {
   configurableIntegrations,
-  isConfigurableIntegration,
   default as makeSignalAuthService,
   type SignalAuthService,
   type ConfigurableIntegration,

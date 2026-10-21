@@ -50,15 +50,6 @@ type NCMECMediaViewerOptions = {
   isConfirmedCsam: boolean;
 };
 
-export function safetySetting(text: string, component: React.ReactNode) {
-  return (
-    <div className="flex items-center mr-3">
-      {text}
-      <div className="ml-3 text-start">{component}</div>
-    </div>
-  );
-}
-
 export default function NCMECMediaViewer(props: {
   mediaId: NCMECMediaIdentifier;
   index: number;
