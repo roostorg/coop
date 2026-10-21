@@ -1,11 +1,13 @@
 import { ContainerTypes, ScalarTypes } from '@roostorg/coop-types';
 
+import { type SnakeToCamelCase } from '../../../utils/typescript-types.js';
 import { type ModerationConfigServicePg } from '../dbTypes.js';
 import {
   makeInvalidItemTypeHiddenFieldsError,
   makeInvalidItemTypeSchemaError,
 } from '../errors.js';
 import {
+  itemTypeRoleNames,
   type FieldRoleToScalarType,
   type ItemSchema,
   type ItemTypeKind,
@@ -76,10 +78,16 @@ const roleDefinitions = {
   is_deleted_field: { role: 'isDeleted', type: 'BOOLEAN' },
   ip_address_field: { role: 'ipAddress', type: 'IP_ADDRESS' },
   email_field: { role: 'email', type: 'EMAIL_ADDRESS' },
-} as const satisfies Record<
-  keyof Required<ItemTypeRoleColumns>,
-  { role: keyof FieldRoleToScalarType; type: string }
->;
+} as const satisfies {
+  [Column in keyof Required<ItemTypeRoleColumns>]: {
+    role: SnakeToCamelCase<
+      Column extends `${infer Name}_field` ? Name : never
+    > &
+      keyof FieldRoleToScalarType &
+      (typeof itemTypeRoleNames)[ItemTypeKind][number];
+    type: string;
+  };
+};
 
 export function mergeItemTypeRoleColumns(
   current: Required<ItemTypeRoleColumns>,
@@ -142,22 +150,14 @@ function assertRolesAllowedForKind(
   kind: ItemTypeKind,
   roles: ItemTypeRoleColumns,
 ): void {
-  if (
-    kind !== 'USER' &&
-    (roles.profile_icon_field != null ||
-      roles.background_image_field != null ||
-      roles.email_field != null)
-  ) {
-    throwInvalidRole('kind', `contains a role that is not valid for ${kind}`);
-  }
-  if (
-    kind !== 'CONTENT' &&
-    (roles.thread_id_field != null || roles.parent_id_field != null)
-  ) {
-    throwInvalidRole('kind', `contains a role that is not valid for ${kind}`);
-  }
-  if (kind === 'USER' && roles.creator_id_field != null) {
-    throwInvalidRole('kind', `contains a role that is not valid for ${kind}`);
+  const allowed: readonly string[] = itemTypeRoleNames[kind];
+  for (const [column, { role }] of Object.entries(roleDefinitions)) {
+    if (
+      roles[column as keyof ItemTypeRoleColumns] != null &&
+      !allowed.includes(role)
+    ) {
+      throwInvalidRole('kind', `contains a role that is not valid for ${kind}`);
+    }
   }
 }
 
