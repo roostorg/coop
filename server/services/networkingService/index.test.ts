@@ -19,10 +19,15 @@ const bodyParsingOptions = [
 describe('fetchHTTP', () => {
   const testWithFakeServer = makeTestWithFixture(async () => {
     const port = Math.floor(Math.random() * 10000) + 10000;
+    let markNeverRespondsReceived: () => void = () => {};
+    const neverRespondsReceived = new Promise<void>((resolve) => {
+      markNeverRespondsReceived = resolve;
+    });
     const server = await new Promise<http.Server>((resolve, reject) => {
       const server = http.createServer((req, res) => {
         switch (req.url) {
           case '/never-responds':
+            markNeverRespondsReceived();
             break;
 
           case '/only-sends-headers':
@@ -52,6 +57,7 @@ describe('fetchHTTP', () => {
     return {
       tracer: new SafeTracer(new ProxyTracerProvider().getTracer('noop')),
       baseURL: `http://localhost:${port}`,
+      neverRespondsReceived,
       async cleanup() {
         await server.close();
       },
@@ -209,4 +215,21 @@ describe('fetchHTTP', () => {
       );
     });
   });
+
+  testWithFakeServer(
+    'rejects an in-flight request when the caller aborts',
+    async ({ baseURL, tracer, neverRespondsReceived }) => {
+      const download = new AbortController();
+      const pending = fetchHTTP(tracer, {
+        url: new URL('/never-responds', baseURL).toString(),
+        method: 'get',
+        handleResponseBody: 'discard',
+        signal: download.signal,
+      });
+      await neverRespondsReceived;
+      download.abort();
+
+      await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+    },
+  );
 });
