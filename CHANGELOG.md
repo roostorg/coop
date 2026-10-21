@@ -10,7 +10,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Added
 
-- Admin-only notifications for new Coop releases, configurable through `COOP_UPDATE_NOTIFICATIONS_ENABLED`.
+- Admin-only notifications for new Coop releases, configurable through `COOP_UPDATE_NOTIFICATIONS_ENABLED` ([#1434](https://github.com/roostorg/coop/pull/1434) by [@taobojlen](https://github.com/taobojlen)).
 - Grant review queue access by role ([#1060](https://github.com/roostorg/coop/pull/1060) by [@julietshen](https://github.com/julietshen) and [@taobojlen](https://github.com/taobojlen)).
 - Eligible item types column and filtering on the Actions dashboard ([#1369](https://github.com/roostorg/coop/pull/1369) by [@taobojlen](https://github.com/taobojlen))
 - Indicator on the Appeals queue tab when appeals are pending ([#1329](https://github.com/roostorg/coop/pull/1329) by [@madheesunp](https://github.com/madheesunp))
