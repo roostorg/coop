@@ -1,26 +1,18 @@
+import semver from 'semver';
+
 import { type Dependencies } from '../iocContainer/index.js';
 import { cached } from '../utils/caching.js';
-
-// Only stable, versioned builds participate in release notifications.
-function stableVersion(version: unknown) {
-  if (typeof version !== 'string') {
-    return undefined;
-  }
-  const match = /^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.exec(
-    version.split('+')[0],
-  );
-  return match?.slice(1, 4).map(Number);
-}
 
 export function makeGetCoopUpdateAvailable({
   fetchHTTP,
 }: Pick<Dependencies, 'fetchHTTP'>) {
-  const currentVersion = stableVersion(process.env.COOP_VERSION);
+  const currentVersion = semver.parse(process.env.COOP_VERSION ?? '');
   const enabled = process.env.COOP_UPDATE_NOTIFICATIONS_ENABLED !== 'false';
 
   return cached({
     async producer(_: null): Promise<boolean> {
-      if (!enabled || !currentVersion) {
+      // Only stable, versioned builds participate in release notifications.
+      if (!enabled || !currentVersion || currentVersion.prerelease.length > 0) {
         return false;
       }
 
@@ -50,16 +42,14 @@ export function makeGetCoopUpdateAvailable({
         ) {
           return false;
         }
-        const latestVersion = stableVersion(release.tag_name);
-        if (!latestVersion) {
-          return false;
-        }
-        const differentPart = latestVersion.findIndex(
-          (part, i) => part !== currentVersion[i],
-        );
+        const latestVersion =
+          typeof release.tag_name === 'string'
+            ? semver.parse(release.tag_name)
+            : null;
         return (
-          differentPart !== -1 &&
-          latestVersion[differentPart] > currentVersion[differentPart]
+          latestVersion !== null &&
+          latestVersion.prerelease.length === 0 &&
+          semver.gt(latestVersion, currentVersion)
         );
       } catch {
         // Network failures also cache a negative result to avoid repeated checks.
