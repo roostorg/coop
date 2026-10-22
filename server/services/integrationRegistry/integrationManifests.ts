@@ -387,7 +387,7 @@ const SENTINEL: IntegrationManifestEntry = {
           {
             label: 'Credentials',
             value:
-              'No API key required. Leaving fields blank falls back to the deployment default (SENTINEL_API_URL) and Sentinel’s own scoring defaults.',
+              'No API key required. The API URL is required for the signal to run; leaving the other fields blank uses Sentinel’s own scoring defaults.',
           },
         ],
       },

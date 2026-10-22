@@ -15,10 +15,9 @@ import SignalBase, { type SignalInput } from '../../SignalBase.js';
 const SENTINEL_DOCS_URL = 'https://github.com/Roblox/sentinel';
 
 /**
- * Fallback cap on prior thread items included in Sentinel scoring, used when
- * neither an org-level `threadContextLimit` override nor the
- * `SENTINEL_THREAD_CONTEXT_LIMIT` deployment default is configured. More
- * context improves recall for pattern detection but adds latency.
+ * Cap on prior thread items included in Sentinel scoring when the org has not
+ * set `threadContextLimit`. More context improves recall for pattern
+ * detection but adds latency.
  */
 const DEFAULT_THREAD_CONTEXT_LIMIT = 10;
 
@@ -27,8 +26,8 @@ const DEFAULT_THREAD_CONTEXT_LIMIT = 10;
  * `integration_configs` table — SENTINEL is deliberately not a
  * `ConfigurableIntegration` (see signalAuthService.ts), since none of these
  * fields are secret credentials. Presence of a saved config (even `{}`)
- * means the org has enabled this integration from the dashboard; individual
- * fields fall back to deployment-wide defaults when left unset.
+ * means the org has enabled this integration from the dashboard. Without an
+ * `apiUrl` the signal reports itself disabled.
  */
 type SentinelOrgConfig = {
   apiUrl?: string;
@@ -86,10 +85,6 @@ export default class SentinelRareClassAffinitySignal extends SignalBase<
     private readonly getSentinelConfig: GetSentinelConfig,
     private readonly fetchHTTP: FetchHTTP,
     private readonly itemInvestigationService: ItemInvestigationService,
-    /** Adopter-level fallback (from SENTINEL_API_URL). Org config, when set, overrides it. */
-    private readonly defaultApiUrl?: string,
-    /** Adopter-level fallback (from SENTINEL_THREAD_CONTEXT_LIMIT). Org config, when set, overrides it. */
-    private readonly defaultThreadContextLimit: number = DEFAULT_THREAD_CONTEXT_LIMIT,
   ) {
     super();
   }
@@ -166,7 +161,7 @@ It compares submitted content against labeled positive (rare/harmful) and negati
       };
     }
 
-    const apiUrl = config.apiUrl ?? this.defaultApiUrl;
+    const apiUrl = config.apiUrl;
     if (apiUrl == null) {
       return {
         disabled: true as const,
@@ -217,16 +212,15 @@ It compares submitted content against labeled positive (rare/harmful) and negati
     const { value, orgId, runtimeArgs } = input;
     const config =
       parseSentinelConfig(await this.getSentinelConfig(orgId)) ?? {};
-    const apiUrl = config.apiUrl ?? this.defaultApiUrl;
+    const apiUrl = config.apiUrl;
 
     if (apiUrl == null) {
-      // Permanent: without a configured (or default) URL, this signal can
-      // never run for this org, and retrying yields the same failure.
+      // Permanent: without a configured URL, this signal can never run for
+      // this org, and retrying yields the same failure.
       return {
         type: 'ERROR' as const,
         score: makeSignalPermanentError('Sentinel is not configured', {
-          detail:
-            'No Sentinel API URL is configured for this organization or as a deployment default (SENTINEL_API_URL).',
+          detail: 'No Sentinel API URL is configured for this organization.',
           shouldErrorSpan: false,
         }),
       };
@@ -247,7 +241,7 @@ It compares submitted content against labeled positive (rare/harmful) and negati
           this.itemInvestigationService.getThreadSubmissionsByTime({
             orgId,
             threadId: runtimeArgs.threadIdentifier,
-            limit: config.threadContextLimit ?? this.defaultThreadContextLimit,
+            limit: config.threadContextLimit ?? DEFAULT_THREAD_CONTEXT_LIMIT,
             ...(config.threadContextWindowMinutes != null
               ? {
                   oldestReturnedSubmissionDate: new Date(

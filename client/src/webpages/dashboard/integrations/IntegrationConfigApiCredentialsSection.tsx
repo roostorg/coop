@@ -323,8 +323,7 @@ export default function IntegrationConfigApiCredentialsSection(props: {
   // SentinelRareClassAffinitySignal.ts), but needs its own known field set
   // rather than the generic key/value editor above.
   const SENTINEL_FIELD_LABELS: Record<string, string> = {
-    apiUrl:
-      'Sentinel API URL (optional — falls back to the deployment default)',
+    apiUrl: 'Sentinel API URL',
     topK: 'Top K (nearest neighbors to consider)',
     minScoreToConsider: 'Minimum score to consider (0–1)',
     threadContextWindowMinutes: 'Thread context window (minutes)',

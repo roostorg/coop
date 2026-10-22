@@ -72,13 +72,11 @@ export interface SentinelService {
   unloadBanks(): Promise<void>;
 }
 
-const DEFAULT_BASE_URL = 'http://localhost:8000';
-
 export function makeSentinelService(
   fetchHTTP: FetchHTTP,
-  apiUrl?: string,
+  apiUrl: string,
 ): SentinelService {
-  const baseUrl = (apiUrl ?? DEFAULT_BASE_URL).replace(/\/$/, '');
+  const baseUrl = apiUrl.replace(/\/$/, '');
 
   async function fetchWithError<T>(
     endpoint: string,

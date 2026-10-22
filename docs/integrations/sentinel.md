@@ -8,23 +8,23 @@ Coop talks to Sentinel through a thin, self-hosted FastAPI layer — [UMass-Resc
 
 1. **A running `sentinel-api` instance** accessible from your Coop server. See [UMass-Rescue/sentinel-api](https://github.com/UMass-Rescue/sentinel-api) for how to build and run it.
 2. **Positive and negative example banks**, curated by you and loaded into that instance via its `/banks/create` or `/banks/load` endpoints. Sentinel ships with no pretrained banks of its own.
-3. **A Sentinel API URL**, either as a deployment-wide `SENTINEL_API_URL` environment variable or per-org under **Settings → Integrations → Sentinel**.
+3. **A Sentinel API URL**, set per org under **Settings → Integrations → Sentinel**. The signal stays off for an org until it saves a URL.
 
 Once connected, the **Sentinel Rare Class Affinity** signal is available in Coop's signal library for use in proactive rules.
 
 ## Configuration
 
-In Coop, go to **Settings → Integrations → Sentinel**. All fields are optional and fall back to deployment-wide defaults when left blank:
+In Coop, go to **Settings → Integrations → Sentinel**. Only the API URL is required; the other fields are optional.
 
-| Field                           | Deployment-wide default         | If unset               |
-| ------------------------------- | ------------------------------- | ---------------------- |
-| API URL                         | `SENTINEL_API_URL`              | Signal is disabled     |
-| Top K                           | _(none)_                        | Sentinel's own default |
-| Minimum score to consider       | _(none)_                        | Sentinel's own default |
-| Thread context window (minutes) | _(none)_                        | No time bound          |
-| Thread context limit            | `SENTINEL_THREAD_CONTEXT_LIMIT` | `10`                   |
+| Field                           | If unset               |
+| ------------------------------- | ---------------------- |
+| API URL                         | Signal is disabled     |
+| Top K                           | Sentinel's own default |
+| Minimum score to consider       | Sentinel's own default |
+| Thread context window (minutes) | No time bound          |
+| Thread context limit            | `10`                   |
 
-Saving a config (even with every field left blank) enables Sentinel for that organization. Env vars are only read once, at server boot — restart `npm run server:start` after changing `SENTINEL_API_URL` or `SENTINEL_THREAD_CONTEXT_LIMIT`.
+Saving a config enables Sentinel for that organization only. Each org points at its own Sentinel instance.
 
 ## Signals
 
@@ -48,8 +48,7 @@ Sentinel's default aggregation (skewness) needs **at least 5 non-empty text obse
 This assumes Coop is already running locally — see [Getting Started](../development/README.md) if not.
 
 1. Clone and run [UMass-Rescue/sentinel-api](https://github.com/UMass-Rescue/sentinel-api) alongside Coop (for example, a local `docker-compose.sentinel.yaml` that builds the clone and exposes port `8000`). The first build pulls `torch` and `sentence-transformers`, so expect several minutes.
-2. Point Coop at it: `echo "SENTINEL_API_URL=http://localhost:8000" >> server/.env`, then restart the server.
-3. Load a bank. `/banks/create` can build one from plain text files, which is enough to verify the plumbing:
+2. Load a bank. `/banks/create` can build one from plain text files, which is enough to verify the plumbing:
 
    ```bash
    mkdir -p ../sentinel-api/data/texts/{positive,negative}
@@ -64,7 +63,7 @@ This assumes Coop is already running locally — see [Getting Started](../develo
    }'
    ```
 
-4. In Coop, go to **Settings → Integrations → Sentinel** and save a config. Leaving the URL blank is fine if `SENTINEL_API_URL` is already set.
+3. In Coop, go to **Settings → Integrations → Sentinel** and save a config with the API URL (for example `http://localhost:8000`).
 
 ## Testing the integration
 

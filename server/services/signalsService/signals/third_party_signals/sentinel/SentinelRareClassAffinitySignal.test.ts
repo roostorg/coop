@@ -30,6 +30,8 @@ function makeInput(
   } as unknown as SentinelSignalInput;
 }
 
+const TEST_API_URL = 'http://localhost:8000';
+
 type FetchResponse = { ok: boolean; status: number; body: unknown };
 type EndpointHandlers = {
   health?: () => FetchResponse;
@@ -135,18 +137,19 @@ function makeSignal(options?: {
   orgConfig?: Record<string, unknown> | undefined;
   fetchHTTP?: FetchHTTP;
   iisOverrides?: Partial<MockItemInvestigationService>;
-  defaultApiUrl?: string | undefined;
-  defaultThreadContextLimit?: number;
 }) {
   // Destructuring defaults trigger on an explicit `undefined` value, not
   // just a missing key — and tests need to distinguish "not provided,
-  // use the default" from "explicitly no org config / no default URL". So
-  // check key presence instead of using destructuring defaults for these two.
+  // use the default" from "explicitly no org config". So check key presence
+  // instead of using a destructuring default. A provided config gets the test
+  // URL unless it sets `apiUrl` itself (e.g. `apiUrl: undefined` for no URL).
   const opts = options ?? {};
-  const orgConfig: Record<string, unknown> | undefined =
+  const rawOrgConfig: Record<string, unknown> | undefined =
     'orgConfig' in opts ? opts.orgConfig : {};
-  const defaultApiUrl: string | undefined =
-    'defaultApiUrl' in opts ? opts.defaultApiUrl : 'http://localhost:8000';
+  const orgConfig =
+    rawOrgConfig == null
+      ? undefined
+      : { apiUrl: TEST_API_URL, ...rawOrgConfig };
   const fetchHTTP = opts.fetchHTTP ?? makeFetchHTTP().fetchHTTP;
 
   return new SentinelRareClassAffinitySignal(
@@ -155,8 +158,6 @@ function makeSignal(options?: {
     makeItemInvestigationService(
       opts.iisOverrides,
     ) as unknown as ItemInvestigationService,
-    defaultApiUrl,
-    opts.defaultThreadContextLimit,
   );
 }
 
@@ -234,8 +235,8 @@ describe('SentinelRareClassAffinitySignal', () => {
       );
     });
 
-    it('returns disabled=true when no URL is configured at all', async () => {
-      const signal = makeSignal({ orgConfig: {}, defaultApiUrl: undefined });
+    it('returns disabled=true when the org has not saved a URL', async () => {
+      const signal = makeSignal({ orgConfig: { apiUrl: undefined } });
       const info = await signal.getDisabledInfo('org-1');
       expect(info.disabled).toBe(true);
       expect(info.disabledMessage).toContain('No Sentinel API URL');
@@ -304,18 +305,17 @@ describe('SentinelRareClassAffinitySignal', () => {
       });
     });
 
-    it('returns an ERROR result when neither org config nor a default URL is set', async () => {
-      const signal = makeSignal({ orgConfig: {}, defaultApiUrl: undefined });
+    it('returns an ERROR result when the org has not saved a URL', async () => {
+      const signal = makeSignal({ orgConfig: { apiUrl: undefined } });
       const result = await signal.run(makeInput());
       expect(result.type).toBe('ERROR');
     });
 
-    it("uses the org's configured apiUrl instead of the deployment default", async () => {
+    it("calls the org's configured apiUrl", async () => {
       const { fetchHTTP, requestUrls } = makeFetchHTTP();
       const signal = makeSignal({
         fetchHTTP,
         orgConfig: { apiUrl: 'http://org-sentinel.internal:9000' },
-        defaultApiUrl: 'http://localhost:8000',
       });
 
       await signal.run(makeInput());
@@ -425,7 +425,7 @@ describe('SentinelRareClassAffinitySignal', () => {
       expect(getThreadSubmissionsByTime.mock.calls[0][0].limit).toBe(10);
     });
 
-    it('uses a defaultThreadContextLimit constructor override when the org has not set one', async () => {
+    it('uses the org-level threadContextLimit override', async () => {
       const { fetchHTTP } = makeFetchHTTP();
       const getThreadSubmissionsByTime = vi.fn().mockReturnValue(
         (async function* () {
@@ -435,32 +435,6 @@ describe('SentinelRareClassAffinitySignal', () => {
 
       const signal = makeSignal({
         fetchHTTP,
-        defaultThreadContextLimit: 25,
-        iisOverrides: { getThreadSubmissionsByTime },
-      });
-
-      await signal.run(
-        makeInput({
-          runtimeArgs: {
-            threadIdentifier: { id: 'thread-1', typeId: 'content-type-1' },
-          },
-        }),
-      );
-
-      expect(getThreadSubmissionsByTime.mock.calls[0][0].limit).toBe(25);
-    });
-
-    it('prefers an org-level threadContextLimit override over the deployment default', async () => {
-      const { fetchHTTP } = makeFetchHTTP();
-      const getThreadSubmissionsByTime = vi.fn().mockReturnValue(
-        (async function* () {
-          // no items needed; we're only asserting on the call args
-        })(),
-      );
-
-      const signal = makeSignal({
-        fetchHTTP,
-        defaultThreadContextLimit: 25,
         orgConfig: { threadContextLimit: 3 },
         iisOverrides: { getThreadSubmissionsByTime },
       });

@@ -169,23 +169,7 @@ describe('makeSentinelService', () => {
     });
   });
 
-  describe('default URL', () => {
-    it('uses localhost:8000 when no URL is provided', async () => {
-      const { fetchHTTP, mock } = makeFetchHTTPMock();
-      const mockResponse: SentinelHealthResponse = {
-        status: 'ok',
-        banks_loaded: true,
-      };
-      mock.mockResolvedValueOnce(makeOkResponse(mockResponse));
-
-      const service = makeSentinelService(fetchHTTP);
-      await service.healthCheck();
-
-      expect(mock).toHaveBeenCalledWith(
-        expect.objectContaining({ url: 'http://localhost:8000/health' }),
-      );
-    });
-
+  describe('base URL', () => {
     it('strips trailing slash from base URL', async () => {
       const { fetchHTTP, mock } = makeFetchHTTPMock();
       const mockResponse: SentinelHealthResponse = {
