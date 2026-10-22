@@ -581,8 +581,7 @@ async function getSignalRuntimeArgs(
   }
 
   if (conditionSignalInfo.type === 'SENTINEL_RARE_CLASS_AFFINITY') {
-    // Extract the thread item identifier from the content schema's threadId
-    // role — this lets Sentinel score the content in its conversational context.
+    // The thread this content belongs to, so Sentinel can score earlier messages.
     const threadIdentifier: ItemIdentifier | undefined =
       itemSubmission.itemType.kind === 'CONTENT'
         ? (getFieldValueForRole(
@@ -593,8 +592,7 @@ async function getSignalRuntimeArgs(
           ) ?? undefined)
         : undefined;
 
-    // The field name the condition is evaluating is the most relevant text to
-    // score. If the condition input is a CONTENT_FIELD, use that field name.
+    // Score the text of the field the condition reads.
     const contentTextFieldName: string | undefined =
       conditionInput.type === 'CONTENT_FIELD' ? conditionInput.name : undefined;
 

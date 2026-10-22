@@ -39,13 +39,9 @@ type EndpointHandlers = {
 };
 
 /**
- * Builds a fake `FetchHTTP` that answers Sentinel's `/health` and `/score`
- * endpoints (all healthy/loaded/scored by default), so tests can
- * exercise the signal through `makeSentinelService` the same way it's wired
- * in production, rather than mocking a `SentinelService` instance directly.
- *
- * Request history is read back from Jest's own `mock.calls`, rather than a
- * hand-rolled accumulator, so nothing here mutates an array in place.
+ * Fake `FetchHTTP` answering Sentinel's `/health` and `/score` (healthy and
+ * scored by default), so tests go through `makeSentinelService` as in
+ * production. Request history is read from `mock.calls`.
  */
 function makeFetchHTTP(handlers: EndpointHandlers = {}) {
   type Req = { url: string; body?: string };
@@ -119,20 +115,17 @@ function makeItemInvestigationService(
 }
 
 /**
- * `undefined` (the default) means the org has enabled Sentinel with no
- * overrides — i.e. `getByIntegrationId` returned `{}`, which is distinct
- * from the org never having enabled the integration at all (`undefined`).
+ * `orgConfig: undefined` means the org never enabled Sentinel; the default `{}`
+ * means enabled with no overrides.
  */
 function makeSignal(options?: {
   orgConfig?: Record<string, unknown> | undefined;
   fetchHTTP?: FetchHTTP;
   iisOverrides?: Partial<MockItemInvestigationService>;
 }) {
-  // Destructuring defaults trigger on an explicit `undefined` value, not
-  // just a missing key — and tests need to distinguish "not provided,
-  // use the default" from "explicitly no org config". So check key presence
-  // instead of using a destructuring default. A provided config gets the test
-  // URL unless it sets `apiUrl` itself (e.g. `apiUrl: undefined` for no URL).
+  // Check key presence, since an explicit `undefined` orgConfig must differ
+  // from a missing one. A provided config gets the test URL unless it sets
+  // `apiUrl` itself (e.g. `apiUrl: undefined` for no URL).
   const opts = options ?? {};
   const rawOrgConfig: Record<string, unknown> | undefined =
     'orgConfig' in opts ? opts.orgConfig : {};
@@ -165,8 +158,8 @@ function makeThreadItem(text: string) {
 
 describe('SentinelRareClassAffinitySignal', () => {
   beforeEach(() => {
-    // Loopback hosts are rejected unless this is 'true'; pin it so the
-    // URL-validation cases do not depend on the developer's environment.
+    // Loopback URLs are rejected unless this is 'true'; pin it so tests do not
+    // depend on the environment.
     vi.stubEnv('ALLOW_USER_INPUT_LOCALHOST_URIS', 'false');
   });
 
@@ -394,7 +387,7 @@ describe('SentinelRareClassAffinitySignal', () => {
       const { fetchHTTP } = makeFetchHTTP();
       const getThreadSubmissionsByTime = vi.fn().mockReturnValue(
         (async function* () {
-          // no items needed; we're only asserting on the call args
+          // no items; only the call args matter
         })(),
       );
 
@@ -425,7 +418,7 @@ describe('SentinelRareClassAffinitySignal', () => {
       const { fetchHTTP } = makeFetchHTTP();
       const getThreadSubmissionsByTime = vi.fn().mockReturnValue(
         (async function* () {
-          // no items needed; we're only asserting on the call args
+          // no items; only the call args matter
         })(),
       );
 
@@ -449,7 +442,7 @@ describe('SentinelRareClassAffinitySignal', () => {
       const { fetchHTTP } = makeFetchHTTP();
       const getThreadSubmissionsByTime = vi.fn().mockReturnValue(
         (async function* () {
-          // no items needed; we're only asserting on the call args
+          // no items; only the call args matter
         })(),
       );
 
@@ -474,7 +467,7 @@ describe('SentinelRareClassAffinitySignal', () => {
       const { fetchHTTP } = makeFetchHTTP();
       const getThreadSubmissionsByTime = vi.fn().mockReturnValue(
         (async function* () {
-          // no items needed; we're only asserting on the call args
+          // no items; only the call args matter
         })(),
       );
 
@@ -496,10 +489,7 @@ describe('SentinelRareClassAffinitySignal', () => {
     });
 
     it('does not double-count the triggering submission when it is echoed back as thread context', async () => {
-      // submitContent.ts writes the current submission to Scylla before
-      // running rules, so getThreadSubmissionsByTime (which is time-bounded,
-      // not identity-bounded) can return the very submission that triggered
-      // this signal run alongside genuine prior messages.
+      // The triggering submission is already stored, so thread history can return it.
       const { fetchHTTP, lastScoreRequest } = makeFetchHTTP();
 
       const getThreadSubmissionsByTime = vi.fn().mockReturnValue(

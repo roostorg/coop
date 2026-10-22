@@ -15,20 +15,13 @@ import SignalBase, { type SignalInput } from '../../SignalBase.js';
 
 const SENTINEL_DOCS_URL = 'https://github.com/Roblox/sentinel';
 
-/**
- * Cap on prior thread items included in Sentinel scoring when the org has not
- * set `threadContextLimit`. More context improves recall for pattern
- * detection but adds latency.
- */
+/** Prior thread messages included in scoring when the org sets no limit. */
 const DEFAULT_THREAD_CONTEXT_LIMIT = 10;
 
 /**
- * Per-org Sentinel configuration. Stored as opaque JSON via the generic
- * `integration_configs` table — SENTINEL is deliberately not a
- * `ConfigurableIntegration` (see signalAuthService.ts), since none of these
- * fields are secret credentials. Presence of a saved config (even `{}`)
- * means the org has enabled this integration from the dashboard. Without a
- * valid http(s) `apiUrl` the signal reports itself disabled.
+ * Per-org Sentinel settings, stored as plain JSON since none are secret. A saved
+ * config (even `{}`) means the org enabled Sentinel; without a valid http(s)
+ * `apiUrl` the signal is disabled.
  */
 type SentinelOrgConfig = {
   apiUrl?: string;
@@ -38,7 +31,7 @@ type SentinelOrgConfig = {
   threadContextLimit?: number;
 };
 
-/** Cached getter for an org's raw Sentinel config, keyed by orgId. */
+/** Returns an org's raw Sentinel config, or undefined if not enabled. */
 type GetSentinelConfig = (
   orgId: string,
 ) => Promise<Record<string, unknown> | undefined>;
@@ -215,8 +208,7 @@ It compares submitted content against labeled positive (rare/harmful) and negati
     const apiUrl = config.apiUrl;
 
     if (apiUrl == null) {
-      // Permanent: without a configured URL, this signal can never run for
-      // this org, and retrying yields the same failure.
+      // Permanent: retrying cannot fix a missing URL.
       return {
         type: 'ERROR' as const,
         score: makeSignalPermanentError('Sentinel is not configured', {
@@ -229,13 +221,10 @@ It compares submitted content against labeled positive (rare/harmful) and negati
 
     const sentinelService = makeSentinelService(this.fetchHTTP, apiUrl);
 
-    // The primary text to score is always the signal input value.
     const primaryText = String(value.value);
     const texts: string[] = [primaryText];
 
-    // If thread context is available, fetch prior messages in the thread and
-    // include their text in the scoring request. This provides contextual
-    // signals that help Sentinel detect patterns spanning multiple messages.
+    // Include earlier messages from the same thread, since the patterns span messages.
     if (runtimeArgs?.threadIdentifier) {
       try {
         const threadItems =
@@ -252,14 +241,8 @@ It compares submitted content against labeled positive (rare/harmful) and negati
               : {}),
           });
 
-        // `submitContent.ts` writes the current submission to the thread's
-        // history *before* rules run (so thread-aware signals have context
-        // available), and `getThreadSubmissionsByTime` is bounded by time,
-        // not by item identity. That means the submission which triggered
-        // this very signal run is indistinguishable from real "prior"
-        // messages and comes back in `threadItems` too. Drop (at most) one
-        // occurrence matching `primaryText` so it isn't double-counted,
-        // which would otherwise skew the aggregate score Sentinel computes.
+        // The triggering submission is already stored in the thread, so skip
+        // one copy of it to avoid counting it twice.
         let skippedSelf = false;
         for await (const { latestSubmission } of threadItems) {
           const itemText = extractTextFromSubmission(
@@ -276,8 +259,7 @@ It compares submitted content against labeled positive (rare/harmful) and negati
           texts.push(itemText);
         }
       } catch {
-        // Thread context is best-effort. If it fails, we continue with just
-        // the primary text rather than failing the entire signal execution.
+        // Best-effort: score the primary text alone if thread history fails.
       }
     }
 
@@ -293,8 +275,7 @@ It compares submitted content against labeled positive (rare/harmful) and negati
       };
     } catch (error) {
       if (error instanceof SentinelServiceError) {
-        // Permanent: whenever Sentinel cannot produce a valid score, the
-        // signal cannot determine one for this input.
+        // Permanent: without a valid score, the signal cannot score this input.
         return {
           type: 'ERROR' as const,
           score: makeSignalPermanentError('Sentinel scoring failed', {
@@ -309,12 +290,8 @@ It compares submitted content against labeled positive (rare/harmful) and negati
 }
 
 /**
- * Extract the text to score from an ItemSubmission.
- *
- * If a specific `contentTextFieldName` is given (derived from the condition's
- * input field), we look up that field by name. Otherwise, we collect the first
- * string-valued field we can find. Returns `undefined` if no suitable text is
- * found.
+ * Returns the text to score: the field named `contentTextFieldName` if given,
+ * else the first non-empty string field. Undefined if there is none.
  */
 function extractTextFromSubmission(
   submission: ItemSubmission,
@@ -330,7 +307,7 @@ function extractTextFromSubmission(
     return undefined;
   }
 
-  // Fall back: return the first string field value in the item's data.
+  // No field name: use the first non-empty string field.
   for (const value of Object.values(data)) {
     if (typeof value === 'string' && value.trim()) {
       return value;

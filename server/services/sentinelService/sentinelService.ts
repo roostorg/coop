@@ -1,13 +1,7 @@
 /**
- * Sentinel Service — HTTP client for the Sentinel API.
- *
- * Sentinel is a contrastive-learning system for detecting rare text patterns
- * (e.g. grooming, hate speech) by comparing text against positive (rare/harmful)
- * and negative (common/normal) example banks.
- *
- * Each org runs its own Sentinel instance, so the URL is always supplied by the
- * caller (from org settings). Operator actions such as loading banks are
- * deliberately not exposed here.
+ * HTTP client for an org's own Sentinel instance. The URL comes from org
+ * settings. Only scoring and health are exposed; loading banks is left to the
+ * instance's operator.
  */
 import { jsonStringify } from '../../utils/encoding.js';
 import { type FetchHTTP } from '../networkingService/index.js';

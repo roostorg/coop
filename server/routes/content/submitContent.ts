@@ -195,9 +195,9 @@ Dependencies): RequestHandlerWithBodies<
       res.status(202).end();
     }
 
-    // Write to Scylla before running rules so that thread-aware signals
-    // (e.g. Sentinel) can read prior messages in the thread when scoring.
-    // This is best-effort: failures are swallowed so they never block rule execution.
+    // Store the submission before running rules so thread-aware signals (e.g.
+    // Sentinel) can read earlier thread messages. Best-effort: a failure does
+    // not block rules.
     const insertWithRetries = Tracer.traced(
       {
         resource: 'SubmitContent',
@@ -223,7 +223,7 @@ Dependencies): RequestHandlerWithBodies<
         },
       });
     } catch {
-      // Swallow insert errors; rules can still run without thread context.
+      // Rules still run without thread history.
     }
 
     // Run rules
@@ -361,8 +361,7 @@ function rawContentSubmissionToItemSubmission(
   | { itemSubmission: ItemSubmission; error?: undefined } {
   const submissionTime = new Date();
 
-  // Allow callers to pass a plain string ID for the parent thread without
-  // knowing the internal { id, typeId } identifier format.
+  // Accept a plain string thread ID as shorthand for { id, typeId }.
   const content = coerceStringThreadId(rawContentSubmission.content, itemType);
 
   // Validate content JSON

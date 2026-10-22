@@ -79,15 +79,9 @@ export type RuntimeSignalArgsByType = Satisfies<
     [SignalType.OPEN_AI_VIOLENCE_IMAGE_MODEL]: undefined;
     [SignalType.OPEN_AI_VIOLENCE_TEXT_MODEL]: undefined;
     [SignalType.SENTINEL_RARE_CLASS_AFFINITY]: {
-      /**
-       * The identifier of the thread/context item that this content belongs to.
-       * Used by the Sentinel signal to include thread-level text in scoring.
-       */
+      /** The thread this content belongs to, so earlier messages can be scored too. */
       threadIdentifier?: ItemIdentifier;
-      /**
-       * The name of the content field whose text value should be scored.
-       * Derived from the condition's input field name.
-       */
+      /** The content field whose text is scored. */
       contentTextFieldName?: string;
     };
     [SignalType.ZENTROPI_LABELER]: undefined;

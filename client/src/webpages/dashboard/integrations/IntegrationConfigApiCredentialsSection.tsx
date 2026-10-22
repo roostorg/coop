@@ -318,10 +318,8 @@ export default function IntegrationConfigApiCredentialsSection(props: {
     );
   };
 
-  // Sentinel stores its (non-secret) settings via the same generic
-  // PluginIntegrationApiCredential JSON blob as external plugins (see
-  // SentinelRareClassAffinitySignal.ts), but needs its own known field set
-  // rather than the generic key/value editor above.
+  // Sentinel's settings are stored as the same JSON blob as plugin
+  // integrations, but have a fixed set of fields.
   const SENTINEL_FIELD_LABELS: Record<string, string> = {
     apiUrl: 'Sentinel API URL',
     topK: 'Top K (nearest neighbors to consider)',
@@ -336,8 +334,8 @@ export default function IntegrationConfigApiCredentialsSection(props: {
     'threadContextLimit',
   ]);
 
-  // Raw text currently being typed into numeric fields, so e.g. "0." isn't
-  // clobbered mid-edit by re-rendering with `String(credential[key])`.
+  // Text being typed into numeric fields, so input like "0." isn't reset
+  // mid-edit.
   const [sentinelDrafts, setSentinelDrafts] = useState<Record<string, string>>(
     {},
   );
@@ -380,8 +378,7 @@ export default function IntegrationConfigApiCredentialsSection(props: {
                 });
               }}
               onBlur={() => {
-                // Snap back to the canonical (parsed/committed) formatting
-                // once the user is done typing, e.g. "0.10" -> "0.1".
+                // Reformat to the parsed value when typing ends, e.g. "0.10" -> "0.1".
                 const { [key]: _removed, ...rest } = sentinelDrafts;
                 setSentinelDrafts(rest);
               }}
