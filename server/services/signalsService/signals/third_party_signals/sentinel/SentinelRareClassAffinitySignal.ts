@@ -181,8 +181,7 @@ It compares submitted content against labeled positive (rare/harmful) and negati
         };
       }
 
-      const banksStatus = await sentinelService.getBanksStatus();
-      if (!banksStatus.loaded) {
+      if (!health.banks_loaded) {
         return {
           disabled: true as const,
           disabledMessage:

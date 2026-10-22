@@ -35,13 +35,12 @@ const TEST_API_URL = 'http://localhost:8000';
 type FetchResponse = { ok: boolean; status: number; body: unknown };
 type EndpointHandlers = {
   health?: () => FetchResponse;
-  banksStatus?: () => FetchResponse;
   score?: () => FetchResponse;
 };
 
 /**
- * Builds a fake `FetchHTTP` that answers Sentinel's `/health`, `/banks/status`,
- * and `/score` endpoints (all healthy/loaded/scored by default), so tests can
+ * Builds a fake `FetchHTTP` that answers Sentinel's `/health` and `/score`
+ * endpoints (all healthy/loaded/scored by default), so tests can
  * exercise the signal through `makeSentinelService` the same way it's wired
  * in production, rather than mocking a `SentinelService` instance directly.
  *
@@ -57,15 +56,6 @@ function makeFetchHTTP(handlers: EndpointHandlers = {}) {
           ok: true,
           status: 200,
           body: { status: 'ok', banks_loaded: true },
-        }
-      );
-    }
-    if (req.url.endsWith('/banks/status')) {
-      return (
-        handlers.banksStatus?.() ?? {
-          ok: true,
-          status: 200,
-          body: { loaded: true },
         }
       );
     }
@@ -270,7 +260,11 @@ describe('SentinelRareClassAffinitySignal', () => {
 
     it('returns disabled=true when banks are not loaded', async () => {
       const { fetchHTTP } = makeFetchHTTP({
-        banksStatus: () => ({ ok: true, status: 200, body: { loaded: false } }),
+        health: () => ({
+          ok: true,
+          status: 200,
+          body: { status: 'ok', banks_loaded: false },
+        }),
       });
       const signal = makeSignal({ fetchHTTP });
       const info = await signal.getDisabledInfo('org-1');

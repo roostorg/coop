@@ -4,6 +4,10 @@
  * Sentinel is a contrastive-learning system for detecting rare text patterns
  * (e.g. grooming, hate speech) by comparing text against positive (rare/harmful)
  * and negative (common/normal) example banks.
+ *
+ * Each org runs its own Sentinel instance, so the URL is always supplied by the
+ * caller (from org settings). Operator actions such as loading banks are
+ * deliberately not exposed here.
  */
 import { jsonStringify } from '../../utils/encoding.js';
 import { type FetchHTTP } from '../networkingService/index.js';
@@ -20,23 +24,10 @@ export type SentinelScoreResponse = {
   num_observations: number;
 };
 
-export type SentinelBanksStatus = {
-  loaded: boolean;
-  model_name?: string;
-  positive_count?: number;
-  negative_count?: number;
-  model_card?: Record<string, unknown>;
-};
-
 export type SentinelHealthResponse = {
   status: string;
   banks_loaded: boolean;
   version?: string;
-};
-
-export type SentinelLoadBanksRequest = {
-  path: string;
-  negative_to_positive_ratio?: number;
 };
 
 export class SentinelServiceError extends Error {
@@ -53,23 +44,8 @@ export interface SentinelService {
   /** Score an array of texts for rare class affinity. */
   scoreTexts(request: SentinelScoreRequest): Promise<SentinelScoreResponse>;
 
-  /**
-   * Score a single text for rare class affinity.
-   * Returns the individual observation score for that text.
-   */
-  scoreSingleText(text: string): Promise<number>;
-
-  /** Get the current banks status. */
-  getBanksStatus(): Promise<SentinelBanksStatus>;
-
   /** Check if the Sentinel service is healthy. */
   healthCheck(): Promise<SentinelHealthResponse>;
-
-  /** Load banks from a given path. */
-  loadBanks(request: SentinelLoadBanksRequest): Promise<void>;
-
-  /** Unload current banks from memory. */
-  unloadBanks(): Promise<void>;
 }
 
 export function makeSentinelService(
@@ -126,34 +102,9 @@ export function makeSentinelService(
       });
     },
 
-    async scoreSingleText(text: string): Promise<number> {
-      const response = await this.scoreTexts({ texts: [text] });
-      const scores = Object.values(response.observation_scores);
-      return scores.length > 0 ? (scores[0] ?? 0) : 0;
-    },
-
-    async getBanksStatus(): Promise<SentinelBanksStatus> {
-      return fetchWithError<SentinelBanksStatus>('/banks/status', {
-        method: 'get',
-      });
-    },
-
     async healthCheck(): Promise<SentinelHealthResponse> {
       return fetchWithError<SentinelHealthResponse>('/health', {
         method: 'get',
-      });
-    },
-
-    async loadBanks(request: SentinelLoadBanksRequest): Promise<void> {
-      await fetchWithError<void>('/banks/load', {
-        method: 'post',
-        body: jsonStringify(request),
-      });
-    },
-
-    async unloadBanks(): Promise<void> {
-      await fetchWithError<void>('/banks/unload', {
-        method: 'post',
       });
     },
   };
