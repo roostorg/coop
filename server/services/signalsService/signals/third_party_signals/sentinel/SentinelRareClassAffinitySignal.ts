@@ -1,6 +1,7 @@
 import { ScalarTypes } from '@roostorg/coop-types';
 
 import { makeSignalPermanentError } from '../../../../../utils/errors.js';
+import { isValidUrl } from '../../../../../utils/url.js';
 import { type ItemInvestigationService } from '../../../../itemInvestigationService/index.js';
 import { type ItemSubmission } from '../../../../itemProcessingService/index.js';
 import { type FetchHTTP } from '../../../../networkingService/index.js';
@@ -26,8 +27,8 @@ const DEFAULT_THREAD_CONTEXT_LIMIT = 10;
  * `integration_configs` table — SENTINEL is deliberately not a
  * `ConfigurableIntegration` (see signalAuthService.ts), since none of these
  * fields are secret credentials. Presence of a saved config (even `{}`)
- * means the org has enabled this integration from the dashboard. Without an
- * `apiUrl` the signal reports itself disabled.
+ * means the org has enabled this integration from the dashboard. Without a
+ * valid http(s) `apiUrl` the signal reports itself disabled.
  */
 type SentinelOrgConfig = {
   apiUrl?: string;
@@ -49,7 +50,7 @@ function parseSentinelConfig(
     return undefined;
   }
   const config: SentinelOrgConfig = {};
-  if (typeof raw.apiUrl === 'string' && raw.apiUrl.trim() !== '') {
+  if (typeof raw.apiUrl === 'string' && isValidUrl(raw.apiUrl.trim())) {
     config.apiUrl = raw.apiUrl.trim();
   }
   if (typeof raw.topK === 'number' && Number.isFinite(raw.topK)) {
@@ -166,7 +167,7 @@ It compares submitted content against labeled positive (rare/harmful) and negati
       return {
         disabled: true as const,
         disabledMessage:
-          'No Sentinel API URL is configured. Set one on the Integrations page.',
+          'No valid Sentinel API URL is configured. Set an http(s) URL that is not a loopback address on the Integrations page.',
       };
     }
 
@@ -219,7 +220,8 @@ It compares submitted content against labeled positive (rare/harmful) and negati
       return {
         type: 'ERROR' as const,
         score: makeSignalPermanentError('Sentinel is not configured', {
-          detail: 'No Sentinel API URL is configured for this organization.',
+          detail:
+            'No valid Sentinel API URL is configured for this organization.',
           shouldErrorSpan: false,
         }),
       };
@@ -291,6 +293,8 @@ It compares submitted content against labeled positive (rare/harmful) and negati
       };
     } catch (error) {
       if (error instanceof SentinelServiceError) {
+        // Permanent: whenever Sentinel cannot produce a valid score, the
+        // signal cannot determine one for this input.
         return {
           type: 'ERROR' as const,
           score: makeSignalPermanentError('Sentinel scoring failed', {

@@ -1,5 +1,5 @@
 import { ScalarTypes } from '@roostorg/coop-types';
-import { vi, type Mock } from 'vitest';
+import { afterEach, beforeEach, vi, type Mock } from 'vitest';
 
 import { jsonParse } from '../../../../../utils/encoding.js';
 import { type ItemInvestigationService } from '../../../../itemInvestigationService/index.js';
@@ -30,7 +30,7 @@ function makeInput(
   } as unknown as SentinelSignalInput;
 }
 
-const TEST_API_URL = 'http://localhost:8000';
+const TEST_API_URL = 'http://sentinel.example.com:8000';
 
 type FetchResponse = { ok: boolean; status: number; body: unknown };
 type EndpointHandlers = {
@@ -164,6 +164,16 @@ function makeThreadItem(text: string) {
 }
 
 describe('SentinelRareClassAffinitySignal', () => {
+  beforeEach(() => {
+    // Loopback hosts are rejected unless this is 'true'; pin it so the
+    // URL-validation cases do not depend on the developer's environment.
+    vi.stubEnv('ALLOW_USER_INPUT_LOCALHOST_URIS', 'false');
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   describe('signal metadata', () => {
     it('returns correct id', () => {
       expect(makeSignal().id).toEqual({
@@ -229,8 +239,24 @@ describe('SentinelRareClassAffinitySignal', () => {
       const signal = makeSignal({ orgConfig: { apiUrl: undefined } });
       const info = await signal.getDisabledInfo('org-1');
       expect(info.disabled).toBe(true);
-      expect(info.disabledMessage).toContain('No Sentinel API URL');
+      expect(info.disabledMessage).toContain('No valid Sentinel API URL');
     });
+
+    it.each([
+      ['not a URL', 'not a url'],
+      ['a non-http scheme', 'ftp://sentinel.example.com'],
+      ['a loopback host', 'http://127.0.0.1:8000'],
+    ])(
+      'returns disabled=true and makes no request when the URL is %s',
+      async (_label, apiUrl) => {
+        const { fetchHTTP, requestUrls } = makeFetchHTTP();
+        const signal = makeSignal({ fetchHTTP, orgConfig: { apiUrl } });
+        const info = await signal.getDisabledInfo('org-1');
+        expect(info.disabled).toBe(true);
+        expect(info.disabledMessage).toContain('No valid Sentinel API URL');
+        expect(requestUrls()).toEqual([]);
+      },
+    );
 
     it('returns disabled=true when health check fails', async () => {
       const { fetchHTTP } = makeFetchHTTP({
@@ -553,13 +579,71 @@ describe('SentinelRareClassAffinitySignal', () => {
       expect(lastScoreRequest()).toMatchObject({ texts: ['test content'] });
     });
 
-    it('returns an error result when Sentinel service returns a non-ok response', async () => {
+    it('returns a permanent error result when Sentinel rejects the request with a 422', async () => {
       const { fetchHTTP } = makeFetchHTTP({
-        score: () => ({ ok: false, status: 503, body: 'Banks not loaded' }),
+        score: () => ({ ok: false, status: 422, body: 'Invalid request' }),
       });
       const signal = makeSignal({ fetchHTTP });
       const result = await signal.run(makeInput());
-      expect(result.type).toBe('ERROR');
+      expect(result).toMatchObject({
+        type: 'ERROR',
+        score: {
+          name: 'SignalPermanentError',
+          detail: 'Sentinel API error: status=422',
+        },
+      });
+    });
+
+    it.each([408, 429, 503])(
+      'returns a permanent error result for a %i from Sentinel',
+      async (status) => {
+        const { fetchHTTP } = makeFetchHTTP({
+          score: () => ({ ok: false, status, body: 'Try again' }),
+        });
+        const signal = makeSignal({ fetchHTTP });
+        const result = await signal.run(makeInput());
+        expect(result).toMatchObject({
+          type: 'ERROR',
+          score: {
+            name: 'SignalPermanentError',
+            detail: `Sentinel API error: status=${status}`,
+          },
+        });
+      },
+    );
+
+    it('returns a permanent error result for a connection failure', async () => {
+      const { fetchHTTP } = makeFetchHTTP({
+        score: () => {
+          throw new Error('ECONNREFUSED');
+        },
+      });
+      const signal = makeSignal({ fetchHTTP });
+      const result = await signal.run(makeInput());
+      expect(result).toMatchObject({
+        type: 'ERROR',
+        score: { name: 'SignalPermanentError' },
+      });
+    });
+
+    it('returns a permanent error result for an out-of-range score', async () => {
+      const { fetchHTTP } = makeFetchHTTP({
+        score: () => ({
+          ok: true,
+          status: 200,
+          body: {
+            rare_class_affinity_score: 7,
+            observation_scores: {},
+            num_observations: 1,
+          },
+        }),
+      });
+      const signal = makeSignal({ fetchHTTP });
+      const result = await signal.run(makeInput());
+      expect(result).toMatchObject({
+        type: 'ERROR',
+        score: { name: 'SignalPermanentError' },
+      });
     });
   });
 });
