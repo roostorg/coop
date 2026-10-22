@@ -26,7 +26,7 @@ Before cutting a release, ensure:
 
 Then:
 
-1. In a PR, replace `## [Unreleased]` in `CHANGELOG.md` with `## [x.y.z] - YYYY-MM-DD`, leaving an empty `## [Unreleased]` , and update the compare links at the bottom of the file. Strip related issue links (e.g. `closes [#456](...)`) from entries so each is a single line ending at the PR link. Merge it before continuing to the next step.
+1. In a PR, replace `## [Unreleased]` in `CHANGELOG.md` with `## [x.y.z] - YYYY-MM-DD`, leaving an empty `## [Unreleased]`, and update the compare links at the bottom of the file. Remove related issue links (e.g. `closes [#456](...)`) from entries, preserving the PR and contributor links. Merge it before continuing to the next step.
 2. In GitHub: **Releases** → **Draft a new release**
 3. **Create a tag** in SemVer format `x.y.z` (no `v` prefix) from the `main` branch, at or after the changelog PR's merge commit
 4. Title the release `Coop x.y.z` and **draft the release notes**, starting from [CHANGELOG.md](https://github.com/roostorg/coop/blob/main/CHANGELOG.md)
@@ -39,4 +39,4 @@ Publishing a release triggers automations:
 - **Docker images**: builds and pushes version-tagged Docker images for `coop-server`, `coop-worker`, `coop-client`, and `coop-migrations`
 - **Docs**: adds a folder for the release to the [index](https://roostorg.github.io/coop/) with a snapshot of the docs
 
-`@roostorg/coop-types` and `@roostorg/coop-migrator` are not released this way; they publish to npm from `main` whenever `types/**` or `migrator/**` changes.
+`@roostorg/coop-types` and `@roostorg/db-migrator` are not released this way; they publish to npm from `main` whenever `types/**` or `migrator/**` changes.
