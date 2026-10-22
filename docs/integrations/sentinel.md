@@ -18,13 +18,13 @@ In Coop, go to **Settings → Integrations → Sentinel**. Only the API URL is r
 
 | Field                           | If unset               |
 | ------------------------------- | ---------------------- |
-| API URL                         | Signal is disabled     |
+| API URL (`http` or `https`)     | Signal is disabled     |
 | Top K                           | Sentinel's own default |
 | Minimum score to consider       | Sentinel's own default |
 | Thread context window (minutes) | No time bound          |
 | Thread context limit            | `10`                   |
 
-Saving a config enables Sentinel for that organization only. Each org points at its own Sentinel instance.
+The URL must be an `http` or `https` URL. Anything else is treated as not configured. Saving a config enables Sentinel for that organization only. Each org points at its own Sentinel instance.
 
 ## Signals
 
@@ -47,8 +47,17 @@ Sentinel's default aggregation (skewness) needs **at least 5 non-empty text obse
 
 This assumes Coop is already running locally — see [Getting Started](../development/README.md) if not.
 
-1. Clone and run [UMass-Rescue/sentinel-api](https://github.com/UMass-Rescue/sentinel-api) alongside Coop (for example, a local `docker-compose.sentinel.yaml` that builds the clone and exposes port `8000`). The first build pulls `torch` and `sentence-transformers`, so expect several minutes.
-2. Load a bank. `/banks/create` can build one from plain text files, which is enough to verify the plumbing:
+1. Clone [UMass-Rescue/sentinel-api](https://github.com/UMass-Rescue/sentinel-api) next to Coop, then, from inside the clone, build and run it with a `data` folder mounted so the next step can load banks from it:
+
+   ```bash
+   mkdir -p data
+   docker build -t sentinel-api .
+   docker run --rm -p 8000:8000 --user "$(id -u):$(id -g)" -v "$PWD/data:/data" sentinel-api
+   ```
+
+   The first build pulls `torch` and `sentence-transformers`, so expect several minutes. See the `sentinel-api` README for configuration options.
+
+2. Back in the Coop repo, load a bank. `/banks/create` can build one from plain text files, which is enough to verify the plumbing:
 
    ```bash
    mkdir -p ../sentinel-api/data/texts/{positive,negative}
@@ -63,7 +72,7 @@ This assumes Coop is already running locally — see [Getting Started](../develo
    }'
    ```
 
-3. In Coop, go to **Settings → Integrations → Sentinel** and save a config with the API URL (for example `http://localhost:8000`).
+3. In Coop, go to **Settings → Integrations → Sentinel** and save a config with the API URL (for example `http://localhost:8000`). Coop blocks `localhost` and `127.0.0.1` in org-supplied URLs unless `ALLOW_USER_INPUT_LOCALHOST_URIS=true` is set for the server, which `server/.env.example` does for local development. If Coop itself runs in Docker, use `http://host.docker.internal:8000` instead.
 
 ## Testing the integration
 
