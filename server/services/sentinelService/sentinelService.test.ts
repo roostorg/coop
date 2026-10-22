@@ -1,5 +1,6 @@
 import { vi } from 'vitest';
 
+import { jsonParse } from '../../utils/encoding.js';
 import { type FetchHTTP } from '../networkingService/index.js';
 import {
   makeSentinelService,
@@ -62,6 +63,20 @@ describe('makeSentinelService', () => {
       );
     });
 
+    it('reports only the status code, never the response body', async () => {
+      const { fetchHTTP, mock } = makeFetchHTTPMock();
+      mock.mockResolvedValueOnce(
+        makeErrorResponse(422, { detail: 'echoed user text' }),
+      );
+
+      const service = makeSentinelService(fetchHTTP, BASE_URL);
+      const error = await service.healthCheck().catch((e) => e);
+      expect(error).toBeInstanceOf(SentinelServiceError);
+      expect(error.statusCode).toBe(422);
+      expect(error.message).toBe('Sentinel API error: status=422');
+      expect(error.message).not.toContain('echoed user text');
+    });
+
     it('wraps fetch errors in SentinelServiceError', async () => {
       const { fetchHTTP, mock } = makeFetchHTTPMock();
       mock.mockRejectedValueOnce(new Error('ECONNREFUSED'));
@@ -109,8 +124,44 @@ describe('makeSentinelService', () => {
       await service.scoreTexts({ texts: ['text'] });
 
       const [call] = mock.mock.calls[0] as [{ body: string }];
-      expect(call.body).toContain('"top_k":5');
-      expect(call.body).toContain('"min_score_to_consider":0');
+      const body = jsonParse(call.body as never) as {
+        top_k: number;
+        min_score_to_consider: number;
+      };
+      expect(body.top_k).toBe(5);
+      expect(body.min_score_to_consider).toBe(0);
+    });
+
+    it.each([
+      ['missing', undefined],
+      ['not a number', '0.5'],
+      ['NaN', NaN],
+      ['negative', -0.1],
+      ['above 1', 1.1],
+    ])('throws when rare_class_affinity_score is %s', async (_label, score) => {
+      const { fetchHTTP, mock } = makeFetchHTTPMock();
+      mock.mockResolvedValueOnce(
+        makeOkResponse({
+          rare_class_affinity_score: score,
+          observation_scores: {},
+          num_observations: 0,
+        }),
+      );
+
+      const service = makeSentinelService(fetchHTTP, BASE_URL);
+      await expect(
+        service.scoreTexts({ texts: ['text'] }),
+      ).rejects.toBeInstanceOf(SentinelServiceError);
+    });
+
+    it('throws when the response body is empty', async () => {
+      const { fetchHTTP, mock } = makeFetchHTTPMock();
+      mock.mockResolvedValueOnce(makeOkResponse(undefined));
+
+      const service = makeSentinelService(fetchHTTP, BASE_URL);
+      await expect(
+        service.scoreTexts({ texts: ['text'] }),
+      ).rejects.toBeInstanceOf(SentinelServiceError);
     });
   });
 

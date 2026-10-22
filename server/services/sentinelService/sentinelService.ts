@@ -69,8 +69,9 @@ export function makeSentinelService(
       });
 
       if (!response.ok) {
+        // Status only: the response body can echo back the text being scored.
         throw new SentinelServiceError(
-          `Sentinel API error: ${jsonStringify(response.body)}`,
+          `Sentinel API error: status=${response.status}`,
           response.status,
         );
       }
@@ -92,14 +93,32 @@ export function makeSentinelService(
     async scoreTexts(
       request: SentinelScoreRequest,
     ): Promise<SentinelScoreResponse> {
-      return fetchWithError<SentinelScoreResponse>('/score', {
-        method: 'post',
-        body: jsonStringify({
-          texts: request.texts,
-          top_k: request.top_k ?? 5,
-          min_score_to_consider: request.min_score_to_consider ?? 0.0,
-        }),
-      });
+      const response = await fetchWithError<SentinelScoreResponse | undefined>(
+        '/score',
+        {
+          method: 'post',
+          body: jsonStringify({
+            texts: request.texts,
+            top_k: request.top_k ?? 5,
+            min_score_to_consider: request.min_score_to_consider ?? 0.0,
+          }),
+        },
+      );
+
+      const score = response?.rare_class_affinity_score;
+      if (
+        response == null ||
+        typeof score !== 'number' ||
+        !Number.isFinite(score) ||
+        score < 0 ||
+        score > 1
+      ) {
+        throw new SentinelServiceError(
+          'Sentinel API returned an invalid rare_class_affinity_score',
+        );
+      }
+
+      return response;
     },
 
     async healthCheck(): Promise<SentinelHealthResponse> {
