@@ -85,7 +85,8 @@ const scoreInput = (policyName: string) =>
 
 describe('PolicyScoresTab', () => {
   beforeEach(() => {
-    updatePolicy.mockClear();
+    updatePolicy.mockReset();
+    updatePolicy.mockResolvedValue({ data: {} });
   });
 
   it("shows a child's saved score while the policy is not being edited", async () => {
@@ -185,8 +186,8 @@ describe('PolicyScoresTab', () => {
     let finishParentSave = () => {};
     updatePolicy.mockImplementationOnce(
       async () =>
-        new Promise<void>((resolve) => {
-          finishParentSave = resolve;
+        new Promise((resolve) => {
+          finishParentSave = () => resolve({ data: {} });
         }),
     );
     render(
@@ -216,5 +217,56 @@ describe('PolicyScoresTab', () => {
     expect(updatePolicy).toHaveBeenLastCalledWith({
       variables: { input: expect.objectContaining({ id: 'child' }) },
     });
+  });
+
+  it('stops saving at the first failure and keeps the unsaved changes', async () => {
+    updatePolicy.mockResolvedValueOnce({
+      data: undefined,
+      errors: new Error('failed'),
+    });
+    render(
+      <MemoryRouter>
+        <PolicyScoresTab />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByText('Edit Policy Scores'));
+    fireEvent.change(screen.getAllByRole('spinbutton')[0], {
+      target: { value: '5' },
+    });
+    fireEvent.change(scoreInput('Child policy'), { target: { value: '8' } });
+    fireEvent.click(screen.getByText('Save Policy Scores'));
+
+    await waitFor(() => expect(updatePolicy).toHaveBeenCalledTimes(1));
+    expect(updatePolicy).toHaveBeenLastCalledWith({
+      variables: { input: expect.objectContaining({ id: 'parent' }) },
+    });
+    await waitFor(() =>
+      expect(screen.getByText('Save Policy Scores')).toBeInTheDocument(),
+    );
+    expect(screen.getAllByRole('spinbutton')[0]).toHaveValue(5);
+    expect(scoreInput('Child policy')).toHaveValue(8);
+    expect(updatePolicy).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the saved apply-to-sub-policies setting after discarding changes', async () => {
+    render(
+      <MemoryRouter>
+        <PolicyScoresTab />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(await screen.findByText('Edit Policy Scores'));
+    const parentSwitch = () =>
+      screen.getAllByRole('switch').find((it) => it.closest('tr') === null)!;
+    fireEvent.click(parentSwitch());
+    expect(parentSwitch()).toBeChecked();
+    expect(scoreInput('Child policy')).toBeDisabled();
+
+    fireEvent.click(screen.getByText('Discard Changes'));
+    fireEvent.click(screen.getByText('Edit Policy Scores'));
+
+    expect(parentSwitch()).not.toBeChecked();
+    expect(scoreInput('Child policy')).toBeEnabled();
   });
 });

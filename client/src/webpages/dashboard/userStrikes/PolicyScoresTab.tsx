@@ -170,7 +170,9 @@ export default function PolicyScoresTab() {
         // only update this policy and it's child policies, not the whole list
         // of policies. Save one at a time, parents first: each save runs
         // database triggers that update the policy's descendants, so
-        // concurrent saves of related policies deadlock.
+        // concurrent saves of related policies deadlock. Stop at the first
+        // failure so a child isn't saved against a parent that wasn't; the
+        // drafts are kept so the user can retry.
         for (const key of [policyId, ...childPolicyIds]) {
           const update = updatedPolicyScores[key];
           if (!update) {
@@ -185,14 +187,18 @@ export default function PolicyScoresTab() {
             childPolicy !== undefined &&
             scoreSourcePolicy(childPolicy.parent, updatedPolicyScores) !==
               undefined;
-          await updatePolicy({
+          const { errors } = await updatePolicy({
             variables: {
               input: scoreInherited
                 ? omit(update, 'userStrikeCount')
                 : { ...update },
             },
           });
+          if (errors) {
+            return false;
+          }
         }
+        return true;
       };
 
       const isTopLevel = !policy.parent || policy.parent.value.id === '-1';
@@ -236,7 +242,9 @@ export default function PolicyScoresTab() {
                           className="!fill-none"
                           startIcon={Check}
                           onClick={async () => {
-                            await savePolicyScores(policy.value.id);
+                            if (!(await savePolicyScores(policy.value.id))) {
+                              return;
+                            }
                             if (expandedPolicies.includes(policy.value.name)) {
                               toggleExpanded(policy.value.name);
                             }
@@ -317,7 +325,9 @@ export default function PolicyScoresTab() {
                     <div className="pt-4 ml-8">
                       <Switch
                         disabled={!editingPolicies.includes(policy.value.id)}
-                        defaultChecked={
+                        checked={
+                          updatedPolicyScores[policy.value.id]
+                            ?.applyUserStrikeCountConfigToChildren ??
                           policy.value.applyUserStrikeCountConfigToChildren
                         }
                         onCheckedChange={(checked) => {
