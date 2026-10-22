@@ -25,6 +25,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Fixed
 
+- "Apply to sub-policies" now saves and displays its state, propagates scores to descendants, and avoids deadlocks when saving related policies on the User Strikes Policy Scores tab ([#1409](https://github.com/roostorg/coop/pull/1409) by [@serendipty01](https://github.com/serendipty01))
 - Image hashing now applies to every Image field in an item or report, not just an array field named `images` ([#1390](https://github.com/roostorg/coop/pull/1390) by [@reitblatt](https://github.com/reitblatt))
 - Renaming a hash bank no longer discards its hashed content ([#1360](https://github.com/roostorg/coop/pull/1360) by [@juanmrad](https://github.com/juanmrad))
 - Zentropi Labeler signal failing on every call ([#1335](https://github.com/roostorg/coop/pull/1335) by [@reitblatt](https://github.com/reitblatt), [#1388](https://github.com/roostorg/coop/pull/1388) by [@Joseph-Mutua](https://github.com/Joseph-Mutua))
