@@ -8,6 +8,10 @@ For more information about each release including git tags and artifacts, see [R
 
 ## [Unreleased]
 
+### Added
+
+- Sentinel rare class affinity signal, configured per organization under Settings → Integrations ([#1442](https://github.com/roostorg/coop/pull/1442) by [@sahilx13](https://github.com/sahilx13))
+
 ## [1.2.0] - 2026-10-21
 
 ### Added

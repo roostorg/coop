@@ -28,6 +28,7 @@ import { userHasPermissions } from '../../../routing/permissions';
 import IntegrationConfigApiCredentialsSection from './IntegrationConfigApiCredentialsSection';
 import { INTEGRATION_LOGO_FALLBACKS } from './integrationLogos';
 import ModelCardView from './ModelCardView';
+import { validateSentinelConfig } from './sentinelConfigValidation';
 
 gql`
   mutation SetIntegrationConfig($input: SetIntegrationConfigInput!) {
@@ -283,6 +284,16 @@ export default function IntegrationConfigForm() {
     'ZENTROPI',
   ].includes(integrationName);
   const validationMessage = (() => {
+    if (integrationName === 'SENTINEL') {
+      const errors = Object.values(
+        validateSentinelConfig(
+          'credential' in apiCredential
+            ? ((apiCredential.credential as Record<string, unknown>) ?? {})
+            : {},
+        ),
+      );
+      return errors[0];
+    }
     if (isPluginIntegration) {
       return undefined;
     }

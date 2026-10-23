@@ -47,5 +47,6 @@
   - [Hasher-Matcher-Actioner (HMA)](integrations/hma.md)
   - [NCMEC CyberTipline](integrations/ncmec.md)
   - [OpenAI Moderation API](integrations/openai-moderation.md)
+  - [Sentinel](integrations/sentinel.md)
   - [Zentropi CoPE](integrations/zentropi-cope.md)
   - [Custom](integrations/custom.md)
