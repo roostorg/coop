@@ -49,4 +49,4 @@ Run Coop with a single command using Docker Compose. See the [Docker guide](docs
 
 See our comprehensive [documentation](https://roostorg.github.io/coop/latest) covering both functional and technical information including a user guide, development guide, API reference, and integration details.
 
-The docs are also available [directly in this repo](docs/) for your convenience.
+The docs are also available [directly in this repo](docs/) for your convenience. The REST API is described by an [OpenAPI spec](docs/api/openapi.yaml).
