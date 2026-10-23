@@ -84,7 +84,33 @@ describe('makeSentinelService', () => {
       const service = makeSentinelService(fetchHTTP, BASE_URL);
       const error = await service.healthCheck().catch((e) => e);
       expect(error).toBeInstanceOf(SentinelServiceError);
-      expect(error.message).toContain('ECONNREFUSED');
+      expect(error.cause).toEqual(new Error('ECONNREFUSED'));
+    });
+
+    it('does not quote a failed fetch (for example a response body prefix) in the error message', async () => {
+      const { fetchHTTP, mock } = makeFetchHTTPMock();
+      mock.mockRejectedValueOnce(
+        new Error('Failed to parse response body. Body started with: secret'),
+      );
+
+      const service = makeSentinelService(fetchHTTP, BASE_URL);
+      const error = await service.healthCheck().catch((e) => e);
+      expect(error).toBeInstanceOf(SentinelServiceError);
+      expect(error.message).not.toContain('secret');
+    });
+
+    it.each([
+      ['missing', undefined],
+      ['status is not a string', { status: 1, banks_loaded: true }],
+      ['banks_loaded is a string', { status: 'ok', banks_loaded: 'false' }],
+    ])('throws when the health response is %s', async (_label, body) => {
+      const { fetchHTTP, mock } = makeFetchHTTPMock();
+      mock.mockResolvedValueOnce(makeOkResponse(body as never));
+
+      const service = makeSentinelService(fetchHTTP, BASE_URL);
+      await expect(service.healthCheck()).rejects.toBeInstanceOf(
+        SentinelServiceError,
+      );
     });
   });
 
@@ -101,13 +127,11 @@ describe('makeSentinelService', () => {
       const service = makeSentinelService(fetchHTTP, BASE_URL);
       const result = await service.scoreTexts({ texts: ['hello world'] });
 
-      expect(mock).toHaveBeenCalledWith(
-        expect.objectContaining({
-          url: `${BASE_URL}/score`,
-          method: 'post',
-          body: expect.stringContaining('hello world'),
-        }),
-      );
+      const [call] = mock.mock.calls[0] as [{ url: string; body: string }];
+      expect(call.url).toBe(`${BASE_URL}/score`);
+      expect(jsonParse(call.body as never)).toMatchObject({
+        texts: ['hello world'],
+      });
       expect(result.rare_class_affinity_score).toBe(0.82);
     });
 

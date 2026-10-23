@@ -83,6 +83,8 @@ export type RuntimeSignalArgsByType = Satisfies<
       threadIdentifier?: ItemIdentifier;
       /** The content field whose text is scored. */
       contentTextFieldName?: string;
+      /** When the content was submitted. Later thread messages are not scored. */
+      submissionTime?: Date;
     };
     [SignalType.ZENTROPI_LABELER]: undefined;
     [SignalType.CUSTOM]: undefined;

@@ -596,7 +596,11 @@ async function getSignalRuntimeArgs(
     const contentTextFieldName: string | undefined =
       conditionInput.type === 'CONTENT_FIELD' ? conditionInput.name : undefined;
 
-    return { threadIdentifier, contentTextFieldName };
+    return {
+      threadIdentifier,
+      contentTextFieldName,
+      submissionTime: itemSubmission.submissionTime,
+    };
   }
 
   return undefined;

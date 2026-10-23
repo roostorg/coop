@@ -414,7 +414,7 @@ describe('SentinelRareClassAffinitySignal', () => {
       expect(windowMs).toBeLessThan(30 * 60_000 + 5_000);
     });
 
-    it('defaults the thread context limit to 10 when nothing is configured', async () => {
+    it('defaults to 10 prior messages (11 requested, since the trigger takes a slot)', async () => {
       const { fetchHTTP } = makeFetchHTTP();
       const getThreadSubmissionsByTime = vi.fn().mockReturnValue(
         (async function* () {
@@ -435,10 +435,10 @@ describe('SentinelRareClassAffinitySignal', () => {
         }),
       );
 
-      expect(getThreadSubmissionsByTime.mock.calls[0][0].limit).toBe(10);
+      expect(getThreadSubmissionsByTime.mock.calls[0][0].limit).toBe(11);
     });
 
-    it('uses the org-level threadContextLimit override', async () => {
+    it('uses the org-level threadContextLimit override (plus one for the trigger)', async () => {
       const { fetchHTTP } = makeFetchHTTP();
       const getThreadSubmissionsByTime = vi.fn().mockReturnValue(
         (async function* () {
@@ -460,7 +460,7 @@ describe('SentinelRareClassAffinitySignal', () => {
         }),
       );
 
-      expect(getThreadSubmissionsByTime.mock.calls[0][0].limit).toBe(3);
+      expect(getThreadSubmissionsByTime.mock.calls[0][0].limit).toBe(4);
     });
 
     it('ignores a non-positive org-level threadContextLimit and falls back to the default', async () => {
@@ -485,7 +485,121 @@ describe('SentinelRareClassAffinitySignal', () => {
         }),
       );
 
-      expect(getThreadSubmissionsByTime.mock.calls[0][0].limit).toBe(10);
+      expect(getThreadSubmissionsByTime.mock.calls[0][0].limit).toBe(11);
+    });
+
+    it('caps an oversized threadContextLimit at 100 prior messages', async () => {
+      const { fetchHTTP } = makeFetchHTTP();
+      const getThreadSubmissionsByTime = vi.fn().mockReturnValue(
+        (async function* () {
+          // no items; only the call args matter
+        })(),
+      );
+
+      const signal = makeSignal({
+        fetchHTTP,
+        orgConfig: { threadContextLimit: 1_000_000 },
+        iisOverrides: { getThreadSubmissionsByTime },
+      });
+
+      await signal.run(
+        makeInput({
+          runtimeArgs: {
+            threadIdentifier: { id: 'thread-1', typeId: 'content-type-1' },
+          },
+        }),
+      );
+
+      expect(getThreadSubmissionsByTime.mock.calls[0][0].limit).toBe(101);
+    });
+
+    it('ignores a non-positive threadContextWindowMinutes', async () => {
+      const { fetchHTTP } = makeFetchHTTP();
+      const getThreadSubmissionsByTime = vi.fn().mockReturnValue(
+        (async function* () {
+          // no items; only the call args matter
+        })(),
+      );
+
+      const signal = makeSignal({
+        fetchHTTP,
+        orgConfig: { threadContextWindowMinutes: -30 },
+        iisOverrides: { getThreadSubmissionsByTime },
+      });
+
+      await signal.run(
+        makeInput({
+          runtimeArgs: {
+            threadIdentifier: { id: 'thread-1', typeId: 'content-type-1' },
+          },
+        }),
+      );
+
+      expect(
+        getThreadSubmissionsByTime.mock.calls[0][0]
+          .oldestReturnedSubmissionDate,
+      ).toBeUndefined();
+    });
+
+    it('only scores thread messages up to the triggering submission time', async () => {
+      const { fetchHTTP } = makeFetchHTTP();
+      const getThreadSubmissionsByTime = vi.fn().mockReturnValue(
+        (async function* () {
+          // no items; only the call args matter
+        })(),
+      );
+      const submissionTime = new Date('2026-01-01T00:00:00Z');
+
+      const signal = makeSignal({
+        fetchHTTP,
+        iisOverrides: { getThreadSubmissionsByTime },
+      });
+
+      await signal.run(
+        makeInput({
+          runtimeArgs: {
+            threadIdentifier: { id: 'thread-1', typeId: 'content-type-1' },
+            submissionTime,
+          },
+        }),
+      );
+
+      expect(
+        getThreadSubmissionsByTime.mock.calls[0][0]
+          .newestReturnedSubmissionDate,
+      ).toEqual(submissionTime);
+    });
+
+    it('sends no more prior messages than the limit when the trigger is not echoed back', async () => {
+      const { fetchHTTP, lastScoreRequest } = makeFetchHTTP();
+      const getThreadSubmissionsByTime = vi.fn().mockReturnValue(
+        (async function* () {
+          yield makeThreadItem('older 1');
+          yield makeThreadItem('older 2');
+          yield makeThreadItem('older 3');
+        })(),
+      );
+
+      const signal = makeSignal({
+        fetchHTTP,
+        orgConfig: { threadContextLimit: 2 },
+        iisOverrides: { getThreadSubmissionsByTime },
+      });
+
+      await signal.run(
+        makeInput({
+          runtimeArgs: {
+            threadIdentifier: { id: 'thread-1', typeId: 'content-type-1' },
+            contentTextFieldName: 'text',
+          },
+        }),
+      );
+
+      expect((lastScoreRequest() as { texts: string[] }).texts).toEqual([
+        'test content',
+        'older 1',
+        'older 2',
+      ]);
     });
 
     it('does not double-count the triggering submission when it is echoed back as thread context', async () => {
@@ -567,6 +681,35 @@ describe('SentinelRareClassAffinitySignal', () => {
       // Should still score with just the primary text
       expect(result).toMatchObject({ score: 0.5 });
       expect(lastScoreRequest()).toMatchObject({ texts: ['test content'] });
+    });
+
+    it('still returns a score when thread history fails partway through', async () => {
+      const { fetchHTTP, lastScoreRequest } = makeFetchHTTP();
+      const getThreadSubmissionsByTime = vi.fn().mockReturnValue(
+        (async function* () {
+          yield makeThreadItem('earlier message');
+          throw new Error('Scylla unavailable');
+        })(),
+      );
+
+      const signal = makeSignal({
+        fetchHTTP,
+        iisOverrides: { getThreadSubmissionsByTime },
+      });
+
+      const result = await signal.run(
+        makeInput({
+          runtimeArgs: {
+            threadIdentifier: { id: 'thread-1', typeId: 'content-type-1' },
+            contentTextFieldName: 'text',
+          },
+        }),
+      );
+
+      expect(result).toMatchObject({ score: 0.5 });
+      expect(lastScoreRequest()).toMatchObject({
+        texts: ['test content', 'earlier message'],
+      });
     });
 
     it('returns a permanent error result when Sentinel rejects the request with a 422', async () => {

@@ -18,6 +18,9 @@ const SENTINEL_DOCS_URL = 'https://github.com/Roblox/sentinel';
 /** Prior thread messages included in scoring when the org sets no limit. */
 const DEFAULT_THREAD_CONTEXT_LIMIT = 10;
 
+/** Upper bound on prior messages, so a saved config cannot trigger a huge thread scan. */
+const MAX_THREAD_CONTEXT_LIMIT = 100;
+
 /**
  * Per-org Sentinel settings, stored as plain JSON since none are secret. A saved
  * config (even `{}`) means the org enabled Sentinel; without a valid http(s)
@@ -57,7 +60,8 @@ function parseSentinelConfig(
   }
   if (
     typeof raw.threadContextWindowMinutes === 'number' &&
-    Number.isFinite(raw.threadContextWindowMinutes)
+    Number.isFinite(raw.threadContextWindowMinutes) &&
+    raw.threadContextWindowMinutes > 0
   ) {
     config.threadContextWindowMinutes = raw.threadContextWindowMinutes;
   }
@@ -66,7 +70,10 @@ function parseSentinelConfig(
     Number.isFinite(raw.threadContextLimit) &&
     raw.threadContextLimit > 0
   ) {
-    config.threadContextLimit = raw.threadContextLimit;
+    config.threadContextLimit = Math.min(
+      raw.threadContextLimit,
+      MAX_THREAD_CONTEXT_LIMIT,
+    );
   }
   return config;
 }
@@ -227,11 +234,17 @@ It compares submitted content against labeled positive (rare/harmful) and negati
     // Include earlier messages from the same thread, since the patterns span messages.
     if (runtimeArgs?.threadIdentifier) {
       try {
+        const priorLimit =
+          config.threadContextLimit ?? DEFAULT_THREAD_CONTEXT_LIMIT;
         const threadItems =
           this.itemInvestigationService.getThreadSubmissionsByTime({
             orgId,
             threadId: runtimeArgs.threadIdentifier,
-            limit: config.threadContextLimit ?? DEFAULT_THREAD_CONTEXT_LIMIT,
+            // One extra, since the triggering message takes a slot and is skipped.
+            limit: priorLimit + 1,
+            ...(runtimeArgs.submissionTime != null
+              ? { newestReturnedSubmissionDate: runtimeArgs.submissionTime }
+              : {}),
             ...(config.threadContextWindowMinutes != null
               ? {
                   oldestReturnedSubmissionDate: new Date(
@@ -257,6 +270,9 @@ It compares submitted content against labeled positive (rare/harmful) and negati
             continue;
           }
           texts.push(itemText);
+          if (texts.length > priorLimit) {
+            break;
+          }
         }
       } catch {
         // Best-effort: score the primary text alone if thread history fails.

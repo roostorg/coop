@@ -21,8 +21,8 @@ In Coop, go to **Settings → Integrations → Sentinel**. Only the API URL is r
 | API URL (`http` or `https`)     | Signal is disabled     |
 | Top K                           | Sentinel's own default |
 | Minimum score to consider       | Sentinel's own default |
-| Thread context window (minutes) | No time bound          |
-| Thread context limit            | `10`                   |
+| Thread context window (minutes) | Last 3 months          |
+| Thread context limit            | `10` (at most `100`)   |
 
 The URL must be an `http` or `https` URL. Anything else is treated as not configured. Saving a config enables Sentinel for that organization only. Each org points at its own Sentinel instance.
 
@@ -79,7 +79,7 @@ This assumes Coop is already running locally — see [Getting Started](../develo
 Submitting test content needs an item type with text and thread fields. If you do not have one, create a `ChatMessage` content type under **Settings → Item Types → Content**, with a `message` (String), `threadId` (Related Item, role **Thread**), and `createdAt` (Datetime, role **Created At**) field.
 
 1. Create a [proactive rule](../user/automated-enforcement.md#proactive-rules) on that item type: condition input **message** (the String field), signal **Sentinel Rare Class Affinity**, comparison **is greater than** a small threshold (for example `0.05`), and a review action of your choice. Do not use **Any text in item**. That input does not name a field, so thread history scores the first stored string, which is `createdAt`, and the score stays `0.0`.
-2. Submit content via the [items API](../api/items.md) (`contentType` must be the item type's **name**, e.g. `ChatMessage`) or **Investigation → Submit test item**. A message resembling your positive bank should score higher than a benign one.
+2. Submit content via the [items API](../api/items.md) (`typeId` is the item type's ID and `data` holds its fields) or **Investigation → Submit test item**. A message resembling your positive bank should score higher than a benign one.
 3. Check the result in **Investigation** by searching the submitted item's ID — the signal's raw score is shown there.
 
 Because aggregation needs at least 5 observations, a single submission always scores `0.0`. To see a non-zero score, submit 5+ messages under the same `threadId` (a Related Item, sent as `{ "id": "...", "typeId": "..." }` with the thread's item type ID), with `createdAt` timestamps at or before the real current time. Future timestamps get filtered out of the thread-context query and silently reproduce the same `0.0` result.

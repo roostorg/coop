@@ -75,8 +75,9 @@ export function makeSentinelService(
       if (error instanceof SentinelServiceError) {
         throw error;
       }
+      // The cause is kept for logs, but its message can quote the response body.
       throw new SentinelServiceError(
-        `Failed to connect to Sentinel service: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        'Failed to get a valid response from the Sentinel service',
         undefined,
         error instanceof Error ? error : undefined,
       );
@@ -116,9 +117,19 @@ export function makeSentinelService(
     },
 
     async healthCheck(): Promise<SentinelHealthResponse> {
-      return fetchWithError<SentinelHealthResponse>('/health', {
-        method: 'get',
-      });
+      const health = await fetchWithError<SentinelHealthResponse | undefined>(
+        '/health',
+        { method: 'get' },
+      );
+      if (
+        typeof health?.status !== 'string' ||
+        typeof health.banks_loaded !== 'boolean'
+      ) {
+        throw new SentinelServiceError(
+          'Sentinel API returned an invalid health response',
+        );
+      }
+      return health;
     },
   };
 }
