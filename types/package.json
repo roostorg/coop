@@ -22,7 +22,7 @@
   "license": "ISC",
   "devDependencies": {
     "@types/node": "^24.19.1",
-    "micromatch": "4.0.5",
+    "minimist": "1.2.5",
     "typescript": "^5.9.3"
   },
   "publishConfig": {
