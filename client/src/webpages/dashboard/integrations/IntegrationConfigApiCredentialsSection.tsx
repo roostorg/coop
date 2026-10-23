@@ -11,6 +11,7 @@ import {
   GQLZentropiIntegrationApiCredential,
   Scalars,
 } from '../../../graphql/generated';
+import { validateSentinelConfig } from './sentinelConfigValidation';
 
 export type PluginConfigField = Omit<GQLIntegrationConfigField, '__typename'>;
 
@@ -345,12 +346,17 @@ export default function IntegrationConfigApiCredentialsSection(props: {
     credential: Record<string, unknown>;
   }) => {
     const credential = pluginCredential.credential ?? {};
+    const errors = validateSentinelConfig(credential);
     return (
       <div className="flex flex-col gap-4">
         {Object.entries(SENTINEL_FIELD_LABELS).map(([key, label]) => (
           <div key={key} className={`flex flex-col ${inputWidthClass}`}>
             <div className="mb-1">{label}</div>
             <Input
+              aria-label={label}
+              status={
+                errors[key] != null && credential[key] != null ? 'error' : ''
+              }
               value={
                 sentinelDrafts[key] ??
                 (credential[key] == null ? '' : String(credential[key]))
@@ -364,10 +370,12 @@ export default function IntegrationConfigApiCredentialsSection(props: {
                   const { [key]: _removed, ...rest } = credential;
                   next = rest;
                 } else if (SENTINEL_NUMERIC_FIELDS.has(key)) {
+                  // Keep non-numeric text as a string so validation flags it.
                   const parsed = Number(raw);
-                  next = Number.isNaN(parsed)
-                    ? credential
-                    : { ...credential, [key]: parsed };
+                  next = {
+                    ...credential,
+                    [key]: Number.isNaN(parsed) ? raw : parsed,
+                  };
                 } else {
                   next = { ...credential, [key]: raw };
                 }
@@ -383,6 +391,9 @@ export default function IntegrationConfigApiCredentialsSection(props: {
                 setSentinelDrafts(rest);
               }}
             />
+            {errors[key] != null && credential[key] != null && (
+              <div className="mt-1 text-sm text-red-500">{errors[key]}</div>
+            )}
           </div>
         ))}
       </div>
