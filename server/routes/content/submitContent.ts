@@ -35,7 +35,6 @@ import {
 import { safeGet, safePick, sleep, withRetries } from '../../utils/misc.js';
 import { type RequestHandlerWithBodies } from '../../utils/route-helpers.js';
 import { instantiateOpaqueType } from '../../utils/typescript-types.js';
-import { coerceStringThreadId } from './coerceStringThreadId.js';
 import {
   type EvaluateContentInputCamelCase,
   type EvaluateContentOutput,
@@ -361,14 +360,11 @@ function rawContentSubmissionToItemSubmission(
   | { itemSubmission: ItemSubmission; error?: undefined } {
   const submissionTime = new Date();
 
-  // Accept a plain string thread ID as shorthand for { id, typeId }.
-  const content = coerceStringThreadId(rawContentSubmission.content, itemType);
-
   // Validate content JSON
   const normalizedDataOrValidationErrors = toNormalizedItemDataOrErrors(
     legalItemTypeIds,
     itemType,
-    content as RawItemData,
+    rawContentSubmission.content,
   );
 
   return Array.isArray(normalizedDataOrValidationErrors)

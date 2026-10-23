@@ -82,7 +82,7 @@ Submitting test content needs an item type with text and thread fields. If you d
 2. Submit content via the [items API](../api/items.md) (`contentType` must be the item type's **name**, e.g. `ChatMessage`) or **Investigation → Submit test item**. A message resembling your positive bank should score higher than a benign one.
 3. Check the result in **Investigation** by searching the submitted item's ID — the signal's raw score is shown there.
 
-Because aggregation needs at least 5 observations, a single submission always scores `0.0`. To see a non-zero score, submit 5+ messages under the same `threadId`, with `createdAt` timestamps at or before the real current time. Future timestamps get filtered out of the thread-context query and silently reproduce the same `0.0` result.
+Because aggregation needs at least 5 observations, a single submission always scores `0.0`. To see a non-zero score, submit 5+ messages under the same `threadId` (a Related Item, sent as `{ "id": "...", "typeId": "..." }` with the thread's item type ID), with `createdAt` timestamps at or before the real current time. Future timestamps get filtered out of the thread-context query and silently reproduce the same `0.0` result.
 
 If a conversation still scores `0.0`, call `sentinel-api`'s `/score` endpoint directly with the same texts. A non-zero score there points at Coop's wiring (thread field roles, org config); `0.0` there too points at the bank.
 
