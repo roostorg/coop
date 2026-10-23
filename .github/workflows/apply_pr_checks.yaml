@@ -214,7 +214,7 @@ jobs:
 
       - name: Migrate CI DBs and Test
         run: |
-          docker compose run --rm --quiet-pull test
+          docker compose run --rm --quiet-pull test pnpm run test:ci --coverage
           echo "ATTENTION: If this step fails, look in the next step for the migration logs."
 
       - # Only output the migration logs if the prior step failed, as they
@@ -231,6 +231,35 @@ jobs:
           name: JEST Tests # Name of the check run which will be created
           path: server/reports/jest-*.xml # Path to test results
           reporter: jest-junit # Format of test results
+
+      - name: Coverage summary
+        if: ${{ !cancelled() && hashFiles('server/reports/coverage-unit/coverage-summary.json') != '' }}
+        run: |
+          jq -r '.total | "### server-unit coverage\n\n| Lines | Branches | Functions | Statements |\n| --- | --- | --- | --- |\n| \(.lines.pct)% | \(.branches.pct)% | \(.functions.pct)% | \(.statements.pct)% |"' \
+            server/reports/coverage-unit/coverage-summary.json >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload coverage
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: server/reports/coverage-unit/lcov.info
+          disable_search: true
+          flags: server-unit
+          name: server-unit
+          fail_ci_if_error: false
+
+      - name: Upload test results
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          report_type: test_results
+          files: server/reports/jest-junit.xml
+          disable_search: true
+          flags: server-unit
+          name: server-unit
+          fail_ci_if_error: false
 
   # Integration tests (`*.integ.test.ts`) run as a separate job so they execute
   # in parallel with the unit tests / lint / build above and report failures
@@ -253,7 +282,7 @@ jobs:
 
       - name: Migrate CI DBs and run integration tests
         run: |
-          docker compose run --rm --quiet-pull test pnpm run test:integ
+          docker compose run --rm --quiet-pull test pnpm run test:integ --coverage
           echo "ATTENTION: If this step fails, look in the next step for the migration logs."
 
       - # Only output the migration logs if the prior step failed, as they
@@ -270,6 +299,35 @@ jobs:
           name: JEST Integration Tests # Name of the check run which will be created
           path: server/reports/jest-*.xml # Path to test results
           reporter: jest-junit # Format of test results
+
+      - name: Coverage summary
+        if: ${{ !cancelled() && hashFiles('server/reports/coverage-integ/coverage-summary.json') != '' }}
+        run: |
+          jq -r '.total | "### server-integ coverage\n\n| Lines | Branches | Functions | Statements |\n| --- | --- | --- | --- |\n| \(.lines.pct)% | \(.branches.pct)% | \(.functions.pct)% | \(.statements.pct)% |"' \
+            server/reports/coverage-integ/coverage-summary.json >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload coverage
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: server/reports/coverage-integ/lcov.info
+          disable_search: true
+          flags: server-integ
+          name: server-integ
+          fail_ci_if_error: false
+
+      - name: Upload test results
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          report_type: test_results
+          files: server/reports/jest-junit.xml
+          disable_search: true
+          flags: server-integ
+          name: server-integ
+          fail_ci_if_error: false
 
   run_frontend_checks_if_changed:
     needs: changes
@@ -291,7 +349,24 @@ jobs:
         run: docker compose run --rm --quiet-pull client pnpm run lint
 
       - name: Test client
-        run: docker compose run --rm --quiet-pull client pnpm run test:prepush
+        run: docker compose run --rm --quiet-pull -v ./client/reports:/app/client/reports client pnpm run test:prepush --coverage
+
+      - name: Coverage summary
+        if: ${{ !cancelled() && hashFiles('client/reports/coverage-unit/coverage-summary.json') != '' }}
+        run: |
+          jq -r '.total | "### client-unit coverage\n\n| Lines | Branches | Functions | Statements |\n| --- | --- | --- | --- |\n| \(.lines.pct)% | \(.branches.pct)% | \(.functions.pct)% | \(.statements.pct)% |"' \
+            client/reports/coverage-unit/coverage-summary.json >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload coverage
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: client/reports/coverage-unit/lcov.info
+          disable_search: true
+          flags: client-unit
+          name: client-unit
+          fail_ci_if_error: false
 
       - name: Build client
         run: docker compose run --rm --quiet-pull client pnpm run build
