@@ -67,6 +67,20 @@ export default defineConfig(({ mode }) => {
       typecheck: {
         tsconfig: './tsconfig.test.json',
       },
+      coverage: {
+        provider: 'v8',
+        reportsDirectory: 'reports/coverage-unit',
+        // Source extensions only: v8 tries to parse every included file, and
+        // non-code files under src/ (images, clippings) fail to parse.
+        include: ['src/**/*.{ts,tsx,js,jsx}'],
+        exclude: ['src/graphql/generated.ts'],
+        // Repo-relative lcov paths, so Codecov needs no path mapping.
+        reporter: [
+          'text-summary',
+          ['lcov', { projectRoot: '..' }],
+          'json-summary',
+        ],
+      },
     },
   };
 });

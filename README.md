@@ -1,5 +1,7 @@
 # ![Coop](https://roostorg.github.io/brand/projects/coop-lockup.svg)
 
+[![codecov](https://codecov.io/gh/roostorg/coop/graph/badge.svg)](https://codecov.io/gh/roostorg/coop)
+
 **Review and moderation, your way.**
 
 ![Coop overview with key operational metrics such as total actions taken, jobs pending review, percentage breakdown of automated vs manual actions, and top policy violations](./docs/images/overview.png)
