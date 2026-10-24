@@ -67,8 +67,10 @@ updates:
     directory: '/'
     schedule:
       interval: 'weekly'
-    # One day longer than pnpm-workspace.yaml's 7-day minimumReleaseAge, so a
-    # proposed version is always old enough for `pnpm install` to accept.
+    # Longer than pnpm-workspace.yaml's 3-day minimumReleaseAge (4320 minutes),
+    # so a proposed version is always old enough for `pnpm install` to accept.
+    # Cooldown applies to version updates only; security updates are proposed
+    # as soon as a patch exists, but still need to pass minimumReleaseAge.
     cooldown:
       default-days: 8
     labels:
@@ -86,6 +88,13 @@ updates:
     groups:
       npm-prod-security:
         dependency-type: 'production'
+        applies-to: 'security-updates'
+        patterns:
+          - '*'
+      # Dev-only tooling (lint, test, Storybook, codegen) security fixes land
+      # together instead of as one PR per advisory.
+      npm-dev-security:
+        dependency-type: 'development'
         applies-to: 'security-updates'
         patterns:
           - '*'
