@@ -10,15 +10,15 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Added
 
-- `ANALYTICS_DIALECT` and `ANALYTICS_DB_*` settings to run the analytics warehouse on Postgres, on the app database or a separate one
+- `ANALYTICS_DIALECT` and `ANALYTICS_DB_*` settings to run the analytics warehouse on Postgres, on the app database or a separate one ([#1461](https://github.com/roostorg/coop/pull/1461) by [@juanmrad](https://github.com/juanmrad))
 
 ### Deprecated
 
-- `WAREHOUSE_ADAPTER` and `DATA_WAREHOUSE_PROVIDER` in favor of `ANALYTICS_DIALECT`
+- `WAREHOUSE_ADAPTER` and `DATA_WAREHOUSE_PROVIDER` in favor of `ANALYTICS_DIALECT` ([#1461](https://github.com/roostorg/coop/pull/1461) by [@juanmrad](https://github.com/juanmrad))
 
 ### Removed
 
-- Unused `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_USERNAME`, `POSTGRES_PASSWORD`, and `POSTGRES_DATABASE` warehouse settings
+- Unused `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_USERNAME`, `POSTGRES_PASSWORD`, and `POSTGRES_DATABASE` warehouse settings ([#1461](https://github.com/roostorg/coop/pull/1461) by [@juanmrad](https://github.com/juanmrad))
 
 ## [1.2.0] - 2026-10-21
 
