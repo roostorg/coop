@@ -19,6 +19,11 @@ export {
 } from './ClickhouseAdapter.js';
 
 export {
+  PostgresKyselyAdapter,
+  type PostgresConnectionSettings,
+} from './PostgresAdapter.js';
+
+export {
   DataWarehouseFactory,
   type DataWarehouseProvider,
   type IDataWarehouseProvider,

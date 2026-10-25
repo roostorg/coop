@@ -10,3 +10,4 @@ export {
   type ClickhouseWarehouseAdapterOptions,
   type ClickhouseWarehouseConnection,
 } from './adapters/ClickhouseWarehouseAdapter.js';
+export { PostgresWarehouseAdapter } from './adapters/PostgresWarehouseAdapter.js';

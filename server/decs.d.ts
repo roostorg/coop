@@ -22,6 +22,15 @@ namespace NodeJS {
     DATABASE_IDLE_IN_TRANSACTION_TIMEOUT_MS?: string;
     DATABASE_PRINT_LOGS?: string;
     SESSION_SECRET?: string;
+    ANALYTICS_DIALECT?: string;
+    ANALYTICS_DB_HOST?: string;
+    ANALYTICS_DB_PORT?: string;
+    ANALYTICS_DB_NAME?: string;
+    ANALYTICS_DB_USER?: string;
+    ANALYTICS_DB_PASSWORD?: string;
+    ANALYTICS_DB_SSL?: string;
+    ANALYTICS_DB_POOL_MAX?: string;
+    ANALYTICS_DB_STATEMENT_TIMEOUT_MS?: string;
     WAREHOUSE_ADAPTER?: string;
     ANALYTICS_ADAPTER?: string;
     DATA_WAREHOUSE_PROVIDER?: string;

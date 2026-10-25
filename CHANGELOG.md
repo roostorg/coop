@@ -8,6 +8,18 @@ For more information about each release including git tags and artifacts, see [R
 
 ## [Unreleased]
 
+### Added
+
+- `ANALYTICS_DIALECT` and `ANALYTICS_DB_*` settings to run the analytics warehouse on Postgres, on the app database or a separate one
+
+### Deprecated
+
+- `WAREHOUSE_ADAPTER` and `DATA_WAREHOUSE_PROVIDER` in favor of `ANALYTICS_DIALECT`
+
+### Removed
+
+- Unused `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_USERNAME`, `POSTGRES_PASSWORD`, and `POSTGRES_DATABASE` warehouse settings
+
 ## [1.2.0] - 2026-10-21
 
 ### Added

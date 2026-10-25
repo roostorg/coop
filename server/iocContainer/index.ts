@@ -674,14 +674,21 @@ export default async function getBottle(
   // Data Warehouse abstraction layer
   //
   // All warehouse operations use these interfaces.
-  // Switch warehouse providers via WAREHOUSE_ADAPTER.
+  // Switch warehouse providers via ANALYTICS_DIALECT.
   //
   // - 'DataWarehouse' - Core queries and transactions
   // - 'DataWarehouseDialect' - Type-safe Kysely queries
   // - 'DataWarehouseAnalytics' - Bulk writes, CDC, logging
-  bottle.factory('DataWarehouse', () => {
+  //
+  // On Postgres, all three share the dialect's connection pool.
+  bottle.factory('DataWarehouse', (container) => {
     const config = DataWarehouseFactory.createConfigFromEnv();
-    const dataWarehouse = DataWarehouseFactory.createDataWarehouse(config);
+    const dataWarehouse = DataWarehouseFactory.createDataWarehouse(
+      config,
+      config.provider === 'postgresql'
+        ? container.DataWarehouseDialect
+        : undefined,
+    );
     dataWarehouse.start();
     return dataWarehouse;
   });
