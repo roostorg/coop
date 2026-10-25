@@ -1,0 +1,21 @@
+CHANGELOG.md
+  s_e5d728248459b7::t_087e518742f32f 17
+  s_e5d728248459b7::t_0feb19de34c626 21
+  s_e5d728248459b7::t_1ced3c143ce049 13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bea4ba7b9072167bd7c99fedfdd4cd38d5db307b",
+  "prompts": {},
+  "sessions": {
+    "s_e5d728248459b7": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "8505c364-1818-451a-b6df-09e73240f327",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
