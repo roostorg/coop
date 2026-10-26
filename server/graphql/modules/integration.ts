@@ -19,6 +19,7 @@ const typeDefs = /* GraphQL */ `
   enum Integration {
     GOOGLE_CONTENT_SAFETY_API
     OPEN_AI
+    SENTINEL
     ZENTROPI
   }
 

@@ -32,7 +32,7 @@ import {
   sanitizeError,
   type SerializableError,
 } from '../../utils/errors.js';
-import { safeGet, safePick, sleep } from '../../utils/misc.js';
+import { safeGet, safePick, sleep, withRetries } from '../../utils/misc.js';
 import { type RequestHandlerWithBodies } from '../../utils/route-helpers.js';
 import { instantiateOpaqueType } from '../../utils/typescript-types.js';
 import {
@@ -46,6 +46,7 @@ export default function submitContent({
   Tracer,
   ModerationConfigService,
   Meter,
+  ItemInvestigationService,
 }: // @ts-ignore
 Dependencies): RequestHandlerWithBodies<
   EvaluateContentInputCamelCase,
@@ -191,6 +192,37 @@ Dependencies): RequestHandlerWithBodies<
     // then keep executing other code
     if (shouldReturnImmediately) {
       res.status(202).end();
+    }
+
+    // Store the submission before running rules so thread-aware signals (e.g.
+    // Sentinel) can read earlier thread messages. Best-effort: a failure does
+    // not block rules.
+    const insertWithRetries = Tracer.traced(
+      {
+        resource: 'SubmitContent',
+        operation: 'ItemInvestigationService.insertItem',
+      },
+      withRetries(
+        {
+          maxRetries: 1,
+          initialTimeMsBetweenRetries: 50,
+          maxTimeMsBetweenRetries: 200,
+        },
+        ItemInvestigationService.insertItem.bind(ItemInvestigationService),
+      ),
+    );
+    try {
+      await insertWithRetries({
+        requestId,
+        orgId,
+        itemSubmission: {
+          ...itemSubmissionOrError.itemSubmission,
+          submissionTime:
+            itemSubmissionOrError.itemSubmission.submissionTime ?? new Date(),
+        },
+      });
+    } catch {
+      // Rules still run without thread history.
     }
 
     // Run rules
