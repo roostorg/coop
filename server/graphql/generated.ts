@@ -4308,11 +4308,13 @@ export type GQLRetryNcmecSubmissionResponse = {
 
 export type GQLReviewJobDecisionRow = GQLModerationActivityRow & {
   readonly __typename?: 'ReviewJobDecisionRow';
+  readonly assignedAt?: Maybe<Scalars['DateTime']['output']>;
   readonly decisionReason?: Maybe<Scalars['String']['output']>;
   readonly decisions: ReadonlyArray<GQLManualReviewDecisionComponent>;
   readonly id: Scalars['ID']['output'];
   readonly itemId?: Maybe<Scalars['ID']['output']>;
   readonly itemTypeId?: Maybe<Scalars['ID']['output']>;
+  readonly jobCreatedAt?: Maybe<Scalars['DateTime']['output']>;
   readonly jobId?: Maybe<Scalars['String']['output']>;
   readonly queueId?: Maybe<Scalars['ID']['output']>;
   readonly reviewerId?: Maybe<Scalars['ID']['output']>;
@@ -13882,6 +13884,11 @@ export type GQLReviewJobDecisionRowResolvers<
   ParentType extends GQLResolversParentTypes['ReviewJobDecisionRow'] =
     GQLResolversParentTypes['ReviewJobDecisionRow'],
 > = {
+  assignedAt?: Resolver<
+    Maybe<GQLResolversTypes['DateTime']>,
+    ParentType,
+    ContextType
+  >;
   decisionReason?: Resolver<
     Maybe<GQLResolversTypes['String']>,
     ParentType,
@@ -13896,6 +13903,11 @@ export type GQLReviewJobDecisionRowResolvers<
   itemId?: Resolver<Maybe<GQLResolversTypes['ID']>, ParentType, ContextType>;
   itemTypeId?: Resolver<
     Maybe<GQLResolversTypes['ID']>,
+    ParentType,
+    ContextType
+  >;
+  jobCreatedAt?: Resolver<
+    Maybe<GQLResolversTypes['DateTime']>,
     ParentType,
     ContextType
   >;

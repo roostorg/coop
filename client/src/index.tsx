@@ -139,6 +139,7 @@ const client = new ApolloClient({
         'SubmitNCMECReportDecisionComponent',
         'TransformJobAndRecreateInQueueDecisionComponent',
       ],
+      ModerationActivityRow: ['ReviewJobDecisionRow', 'ManualActionRow'],
     },
   }),
 });
