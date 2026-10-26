@@ -1,0 +1,20 @@
+server/services/ncmecService/ncmecReporting.test.ts
+  s_2f884f2dd93e72::t_7e553606aee978 1-6,15
+  s_2f884f2dd93e72::t_12e3f5219c9f15 527-615
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b4bb20b91d8af786bec17592bd8ffbf0523be80a",
+  "prompts": {},
+  "sessions": {
+    "s_2f884f2dd93e72": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "e9c11c1e-0944-44c0-a968-5027fa9b157a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
