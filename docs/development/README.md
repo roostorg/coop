@@ -29,9 +29,9 @@ To get Coop running:
 
    ```
    0.40.4
-   Found '.nvmrc' with version <24.21.0>
-   v24.21.0 is already installed.
-   Now using node v24.21.0 (npm v11.19.0)
+   Found '.nvmrc' with version <24.22.1>
+   v24.22.1 is already installed.
+   Now using node v24.22.1 (npm v11.19.1)
    Docker version 29.4.3, build 055a478
    ```
 

@@ -1,4 +1,4 @@
-FROM node:24.21.0-bookworm-slim AS pnpm_base
+FROM node:24.22.1-bookworm-slim AS pnpm_base
 
 WORKDIR /app
 
@@ -25,7 +25,7 @@ FROM pnpm_base AS prod_deps
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --filter coop-data-migrator --prod --frozen-lockfile --ignore-scripts && \
     pnpm rebuild --filter coop-data-migrator
 
-FROM node:24.21.0-bookworm-slim AS base
+FROM node:24.22.1-bookworm-slim AS base
 
 WORKDIR /app
 

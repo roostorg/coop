@@ -8,12 +8,18 @@ For more information about each release including git tags and artifacts, see [R
 
 ## [Unreleased]
 
+### Fixed
+
+- Opening a review queue with no unskipped jobs no longer leaves reviewers on a loading spinner ([#1392](https://github.com/roostorg/coop/pull/1392) by [@Joseph-Mutua](https://github.com/Joseph-Mutua))
+
+## [1.2.0] - 2026-10-21
+
 ### Added
 
-- Grant review queue access by role ([#1060](https://github.com/roostorg/coop/pull/1060) by [@julietshen](https://github.com/julietshen) and [@taobojlen](https://github.com/taobojlen)).
+- Grant review queue access by role ([#1060](https://github.com/roostorg/coop/pull/1060) by [@julietshen](https://github.com/julietshen) and [@taobojlen](https://github.com/taobojlen))
 - Eligible item types column and filtering on the Actions dashboard ([#1369](https://github.com/roostorg/coop/pull/1369) by [@taobojlen](https://github.com/taobojlen))
 - Indicator on the Appeals queue tab when appeals are pending ([#1329](https://github.com/roostorg/coop/pull/1329) by [@madheesunp](https://github.com/madheesunp))
-- Per-queue job sort order for manual review queues with support for sorting by number of reports ([#718](https://github.com/roostorg/coop/pull/718) by [@calebmcquaid](https://github.com/calebmcquaid), closes [#670](https://github.com/roostorg/coop/issues/670))
+- Per-queue job sort order for manual review queues with support for sorting by number of reports ([#718](https://github.com/roostorg/coop/pull/718) by [@calebmcquaid](https://github.com/calebmcquaid))
 - Org-specific signal catalogs, provider policies, and evaluation context types in `@roostorg/coop-types` (v3.0.0) ([#1384](https://github.com/roostorg/coop/pull/1384) by [@juanmrad](https://github.com/juanmrad))
 
 ### Changed
@@ -23,15 +29,16 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Fixed
 
-- Opening a review queue with no unskipped jobs no longer leaves reviewers on a loading spinner ([#1392](https://github.com/roostorg/coop/pull/1392) by [@Joseph-Mutua](https://github.com/Joseph-Mutua))
 - Image hashing now applies to every Image field in an item or report, not just an array field named `images` ([#1390](https://github.com/roostorg/coop/pull/1390) by [@reitblatt](https://github.com/reitblatt))
 - Renaming a hash bank no longer discards its hashed content ([#1360](https://github.com/roostorg/coop/pull/1360) by [@juanmrad](https://github.com/juanmrad))
 - Zentropi Labeler signal failing on every call ([#1335](https://github.com/roostorg/coop/pull/1335) by [@reitblatt](https://github.com/reitblatt), [#1388](https://github.com/roostorg/coop/pull/1388) by [@Joseph-Mutua](https://github.com/Joseph-Mutua))
 - NCMEC review escalations silently succeeding when the item cannot resolve to a user ([#1331](https://github.com/roostorg/coop/pull/1331) by [@Joseph-Mutua](https://github.com/Joseph-Mutua))
 - Rule conditions on multi-value inputs (e.g. Any image, Relevant Policy) now check every value instead of only the first ([#1389](https://github.com/roostorg/coop/pull/1389) by [@reitblatt](https://github.com/reitblatt))
+- Recent Decisions page no longer gets stuck in an infinite loop ([#1422](https://github.com/roostorg/coop/pull/1422) by [@jess-upscrolled](https://github.com/jess-upscrolled))
 
 ### Security
 
+- Update Node.js to 24.22.1 to remove compromised eMudhra emSign CA certificates ([Node.js advisory](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases), [#1436](https://github.com/roostorg/coop/pull/1436) by [@serendipty01](https://github.com/serendipty01))
 - Store hash-exchange credentials per bank ([#1360](https://github.com/roostorg/coop/pull/1360) by [@juanmrad](https://github.com/juanmrad))
 
 ## [1.1.1] - 2026-10-01
@@ -406,7 +413,8 @@ We're developing Coop in the open and want to hear from you. Whether you're test
 
 This release was possible because of the efforts of contributors who worked through complex redesign, partners who believed in the vision of open source safety tools, and the broader trust and safety community who provided feedback and guidance. Thank you especially to @juanmrad, @pawiecz, @kbicevski, Sjoerd Simons, @emanueleaina, @dom-notion, @cassidyjames, @vinaysrao1, @wayjaywang, and @julietshen.
 
-[unreleased]: https://github.com/roostorg/coop/compare/1.1.1...HEAD
+[unreleased]: https://github.com/roostorg/coop/compare/1.2.0...HEAD
+[1.2.0]: https://github.com/roostorg/coop/compare/1.1.1...1.2.0
 [1.1.1]: https://github.com/roostorg/coop/compare/1.1.0...1.1.1
 [1.1.0]: https://github.com/roostorg/coop/compare/1.0.2...1.1.0
 [1.1.0-alpha]: https://github.com/roostorg/coop/compare/1.0.2...1.1.0-alpha
