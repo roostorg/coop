@@ -1,0 +1,28 @@
+server/plugins/warehouse/adapters/PostgresWarehouseAdapter.test.ts
+  s_e5d728248459b7::t_461d29b3cbd5d2 5-6,11,25,28-29,32-34,37-38,51-60,63,68-69
+server/storage/dataWarehouse/DataWarehouseFactory.test.ts
+  s_e5d728248459b7::t_21c10e5a03b76c 46-48,53-54
+  s_e5d728248459b7::t_3f0809094af3c3 116-128,130-147
+  s_e5d728248459b7::t_883f6cb04b35ee 68,77-82
+  s_e5d728248459b7::t_b85b735b61def7 1
+server/storage/dataWarehouse/postgresWarehouseContainer.test.ts
+  s_e5d728248459b7::t_ea53ae022c1c5e 1-18,20-30,40,46-47
+  s_e5d728248459b7::t_dc1e4937cd8927 19
+  s_e5d728248459b7::t_b0c30fadcc812a 31-39,41-45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ac618ef2c4316590fa403c87a94683807fd069e1",
+  "prompts": {},
+  "sessions": {
+    "s_e5d728248459b7": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "8505c364-1818-451a-b6df-09e73240f327",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
