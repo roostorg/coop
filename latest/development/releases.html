@@ -40,7 +40,7 @@
             const path_to_root = "../";
             const default_light_theme = "roost";
             const default_dark_theme = "roost";
-            window.path_to_searchindex_js = "../searchindex-6ef77577.js";
+            window.path_to_searchindex_js = "../searchindex-f01d3e45.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-6e080ddd.js"></script>
@@ -214,17 +214,20 @@
 </ul>
 <p>Then:</p>
 <ol>
+<li>In a PR, replace <code>## [Unreleased]</code> in <code>CHANGELOG.md</code> with <code>## [x.y.z] - YYYY-MM-DD</code>, leaving an empty <code>## [Unreleased]</code>, and update the compare links at the bottom of the file. Remove related issue links (e.g. <code>closes [#456](...)</code>) from entries, preserving the PR and contributor links. Merge it before continuing to the next step.</li>
 <li>In GitHub: <strong>Releases</strong> → <strong>Draft a new release</strong></li>
-<li><strong>Create a tag</strong> in SemVer format <code>x.y.z</code> from the <code>main</code> branch</li>
-<li><strong>Draft the release notes</strong>, starting from <a href="https://github.com/roostorg/coop/blob/main/CHANGELOG.md">CHANGELOG.md</a></li>
+<li><strong>Create a tag</strong> in SemVer format <code>x.y.z</code> (no <code>v</code> prefix) from the <code>main</code> branch, at or after the changelog PR’s merge commit</li>
+<li>Title the release <code>Coop x.y.z</code> and <strong>draft the release notes</strong>, starting from <a href="https://github.com/roostorg/coop/blob/main/CHANGELOG.md">CHANGELOG.md</a></li>
 <li>Check <strong>Create a discussion for this release</strong> for at least major and minor releases</li>
 <li><strong>Publish</strong> the release</li>
+<li>Confirm the <strong>Publish Docker images</strong> workflow run for the tag succeeds and the version-tagged images exist</li>
 </ol>
 <p>Publishing a release triggers automations:</p>
 <ul>
 <li><strong>Docker images</strong>: builds and pushes version-tagged Docker images for <code>coop-server</code>, <code>coop-worker</code>, <code>coop-client</code>, and <code>coop-migrations</code></li>
 <li><strong>Docs</strong>: adds a folder for the release to the <a href="https://roostorg.github.io/coop/">index</a> with a snapshot of the docs</li>
 </ul>
+<p><code>@roostorg/coop-types</code> and <code>@roostorg/db-migrator</code> are not released this way; they publish to npm from <code>main</code> whenever <code>types/**</code> or <code>migrator/**</code> changes.</p>
 
                     </main>
 
