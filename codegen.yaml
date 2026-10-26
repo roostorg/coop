@@ -4,12 +4,7 @@ hooks:
     - prettier --write
 schema: './server/graphql/**/*.ts'
 documents:
-  [
-    './client/src/**/*.tsx',
-    './client/src/**/*.ts',
-    './client/src/**/*.js',
-    '!./client/src/graphql/generated.ts',
-  ]
+  ['./client/src/**/*.tsx', './client/src/**/*.ts', './client/src/**/*.js']
 generates:
   ./client/src/graphql/generated.ts:
     plugins:

@@ -425,6 +425,7 @@ function ManualReviewJobReviewImpl(props: {
       // token. That way, users are able to send around the URL to others.
       const { dequeueManualReviewJob } = data;
       if (dequeueManualReviewJob == null) {
+        toast.info('No jobs are currently available for you in this queue.');
         navigate('/dashboard/manual_review/queues', { replace: true });
         return;
       }
@@ -809,14 +810,11 @@ function ManualReviewJobReviewImpl(props: {
     setIsAdvancingToNextJob(true);
     try {
       resetState();
-      const result = await getNextJob();
-      if (result.data?.dequeueManualReviewJob == null) {
-        navigate('/dashboard/manual_review/queues');
-      }
+      await getNextJob();
     } finally {
       setIsAdvancingToNextJob(false);
     }
-  }, [getNextJob, navigate, resetState]);
+  }, [getNextJob, resetState]);
 
   // Runs after the invalidate mutation resolves. Refreshes the job view,
   // and if invalidation deleted the current job, advances to the next one.
@@ -850,12 +848,7 @@ function ManualReviewJobReviewImpl(props: {
 
     // Reset state and try to get the next job
     resetState();
-    const result = await getNextJob();
-
-    // If there's no next job, redirect to the queues page
-    if (result.data?.dequeueManualReviewJob == null) {
-      navigate('/dashboard/manual_review/queues');
-    }
+    await getNextJob();
   };
 
   // `loading && !data`: the job-info query reloads in place (e.g. when its
