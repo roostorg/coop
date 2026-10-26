@@ -210,9 +210,9 @@ pnpm run check:prepush
 Add `--coverage` to a single run to measure coverage. Reports (lcov, HTML, JSON summary) go to `server/reports/coverage-unit`, `server/reports/coverage-integ` and `client/reports/coverage-unit`; open `lcov-report/index.html` in any of them to browse. CI uploads the same reports to [Codecov](https://app.codecov.io/gh/roostorg/coop) under the flags `server-unit`, `server-integ` and `client-unit`.
 
 ```sh
-cd server && pnpm run test:prepush --coverage      # server/reports/coverage-unit
-cd server && pnpm run test:integ --coverage        # server/reports/coverage-integ
-cd client && pnpm run test:prepush --coverage      # client/reports/coverage-unit
+pnpm --filter server run test:prepush --coverage   # server/reports/coverage-unit
+pnpm --filter server run test:integ --coverage     # server/reports/coverage-integ
+pnpm --filter client run test:prepush --coverage   # client/reports/coverage-unit
 ```
 
 ## Running CI locally

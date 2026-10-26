@@ -30,7 +30,7 @@ export default defineConfig({
         'reports/**',
         'e2e/**',
         'test/**',
-        '**/*.test.ts',
+        '**/*.{test,spec}.ts',
         '**/*.d.ts',
         '*.config.ts',
         'graphql/generated.ts',
