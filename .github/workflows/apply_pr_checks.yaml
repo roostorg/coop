@@ -40,8 +40,8 @@ jobs:
               - '.env.githubci'
               - '.github/workflows/apply_pr_checks.yaml'
               - '.github/actions/prepare-docker-images/**'
-            # Dependencies for every package are declared and locked at the
-            # root, so a change here can affect any of them.
+            # Each package's dependencies are locked in the root pnpm-lock.yaml,
+            # so a change here can affect any of them.
             deps: &deps
               - 'package.json'
               - 'pnpm-lock.yaml'
