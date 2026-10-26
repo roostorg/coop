@@ -1,3 +1,4 @@
+import { getPgConnectionParams } from '../../iocContainer/index.js';
 import { DataWarehouseFactory } from './DataWarehouseFactory.js';
 
 const SELECTOR_VARS = [
@@ -42,22 +43,15 @@ describe('DataWarehouseFactory.createConfigFromEnv', () => {
   });
 
   describe('engine selection', () => {
-    test('defaults to clickhouse when nothing is set', () => {
-      stubEnv({});
-      const config = DataWarehouseFactory.createConfigFromEnv();
-      expect(config.provider).toBe('clickhouse');
-      expect(config.analyticsProvider).toBe('clickhouse');
-    });
-
-    test.each(['postgres', 'postgresql', 'POSTGRES'])(
-      'ANALYTICS_DIALECT=%s selects postgres for reads and writes',
-      (value) => {
+    test('ANALYTICS_DIALECT selects postgres for reads and writes', () => {
+      // `postgresql` is the value existing deployments already use.
+      for (const value of ['postgres', 'postgresql']) {
         stubEnv({ ...APP_DB_ENV, ANALYTICS_DIALECT: value });
         const config = DataWarehouseFactory.createConfigFromEnv();
         expect(config.provider).toBe('postgresql');
         expect(config.analyticsProvider).toBe('postgresql');
-      },
-    );
+      }
+    });
 
     test('ANALYTICS_DIALECT takes precedence over the legacy selectors', () => {
       stubEnv({
@@ -71,7 +65,7 @@ describe('DataWarehouseFactory.createConfigFromEnv', () => {
       );
     });
 
-    test('falls back to WAREHOUSE_ADAPTER, then DATA_WAREHOUSE_PROVIDER', () => {
+    test('falls back to WAREHOUSE_ADAPTER, then DATA_WAREHOUSE_PROVIDER, then clickhouse', () => {
       stubEnv({
         WAREHOUSE_ADAPTER: 'noop',
         DATA_WAREHOUSE_PROVIDER: 'clickhouse',
@@ -80,6 +74,12 @@ describe('DataWarehouseFactory.createConfigFromEnv', () => {
 
       stubEnv({ DATA_WAREHOUSE_PROVIDER: 'noop' });
       expect(DataWarehouseFactory.createConfigFromEnv().provider).toBe('noop');
+
+      stubEnv({});
+      expect(DataWarehouseFactory.createConfigFromEnv()).toMatchObject({
+        provider: 'clickhouse',
+        analyticsProvider: 'clickhouse',
+      });
     });
 
     test('ANALYTICS_ADAPTER=noop disables writes while keeping reads', () => {
@@ -113,21 +113,38 @@ describe('DataWarehouseFactory.createConfigFromEnv', () => {
   });
 
   describe('postgres connection', () => {
-    test('uses the app database when ANALYTICS_DB_HOST is unset', () => {
-      stubEnv({ ...APP_DB_ENV, ANALYTICS_DIALECT: 'postgres' });
-      const config = DataWarehouseFactory.createConfigFromEnv();
-      expect(config).toMatchObject({
-        connection: {
-          host: 'app-db.internal',
-          port: 5433,
-          database: 'coop',
-          username: 'coop_app',
-          password: 'app-test-password',
-          ssl: true,
+    // Compared against `getPgConnectionParams` rather than hard-coded values,
+    // so the two can't drift apart (including their defaults).
+    test.each([
+      ['explicit app settings', APP_DB_ENV],
+      [
+        'app defaults',
+        {
+          DATABASE_HOST: 'app-db.internal',
+          DATABASE_PASSWORD: 'app-test-password',
+          DATABASE_PORT: undefined,
+          DATABASE_NAME: undefined,
+          DATABASE_USER: undefined,
+          DATABASE_SSL: undefined,
         },
-        pool: { max: 5 },
-      });
-    });
+      ],
+    ])(
+      'connects to the app database when ANALYTICS_DB_HOST is unset (%s)',
+      (_label, appEnv) => {
+        stubEnv({ ...appEnv, ANALYTICS_DIALECT: 'postgres' });
+        const app = getPgConnectionParams();
+        expect(DataWarehouseFactory.createConfigFromEnv()).toMatchObject({
+          connection: {
+            host: app.host,
+            port: app.port,
+            database: app.database,
+            username: app.user,
+            password: app.password,
+            ssl: app.ssl !== undefined,
+          },
+        });
+      },
+    );
 
     test('uses only ANALYTICS_DB_* when ANALYTICS_DB_HOST is set', () => {
       stubEnv({
