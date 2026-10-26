@@ -24,23 +24,11 @@ The Overview dashboard gives a high-level picture of moderation activity. All me
 
 ## Recent Decisions
 
+Visit **Review Console** → **Recent Decisions** to review actions taken in Coop, including both those from the [Review Console](review-console.md) as well as manual actions via [Bulk Actioning](bulk-actioning.md) or [Investigation](investigation.md).
+
 ![Coop's recent decisions page showing a log of all actions taken in Coop and who took the action. There are buttons to refresh the table, download all decisions, and download only the jobs skipped by users](../images/recent-decisions.png)
 
-Visit **Review Console** → **Recent Decisions** to review every action taken in Coop: who made the decision, on what content, and when. You can click through to the full job from any entry to investigate further or take an additional action.
-
-The log covers two kinds of work, told apart by the **Origin** column:
-
-- **Review Job** — a moderator resolved a job in a review queue.
-- **Manual Action** — a moderator acted outside a queue, from [Bulk Actioning](bulk-actioning.md) or [Investigation](investigation.md).
-
-Use the **Show** control to view all activity, queue decisions only, or manual actions only. Manual actions differ from decisions in a few ways worth knowing:
-
-- A bulk run appears as **one row** with a count of the items it touched, not one row per item. Expand the row to list every item the run touched, with failures marked.
-- Rows show how many items an action failed on, if any. This is the only place execution failures surface — a decision is recorded even when the actions it names never reached your platform. The failure reason is not recorded.
-- Manual actions have no queue and no decision type. Applying a **Queue** or **decision-type** filter switches **Show** to `Decisions` and explains why, since neither filter can match a manual action. Clearing the filter restores whichever view you had chosen before.
-- When actions are included in the feed, coverage is limited to a bounded recent window (the last 30 days). Switch **Show** to `Decisions` for the full, unbounded history — don't read an empty stretch further back as "nothing happened."
-
-Manual actions are **not** filtered by child-safety permissions, and the log says so while they're shown. Review-job decisions on NCMEC jobs remain restricted to reviewers with the child-safety permission.
+Recent Decisions include who made the decision, on what content, and when. Select an entry to view more details or take additional action.
 
 ![Recent Decisions being filtered](../images/recent-decisions-filter.png)
 
