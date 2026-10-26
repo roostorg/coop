@@ -73,7 +73,12 @@ export default defineConfig(({ mode }) => {
         // Source extensions only: v8 tries to parse every included file, and
         // non-code files under src/ (images, clippings) fail to parse.
         include: ['src/**/*.{ts,tsx,js,jsx}'],
-        exclude: ['src/graphql/generated.ts', 'src/**/*.stories.tsx'],
+        exclude: [
+          'src/graphql/generated.ts',
+          'src/**/*.test.{ts,tsx,js,jsx}',
+          'src/**/*.stories.{ts,tsx,js,jsx}',
+          'src/setupTests.ts',
+        ],
         // Repo-relative lcov paths, so Codecov needs no path mapping.
         reporter: [
           'text-summary',
