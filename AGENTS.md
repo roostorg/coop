@@ -238,7 +238,7 @@ Routine local setup and verification commands, including `pnpm install --frozen-
 Stop and get explicit human approval before:
 
 - Changing license headers, copyright notices, or any legal text (including `LICENSE`).
-- Modifying release, signing, or deploy workflows: `.github/workflows/publish-*.yaml`, `.github/workflows/mdbook.yml`, production Dockerfiles (`Dockerfile`, `client/Dockerfile`), `docker-compose.yaml`, or `package.json` `"scripts"` that affect deployment.
+- Modifying release, signing, or deploy workflows: `.github/workflows/publish-*.yaml`, `.github/workflows/mdbook.yml`, production Dockerfiles (`Dockerfile`, `client/Dockerfile`, `db/Dockerfile`), `docker-compose.yaml`, or `package.json` `"scripts"` that affect deployment.
 - Creating tags or GitHub Releases, or changing `version` in `types/package.json` or `migrator/package.json` (a merge to `main` publishes it to npm).
 - Database migrations — anything added under `db/src/scripts/<service>/` runs against real data. Confirm schema design and rollback story with a maintainer ensure to use CURRENT_USER to support any user on postgres.
 - Deleting or renaming an existing GraphQL type or field — this breaks cached Apollo client state and any downstream consumer. Additive changes are usually safe; removals need a migration plan.
