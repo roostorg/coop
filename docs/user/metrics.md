@@ -32,7 +32,7 @@ Recent Decisions include who made the decision, on what content, and when. Selec
 
 ![Recent Decisions being filtered](../images/recent-decisions-filter.png)
 
-The log can be downloaded in its entirety, or filtered according to decisions, policies, queues, moderators and date ranges and then downloaded. The export follows the **Show** control, so a decisions-only download keeps the original columns. This makes it particularly useful for:
+The log can be downloaded in its entirety, or filtered according to decisions, policies, queues, moderators and date ranges and then downloaded. This makes it particularly useful for:
 
 - **Transparency reporting**: export decisions to include in reports to regulators or oversight bodies
 
