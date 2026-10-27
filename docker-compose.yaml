@@ -27,7 +27,7 @@ services:
 
   # Runs all migrations from scratch, after clearing the database(s).
   migrations:
-    image: node:24.21.0-bookworm-slim
+    image: node:24.22.1-bookworm-slim
     command: bash -c 'set -e && npm install -g pnpm@11.28.2
       && pnpm install --filter coop-data-migrator --frozen-lockfile --store-dir /tmp/pnpm-store
       && if [ "${CI:-}" = "true" ]; then ( cd db && NODE_OPTIONS="--loader ts-node/esm" node src/index.ts clean --env staging ); fi
@@ -61,7 +61,7 @@ services:
         condition: service_healthy
 
   drop_dbs:
-    image: node:24.21.0-bookworm-slim
+    image: node:24.22.1-bookworm-slim
     command: bash -c 'npm install -g pnpm@11.28.2 && pnpm install --filter coop-data-migrator --frozen-lockfile --store-dir /tmp/pnpm-store && ( cd db && NODE_OPTIONS="--loader ts-node/esm" node src/index.ts drop --env staging )'
     working_dir: /src
     env_file: ./.env.githubci

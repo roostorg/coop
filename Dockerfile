@@ -7,7 +7,7 @@
 # Docker's cache will let us skip installs when the dependencies haven't changed.
 # We build on debian because it has fewer dependency issues than Alpine for our
 # native modules, and we don't really care about the larger image size.
-FROM node:24.21.0-bookworm-slim AS server_base
+FROM node:24.22.1-bookworm-slim AS server_base
 WORKDIR /app
 
 RUN npm install -g pnpm@11.28.2
@@ -27,7 +27,7 @@ FROM server_base AS build_backend
 RUN pnpm run build
 
 # make a shared layer that can be the base for worker and api images.
-FROM node:24.21.0-bookworm-slim AS backend_base
+FROM node:24.22.1-bookworm-slim AS backend_base
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends dumb-init && rm -rf /var/lib/apt/lists/*
 RUN npm install -g pnpm@11.28.2
