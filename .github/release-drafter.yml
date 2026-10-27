@@ -3,37 +3,43 @@ tag-template: '$RESOLVED_VERSION'
 category-template: '### $TITLE'
 change-template: '$BODY ([#$NUMBER]($URL) by [@$AUTHOR]($AUTHOR_URL))'
 no-changes-template: ''
+sync-labels: true
+# Match a nonempty bullet after the section's optional instructions.
+autolabeler:
+  - labels: [has-release-notes]
+    body:
+      - '/^## Release notes[ \t]*\r?\n(?:\s|<!--[\s\S]*?-->)*[-*] [^\s<]/m'
 categories:
   - type: pre-include
     when:
       label: has-release-notes
   - title: Added
     when:
-      label: release:added
+      conventional:
+        type: feat
   - title: Changed
-    when:
-      label: release:changed
   - title: Deprecated
     when:
-      label: release:deprecated
+      conventional:
+        type: deprecate
   - title: Removed
     when:
-      label: release:removed
+      conventional:
+        type: remove
   - title: Fixed
     when:
-      label: release:fixed
+      conventional:
+        type: fix
   - title: Security
     when:
-      label: release:security
+      conventional:
+        type: security
 replacers:
   - target: change-body
     section: '## Release notes'
     not-found: empty
   - target: change-body
     search: '/<!--[\s\S]*?-->/g'
-    replace: ''
-  - target: change-body
-    search: '/^\s*### (?:Added|Changed|Deprecated|Removed|Fixed|Security)\s*/'
     replace: ''
   - target: change-body
     search: '/^\s+|\s+$/g'
