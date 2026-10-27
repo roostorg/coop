@@ -27,14 +27,14 @@ be done on staging; etc.)? If so, please note them here.
 
 <!--
 Optional: leave blank unless the change is notable to someone deploying Coop.
-Write concise, single-line bullet entries without a category heading. For example:
+Write concise release notes as plain text or bullets, without a category heading. For example:
 
-- Cancel failed media downloads before retrying.
+Cancel failed media downloads before retrying.
 
 The conventional prefix in the PR title selects the category:
-feat: Added; fix: Fixed; deprecate: Deprecated; remove: Removed;
-security: Security; other prefixes (e.g. perf: or refactor:): Changed.
-PR and author links are added automatically. Do not edit CHANGELOG.md.
+feat: Added; fix: Fixed; other prefixes (e.g. perf: or refactor:): Changed.
+The Release notes heading is case-insensitive. Bullets and PR and author links
+are added automatically. Do not edit CHANGELOG.md.
 -->
 
 ## Checklist

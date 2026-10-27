@@ -37,28 +37,7 @@ jobs:
       contents: write
       pull-requests: read
     steps:
-      - name: Find the previous release
-        id: previous
-        run: echo "tag=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)" >> "$GITHUB_OUTPUT"
-        env:
-          GH_TOKEN: ${{ github.token }}
       - uses: release-drafter/release-drafter@978bb0b30c5ee8cdd332ced253758157150d43f0 # v7.10.0
         with:
           commitish: main
           publish: false
-          # Preserve the pending entries until the first release after 1.2.0.
-          header: >-
-            ${{ steps.previous.outputs.tag == '1.2.0' &&
-            '### Added
-
-
-            - Formatting toolbar for policy definitions and enforcement guidelines ([#1432](https://github.com/roostorg/coop/pull/1432) by [@taobojlen](https://github.com/taobojlen)).
-
-
-            ### Changed
-
-
-            - Review console hides "Enqueue to NCMEC" when NCMEC reporting isn''t enabled ([#1470](https://github.com/roostorg/coop/pull/1470) by [@serendipty01](https://github.com/serendipty01))
-
-
-            ' || '' }}

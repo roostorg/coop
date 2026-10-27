@@ -180,11 +180,11 @@ Release notes are published in [GitHub Releases](https://github.com/roostorg/coo
 
 - Put release notes in the optional `## Release notes` section of the PR description. Release Drafter collects them into a draft GitHub release. Do not add entries to `CHANGELOG.md`.
 - Only **notable** changes get an entry: what someone deploying Coop needs to know. Internal refactors, test and CI plumbing, lint fixes, repo hygiene, and dependency bumps with no user-visible impact do not.
-- Write single-line bullet entries without a category heading. Leave the section blank when nothing is notable, regardless of the title prefix.
-- The conventional-commit prefix in the PR title selects the category: `feat:` → Added, `fix:` → Fixed, `deprecate:` → Deprecated, `remove:` → Removed, `security:` → Security, and all other titles → Changed. Scopes and `!` are supported. Individual commit messages are not used.
+- Write plain text or bullets without a category heading. The `## Release notes` heading is case-insensitive. Leave the section blank when nothing is notable, regardless of the title prefix.
+- The conventional-commit prefix in the PR title selects the category: `feat:` → Added, `fix:` → Fixed, and all other titles → Changed. Scopes and `!` are supported. Individual commit messages are not used. Release categorization does not introduce extra commit types.
 - Use `fix:` for correcting wrong behavior; use another appropriate prefix for intentionally changing correct behavior. Maintainers choose the final release version.
 - Keep each entry to a single concise line, essentially a title: no reasoning, mechanism, or caveats. Anyone who needs the detail follows the PR link.
-- Write entries as `- Description`. Automation adds PR and author links and manages the `has-release-notes` label; do not manage it manually. Category labels are not needed.
+- Automation adds a bullet to plain text, preserves existing bullets, adds PR and author links, and manages the `has-release-notes` label; do not manage it manually. Category labels are not needed.
 - Omit related issue links (e.g. `closes [#456](...)`); this information is accessible at the PR link.
 - Removing a GraphQL enum value, type, or field, or removing or renaming an environment variable, always earns an entry.
 - To correct published release notes, edit the GitHub release.
