@@ -31,7 +31,7 @@ You will usually also want to review the pool, timeout, TLS, and keepalive setti
 
 Many other settings are only required if you are enabling specific features or changing backend choices:
 
-- Analytics and warehouse backends are controlled by `WAREHOUSE_ADAPTER` and `ANALYTICS_ADAPTER`. See [Data Warehouse Abstraction Layer](data-warehouse.md) for the supported adapters and the related ClickHouse/PostgreSQL settings.
+- The analytics engine is controlled by `ANALYTICS_DIALECT` (`clickhouse` or `postgres`). See [Data Warehouse Abstraction Layer](data-warehouse.md) for the supported adapters and the related ClickHouse/PostgreSQL settings.
 
 - Child safety reporting is optional, but if you are using NCMEC reporting you must configure the org settings in Coop and set `NCMEC_ENV=production` on the server only when your deployment has been approved for live reporting. See [NCMEC CyberTipline](../integrations/ncmec.md#test-vs-production-submissions).
 

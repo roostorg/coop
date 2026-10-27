@@ -6,6 +6,12 @@
 import { type Kysely } from 'kysely';
 
 import {
+  isEnvTrue,
+  safeGetEnvInt,
+  safeGetEnvNonNegativeInt,
+  safeGetEnvVar,
+} from '../../iocContainer/utils.js';
+import {
   ClickhouseAnalyticsAdapter as ClickhouseAnalyticsPlugin,
   NoOpAnalyticsAdapter,
   type IAnalyticsAdapter,
@@ -13,6 +19,7 @@ import {
 import {
   ClickhouseWarehouseAdapter,
   NoOpWarehouseAdapter,
+  PostgresWarehouseAdapter,
   type IWarehouseAdapter,
 } from '../../plugins/warehouse/index.js';
 import { assertUnreachable } from '../../utils/misc.js';
@@ -35,6 +42,10 @@ import type {
   CDCConfig,
   IDataWarehouseAnalytics,
 } from './IDataWarehouseAnalytics.js';
+import {
+  PostgresKyselyAdapter,
+  type PostgresConnectionSettings,
+} from './PostgresAdapter.js';
 import { PostgresAnalyticsAdapter } from './PostgresAnalyticsAdapter.js';
 
 /**
@@ -57,13 +68,7 @@ export type DataWarehouseConfig =
     }
   | {
       provider: 'postgresql';
-      connection: {
-        host: string;
-        port?: number;
-        username: string;
-        password: string;
-        database: string;
-      };
+      connection: PostgresConnectionSettings;
       pool?: DataWarehousePoolSettings;
       analyticsProvider?: AnalyticsProvider;
     }
@@ -206,7 +211,10 @@ export class DataWarehouseFactory {
   /**
    * Create a data warehouse instance based on the provided configuration
    */
-  static createDataWarehouse(config: DataWarehouseConfig): IDataWarehouse {
+  static createDataWarehouse(
+    config: DataWarehouseConfig,
+    dialect?: IDataWarehouseDialect,
+  ): IDataWarehouse {
     switch (config.provider) {
       case 'noop':
         return new WarehouseAdapterBridge('noop', new NoOpWarehouseAdapter());
@@ -217,11 +225,16 @@ export class DataWarehouseFactory {
             connection: config.connection,
           }),
         );
-      case 'postgresql':
+      case 'postgresql': {
+        const pgKysely = dialect?.getKyselyInstance();
+        if (!pgKysely) {
+          throw new Error('PostgreSQL warehouse requires Kysely instance');
+        }
         return new WarehouseAdapterBridge(
           'postgresql',
-          new NoOpWarehouseAdapter(),
+          new PostgresWarehouseAdapter(pgKysely),
         );
+      }
       default:
         return assertUnreachable(
           config,
@@ -242,7 +255,7 @@ export class DataWarehouseFactory {
       case 'clickhouse':
         return new ClickhouseKyselyAdapter(config.connection, config.pool);
       case 'postgresql':
-        throw new Error('PostgreSQL Kysely dialect not yet implemented');
+        return new PostgresKyselyAdapter(config.connection, config.pool);
       case 'noop':
         return new NoOpKyselyDialect();
       default:
@@ -300,11 +313,19 @@ export class DataWarehouseFactory {
    */
 
   static createConfigFromEnv(): DataWarehouseConfig {
-    const provider = (process.env.WAREHOUSE_ADAPTER ??
-      process.env.DATA_WAREHOUSE_PROVIDER ??
-      'clickhouse') as DataWarehouseProvider;
-    const analyticsProvider = (process.env.ANALYTICS_ADAPTER ??
-      provider) as AnalyticsProvider;
+    const provider =
+      parseProviderEnvVar('ANALYTICS_DIALECT') ??
+      parseProviderEnvVar('WAREHOUSE_ADAPTER') ??
+      parseProviderEnvVar('DATA_WAREHOUSE_PROVIDER') ??
+      'clickhouse';
+    const analyticsProvider =
+      parseProviderEnvVar('ANALYTICS_ADAPTER') ?? provider;
+
+    if (analyticsProvider !== provider && analyticsProvider !== 'noop') {
+      throw new Error(
+        `ANALYTICS_ADAPTER=${analyticsProvider} does not match the ${provider} warehouse; it may only be set to the same engine or to noop.`,
+      );
+    }
 
     switch (provider) {
       case 'noop':
@@ -337,15 +358,8 @@ export class DataWarehouseFactory {
         return {
           provider: 'postgresql',
           analyticsProvider,
-          connection: {
-            host: process.env.POSTGRES_HOST ?? 'localhost',
-            port: process.env.POSTGRES_PORT
-              ? parseInt(process.env.POSTGRES_PORT)
-              : undefined,
-            username: process.env.POSTGRES_USERNAME ?? 'postgres',
-            password: process.env.POSTGRES_PASSWORD ?? '',
-            database: process.env.POSTGRES_DATABASE ?? 'postgres',
-          },
+          connection: getPostgresAnalyticsConnection(),
+          pool: { max: safeGetEnvInt('ANALYTICS_DB_POOL_MAX', 5) },
         };
       default:
         return assertUnreachable(
@@ -354,4 +368,58 @@ export class DataWarehouseFactory {
         );
     }
   }
+}
+
+const PROVIDERS_BY_ENV_VALUE: Partial<Record<string, DataWarehouseProvider>> = {
+  clickhouse: 'clickhouse',
+  postgres: 'postgresql',
+  postgresql: 'postgresql',
+  noop: 'noop',
+};
+
+function parseProviderEnvVar(
+  varName: string,
+): DataWarehouseProvider | undefined {
+  const raw = process.env[varName]?.trim();
+  if (!raw) {
+    return undefined;
+  }
+  const provider = PROVIDERS_BY_ENV_VALUE[raw.toLowerCase()];
+  if (!provider) {
+    throw new Error(
+      `Invalid ${varName}="${raw}". Expected clickhouse, postgres, or noop.`,
+    );
+  }
+  return provider;
+}
+
+function getPostgresAnalyticsConnection(): PostgresConnectionSettings {
+  const statementTimeoutMs = process.env.ANALYTICS_DB_STATEMENT_TIMEOUT_MS
+    ? safeGetEnvNonNegativeInt('ANALYTICS_DB_STATEMENT_TIMEOUT_MS', 0)
+    : undefined;
+
+  // Never mix fields from the two blocks: a separate host must come with its
+  // own credentials, so every field is read from the same prefix.
+  if (process.env.ANALYTICS_DB_HOST?.trim()) {
+    return {
+      host: safeGetEnvVar('ANALYTICS_DB_HOST'),
+      port: parseInt(process.env.ANALYTICS_DB_PORT ?? '5432'),
+      username: safeGetEnvVar('ANALYTICS_DB_USER'),
+      password: safeGetEnvVar('ANALYTICS_DB_PASSWORD'),
+      database: safeGetEnvVar('ANALYTICS_DB_NAME'),
+      ssl: isEnvTrue('ANALYTICS_DB_SSL'),
+      ...(statementTimeoutMs !== undefined && { statementTimeoutMs }),
+    };
+  }
+
+  // Same variables and defaults as the app database (`getPgConnectionParams`).
+  return {
+    host: safeGetEnvVar('DATABASE_HOST'),
+    port: parseInt(process.env.DATABASE_PORT ?? '5432'),
+    username: process.env.DATABASE_USER ?? 'postgres',
+    password: safeGetEnvVar('DATABASE_PASSWORD'),
+    database: process.env.DATABASE_NAME ?? 'development',
+    ssl: isEnvTrue('DATABASE_SSL'),
+    ...(statementTimeoutMs !== undefined && { statementTimeoutMs }),
+  };
 }

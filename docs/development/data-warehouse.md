@@ -26,30 +26,40 @@ export default inject(['DataWarehouse'], MyService);
 
 ## Configuration
 
-Select adapters with `WAREHOUSE_ADAPTER` and (optionally) `ANALYTICS_ADAPTER`. Legacy deployments can keep using `DATA_WAREHOUSE_PROVIDER`; it is still accepted as a fallback.
+Select the engine with `ANALYTICS_DIALECT` (`clickhouse`, `postgres`, or `noop`; defaults to `clickhouse`). It controls both reads and writes. `ANALYTICS_ADAPTER=noop` disables analytics writes while keeping reads; it cannot select a different engine than `ANALYTICS_DIALECT`.
+
+`WAREHOUSE_ADAPTER` and `DATA_WAREHOUSE_PROVIDER` are deprecated and only read when `ANALYTICS_DIALECT` is unset.
 
 ### PostgreSQL
 
+Analytics can share the app database or use a separate Postgres server. Either way it gets its own connection pool.
+
 ```sh
-WAREHOUSE_ADAPTER=postgresql
-ANALYTICS_ADAPTER=postgresql
-# Legacy fallback:
-DATA_WAREHOUSE_PROVIDER=postgresql
-DATABASE_HOST=localhost
-DATABASE_PORT=5432
-DATABASE_NAME=analytics
-DATABASE_USER=postgres
-DATABASE_PASSWORD=password
+ANALYTICS_DIALECT=postgres
+
+# Same database as the app: leave ANALYTICS_DB_HOST unset and the connection
+# comes from DATABASE_*.
+
+# Separate database: set ANALYTICS_DB_HOST, and every field is then read from
+# ANALYTICS_DB_* (nothing falls back to DATABASE_*).
+ANALYTICS_DB_HOST=analytics-db.internal
+ANALYTICS_DB_PORT=5432
+ANALYTICS_DB_NAME=analytics
+ANALYTICS_DB_USER=coop_analytics
+ANALYTICS_DB_PASSWORD=password
+# ANALYTICS_DB_SSL=true
+
+# Pool size (default 5) and optional server-side statement timeout.
+# ANALYTICS_DB_POOL_MAX=5
+# ANALYTICS_DB_STATEMENT_TIMEOUT_MS=60000
 ```
+
+Raw `DataWarehouse.query` statements on Postgres use `$1, $2, ...` placeholders.
 
 ### ClickHouse
 
 ```sh
-WAREHOUSE_ADAPTER=clickhouse
-# Optional: override analytics adapter
-# ANALYTICS_ADAPTER=clickhouse
-# Legacy fallback:
-DATA_WAREHOUSE_PROVIDER=clickhouse
+ANALYTICS_DIALECT=clickhouse
 CLICKHOUSE_HOST=localhost
 CLICKHOUSE_PORT=8123
 CLICKHOUSE_USERNAME=default
