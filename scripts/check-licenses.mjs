@@ -52,3 +52,4 @@ if (failures.length > 0) {
   console.error(`Disallowed licenses:\n  ${failures.join('\n  ')}`);
   process.exit(1);
 }
+// stacked-PR CI self-test; do not merge

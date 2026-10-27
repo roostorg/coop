@@ -41,3 +41,4 @@ namespace NodeJS {
     SLACK_APP_BEARER_TOKEN?: string;
   }
 }
+// stacked-PR CI self-test; do not merge
