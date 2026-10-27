@@ -141,6 +141,20 @@ proof of viewing. Exporter failures cannot fail reviews. Configure cardinality
 and privacy in the deployment provider; no reviewer/content IDs, URLs or free-text
 reasons are emitted. Do not average per-host histogram percentiles.
 
+## Sharing configuration for debugging
+
+To include your configuration in a bug report, run the config dump inside a server or worker container:
+
+```bash
+docker exec <container> node bin/dump-config.js > coop-config.json
+```
+
+It prints the effective configuration as JSON: every setting the server and workers read, grouped by subsystem, with its value, whether it is `set`, and its `source` (`env`, `default`, or `derived` from other settings). It also lists the enabled integrations and the Node version, and reports the commit from `BUILD_ID`. It opens no database or network connections.
+
+Secrets are replaced with `"[REDACTED]"` (and `"redacted": true`), so you can still see whether they are set. A value is redacted when its name suggests a secret (password, secret, token, key, auth, credential, cert, session, cookie, webhook, and similar) or its contents look like one (a PEM block, JWT, or long random string). Passwords and sensitive query parameters in URLs are masked; the rest of the URL is kept. Environment variables Coop does not read are never included. Per-org settings stored in the database, such as signals, rules, and integration credentials, are not part of the dump.
+
+Review the output before posting it publicly. The client's `VITE_*` settings are compiled into the client bundle and are not included.
+
 ## Historical reference
 
 For historical reference, AWS infrastructure code (CDK, Helm charts, Pulumi, CDKTF) that was previously used for production deployments is available in the [`0.1` tag](https://github.com/roostorg/coop/tree/0.1/.devops). That infrastructure code may have drifted from the current application architecture and is no longer maintained, but may serve as a reference for your own deployment.
