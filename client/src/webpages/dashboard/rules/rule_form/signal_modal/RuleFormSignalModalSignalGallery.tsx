@@ -1,4 +1,4 @@
-import { GQLSignal, useGQLIsDemoOrgQuery } from '@/graphql/generated';
+import { GQLSignal } from '@/graphql/generated';
 import { Input } from 'antd';
 import { Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
