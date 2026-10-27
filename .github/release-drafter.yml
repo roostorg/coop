@@ -4,11 +4,11 @@ category-template: '### $TITLE'
 change-template: '$BODY ([#$NUMBER]($URL) by [@$AUTHOR]($AUTHOR_URL))'
 no-changes-template: ''
 sync-labels: true
-# Match a nonempty bullet after the section's optional instructions.
+# Ignore instructions, empty bullets, and subsequent sections.
 autolabeler:
   - labels: [has-release-notes]
     body:
-      - '/^## Release notes[ \t]*\r?\n(?:\s|<!--[\s\S]*?-->)*[-*] [^\s<]/m'
+      - '/^## Release notes[ \t]*\r?\n(?:\s|<!--[\s\S]*?-->|[-*][ \t]+)*(?!<!--|#{1,2}(?:[ \t]|\r?$)|[-*](?:[ \t]|\r?$))\S/im'
 categories:
   - type: pre-include
     when:
@@ -18,23 +18,14 @@ categories:
       conventional:
         type: feat
   - title: Changed
-  - title: Deprecated
-    when:
-      conventional:
-        type: deprecate
-  - title: Removed
-    when:
-      conventional:
-        type: remove
   - title: Fixed
     when:
       conventional:
         type: fix
-  - title: Security
-    when:
-      conventional:
-        type: security
 replacers:
+  - target: change-body
+    search: '/^## Release notes[ \t]*\r?$/gim'
+    replace: '## Release notes'
   - target: change-body
     section: '## Release notes'
     not-found: empty
@@ -44,5 +35,8 @@ replacers:
   - target: change-body
     search: '/^\s+|\s+$/g'
     replace: ''
-# Action inputs trim the bootstrap header's trailing whitespace.
-template: "\n\n$CHANGES"
+  - target: change-body
+    search: '/^(?![-*][ \t]+)(?=\S)/'
+    replace: '- '
+template: |
+  $CHANGES
