@@ -22,9 +22,11 @@ describe('API key middleware through the HTTP stack (#676)', () => {
   testWithFixture(
     'answers 503 with Retry-After when the key lookup fails',
     async ({ request, apiKey, deps }) => {
+      const dbError = new Error('connect ECONNREFUSED 127.0.0.1:5432');
       const validateApiKey = vi
         .spyOn(deps.ApiKeyService, 'validateApiKey')
-        .mockRejectedValue(new Error('connect ECONNREFUSED 127.0.0.1:5432'));
+        .mockRejectedValue(dbError);
+      const logSpanFailed = vi.spyOn(deps.Tracer, 'logActiveSpanFailedIfAny');
       try {
         const res = await request
           .post('/api/v1/items/async')
@@ -33,8 +35,10 @@ describe('API key middleware through the HTTP stack (#676)', () => {
         expect(res.status).toBe(503);
         expect(res.headers['retry-after']).toBe('5');
         expect(res.text).not.toContain('ECONNREFUSED');
+        expect(logSpanFailed).toHaveBeenCalledWith(dbError);
       } finally {
         validateApiKey.mockRestore();
+        logSpanFailed.mockRestore();
       }
     },
   );

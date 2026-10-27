@@ -30,7 +30,8 @@ export function createApiKeyMiddleware<
     ReadonlyDeep<JsonValue> | undefined,
 >({
   ApiKeyService,
-}: Pick<Dependencies, 'ApiKeyService'>): RequestHandlerWithBodies<
+  Tracer,
+}: Pick<Dependencies, 'ApiKeyService' | 'Tracer'>): RequestHandlerWithBodies<
   ReqBody,
   ResBody
 > {
@@ -45,7 +46,9 @@ export function createApiKeyMiddleware<
           : null;
     } catch (error) {
       // validateApiKey returns null for an unknown/inactive key and only
-      // throws when the lookup itself failed.
+      // throws when the lookup itself failed. The error handler records only
+      // the 503 below on its span, so record the database error here.
+      Tracer.logActiveSpanFailedIfAny(error);
       const requestId = toCorrelationId({
         type: 'api-key-validation',
         id: uuidv1(),
@@ -57,7 +60,7 @@ export function createApiKeyMiddleware<
             "Coop couldn't check your API key right now. This is a temporary " +
             'server-side problem, not a problem with your key; please retry.',
           requestId: fromCorrelationId(requestId),
-          // Recorded on the error span, never serialized to the client.
+          // Kept for server-side logging; never serialized to the client.
           cause: error,
           shouldErrorSpan: true,
         }),
