@@ -20,14 +20,17 @@ export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
   // Retry flaky flows on CI; fail fast locally.
   retries: process.env.CI ? 2 : 0,
+  // JUnit lands at server/reports/e2e-junit.xml for Codecov Test Analytics.
   reporter: process.env.CI
     ? [
         ['github'],
         ['html', { outputFolder: 'playwright-report', open: 'never' }],
+        ['junit', { outputFile: '../reports/e2e-junit.xml' }],
         ['list'],
       ]
     : [
         ['html', { outputFolder: 'playwright-report', open: 'never' }],
+        ['junit', { outputFile: '../reports/e2e-junit.xml' }],
         ['list'],
       ],
   use: {
