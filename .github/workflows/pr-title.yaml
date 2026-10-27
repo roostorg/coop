@@ -1,8 +1,7 @@
 name: PR title
 
 on:
-  # Read PR metadata only; never check out or execute code from the PR.
-  pull_request_target: # zizmor: ignore[dangerous-triggers]
+  pull_request:
     types: [opened, edited, synchronize, reopened]
 
 permissions:
