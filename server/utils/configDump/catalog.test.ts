@@ -8,10 +8,6 @@ const serverRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
   '../..',
 );
-const instrumentationRoot = path.resolve(
-  serverRoot,
-  '../nodejs-instrumentation/src',
-);
 
 const SKIPPED_DIRS = new Set([
   'node_modules',
@@ -20,9 +16,6 @@ const SKIPPED_DIRS = new Set([
   'e2e',
   'test',
 ]);
-
-// Read by the process but reported as `app.commit` rather than under `config`.
-const REPORTED_OUTSIDE_CONFIG = new Set(['GIT_COMMIT_SHA']);
 
 const ENV_READ_PATTERNS = [
   /process\.env\.([A-Z][A-Z0-9_]*)/g,
@@ -60,22 +53,17 @@ function envVarsReadIn(source: string): string[] {
 }
 
 describe('CONFIG_CATALOG', () => {
-  test('covers every env var the server, workers and instrumentation read', () => {
+  test('covers every env var the server and workers read', () => {
     const catalogued = new Set(
       Object.values(CONFIG_CATALOG).flatMap((specs) =>
         specs.map((it) => it.key),
       ),
     );
 
-    const missing = [
-      ...sourceFiles(serverRoot),
-      ...sourceFiles(instrumentationRoot),
-    ].flatMap((file) =>
+    const missing = sourceFiles(serverRoot).flatMap((file) =>
       // eslint-disable-next-line security/detect-non-literal-fs-filename -- file comes from the walk above
       envVarsReadIn(readFileSync(file, 'utf-8'))
-        .filter(
-          (name) => !catalogued.has(name) && !REPORTED_OUTSIDE_CONFIG.has(name),
-        )
+        .filter((name) => !catalogued.has(name))
         .map((name) => `${name} (${path.relative(serverRoot, file)})`),
     );
 

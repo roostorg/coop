@@ -2,8 +2,9 @@
  * The process configuration the config dump reports: every environment
  * variable the server, workers and the OpenTelemetry instrumentation read,
  * grouped by subsystem, with the default the code falls back to when it is
- * unset. `catalog.test.ts` scans the source for env reads and fails if one is
- * missing here.
+ * unset. `catalog.test.ts` scans the server source for env reads and fails if
+ * one is missing here. The `telemetry` keys read by `nodejs-instrumentation`
+ * and the OpenTelemetry SDK are outside that scan and maintained by hand.
  *
  * Defaults are written as the string an operator would set to get the same
  * behavior. Keys with no default are either required (the process throws at
