@@ -13,12 +13,16 @@ import {
   type ConditionSetWithResult,
 } from '../../services/moderationConfigService/index.js';
 import {
+  abortableAsyncIterableToArray,
   asyncIterableToArray,
-  asyncIterableToArrayUntilAborted,
   filterNullOrUndefined,
 } from '../../utils/collections.js';
 import { jsonStringify } from '../../utils/encoding.js';
-import { isCoopErrorOfType, makeNotFoundError } from '../../utils/errors.js';
+import {
+  isCoopErrorOfType,
+  makeNotFoundError,
+  makeTimeoutError,
+} from '../../utils/errors.js';
 import { MONTH_MS } from '../../utils/time.js';
 import {
   type GQLQueryItemsWithIdArgs,
@@ -252,6 +256,25 @@ const UserHistory: GQLUserHistoryResolvers = {
   },
 };
 
+async function collectBeforeLookupDeadline<T>(
+  items: AsyncIterable<T>,
+  deadline: AbortSignal,
+  limit?: number,
+) {
+  try {
+    return await abortableAsyncIterableToArray(items, deadline, limit);
+  } catch (e: unknown) {
+    if (deadline.aborted && e === deadline.reason) {
+      throw makeTimeoutError('Item lookup timed out', {
+        detail:
+          'Searching every item type for this ID took longer than 25 seconds.',
+        shouldErrorSpan: true,
+      });
+    }
+    throw e;
+  }
+}
+
 export async function resolveItemsWithId(
   { itemId, typeId, returnFirstResultOnly }: GQLQueryItemsWithIdArgs,
   context: ItemsWithIdContext,
@@ -300,16 +323,13 @@ export async function resolveItemsWithId(
     });
 
   if (returnFirstResultOnly) {
-    const items = await asyncIterableToArrayUntilAborted(
+    const items = await collectBeforeLookupDeadline(
       itemsAsyncIterator,
       lookupDeadline,
       1,
     );
 
     if (items.length === 0) {
-      if (lookupDeadline.aborted) {
-        return [];
-      }
       const synthetic = await tryBuildSyntheticItemsWithIdResult(
         context.services.ItemInvestigationService,
         user.orgId,
@@ -329,16 +349,12 @@ export async function resolveItemsWithId(
     ];
   }
 
-  const items = await asyncIterableToArrayUntilAborted(
+  const items = await collectBeforeLookupDeadline(
     itemsAsyncIterator,
     lookupDeadline,
   );
 
   if (items.length === 0) {
-    // The synthesis fallback starts new reads with no deadline of its own.
-    if (lookupDeadline.aborted) {
-      return [];
-    }
     const synthetic = await tryBuildSyntheticItemsWithIdResult(
       context.services.ItemInvestigationService,
       user.orgId,

@@ -42,45 +42,48 @@ export async function asyncIterableToArray<T>(
 }
 
 /**
- * Collects items from the iterable until it ends, `limit` items have been
- * collected, or `signal` aborts, and returns what was collected so far.
+ * Collects items from the iterable until it ends or `limit` items have been
+ * collected. If `signal` aborts first, rejects with `signal.reason` and
+ * discards whatever was collected.
  *
  * Aborting only stops this function from waiting. A `for await` loop cannot
  * call `return()` while a `next()` is still pending, so the source must also
  * observe `signal` and end its iteration, or its pending read stays open.
  */
-export async function asyncIterableToArrayUntilAborted<T>(
+export async function abortableAsyncIterableToArray<T>(
   it: AsyncIterable<T>,
   signal: AbortSignal,
   limit = Infinity,
 ): Promise<T[]> {
-  const items: T[] = [];
-  if (signal.aborted) {
-    return items;
-  }
+  signal.throwIfAborted();
 
   let onAbort = () => {};
-  const abortPromise = new Promise<void>((resolve) => {
-    onAbort = () => resolve();
+  const abortPromise = new Promise<never>((_, reject) => {
+    onAbort = () => reject(signal.reason);
     signal.addEventListener('abort', onAbort, { once: true });
   });
 
   const itemsIterationPromise = (async () => {
+    const items: T[] = [];
     for await (const item of it) {
-      items.push(item);
-
       // Breaking calls iterator.return() to let the iterator know we're done
       // consuming.
-      if (signal.aborted || items.length >= limit) {
+      if (signal.aborted) {
+        break;
+      }
+      items.push(item);
+      if (items.length >= limit) {
         break;
       }
     }
+    return items;
   })();
+  // The source can still reject after the abort has won the race.
+  itemsIterationPromise.catch(() => undefined);
 
   try {
-    await Promise.race([abortPromise, itemsIterationPromise]);
+    return await Promise.race([abortPromise, itemsIterationPromise]);
   } finally {
     signal.removeEventListener('abort', onAbort);
   }
-  return items;
 }
