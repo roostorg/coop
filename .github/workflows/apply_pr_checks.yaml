@@ -40,16 +40,27 @@ jobs:
               - '.env.githubci'
               - '.github/workflows/apply_pr_checks.yaml'
               - '.github/actions/prepare-docker-images/**'
+            # Each package's dependencies are locked in the root pnpm-lock.yaml,
+            # so a change here can affect any of them.
+            deps: &deps
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - '.nvmrc'
             server:
               - 'server/**'
               - *docker
+              - *deps
             client:
               - 'client/**'
               - *docker
+              - *deps
             db:
               - 'db/**'
+              - *deps
             migrator:
               - 'migrator/**'
+              - *deps
 
   check_formatting:
     runs-on: ubuntu-latest

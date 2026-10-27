@@ -198,6 +198,14 @@ Note: `check_migration_order` runs only in GitHub Actions — it's GitHub-specif
 - **GraphQL:** Type-safe resolvers and queries via codegen; never hand-edit `generated.ts`.
 - **Imports:** Absolute imports configured via `tsconfig.json` paths; prefer `@/` prefix over relative paths where configured.
 
+## CD
+
+- Releases are cut by publishing a GitHub Release from `main`. Tags are semver with no `v` prefix (`MAJOR.MINOR.PATCH`, e.g. `1.2.0`); see `docs/development/releases.md`. Agents do not create tags or releases.
+- `.github/workflows/publish-docker.yaml` pushes `coop-server`, `coop-worker`, `coop-client`, and `coop-migrations` images to `ghcr.io/roostorg/`. Pushes to `main` touching their sources publish `edge` and SHA tags; publishing a release adds the semver tags.
+- `.github/workflows/mdbook.yml` deploys docs to GitHub Pages (`gh-pages` branch): `latest` on push to `main` under `docs/`, and a per-version snapshot for each semver tag.
+- `.github/workflows/publish-types.yaml` and `publish-db-migrator.yaml` publish `@roostorg/coop-types` and `@roostorg/db-migrator` to npm on push to `main` when `types/` or `migrator/` change. Publishing is skipped if the `package.json` version already exists on npm, so a change there only ships with a version bump in the same PR.
+- Release/deploy workflows, production Dockerfiles, and signing/tagging are restricted — see "Human-approval-required actions" below.
+
 ## Dependencies
 
 - Dependencies are declared in each package's `package.json` and locked in the root `pnpm-lock.yaml`. Add a dep with `pnpm --filter <pkg> add <dep>` and commit the updated lockfile.
@@ -238,7 +246,8 @@ Routine local setup and verification commands, including `pnpm install --frozen-
 Stop and get explicit human approval before:
 
 - Changing license headers, copyright notices, or any legal text (including `LICENSE`).
-- Modifying release, signing, or deploy workflows: `.github/workflows/publish-*.yaml`, production Dockerfiles (`Dockerfile`, `client/Dockerfile`), `docker-compose.yaml`, or `package.json` `"scripts"` that affect deployment.
+- Modifying release, signing, or deploy workflows: `.github/workflows/publish-*.yaml`, `.github/workflows/mdbook.yml`, production Dockerfiles (`Dockerfile`, `client/Dockerfile`, `db/Dockerfile`), `docker-compose.yaml`, or `package.json` `"scripts"` that affect deployment.
+- Creating tags or GitHub Releases, or changing `version` in `types/package.json` or `migrator/package.json` (a merge to `main` publishes it to npm).
 - Database migrations — anything added under `db/src/scripts/<service>/` runs against real data. Confirm schema design and rollback story with a maintainer ensure to use CURRENT_USER to support any user on postgres.
 - Deleting or renaming an existing GraphQL type or field — this breaks cached Apollo client state and any downstream consumer. Additive changes are usually safe; removals need a migration plan.
 - Rewiring `server/iocContainer` in a way that changes service lifecycles or startup order — cascading effects on tests and boot.

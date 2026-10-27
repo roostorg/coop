@@ -1031,8 +1031,9 @@ function ManualReviewJobReviewImpl(props: {
     ...(appealPayloadTypenames.includes(payload.__typename)
       ? builtInAppealActions
       : builtInActions),
-    ...(payload.__typename === 'ContentManualReviewJobPayload' ||
-    payload.__typename === 'UserManualReviewJobPayload'
+    ...(org.hasNCMECReportingEnabled &&
+    (payload.__typename === 'ContentManualReviewJobPayload' ||
+      payload.__typename === 'UserManualReviewJobPayload')
       ? [ncmecAction]
       : []),
     ...(appealPayloadTypenames.includes(payload.__typename)
@@ -1244,9 +1245,6 @@ function ManualReviewJobReviewImpl(props: {
               action.type !== BuiltInActionType.EnqueueToNcmec
             ) {
               return undefined;
-            }
-            if (!org.hasNCMECReportingEnabled) {
-              return 'NCMEC reporting is not enabled for your organization.';
             }
             if (
               reportedItem.__typename === 'ContentItem' &&

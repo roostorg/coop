@@ -8,6 +8,15 @@ For more information about each release including git tags and artifacts, see [R
 
 ## [Unreleased]
 
+### Added
+
+- Formatting toolbar for policy definitions and enforcement guidelines ([#1432](https://github.com/roostorg/coop/pull/1432) by [@taobojlen](https://github.com/taobojlen)).
+
+### Changed
+
+- Improve list editing in the policy editor ([#1400](https://github.com/roostorg/coop/pull/1400) by [@taobojlen](https://github.com/taobojlen))
+- Review console hides "Enqueue to NCMEC" when NCMEC reporting isn't enabled ([#1470](https://github.com/roostorg/coop/pull/1470) by [@serendipty01](https://github.com/serendipty01))
+
 ### Fixed
 
 - Opening a review queue with no unskipped jobs no longer leaves reviewers on a loading spinner ([#1392](https://github.com/roostorg/coop/pull/1392) by [@Joseph-Mutua](https://github.com/Joseph-Mutua))
