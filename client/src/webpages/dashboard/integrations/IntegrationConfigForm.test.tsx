@@ -7,6 +7,7 @@ import {
   GQLIntegrationConfigFieldInputType,
   GQLUserPermission,
   type GQLIntegrationConfigQuery,
+  type GQLPluginIntegrationApiCredential,
   type GQLZentropiLabelerVersion,
   type useGQLSetIntegrationConfigMutation,
   type useGQLSetPluginIntegrationConfigMutation,
@@ -176,7 +177,9 @@ describe('Zentropi integration configuration', () => {
   });
 });
 
-function renderPluginForm(credential: Record<string, string>) {
+function renderPluginForm(
+  credential: GQLPluginIntegrationApiCredential['credential'],
+) {
   configData = {
     __typename: 'Query',
     integrationConfig: {
@@ -270,6 +273,29 @@ describe('Plugin integration configuration', () => {
       }),
     );
   });
+
+  it.each([['trust'], ['true'], [true], [[]], [[null]], [{ team: 'trust' }]])(
+    'round-trips a saved JSON value %j unchanged',
+    (headers) => {
+      renderPluginForm({ apiKey: 'test-api-key', headers });
+
+      expect(screen.getByLabelText('Headers')).toHaveValue(
+        JSON.stringify(headers),
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+      expect(setPluginConfig).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          variables: {
+            input: {
+              integrationId: 'PIGEON',
+              credential: { apiKey: 'test-api-key', headers },
+            },
+          },
+        }),
+      );
+    },
+  );
 
   it('blocks saving invalid JSON and missing required fields', () => {
     renderPluginForm({ apiKey: 'test-api-key' });

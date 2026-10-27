@@ -29,7 +29,9 @@ You build a package that exports a **plugin** (manifest + optional signals). The
 
 Declare `configurationFields` on the manifest and Coop renders them as the
 integration's configuration form. Each organization's values are saved with
-its integration config and returned by `getCredential()`.
+its integration config. Your plugin reads them with
+`context.getCredential(orgId)`, where `context` is the `PluginSignalContext`
+passed to `createSignals`.
 
 ```ts
 const manifest: IntegrationManifest = {
@@ -73,7 +75,7 @@ const manifest: IntegrationManifest = {
 - Coop rejects a plugin with an invalid field when it loads, so mistakes show
   up at startup rather than in the form.
 - Required fields must be filled before saving. Optional fields left blank are
-  not saved, so `getCredential()` doesn't include them.
+  not saved, so they are absent from the saved config.
 - Plugins without `configurationFields` keep the generic key/value form.
 
 Configuration fields require `@roostorg/coop-types >= 3.0.0`.

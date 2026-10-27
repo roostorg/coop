@@ -181,6 +181,15 @@ export function getNewEmptyApiKey(name: string): GQLIntegrationApiCredential {
 
 const INVALID_JSON = Symbol('invalid JSON');
 
+/** JSON fields hold JSON text while editing, so `[]` here is never blank. */
+function isBlankFieldValue(value: unknown): boolean {
+  return (
+    value == null ||
+    (typeof value === 'string' && value.trim() === '') ||
+    (Array.isArray(value) && value.length === 0)
+  );
+}
+
 /** JSON fields are edited as text; saved config holds the parsed value. */
 function parseJsonField<T>(value: T): T | typeof INVALID_JSON {
   if (typeof value !== 'string') {
@@ -265,9 +274,24 @@ export default function IntegrationConfigForm() {
     if (response?.config != null) {
       const cred = response.config.apiCredential;
       if (cred.__typename === 'PluginIntegrationApiCredential') {
+        const jsonKeys = new Set(
+          response.config.configurationFields
+            .filter(
+              (field) =>
+                field.inputType === GQLIntegrationConfigFieldInputType.Json,
+            )
+            .map((field) => field.key),
+        );
+        // JSON fields are edited as JSON text, so a saved string like "trust"
+        // must come back quoted to round-trip.
         setApiCredential({
           __typename: 'PluginIntegrationApiCredential',
-          credential: cred.credential ?? {},
+          credential: Object.fromEntries(
+            Object.entries(cred.credential ?? {}).map(([key, value]) => [
+              key,
+              jsonKeys.has(key) ? JSON.stringify(value) : value,
+            ]),
+          ),
         });
       } else {
         setApiCredential(cred);
@@ -325,8 +349,7 @@ export default function IntegrationConfigForm() {
     if (isPluginIntegration) {
       const missing = configurationFields.find(
         (field) =>
-          field.required &&
-          String(pluginCredential[field.key] ?? '').trim() === '',
+          field.required && isBlankFieldValue(pluginCredential[field.key]),
       );
       if (missing) {
         return `Please enter ${missing.label}`;
@@ -334,7 +357,7 @@ export default function IntegrationConfigForm() {
       const invalidJson = configurationFields.find(
         (field) =>
           jsonFieldKeys.has(field.key) &&
-          String(pluginCredential[field.key] ?? '').trim() !== '' &&
+          !isBlankFieldValue(pluginCredential[field.key]) &&
           parseJsonField(pluginCredential[field.key]) === INVALID_JSON,
       );
       if (invalidJson) {
@@ -405,7 +428,7 @@ export default function IntegrationConfigForm() {
               .filter(
                 ([key, value]) =>
                   key !== 'name' &&
-                  !(optionalKeys.has(key) && String(value ?? '').trim() === ''),
+                  !(optionalKeys.has(key) && isBlankFieldValue(value)),
               )
               .map(([key, value]) => {
                 const parsed = jsonFieldKeys.has(key)
