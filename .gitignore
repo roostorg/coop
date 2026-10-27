@@ -9,6 +9,8 @@ node_modules/
 coverage/
 server/coverage/
 client/coverage/
+client/reports/
+server/reports/
 
 # production
 /build

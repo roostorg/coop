@@ -103,6 +103,14 @@ pnpm --filter server test
 pnpm --filter client test
 ```
 
+Coverage is off by default. Add `--coverage` to measure it; CI does this and uploads the lcov reports to Codecov (flags `server-unit`, `server-integ`, `client-unit`; all statuses informational).
+
+```bash
+pnpm --filter server run test:prepush --coverage   # -> server/reports/coverage-unit
+pnpm --filter server run test:integ --coverage     # -> server/reports/coverage-integ
+pnpm --filter client run test:prepush --coverage   # -> client/reports/coverage-unit
+```
+
 Lint / format / type-check (no Docker needed):
 
 ```bash
