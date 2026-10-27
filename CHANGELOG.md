@@ -6,17 +6,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/2.0.0/),
 
 For more information about each release including git tags and artifacts, see [Releases](https://github.com/roostorg/coop/releases).
 
-## [Unreleased]
-
-### Added
-
-- Formatting toolbar for policy definitions and enforcement guidelines ([#1432](https://github.com/roostorg/coop/pull/1432) by [@taobojlen](https://github.com/taobojlen)).
-
-### Changed
-
-- Improve list editing in the policy editor ([#1400](https://github.com/roostorg/coop/pull/1400) by [@taobojlen](https://github.com/taobojlen))
-- Review console hides "Enqueue to NCMEC" when NCMEC reporting isn't enabled ([#1470](https://github.com/roostorg/coop/pull/1470) by [@serendipty01](https://github.com/serendipty01))
-
 ## [1.2.0] - 2026-10-21
 
 ### Added
@@ -419,7 +408,6 @@ We're developing Coop in the open and want to hear from you. Whether you're test
 
 This release was possible because of the efforts of contributors who worked through complex redesign, partners who believed in the vision of open source safety tools, and the broader trust and safety community who provided feedback and guidance. Thank you especially to @juanmrad, @pawiecz, @kbicevski, Sjoerd Simons, @emanueleaina, @dom-notion, @cassidyjames, @vinaysrao1, @wayjaywang, and @julietshen.
 
-[unreleased]: https://github.com/roostorg/coop/compare/1.2.0...HEAD
 [1.2.0]: https://github.com/roostorg/coop/compare/1.1.1...1.2.0
 [1.1.1]: https://github.com/roostorg/coop/compare/1.1.0...1.1.1
 [1.1.0]: https://github.com/roostorg/coop/compare/1.0.2...1.1.0
