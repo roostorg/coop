@@ -27,12 +27,13 @@ be done on staging; etc.)? If so, please note them here.
 
 <!--
 Optional: leave blank unless the change is notable to someone deploying Coop.
-Use one category (Added, Changed, Deprecated, Removed, Fixed, or Security),
-followed by concise, single-line bullet entries. For example:
+Write concise, single-line bullet entries without a category heading. For example:
 
-### Fixed
 - Cancel failed media downloads before retrying.
 
+The conventional prefix in the PR title selects the category:
+feat: Added; fix: Fixed; deprecate: Deprecated; remove: Removed;
+security: Security; other prefixes (e.g. perf: or refactor:): Changed.
 PR and author links are added automatically. Do not edit CHANGELOG.md.
 -->
 

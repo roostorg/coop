@@ -174,20 +174,20 @@ Note: `check_migration_order` runs only in GitHub Actions — it's GitHub-specif
 - New behavior requires a test. Bug fixes require a regression test.
 - All CI checks (above) must pass before requesting review.
 
-## Changelog
+## Release notes
 
-`CHANGELOG.md` follows [Keep a Changelog](https://keepachangelog.com/en/2.0.0/); Coop versions follow [SemVer](https://semver.org/). Release process: [`docs/development/releases.md`](docs/development/releases.md).
+Release notes are published in [GitHub Releases](https://github.com/roostorg/coop/releases) using [Keep a Changelog](https://keepachangelog.com/en/2.0.0/) categories; Coop versions follow [SemVer](https://semver.org/). Release process: [`docs/development/releases.md`](docs/development/releases.md).
 
-- Put release notes in the optional `## Release notes` section of the PR description. Do not edit `CHANGELOG.md` in feature PRs; automation copies published release notes into a changelog PR.
+- Put release notes in the optional `## Release notes` section of the PR description. Release Drafter collects them into a draft GitHub release. Do not add entries to `CHANGELOG.md`.
 - Only **notable** changes get an entry: what someone deploying Coop needs to know. Internal refactors, test and CI plumbing, lint fixes, repo hygiene, and dependency bumps with no user-visible impact do not.
-- Use one Keep a Changelog heading per PR: `### Added`, `### Changed`, `### Deprecated`, `### Removed`, `### Fixed`, or `### Security`, followed by single-line bullet entries. Leave the section blank when nothing is notable.
-- `Fixed` is for behavior that was wrong and is now correct; `Changed` is for intentionally altering behavior that was already correct.
+- Write single-line bullet entries without a category heading. Leave the section blank when nothing is notable, regardless of the title prefix.
+- The conventional-commit prefix in the PR title selects the category: `feat:` → Added, `fix:` → Fixed, `deprecate:` → Deprecated, `remove:` → Removed, `security:` → Security, and all other titles → Changed. Scopes and `!` are supported. Individual commit messages are not used.
+- Use `fix:` for correcting wrong behavior; use another appropriate prefix for intentionally changing correct behavior. Maintainers choose the final release version.
 - Keep each entry to a single concise line, essentially a title: no reasoning, mechanism, or caveats. Anyone who needs the detail follows the PR link.
-- Write entries as `- Description`. Automation adds PR and author links and manages `has-release-notes` and `release:*` category labels; do not manage these labels manually.
+- Write entries as `- Description`. Automation adds PR and author links and manages the `has-release-notes` label; do not manage it manually. Category labels are not needed.
 - Omit related issue links (e.g. `closes [#456](...)`); this information is accessible at the PR link.
 - Removing a GraphQL enum value, type, or field, or removing or renaming an environment variable, always earns an entry.
-- Published release sections are snapshots. To correct release notes, edit the GitHub release and review the resulting changelog PR.
-- Validate release-note automation with `node --test scripts/release-notes.test.mjs`.
+- To correct published release notes, edit the GitHub release.
 
 ## Code style
 
