@@ -16,9 +16,6 @@ multi-ecosystem-groups:
   docker-images:
     schedule:
       interval: 'weekly'
-    commit-message:
-      prefix: 'build'
-      include: 'scope'
     labels:
       - 'dependencies'
       - 'dependabot'
@@ -26,9 +23,6 @@ multi-ecosystem-groups:
 updates:
   # Dockerfiles
   - package-ecosystem: 'docker'
-    commit-message:
-      prefix: 'build'
-      include: 'scope'
     directories:
       - '/'
       - '/client'
@@ -54,9 +48,6 @@ updates:
 
   # Node images in Docker Compose
   - package-ecosystem: 'docker-compose'
-    commit-message:
-      prefix: 'build'
-      include: 'scope'
     directory: '/'
     patterns:
       - 'node'
@@ -73,9 +64,6 @@ updates:
   # entries don't work: a package directory has no lockfile of its own, so
   # their PRs change package.json alone and fail `--frozen-lockfile`.
   - package-ecosystem: 'npm'
-    commit-message:
-      prefix: 'build'
-      include: 'scope'
     directory: '/'
     schedule:
       interval: 'weekly'
@@ -124,9 +112,6 @@ updates:
   # action (e.g. the `version:` input of zizmorcore/zizmor-action, or the image
   # digest inside boostsecurityio/poutine-action) still need a manual bump.
   - package-ecosystem: 'github-actions'
-    commit-message:
-      prefix: 'build'
-      include: 'scope'
     directory: '/'
     schedule:
       interval: 'weekly'
