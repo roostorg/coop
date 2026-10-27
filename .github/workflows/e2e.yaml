@@ -111,8 +111,11 @@ jobs:
       - name: Start server and client
         # Redirect output to files so the backgrounded processes don't hold this
         # step's stdout pipe open (which would hang the step).
+        # The server writes V8 coverage to NODE_V8_COVERAGE when it exits, so a
+        # later step stops it with SIGTERM to trigger its graceful shutdown.
         run: |
-          (cd server && node --env-file=.env transpiled/bin/www.js) > /tmp/server.log 2>&1 &
+          (cd server && NODE_V8_COVERAGE="$GITHUB_WORKSPACE/server/reports/e2e-v8" exec node --env-file=.env transpiled/bin/www.js) > /tmp/server.log 2>&1 &
+          echo $! > /tmp/server.pid
           (cd client && pnpm start) > /tmp/client.log 2>&1 &
           # Wait (up to 120s) for the API (tcp 8080) and client (http 3000) to be
           # ready. A built-in shell loop avoids fetching an undeclared dependency
@@ -152,6 +155,35 @@ jobs:
         run: cd server && pnpm run test:e2e
         env:
           PLAYWRIGHT_BASE_URL: http://localhost:3000
+
+      - name: Stop server
+        if: ${{ !cancelled() }}
+        run: |
+          pid=$(cat /tmp/server.pid)
+          kill -TERM "$pid" || exit 0
+          # Graceful shutdown waits up to 30s for open connections to drain.
+          for _ in $(seq 60); do
+            kill -0 "$pid" 2>/dev/null || exit 0
+            sleep 1
+          done
+          echo "::warning::server did not exit within 60s; E2E coverage will be missing"
+
+      - name: Convert server coverage to lcov
+        if: ${{ !cancelled() }}
+        # Coverage is informational; missing coverage never fails the E2E job.
+        continue-on-error: true
+        run: cd server && node e2e/v8-coverage-to-lcov.mjs reports/e2e-v8 reports/coverage-e2e
+
+      - name: Upload coverage
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: server/reports/coverage-e2e/lcov.info
+          disable_search: true
+          flags: e2e
+          name: e2e
+          fail_ci_if_error: false
 
       - name: Upload Playwright report
         if: ${{ failure() }}

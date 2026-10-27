@@ -103,7 +103,7 @@ pnpm --filter server test
 pnpm --filter client test
 ```
 
-Coverage is off by default. Add `--coverage` to measure it; CI does this and uploads the lcov reports to Codecov (flags `server-unit`, `server-integ`, `client-unit`; all statuses informational).
+Coverage is off by default. Add `--coverage` to measure it; CI does this and uploads the lcov reports to Codecov (flags `server-unit`, `server-integ`, `client-unit`; all statuses informational). The E2E workflow uploads server coverage under the E2E suite as flag `e2e`, which is kept out of the project and patch statuses.
 
 ```bash
 pnpm --filter server run test:prepush --coverage   # -> server/reports/coverage-unit

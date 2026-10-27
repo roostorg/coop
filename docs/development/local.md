@@ -207,7 +207,7 @@ pnpm run test:prepush      # Single run
 pnpm run check:prepush
 ```
 
-Add `--coverage` to a single run to measure coverage. Reports (lcov, HTML, JSON summary) go to `server/reports/coverage-unit`, `server/reports/coverage-integ` and `client/reports/coverage-unit`; open `lcov-report/index.html` in any of them to browse. CI uploads the same reports to [Codecov](https://app.codecov.io/gh/roostorg/coop) under the flags `server-unit`, `server-integ` and `client-unit`.
+Add `--coverage` to a single run to measure coverage. Reports (lcov, HTML, JSON summary) go to `server/reports/coverage-unit`, `server/reports/coverage-integ` and `client/reports/coverage-unit`; open `lcov-report/index.html` in any of them to browse. CI uploads the same reports to [Codecov](https://app.codecov.io/gh/roostorg/coop) under the flags `server-unit`, `server-integ` and `client-unit`. The E2E workflow also uploads the API server's coverage under the E2E suite as the flag `e2e`, which doesn't count toward the project or patch status.
 
 ```sh
 pnpm --filter server run test:prepush --coverage   # server/reports/coverage-unit

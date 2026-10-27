@@ -2,8 +2,17 @@ codecov:
   require_ci_to_pass: true
 coverage:
   status:
-    project: { default: { informational: true } }
-    patch: { default: { target: 80%, informational: true } }
+    # Listing flags keeps e2e coverage out of these statuses; a status without
+    # flags counts every upload.
+    project:
+      default:
+        informational: true
+        flags: [server-unit, server-integ, client-unit]
+    patch:
+      default:
+        target: 80%
+        informational: true
+        flags: [server-unit, server-integ, client-unit]
 comment:
   layout: 'condensed_header, diff, flags, components, condensed_files'
   require_changes: true
@@ -15,6 +24,7 @@ flag_management:
     - { name: server-unit, paths: [server/] }
     - { name: server-integ, paths: [server/] }
     - { name: client-unit, paths: [client/] }
+    - { name: e2e, paths: [server/], statuses: [] }
 component_management:
   individual_components:
     - { component_id: server, name: server, paths: ['server/**'] }

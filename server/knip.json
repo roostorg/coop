@@ -1,6 +1,11 @@
 {
   "$schema": "./node_modules/knip/schema.json",
-  "entry": ["bin/www.ts", "globals.ts", "ts-reset.ts"],
+  "entry": [
+    "bin/www.ts",
+    "globals.ts",
+    "ts-reset.ts",
+    "e2e/v8-coverage-to-lcov.mjs"
+  ],
   "project": ["**/*.ts"],
   "ignore": ["graphql/generated.ts"],
   "ignoreDependencies": ["@roostorg/coop-integration-example"],
