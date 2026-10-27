@@ -18,7 +18,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Fixed
 
-- API requests answering 401 Invalid API Key instead of 503 when the database is unreachable ([#XXXX](https://github.com/roostorg/coop/pull/XXXX) by [@serendipty01](https://github.com/serendipty01))
+- API requests answering 401 Invalid API Key instead of 503 when the database is unreachable ([#1472](https://github.com/roostorg/coop/pull/1472) by [@serendipty01](https://github.com/serendipty01))
 
 ## [1.2.0] - 2026-10-21
 
