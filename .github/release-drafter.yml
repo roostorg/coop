@@ -1,0 +1,42 @@
+name-template: 'Coop $RESOLVED_VERSION'
+tag-template: '$RESOLVED_VERSION'
+category-template: '### $TITLE'
+change-template: '$BODY ([#$NUMBER]($URL) by [@$AUTHOR]($AUTHOR_URL))'
+no-changes-template: ''
+categories:
+  - type: pre-include
+    when:
+      label: has-release-notes
+  - title: Added
+    when:
+      label: release:added
+  - title: Changed
+    when:
+      label: release:changed
+  - title: Deprecated
+    when:
+      label: release:deprecated
+  - title: Removed
+    when:
+      label: release:removed
+  - title: Fixed
+    when:
+      label: release:fixed
+  - title: Security
+    when:
+      label: release:security
+replacers:
+  - target: change-body
+    section: '## Release notes'
+    not-found: empty
+  - target: change-body
+    search: '/<!--[\s\S]*?-->/g'
+    replace: ''
+  - target: change-body
+    search: '/^\s*### (?:Added|Changed|Deprecated|Removed|Fixed|Security)\s*/'
+    replace: ''
+  - target: change-body
+    search: '/^\s+|\s+$/g'
+    replace: ''
+# Action inputs trim the bootstrap header's trailing whitespace.
+template: "\n\n$CHANGES"
