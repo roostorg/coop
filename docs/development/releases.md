@@ -16,36 +16,6 @@ Coop uses [Semantic Versioning (SemVer)](https://semver.org/) following the MAJO
 - **Minor releases** (x.**Y**.z): new functionality or substantial improvements; changes to public API are backward-compatible
 - **Major releases** (**X**.y.z): backward-incompatible changes to public API, or major feature or user interface overhauls
 
-## Release notes
-
-Contributors describe notable changes in the optional `## Release notes` section of the PR description, using plain text or bullets without a category heading:
-
-```markdown
-Cancel failed media downloads before retrying.
-```
-
-The heading is case-insensitive: `## Release Notes` and `## RELEASE NOTES` also work. Automation adds a bullet to plain text and preserves existing bullets.
-
-The conventional-commit prefix in the **PR title** selects the category. For example, `fix(media): cancel failed downloads` selects Fixed. Individual commit messages are not used for categorization.
-
-| PR title prefix                                                         | Category |
-| ----------------------------------------------------------------------- | -------- |
-| `feat:`                                                                 | Added    |
-| `fix:`                                                                  | Fixed    |
-| Other prefixes, such as `perf:` or `refactor:`, or no recognized prefix | Changed  |
-
-Scopes and breaking-change markers are supported, such as `feat(api)!: change the upload endpoint`. Release categorization does not introduce extra commit types. The prefix selects the category, not the final release version; maintainers choose the version when publishing.
-
-Leave the section blank for changes that do not need release notes, regardless of the title prefix. PR and author links are added automatically. Contributors do not edit `CHANGELOG.md` or choose a version bump.
-
-The **Draft release notes** workflow uses Release Drafter's Autolabeler to manage the `has-release-notes` label from the description, including on fork PRs. Nonempty release-note text includes the PR. Missing, whitespace-only, comment-only, and empty template notes are excluded. Reviewers check the notes' format and the PR title; there is no format-validation check. Clearing the notes removes the label. Category labels are not needed.
-
-After a PR merges, Release Drafter refreshes the draft in [GitHub Releases](https://github.com/roostorg/coop/releases). Editing a merged PR's title or description also refreshes the draft. Manual edits to the draft can be overwritten; make persistent corrections in the source PR. Use **Actions → Draft release notes → Run workflow** to refresh the draft manually.
-
-GitHub Releases is the source of truth for published release notes. To correct published notes, edit the GitHub release. `CHANGELOG.md` contains the release history through 1.2.0 and does not receive new entries.
-
-The workflow uses the repository's `GITHUB_TOKEN` and does not check out contributor code. Release Drafter reads its configuration from the default branch and treats PR descriptions as data. Autolabeler manages only the release-note labels. Publishing remains a maintainer action (`publish: false`).
-
 ## Creating a release
 
 Before cutting a release, ensure:
