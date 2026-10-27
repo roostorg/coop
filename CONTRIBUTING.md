@@ -28,7 +28,7 @@ Use a lowercase type from this list:
 | `chore`    | Perform other maintenance                   |
 | `revert`   | Revert a change                             |
 
-Scopes are optional. Use a component name such as `client`, `server`, or `api`. Write a concise, imperative description after the colon and space. Start the description with a lowercase word and do not end it with a period. Keep the whole title within 100 characters, without leading or trailing whitespace.
+Scopes are optional. Use a component name such as `client`, `server`, or `api`. Write a concise, imperative description after the colon and space. Start the description with a lowercase word and do not end it with a period. Do not add leading or trailing whitespace. GitHub-generated revert titles such as `Revert "feat: add review queues"` are also accepted.
 
 Examples:
 
@@ -41,4 +41,4 @@ feat(api)!: require a queue identifier
 
 For breaking changes, put `!` immediately before the colon and explain the impact and migration steps in the PR description. Preserve that explanation in the squash commit body, preferably with a `BREAKING CHANGE: <explanation>` footer.
 
-CI checks the PR title with [commitlint](https://github.com/conventional-changelog/commitlint) and its conventional preset, including after title edits. Individual work-in-progress commits are not checked and do not need this format.
+CI checks the PR title with [action-semantic-pull-request](https://github.com/amannn/action-semantic-pull-request), including after title edits. Individual work-in-progress commits are not checked and do not need this format.

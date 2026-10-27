@@ -1,11 +1,12 @@
 name: PR title
 
 on:
-  pull_request:
+  # Read PR metadata only; never check out or execute code from the PR.
+  pull_request_target: # zizmor: ignore[dangerous-triggers]
     types: [opened, edited, synchronize, reopened]
 
 permissions:
-  contents: read
+  pull-requests: read
 
 jobs:
   check_pr_title:
@@ -13,17 +14,21 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Setup pnpm and Node.js, install dependencies
-        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
-        with:
-          cache: true
-          require-lockfile: true
-
-      - name: Validate PR title
-        run: printf '%s\n' "$PR_TITLE" | pnpm exec commitlint --verbose
+      - name: Recognize GitHub revert titles
+        id: revert
+        shell: bash
+        run: |
+          if [[ "$PR_TITLE" =~ ^Revert\ \".+\"$ && "$PR_TITLE" != *$'\n'* && "$PR_TITLE" != *$'\r'* ]]; then
+            echo 'is_revert=true' >> "$GITHUB_OUTPUT"
+          fi
         env:
           PR_TITLE: ${{ github.event.pull_request.title }}
+
+      - name: Validate PR title
+        if: steps.revert.outputs.is_revert != 'true'
+        uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
+        with:
+          subjectPattern: ^(?![A-Z])\S(?:.*\S)?(?<!\.)$
+          subjectPatternError: 'Start the description with a lowercase word, omit leading or trailing whitespace, and do not end it with a period.'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
