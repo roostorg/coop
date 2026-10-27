@@ -1,6 +1,0 @@
-kind: Fixed
-body: NCMEC review escalations silently succeeding when the item cannot resolve to a user
-time: 2026-10-12T00:00:08Z
-custom:
-  pr: '1331'
-  authors: Joseph-Mutua

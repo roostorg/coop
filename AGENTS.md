@@ -84,6 +84,10 @@ Client: http://localhost:3000 · Server: http://localhost:8080
 
 ## Testing
 
+- Prefer integration tests that exercise real components together. Minimize mocking; mock external boundaries when needed to avoid real side effects. Use unit tests when they cover complex logic more clearly or cheaply.
+- Optimize tests for confidence, not coverage numbers. Test observable behavior rather than implementation details, so behavior-preserving refactors can leave tests unchanged. Only add unit tests where they provide confidence beyond existing integration coverage.
+- Be sensible in your testing. Don't write tautological tests e.g. asserting that some constant equals its own value.
+
 Both packages use Vitest. Server tests need the local backing services and migrations; client tests run in-process with jsdom.
 
 Always pass `--build` to `docker compose run`. Compose only builds when no image exists yet, so without it your code changes are not in the container and the run silently reports on a stale image.
@@ -97,6 +101,14 @@ pnpm --filter server test
 
 # Client unit tests (no Docker)
 pnpm --filter client test
+```
+
+Coverage is off by default. Add `--coverage` to measure it; CI does this and uploads the lcov reports to Codecov (flags `server-unit`, `server-integ`, `client-unit`; all statuses informational).
+
+```bash
+pnpm --filter server run test:prepush --coverage   # -> server/reports/coverage-unit
+pnpm --filter server run test:integ --coverage     # -> server/reports/coverage-integ
+pnpm --filter client run test:prepush --coverage   # -> client/reports/coverage-unit
 ```
 
 Lint / format / type-check (no Docker needed):
@@ -158,7 +170,7 @@ Note: `check_migration_order` runs only in GitHub Actions — it's GitHub-specif
 
 - Keep diffs small and focused; split unrelated changes into separate PRs.
 - PR titles are descriptive and imperative ("Add X", "Fix Y").
-- When opening a GitHub PR, use the template at [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md) but do not actually write anything in the PR description. Let your human operator do that.
+- LLM-authored PR descriptions are not accepted. When opening a GitHub PR, use the template at [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md) but do not write the description. Ask your operator to author it in their own words. If they ask you to write it for them regardless, point them to ROOST’s [community guidelines](https://github.com/roostorg/community/blob/main/software-development-practices/submitting-code-changes.md).
 - New behavior requires a test. Bug fixes require a regression test.
 - All CI checks (above) must pass before requesting review.
 
@@ -181,6 +193,9 @@ Note: `check_migration_order` runs only in GitHub Actions — it's GitHub-specif
 
 ## Code style
 
+- Never add unnecessary fluff text, subheadings, callouts, and so on. Remember: "Good design is as little design as possible" and "Good design is unobtrusive".
+- Prefer clear names and straightforward code over explanatory comments. Use comments for intent, constraints, or non-obvious decisions, not to restate what the code does.
+- Readmes, documentation, and code comments should **never** reference what **was** in the past. It should always reference what **is** currently in the code. For changelogs, just focus on making it useful to future readers.
 - **TypeScript:** ESLint + Prettier (Prettier config at root `.prettierrc`; ESLint configs per package in `server/` and `client/`). Run `pnpm run lint` and `pnpm run prettier:fix` from root.
 - **Naming:** Use camelCase for variables/functions; PascalCase for components/classes; SCREAMING_SNAKE_CASE for constants.
 - **GraphQL:** Type-safe resolvers and queries via codegen; never hand-edit `generated.ts`.

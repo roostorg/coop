@@ -1,4 +1,5 @@
 import { Readable } from 'node:stream';
+import { type ReadableStream } from 'node:stream/web';
 import { ScalarTypes } from '@roostorg/coop-types';
 import streamToBlob from 'stream-to-blob';
 import { FormData } from 'undici';
@@ -8,6 +9,7 @@ import { makeSignalPermanentError } from '../../../../../../utils/errors.js';
 import { Language } from '../../../../../../utils/language.js';
 import { __throw } from '../../../../../../utils/misc.js';
 import { type Bind1 } from '../../../../../../utils/typescript-types.js';
+import { abandonDownload } from '../../../../../networkingService/cancelReadableStream.js';
 import { type FetchHTTP } from '../../../../../networkingService/index.js';
 import { type GetCredentials } from '../../../../../signalAuthService/signalAuthService.js';
 import { Integration } from '../../../../types/Integration.js';
@@ -256,6 +258,8 @@ export async function getOpenAiTranscription(
 }
 
 async function getWhisperAPIFormDataForUrl(fetchHTTP: FetchHTTP, url: string) {
+  const download = new AbortController();
+  let body: ReadableStream | undefined;
   try {
     const response = await fetchHTTP({
       url,
@@ -263,7 +267,9 @@ async function getWhisperAPIFormDataForUrl(fetchHTTP: FetchHTTP, url: string) {
       handleResponseBody: 'as-readable-stream',
       maxResponseSize: '25mb',
       iWillConsumeTheResponseBodyStreamQuicklyToAvoidACrash: true,
+      signal: download.signal,
     });
+    body = response.body;
 
     if (!response.ok || !response.body) {
       throw Error(
@@ -301,6 +307,7 @@ async function getWhisperAPIFormDataForUrl(fetchHTTP: FetchHTTP, url: string) {
 
     return formData;
   } catch (e) {
+    await abandonDownload(download, body);
     if (e instanceof Error) {
       if (e.name === 'ResponseExceededMaxSizeError') {
         throw makeSignalPermanentError('Input file too large', {

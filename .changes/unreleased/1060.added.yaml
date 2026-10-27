@@ -1,6 +1,0 @@
-kind: Added
-body: Grant review queue access by role
-time: 2026-10-11T23:59:59Z
-custom:
-  pr: '1060'
-  authors: julietshen, taobojlen

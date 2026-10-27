@@ -391,4 +391,16 @@ describe('NCMEC escalation eligibility', () => {
       }),
     );
   });
+
+  it('hides NCMEC escalation when the org has NCMEC reporting off', () => {
+    const queryData = makeContentQueryData({ hasCreator: true });
+    harness.queryData = {
+      ...queryData,
+      myOrg: { ...queryData.myOrg!, hasNCMECReportingEnabled: false },
+    };
+    render(<ManualReviewJobReview />);
+
+    expect(screen.getByRole('button', { name: 'Submit' })).toBeTruthy();
+    expect(screen.queryByText('Enqueue to NCMEC')).toBeNull();
+  });
 });

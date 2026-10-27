@@ -1,6 +1,0 @@
-kind: Fixed
-body: Image hashing now applies to every Image field in an item or report, not just an array field named `images`
-time: 2026-10-12T00:00:05Z
-custom:
-  pr: '1390'
-  authors: reitblatt

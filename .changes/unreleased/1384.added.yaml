@@ -1,6 +1,0 @@
-kind: Added
-body: Org-specific signal catalogs, provider policies, and evaluation context types in `@roostorg/coop-types` (v3.0.0)
-time: 2026-10-12T00:00:03Z
-custom:
-  pr: '1384'
-  authors: juanmrad

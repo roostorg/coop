@@ -8,7 +8,7 @@
   "scripts": {
     "build": "tsc",
     "prepublishOnly": "pnpm run build",
-    "test": "pnpm run build && node --test transpiled/test_scripts/"
+    "test": "pnpm run build && node --test 'transpiled/test_scripts/**/*.test.js'"
   },
   "repository": {
     "type": "git",
@@ -21,7 +21,7 @@
   ],
   "license": "ISC",
   "devDependencies": {
-    "@types/node": "^24.19.1",
+    "@types/node": "^24.19.2",
     "typescript": "^5.9.3"
   },
   "publishConfig": {
