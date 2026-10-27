@@ -15,7 +15,6 @@ flag_management:
     - { name: server-unit, paths: [server/] }
     - { name: server-integ, paths: [server/] }
     - { name: client-unit, paths: [client/] }
-    - { name: e2e, paths: [server/], statuses: [] }
 component_management:
   individual_components:
     - { component_id: server, name: server, paths: ['server/**'] }

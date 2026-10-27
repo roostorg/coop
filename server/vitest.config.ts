@@ -28,6 +28,7 @@ export default defineConfig({
         'node_modules/**',
         'transpiled/**',
         'reports/**',
+        'bin/**',
         'e2e/**',
         'test/**',
         '**/*.{test,spec}.ts',
