@@ -174,19 +174,20 @@ Note: `check_migration_order` runs only in GitHub Actions — it's GitHub-specif
 - New behavior requires a test. Bug fixes require a regression test.
 - All CI checks (above) must pass before requesting review.
 
-## Changelog
+## Release notes
 
-`CHANGELOG.md` follows [Keep a Changelog](https://keepachangelog.com/en/2.0.0/); Coop versions follow [SemVer](https://semver.org/). Release process: [`docs/development/releases.md`](docs/development/releases.md).
+Release notes are published in [GitHub Releases](https://github.com/roostorg/coop/releases) using [Keep a Changelog](https://keepachangelog.com/en/2.0.0/) categories; Coop versions follow [SemVer](https://semver.org/). Release process: [`docs/development/releases.md`](docs/development/releases.md).
 
-- Update `## [Unreleased]` in the same PR as the change, not in a later cleanup PR.
+- Put release notes in the optional `## Release notes` section of the PR description. Release Drafter collects them into a draft GitHub release. Do not add entries to `CHANGELOG.md`.
 - Only **notable** changes get an entry: what someone deploying Coop needs to know. Internal refactors, test and CI plumbing, lint fixes, repo hygiene, and dependency bumps with no user-visible impact do not.
-- Use only the six Keep a Changelog headings — `### Added`, `### Changed`, `### Deprecated`, `### Removed`, `### Fixed`, `### Security` — adding the heading under `## [Unreleased]` if it's missing. Don't invent others.
-- `Fixed` is for behavior that was wrong and is now correct; `Changed` is for intentionally altering behavior that was already correct.
+- Write plain text or bullets without a category heading. The `## Release notes` heading is case-insensitive. Leave the section blank when nothing is notable, regardless of the title prefix.
+- The conventional-commit prefix in the PR title selects the category: `feat:` → Added, `fix:` → Fixed, and all other titles → Changed. Scopes and `!` are supported. Individual commit messages are not used. Release categorization does not introduce extra commit types.
+- Use `fix:` for correcting wrong behavior; use another appropriate prefix for intentionally changing correct behavior. Maintainers choose the final release version.
 - Keep each entry to a single concise line, essentially a title: no reasoning, mechanism, or caveats. Anyone who needs the detail follows the PR link.
-- Format: `- Description ([#123](https://github.com/roostorg/coop/pull/123) by [@user](https://github.com/user))`.
+- Automation adds a bullet to plain text, preserves existing bullets, adds PR and author links, and manages the `has-release-notes` label; do not manage it manually. Category labels are not needed.
 - Omit related issue links (e.g. `closes [#456](...)`); this information is accessible at the PR link.
 - Removing a GraphQL enum value, type, or field, or removing or renaming an environment variable, always earns an entry.
-- Never edit a released version's section; it's a historical record. Corrections go under `## [Unreleased]`.
+- To correct published release notes, edit the GitHub release.
 
 ## Code style
 
@@ -273,4 +274,4 @@ Coop is open source and contributions flow upstream; attribution matters for mai
 - Commit `.env`, credentials, or API keys.
 - Bypass `iocContainer` by importing server singletons directly.
 - Silently modify a migration file that has already been applied to a shared environment — add a new forward migration instead.
-- Edit a released version's section in `CHANGELOG.md` — add to `## [Unreleased]` instead.
+- Edit `CHANGELOG.md` in feature PRs — use the PR description's Release notes section instead.

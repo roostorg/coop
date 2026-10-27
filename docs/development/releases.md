@@ -22,17 +22,15 @@ Before cutting a release, ensure:
 
 - [ ] **CI is passing** for the `main` branch
 - [ ] **You understand the correct version** according to SemVer
-- [ ] **[CHANGELOG.md](https://github.com/roostorg/coop/blob/main/CHANGELOG.md) is up-to-date**
+- [ ] **The draft release notes include all notable changes**
 
 Then:
 
-1. In a PR, replace `## [Unreleased]` in `CHANGELOG.md` with `## [x.y.z] - YYYY-MM-DD`, leaving an empty `## [Unreleased]`, and update the compare links at the bottom of the file. Remove related issue links (e.g. `closes [#456](...)`) from entries, preserving the PR and contributor links. Merge it before continuing to the next step.
-2. In GitHub: **Releases** → **Draft a new release**
-3. **Create a tag** in SemVer format `x.y.z` (no `v` prefix) from the `main` branch, at or after the changelog PR's merge commit
-4. Title the release `Coop x.y.z` and **draft the release notes**, starting from [CHANGELOG.md](https://github.com/roostorg/coop/blob/main/CHANGELOG.md)
-5. Check **Create a discussion for this release** for at least major and minor releases
-6. **Publish** the release
-7. Confirm the **Publish Docker images** workflow run for the tag succeeds and the version-tagged images exist
+1. Open the draft in **GitHub → Releases** and review its notes. Release Drafter's proposed version is a suggestion; choose the correct version according to SemVer.
+2. Set the tag to `x.y.z` (no `v` prefix), confirm the target commit on `main`, and title the release `Coop x.y.z`.
+3. Check **Create a discussion for this release** for at least major and minor releases.
+4. **Publish** the release.
+5. Confirm the **Publish Docker images** workflow succeeds and the version-tagged images exist.
 
 Publishing a release triggers automations:
 

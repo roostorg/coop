@@ -23,6 +23,20 @@ to prod (e.g., other blocking PRs; manual load testing/validation that needs to
 be done on staging; etc.)? If so, please note them here.
  -->
 
+## Release notes
+
+<!--
+Optional: leave blank unless the change is notable to someone deploying Coop.
+Write concise release notes as plain text or bullets, without a category heading. For example:
+
+Cancel failed media downloads before retrying.
+
+The conventional prefix in the PR title selects the category:
+feat: Added; fix: Fixed; other prefixes (e.g. perf: or refactor:): Changed.
+The Release notes heading is case-insensitive. Bullets and PR and author links
+are added automatically. Do not edit CHANGELOG.md.
+-->
+
 ## Checklist
 
 _Only check items that apply to this PR; leave the rest unchecked._
@@ -31,7 +45,7 @@ _Only check items that apply to this PR; leave the rest unchecked._
   Did you update related docs?
 
 - [ ] **If the change is notable** (refer to [Keep a Changelog](https://keepachangelog.com/en/2.0.0/) conventions):
-  Did you update CHANGELOG.md?
+  Did you fill in the Release notes section above?
 
 - [ ] **If you changed `db/src/scripts/**` and used `CREATE TABLE`, `ADD COLUMN`, or `ALTER COLUMN`:**
   Are as many columns marked `NOT NULL` as possible? If some columns can sometimes be null depending on other columns, are there `CHECK` constraints capturing those relationships, and are these also reflected using unions in the associated Kysely types?
