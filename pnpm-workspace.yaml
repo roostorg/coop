@@ -10,6 +10,8 @@ overrides:
   # Force all packages (including transitive deps like @node-saml/passport-saml)
   # to use @types/express v5.
   '@types/express': '^5'
+  # These declarations do not import GraphQL types; use the application's version.
+  '@types/graphql-depth-limit>graphql': '16.14.2'
   # The published @roostorg/coop-types asks for type-fest ^4.3.2. Newer type-fest
   # declares its own `tag` symbol, so its Opaque types stop matching the server's
   # type-fest 4.3.2 helpers.

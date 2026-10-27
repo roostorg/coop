@@ -18,6 +18,7 @@ docs/book/
 
 # misc
 .DS_Store
+*.textClipping
 .swp
 .env
 .env.local
