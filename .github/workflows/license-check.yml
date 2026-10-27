@@ -1,7 +1,6 @@
 name: License Check
 on:
   pull_request:
-    branches: [main]
     paths:
       - 'pnpm-lock.yaml'
       - 'scripts/check-licenses.mjs'
