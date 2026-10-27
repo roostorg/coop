@@ -1,0 +1,55 @@
+name: Copy published release notes to changelog
+
+on:
+  release:
+    types: [published, edited]
+
+permissions: {}
+
+concurrency:
+  group: release-changelog-${{ github.event.release.id }}
+  cancel-in-progress: false
+
+jobs:
+  changelog:
+    if: github.event.release.draft == false && github.event.release.prerelease == false
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Update the changelog PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_ID: ${{ github.event.release.id }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          gh auth setup-git
+          branch="automation/changelog-$RELEASE_ID"
+          if git ls-remote --exit-code --heads origin "$branch"; then
+            git fetch origin "$branch:refs/remotes/origin/$branch"
+            git switch --track "origin/$branch"
+            git merge origin/main --no-edit
+          else
+            git switch -c "$branch"
+          fi
+          node scripts/release-notes.mjs changelog
+          if ! git diff --quiet -- CHANGELOG.md; then
+            git add CHANGELOG.md
+            git commit -m "Update changelog for Coop $RELEASE_TAG"
+          fi
+          if git diff --quiet origin/main...HEAD -- CHANGELOG.md; then
+            exit 0
+          fi
+          git push origin "HEAD:refs/heads/$branch"
+          if [ -z "$(gh pr list --repo "$GITHUB_REPOSITORY" --head "$branch" --state open --json number --jq '.[0].number // empty')" ]; then
+            gh pr create --repo "$GITHUB_REPOSITORY" --base main --head "$branch" \
+              --title "Update changelog for Coop $RELEASE_TAG" --body ''
+          fi
