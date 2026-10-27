@@ -1,3 +1,4 @@
+import { ApolloError } from '@apollo/client';
 import {
   fireEvent,
   render,
@@ -222,7 +223,7 @@ describe('PolicyScoresTab', () => {
   it('stops saving at the first failure and keeps the unsaved changes', async () => {
     updatePolicy.mockResolvedValueOnce({
       data: undefined,
-      errors: new Error('failed'),
+      errors: new ApolloError({ errorMessage: 'failed' }),
     });
     render(
       <MemoryRouter>
