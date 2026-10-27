@@ -1,0 +1,36 @@
+docs/integrations/custom.md
+  s_2975393364f2c4::t_37cb4c15c91f5f 78
+  s_2975393364f2c4::t_33b53af319cda5 32-34
+client/src/webpages/dashboard/integrations/IntegrationConfigForm.test.tsx
+  s_2975393364f2c4::t_39303444649f96 277-299
+  s_2975393364f2c4::t_5aabc498caf27a 10
+  s_2975393364f2c4::t_0a1992a35d465e 180-182
+server/routes/integration_logos/serveIntegrationLogo.ts
+  s_2975393364f2c4::t_63cd114f451a50 40-43
+  s_2975393364f2c4::t_965171697f5b6c 1-2
+client/src/webpages/dashboard/integrations/IntegrationConfigForm.tsx
+  s_2975393364f2c4::t_913b87dcd9a1c9 360
+  s_2975393364f2c4::t_738944a76289cd 431
+  s_2975393364f2c4::t_82aaa9160bfb49 352
+  s_2975393364f2c4::t_f77da0c3578b9c 184-192
+  s_2975393364f2c4::t_5b21d8464ca4cd 277-286,289-294
+server/routes/integration_logos/serveIntegrationLogoWithBackground.ts
+  s_2975393364f2c4::t_4fde8b8969ef59 1-2
+  s_2975393364f2c4::t_293cb3a8e65f75 40-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "77d9104f3af4af9a8865c02b6e51065b69a7e28f",
+  "prompts": {},
+  "sessions": {
+    "s_2975393364f2c4": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "d1c75203-cb58-49e2-9c8f-132884e369c1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
