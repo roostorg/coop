@@ -2,7 +2,7 @@
 
 Follow the [ROOST contribution guidelines](https://github.com/roostorg/.github/blob/main/CONTRIBUTING.md). For nontrivial changes, start with an issue and link it in your pull request. Keep changes focused and small enough to review.
 
-See the [development guide](docs/development/README.md) for setup and testing.
+See the [development guide](README.md) for setup and testing.
 
 ## Pull requests and commit messages
 

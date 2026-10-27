@@ -21,6 +21,7 @@
 
 - [Development Guide](development/README.md)
   - [Local Development](development/local.md)
+  - [Contributing](development/contributing.md)
   - [Architecture](development/architecture.md)
   - [API Authentication](development/api-auth.md)
   - [Data Warehouse Abstraction](development/data-warehouse.md)

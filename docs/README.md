@@ -19,6 +19,7 @@ If you're new to the project, we recommend you:
 
 - Read the [Code of Conduct](https://github.com/roostorg/.github/blob/main/CODE_OF_CONDUCT.md) to understand our community standards
 - Review the [Contributing Guidelines](https://github.com/roostorg/.github/blob/main/CONTRIBUTING.md) for all ROOST projects
+- Follow Coop's [pull request and commit message conventions](development/contributing.md#pull-requests-and-commit-messages)
 - Check out the [project board](https://github.com/orgs/roostorg/projects/15) for open issues, milestones, and prioritization
 
 Writing code is not the only way to help the project. Reviewing pull requests, answering questions, providing feedback, organizing and teaching tutorials, and improving the documentation are all priceless contributions.
