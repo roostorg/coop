@@ -3,7 +3,10 @@ import { v1 as uuidv1 } from 'uuid';
 
 import { type Dependencies } from '../iocContainer/index.js';
 import { fromCorrelationId, toCorrelationId } from './correlationIds.js';
-import { makeUnauthenticatedError } from './errors.js';
+import {
+  makeServiceUnavailableError,
+  makeUnauthenticatedError,
+} from './errors.js';
 import { type RequestHandlerWithBodies } from './route-helpers.js';
 
 /**
@@ -13,9 +16,13 @@ export interface RequestWithOrgId {
   orgId: string;
 }
 
+const API_KEY_VALIDATION_RETRY_AFTER_SECONDS = '5';
+
 /**
  * Middleware that validates API key and sets orgId on the request.
- * Returns 401 if API key is invalid or missing.
+ * Returns 401 if API key is invalid or missing, and 503 if the key couldn't be
+ * checked (e.g. the database is unreachable) -- a lookup failure says nothing
+ * about whether the caller's key is valid.
  */
 export function createApiKeyMiddleware<
   ReqBody extends JsonObject = JsonObject,
@@ -23,11 +30,12 @@ export function createApiKeyMiddleware<
     ReadonlyDeep<JsonValue> | undefined,
 >({
   ApiKeyService,
-}: Pick<Dependencies, 'ApiKeyService'>): RequestHandlerWithBodies<
+  Tracer,
+}: Pick<Dependencies, 'ApiKeyService' | 'Tracer'>): RequestHandlerWithBodies<
   ReqBody,
   ResBody
 > {
-  return async (req, _res, next) => {
+  return async (req, res, next) => {
     const providedKey = req.header('x-api-key');
     let orgId: string | null;
 
@@ -36,9 +44,30 @@ export function createApiKeyMiddleware<
         providedKey && !Array.isArray(providedKey)
           ? await ApiKeyService.validateApiKey(providedKey)
           : null;
-    } catch (_error) {
-      // If API key validation throws an error, treat it as invalid
-      orgId = null;
+    } catch (error) {
+      // validateApiKey returns null for an unknown/inactive key and only
+      // throws when the lookup itself failed. The error handler records only
+      // the 503 below on its span, so record the database error here. The
+      // active span belongs to the caller, so its status is left unchanged.
+      if (error instanceof Error) {
+        Tracer.getActiveSpan()?.recordException(error);
+      }
+      const requestId = toCorrelationId({
+        type: 'api-key-validation',
+        id: uuidv1(),
+      });
+      res.setHeader('Retry-After', API_KEY_VALIDATION_RETRY_AFTER_SECONDS);
+      return next(
+        makeServiceUnavailableError('Unable to validate API key', {
+          detail:
+            "Coop couldn't check your API key right now. This is a temporary " +
+            'server-side problem, not a problem with your key; please retry.',
+          requestId: fromCorrelationId(requestId),
+          // Kept for server-side logging; never serialized to the client.
+          cause: error,
+          shouldErrorSpan: true,
+        }),
+      );
     }
 
     if (!orgId) {
