@@ -32,9 +32,9 @@
     "yargs": "^18.0.0"
   },
   "devDependencies": {
-    "@types/node": "^24.0.0",
+    "@types/node": "^24.19.2",
     "@types/yargs": "^17.0.24",
-    "knip": "^6.40.0",
+    "knip": "^6.42.0",
     "typescript": "^6.0.3"
   },
   "publishConfig": {
