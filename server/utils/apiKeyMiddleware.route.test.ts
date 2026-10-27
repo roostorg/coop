@@ -1,3 +1,4 @@
+import { type Span } from '@opentelemetry/api';
 import { uid } from 'uid';
 import { vi } from 'vitest';
 
@@ -26,7 +27,14 @@ describe('API key middleware through the HTTP stack (#676)', () => {
       const validateApiKey = vi
         .spyOn(deps.ApiKeyService, 'validateApiKey')
         .mockRejectedValue(dbError);
-      const logSpanFailed = vi.spyOn(deps.Tracer, 'logActiveSpanFailedIfAny');
+      const activeSpan = {
+        isRecording: () => true,
+        recordException: vi.fn(),
+        setStatus: vi.fn(),
+      };
+      const getActiveSpan = vi
+        .spyOn(deps.Tracer, 'getActiveSpan')
+        .mockReturnValue(activeSpan as unknown as Span);
       try {
         const res = await request
           .post('/api/v1/items/async')
@@ -35,10 +43,11 @@ describe('API key middleware through the HTTP stack (#676)', () => {
         expect(res.status).toBe(503);
         expect(res.headers['retry-after']).toBe('5');
         expect(res.text).not.toContain('ECONNREFUSED');
-        expect(logSpanFailed).toHaveBeenCalledWith(dbError);
+        expect(activeSpan.recordException).toHaveBeenCalledWith(dbError);
+        expect(activeSpan.setStatus).not.toHaveBeenCalled();
       } finally {
         validateApiKey.mockRestore();
-        logSpanFailed.mockRestore();
+        getActiveSpan.mockRestore();
       }
     },
   );

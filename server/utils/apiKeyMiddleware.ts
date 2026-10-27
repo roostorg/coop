@@ -47,8 +47,11 @@ export function createApiKeyMiddleware<
     } catch (error) {
       // validateApiKey returns null for an unknown/inactive key and only
       // throws when the lookup itself failed. The error handler records only
-      // the 503 below on its span, so record the database error here.
-      Tracer.logActiveSpanFailedIfAny(error);
+      // the 503 below on its span, so record the database error here. The
+      // active span belongs to the caller, so its status is left unchanged.
+      if (error instanceof Error) {
+        Tracer.getActiveSpan()?.recordException(error);
+      }
       const requestId = toCorrelationId({
         type: 'api-key-validation',
         id: uuidv1(),
