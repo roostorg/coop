@@ -104,8 +104,7 @@ jobs:
           if [[ -z "$COOP_VERSION" ]]; then
             description=$(git describe --tags --long --abbrev=8 \
               --match '[0-9]*.[0-9]*.[0-9]*' --match 'v[0-9]*.[0-9]*.[0-9]*' \
-              --exclude '*-*' --exclude '*+*') || \
-              description="0.0.0-$(git rev-list --count HEAD)-g$(git rev-parse --short=8 HEAD)"
+              --exclude '*-*' --exclude '*+*')
             IFS=- read -r tag distance hash <<< "$description"
             if [[ "$distance" == '0' ]]; then
               COOP_VERSION="$tag"

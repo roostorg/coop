@@ -72,10 +72,10 @@ it.each([
   ['1.1.1', '1.1.1', false],
   ['2.0.0', '1.99.99', false],
 ])(
-  'reports stable updates to admins: %s → %s',
+  'reports stable updates to admins with the enable flag unset: %s → %s',
   async (current, latest, expected) => {
     vi.stubEnv('COOP_VERSION', current);
-    vi.stubEnv('COOP_UPDATE_NOTIFICATIONS_ENABLED', 'true');
+    vi.stubEnv('COOP_UPDATE_NOTIFICATIONS_ENABLED', undefined);
     const fetchHTTP = vi.fn().mockResolvedValue({
       ok: true,
       body: { ...latestRelease, tag_name: latest },
