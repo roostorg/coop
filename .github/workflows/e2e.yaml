@@ -170,17 +170,9 @@ jobs:
 
       - name: Convert server coverage to lcov
         if: ${{ !cancelled() }}
-        # --all includes server files the E2E suite never loaded, at 0%.
-        run: >
-          server/node_modules/.bin/c8 report
-          --temp-directory server/reports/e2e-v8
-          --reports-dir server/reports/coverage-e2e
-          --reporter=lcov --reporter=text-summary
-          --all --src server/transpiled
-          --include 'server/transpiled/**'
-          --exclude 'server/transpiled/test/**'
-          --exclude 'server/transpiled/e2e/**'
-          --exclude '**/generated.js'
+        # Coverage is informational; missing coverage never fails the E2E job.
+        continue-on-error: true
+        run: cd server && node e2e/v8-coverage-to-lcov.mjs reports/e2e-v8 reports/coverage-e2e
 
       - name: Upload coverage
         if: ${{ !cancelled() }}
