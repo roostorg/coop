@@ -179,6 +179,12 @@ jobs:
               for file in "${CHANGED_FILES[@]}"
               do
                 if [[ "${file}" == ${subdir}* ]]; then
+                  if [[ "$file" == *.seed.staging.sql ]] &&
+                     [[ "$(git diff --name-only --diff-filter=M "$BASE_REF" "$GITHUB_SHA" -- "$file")" == "$file" ]]; then
+                    echo "Allowing staging seed update: $file"
+                    continue
+                  fi
+
                   validate_migration "${file}" "${most_recent_migration_datestamp}"
                 else
                   echo -e "Skipping ${file} because it is not in the ${subdir} directory."
