@@ -3,6 +3,9 @@ import { graphql } from 'graphql/index.js';
 import { vi } from 'vitest';
 
 import { UserPermission } from '../../services/userManagementService/index.js';
+import createOrg from '../../test/fixtureHelpers/createOrg.js';
+import createUser from '../../test/fixtureHelpers/createUser.js';
+import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
 import {
   Mutation as MutationResolvers,
   Query as QueryResolvers,
@@ -64,6 +67,23 @@ describe('apiKey resolvers', () => {
   }
 
   describe('multiple-key management', () => {
+    const testWithOrg = makeTransactionalTestWithFixture(async ({ deps }) => {
+      const { org, apiKey } = await createOrg(deps);
+      const { user } = await createUser(deps.KyselyPg, org.id, {
+        approvedByAdmin: true,
+        loginMethods: ['password'],
+        password: 'Api-key-management-test-password-123!',
+      });
+      const { org: otherOrg } = await createOrg(deps);
+      const foreignKey = await deps.ApiKeyService.createApiKey(
+        otherOrg.id,
+        'Foreign key',
+        null,
+        null,
+      );
+      return { org, apiKey, user, foreignKey };
+    });
+
     const operations = [
       '{ apiKeys { id name isActive } }',
       'mutation { createApiKey(input: { name: "Reports", permissions: ["reports:write"] }) { apiKey record { id permissions } } }',
@@ -86,80 +106,102 @@ describe('apiKey resolvers', () => {
       );
     });
 
-    it('lists metadata and scopes creation and revocation to the authenticated organization', async () => {
-      const record = {
-        id: 'key-2',
-        orgId: 'org-1',
-        keyHash: 'not-public',
-        name: 'Reports',
-        description: null,
-        permissions: ['reports:write'],
-        isActive: true,
-        createdAt: new Date('2026-01-01'),
-        lastUsedAt: null,
-        createdBy: 'user-1',
-      };
-      const { ctx } = makeCtx([UserPermission.MANAGE_ORG]);
-      const service = {
-        getApiKeysForOrg: vi.fn(async () => [record]),
-        createApiKey: vi.fn(async () => ({ apiKey: 'new-secret', record })),
-        deactivateApiKey: vi.fn(async () => true),
-      };
-      const contextValue = { ...ctx, services: { ApiKeyService: service } };
-      const listed = await graphql({
-        schema,
-        source:
-          '{ apiKeys { id name description permissions isActive createdAt lastUsedAt createdBy } }',
-        contextValue,
-      });
-      expect(listed.errors).toBeUndefined();
-      expect(listed.data?.apiKeys).toEqual([
-        {
-          id: 'key-2',
+    testWithOrg(
+      'lists metadata and scopes creation and revocation to the authenticated organization',
+      async ({ deps, request, org, apiKey, user, foreignKey }) => {
+        const login = await request.post('/api/v1/graphql').send({
+          query: `mutation Login($input: LoginInput!) {
+            login(input: $input) { __typename }
+          }`,
+          variables: {
+            input: {
+              email: user.email,
+              password: 'Api-key-management-test-password-123!',
+            },
+          },
+        });
+        expect(login.body.data?.login.__typename).toBe('LoginSuccessResponse');
+
+        const created = await request.post('/api/v1/graphql').send({
+          query: `mutation {
+            createApiKey(input: { name: "Reports", description: "Report ingestion", permissions: ["reports:write"] }) {
+              apiKey
+              record { id name description permissions isActive createdAt lastUsedAt createdBy }
+            }
+          }`,
+        });
+        expect(created.body.errors).toBeUndefined();
+        const { apiKey: secret, record } = created.body.data.createApiKey;
+        expect(record).toEqual({
+          id: expect.any(String),
           name: 'Reports',
-          description: null,
+          description: 'Report ingestion',
           permissions: ['reports:write'],
           isActive: true,
-          createdAt: '2026-01-01T00:00:00.000Z',
+          createdAt: expect.any(String),
           lastUsedAt: null,
-          createdBy: 'user-1',
-        },
-      ]);
-      expect(service.getApiKeysForOrg).toHaveBeenCalledWith('org-1');
-      const created = await graphql({
-        schema,
-        source: operations[1],
-        contextValue,
-      });
-      expect(created.errors).toBeUndefined();
-      expect(created.data?.createApiKey).toEqual({
-        apiKey: 'new-secret',
-        record: { id: 'key-2', permissions: ['reports:write'] },
-      });
-      expect(service.createApiKey).toHaveBeenCalledWith(
-        'org-1',
-        'Reports',
-        null,
-        'user-1',
-        ['reports:write'],
-      );
-      const revoked = await graphql({
-        schema,
-        source: operations[2],
-        contextValue,
-      });
-      expect(revoked.errors).toBeUndefined();
-      expect(revoked.data?.revokeApiKey).toBe(true);
-      expect(service.deactivateApiKey).toHaveBeenCalledWith('key-2', 'org-1');
-      const secret = await graphql({
-        schema,
-        source: '{ apiKeys { keyHash } }',
-        contextValue,
-      });
-      expect(secret.errors?.[0].message).toContain(
-        'Cannot query field "keyHash"',
-      );
-    });
+          createdBy: user.id,
+        });
+        expect(await deps.ApiKeyService.validateApiKey(secret)).toEqual({
+          orgId: org.id,
+          permissions: ['reports:write'],
+        });
+
+        const listed = await request.post('/api/v1/graphql').send({
+          query:
+            '{ apiKeys { id name description permissions isActive createdAt lastUsedAt createdBy } }',
+        });
+        expect(listed.body.errors).toBeUndefined();
+        expect(listed.body.data.apiKeys).toHaveLength(2);
+        expect(listed.body.data.apiKeys).toEqual(
+          expect.arrayContaining([
+            { ...record, lastUsedAt: expect.any(String) },
+          ]),
+        );
+        expect(listed.body.data.apiKeys).not.toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ id: foreignKey.record.id }),
+          ]),
+        );
+
+        const foreignRevocation = await request.post('/api/v1/graphql').send({
+          query: 'mutation Revoke($id: ID!) { revokeApiKey(id: $id) }',
+          variables: { id: foreignKey.record.id },
+        });
+        expect(foreignRevocation.body.errors).toBeUndefined();
+        expect(foreignRevocation.body.data.revokeApiKey).toBe(false);
+        expect(
+          await deps.ApiKeyService.validateApiKey(foreignKey.apiKey),
+        ).toEqual({ orgId: foreignKey.record.orgId, permissions: [] });
+
+        const revoked = await request.post('/api/v1/graphql').send({
+          query: 'mutation Revoke($id: ID!) { revokeApiKey(id: $id) }',
+          variables: { id: record.id },
+        });
+        expect(revoked.body.errors).toBeUndefined();
+        expect(revoked.body.data.revokeApiKey).toBe(true);
+        expect(await deps.ApiKeyService.validateApiKey(secret)).toBeNull();
+        expect(await deps.ApiKeyService.validateApiKey(apiKey)).toEqual(
+          expect.objectContaining({ orgId: org.id }),
+        );
+
+        const stored = await deps.KyselyPg.selectFrom('public.api_keys')
+          .select(['org_id', 'created_by', 'is_active'])
+          .where('id', '=', record.id)
+          .executeTakeFirstOrThrow();
+        expect(stored).toEqual({
+          org_id: org.id,
+          created_by: user.id,
+          is_active: false,
+        });
+        const hiddenHash = await request.post('/api/v1/graphql').send({
+          query: '{ apiKeys { keyHash } }',
+        });
+        expect(hiddenHash.body.errors?.[0].message).toContain(
+          'Cannot query field "keyHash"',
+        );
+      },
+    );
   });
 
   describe('Query.apiKey', () => {
