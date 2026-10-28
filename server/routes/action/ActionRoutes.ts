@@ -24,6 +24,7 @@ const submitActionInputSchema = v.object({
     v.custom<JsonObject>(
       (input) =>
         typeof input === 'object' && input !== null && !Array.isArray(input),
+      'must be object',
     ),
   ),
   note: v.optional(v.pipe(v.string(), v.maxLength(MAX_ACTOR_NOTE_LENGTH))),
