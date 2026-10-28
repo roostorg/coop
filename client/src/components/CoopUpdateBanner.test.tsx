@@ -21,9 +21,12 @@ it('shows admins the persistent release link when an update is available', async
       <CoopUpdateBanner permissions={[GQLUserPermission.ManageOrg]} />
     </MockedProvider>,
   );
-  expect(await screen.findByRole('status')).toHaveTextContent(
-    'A new version of Coop is available.',
+  const status = screen.getByRole('status');
+  expect(status).toBeEmptyDOMElement();
+  await waitFor(() =>
+    expect(status).toHaveTextContent('A new version of Coop is available.'),
   );
+  expect(screen.getByRole('status')).toBe(status);
   expect(screen.getByRole('link', { name: 'Learn more' })).toHaveAttribute(
     'href',
     'https://github.com/roostorg/coop/releases',
@@ -53,7 +56,8 @@ it.each(['up to date', 'unavailable'])(
       </MockedProvider>,
     );
     await waitFor(() => expect(responded).toBe(true));
-    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(screen.getByRole('status')).toBeEmptyDOMElement();
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
   },
 );
 
@@ -70,11 +74,12 @@ it('hides an available update after admin permission is removed', async () => {
       <CoopUpdateBanner permissions={[GQLUserPermission.ManageOrg]} />
     </MockedProvider>,
   );
-  await screen.findByRole('status');
+  await screen.findByRole('link', { name: 'Learn more' });
   rerender(
     <MockedProvider>
       <CoopUpdateBanner permissions={[GQLUserPermission.ViewMrt]} />
     </MockedProvider>,
   );
-  expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  expect(screen.getByRole('status')).toBeEmptyDOMElement();
+  expect(screen.queryByRole('link')).not.toBeInTheDocument();
 });

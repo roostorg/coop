@@ -53,15 +53,15 @@ jobs:
       db: ${{ steps.filter.outputs.db }}
       version: ${{ steps.version.outputs.version }}
     steps:
-      # Reject arbitrary dispatch input so it can't become an image tag like
-      # `coop-server:squirtle`. Passed via env to avoid shell injection.
-      - name: Validate version input
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.version != ''
+      # Validate explicit versions before using them as image tags.
+      # Passed via env to avoid shell injection.
+      - name: Validate version
+        if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.version != '')
         env:
-          VERSION: ${{ github.event.inputs.version }}
+          VERSION: ${{ github.event_name == 'release' && github.event.release.tag_name || github.event.inputs.version }}
         run: |
           if ! printf '%s' "$VERSION" | grep -Eq '^v?[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
-            echo "::error::Invalid version input. Expected semver like 1.2.3, v1.2.3, or 1.2.3-alpha."
+            echo "::error::Invalid version. Expected semver like 1.2.3, v1.2.3, or 1.2.3-alpha."
             exit 1
           fi
 
