@@ -4263,7 +4263,7 @@ export type GQLRotateApiKeyError = GQLError & {
 
 export type GQLRotateApiKeyInput = {
   readonly description?: InputMaybe<Scalars['String']['input']>;
-  readonly id?: InputMaybe<Scalars['ID']['input']>;
+  readonly id: Scalars['ID']['input'];
   readonly name: Scalars['String']['input'];
 };
 

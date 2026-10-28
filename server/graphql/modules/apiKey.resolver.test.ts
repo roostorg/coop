@@ -24,7 +24,7 @@ const Query = QueryResolvers as {
 const Mutation = MutationResolvers as {
   rotateApiKey: (
     parent: unknown,
-    args: { input: { name: string; description?: string | null } },
+    args: { input: { id: string; name: string; description?: string | null } },
     ctx: unknown,
   ) => Promise<unknown>;
   rotateWebhookSigningKey: (
@@ -67,22 +67,36 @@ describe('apiKey resolvers', () => {
   }
 
   describe('multiple-key management', () => {
-    const testWithOrg = makeTransactionalTestWithFixture(async ({ deps }) => {
-      const { org, apiKey } = await createOrg(deps);
-      const { user } = await createUser(deps.KyselyPg, org.id, {
-        approvedByAdmin: true,
-        loginMethods: ['password'],
-        password: 'Api-key-management-test-password-123!',
-      });
-      const { org: otherOrg } = await createOrg(deps);
-      const foreignKey = await deps.ApiKeyService.createApiKey(
-        otherOrg.id,
-        'Foreign key',
-        null,
-        null,
-      );
-      return { org, apiKey, user, foreignKey };
-    });
+    const testWithOrg = makeTransactionalTestWithFixture(
+      async ({ deps, request }) => {
+        const { org, apiKey } = await createOrg(deps);
+        const { user } = await createUser(deps.KyselyPg, org.id, {
+          approvedByAdmin: true,
+          loginMethods: ['password'],
+          password: 'Api-key-management-test-password-123!',
+        });
+        const login = await request.post('/api/v1/graphql').send({
+          query: `mutation Login($input: LoginInput!) {
+          login(input: $input) { __typename }
+        }`,
+          variables: {
+            input: {
+              email: user.email,
+              password: 'Api-key-management-test-password-123!',
+            },
+          },
+        });
+        expect(login.body.data?.login.__typename).toBe('LoginSuccessResponse');
+        const { org: otherOrg } = await createOrg(deps);
+        const foreignKey = await deps.ApiKeyService.createApiKey(
+          otherOrg.id,
+          'Foreign key',
+          null,
+          null,
+        );
+        return { org, apiKey, user, foreignKey };
+      },
+    );
 
     const operations = [
       '{ apiKeys { id name isActive } }',
@@ -109,19 +123,6 @@ describe('apiKey resolvers', () => {
     testWithOrg(
       'lists metadata and scopes creation and revocation to the authenticated organization',
       async ({ deps, request, org, apiKey, user, foreignKey }) => {
-        const login = await request.post('/api/v1/graphql').send({
-          query: `mutation Login($input: LoginInput!) {
-            login(input: $input) { __typename }
-          }`,
-          variables: {
-            input: {
-              email: user.email,
-              password: 'Api-key-management-test-password-123!',
-            },
-          },
-        });
-        expect(login.body.data?.login.__typename).toBe('LoginSuccessResponse');
-
         const created = await request.post('/api/v1/graphql').send({
           query: `mutation {
             createApiKey(input: { name: "Reports", description: "Report ingestion" }) {
@@ -196,6 +197,84 @@ describe('apiKey resolvers', () => {
         );
       },
     );
+
+    testWithOrg(
+      'rotation requires an explicit active key in the authenticated organization and never creates a key',
+      async ({ deps, request, org, apiKey, foreignKey }) => {
+        const [selected] = await deps.ApiKeyService.getApiKeysForOrg(org.id);
+        const other = await deps.ApiKeyService.createApiKey(
+          org.id,
+          'Other',
+          null,
+          null,
+        );
+        const query = `mutation Rotate($input: RotateApiKeyInput!) {
+          rotateApiKey(input: $input) {
+            __typename
+            ... on RotateApiKeySuccessResponse { apiKey record { id } }
+          }
+        }`;
+        for (const input of [
+          { name: 'Rotated' },
+          { name: 'Rotated', id: null },
+        ]) {
+          const response = await request.post('/api/v1/graphql').send({
+            query,
+            variables: { input },
+          });
+          expect(response.body.errors?.[0].message).toContain('ID!');
+        }
+        for (const id of [
+          '00000000-0000-4000-8000-000000000000',
+          foreignKey.record.id,
+        ]) {
+          const response = await request.post('/api/v1/graphql').send({
+            query,
+            variables: { input: { name: 'Rotated', id } },
+          });
+          expect(response.body.errors).toBeUndefined();
+          expect(response.body.data.rotateApiKey.__typename).toBe(
+            'RotateApiKeyError',
+          );
+        }
+        expect(await deps.ApiKeyService.getOrgIdFromActivatedKey(apiKey)).toBe(
+          org.id,
+        );
+        const rotated = await request.post('/api/v1/graphql').send({
+          query,
+          variables: { input: { name: 'Rotated', id: selected.id } },
+        });
+        expect(rotated.body.errors).toBeUndefined();
+        expect(rotated.body.data.rotateApiKey.record.id).toBe(selected.id);
+        expect(
+          await deps.ApiKeyService.getOrgIdFromActivatedKey(apiKey),
+        ).toBeNull();
+        expect(
+          await deps.ApiKeyService.getOrgIdFromActivatedKey(
+            rotated.body.data.rotateApiKey.apiKey,
+          ),
+        ).toBe(org.id);
+        expect(
+          await deps.ApiKeyService.getOrgIdFromActivatedKey(other.apiKey),
+        ).toBe(org.id);
+        expect(
+          await deps.ApiKeyService.getOrgIdFromActivatedKey(foreignKey.apiKey),
+        ).toBe(foreignKey.record.orgId);
+
+        await deps.ApiKeyService.deactivateApiKey(selected.id, org.id);
+        const revoked = await request.post('/api/v1/graphql').send({
+          query,
+          variables: { input: { name: 'Rotated', id: selected.id } },
+        });
+        expect(revoked.body.errors).toBeUndefined();
+        expect(revoked.body.data.rotateApiKey.__typename).toBe(
+          'RotateApiKeyError',
+        );
+        expect(await deps.ApiKeyService.getApiKeysForOrg(org.id)).toHaveLength(
+          2,
+        );
+      },
+    );
   });
 
   describe('Query.apiKey', () => {
@@ -236,7 +315,7 @@ describe('apiKey resolvers', () => {
       await expect(
         Mutation.rotateApiKey(
           {},
-          { input: { name: 'k', description: null } },
+          { input: { id: 'key-2', name: 'k', description: null } },
           unauthenticatedCtx,
         ),
       ).rejects.toThrow('Authenticated user required');
@@ -248,7 +327,7 @@ describe('apiKey resolvers', () => {
       await expect(
         Mutation.rotateApiKey(
           {},
-          { input: { name: 'k', description: null } },
+          { input: { id: 'key-2', name: 'k', description: null } },
           ctx,
         ),
       ).rejects.toThrow('User does not have permission to rotate the API key');
