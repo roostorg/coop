@@ -149,7 +149,7 @@ To include your configuration in a bug report, run the config dump inside a serv
 docker exec <container> node bin/dump-config.js > coop-config.json
 ```
 
-It prints the effective configuration as JSON: every setting the server and workers read, grouped by subsystem, with its value, whether it is `set`, and its `source` (`env`, `default`, or `derived` from other settings). It also lists the enabled integrations and the Node version, and reports the commit from `BUILD_ID`. It opens no database or network connections.
+It prints the effective configuration as JSON: every setting the server and workers read, grouped by subsystem, with its value, whether it is `set`, and its `source` (`env`, `default`, or `derived` from other settings). It also lists the enabled integrations and the Node version, and reports the release version from `server/package.json` and the commit from `BUILD_ID`, or from git when run in a checkout. It opens no database or network connections.
 
 Secrets are replaced with `"[REDACTED]"` (and `"redacted": true`), so you can still see whether they are set. A value is redacted when its name suggests a secret (password, secret, token, key, auth, credential, cert, session, cookie, webhook, and similar) or its contents look like one (a PEM block, JWT, or long random string). Passwords and sensitive query parameters in URLs are masked; the rest of the URL is kept. Environment variables Coop does not read are never included. Per-org settings stored in the database, such as signals, rules, and integration credentials, are not part of the dump.
 

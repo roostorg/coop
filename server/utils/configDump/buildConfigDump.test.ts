@@ -8,6 +8,8 @@ const baseOpts = {
   nodeVersion: 'v24.0.0',
   platform: 'linux-x64',
   integrationPackages: [],
+  appVersion: null,
+  checkoutCommit: null,
 };
 
 describe('buildConfigDump', () => {
@@ -139,6 +141,8 @@ describe('buildConfigDump', () => {
     const dump = buildConfigDump({
       ...baseOpts,
       env: { BUILD_ID: '0123456789abcdef0123456789abcdef01234567' },
+      appVersion: '1.2.0',
+      checkoutCommit: 'fedcba9876543210fedcba9876543210fedcba98',
       integrationPackages: [
         'git+https://deploy-token@github.com/acme/coop-plugin.git',
         '@roostorg/coop-integration-example',
@@ -150,7 +154,7 @@ describe('buildConfigDump', () => {
       generated_at: '2026-10-27T12:00:00.000Z',
       app: {
         name: 'coop',
-        version: null,
+        version: '1.2.0',
         commit: '0123456789abcdef0123456789abcdef01234567',
       },
       runtime: { node: 'v24.0.0', platform: 'linux-x64' },
@@ -168,5 +172,15 @@ describe('buildConfigDump', () => {
         env: { BUILD_ID: 'https://ci:ci-token@ci.example.com/build/7' },
       }).app.commit,
     ).toBe(`https://ci:${REDACTED}@ci.example.com/build/7`);
+  });
+
+  test('falls back to the checkout commit when no commit env var is set', () => {
+    const checkoutCommit = 'fedcba9876543210fedcba9876543210fedcba98';
+    for (const env of [{}, { BUILD_ID: '' }]) {
+      expect(
+        buildConfigDump({ ...baseOpts, env, checkoutCommit }).app.commit,
+      ).toBe(checkoutCommit);
+    }
+    expect(buildConfigDump({ ...baseOpts, env: {} }).app.commit).toBeNull();
   });
 });

@@ -39,9 +39,16 @@ function entry(
   };
 }
 
-function commitFromEnv(env: Env): string | null {
-  const commit = env.BUILD_ID ?? env.GIT_COMMIT_SHA;
-  if (commit === undefined || commit === '') {
+function reportedCommit(
+  env: Env,
+  checkoutCommit: string | null,
+): string | null {
+  // Images built without a BUILD_ID arg have it set to "", so empty counts as
+  // unset.
+  const commit = [env.BUILD_ID, env.GIT_COMMIT_SHA, checkoutCommit].find(
+    (it) => it != null && it !== '',
+  );
+  if (commit == null) {
     return null;
   }
   return /^[0-9a-f]{7,40}$/i.test(commit)
@@ -57,6 +64,10 @@ function commitFromEnv(env: Env): string | null {
 export function buildConfigDump(opts: {
   env: Env;
   now: Date;
+  /** The `version` in server/package.json, set to the release tag at release. */
+  appVersion: string | null;
+  /** HEAD when run from a git checkout; images set BUILD_ID instead. */
+  checkoutCommit: string | null;
   nodeVersion: string;
   platform: string;
   integrationPackages: readonly string[];
@@ -84,7 +95,11 @@ export function buildConfigDump(opts: {
   return {
     schema_version: 1,
     generated_at: opts.now.toISOString(),
-    app: { name: 'coop', version: null, commit: commitFromEnv(env) },
+    app: {
+      name: 'coop',
+      version: opts.appVersion,
+      commit: reportedCommit(env, opts.checkoutCommit),
+    },
     runtime: { node: opts.nodeVersion, platform: opts.platform },
     plugins: opts.integrationPackages
       .map((it) => redactConfigValue('package', it).value)
