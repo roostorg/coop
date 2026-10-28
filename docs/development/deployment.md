@@ -3,7 +3,7 @@
 Get Coop running on your own infrastructure. You may also be interested in the [Docker images](docker.md) and [architecture information](architecture.md).
 
 > [!IMPORTANT]
-> Use `--env prod` for production migrations. This initializes required operational data without loading staging sample organizations or default-password users.
+> Use `--env prod` for production migrations. This initializes required operational data without loading staging sample data.
 
 ## Self-hosting checklist
 

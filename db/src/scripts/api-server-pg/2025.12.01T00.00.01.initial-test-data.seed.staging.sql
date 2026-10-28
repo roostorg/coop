@@ -422,13 +422,6 @@ INSERT INTO public.rules_history VALUES ('9800eb88a94', 'Delete Holocaust Denial
 
 
 --
--- Data for Name: view_maintenance_metadata; Type: TABLE DATA; Schema: public; Owner: postgres
---
-
-INSERT INTO public.view_maintenance_metadata VALUES ('manual_review_tool.dim_mrt_decisions_materialized', '-infinity');
-
-
---
 -- Data for Name: reporting_rule_history; Type: TABLE DATA; Schema: reporting_rules; Owner: postgres
 --
 
