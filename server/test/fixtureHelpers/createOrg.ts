@@ -6,6 +6,7 @@ import {
   kyselyOrgInsert,
 } from '../../graphql/datasources/orgKyselyPersistence.js';
 import { type Dependencies } from '../../iocContainer/index.js';
+import { LEGACY_API_KEY_PERMISSIONS } from '../../services/apiKeyService/index.js';
 import { logErrorAndThrow } from '../utils.js';
 
 export default async function createOrg(
@@ -34,6 +35,7 @@ export default async function createOrg(
     `Dummy_Company_Name_${orgId}_Key`,
     null,
     null,
+    LEGACY_API_KEY_PERMISSIONS,
   ).catch(logErrorAndThrow);
 
   const defaultUserItemType =

@@ -100,7 +100,9 @@ export default {
         },
       },
       (deps) => [
-        createApiKeyMiddleware<ReportItemInput, ReportItemOutput>(deps),
+        createApiKeyMiddleware<ReportItemInput, ReportItemOutput>(deps, [
+          'reports:write',
+        ]),
         submitReport(deps),
       ],
     ),
@@ -153,7 +155,9 @@ export default {
         },
       },
       (deps) => [
-        createApiKeyMiddleware<AppealItemInput, AppealItemOutput>(deps),
+        createApiKeyMiddleware<AppealItemInput, AppealItemOutput>(deps, [
+          'appeals:write',
+        ]),
         submitAppeal(deps),
       ],
     ),

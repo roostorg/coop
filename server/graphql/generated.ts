@@ -387,6 +387,7 @@ export type GQLApiKey = {
   readonly isActive: Scalars['Boolean']['output'];
   readonly lastUsedAt?: Maybe<Scalars['String']['output']>;
   readonly name: Scalars['String']['output'];
+  readonly permissions: ReadonlyArray<Scalars['String']['output']>;
 };
 
 export const GQLAppealDecision = {
@@ -795,6 +796,7 @@ export type GQLCreateActionInput = {
 export type GQLCreateApiKeyInput = {
   readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly name: Scalars['String']['input'];
+  readonly permissions: ReadonlyArray<Scalars['String']['input']>;
 };
 
 export type GQLCreateApiKeySuccessResponse = {
@@ -7884,6 +7886,11 @@ export type GQLApiKeyResolvers<
     ContextType
   >;
   name?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  permissions?: Resolver<
+    ReadonlyArray<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
 };
 
 export type GQLAppealEnqueueSourceInfoResolvers<

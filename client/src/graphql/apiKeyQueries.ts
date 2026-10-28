@@ -6,6 +6,7 @@ export const API_KEYS_QUERY = gql`
       id
       name
       description
+      permissions
       isActive
       createdAt
       lastUsedAt
@@ -52,6 +53,7 @@ export const ROTATE_API_KEY_MUTATION = gql`
           id
           name
           description
+          permissions
           isActive
           createdAt
           lastUsedAt

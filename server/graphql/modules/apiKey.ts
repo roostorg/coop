@@ -14,6 +14,7 @@ const typeDefs = /* GraphQL */ `
     id: ID!
     name: String!
     description: String
+    permissions: [String!]!
     isActive: Boolean!
     createdAt: String!
     lastUsedAt: String
@@ -45,6 +46,7 @@ const typeDefs = /* GraphQL */ `
   input CreateApiKeyInput {
     name: String!
     description: String
+    permissions: [String!]!
   }
 
   type CreateApiKeySuccessResponse {
@@ -87,6 +89,7 @@ function serializeApiKey(record: ApiKeyRecord) {
     id: record.id,
     name: record.name,
     description: record.description,
+    permissions: record.permissions,
     isActive: record.isActive,
     createdAt: record.createdAt.toISOString(),
     lastUsedAt: record.lastUsedAt?.toISOString() ?? null,
@@ -144,6 +147,7 @@ const Mutation: GQLMutationResolvers = {
         input.name,
         input.description ?? null,
         user.id,
+        input.permissions,
       );
     return {
       apiKey,

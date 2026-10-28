@@ -66,7 +66,7 @@ describe('apiKey resolvers', () => {
   describe('multiple-key management', () => {
     const operations = [
       '{ apiKeys { id name isActive } }',
-      'mutation { createApiKey(input: { name: "Reports" }) { apiKey record { id } } }',
+      'mutation { createApiKey(input: { name: "Reports", permissions: ["reports:write"] }) { apiKey record { id permissions } } }',
       'mutation { revokeApiKey(id: "key-2") }',
     ];
 
@@ -93,6 +93,7 @@ describe('apiKey resolvers', () => {
         keyHash: 'not-public',
         name: 'Reports',
         description: null,
+        permissions: ['reports:write'],
         isActive: true,
         createdAt: new Date('2026-01-01'),
         lastUsedAt: null,
@@ -108,7 +109,7 @@ describe('apiKey resolvers', () => {
       const listed = await graphql({
         schema,
         source:
-          '{ apiKeys { id name description isActive createdAt lastUsedAt createdBy } }',
+          '{ apiKeys { id name description permissions isActive createdAt lastUsedAt createdBy } }',
         contextValue,
       });
       expect(listed.errors).toBeUndefined();
@@ -117,6 +118,7 @@ describe('apiKey resolvers', () => {
           id: 'key-2',
           name: 'Reports',
           description: null,
+          permissions: ['reports:write'],
           isActive: true,
           createdAt: '2026-01-01T00:00:00.000Z',
           lastUsedAt: null,
@@ -132,13 +134,14 @@ describe('apiKey resolvers', () => {
       expect(created.errors).toBeUndefined();
       expect(created.data?.createApiKey).toEqual({
         apiKey: 'new-secret',
-        record: { id: 'key-2' },
+        record: { id: 'key-2', permissions: ['reports:write'] },
       });
       expect(service.createApiKey).toHaveBeenCalledWith(
         'org-1',
         'Reports',
         null,
         'user-1',
+        ['reports:write'],
       );
       const revoked = await graphql({
         schema,
