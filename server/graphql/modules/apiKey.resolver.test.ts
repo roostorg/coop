@@ -307,7 +307,7 @@ describe('apiKey resolvers', () => {
 
     const operations = [
       '{ apiKeys { id name } }',
-      'mutation { createApiKey(input: { name: "Reports" }) { __typename } }',
+      'mutation { createApiKey(input: { permissions: [], name: "Reports" }) { __typename } }',
       'mutation { deleteApiKey(id: "key-2") { __typename } }',
       'mutation { updateApiKey(input: { id: "key-2", name: "Renamed" }) { __typename } }',
     ];
@@ -332,7 +332,7 @@ describe('apiKey resolvers', () => {
       'creates, edits, and deletes only keys in the authenticated organization',
       async ({ deps, execute, org, apiKey, user, foreignKey }) => {
         const created = await execute(`mutation {
-            createApiKey(input: { name: "Reports", description: "Report ingestion" }) {
+            createApiKey(input: { permissions: [], name: "Reports", description: "Report ingestion" }) {
               ... on CreateApiKeySuccessResponse {
                 apiKey
                 record { id name description isActive createdAt lastUsedAt createdBy }

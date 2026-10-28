@@ -31,6 +31,7 @@ describe('ApiKeyManagement', () => {
                       id: 'key-1',
                       name: 'Reports',
                       description: null,
+                      permissions: [],
                       createdAt: '2026-01-01T00:00:00Z',
                       lastUsedAt: null,
                     },
@@ -41,7 +42,7 @@ describe('ApiKeyManagement', () => {
             {
               request: {
                 query: GQLCreateApiKeyDocument,
-                variables: { input: { name: 'Reports', description: null } },
+                variables: { input: { name: 'Reports', description: null, permissions: [] } },
               },
               result: {
                 data: {

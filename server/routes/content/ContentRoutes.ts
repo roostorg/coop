@@ -68,7 +68,13 @@ export default {
         createApiKeyMiddleware<
           EvaluateContentInputCamelCase,
           EvaluateContentOutput
-        >(deps),
+        >(deps, (req) =>
+          new URL(req.originalUrl, 'http://example.com/').searchParams.has(
+            'includeDerivedField',
+          )
+            ? ['items:write', 'items:read']
+            : ['items:write'],
+        ),
         submitContent(deps),
       ],
     ),

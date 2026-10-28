@@ -1,9 +1,11 @@
+import { type Request } from 'express';
 import { type JsonObject, type JsonValue, type ReadonlyDeep } from 'type-fest';
 import { v1 as uuidv1 } from 'uuid';
 
 import { type Dependencies } from '../iocContainer/index.js';
+import { type ApiKeyPermission } from '../services/apiKeyService/index.js';
 import { fromCorrelationId, toCorrelationId } from './correlationIds.js';
-import { makeUnauthenticatedError } from './errors.js';
+import { makeUnauthenticatedError, makeUnauthorizedError } from './errors.js';
 import { type RequestHandlerWithBodies } from './route-helpers.js';
 
 /**
@@ -15,33 +17,33 @@ export interface RequestWithOrgId {
 
 /**
  * Middleware that validates API key and sets orgId on the request.
- * Returns 401 if API key is invalid or missing.
+ * Returns 401 for invalid keys and 403 for missing permissions.
  */
 export function createApiKeyMiddleware<
   ReqBody extends JsonObject = JsonObject,
   ResBody extends ReadonlyDeep<JsonValue> | undefined =
     ReadonlyDeep<JsonValue> | undefined,
->({
-  ApiKeyService,
-}: Pick<Dependencies, 'ApiKeyService'>): RequestHandlerWithBodies<
-  ReqBody,
-  ResBody
-> {
+>(
+  { ApiKeyService }: Pick<Dependencies, 'ApiKeyService'>,
+  requiredPermissions:
+    | readonly ApiKeyPermission[]
+    | ((req: Pick<Request, 'originalUrl'>) => readonly ApiKeyPermission[]),
+): RequestHandlerWithBodies<ReqBody, ResBody> {
   return async (req, _res, next) => {
     const providedKey = req.header('x-api-key');
-    let orgId: string | null;
+    let key: Awaited<ReturnType<typeof ApiKeyService.validateApiKey>>;
 
     try {
-      orgId =
+      key =
         providedKey && !Array.isArray(providedKey)
           ? await ApiKeyService.validateApiKey(providedKey)
           : null;
     } catch (_error) {
       // If API key validation throws an error, treat it as invalid
-      orgId = null;
+      key = null;
     }
 
-    if (!orgId) {
+    if (!key) {
       const requestId = toCorrelationId({
         type: 'api-key-validation',
         id: uuidv1(),
@@ -58,8 +60,21 @@ export function createApiKeyMiddleware<
       );
     }
 
+    const required =
+      typeof requiredPermissions === 'function'
+        ? requiredPermissions(req)
+        : requiredPermissions;
+    if (required.some((permission) => !key.permissions.includes(permission))) {
+      return next(
+        makeUnauthorizedError('API key lacks required permissions', {
+          detail: `Required permissions: ${required.join(', ')}`,
+          shouldErrorSpan: true,
+        }),
+      );
+    }
+
     // Store orgId on the request for use by route handlers
-    (req as unknown as RequestWithOrgId).orgId = orgId;
+    (req as unknown as RequestWithOrgId).orgId = key.orgId;
     next();
   };
 }
