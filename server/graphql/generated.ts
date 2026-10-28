@@ -393,7 +393,6 @@ export type GQLApiKey = {
   readonly createdBy?: Maybe<Scalars['String']['output']>;
   readonly description?: Maybe<Scalars['String']['output']>;
   readonly id: Scalars['ID']['output'];
-  readonly isActive: Scalars['Boolean']['output'];
   readonly lastUsedAt?: Maybe<Scalars['String']['output']>;
   readonly name: Scalars['String']['output'];
 };
@@ -2761,6 +2760,7 @@ export type GQLMutation = {
   readonly createUserRule: GQLCreateUserRuleResponse;
   readonly deleteAction?: Maybe<Scalars['Boolean']['output']>;
   readonly deleteAllJobsFromQueue: GQLDeleteAllJobsFromQueueResponse;
+  readonly deleteApiKey: Scalars['Boolean']['output'];
   readonly deleteHashBank: Scalars['Boolean']['output'];
   readonly deleteInvite?: Maybe<Scalars['Boolean']['output']>;
   readonly deleteItemType: GQLDeleteItemTypeResponse;
@@ -2801,7 +2801,6 @@ export type GQLMutation = {
    * successful submission, or an error with a user-safe summary on failure.
    */
   readonly retryNcmecSubmission: GQLRetryNcmecSubmissionResponse;
-  readonly revokeApiKey: Scalars['Boolean']['output'];
   readonly rotateApiKey: GQLRotateApiKeyResponse;
   readonly rotateWebhookSigningKey: GQLRotateWebhookSigningKeyResponse;
   readonly runRetroaction?: Maybe<GQLRunRetroactionResponse>;
@@ -2818,6 +2817,7 @@ export type GQLMutation = {
   readonly updateAccountInfo?: Maybe<Scalars['Boolean']['output']>;
   readonly updateAction: GQLMutateActionResponse;
   readonly updateAllowMultiplePoliciesPerAction: Scalars['Boolean']['output'];
+  readonly updateApiKey?: Maybe<GQLApiKey>;
   readonly updateAppealSettings: GQLAppealSettings;
   readonly updateContentItemType: GQLMutateContentItemTypeResponse;
   readonly updateContentRule: GQLUpdateContentRuleResponse;
@@ -2948,6 +2948,10 @@ export type GQLMutationDeleteAllJobsFromQueueArgs = {
   queueId: Scalars['ID']['input'];
 };
 
+export type GQLMutationDeleteApiKeyArgs = {
+  id: Scalars['ID']['input'];
+};
+
 export type GQLMutationDeleteHashBankArgs = {
   id: Scalars['ID']['input'];
 };
@@ -3056,10 +3060,6 @@ export type GQLMutationRetryNcmecSubmissionArgs = {
   decisionId: Scalars['ID']['input'];
 };
 
-export type GQLMutationRevokeApiKeyArgs = {
-  id: Scalars['ID']['input'];
-};
-
 export type GQLMutationRotateApiKeyArgs = {
   input: GQLRotateApiKeyInput;
 };
@@ -3119,6 +3119,10 @@ export type GQLMutationUpdateActionArgs = {
 
 export type GQLMutationUpdateAllowMultiplePoliciesPerActionArgs = {
   enabled: Scalars['Boolean']['input'];
+};
+
+export type GQLMutationUpdateApiKeyArgs = {
+  input: GQLUpdateApiKeyInput;
 };
 
 export type GQLMutationUpdateAppealSettingsArgs = {
@@ -5129,6 +5133,12 @@ export type GQLUpdateActionInput = {
   readonly parameters?: InputMaybe<ReadonlyArray<GQLActionParameterInput>>;
 };
 
+export type GQLUpdateApiKeyInput = {
+  readonly description?: InputMaybe<Scalars['String']['input']>;
+  readonly id: Scalars['ID']['input'];
+  readonly name: Scalars['String']['input'];
+};
+
 export type GQLUpdateContentItemTypeInput = {
   readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly fieldRoles?: InputMaybe<GQLContentSchemaFieldRolesInput>;
@@ -6901,6 +6911,7 @@ export type GQLResolversTypes = {
   TransformJobAndRecreateInQueue: GQLTransformJobAndRecreateInQueue;
   TransformJobAndRecreateInQueueDecisionComponent: ResolverTypeWrapper<GQLTransformJobAndRecreateInQueueDecisionComponent>;
   UpdateActionInput: GQLUpdateActionInput;
+  UpdateApiKeyInput: GQLUpdateApiKeyInput;
   UpdateContentItemTypeInput: GQLUpdateContentItemTypeInput;
   UpdateContentRuleInput: GQLUpdateContentRuleInput;
   UpdateContentRuleResponse: ResolverTypeWrapper<
@@ -7591,6 +7602,7 @@ export type GQLResolversParentTypes = {
   TransformJobAndRecreateInQueue: GQLTransformJobAndRecreateInQueue;
   TransformJobAndRecreateInQueueDecisionComponent: GQLTransformJobAndRecreateInQueueDecisionComponent;
   UpdateActionInput: GQLUpdateActionInput;
+  UpdateApiKeyInput: GQLUpdateApiKeyInput;
   UpdateContentItemTypeInput: GQLUpdateContentItemTypeInput;
   UpdateContentRuleInput: GQLUpdateContentRuleInput;
   UpdateContentRuleResponse: GQLResolversUnionTypes<GQLResolversParentTypes>['UpdateContentRuleResponse'];
@@ -8054,7 +8066,6 @@ export type GQLApiKeyResolvers<
     ContextType
   >;
   id?: Resolver<GQLResolversTypes['ID'], ParentType, ContextType>;
-  isActive?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
   lastUsedAt?: Resolver<
     Maybe<GQLResolversTypes['String']>,
     ParentType,
@@ -11818,6 +11829,12 @@ export type GQLMutationResolvers<
     ContextType,
     RequireFields<GQLMutationDeleteAllJobsFromQueueArgs, 'queueId'>
   >;
+  deleteApiKey?: Resolver<
+    GQLResolversTypes['Boolean'],
+    ParentType,
+    ContextType,
+    RequireFields<GQLMutationDeleteApiKeyArgs, 'id'>
+  >;
   deleteHashBank?: Resolver<
     GQLResolversTypes['Boolean'],
     ParentType,
@@ -11985,12 +12002,6 @@ export type GQLMutationResolvers<
     ContextType,
     RequireFields<GQLMutationRetryNcmecSubmissionArgs, 'decisionId'>
   >;
-  revokeApiKey?: Resolver<
-    GQLResolversTypes['Boolean'],
-    ParentType,
-    ContextType,
-    RequireFields<GQLMutationRevokeApiKeyArgs, 'id'>
-  >;
   rotateApiKey?: Resolver<
     GQLResolversTypes['RotateApiKeyResponse'],
     ParentType,
@@ -12097,6 +12108,12 @@ export type GQLMutationResolvers<
       GQLMutationUpdateAllowMultiplePoliciesPerActionArgs,
       'enabled'
     >
+  >;
+  updateApiKey?: Resolver<
+    Maybe<GQLResolversTypes['ApiKey']>,
+    ParentType,
+    ContextType,
+    RequireFields<GQLMutationUpdateApiKeyArgs, 'input'>
   >;
   updateAppealSettings?: Resolver<
     GQLResolversTypes['AppealSettings'],

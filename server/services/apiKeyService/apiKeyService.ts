@@ -23,7 +23,6 @@ export interface ApiKeyRecord {
   keyHash: string;
   name: string;
   description: string | null;
-  isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
   lastUsedAt: Date | null;
@@ -108,6 +107,24 @@ class ApiKeyService {
     return { apiKey, record: this.mapDbRecordToApiKeyRecord(result) };
   }
 
+  async updateApiKey(
+    keyId: string,
+    orgId: string,
+    name: string,
+    description: string | null,
+  ): Promise<ApiKeyRecord | null> {
+    const result = await this.db
+      .updateTable('public.api_keys')
+      .set({ name, description })
+      .where('id', '=', keyId)
+      .where('org_id', '=', orgId)
+      .where('is_active', '=', true)
+      .returningAll()
+      .executeTakeFirst();
+
+    return result ? this.mapDbRecordToApiKeyRecord(result) : null;
+  }
+
   /**
    * Gets the active API key for an organization
    */
@@ -126,13 +143,14 @@ class ApiKeyService {
   }
 
   /**
-   * Gets all API keys for an organization
+   * Gets the organization's usable API keys.
    */
   async getApiKeysForOrg(orgId: string): Promise<ApiKeyRecord[]> {
     const results = await this.db
       .selectFrom('public.api_keys')
       .selectAll()
       .where('org_id', '=', orgId)
+      .where('is_active', '=', true)
       .orderBy('created_at', 'desc')
       .execute();
 
@@ -167,21 +185,6 @@ class ApiKeyService {
   }
 
   /**
-   * Deactivates a specific API key
-   */
-  async deactivateApiKey(keyId: string, orgId: string): Promise<boolean> {
-    const result = await this.db
-      .updateTable('public.api_keys')
-      .set({ is_active: false })
-      .where('id', '=', keyId)
-      .where('org_id', '=', orgId)
-      .where('is_active', '=', true)
-      .executeTakeFirst();
-
-    return result.numUpdatedRows > 0n;
-  }
-
-  /**
    * Deletes a specific API key
    */
   async deleteApiKey(keyId: string, orgId: string): Promise<boolean> {
@@ -189,9 +192,9 @@ class ApiKeyService {
       .deleteFrom('public.api_keys')
       .where('id', '=', keyId)
       .where('org_id', '=', orgId)
-      .execute();
+      .executeTakeFirst();
 
-    return result.length > 0;
+    return result.numDeletedRows > 0n;
   }
   /**
    * Gets the org ID from an activated API key
@@ -220,7 +223,6 @@ class ApiKeyService {
       keyHash: record.key_hash,
       name: record.name,
       description: record.description,
-      isActive: record.is_active,
       createdAt: record.created_at,
       updatedAt: record.updated_at,
       lastUsedAt: record.last_used_at,

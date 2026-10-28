@@ -92,9 +92,10 @@ describe('apiKey resolvers', () => {
     });
 
     const operations = [
-      '{ apiKeys { id name isActive } }',
+      '{ apiKeys { id name } }',
       'mutation { createApiKey(input: { name: "Reports" }) { apiKey record { id } } }',
-      'mutation { revokeApiKey(id: "key-2") }',
+      'mutation { deleteApiKey(id: "key-2") }',
+      'mutation { updateApiKey(input: { id: "key-2", name: "Renamed" }) { id } }',
     ];
 
     it.each(operations)('requires an administrator for %s', async (source) => {
@@ -114,12 +115,12 @@ describe('apiKey resolvers', () => {
     });
 
     testWithOrg(
-      'lists metadata and scopes creation and revocation to the authenticated organization',
+      'creates, edits, and deletes only keys in the authenticated organization',
       async ({ deps, execute, org, apiKey, user, foreignKey }) => {
         const created = await execute(`mutation {
             createApiKey(input: { name: "Reports", description: "Report ingestion" }) {
               apiKey
-              record { id name description isActive createdAt lastUsedAt createdBy }
+              record { id name description createdAt lastUsedAt createdBy }
             }
           }`);
         expect(created.errors).toBeUndefined();
@@ -129,7 +130,6 @@ describe('apiKey resolvers', () => {
           id: expect.any(String),
           name: 'Reports',
           description: 'Report ingestion',
-          isActive: true,
           createdAt: expect.any(String),
           lastUsedAt: null,
           createdBy: user.id,
@@ -137,7 +137,7 @@ describe('apiKey resolvers', () => {
         expect(await deps.ApiKeyService.validateApiKey(secret)).toBe(org.id);
 
         const listed = await execute(
-          '{ apiKeys { id name description isActive createdAt lastUsedAt createdBy } }',
+          '{ apiKeys { id name description createdAt lastUsedAt createdBy } }',
         );
         expect(listed.errors).toBeUndefined();
         expect(listed.data!.apiKeys).toHaveLength(2);
@@ -152,38 +152,87 @@ describe('apiKey resolvers', () => {
           ]),
         );
 
-        const foreignRevocation = await execute(
-          'mutation Revoke($id: ID!) { revokeApiKey(id: $id) }',
+        const update = `mutation Update($id: ID!) {
+          updateApiKey(input: { id: $id, name: "Renamed reports", description: null }) {
+            id name description createdAt lastUsedAt createdBy
+          }
+        }`;
+        const edited = await execute(update, { id: record.id });
+        expect(edited.errors).toBeUndefined();
+        expect(edited.data!.updateApiKey).toEqual({
+          ...record,
+          name: 'Renamed reports',
+          description: null,
+          lastUsedAt: expect.any(String),
+        });
+        expect(await deps.ApiKeyService.getOrgIdFromActivatedKey(secret)).toBe(
+          org.id,
+        );
+        const foreignEdit = await execute(update, { id: foreignKey.record.id });
+        expect(foreignEdit.errors).toBeUndefined();
+        expect(foreignEdit.data!.updateApiKey).toBeNull();
+
+        const foreignDeletion = await execute(
+          'mutation Delete($id: ID!) { deleteApiKey(id: $id) }',
           { id: foreignKey.record.id },
         );
-        expect(foreignRevocation.errors).toBeUndefined();
-        expect(foreignRevocation.data!.revokeApiKey).toBe(false);
+        expect(foreignDeletion.errors).toBeUndefined();
+        expect(foreignDeletion.data!.deleteApiKey).toBe(false);
         expect(await deps.ApiKeyService.validateApiKey(foreignKey.apiKey)).toBe(
           foreignKey.record.orgId,
         );
 
-        const revoked = await execute(
-          'mutation Revoke($id: ID!) { revokeApiKey(id: $id) }',
+        const deleted = await execute(
+          'mutation Delete($id: ID!) { deleteApiKey(id: $id) }',
           { id: record.id },
         );
-        expect(revoked.errors).toBeUndefined();
-        expect(revoked.data!.revokeApiKey).toBe(true);
+        expect(deleted.errors).toBeUndefined();
+        expect(deleted.data!.deleteApiKey).toBe(true);
         expect(await deps.ApiKeyService.validateApiKey(secret)).toBeNull();
         expect(await deps.ApiKeyService.validateApiKey(apiKey)).toBe(org.id);
 
         const stored = await deps.KyselyPg.selectFrom('public.api_keys')
-          .select(['org_id', 'created_by', 'is_active'])
+          .select('id')
           .where('id', '=', record.id)
-          .executeTakeFirstOrThrow();
-        expect(stored).toEqual({
-          org_id: org.id,
-          created_by: user.id,
-          is_active: false,
-        });
+          .executeTakeFirst();
+        expect(stored).toBeUndefined();
+        const deletedAgain = await execute(
+          'mutation Delete($id: ID!) { deleteApiKey(id: $id) }',
+          { id: record.id },
+        );
+        expect(deletedAgain.errors).toBeUndefined();
+        expect(deletedAgain.data!.deleteApiKey).toBe(false);
         const hiddenHash = await execute('{ apiKeys { keyHash } }');
         expect(hiddenHash.errors?.[0].message).toContain(
           'Cannot query field "keyHash"',
         );
+      },
+    );
+
+    testWithOrg(
+      'excludes inactive database keys from management and authentication',
+      async ({ deps, org, execute }) => {
+        const { apiKey, record } = await deps.ApiKeyService.createApiKey(
+          org.id,
+          'Inactive key',
+          null,
+          null,
+        );
+        await deps.KyselyPg.updateTable('public.api_keys')
+          .set({ is_active: false })
+          .where('id', '=', record.id)
+          .execute();
+
+        const listed = await execute('{ apiKeys { id } }');
+        expect(listed.errors).toBeUndefined();
+        expect(listed.data!.apiKeys).not.toContainEqual({ id: record.id });
+        const edited = await execute(
+          'mutation Edit($id: ID!) { updateApiKey(input: { id: $id, name: "Renamed" }) { id } }',
+          { id: record.id },
+        );
+        expect(edited.errors).toBeUndefined();
+        expect(edited.data!.updateApiKey).toBeNull();
+        expect(await deps.ApiKeyService.validateApiKey(apiKey)).toBeNull();
       },
     );
   });
