@@ -40,7 +40,7 @@
             const path_to_root = "../";
             const default_light_theme = "roost";
             const default_dark_theme = "roost";
-            window.path_to_searchindex_js = "../searchindex-ad38c9fe.js";
+            window.path_to_searchindex_js = "../searchindex-5e48c212.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-6e080ddd.js"></script>
@@ -214,6 +214,57 @@
 <p><strong>Use it</strong> in the UI: the integration appears on the integrations page, orgs can set config, and if the plugin provides signals, they appear in the rule builder like built-in signals.</p>
 </li>
 </ol>
+<h2 id="configuration-form-configurationfields"><a class="header" href="#configuration-form-configurationfields">Configuration form (<code>configurationFields</code>)</a></h2>
+<p>Declare <code>configurationFields</code> on the manifest and Coop renders them as the
+integration’s configuration form. Each organization’s values are saved with
+its integration config. Your plugin reads them with
+<code>context.getCredential(orgId)</code>, where <code>context</code> is the <code>PluginSignalContext</code>
+passed to <code>createSignals</code>.</p>
+<pre><code class="language-ts">const manifest: IntegrationManifest = {
+  // ...
+  requiresConfig: true,
+  configurationFields: [
+    { key: 'apiKey', label: 'API key', required: true, inputType: 'password' },
+    {
+      key: 'baseUrl',
+      label: 'API base URL',
+      required: false,
+      inputType: 'text',
+      placeholder: 'https://api.example.com',
+    },
+    {
+      key: 'region',
+      label: 'Region',
+      required: true,
+      inputType: 'select',
+      options: [
+        { value: 'us', label: 'United States' },
+        { value: 'eu', label: 'European Union' },
+      ],
+    },
+  ],
+};
+</code></pre>
+<ul>
+<li><code>inputType</code> is <code>text</code>, <code>password</code>, <code>json</code>, <code>array</code>, or <code>select</code>. A <code>select</code>
+field needs between 1 and 100 <code>options</code>; each option needs a unique,
+non-empty <code>value</code> and a non-empty <code>label</code> of up to 200 characters. The saved
+value is the chosen <code>option.value</code>.</li>
+<li><code>json</code> fields are edited as text and saved as the parsed JSON value; invalid
+JSON blocks saving. <code>array</code> fields are saved as a list of strings.</li>
+<li>Keys must start with a letter and contain only letters, digits, and
+underscores (up to 64 characters). <code>name</code> and built-in object property
+names such as <code>constructor</code> are reserved. A manifest can declare up to 50
+fields.
+Labels are limited to 200 characters, placeholders to 500, and descriptions
+to 2,000.</li>
+<li>Coop rejects a plugin with an invalid field when it loads, so mistakes show
+up at startup rather than in the form.</li>
+<li>Required fields must be filled before saving. Optional fields left blank are
+not saved, so they are absent from the saved config.</li>
+<li>Plugins without <code>configurationFields</code> keep the generic key/value form.</li>
+</ul>
+<p>Configuration fields require <code>@roostorg/coop-types &gt;= 3.0.0</code>.</p>
 
                     </main>
 
