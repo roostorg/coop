@@ -1,3 +1,4 @@
+import { type JsonObject } from 'type-fest';
 import * as v from 'valibot';
 
 import {
@@ -22,33 +23,51 @@ const rawItemBodySchema = rawItemSubmissionSchema as v.GenericSchema<
 >;
 const reportItemInputSchema = v.object({
   reporter: v.object({
-    kind: v.literal('user'),
+    kind: v.pipe(v.literal('user'), v.metadata({ jsonSchemaType: 'string' })),
     typeId: v.string(),
     id: v.string(),
   }),
   reportedAt: v.string(),
   reportedForReason: v.optional(
-    v.object({
-      policyId: v.optional(v.nullable(v.string())),
-      reason: v.optional(v.nullable(v.string())),
-      csam: v.optional(v.nullable(v.boolean())),
-    }),
+    v.pipe(
+      v.custom<JsonObject>(
+        (input) =>
+          typeof input === 'object' && input !== null && !Array.isArray(input),
+        'must be object',
+      ),
+      v.object({
+        policyId: v.optional(v.nullable(v.string())),
+        reason: v.optional(v.nullable(v.string())),
+        csam: v.optional(v.nullable(v.boolean())),
+      }),
+    ),
   ),
   reportedItem: rawItemBodySchema,
   reportedItemThread: v.optional(v.array(rawItemBodySchema)),
   reportedItemsInThread: v.optional(v.array(itemIdentifierSchema)),
   additionalItems: v.optional(v.array(rawItemBodySchema)),
 });
-const appealItemInputSchema = v.object({
-  appealId: v.string(),
-  appealedBy: v.object({ typeId: v.string(), id: v.string() }),
-  appealedAt: v.string(),
-  actionedItem: rawItemBodySchema,
-  additionalItems: v.optional(v.array(rawItemBodySchema)),
-  actionsTaken: v.array(v.string()),
-  appealReason: v.optional(v.string()),
-  violatingPolicies: v.optional(v.array(v.object({ id: v.string() }))),
-});
+const appealItemInputSchema = v.pipe(
+  v.object({
+    appealId: v.string(),
+    appealedBy: v.object({ typeId: v.string(), id: v.string() }),
+    appealedAt: v.string(),
+    actionedItem: rawItemBodySchema,
+    additionalItems: v.optional(v.array(rawItemBodySchema)),
+    actionsTaken: v.array(v.string()),
+    appealReason: v.optional(v.string()),
+    violatingPolicies: v.optional(v.array(v.object({ id: v.string() }))),
+  }),
+  v.metadata({
+    requiredOrder: [
+      'appealId',
+      'appealedAt',
+      'actionedItem',
+      'appealedBy',
+      'actionsTaken',
+    ],
+  }),
+);
 
 export type ReportItemInput = v.InferOutput<typeof reportItemInputSchema>;
 export type AppealItemInput = v.InferOutput<typeof appealItemInputSchema>;

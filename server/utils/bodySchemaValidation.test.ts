@@ -2,6 +2,12 @@ import type { Request, Response } from 'express';
 import * as v from 'valibot';
 import { vi } from 'vitest';
 
+import {
+  patchActionSchema,
+  patchItemTypeSchema,
+} from '../routes/configurationWrites.js';
+import reportingRoutes from '../routes/reporting/ReportingRoutes.js';
+import { rawItemSubmissionSchema } from '../services/itemProcessingService/index.js';
 import { createBodySchemaValidator } from './bodySchemaValidation.js';
 import { CoopError } from './errors.js';
 import { route } from './route-helpers.js';
@@ -55,7 +61,7 @@ describe('createBodySchemaValidator', () => {
       status: 400,
       title: 'Request body failed schema validation.',
       pointer: undefined,
-      detail: '/: invalid value',
+      detail: "/: must have required property 'name'",
     });
   });
 
@@ -67,7 +73,7 @@ describe('createBodySchemaValidator', () => {
 
     expect(firstNextArg(next)).toMatchObject({
       pointer: '/parent',
-      detail: '/parent: invalid value',
+      detail: "/parent: must have required property 'child'",
     });
   });
 
@@ -82,7 +88,7 @@ describe('createBodySchemaValidator', () => {
       name: 'BadRequestError',
       status: 400,
       pointer: '/count',
-      detail: '/count: invalid value',
+      detail: '/count: must be integer',
     });
   });
 
@@ -94,7 +100,7 @@ describe('createBodySchemaValidator', () => {
 
     expect(firstNextArg(next)).toMatchObject({
       pointer: '/count',
-      detail: '/count: invalid value',
+      detail: '/count: must be >= 2',
     });
   });
 
@@ -106,7 +112,119 @@ describe('createBodySchemaValidator', () => {
 
     expect(firstNextArg(next)).toMatchObject({
       pointer: undefined,
-      detail: '/: invalid value',
+      detail: '/: must NOT have additional properties',
+    });
+  });
+
+  test.each([
+    [v.string(), 42, 'must be string'],
+    [v.object({ name: v.string() }), null, 'must be object'],
+    [
+      v.pipe(v.string(), v.minLength(2)),
+      '',
+      'must NOT have fewer than 2 characters',
+    ],
+    [
+      v.pipe(v.string(), v.maxLength(2)),
+      'abc',
+      'must NOT have more than 2 characters',
+    ],
+    [
+      v.pipe(v.array(v.string()), v.minLength(1)),
+      [],
+      'must NOT have fewer than 1 items',
+    ],
+    [v.picklist(['a', 'b']), 'c', 'must be equal to one of the allowed values'],
+    [v.nullable(v.string()), 42, 'must be string,null'],
+  ])('preserves validation wording for %s', (fieldSchema, value, message) => {
+    const { next } = invoke(
+      createBodySchemaValidator(v.object({ field: fieldSchema })),
+      { field: value },
+    );
+
+    expect(firstNextArg(next)).toMatchObject({
+      pointer: '/field',
+      detail: `/field: ${message}`,
+    });
+  });
+
+  test.each([
+    [patchActionSchema, {}, '/: must NOT have fewer than 1 properties'],
+    [patchActionSchema, [], '/: must be object'],
+    [
+      patchActionSchema,
+      { callbackUrlBody: [] },
+      '/callbackUrlBody: must be object,null',
+    ],
+    [
+      patchItemTypeSchema,
+      { schema: [] },
+      '/schema: must NOT have fewer than 1 items',
+    ],
+    [
+      patchItemTypeSchema,
+      { schemaFieldRoles: [] },
+      '/schemaFieldRoles: must be object',
+    ],
+  ])(
+    'preserves configuration error wording for %s',
+    (bodySchema, body, detail) => {
+      const { next } = invoke(createBodySchemaValidator(bodySchema), body);
+      expect(firstNextArg(next)).toMatchObject({ detail });
+    },
+  );
+
+  test('reports required fields and every extra property before field errors', () => {
+    const { next } = invoke(
+      createBodySchemaValidator(
+        v.strictObject({ name: v.string(), count: v.number() }),
+      ),
+      { name: 42, extra: true, other: false },
+    );
+    expect(firstNextArg(next)).toMatchObject({
+      pointer: undefined,
+      detail:
+        "/: must have required property 'count'; /: must NOT have additional properties; /: must NOT have additional properties; /name: must be string",
+    });
+  });
+
+  test('preserves item-submission alternative diagnostics', () => {
+    const { next } = invoke(
+      createBodySchemaValidator(v.object({ item: rawItemSubmissionSchema })),
+      { item: { id: 'i', typeId: 't' } },
+    );
+    expect(firstNextArg(next)).toMatchObject({
+      pointer: '/item',
+      detail:
+        "/item: must have required property 'data'; /item: must have required property 'data'; /item: must have required property 'type'; /item: must match exactly one schema in oneOf",
+    });
+  });
+
+  test('preserves the required-field order for appeals', () => {
+    const { next } = invoke(
+      createBodySchemaValidator(reportingRoutes.routes[1].bodySchema!),
+      {},
+    );
+    expect(firstNextArg(next)).toMatchObject({
+      pointer: undefined,
+      detail:
+        "/: must have required property 'appealId'; /: must have required property 'appealedAt'; /: must have required property 'actionedItem'; /: must have required property 'appealedBy'; /: must have required property 'actionsTaken'",
+    });
+  });
+
+  test('rejects arrays for an optional report reason object', () => {
+    const { next } = invoke(
+      createBodySchemaValidator(reportingRoutes.routes[0].bodySchema!),
+      {
+        reporter: { kind: 'user', typeId: 'user', id: 'reporter' },
+        reportedAt: '2026-01-01',
+        reportedItem: { id: 'item', typeId: 'post', data: {} },
+        reportedForReason: [],
+      },
+    );
+    expect(firstNextArg(next)).toMatchObject({
+      pointer: '/reportedForReason',
+      detail: '/reportedForReason: must be object',
     });
   });
 

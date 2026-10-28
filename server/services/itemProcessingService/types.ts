@@ -3,12 +3,16 @@ import * as v from 'valibot';
 import { type RawItemData } from './toNormalizedItemDataOrErrors.js';
 
 const rawItemSchemaVariants = ['original', 'partial'] as const;
+const rawItemSchemaVariantSchema = v.pipe(
+  v.picklist(rawItemSchemaVariants),
+  v.metadata({ jsonSchemaType: 'string' }),
+);
 
 export const rawItemTypeSelectorSchema = v.object({
   id: v.string(),
   version: v.optional(v.string()),
   // Keep raw and normalized item schema-variant values decoupled.
-  schemaVariant: v.optional(v.picklist(rawItemSchemaVariants)),
+  schemaVariant: v.optional(rawItemSchemaVariantSchema),
 });
 
 export type RawItemTypeSelector = v.InferOutput<
@@ -18,6 +22,7 @@ export type RawItemTypeSelector = v.InferOutput<
 const rawItemDataSchema = v.custom<RawItemData>(
   (input) =>
     typeof input === 'object' && input !== null && !Array.isArray(input),
+  'must be object',
 );
 
 const rawItemSubmissionVariants = [
@@ -26,7 +31,7 @@ const rawItemSubmissionVariants = [
     data: rawItemDataSchema,
     typeId: v.string(),
     typeVersion: v.optional(v.string()),
-    typeSchemaVariant: v.optional(v.picklist(rawItemSchemaVariants)),
+    typeSchemaVariant: v.optional(rawItemSchemaVariantSchema),
   }),
   v.object({
     id: v.string(),

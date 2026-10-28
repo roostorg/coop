@@ -18,6 +18,11 @@ import { makeBadRequestError, makeNotFoundError } from '../utils/errors.js';
 
 const nullableString = v.nullable(v.string());
 const stringArray = v.array(v.string());
+const permissiveObject = v.custom<JsonObject>(
+  (value) =>
+    typeof value === 'object' && value !== null && !Array.isArray(value),
+  'must be object',
+);
 const scalarField = v.strictObject({
   name: v.string(),
   type: v.enum(ScalarTypes),
@@ -49,10 +54,13 @@ const schema = v.tupleWithRest([fieldSchema], fieldSchema);
 const roleNames = [...new Set(Object.values(itemTypeRoleNames).flat())];
 type RoleName =
   (typeof itemTypeRoleNames)[keyof typeof itemTypeRoleNames][number];
-const schemaFieldRoles = v.strictObject(
-  Object.fromEntries(
-    roleNames.map((role) => [role, v.optional(nullableString)]),
-  ) as Record<RoleName, v.OptionalSchema<typeof nullableString, undefined>>,
+const schemaFieldRoles = v.pipe(
+  permissiveObject,
+  v.strictObject(
+    Object.fromEntries(
+      roleNames.map((role) => [role, v.optional(nullableString)]),
+    ) as Record<RoleName, v.OptionalSchema<typeof nullableString, undefined>>,
+  ),
 );
 const policyProperties = {
   name: v.string(),
@@ -72,16 +80,12 @@ const itemProperties = {
   hiddenFields: stringArray,
 };
 const { kind: _kind, ...itemPatchProperties } = itemProperties;
-const permissiveObject = v.custom<JsonObject>(
-  (value) =>
-    typeof value === 'object' && value !== null && !Array.isArray(value),
-);
 type JsonActionParameter = Omit<
   v.InferInput<typeof parameterListSchema>[number],
   'defaultValue'
 > & { defaultValue?: JsonValue };
 const actionParameterListSchema = v.pipe(
-  v.custom<JsonActionParameter[]>(Array.isArray),
+  v.custom<JsonActionParameter[]>(Array.isArray, 'must be array'),
   v.transform((value): v.InferInput<typeof parameterListSchema> => value),
   parameterListSchema,
 );
@@ -98,7 +102,10 @@ const actionProperties = {
 const nonemptyPatch = <TEntries extends v.ObjectEntries>(entries: TEntries) =>
   v.pipe(
     v.partial(v.strictObject(entries)),
-    v.check((value) => Object.keys(value).length > 0),
+    v.check(
+      (value) => Object.keys(value).length > 0,
+      'must NOT have fewer than 1 properties',
+    ),
   );
 
 export const createPolicySchema = v.strictObject({

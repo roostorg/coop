@@ -1,6 +1,7 @@
 import { type JsonValue } from 'type-fest';
 import * as v from 'valibot';
 
+import { formatValidationIssues } from '../../../utils/bodySchemaValidation.js';
 import { makeBadRequestError } from '../../../utils/errors.js';
 import { assertUnreachable } from '../../../utils/misc.js';
 
@@ -95,7 +96,10 @@ export function validateActionParameters(
     abortEarly: false,
   });
   if (!result.success) {
-    throw makeInvalidParameterError(formatValibotIssues(result.issues));
+    throw makeInvalidParameterError(
+      formatValidationIssues(result.issues, parameterListSchema, parameters)
+        .detail,
+    );
   }
 
   const list: ActionParameter[] = result.output;
@@ -294,24 +298,6 @@ function validateSelectRules(param: ActionParameter, index: number): void {
       `${at(index, 'defaultValue')} cannot be empty when the parameter is required`,
     );
   }
-}
-
-function formatValibotIssues(issues: readonly v.GenericIssue[]): string {
-  if (issues.length === 0) return 'invalid action parameters';
-  return issues
-    .map((issue) => {
-      const publicPath =
-        issue.type === 'object' || issue.type === 'strict_object'
-          ? issue.path?.slice(0, -1)
-          : issue.path;
-      const pathSegments = publicPath?.map(
-        ({ key }) =>
-          `/${String(key).replaceAll('~', '~0').replaceAll('/', '~1')}`,
-      );
-      const path = pathSegments?.length ? pathSegments.join('') : '/';
-      return `${path}: invalid value`;
-    })
-    .join('; ');
 }
 
 /**
