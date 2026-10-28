@@ -1,4 +1,7 @@
-import { type ApiKeyRecord } from '../../services/apiKeyService/index.js';
+import {
+  API_KEY_PERMISSIONS,
+  type ApiKeyRecord,
+} from '../../services/apiKeyService/index.js';
 import { UserPermission } from '../../services/userManagementService/index.js';
 import { CoopError, ErrorType } from '../../utils/errors.js';
 import { logErrorJson } from '../../utils/logging.js';
@@ -10,6 +13,11 @@ import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 
 const typeDefs = /* GraphQL */ `
+  type ApiKeyPermissionDefinition {
+    value: String!
+    description: String!
+  }
+
   type ApiKey {
     id: ID!
     name: String!
@@ -80,6 +88,7 @@ const typeDefs = /* GraphQL */ `
   type Query {
     apiKey: String! @deprecated(reason: "Use \`apiKeys\` instead.")
     apiKeys: [ApiKey!]!
+    apiKeyPermissions: [ApiKeyPermissionDefinition!]!
   }
 
   type Mutation {
@@ -105,6 +114,7 @@ function serializeApiKey(record: ApiKeyRecord) {
 }
 
 const Query: GQLQueryResolvers = {
+  apiKeyPermissions: () => API_KEY_PERMISSIONS,
   async apiKeys(_, __, context) {
     const user = context.getUser();
     if (!user?.orgId) {

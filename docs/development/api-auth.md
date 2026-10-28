@@ -13,30 +13,6 @@ Content-Type: application/json
 
 You can rotate individual API keys at any time from the same page.
 
-### Permissions
-
-New keys have no permissions by default. Select only the permissions an integration needs. Read and write are independent: neither grants the other. To change permissions, revoke the key and create a replacement.
-
-All REST paths below use the `/api/v1` prefix.
-
-| Permission        | Access                                                                                            |
-| ----------------- | ------------------------------------------------------------------------------------------------- |
-| `items:read`      | GET `/user_scores` and derived data requested through `/content`                                  |
-| `items:write`     | POST `/items/async` and POST `/content`                                                           |
-| `reports:write`   | POST `/report`                                                                                    |
-| `appeals:write`   | POST `/report/appeal`                                                                             |
-| `actions:execute` | POST `/actions`                                                                                   |
-| `config:read`     | GET `/actions`, `/item_types`, and `/policies`                                                    |
-| `config:write`    | Reserved for creating or updating configuration; no REST routes currently consume this permission |
-
-POST `/content` with `includeDerivedField` requires both `items:write` and `items:read`. Submitting reports and appeals requires only the corresponding permission, including any items submitted as part of that workflow. Missing or revoked keys receive HTTP 401; valid keys without the required permissions receive HTTP 403.
-
-### Deployment and rollback
-
-Apply the additive API key permissions migration before deploying the application. Its backfill and database default are the fixed list `items:read`, `items:write`, `reports:write`, `appeals:write`, `actions:execute`, and `config:read`. They exclude `config:write` and do not expand when more permissions are added. The default supports inserts from application instances that omit the column; the application explicitly stores an empty list for new keys unless grants are selected.
-
-Complete the application rollout before issuing restricted keys: instances without permission enforcement cannot honor their restrictions. Rollback retains the `permissions` column and its data. Keep permission enforcement wherever configuration-write endpoints are exposed; do not roll back to an application that exposes those endpoints without checking `config:write`. Shared-environment migrations require separate maintainer authorization.
-
 ## Verifying incoming requests from Coop
 
 To verify that an incoming request to your Action APIs (or other webhooks) was sent by Coop, you can check the request signature. Coop signs each HTTP request it sends to your endpoints and includes the signature in a header. You use a **webhook signature verification key** (public key) to verify that signature.

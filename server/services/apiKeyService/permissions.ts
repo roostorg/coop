@@ -1,21 +1,17 @@
 export const API_KEY_PERMISSIONS = [
-  'items:read',
-  'items:write',
-  'reports:write',
-  'appeals:write',
-  'actions:execute',
-  'config:read',
-  'config:write',
+  {
+    value: 'items:read',
+    description: 'Read items, derived data, and user scores.',
+  },
+  { value: 'items:write', description: 'Ingest and evaluate items.' },
+  { value: 'reports:write', description: 'Submit reports.' },
+  { value: 'appeals:write', description: 'Submit appeals.' },
+  { value: 'actions:execute', description: 'Execute actions.' },
+  {
+    value: 'config:read',
+    description: 'Read action definitions, item types, and policies.',
+  },
+  { value: 'config:write', description: 'Create and update definitions.' },
 ] as const;
 
-export type ApiKeyPermission = (typeof API_KEY_PERMISSIONS)[number];
-
-// Fixed compatibility grants, independent of additions to the permission list.
-export const LEGACY_API_KEY_PERMISSIONS: readonly ApiKeyPermission[] = [
-  'items:read',
-  'items:write',
-  'reports:write',
-  'appeals:write',
-  'actions:execute',
-  'config:read',
-];
+export type ApiKeyPermission = (typeof API_KEY_PERMISSIONS)[number]['value'];

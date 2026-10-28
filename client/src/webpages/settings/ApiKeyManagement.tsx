@@ -23,22 +23,6 @@ import { useState } from 'react';
 
 type Key = GQLApiKeysQuery['apiKeys'][number];
 
-const PERMISSIONS = [
-  {
-    value: 'items:read',
-    description: 'Read items, derived data, and user scores.',
-  },
-  { value: 'items:write', description: 'Ingest and evaluate items.' },
-  { value: 'reports:write', description: 'Submit reports.' },
-  { value: 'appeals:write', description: 'Submit appeals.' },
-  { value: 'actions:execute', description: 'Execute actions.' },
-  {
-    value: 'config:read',
-    description: 'Read action definitions, item types, and policies.',
-  },
-  { value: 'config:write', description: 'Create and update definitions.' },
-];
-
 export default function ApiKeyManagement() {
   const { data, loading, error, refetch } = useGQLApiKeysQuery();
   const [createKey] = useGQLCreateApiKeyMutation();
@@ -339,7 +323,7 @@ export default function ApiKeyManagement() {
                       are selected by default. To change permissions later,
                       delete this key and create a new one.
                     </Text>
-                    {PERMISSIONS.map(({ value, description }) => (
+                    {data?.apiKeyPermissions.map(({ value, description }) => (
                       <div key={value} className="flex items-start gap-3">
                         <Checkbox
                           id={`api-key-${value}`}

@@ -44,6 +44,23 @@ describe('apiKey resolvers', () => {
     resolvers,
   });
 
+  it('provides the available API key permissions and descriptions', async () => {
+    const result = await graphql({
+      schema,
+      source: '{ apiKeyPermissions { value description } }',
+    });
+    expect(result.errors).toBeUndefined();
+    expect(result.data!.apiKeyPermissions).toEqual([
+      { value: 'items:read', description: expect.any(String) },
+      { value: 'items:write', description: expect.any(String) },
+      { value: 'reports:write', description: expect.any(String) },
+      { value: 'appeals:write', description: expect.any(String) },
+      { value: 'actions:execute', description: expect.any(String) },
+      { value: 'config:read', description: expect.any(String) },
+      { value: 'config:write', description: expect.any(String) },
+    ]);
+  });
+
   function makeCtx(permissions: readonly UserPermission[]) {
     const getActiveApiKeyForOrg = vi.fn(async () => ({ key: 'secret' }));
     const rotateApiKey = vi.fn();
@@ -113,6 +130,37 @@ describe('apiKey resolvers', () => {
         'Authenticated user required',
       );
     });
+
+    testWithOrg(
+      'creates keys with exactly the given permissions',
+      async ({ deps, execute, org }) => {
+        for (const permissions of [
+          [],
+          ['items:write', 'config:write'],
+          ['items:read', 'reports:write'],
+        ]) {
+          const result = await execute(
+            `mutation Create($permissions: [String!]!) {
+              createApiKey(input: { name: "Integration", permissions: $permissions }) {
+                apiKey
+                record { permissions }
+              }
+            }`,
+            { permissions },
+          );
+          expect(result.errors).toBeUndefined();
+          const created = result.data!
+            .createApiKey as GQLCreateApiKeySuccessResponse;
+          expect(created.record.permissions).toEqual(permissions);
+          expect(
+            await deps.ApiKeyService.validateApiKey(created.apiKey),
+          ).toEqual({
+            orgId: org.id,
+            permissions,
+          });
+        }
+      },
+    );
 
     testWithOrg(
       'creates, edits, and deletes only keys in the authenticated organization',
