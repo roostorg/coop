@@ -283,7 +283,7 @@ describe('API key permissions', () => {
         .set('x-api-key', rotated.apiKey)
         .send({ items: [] })
         .expect(403);
-      await deps.ApiKeyService.deactivateApiKey(read.record.id, orgId);
+      await deps.ApiKeyService.deleteApiKey(read.record.id, orgId);
       await request.get(scores).set('x-api-key', rotated.apiKey).expect(401);
       await request
         .post('/api/v1/items/async')
@@ -332,7 +332,7 @@ describe('API key permissions', () => {
   });
 
   testWithOrg(
-    'cannot rotate or revoke a foreign organization key',
+    'cannot rotate or delete a foreign organization key',
     async ({ deps, orgId }) => {
       const other = await createOrg(deps);
       const key = await deps.ApiKeyService.createApiKey(
@@ -345,9 +345,9 @@ describe('API key permissions', () => {
       await expect(
         deps.ApiKeyService.rotateApiKey(orgId, 'Other', null, key.record.id),
       ).rejects.toThrow('Active API key not found');
-      expect(
-        await deps.ApiKeyService.deactivateApiKey(key.record.id, orgId),
-      ).toBe(false);
+      expect(await deps.ApiKeyService.deleteApiKey(key.record.id, orgId)).toBe(
+        false,
+      );
       expect(await deps.ApiKeyService.getApiKeysForOrg(orgId)).not.toEqual(
         expect.arrayContaining([
           expect.objectContaining({ id: key.record.id }),

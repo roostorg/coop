@@ -7,7 +7,6 @@ export const API_KEYS_QUERY = gql`
       name
       description
       permissions
-      isActive
       createdAt
       lastUsedAt
     }
@@ -25,9 +24,19 @@ export const CREATE_API_KEY_MUTATION = gql`
   }
 `;
 
-export const REVOKE_API_KEY_MUTATION = gql`
-  mutation RevokeApiKey($id: ID!) {
-    revokeApiKey(id: $id)
+export const UPDATE_API_KEY_MUTATION = gql`
+  mutation UpdateApiKey($input: UpdateApiKeyInput!) {
+    updateApiKey(input: $input) {
+      id
+      name
+      description
+    }
+  }
+`;
+
+export const DELETE_API_KEY_MUTATION = gql`
+  mutation DeleteApiKey($id: ID!) {
+    deleteApiKey(id: $id)
   }
 `;
 
@@ -54,7 +63,6 @@ export const ROTATE_API_KEY_MUTATION = gql`
           name
           description
           permissions
-          isActive
           createdAt
           lastUsedAt
           createdBy

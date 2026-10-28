@@ -14,8 +14,9 @@ import { Text } from '@/coop-ui/Typography';
 import {
   useGQLApiKeysQuery,
   useGQLCreateApiKeyMutation,
-  useGQLRevokeApiKeyMutation,
+  useGQLDeleteApiKeyMutation,
   useGQLRotateApiKeyMutation,
+  useGQLUpdateApiKeyMutation,
   type GQLApiKeysQuery,
 } from '@/graphql/generated';
 import { useState } from 'react';
@@ -42,9 +43,12 @@ export default function ApiKeyManagement() {
   const { data, loading, error, refetch } = useGQLApiKeysQuery();
   const [createKey] = useGQLCreateApiKeyMutation();
   const [rotateKey] = useGQLRotateApiKeyMutation();
-  const [revokeKey] = useGQLRevokeApiKeyMutation();
+  const [deleteKey] = useGQLDeleteApiKeyMutation();
+  const [updateKey] = useGQLUpdateApiKeyMutation();
   const [dialog, setDialog] = useState<
-    { action: 'create' } | { action: 'rotate' | 'revoke'; key: Key } | null
+    | { action: 'create' }
+    | { action: 'edit' | 'rotate' | 'delete'; key: Key }
+    | null
   >(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -71,6 +75,17 @@ export default function ApiKeyManagement() {
         });
         if (!result.data) throw new Error('Failed to create API key');
         setSecret(result.data.createApiKey.apiKey);
+      } else if (dialog.action === 'edit') {
+        const result = await updateKey({
+          variables: {
+            input: {
+              id: dialog.key.id,
+              name: name.trim(),
+              description: description.trim() || null,
+            },
+          },
+        });
+        if (!result.data?.updateApiKey) throw new Error('API key not found');
       } else if (dialog.action === 'rotate') {
         const result = await rotateKey({
           variables: {
@@ -87,9 +102,8 @@ export default function ApiKeyManagement() {
         }
         setSecret(response.apiKey);
       } else {
-        const result = await revokeKey({ variables: { id: dialog.key.id } });
-        if (!result.data?.revokeApiKey)
-          throw new Error('Active API key not found');
+        const result = await deleteKey({ variables: { id: dialog.key.id } });
+        if (!result.data?.deleteApiKey) throw new Error('API key not found');
       }
       setCopied(false);
       setDialog(null);
@@ -192,10 +206,7 @@ export default function ApiKeyManagement() {
           className="rounded-lg border border-gray-200 p-4 flex flex-wrap items-center justify-between gap-3"
         >
           <div className="min-w-0 break-words">
-            <Text className="font-semibold">
-              {key.name}
-              {!key.isActive && ' · Revoked'}
-            </Text>
+            <Text className="font-semibold">{key.name}</Text>
             {key.description && <Text size="SM">{key.description}</Text>}
             {key.permissions.length ? (
               <ul
@@ -218,34 +229,46 @@ export default function ApiKeyManagement() {
                 : 'Never'}
             </Text>
           </div>
-          {key.isActive && (
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                aria-label={`Rotate ${key.name}`}
-                onClick={() => {
-                  setMutationError(null);
-                  setSecret(null);
-                  setDialog({ action: 'rotate', key });
-                }}
-              >
-                Rotate
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                aria-label={`Revoke ${key.name}`}
-                onClick={() => {
-                  setMutationError(null);
-                  setSecret(null);
-                  setDialog({ action: 'revoke', key });
-                }}
-              >
-                Revoke
-              </Button>
-            </div>
-          )}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              aria-label={`Edit ${key.name}`}
+              onClick={() => {
+                setName(key.name);
+                setDescription(key.description ?? '');
+                setMutationError(null);
+                setSecret(null);
+                setDialog({ action: 'edit', key });
+              }}
+            >
+              Edit
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              aria-label={`Rotate ${key.name}`}
+              onClick={() => {
+                setMutationError(null);
+                setSecret(null);
+                setDialog({ action: 'rotate', key });
+              }}
+            >
+              Rotate
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              aria-label={`Delete ${key.name}`}
+              onClick={() => {
+                setMutationError(null);
+                setSecret(null);
+                setDialog({ action: 'delete', key });
+              }}
+            >
+              Delete
+            </Button>
+          </div>
         </div>
       ))}
       <Dialog
@@ -254,23 +277,27 @@ export default function ApiKeyManagement() {
           if (!open && !busy) setDialog(null);
         }}
       >
-        <DialogContent className="m-0 w-[calc(100%-2rem)] sm:w-[calc(100%-2rem)] max-w-lg max-h-[calc(100dvh-2rem)] overflow-y-auto">
+        <DialogContent className="m-0 w-[calc(100%_-_2rem)] max-w-lg max-h-[calc(100dvh_-_2rem)] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {dialog?.action === 'create'
                 ? 'Create API key'
-                : dialog?.action === 'rotate'
-                  ? 'Rotate API key'
-                  : 'Revoke API key'}
+                : dialog?.action === 'edit'
+                  ? 'Edit API key'
+                  : dialog?.action === 'rotate'
+                    ? 'Rotate API key'
+                    : 'Delete API key'}
             </DialogTitle>
           </DialogHeader>
           <DialogDescription>
             {dialog?.action === 'create'
               ? 'Name this key for the integration that will use it. Existing keys will keep working.'
-              : dialog?.action === 'rotate'
-                ? `Replace the secret for “${dialog.key.name}”. Its current secret will stop working immediately. Permissions stay the same. Other keys are not affected.`
-                : dialog &&
-                  `Revoke “${dialog.key.name}” immediately. Applications using it will lose access. Other keys are not affected.`}
+              : dialog?.action === 'edit'
+                ? 'Update the name and description. The API key itself will not change, and applications will keep working.'
+                : dialog?.action === 'rotate'
+                  ? `Replace the secret for “${dialog.key.name}”. Its current secret will stop working immediately. Permissions stay the same. Other keys are not affected.`
+                  : dialog &&
+                    `Permanently delete “${dialog.key.name}”. Applications using it will lose access immediately. Other keys are not affected.`}
           </DialogDescription>
           <form
             onSubmit={(event) => {
@@ -278,7 +305,7 @@ export default function ApiKeyManagement() {
               void submit();
             }}
           >
-            {dialog?.action === 'create' && (
+            {(dialog?.action === 'create' || dialog?.action === 'edit') && (
               <div className="px-4 flex flex-col gap-3">
                 <Label htmlFor="api-key-name">Name</Label>
                 <Input
@@ -298,51 +325,53 @@ export default function ApiKeyManagement() {
                   onChange={(event) => setDescription(event.target.value)}
                   disabled={busy}
                 />
-                <fieldset
-                  disabled={busy}
-                  className="min-w-0 flex flex-col gap-3"
-                >
-                  <legend className="mb-2 text-sm font-semibold">
-                    Permissions
-                  </legend>
-                  <Text size="SM">
-                    Select only what this integration needs. Permissions are
-                    independent: write does not include read. No permissions are
-                    selected by default. To change permissions later, revoke
-                    this key and create a new one.
-                  </Text>
-                  {PERMISSIONS.map(({ value, description }) => (
-                    <div key={value} className="flex items-start gap-3">
-                      <Checkbox
-                        id={`api-key-${value}`}
-                        className="mt-1"
-                        checked={permissions.includes(value)}
-                        disabled={busy}
-                        aria-describedby={`api-key-${value}-description`}
-                        onCheckedChange={(checked) =>
-                          setPermissions((current) =>
-                            checked
-                              ? [...current, value]
-                              : current.filter(
-                                  (permission) => permission !== value,
-                                ),
-                          )
-                        }
-                      />
-                      <div className="min-w-0">
-                        <Label
-                          htmlFor={`api-key-${value}`}
-                          className="font-mono"
-                        >
-                          {value}
-                        </Label>
-                        <Text id={`api-key-${value}-description`} size="SM">
-                          {description}
-                        </Text>
+                {dialog.action === 'create' && (
+                  <fieldset
+                    disabled={busy}
+                    className="min-w-0 flex flex-col gap-3"
+                  >
+                    <legend className="mb-2 text-sm font-semibold">
+                      Permissions
+                    </legend>
+                    <Text size="SM">
+                      Select only what this integration needs. Permissions are
+                      independent: write does not include read. No permissions
+                      are selected by default. To change permissions later,
+                      delete this key and create a new one.
+                    </Text>
+                    {PERMISSIONS.map(({ value, description }) => (
+                      <div key={value} className="flex items-start gap-3">
+                        <Checkbox
+                          id={`api-key-${value}`}
+                          className="mt-1"
+                          checked={permissions.includes(value)}
+                          disabled={busy}
+                          aria-describedby={`api-key-${value}-description`}
+                          onCheckedChange={(checked) =>
+                            setPermissions((current) =>
+                              checked
+                                ? [...current, value]
+                                : current.filter(
+                                    (permission) => permission !== value,
+                                  ),
+                            )
+                          }
+                        />
+                        <div className="min-w-0">
+                          <Label
+                            htmlFor={`api-key-${value}`}
+                            className="font-mono"
+                          >
+                            {value}
+                          </Label>
+                          <Text id={`api-key-${value}-description`} size="SM">
+                            {description}
+                          </Text>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </fieldset>
+                    ))}
+                  </fieldset>
+                )}
               </div>
             )}
             {mutationError && (
@@ -362,15 +391,21 @@ export default function ApiKeyManagement() {
               <Button
                 type="submit"
                 variant="outline"
-                disabled={busy || (dialog?.action === 'create' && !name.trim())}
+                disabled={
+                  busy ||
+                  ((dialog?.action === 'create' || dialog?.action === 'edit') &&
+                    !name.trim())
+                }
               >
                 {busy
                   ? 'Saving…'
                   : dialog?.action === 'create'
                     ? 'Create key'
-                    : dialog?.action === 'rotate'
-                      ? 'Rotate key'
-                      : 'Revoke key'}
+                    : dialog?.action === 'edit'
+                      ? 'Save changes'
+                      : dialog?.action === 'rotate'
+                        ? 'Rotate key'
+                        : 'Delete key'}
               </Button>
             </DialogFooter>
           </form>

@@ -80,24 +80,6 @@ describe('ApiKeyService', () => {
     ]);
   });
 
-  it.each([
-    { rowCount: 1, expected: true },
-    { rowCount: 0, expected: false },
-  ])(
-    'returns $expected when deactivation affects $rowCount rows',
-    async ({ rowCount, expected }) => {
-      query.mockResolvedValueOnce({ rows: [], command: 'UPDATE', rowCount });
-
-      expect(await sut.deactivateApiKey(row.id, orgId)).toBe(expected);
-
-      expect(query).toHaveBeenCalledTimes(1);
-      expect(query.mock.calls[0][0]).toEqual({
-        sql: 'update "public"."api_keys" set "is_active" = $1 where "id" = $2 and "org_id" = $3 and "is_active" = $4',
-        parameters: [false, row.id, orgId, true],
-      });
-    },
-  );
-
   it('returns the active key for the requested organization', async () => {
     query.mockResolvedValueOnce({
       rows: [row],
