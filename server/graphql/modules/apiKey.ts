@@ -37,7 +37,7 @@ const typeDefs = /* GraphQL */ `
   union RotateApiKeyResponse = RotateApiKeySuccessResponse | RotateApiKeyError
 
   input RotateApiKeyInput {
-    id: ID
+    id: ID!
     name: String!
     description: String
   }
@@ -177,8 +177,7 @@ const Mutation: GQLMutationResolvers = {
           user.orgId,
           input.name,
           input.description ?? null,
-          user.id,
-          input.id ?? undefined,
+          input.id,
         );
 
       return gqlSuccessResult(
