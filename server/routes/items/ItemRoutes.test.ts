@@ -155,7 +155,9 @@ describe('POST Items', () => {
 test('POST /items/async accepts object data and rejects arrays and null', async () => {
   const app = express();
   app.use(express.json());
-  const schema = itemRoutes.routes[0].bodySchema!;
+  const schema = itemRoutes.routes.find(
+    ({ method, path }) => method === 'post' && path === '/async/',
+  )!.bodySchema!;
   app.post(
     '/api/v1/items/async',
     createBodySchemaValidator(schema),
@@ -181,7 +183,9 @@ test('POST /items/async accepts object data and rejects arrays and null', async 
 test('POST /items/async requires exactly one valid item type selector branch', async () => {
   const app = express();
   app.use(express.json());
-  const schema = itemRoutes.routes[0].bodySchema!;
+  const schema = itemRoutes.routes.find(
+    ({ method, path }) => method === 'post' && path === '/async/',
+  )!.bodySchema!;
   app.post(
     '/api/v1/items/async',
     createBodySchemaValidator(schema),

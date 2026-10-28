@@ -6,6 +6,7 @@ import { vi } from 'vitest';
 import { type Dependencies } from '../../iocContainer/index.js';
 import {
   BUILT_IN_ACTIONS,
+  MAX_ACTOR_NOTE_LENGTH,
   type ItemSchema,
   type ItemType,
   type ItemTypeKind,
@@ -252,7 +253,7 @@ describe('GET actions', () => {
 });
 
 describe('POST actions', () => {
-  test('accepts object parameters and rejects arrays and null', async () => {
+  test('validates object parameters and the note code-point limit', async () => {
     const app = express();
     app.use(express.json());
     const schema = actionRoutes.routes.find(
@@ -277,6 +278,37 @@ describe('POST actions', () => {
         .post('/api/v1/actions/')
         .send({ ...body, parameters })
         .expect(400);
+    }
+
+    const mixedNote = `${'a'.repeat(MAX_ACTOR_NOTE_LENGTH - 2)}é😀`;
+    for (const note of ['', 'a'.repeat(MAX_ACTOR_NOTE_LENGTH), mixedNote]) {
+      await supertest(app)
+        .post('/api/v1/actions/')
+        .send({ ...body, note })
+        .expect(204);
+    }
+    for (const note of [
+      'a'.repeat(MAX_ACTOR_NOTE_LENGTH + 1),
+      `${mixedNote}😀`,
+    ]) {
+      const response = await supertest(app)
+        .post('/api/v1/actions/')
+        .send({ ...body, note })
+        .expect(400);
+      expect(response.body).toMatchObject({
+        pointer: '/note',
+        detail: `/note: must NOT have more than ${MAX_ACTOR_NOTE_LENGTH} characters`,
+      });
+    }
+    for (const note of [null, 1]) {
+      const response = await supertest(app)
+        .post('/api/v1/actions/')
+        .send({ ...body, note })
+        .expect(400);
+      expect(response.body).toMatchObject({
+        pointer: '/note',
+        detail: '/note: must be string',
+      });
     }
   });
 });

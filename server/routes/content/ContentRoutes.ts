@@ -3,8 +3,8 @@ import * as v from 'valibot';
 
 import { type DerivedFieldSpec } from '../../services/derivedFieldsService/index.js';
 import {
+  rawItemDataSchema,
   type NormalizedItemData,
-  type RawItemData,
 } from '../../services/itemProcessingService/index.js';
 import { createApiKeyMiddleware } from '../../utils/apiKeyMiddleware.js';
 import { type SerializableError } from '../../utils/errors.js';
@@ -16,11 +16,7 @@ const evaluateContentInputSchema = v.object({
   userId: v.optional(v.string()),
   contentType: v.string(),
   contentId: v.string(),
-  content: v.custom<RawItemData>(
-    (input) =>
-      typeof input === 'object' && input !== null && !Array.isArray(input),
-    'must be object',
-  ),
+  content: rawItemDataSchema,
   sync: v.optional(v.boolean()),
 });
 

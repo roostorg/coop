@@ -14,6 +14,7 @@ import { type FixKyselyRowCorrelation } from '../../utils/kysely.js';
 import { logErrorJson } from '../../utils/logging.js';
 import { assertUnreachable, withRetries } from '../../utils/misc.js';
 import { type CollapseCases } from '../../utils/typescript-types.js';
+import { rawItemDataSchema } from '../itemProcessingService/index.js';
 import { type RawItemData } from '../itemProcessingService/toNormalizedItemDataOrErrors.js';
 import type {
   NCMECReportedContentInThread,
@@ -1158,11 +1159,6 @@ const ipAddressEventSchema = v.array(
     possibleProxy: v.optional(v.boolean()),
     port: v.optional(v.pipe(v.number(), v.integer())),
   }),
-);
-
-const rawItemDataSchema = v.custom<RawItemData>(
-  (input) =>
-    typeof input === 'object' && input !== null && !Array.isArray(input),
 );
 
 const ncmecAdditionalInfoSchema = v.object({
