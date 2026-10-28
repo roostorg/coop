@@ -16,6 +16,7 @@ For more information about each release including git tags and artifacts, see [R
 
 - Improve list editing in the policy editor ([#1400](https://github.com/roostorg/coop/pull/1400) by [@taobojlen](https://github.com/taobojlen))
 - Review console hides "Enqueue to NCMEC" when NCMEC reporting isn't enabled ([#1470](https://github.com/roostorg/coop/pull/1470) by [@serendipty01](https://github.com/serendipty01))
+- Add validation for changes to item types ([#1272](https://github.com/roostorg/coop/pull/1272) by [@taobojlen](https://github.com/taobojlen))
 
 ### Fixed
 
@@ -50,10 +51,6 @@ For more information about each release including git tags and artifacts, see [R
 
 - Update Node.js to 24.22.1 to remove compromised eMudhra emSign CA certificates ([Node.js advisory](https://nodejs.org/en/blog/vulnerability/october-2026-security-releases), [#1436](https://github.com/roostorg/coop/pull/1436) by [@serendipty01](https://github.com/serendipty01))
 - Store hash-exchange credentials per bank ([#1360](https://github.com/roostorg/coop/pull/1360) by [@juanmrad](https://github.com/juanmrad))
-
-### Changed
-
-- Add validation for changes to item types ([#1272](https://github.com/roostorg/coop/pull/1272) by [@taobojlen](https://github.com/taobojlen))
 
 ## [1.1.1] - 2026-10-01
 
