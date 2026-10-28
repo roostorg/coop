@@ -3,13 +3,13 @@ import { Input } from '@/coop-ui/Input';
 import { Label } from '@/coop-ui/Label';
 import { Link } from '@/coop-ui/Link';
 import { Textarea } from '@/coop-ui/Textarea';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/coop-ui/Tooltip';
 import { Heading, Text } from '@/coop-ui/Typography';
 import { Clipboard, Eye, EyeClosed, RotateCcw } from 'lucide-react';
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate } from 'react-router';
 
+import CopyToClipboard from '../../components/common/CopyToClipboard';
 import FullScreenLoading from '../../components/common/FullScreenLoading';
 
 import {
@@ -38,7 +38,6 @@ const ApiAuthenticationSettings = () => {
   const [webhookKeyRotationError, setWebhookKeyRotationError] = useState<
     string | null
   >(null);
-  const [webhookKeyCopied, setWebhookKeyCopied] = useState(false);
   const navigate = useNavigate();
 
   if (loading) {
@@ -110,10 +109,6 @@ const ApiAuthenticationSettings = () => {
   const isNewKey = Boolean(newApiKey);
   const isKeyHidden =
     !newApiKey && apiKey === 'API key exists (hidden for security)';
-
-  const copyText = (text: string) => {
-    navigator.clipboard.writeText(text);
-  };
 
   const handleRotateApiKey = async () => {
     setIsRotating(true);
@@ -244,14 +239,16 @@ const ApiAuthenticationSettings = () => {
               readOnly
               className="tracking-widest font-mono"
               endSlot={
-                <Button
-                  variant="white"
-                  size="icon"
-                  className="h-[2.875rem] rounded-none rounded-r-lg border-l-0"
-                  onClick={() => copyText(newApiKey)}
-                >
-                  <Clipboard />
-                </Button>
+                <CopyToClipboard value={newApiKey}>
+                  <Button
+                    variant="white"
+                    size="icon"
+                    className="h-[2.875rem] rounded-none rounded-r-lg border-l-0"
+                    aria-label="Copy new API key"
+                  >
+                    <Clipboard />
+                  </Button>
+                </CopyToClipboard>
               }
             />
           </div>
@@ -288,24 +285,22 @@ const ApiAuthenticationSettings = () => {
               >
                 {apiKeyVisible ? <Eye /> : <EyeClosed />}
               </Button>
-              <Tooltip delayDuration={0}>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="white"
-                    size="icon"
-                    className="h-[2.875rem] rounded-none rounded-r-lg border-l-0"
-                    disabled={!isNewKey}
-                    onClick={() => copyText(displayApiKey)}
-                  >
-                    <Clipboard />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  {isNewKey
-                    ? 'Copy to clipboard'
-                    : 'Key is hidden for security'}
-                </TooltipContent>
-              </Tooltip>
+              <CopyToClipboard
+                value={displayApiKey}
+                initialTooltipText={
+                  isNewKey ? 'Copy to clipboard' : 'Key is hidden for security'
+                }
+              >
+                <Button
+                  variant="white"
+                  size="icon"
+                  className="h-[2.875rem] rounded-none rounded-r-lg border-l-0"
+                  disabled={!isNewKey}
+                  aria-label="Copy API key"
+                >
+                  <Clipboard />
+                </Button>
+              </CopyToClipboard>
             </div>
           }
         />
@@ -382,19 +377,17 @@ const ApiAuthenticationSettings = () => {
             value={newWebhookSigningKey}
             readOnly
           />
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              copyText(newWebhookSigningKey);
-              setWebhookKeyCopied(true);
-              setTimeout(() => setWebhookKeyCopied(false), 2000);
-            }}
-            className="flex items-center gap-2"
-          >
-            <Clipboard className="h-4 w-4" />
-            {webhookKeyCopied ? 'Copied!' : 'Copy to clipboard'}
-          </Button>
+          <CopyToClipboard value={newWebhookSigningKey}>
+            <Button
+              variant="outline"
+              size="sm"
+              aria-label="Copy new webhook verification key"
+              className="flex items-center gap-2"
+            >
+              <Clipboard className="h-4 w-4" />
+              Copy to clipboard
+            </Button>
+          </CopyToClipboard>
         </div>
       )}
 
@@ -414,19 +407,16 @@ const ApiAuthenticationSettings = () => {
           value={publicSigningKey}
           disabled
           endSlot={
-            <Tooltip delayDuration={0}>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="white"
-                  size="icon"
-                  className="rounded-none rounded-r-lg border-l-0"
-                  onClick={() => copyText(publicSigningKey)}
-                >
-                  <Clipboard />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="top">Copy to clipboard</TooltipContent>
-            </Tooltip>
+            <CopyToClipboard value={publicSigningKey}>
+              <Button
+                variant="white"
+                size="icon"
+                className="rounded-none rounded-r-lg border-l-0"
+                aria-label="Copy webhook verification key"
+              >
+                <Clipboard />
+              </Button>
+            </CopyToClipboard>
           }
         />
       </div>
