@@ -19,7 +19,7 @@ export type RawItemTypeSelector = v.InferOutput<
   typeof rawItemTypeSelectorSchema
 >;
 
-const rawItemDataSchema = v.custom<RawItemData>(
+export const rawItemDataSchema = v.custom<RawItemData>(
   (input) =>
     typeof input === 'object' && input !== null && !Array.isArray(input),
   'must be object',
