@@ -5,6 +5,7 @@ import {
   requireOrgId,
   serializeAction,
   type ActionWrite,
+  type CreateActionWrite,
 } from '../configurationWrites.js';
 
 async function responseItemTypes(
@@ -18,15 +19,12 @@ async function responseItemTypes(
 export function createCustomAction({
   ModerationConfigService,
 }: Dependencies): RequestHandlerWithBodies<
-  ActionWrite,
+  CreateActionWrite,
   ReturnType<typeof serializeAction>
 > {
   return async (req, res) => {
     const orgId = requireOrgId(req);
-    const body = req.body as ActionWrite & {
-      name: string;
-      callbackUrl: string;
-    };
+    const body = req.body;
     const input = {
       ...body,
       description: body.description ?? null,

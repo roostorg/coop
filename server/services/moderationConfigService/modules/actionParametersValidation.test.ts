@@ -195,6 +195,39 @@ describe('validateActionParameters', () => {
     ).toThrow();
   });
 
+  it('does not include rejected values in structural validation details', () => {
+    const secret = 'private-token-secret';
+    let error: unknown;
+
+    try {
+      validateActionParameters([
+        {
+          name: 'x',
+          displayName: 'X',
+          type: secret,
+          required: false,
+        },
+      ]);
+    } catch (caughtError) {
+      error = caughtError;
+    }
+
+    expect(error, 'expected validation to fail').toBeDefined();
+    expect(error).toMatchObject({
+      title: 'Invalid action parameters',
+      detail: '/0/type: must be equal to one of the allowed values',
+    });
+    expect((error as { detail?: string }).detail).not.toContain(secret);
+  });
+
+  it('identifies a missing parameter field', () => {
+    expect(() =>
+      validateActionParameters([
+        { name: 'reason', type: 'STRING', required: false },
+      ]),
+    ).toThrow("/0: must have required property 'displayName'");
+  });
+
   describe('rejects "empty" defaultValue when the parameter is required', () => {
     it('STRING with empty default', () => {
       expect(() =>
