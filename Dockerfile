@@ -26,15 +26,27 @@ WORKDIR /app/server
 FROM server_base AS build_backend
 RUN pnpm run build
 
-# make a shared layer that can be the base for worker and api images.
-FROM node:24.22.1-bookworm-slim AS backend_base
+FROM node:24.22.1-bookworm-slim AS backend_prod_deps
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends dumb-init && rm -rf /var/lib/apt/lists/*
 RUN npm install -g pnpm@11.28.2
 COPY ["pnpm-lock.yaml", "pnpm-workspace.yaml", "package.json", "./"]
 COPY ["server/package.json", "./server/"]
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --filter server --prod --frozen-lockfile --ignore-scripts && \
     pnpm rebuild --filter server
+
+# make a shared layer that can be the base for worker and api images.
+FROM node:24.22.1-bookworm-slim AS backend_base
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends dumb-init && rm -rf /var/lib/apt/lists/*
+# The server and worker run with plain `node`, so drop the package managers
+# the node image bundles (npm, npx, corepack) along with their dependencies.
+RUN rm -rf /usr/local/lib/node_modules /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
+# pnpm links server/node_modules into the root node_modules/.pnpm store, so both
+# are copied to keep the relative symlinks valid.
+COPY --from=backend_prod_deps /app/package.json ./
+COPY --from=backend_prod_deps /app/node_modules ./node_modules
+COPY --from=backend_prod_deps /app/server/package.json ./server/
+COPY --from=backend_prod_deps /app/server/node_modules ./server/node_modules
 COPY --from=build_backend /app/server/transpiled ./server/
 WORKDIR /app/server
 
