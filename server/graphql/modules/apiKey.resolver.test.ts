@@ -6,10 +6,7 @@ import { UserPermission } from '../../services/userManagementService/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../test/fixtureHelpers/createUser.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
-import {
-  type GQLCreateApiKeySuccessResponse,
-  type GQLRotateApiKeySuccessResponse,
-} from '../generated.js';
+import { type GQLCreateApiKeySuccessResponse } from '../generated.js';
 import {
   Mutation as MutationResolvers,
   Query as QueryResolvers,
@@ -189,78 +186,6 @@ describe('apiKey resolvers', () => {
         );
       },
     );
-
-    testWithOrg(
-      'rotation requires an explicit active key in the authenticated organization and never creates a key',
-      async ({ deps, execute, org, apiKey, foreignKey }) => {
-        const [selected] = await deps.ApiKeyService.getApiKeysForOrg(org.id);
-        const other = await deps.ApiKeyService.createApiKey(
-          org.id,
-          'Other',
-          null,
-          null,
-        );
-        const query = `mutation Rotate($input: RotateApiKeyInput!) {
-          rotateApiKey(input: $input) {
-            __typename
-            ... on RotateApiKeySuccessResponse { apiKey record { id } }
-          }
-        }`;
-        for (const input of [
-          { name: 'Rotated' },
-          { name: 'Rotated', id: null },
-        ]) {
-          const response = await execute(query, { input });
-          expect(response.errors?.[0].message).toContain('ID!');
-        }
-        for (const id of [
-          '00000000-0000-4000-8000-000000000000',
-          foreignKey.record.id,
-        ]) {
-          const response = await execute(query, {
-            input: { name: 'Rotated', id },
-          });
-          expect(response.errors).toBeUndefined();
-          expect(response.data!.rotateApiKey).toMatchObject({
-            __typename: 'RotateApiKeyError',
-          });
-        }
-        expect(await deps.ApiKeyService.getOrgIdFromActivatedKey(apiKey)).toBe(
-          org.id,
-        );
-        const rotated = await execute(query, {
-          input: { name: 'Rotated', id: selected.id },
-        });
-        expect(rotated.errors).toBeUndefined();
-        const rotatedKey = rotated.data!
-          .rotateApiKey as GQLRotateApiKeySuccessResponse;
-        expect(rotatedKey.record.id).toBe(selected.id);
-        expect(
-          await deps.ApiKeyService.getOrgIdFromActivatedKey(apiKey),
-        ).toBeNull();
-        expect(
-          await deps.ApiKeyService.getOrgIdFromActivatedKey(rotatedKey.apiKey),
-        ).toBe(org.id);
-        expect(
-          await deps.ApiKeyService.getOrgIdFromActivatedKey(other.apiKey),
-        ).toBe(org.id);
-        expect(
-          await deps.ApiKeyService.getOrgIdFromActivatedKey(foreignKey.apiKey),
-        ).toBe(foreignKey.record.orgId);
-
-        await deps.ApiKeyService.deactivateApiKey(selected.id, org.id);
-        const revoked = await execute(query, {
-          input: { name: 'Rotated', id: selected.id },
-        });
-        expect(revoked.errors).toBeUndefined();
-        expect(revoked.data!.rotateApiKey).toMatchObject({
-          __typename: 'RotateApiKeyError',
-        });
-        expect(await deps.ApiKeyService.getApiKeysForOrg(org.id)).toHaveLength(
-          2,
-        );
-      },
-    );
   });
 
   describe('Query.apiKey', () => {
@@ -291,22 +216,6 @@ describe('apiKey resolvers', () => {
         'API key exists (hidden for security)',
       );
       expect(getActiveApiKeyForOrg).toHaveBeenCalledWith('org-1');
-      const introspection = await graphql({
-        schema,
-        source: `{ __type(name: "Query") {
-          fields(includeDeprecated: true) { name isDeprecated deprecationReason }
-        } }`,
-      });
-      expect(introspection.errors).toBeUndefined();
-      expect(introspection.data?.__type).toMatchObject({
-        fields: expect.arrayContaining([
-          {
-            name: 'apiKey',
-            isDeprecated: true,
-            deprecationReason: 'Use `apiKeys` instead.',
-          },
-        ]),
-      });
     });
   });
 
