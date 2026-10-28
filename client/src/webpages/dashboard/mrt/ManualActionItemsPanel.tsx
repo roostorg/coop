@@ -1,6 +1,6 @@
 import { parseDatetimeToReadableStringInCurrentTimeZone } from '@/utils/time';
 import { gql } from '@apollo/client';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
 import CloseButton from '@/components/common/CloseButton';
 

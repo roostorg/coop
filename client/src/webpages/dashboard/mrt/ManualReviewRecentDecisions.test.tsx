@@ -1,17 +1,3 @@
-import { MockedProvider } from '@apollo/client/testing';
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { HelmetProvider } from 'react-helmet-async';
-import { MemoryRouter } from 'react-router-dom';
-
-import '@testing-library/jest-dom/extend-expect';
-
 import {
   GQLDequeueManualReviewJobDocument,
   GQLGetDecidedJobDocument,
@@ -24,6 +10,17 @@ import {
   GQLUserPermission,
   type GQLRecentModerationActivityInput,
 } from '@/graphql/generated';
+import { MockedProvider } from '@apollo/client/testing';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { HelmetProvider } from 'react-helmet-async';
+import { MemoryRouter } from 'react-router';
 
 import ManualReviewRecentDecisions from './ManualReviewRecentDecisions';
 
