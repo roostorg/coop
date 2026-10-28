@@ -3360,7 +3360,6 @@ export type GQLOrg = {
   readonly id: Scalars['ID']['output'];
   readonly ignoreCallbackUrl?: Maybe<Scalars['String']['output']>;
   readonly integrationConfigs: ReadonlyArray<GQLIntegrationConfig>;
-  readonly isDemoOrg: Scalars['Boolean']['output'];
   readonly itemTypes: ReadonlyArray<GQLItemType>;
   readonly jobPriorityWeights: ReadonlyArray<GQLJobPriorityWeight>;
   readonly mrtQueues: ReadonlyArray<GQLManualReviewQueue>;
@@ -5841,7 +5840,6 @@ export type GQLDashboardOrgQuery = {
     readonly hasReportingRulesEnabled: boolean;
     readonly hasNCMECReportingEnabled: boolean;
     readonly hasAppealsEnabled: boolean;
-    readonly isDemoOrg: boolean;
   } | null;
   readonly me?: {
     readonly __typename: 'User';
@@ -19510,16 +19508,6 @@ export type GQLDeletePolicyMutation = {
   readonly deletePolicy?: boolean | null;
 };
 
-export type GQLIsDemoOrgQueryVariables = Exact<{ [key: string]: never }>;
-
-export type GQLIsDemoOrgQuery = {
-  readonly __typename: 'Query';
-  readonly myOrg?: {
-    readonly __typename: 'Org';
-    readonly isDemoOrg: boolean;
-  } | null;
-};
-
 export type GQLReportingRulesQueryVariables = Exact<{ [key: string]: never }>;
 
 export type GQLReportingRulesQuery = {
@@ -28527,7 +28515,6 @@ export const GQLDashboardOrgDocument = gql`
       hasReportingRulesEnabled
       hasNCMECReportingEnabled
       hasAppealsEnabled
-      isDemoOrg
     }
     me {
       id
@@ -40067,101 +40054,6 @@ export type GQLDeletePolicyMutationOptions = Apollo.BaseMutationOptions<
   GQLDeletePolicyMutation,
   GQLDeletePolicyMutationVariables
 >;
-export const GQLIsDemoOrgDocument = gql`
-  query IsDemoOrg {
-    myOrg {
-      isDemoOrg
-    }
-  }
-`;
-
-/**
- * __useGQLIsDemoOrgQuery__
- *
- * To run a query within a React component, call `useGQLIsDemoOrgQuery` and pass it any options that fit your needs.
- * When your component renders, `useGQLIsDemoOrgQuery` returns an object from Apollo Client that contains loading, error, and data properties
- * you can use to render your UI.
- *
- * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
- *
- * @example
- * const { data, loading, error } = useGQLIsDemoOrgQuery({
- *   variables: {
- *   },
- * });
- */
-export function useGQLIsDemoOrgQuery(
-  baseOptions?: Apollo.QueryHookOptions<
-    GQLIsDemoOrgQuery,
-    GQLIsDemoOrgQueryVariables
-  >,
-) {
-  const options = { ...defaultOptions, ...baseOptions };
-  return Apollo.useQuery<GQLIsDemoOrgQuery, GQLIsDemoOrgQueryVariables>(
-    GQLIsDemoOrgDocument,
-    options,
-  );
-}
-export function useGQLIsDemoOrgLazyQuery(
-  baseOptions?: Apollo.LazyQueryHookOptions<
-    GQLIsDemoOrgQuery,
-    GQLIsDemoOrgQueryVariables
-  >,
-) {
-  const options = { ...defaultOptions, ...baseOptions };
-  return Apollo.useLazyQuery<GQLIsDemoOrgQuery, GQLIsDemoOrgQueryVariables>(
-    GQLIsDemoOrgDocument,
-    options,
-  );
-}
-// @ts-ignore
-export function useGQLIsDemoOrgSuspenseQuery(
-  baseOptions?: Apollo.SuspenseQueryHookOptions<
-    GQLIsDemoOrgQuery,
-    GQLIsDemoOrgQueryVariables
-  >,
-): Apollo.UseSuspenseQueryResult<GQLIsDemoOrgQuery, GQLIsDemoOrgQueryVariables>;
-export function useGQLIsDemoOrgSuspenseQuery(
-  baseOptions?:
-    | Apollo.SkipToken
-    | Apollo.SuspenseQueryHookOptions<
-        GQLIsDemoOrgQuery,
-        GQLIsDemoOrgQueryVariables
-      >,
-): Apollo.UseSuspenseQueryResult<
-  GQLIsDemoOrgQuery | undefined,
-  GQLIsDemoOrgQueryVariables
->;
-export function useGQLIsDemoOrgSuspenseQuery(
-  baseOptions?:
-    | Apollo.SkipToken
-    | Apollo.SuspenseQueryHookOptions<
-        GQLIsDemoOrgQuery,
-        GQLIsDemoOrgQueryVariables
-      >,
-) {
-  const options =
-    baseOptions === Apollo.skipToken
-      ? baseOptions
-      : { ...defaultOptions, ...baseOptions };
-  return Apollo.useSuspenseQuery<GQLIsDemoOrgQuery, GQLIsDemoOrgQueryVariables>(
-    GQLIsDemoOrgDocument,
-    options,
-  );
-}
-export type GQLIsDemoOrgQueryHookResult = ReturnType<
-  typeof useGQLIsDemoOrgQuery
->;
-export type GQLIsDemoOrgLazyQueryHookResult = ReturnType<
-  typeof useGQLIsDemoOrgLazyQuery
->;
-export type GQLIsDemoOrgSuspenseQueryHookResult = ReturnType<
-  typeof useGQLIsDemoOrgSuspenseQuery
->;
-export type GQLIsDemoOrgQueryResult = Apollo.QueryResult<
-  GQLIsDemoOrgQuery,
-  GQLIsDemoOrgQueryVariables
->;
 export const GQLReportingRulesDocument = gql`
   query ReportingRules {
     myOrg {
@@ -46138,7 +46030,6 @@ export const namedOperations = {
     ViolationsPerPolicy: 'ViolationsPerPolicy',
     Policies: 'Policies',
     PoliciesWithModels: 'PoliciesWithModels',
-    IsDemoOrg: 'IsDemoOrg',
     ReportingRules: 'ReportingRules',
     Rules: 'Rules',
     RulesDashboardInsights: 'RulesDashboardInsights',

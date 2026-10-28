@@ -42,7 +42,6 @@ gql`
       hasReportingRulesEnabled
       hasNCMECReportingEnabled
       hasAppealsEnabled
-      isDemoOrg
     }
     me {
       id

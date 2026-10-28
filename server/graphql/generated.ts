@@ -3430,7 +3430,6 @@ export type GQLOrg = {
   readonly id: Scalars['ID']['output'];
   readonly ignoreCallbackUrl?: Maybe<Scalars['String']['output']>;
   readonly integrationConfigs: ReadonlyArray<GQLIntegrationConfig>;
-  readonly isDemoOrg: Scalars['Boolean']['output'];
   readonly itemTypes: ReadonlyArray<GQLItemType>;
   readonly jobPriorityWeights: ReadonlyArray<GQLJobPriorityWeight>;
   readonly mrtQueues: ReadonlyArray<GQLManualReviewQueue>;
@@ -12359,7 +12358,6 @@ export type GQLOrgResolvers<
     ParentType,
     ContextType
   >;
-  isDemoOrg?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
   itemTypes?: Resolver<
     ReadonlyArray<GQLResolversTypes['ItemType']>,
     ParentType,
