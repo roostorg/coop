@@ -142,22 +142,18 @@ function assertRolesAllowedForKind(
   kind: ItemTypeKind,
   roles: ItemTypeRoleColumns,
 ): void {
-  if (
-    kind !== 'USER' &&
-    (roles.profile_icon_field != null ||
-      roles.background_image_field != null ||
-      roles.email_field != null)
-  ) {
-    throwInvalidRole('kind', `contains a role that is not valid for ${kind}`);
-  }
-  if (
-    kind !== 'CONTENT' &&
-    (roles.thread_id_field != null || roles.parent_id_field != null)
-  ) {
-    throwInvalidRole('kind', `contains a role that is not valid for ${kind}`);
-  }
-  if (kind === 'USER' && roles.creator_id_field != null) {
-    throwInvalidRole('kind', `contains a role that is not valid for ${kind}`);
+  for (const [column, { role }] of Object.entries(roleDefinitions)) {
+    if (roles[column as keyof ItemTypeRoleColumns] == null) continue;
+    if (
+      (kind !== 'USER' &&
+        (role === 'profileIcon' ||
+          role === 'backgroundImage' ||
+          role === 'email')) ||
+      (kind !== 'CONTENT' && (role === 'threadId' || role === 'parentId')) ||
+      (kind === 'USER' && role === 'creatorId')
+    ) {
+      throwInvalidRole(role, `is not valid for ${kind}`);
+    }
   }
 }
 
