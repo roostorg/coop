@@ -6,6 +6,7 @@
 
 import {
   assertModelCardHasRequiredSections,
+  type IntegrationConfigField,
   type ModelCard,
   type ModelCardField,
   type ModelCardSection,
@@ -32,6 +33,8 @@ export type IntegrationManifestEntry = Readonly<{
   logoUrl?: string;
   /** Optional URL to a logo variant (e.g. with background). */
   logoWithBackgroundUrl?: string;
+  /** Config form fields declared by plugin manifests; built-ins have custom forms. */
+  configurationFields?: readonly IntegrationConfigField[];
 }>;
 
 const GOOGLE_CONTENT_SAFETY: IntegrationManifestEntry = {

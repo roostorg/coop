@@ -1,20 +1,32 @@
-import { Button, Input } from 'antd';
+import { Button, Input, Select } from 'antd';
 import { Plus, Trash2 } from 'lucide-react';
 
 import {
   GQLGoogleContentSafetyApiIntegrationApiCredential,
   GQLIntegrationApiCredential,
+  GQLIntegrationConfigField,
+  GQLIntegrationConfigFieldInputType,
   GQLOpenAiIntegrationApiCredential,
   GQLZentropiIntegrationApiCredential,
+  Scalars,
 } from '../../../graphql/generated';
+
+export type PluginConfigField = Omit<GQLIntegrationConfigField, '__typename'>;
 
 export default function IntegrationConfigApiCredentialsSection(props: {
   name: string;
   setApiCredential: (cred: GQLIntegrationApiCredential) => void;
   apiCredential: GQLIntegrationApiCredential;
   compact?: boolean;
+  /** Fields declared by a plugin manifest; drives the plugin config form. */
+  configurationFields?: readonly PluginConfigField[];
 }) {
-  const { setApiCredential, apiCredential, compact } = props;
+  const {
+    setApiCredential,
+    apiCredential,
+    compact,
+    configurationFields = [],
+  } = props;
   const inputWidthClass = compact ? 'w-full' : 'w-1/2';
 
   const renderGoogleContentSafetyApiCredential = (
@@ -169,6 +181,113 @@ export default function IntegrationConfigApiCredentialsSection(props: {
     credential: Record<string, unknown>;
   }) => {
     const credential = pluginCredential.credential ?? {};
+    const setField = (key: string, value: string | string[]) =>
+      setApiCredential({
+        __typename: 'PluginIntegrationApiCredential',
+        credential: {
+          ...credential,
+          [key]: value,
+        } as Scalars['JSONObject']['output'],
+      });
+
+    if (configurationFields.length > 0) {
+      return (
+        <div className="flex flex-col gap-4">
+          {configurationFields.map((field) => {
+            const inputId = `integration-config-${field.key}`;
+            const value = credential[field.key];
+            const stringValue =
+              value == null
+                ? ''
+                : typeof value === 'string'
+                  ? value
+                  : JSON.stringify(value);
+            const commonProps = {
+              id: inputId,
+              value: stringValue,
+              placeholder: field.placeholder ?? undefined,
+              'aria-required': field.required,
+            };
+            return (
+              <div
+                key={field.key}
+                className={`flex flex-col ${inputWidthClass}`}
+              >
+                <label htmlFor={inputId} className="mb-1">
+                  {field.label}
+                  {field.required && (
+                    <span className="text-red-600" aria-hidden="true">
+                      {' *'}
+                    </span>
+                  )}
+                </label>
+                {field.inputType ===
+                GQLIntegrationConfigFieldInputType.Select ? (
+                  <Select
+                    id={inputId}
+                    value={stringValue === '' ? undefined : stringValue}
+                    placeholder={field.placeholder ?? 'Select an option'}
+                    aria-required={field.required}
+                    allowClear={!field.required}
+                    options={(field.options ?? []).map((option) => ({
+                      value: option.value,
+                      label: option.label,
+                    }))}
+                    onChange={(selected) => setField(field.key, selected ?? '')}
+                  />
+                ) : field.inputType ===
+                  GQLIntegrationConfigFieldInputType.Array ? (
+                  <Select
+                    id={inputId}
+                    mode="tags"
+                    open={false}
+                    suffixIcon={null}
+                    tokenSeparators={[',']}
+                    value={Array.isArray(value) ? value.map(String) : []}
+                    placeholder={
+                      field.placeholder ?? 'Type a value and press Enter'
+                    }
+                    aria-required={field.required}
+                    onChange={(values) => setField(field.key, values)}
+                  />
+                ) : field.inputType ===
+                  GQLIntegrationConfigFieldInputType.Password ? (
+                  <Input.Password
+                    {...commonProps}
+                    autoComplete="off"
+                    onChange={(event) =>
+                      setField(field.key, event.target.value)
+                    }
+                  />
+                ) : field.inputType ===
+                  GQLIntegrationConfigFieldInputType.Json ? (
+                  <Input.TextArea
+                    {...commonProps}
+                    autoSize={{ minRows: 3, maxRows: 12 }}
+                    onChange={(event) =>
+                      setField(field.key, event.target.value)
+                    }
+                  />
+                ) : (
+                  <Input
+                    {...commonProps}
+                    onChange={(event) =>
+                      setField(field.key, event.target.value)
+                    }
+                  />
+                )}
+                {field.description && (
+                  <div className="mt-1 text-xs text-zinc-500">
+                    {field.description}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
     const entries = Object.entries(credential).filter(
       ([key]) => key !== 'name',
     );

@@ -10,6 +10,7 @@ import CoopModal from '../components/CoopModal';
 import {
   GQLIntegrationApiCredential,
   GQLIntegrationConfigDocument,
+  GQLIntegrationConfigFieldInputType,
   GQLUserPermission,
   namedOperations,
   useGQLIntegrationConfigQuery,
@@ -78,6 +79,18 @@ gql`
           title
           docsUrl
           requiresConfig
+          configurationFields {
+            key
+            label
+            required
+            inputType
+            options {
+              value
+              label
+            }
+            placeholder
+            description
+          }
           logoUrl
           logoWithBackgroundUrl
           modelCard {
@@ -166,6 +179,29 @@ export function getNewEmptyApiKey(name: string): GQLIntegrationApiCredential {
   }
 }
 
+const INVALID_JSON = Symbol('invalid JSON');
+
+/** JSON fields hold JSON text while editing, so `[]` here is never blank. */
+function isBlankFieldValue(value: unknown): boolean {
+  return (
+    value == null ||
+    (typeof value === 'string' && value.trim() === '') ||
+    (Array.isArray(value) && value.length === 0)
+  );
+}
+
+/** JSON fields are edited as text; saved config holds the parsed value. */
+function parseJsonField<T>(value: T): T | typeof INVALID_JSON {
+  if (typeof value !== 'string') {
+    return value;
+  }
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return INVALID_JSON;
+  }
+}
+
 export default function IntegrationConfigForm() {
   const { name } = useParams<{ name: string | undefined }>();
   if (name == null) {
@@ -238,9 +274,24 @@ export default function IntegrationConfigForm() {
     if (response?.config != null) {
       const cred = response.config.apiCredential;
       if (cred.__typename === 'PluginIntegrationApiCredential') {
+        const jsonKeys = new Set(
+          response.config.configurationFields
+            .filter(
+              (field) =>
+                field.inputType === GQLIntegrationConfigFieldInputType.Json,
+            )
+            .map((field) => field.key),
+        );
+        // JSON fields are edited as JSON text, so a saved string like "trust"
+        // must come back quoted to round-trip.
         setApiCredential({
           __typename: 'PluginIntegrationApiCredential',
-          credential: cred.credential ?? {},
+          credential: Object.fromEntries(
+            Object.entries(cred.credential ?? {}).map(([key, value]) => [
+              key,
+              jsonKeys.has(key) ? JSON.stringify(value) : value,
+            ]),
+          ),
         });
       } else {
         setApiCredential(cred);
@@ -282,8 +333,36 @@ export default function IntegrationConfigForm() {
     'OPEN_AI',
     'ZENTROPI',
   ].includes(integrationName);
+  const configurationFields = apiConfig?.configurationFields ?? [];
+  const jsonFieldKeys = new Set(
+    configurationFields
+      .filter(
+        (field) => field.inputType === GQLIntegrationConfigFieldInputType.Json,
+      )
+      .map((field) => field.key),
+  );
+  const pluginCredential =
+    apiCredential.__typename === 'PluginIntegrationApiCredential'
+      ? (apiCredential.credential ?? {})
+      : {};
   const validationMessage = (() => {
     if (isPluginIntegration) {
+      const missing = configurationFields.find(
+        (field) =>
+          field.required && isBlankFieldValue(pluginCredential[field.key]),
+      );
+      if (missing) {
+        return `Please enter ${missing.label}`;
+      }
+      const invalidJson = configurationFields.find(
+        (field) =>
+          jsonFieldKeys.has(field.key) &&
+          !isBlankFieldValue(pluginCredential[field.key]) &&
+          parseJsonField(pluginCredential[field.key]) === INVALID_JSON,
+      );
+      if (invalidJson) {
+        return `${invalidJson.label} must be valid JSON`;
+      }
       return undefined;
     }
     if (
@@ -338,10 +417,26 @@ export default function IntegrationConfigForm() {
           },
         ];
         if (isPluginIntegration) {
-          const cred =
-            apiCredential.__typename === 'PluginIntegrationApiCredential'
-              ? (apiCredential.credential ?? {})
-              : {};
+          // Blank optional fields are omitted so plugins see them as unset.
+          const optionalKeys = new Set(
+            configurationFields
+              .filter((field) => !field.required)
+              .map((field) => field.key),
+          );
+          const cred = Object.fromEntries(
+            Object.entries(pluginCredential)
+              .filter(
+                ([key, value]) =>
+                  key !== 'name' &&
+                  !(optionalKeys.has(key) && isBlankFieldValue(value)),
+              )
+              .map(([key, value]) => {
+                const parsed = jsonFieldKeys.has(key)
+                  ? parseJsonField(value)
+                  : value;
+                return [key, parsed === INVALID_JSON ? value : parsed];
+              }),
+          );
           await setPluginConfig({
             variables: {
               input: { integrationId: integrationName, credential: cred },
@@ -487,6 +582,7 @@ export default function IntegrationConfigForm() {
               setApiCredential={(cred: GQLIntegrationApiCredential) =>
                 setApiCredential(cred)
               }
+              configurationFields={configurationFields}
               compact
             />
             {saveButton}
@@ -500,6 +596,7 @@ export default function IntegrationConfigForm() {
             setApiCredential={(cred: GQLIntegrationApiCredential) =>
               setApiCredential(cred)
             }
+            configurationFields={configurationFields}
           />
           {saveButton}
         </>

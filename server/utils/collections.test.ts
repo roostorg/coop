@@ -1,4 +1,10 @@
-import { filterNullOrUndefined, moveArrayElement } from './collections.js';
+import { ReadableStream } from 'node:stream/web';
+
+import {
+  abortableAsyncIterableToArray,
+  filterNullOrUndefined,
+  moveArrayElement,
+} from './collections.js';
 
 describe('Collections utils functions', () => {
   describe('Filter null and undefined', () => {
@@ -52,6 +58,80 @@ describe('Collections utils functions', () => {
     test('Move element from index 2 to beginning of the array', () => {
       const array = [1, 2, 3, 4];
       expect(moveArrayElement(array, 2, 0)).toEqual([3, 1, 2, 4]);
+    });
+  });
+
+  describe('abortableAsyncIterableToArray', () => {
+    test('rejects with the abort reason when aborted during a pending read', async () => {
+      const stream = new ReadableStream<number>({
+        start(controller) {
+          controller.enqueue(1);
+        },
+      });
+      const deadline = new AbortController();
+      const reason = new Error('deadline');
+
+      const pending = abortableAsyncIterableToArray(stream, deadline.signal);
+      await new Promise((resolve) => setImmediate(resolve));
+      deadline.abort(reason);
+
+      await expect(pending).rejects.toBe(reason);
+    });
+
+    test('stops at the limit and cancels the source', async () => {
+      const cancel = vi.fn();
+      const stream = new ReadableStream<number>({
+        start(controller) {
+          controller.enqueue(1);
+          controller.enqueue(2);
+        },
+        cancel,
+      });
+
+      await expect(
+        abortableAsyncIterableToArray(stream, new AbortController().signal, 1),
+      ).resolves.toEqual([1]);
+      expect(cancel).toHaveBeenCalled();
+    });
+
+    test('returns every item when the source ends first', async () => {
+      async function* numbers() {
+        yield 1;
+        yield 2;
+      }
+
+      await expect(
+        abortableAsyncIterableToArray(numbers(), new AbortController().signal),
+      ).resolves.toEqual([1, 2]);
+    });
+
+    test('removes its abort listener when the source ends first', async () => {
+      async function* numbers() {
+        yield 1;
+      }
+      const { signal } = new AbortController();
+      const addEventListener = vi.spyOn(signal, 'addEventListener');
+      const removeEventListener = vi.spyOn(signal, 'removeEventListener');
+
+      await abortableAsyncIterableToArray(numbers(), signal);
+
+      expect(removeEventListener).toHaveBeenCalledWith(
+        'abort',
+        addEventListener.mock.calls[0][1],
+      );
+    });
+
+    test('rejects without reading when the signal is already aborted', async () => {
+      const next = vi.fn();
+      const source: AsyncIterable<number> = {
+        [Symbol.asyncIterator]: () => ({ next }),
+      };
+      const reason = new Error('deadline');
+
+      await expect(
+        abortableAsyncIterableToArray(source, AbortSignal.abort(reason)),
+      ).rejects.toBe(reason);
+      expect(next).not.toHaveBeenCalled();
     });
   });
 });
