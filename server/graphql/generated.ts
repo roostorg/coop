@@ -801,6 +801,17 @@ export type GQLCreateActionInput = {
   readonly parameters?: InputMaybe<ReadonlyArray<GQLActionParameterInput>>;
 };
 
+export type GQLCreateApiKeyInput = {
+  readonly description?: InputMaybe<Scalars['String']['input']>;
+  readonly name: Scalars['String']['input'];
+};
+
+export type GQLCreateApiKeySuccessResponse = {
+  readonly __typename?: 'CreateApiKeySuccessResponse';
+  readonly apiKey: Scalars['String']['output'];
+  readonly record: GQLApiKey;
+};
+
 export type GQLCreateBacktestInput = {
   readonly ruleId: Scalars['ID']['input'];
   readonly sampleDesiredSize: Scalars['Int']['input'];
@@ -2734,6 +2745,7 @@ export type GQLMutation = {
   readonly bulkExecuteActions: GQLExecuteBulkActionResponse;
   readonly changePassword: GQLChangePasswordResponse;
   readonly createAction: GQLMutateActionResponse;
+  readonly createApiKey: GQLCreateApiKeySuccessResponse;
   readonly createBacktest?: Maybe<GQLCreateBacktestResponse>;
   readonly createContentItemType: GQLMutateContentItemTypeResponse;
   readonly createContentRule: GQLCreateContentRuleResponse;
@@ -2789,6 +2801,7 @@ export type GQLMutation = {
    * successful submission, or an error with a user-safe summary on failure.
    */
   readonly retryNcmecSubmission: GQLRetryNcmecSubmissionResponse;
+  readonly revokeApiKey: Scalars['Boolean']['output'];
   readonly rotateApiKey: GQLRotateApiKeyResponse;
   readonly rotateWebhookSigningKey: GQLRotateWebhookSigningKeyResponse;
   readonly runRetroaction?: Maybe<GQLRunRetroactionResponse>;
@@ -2869,6 +2882,10 @@ export type GQLMutationChangePasswordArgs = {
 
 export type GQLMutationCreateActionArgs = {
   input: GQLCreateActionInput;
+};
+
+export type GQLMutationCreateApiKeyArgs = {
+  input: GQLCreateApiKeyInput;
 };
 
 export type GQLMutationCreateBacktestArgs = {
@@ -3037,6 +3054,10 @@ export type GQLMutationResetPasswordArgs = {
 
 export type GQLMutationRetryNcmecSubmissionArgs = {
   decisionId: Scalars['ID']['input'];
+};
+
+export type GQLMutationRevokeApiKeyArgs = {
+  id: Scalars['ID']['input'];
 };
 
 export type GQLMutationRotateApiKeyArgs = {
@@ -3736,6 +3757,7 @@ export type GQLQuery = {
   readonly actionStatistics: ReadonlyArray<GQLActionData>;
   readonly allRuleInsights?: Maybe<GQLAllRuleInsights>;
   readonly apiKey: Scalars['String']['output'];
+  readonly apiKeys: ReadonlyArray<GQLApiKey>;
   readonly appealSettings?: Maybe<GQLAppealSettings>;
   readonly availableIntegrations: ReadonlyArray<GQLIntegrationMetadata>;
   readonly exchangeApiSchema?: Maybe<GQLExchangeApiSchema>;
@@ -4378,6 +4400,7 @@ export type GQLRotateApiKeyError = GQLError & {
 
 export type GQLRotateApiKeyInput = {
   readonly description?: InputMaybe<Scalars['String']['input']>;
+  readonly id?: InputMaybe<Scalars['ID']['input']>;
   readonly name: Scalars['String']['input'];
 };
 
@@ -6184,6 +6207,8 @@ export type GQLResolversTypes = {
   CountByPolicyByDayPolicy: ResolverTypeWrapper<GQLCountByPolicyByDayPolicy>;
   CountByTagByDay: ResolverTypeWrapper<GQLCountByTagByDay>;
   CreateActionInput: GQLCreateActionInput;
+  CreateApiKeyInput: GQLCreateApiKeyInput;
+  CreateApiKeySuccessResponse: ResolverTypeWrapper<GQLCreateApiKeySuccessResponse>;
   CreateBacktestInput: GQLCreateBacktestInput;
   CreateBacktestResponse: ResolverTypeWrapper<
     Omit<GQLCreateBacktestResponse, 'backtest'> & {
@@ -7050,6 +7075,8 @@ export type GQLResolversParentTypes = {
   CountByPolicyByDayPolicy: GQLCountByPolicyByDayPolicy;
   CountByTagByDay: GQLCountByTagByDay;
   CreateActionInput: GQLCreateActionInput;
+  CreateApiKeyInput: GQLCreateApiKeyInput;
+  CreateApiKeySuccessResponse: GQLCreateApiKeySuccessResponse;
   CreateBacktestInput: GQLCreateBacktestInput;
   CreateBacktestResponse: Omit<GQLCreateBacktestResponse, 'backtest'> & {
     backtest: GQLResolversParentTypes['Backtest'];
@@ -8739,6 +8766,15 @@ export type GQLCountByTagByDayResolvers<
   count?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
   date?: Resolver<GQLResolversTypes['Date'], ParentType, ContextType>;
   tag?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type GQLCreateApiKeySuccessResponseResolvers<
+  ContextType = Context,
+  ParentType extends GQLResolversParentTypes['CreateApiKeySuccessResponse'] =
+    GQLResolversParentTypes['CreateApiKeySuccessResponse'],
+> = {
+  apiKey?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  record?: Resolver<GQLResolversTypes['ApiKey'], ParentType, ContextType>;
 };
 
 export type GQLCreateBacktestResponseResolvers<
@@ -11685,6 +11721,12 @@ export type GQLMutationResolvers<
     ContextType,
     RequireFields<GQLMutationCreateActionArgs, 'input'>
   >;
+  createApiKey?: Resolver<
+    GQLResolversTypes['CreateApiKeySuccessResponse'],
+    ParentType,
+    ContextType,
+    RequireFields<GQLMutationCreateApiKeyArgs, 'input'>
+  >;
   createBacktest?: Resolver<
     Maybe<GQLResolversTypes['CreateBacktestResponse']>,
     ParentType,
@@ -11941,6 +11983,12 @@ export type GQLMutationResolvers<
     ParentType,
     ContextType,
     RequireFields<GQLMutationRetryNcmecSubmissionArgs, 'decisionId'>
+  >;
+  revokeApiKey?: Resolver<
+    GQLResolversTypes['Boolean'],
+    ParentType,
+    ContextType,
+    RequireFields<GQLMutationRevokeApiKeyArgs, 'id'>
   >;
   rotateApiKey?: Resolver<
     GQLResolversTypes['RotateApiKeyResponse'],
@@ -13185,6 +13233,11 @@ export type GQLQueryResolvers<
     ContextType
   >;
   apiKey?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  apiKeys?: Resolver<
+    ReadonlyArray<GQLResolversTypes['ApiKey']>,
+    ParentType,
+    ContextType
+  >;
   appealSettings?: Resolver<
     Maybe<GQLResolversTypes['AppealSettings']>,
     ParentType,
@@ -15949,6 +16002,7 @@ export type GQLResolvers<ContextType = Context> = {
   CountByPolicyByDay?: GQLCountByPolicyByDayResolvers<ContextType>;
   CountByPolicyByDayPolicy?: GQLCountByPolicyByDayPolicyResolvers<ContextType>;
   CountByTagByDay?: GQLCountByTagByDayResolvers<ContextType>;
+  CreateApiKeySuccessResponse?: GQLCreateApiKeySuccessResponseResolvers<ContextType>;
   CreateBacktestResponse?: GQLCreateBacktestResponseResolvers<ContextType>;
   CreateContentRuleResponse?: GQLCreateContentRuleResponseResolvers<ContextType>;
   CreateManualReviewQueueResponse?: GQLCreateManualReviewQueueResponseResolvers<ContextType>;

@@ -1,8 +1,37 @@
 import { gql } from '@apollo/client';
 
+export const API_KEYS_QUERY = gql`
+  query ApiKeys {
+    apiKeys {
+      id
+      name
+      description
+      isActive
+      createdAt
+      lastUsedAt
+    }
+  }
+`;
+
+export const CREATE_API_KEY_MUTATION = gql`
+  mutation CreateApiKey($input: CreateApiKeyInput!) {
+    createApiKey(input: $input) {
+      apiKey
+      record {
+        id
+      }
+    }
+  }
+`;
+
+export const REVOKE_API_KEY_MUTATION = gql`
+  mutation RevokeApiKey($id: ID!) {
+    revokeApiKey(id: $id)
+  }
+`;
+
 export const API_AUTH_QUERY = gql`
   query ApiAuth {
-    apiKey
     myOrg {
       id
       publicSigningKey

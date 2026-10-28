@@ -1,3 +1,4 @@
+import { type ApiKeyRecord } from '../../services/apiKeyService/index.js';
 import { UserPermission } from '../../services/userManagementService/index.js';
 import { CoopError, ErrorType } from '../../utils/errors.js';
 import { logErrorJson } from '../../utils/logging.js';
@@ -36,8 +37,19 @@ const typeDefs = /* GraphQL */ `
   union RotateApiKeyResponse = RotateApiKeySuccessResponse | RotateApiKeyError
 
   input RotateApiKeyInput {
+    id: ID
     name: String!
     description: String
+  }
+
+  input CreateApiKeyInput {
+    name: String!
+    description: String
+  }
+
+  type CreateApiKeySuccessResponse {
+    apiKey: String!
+    record: ApiKey!
   }
 
   type RotateWebhookSigningKeySuccessResponse {
@@ -59,15 +71,43 @@ const typeDefs = /* GraphQL */ `
 
   type Query {
     apiKey: String!
+    apiKeys: [ApiKey!]!
   }
 
   type Mutation {
+    createApiKey(input: CreateApiKeyInput!): CreateApiKeySuccessResponse!
+    revokeApiKey(id: ID!): Boolean!
     rotateApiKey(input: RotateApiKeyInput!): RotateApiKeyResponse!
     rotateWebhookSigningKey: RotateWebhookSigningKeyResponse!
   }
 `;
 
+function serializeApiKey(record: ApiKeyRecord) {
+  return {
+    id: record.id,
+    name: record.name,
+    description: record.description,
+    isActive: record.isActive,
+    createdAt: record.createdAt.toISOString(),
+    lastUsedAt: record.lastUsedAt?.toISOString() ?? null,
+    createdBy: record.createdBy,
+  };
+}
+
 const Query: GQLQueryResolvers = {
+  async apiKeys(_, __, context) {
+    const user = context.getUser();
+    if (!user?.orgId) {
+      throw unauthenticatedError('Authenticated user required');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError('User does not have permission to manage API keys');
+    }
+    const records = await context.services.ApiKeyService.getApiKeysForOrg(
+      user.orgId,
+    );
+    return records.map(serializeApiKey);
+  },
   async apiKey(_, __, context) {
     const user = context.getUser();
     if (!user || !user.orgId) {
@@ -90,6 +130,36 @@ const Query: GQLQueryResolvers = {
 };
 
 const Mutation: GQLMutationResolvers = {
+  async createApiKey(_, { input }, context) {
+    const user = context.getUser();
+    if (!user?.orgId) {
+      throw unauthenticatedError('Authenticated user required');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError('User does not have permission to manage API keys');
+    }
+    const { apiKey, record } =
+      await context.services.ApiKeyService.createApiKey(
+        user.orgId,
+        input.name,
+        input.description ?? null,
+        user.id,
+      );
+    return {
+      apiKey,
+      record: serializeApiKey(record),
+    };
+  },
+  async revokeApiKey(_, { id }, context) {
+    const user = context.getUser();
+    if (!user?.orgId) {
+      throw unauthenticatedError('Authenticated user required');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError('User does not have permission to manage API keys');
+    }
+    return context.services.ApiKeyService.deactivateApiKey(id, user.orgId);
+  },
   async rotateApiKey(_, { input }, context) {
     const user = context.getUser();
     if (!user || !user.orgId) {
@@ -108,20 +178,13 @@ const Mutation: GQLMutationResolvers = {
           input.name,
           input.description ?? null,
           user.id,
+          input.id ?? undefined,
         );
 
       return gqlSuccessResult(
         {
           apiKey,
-          record: {
-            id: record.id,
-            name: record.name,
-            description: record.description,
-            isActive: record.isActive,
-            createdAt: record.createdAt.toISOString(),
-            lastUsedAt: record.lastUsedAt?.toISOString() ?? null,
-            createdBy: record.createdBy,
-          },
+          record: serializeApiKey(record),
         },
         'RotateApiKeySuccessResponse',
       );
