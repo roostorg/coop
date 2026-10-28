@@ -1,5 +1,6 @@
 import { ContainerTypes, ScalarTypes } from '@roostorg/coop-types';
 
+import { assertUnreachable } from '../../../utils/misc.js';
 import { type ModerationConfigServicePg } from '../dbTypes.js';
 import {
   makeInvalidItemTypeHiddenFieldsError,
@@ -144,15 +145,32 @@ function assertRolesAllowedForKind(
 ): void {
   for (const [column, { role }] of Object.entries(roleDefinitions)) {
     if (roles[column as keyof ItemTypeRoleColumns] == null) continue;
-    if (
-      (kind !== 'USER' &&
-        (role === 'profileIcon' ||
-          role === 'backgroundImage' ||
-          role === 'email')) ||
-      (kind !== 'CONTENT' && (role === 'threadId' || role === 'parentId')) ||
-      (kind === 'USER' && role === 'creatorId')
-    ) {
-      throwInvalidRole(role, `is not valid for ${kind}`);
+    switch (role) {
+      case 'profileIcon':
+      case 'backgroundImage':
+      case 'email':
+        if (kind !== 'USER') {
+          throwInvalidRole(role, `is not valid for ${kind}`);
+        }
+        break;
+      case 'threadId':
+      case 'parentId':
+        if (kind !== 'CONTENT') {
+          throwInvalidRole(role, `is not valid for ${kind}`);
+        }
+        break;
+      case 'creatorId':
+        if (kind === 'USER') {
+          throwInvalidRole(role, `is not valid for ${kind}`);
+        }
+        break;
+      case 'displayName':
+      case 'createdAt':
+      case 'isDeleted':
+      case 'ipAddress':
+        break;
+      default:
+        assertUnreachable(role);
     }
   }
 }
