@@ -19,6 +19,7 @@ const evaluateContentInputSchema = v.object({
   content: v.custom<RawItemData>(
     (input) =>
       typeof input === 'object' && input !== null && !Array.isArray(input),
+    'must be object',
   ),
   sync: v.optional(v.boolean()),
 });
