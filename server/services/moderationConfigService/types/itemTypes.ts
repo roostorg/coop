@@ -105,12 +105,24 @@ export const itemTypeRoleNames = {
     'email',
   ],
 } as const satisfies {
-  [K in ItemTypeKind]: readonly (keyof Extract<
-    ItemType,
-    { kind: K }
-  >['schemaFieldRoles'])[];
+  [K in ItemTypeKind]: readonly RoleNameForKind<K>[];
 };
 
+type RoleNameForKind<K extends ItemTypeKind> = keyof Extract<
+  ItemType,
+  { kind: K }
+>['schemaFieldRoles'];
+
+// This will be a type error if a kind's list leaves out one of its roles.
+type _ItemTypeRoleNamesCompleteCheck = Satisfies<
+  {
+    [K in ItemTypeKind]: Exclude<
+      RoleNameForKind<K>,
+      (typeof itemTypeRoleNames)[K][number]
+    >;
+  }[ItemTypeKind],
+  never
+>;
 /**
  * These three fields uniquely identify a particular "incarnation" of a given
  * item type (where an incarnation refers to both a version of the item type, in
