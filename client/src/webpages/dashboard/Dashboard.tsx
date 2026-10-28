@@ -24,6 +24,7 @@ import './Dashboard.css';
 
 import useDynamicLegacyCSS from '@/hooks/useDynamicLegacyCSS';
 
+import CoopUpdateBanner from '@/components/CoopUpdateBanner';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import Sidebar, { MenuItem } from '@/components/Sidebar';
 
@@ -709,61 +710,65 @@ export default function Dashboard() {
   }
 
   return (
-    <div
-      className={`flex w-full h-screen${isUsingLegacyCSS ? '' : ' bg-slate-50'}`}
-    >
-      <Helmet>
-        <title>Home</title>
-      </Helmet>
-      <Sidebar
-        menuItems={menuItems}
-        settingsMenuItems={settingsMenuItems}
-        selectedMenuItem={selectedMenuItem}
-        setSelectedMenuItem={setSelectedMenuItem}
-        permissions={permissions}
-        logout={async () => logout()}
-        isDemoOrg={isDemoOrg}
-      />
-      {isUsingLegacyCSS ? (
-        <>
-          <div className="w-px h-full bg-[#e5e7eb]" />
-          <div className="flex justify-center w-full px-12 py-8 overflow-auto">
-            <ErrorBoundary
-              key={pathname}
-              containedInLayout
-              buttonTitle={
-                currentRouteHandle?.error?.buttonTitle ?? 'Return to dashboard'
-              }
-              buttonLinkPath={
-                currentRouteHandle?.error?.buttonLinkPath
-                  ? `/dashboard/${currentRouteHandle.error.buttonLinkPath}`
-                  : '/dashboard'
-              }
-            >
-              {/* min-w-0 lets descendants' overflow-x-auto scroll instead of
+    <div className="flex h-screen flex-col">
+      <CoopUpdateBanner permissions={permissions} />
+      <div
+        className={`flex w-full flex-1 min-h-0${isUsingLegacyCSS ? '' : ' bg-slate-50'}`}
+      >
+        <Helmet>
+          <title>Home</title>
+        </Helmet>
+        <Sidebar
+          menuItems={menuItems}
+          settingsMenuItems={settingsMenuItems}
+          selectedMenuItem={selectedMenuItem}
+          setSelectedMenuItem={setSelectedMenuItem}
+          permissions={permissions}
+          logout={async () => logout()}
+          isDemoOrg={isDemoOrg}
+        />
+        {isUsingLegacyCSS ? (
+          <>
+            <div className="w-px h-full bg-[#e5e7eb]" />
+            <div className="flex justify-center w-full px-12 py-8 overflow-auto">
+              <ErrorBoundary
+                key={pathname}
+                containedInLayout
+                buttonTitle={
+                  currentRouteHandle?.error?.buttonTitle ??
+                  'Return to dashboard'
+                }
+                buttonLinkPath={
+                  currentRouteHandle?.error?.buttonLinkPath
+                    ? `/dashboard/${currentRouteHandle.error.buttonLinkPath}`
+                    : '/dashboard'
+                }
+              >
+                {/* min-w-0 lets descendants' overflow-x-auto scroll instead of
                   the whole page when content is wider than the viewport. */}
-              <div className="w-full max-w-[1800px] min-w-0">
-                {isCSSLoaded ? <Outlet /> : <FullScreenLoading />}
-              </div>
-            </ErrorBoundary>
-          </div>
-        </>
-      ) : (
-        <main className="flex flex-col flex-grow overflow-auto min-h-0">
-          <div className="p-10">
-            <ErrorBoundary
-              key={pathname}
-              containedInLayout
-              buttonTitle={currentRouteHandle?.error?.buttonTitle}
-              buttonLinkPath={currentRouteHandle?.error?.buttonLinkPath}
-            >
-              <div className="w-full max-w-[1800px] min-w-0">
-                <Outlet />
-              </div>
-            </ErrorBoundary>
-          </div>
-        </main>
-      )}
+                <div className="w-full max-w-[1800px] min-w-0">
+                  {isCSSLoaded ? <Outlet /> : <FullScreenLoading />}
+                </div>
+              </ErrorBoundary>
+            </div>
+          </>
+        ) : (
+          <main className="flex flex-col flex-grow overflow-auto min-h-0">
+            <div className="p-10">
+              <ErrorBoundary
+                key={pathname}
+                containedInLayout
+                buttonTitle={currentRouteHandle?.error?.buttonTitle}
+                buttonLinkPath={currentRouteHandle?.error?.buttonLinkPath}
+              >
+                <div className="w-full max-w-[1800px] min-w-0">
+                  <Outlet />
+                </div>
+              </ErrorBoundary>
+            </div>
+          </main>
+        )}
+      </div>
     </div>
   );
 }

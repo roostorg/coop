@@ -67,6 +67,16 @@ export type ResolverMap<Source = unknown> = {
  * GraphQL Query Resolvers
  */
 const Query: GQLQueryResolvers = {
+  async coopUpdateAvailable(_, __, context) {
+    const user = context.getUser();
+    if (user == null) {
+      throw unauthenticatedError('Authenticated user required');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      return false;
+    }
+    return context.services.getCoopUpdateAvailable(null);
+  },
   async myOrg(_, __, context) {
     const user = context.getUser();
     if (user == null) {

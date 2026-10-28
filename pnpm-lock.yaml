@@ -635,6 +635,9 @@ importers:
       safe-stable-stringify:
         specifier: ^2.4.2
         version: 2.5.0
+      semver:
+        specifier: 7.8.5
+        version: 7.8.5
       size-limited-map:
         specifier: ^2.0.0
         version: 2.0.0
@@ -738,6 +741,9 @@ importers:
       '@types/pg-cursor':
         specifier: ^2.7.0
         version: 2.7.2
+      '@types/semver':
+        specifier: 7.7.1
+        version: 7.7.1
       '@types/supertest':
         specifier: ^2.0.11
         version: 2.0.12
@@ -5410,6 +5416,9 @@ packages:
 
   '@types/resolve@1.20.6':
     resolution: {integrity: sha512-A4STmOXPhMUtHH+S6ymgE2GiBSMqf4oTvcQZMcHzokuTLVYzXTB8ttjcgxOVaAp2lGwEdzZ0J+cRbbeevQj1UQ==}
+
+  '@types/semver@7.7.1':
+    resolution: {integrity: sha512-FmgJfu+MOcQ370SD0ev7EI8TlCAfKYU+B4m5T3yXc1CiRN94g/SZPtsCkk506aUDtlMnFZvasDwHHUcZUEaYuA==}
 
   '@types/send@1.2.1':
     resolution: {integrity: sha512-arsCikDvlU99zl1g69TcAB3mzZPpxgw0UQnaHeC1Nwb015xp8bknZv5rIfri9xTOcMuaVgvabfIRA7PSZVuZIQ==}
@@ -15506,6 +15515,8 @@ snapshots:
       csstype: 3.2.3
 
   '@types/resolve@1.20.6': {}
+
+  '@types/semver@7.7.1': {}
 
   '@types/send@1.2.1':
     dependencies:

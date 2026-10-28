@@ -51,22 +51,24 @@ jobs:
       server: ${{ steps.filter.outputs.server }}
       client: ${{ steps.filter.outputs.client }}
       db: ${{ steps.filter.outputs.db }}
+      version: ${{ steps.version.outputs.version }}
     steps:
-      # Reject arbitrary dispatch input so it can't become an image tag like
-      # `coop-server:squirtle`. Passed via env to avoid shell injection.
-      - name: Validate version input
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.version != ''
+      # Validate explicit versions before using them as image tags.
+      # Passed via env to avoid shell injection.
+      - name: Validate version
+        if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && github.event.inputs.version != '')
         env:
-          VERSION: ${{ github.event.inputs.version }}
+          VERSION: ${{ github.event_name == 'release' && github.event.release.tag_name || github.event.inputs.version }}
         run: |
           if ! printf '%s' "$VERSION" | grep -Eq '^v?[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
-            echo "::error::Invalid version input. Expected semver like 1.2.3, v1.2.3, or 1.2.3-alpha."
+            echo "::error::Invalid version. Expected semver like 1.2.3, v1.2.3, or 1.2.3-alpha."
             exit 1
           fi
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
 
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
@@ -92,6 +94,26 @@ jobs:
 
       # On release/dispatch, paths-filter is skipped so outputs are empty.
       # The downstream jobs use != 'false', so empty triggers a build.
+
+      - name: Determine Coop version
+        if: steps.filter.outputs.server != 'false'
+        id: version
+        env:
+          COOP_VERSION: ${{ github.event_name == 'release' && github.event.release.tag_name || github.event.inputs.version }}
+        run: |
+          if [[ -z "$COOP_VERSION" ]]; then
+            description=$(git describe --tags --long --abbrev=8 \
+              --match '[0-9]*.[0-9]*.[0-9]*' --match 'v[0-9]*.[0-9]*.[0-9]*' \
+              --exclude '*-*' --exclude '*+*')
+            IFS=- read -r tag distance hash <<< "$description"
+            if [[ "$distance" == '0' ]]; then
+              COOP_VERSION="$tag"
+            else
+              IFS=. read -r major minor patch <<< "${tag#v}"
+              COOP_VERSION="$major.$minor.$((patch + 1))-dev.$distance+$hash"
+            fi
+          fi
+          echo "version=$COOP_VERSION" >> "$GITHUB_OUTPUT"
 
   build-server:
     needs: changes
@@ -138,6 +160,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             BUILD_ID=${{ github.sha }}
+            COOP_VERSION=${{ needs.changes.outputs.version }}
           # server + worker share a Dockerfile/intermediate stages: read both
           # scopes for reuse, write only our own to avoid concurrent-write races.
           cache-from: |
