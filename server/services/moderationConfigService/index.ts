@@ -60,20 +60,9 @@ export { UserPenaltySeverity } from './types/shared.js';
 
 export { LocationArea, LocationGeometry } from './types/locationArea.js';
 
-export {
-  MatchingValueType,
-  MatchingValues,
-  getMatchingValuesType,
-  isLocationArea,
-} from './types/matchingValues.js';
+export { MatchingValues, isLocationArea } from './types/matchingValues.js';
 
-export {
-  TaggedItemData,
-  isTaggedItemData,
-  isTextValue,
-  isTranscribableType,
-  isTranscribableValue,
-} from './types/itemTypeFields.js';
+export { TaggedItemData, isTaggedItemData } from './types/itemTypeFields.js';
 
 export {
   ModerationConfigService,

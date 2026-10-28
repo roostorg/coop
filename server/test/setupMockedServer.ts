@@ -14,23 +14,6 @@ import SafeTracer from '../utils/SafeTracer.js';
 import { createTransactionalTestDb } from './harness/transactionalPgPool.js';
 
 /**
- * Occassionally, we make a request that's supposed to error, so this function
- * lets us temporarily suppress console messages, to keep our output a bit nicer.
- */
-export function disableConsoleLogging() {
-  /* eslint-disable functional/immutable-data */
-  const noop = () => {};
-  const { log, error } = console;
-  console.log = noop;
-  console.error = noop;
-  return () => {
-    console.log = log;
-    console.error = error;
-  };
-  /* eslint-enable functional/immutable-data */
-}
-
-/**
  * Boots the Express app against real Postgres (analytics and queues mocked),
  * inside a transaction that `rollback()` discards so tests need no cleanup.
  * Only Postgres is rolled back. Usually used via

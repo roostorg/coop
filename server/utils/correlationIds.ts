@@ -29,20 +29,6 @@ export function fromCorrelationId<Type extends string>(
   return it as unknown as string;
 }
 
-/**
- * The correlation ids returned by {@see toCorrelationId} are heirarchical;
- * i.e., they encode the type of event that triggered the flow, and an id for
- * that event (which must be unique only within that event type).
- * Normally, we want to use/store this full hierarchical id everywhere, even
- * where the event type might be obvious from the context. Sometimes, though,
- * we store the id without the prefix (e.g., in postgres, where the prefix would
- * make the id inconsistent with our other primary keys), so this helper function
- * can remove the prefix from the full id to let us do an equality comparison.
- */
-export function getSourceId(it: CorrelationId<string>) {
-  return fromCorrelationId(it).split(':')[1];
-}
-
 export function getSourceType<T extends string>(it: CorrelationId<T>): T {
   return fromCorrelationId(it).split(':')[0] as T;
 }

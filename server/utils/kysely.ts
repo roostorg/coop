@@ -10,8 +10,6 @@ import { type PickEach } from './typescript-types.js';
 
 export const isUniqueViolationError = isPgErrorWithCode.bind(null, '23505');
 export const isForeignKeyViolationError = isPgErrorWithCode.bind(null, '23503');
-export const isNotNullViolationError = isPgErrorWithCode.bind(null, '23502');
-export const isCheckViolationError = isPgErrorWithCode.bind(null, '23514');
 
 // See https://github.com/postgres/postgres/blob/eb81e8e7902f63c4d292638edc8b7e92b766a692/src/backend/utils/errcodes.txt#L227
 function isPgErrorWithCode(code: string, error: unknown) {

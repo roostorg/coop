@@ -27,14 +27,6 @@ export const WEEK = DAY * 7;
 export const MONTH = DAY * 30;
 export const YEAR = DAY * 365;
 
-/**
- * Transforms a Date object to a string formatted as
- * YYYY-MM-DD
- */
-export function formatDate(date = new Date()): string {
-  return date.toISOString().split('T')[0];
-}
-
 function toDate(date: string | DateString | Date): Date {
   return date instanceof Date ? date : new Date(date);
 }
