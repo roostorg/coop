@@ -270,7 +270,6 @@ describe('API key permissions', () => {
         orgId,
         'Read',
         null,
-        null,
         read.record.id,
       );
       expect(rotated.record.permissions).toEqual(['items:read']);
@@ -344,13 +343,7 @@ describe('API key permissions', () => {
         ['config:read'],
       );
       await expect(
-        deps.ApiKeyService.rotateApiKey(
-          orgId,
-          'Other',
-          null,
-          null,
-          key.record.id,
-        ),
+        deps.ApiKeyService.rotateApiKey(orgId, 'Other', null, key.record.id),
       ).rejects.toThrow('Active API key not found');
       expect(
         await deps.ApiKeyService.deactivateApiKey(key.record.id, orgId),
