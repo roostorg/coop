@@ -3774,6 +3774,7 @@ export type GQLQuery = {
   readonly action?: Maybe<GQLAction>;
   readonly actionStatistics: ReadonlyArray<GQLActionData>;
   readonly allRuleInsights?: Maybe<GQLAllRuleInsights>;
+  /** @deprecated Use `apiKeys` instead. */
   readonly apiKey: Scalars['String']['output'];
   readonly apiKeys: ReadonlyArray<GQLApiKey>;
   readonly appealSettings?: Maybe<GQLAppealSettings>;
