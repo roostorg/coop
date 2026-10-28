@@ -171,7 +171,7 @@ jobs:
         continue-on-error: true
         env:
           IMAGE: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}@${{ steps.build.outputs.digest }}
-        run: trivy image --quiet --scanners vuln --format sarif --output trivy.sarif "$IMAGE"
+        run: trivy image --quiet --scanners vuln --platform linux/amd64 --format sarif --output trivy.sarif "$IMAGE"
 
       - uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         continue-on-error: true
@@ -184,7 +184,7 @@ jobs:
         env:
           IMAGE: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}@${{ steps.build.outputs.digest }}
           SBOM: ${{ matrix.image }}-${{ github.event.release.tag_name }}.cdx.json
-        run: trivy image --quiet --format cyclonedx --output "$SBOM" "$IMAGE"
+        run: trivy image --quiet --platform linux/amd64 --format cyclonedx --output "$SBOM" "$IMAGE"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: github.event_name == 'release'
@@ -255,7 +255,7 @@ jobs:
         continue-on-error: true
         env:
           IMAGE: ${{ env.REGISTRY }}/${{ github.repository_owner }}/coop-client@${{ steps.build.outputs.digest }}
-        run: trivy image --quiet --scanners vuln --format sarif --output trivy.sarif "$IMAGE"
+        run: trivy image --quiet --scanners vuln --platform linux/amd64 --format sarif --output trivy.sarif "$IMAGE"
 
       - uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         continue-on-error: true
@@ -268,7 +268,7 @@ jobs:
         env:
           IMAGE: ${{ env.REGISTRY }}/${{ github.repository_owner }}/coop-client@${{ steps.build.outputs.digest }}
           SBOM: coop-client-${{ github.event.release.tag_name }}.cdx.json
-        run: trivy image --quiet --format cyclonedx --output "$SBOM" "$IMAGE"
+        run: trivy image --quiet --platform linux/amd64 --format cyclonedx --output "$SBOM" "$IMAGE"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: github.event_name == 'release'
@@ -340,7 +340,7 @@ jobs:
         continue-on-error: true
         env:
           IMAGE: ${{ env.REGISTRY }}/${{ github.repository_owner }}/coop-migrations@${{ steps.build.outputs.digest }}
-        run: trivy image --quiet --scanners vuln --format sarif --output trivy.sarif "$IMAGE"
+        run: trivy image --quiet --scanners vuln --platform linux/amd64 --format sarif --output trivy.sarif "$IMAGE"
 
       - uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         continue-on-error: true
@@ -353,7 +353,7 @@ jobs:
         env:
           IMAGE: ${{ env.REGISTRY }}/${{ github.repository_owner }}/coop-migrations@${{ steps.build.outputs.digest }}
           SBOM: coop-migrations-${{ github.event.release.tag_name }}.cdx.json
-        run: trivy image --quiet --format cyclonedx --output "$SBOM" "$IMAGE"
+        run: trivy image --quiet --platform linux/amd64 --format cyclonedx --output "$SBOM" "$IMAGE"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: github.event_name == 'release'
