@@ -76,105 +76,174 @@ function validationErrors(
   schema: ErrorSchema,
   input: unknown,
   path: string,
-  issues: readonly GenericIssue[] = safeParse(schema, input, {
-    abortEarly: false,
-  }).issues ?? [],
+  knownIssues?: readonly GenericIssue[],
 ): ValidationError[] {
+  const issues =
+    knownIssues ?? safeParse(schema, input, { abortEarly: false }).issues ?? [];
   if (issues.length === 0) return [];
-  while (schema.type === 'optional' && schema.wrapped) schema = schema.wrapped;
-  const nullable = schema.type === 'nullable';
-  if (nullable && schema.wrapped) schema = schema.wrapped;
-  const base =
-    schema.pipe
-      ?.filter((step): step is ErrorSchema => step.kind === 'schema')
-      .at(-1) ?? schema;
-  const error = (message: string): ValidationError => ({ path, message });
 
-  if (
-    base.entries &&
-    (typeof input !== 'object' || input === null || Array.isArray(input))
-  ) {
-    return [error(`must be object${nullable ? ',null' : ''}`)];
+  const { schema: messageSchema, base, nullable } = unwrapSchema(schema);
+
+  if (base.entries) {
+    if (typeof input !== 'object' || input === null || Array.isArray(input)) {
+      return [
+        { path, message: nullable ? 'must be object,null' : 'must be object' },
+      ];
+    }
+    return objectValidationErrors(
+      messageSchema,
+      base.entries,
+      base.type === 'strict_object',
+      input as Record<string, unknown>,
+      path,
+      issues,
+    );
   }
 
   if (base.type === 'union' && base.options) {
-    const branches = base.options.map((option) =>
-      validationErrors(option, input, path),
-    );
-    return [
-      ...(branches.filter((branch) => branch.length === 0).length > 1
-        ? []
-        : branches.flat()),
-      error('must match exactly one schema in oneOf'),
-    ];
-  }
-
-  if (
-    base.entries &&
-    typeof input === 'object' &&
-    input !== null &&
-    !Array.isArray(input)
-  ) {
-    const object = input as Record<string, unknown>;
-    const properties = base.entries;
-    const entries = Object.entries(properties);
-    const requiredOrder = getMetadata(schema).requiredOrder as
-      readonly string[] | undefined;
-    const required = (
-      requiredOrder ??
-      entries
-        .filter(([, field]) => field.type !== 'optional')
-        .map(([key]) => key)
-    ).filter((key) => object[key] === undefined);
-    return [
-      ...issues
-        .filter((issue) => !issue.path)
-        .map((issue) => error(formatIssue(issue, schema))),
-      ...required.map((key) => error(`must have required property '${key}'`)),
-      ...(base.type === 'strict_object'
-        ? Object.keys(object)
-            .filter((key) => !(key in properties))
-            .map(() => error('must NOT have additional properties'))
-        : []),
-      ...entries.flatMap(([key, field]) =>
-        object[key] === undefined
-          ? []
-          : validationErrors(
-              field,
-              object[key],
-              `${path}/${escapeJsonPointerSegment(key)}`,
-            ),
-      ),
-    ];
+    return unionValidationErrors(base.options, input, path);
   }
 
   if ((base.item || base.items) && Array.isArray(input)) {
-    return [
-      ...(base.items && input.length < base.items.length
-        ? [error(`must NOT have fewer than ${base.items.length} items`)]
-        : []),
-      ...issues
-        .filter((issue) => !issue.path)
-        .map((issue) => error(formatIssue(issue, schema))),
-      ...input.flatMap((item, index) => {
-        const field = base.item ?? base.items?.[index] ?? base.rest;
-        return field ? validationErrors(field, item, `${path}/${index}`) : [];
-      }),
-    ];
+    return arrayValidationErrors(messageSchema, base, input, path, issues);
   }
 
-  return [
-    ...(getMetadata(schema).jsonSchemaType === 'string' &&
+  const errors: ValidationError[] = [];
+  if (
+    getMetadata(messageSchema).jsonSchemaType === 'string' &&
     typeof input !== 'string'
-      ? [error('must be string')]
-      : []),
-    ...issues.map((issue) => {
-      const message = formatIssue(issue, schema);
-      return error(
-        `${message}${nullable && /^must be (string|number|integer|boolean|object|array|null)$/.test(message) ? ',null' : ''}`,
-      );
-    }),
-  ];
+  ) {
+    errors.push({ path, message: 'must be string' });
+  }
+
+  for (const issue of issues) {
+    let message = formatIssue(issue, messageSchema);
+    if (
+      nullable &&
+      /^must be (string|number|integer|boolean|object|array|null)$/.test(
+        message,
+      )
+    ) {
+      message += ',null';
+    }
+    errors.push({ path, message });
+  }
+  return errors;
+}
+
+function unwrapSchema(schema: ErrorSchema) {
+  while (schema.type === 'optional' && schema.wrapped) {
+    schema = schema.wrapped;
+  }
+  const nullable = schema.type === 'nullable';
+  if (nullable && schema.wrapped) {
+    schema = schema.wrapped;
+  }
+
+  // Keep the pipeline for messages and metadata; its last schema defines the structure.
+  let base = schema;
+  for (const step of schema.pipe ?? []) {
+    if (step.kind === 'schema') {
+      base = step as ErrorSchema;
+    }
+  }
+  return { schema, base, nullable };
+}
+
+function objectValidationErrors(
+  schema: ErrorSchema,
+  properties: Record<string, ErrorSchema>,
+  strict: boolean,
+  input: Record<string, unknown>,
+  path: string,
+  issues: readonly GenericIssue[],
+): ValidationError[] {
+  const errors: ValidationError[] = [];
+  for (const issue of issues) {
+    if (!issue.path) {
+      errors.push({ path, message: formatIssue(issue, schema) });
+    }
+  }
+
+  const entries = Object.entries(properties);
+  const requiredOrder = getMetadata(schema).requiredOrder as
+    readonly string[] | undefined;
+  const requiredKeys =
+    requiredOrder ??
+    entries
+      .filter(([, field]) => field.type !== 'optional')
+      .map(([key]) => key);
+  for (const key of requiredKeys) {
+    if (input[key] === undefined) {
+      errors.push({ path, message: `must have required property '${key}'` });
+    }
+  }
+
+  if (strict) {
+    for (const key of Object.keys(input)) {
+      if (!(key in properties)) {
+        errors.push({ path, message: 'must NOT have additional properties' });
+      }
+    }
+  }
+
+  for (const [key, field] of entries) {
+    if (input[key] !== undefined) {
+      const fieldPath = `${path}/${escapeJsonPointerSegment(key)}`;
+      errors.push(...validationErrors(field, input[key], fieldPath));
+    }
+  }
+  return errors;
+}
+
+function arrayValidationErrors(
+  schema: ErrorSchema,
+  base: ErrorSchema,
+  input: unknown[],
+  path: string,
+  issues: readonly GenericIssue[],
+): ValidationError[] {
+  const errors: ValidationError[] = [];
+  if (base.items && input.length < base.items.length) {
+    errors.push({
+      path,
+      message: `must NOT have fewer than ${base.items.length} items`,
+    });
+  }
+  for (const issue of issues) {
+    if (!issue.path) {
+      errors.push({ path, message: formatIssue(issue, schema) });
+    }
+  }
+  input.forEach((item, index) => {
+    const field = base.item ?? base.items?.[index] ?? base.rest;
+    if (field) {
+      errors.push(...validationErrors(field, item, `${path}/${index}`));
+    }
+  });
+  return errors;
+}
+
+function unionValidationErrors(
+  options: readonly ErrorSchema[],
+  input: unknown,
+  path: string,
+): ValidationError[] {
+  let errors: ValidationError[] = [];
+  let matchingBranches = 0;
+  for (const option of options) {
+    const branchErrors = validationErrors(option, input, path);
+    if (branchErrors.length === 0) {
+      matchingBranches++;
+    } else {
+      errors.push(...branchErrors);
+    }
+  }
+  if (matchingBranches > 1) {
+    errors = [];
+  }
+  errors.push({ path, message: 'must match exactly one schema in oneOf' });
+  return errors;
 }
 
 function formatIssue(issue: GenericIssue, schema: ErrorSchema): string {
