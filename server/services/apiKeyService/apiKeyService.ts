@@ -23,6 +23,7 @@ export interface ApiKeyRecord {
   keyHash: string;
   name: string;
   description: string | null;
+  isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
   lastUsedAt: Date | null;
@@ -223,6 +224,7 @@ class ApiKeyService {
       keyHash: record.key_hash,
       name: record.name,
       description: record.description,
+      isActive: record.is_active,
       createdAt: record.created_at,
       updatedAt: record.updated_at,
       lastUsedAt: record.last_used_at,

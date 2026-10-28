@@ -22,10 +22,6 @@ For more information about each release including git tags and artifacts, see [R
 
 - Opening a review queue with no unskipped jobs no longer leaves reviewers on a loading spinner ([#1392](https://github.com/roostorg/coop/pull/1392) by [@Joseph-Mutua](https://github.com/Joseph-Mutua))
 
-### Removed
-
-- Remove API key revocation and the GraphQL `ApiKey.isActive` field ([#1483](https://github.com/roostorg/coop/pull/1483) by [@taobojlen](https://github.com/taobojlen))
-
 ## [1.2.0] - 2026-10-21
 
 ### Added

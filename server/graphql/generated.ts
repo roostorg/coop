@@ -384,6 +384,7 @@ export type GQLApiKey = {
   readonly createdBy?: Maybe<Scalars['String']['output']>;
   readonly description?: Maybe<Scalars['String']['output']>;
   readonly id: Scalars['ID']['output'];
+  readonly isActive: Scalars['Boolean']['output'];
   readonly lastUsedAt?: Maybe<Scalars['String']['output']>;
   readonly name: Scalars['String']['output'];
 };
@@ -7890,6 +7891,7 @@ export type GQLApiKeyResolvers<
     ContextType
   >;
   id?: Resolver<GQLResolversTypes['ID'], ParentType, ContextType>;
+  isActive?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
   lastUsedAt?: Resolver<
     Maybe<GQLResolversTypes['String']>,
     ParentType,

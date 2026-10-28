@@ -120,7 +120,7 @@ describe('apiKey resolvers', () => {
         const created = await execute(`mutation {
             createApiKey(input: { name: "Reports", description: "Report ingestion" }) {
               apiKey
-              record { id name description createdAt lastUsedAt createdBy }
+              record { id name description isActive createdAt lastUsedAt createdBy }
             }
           }`);
         expect(created.errors).toBeUndefined();
@@ -130,6 +130,7 @@ describe('apiKey resolvers', () => {
           id: expect.any(String),
           name: 'Reports',
           description: 'Report ingestion',
+          isActive: true,
           createdAt: expect.any(String),
           lastUsedAt: null,
           createdBy: user.id,
@@ -137,7 +138,7 @@ describe('apiKey resolvers', () => {
         expect(await deps.ApiKeyService.validateApiKey(secret)).toBe(org.id);
 
         const listed = await execute(
-          '{ apiKeys { id name description createdAt lastUsedAt createdBy } }',
+          '{ apiKeys { id name description isActive createdAt lastUsedAt createdBy } }',
         );
         expect(listed.errors).toBeUndefined();
         expect(listed.data!.apiKeys).toHaveLength(2);
@@ -154,7 +155,7 @@ describe('apiKey resolvers', () => {
 
         const update = `mutation Update($id: ID!) {
           updateApiKey(input: { id: $id, name: "Renamed reports", description: null }) {
-            id name description createdAt lastUsedAt createdBy
+            id name description isActive createdAt lastUsedAt createdBy
           }
         }`;
         const edited = await execute(update, { id: record.id });
