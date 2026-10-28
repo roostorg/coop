@@ -34,7 +34,15 @@ const submitActionInputSchema = v.object({
       'must be object',
     ),
   ),
-  note: v.optional(v.pipe(v.string(), v.maxLength(MAX_ACTOR_NOTE_LENGTH))),
+  note: v.optional(
+    v.pipe(
+      v.string(),
+      v.check(
+        (note) => Array.from(note).length <= MAX_ACTOR_NOTE_LENGTH,
+        `must NOT have more than ${MAX_ACTOR_NOTE_LENGTH} characters`,
+      ),
+    ),
+  ),
 });
 
 export type SubmitActionInput = v.InferInput<typeof submitActionInputSchema>;

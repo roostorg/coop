@@ -14,12 +14,13 @@ import { type FixKyselyRowCorrelation } from '../../utils/kysely.js';
 import { logErrorJson } from '../../utils/logging.js';
 import { assertUnreachable, withRetries } from '../../utils/misc.js';
 import { type CollapseCases } from '../../utils/typescript-types.js';
-import { rawItemSubmissionToItemSubmission } from '../itemProcessingService/makeItemSubmission.js';
-import { type RawItemData } from '../itemProcessingService/toNormalizedItemDataOrErrors.js';
 import {
+  rawItemDataSchema,
   rawItemSubmissionSchema,
   type RawItemSubmission,
-} from '../itemProcessingService/types.js';
+} from '../itemProcessingService/index.js';
+import { rawItemSubmissionToItemSubmission } from '../itemProcessingService/makeItemSubmission.js';
+import { type RawItemData } from '../itemProcessingService/toNormalizedItemDataOrErrors.js';
 import type {
   NCMECReportedContentInThread,
   NCMECThreadReport,
@@ -1200,11 +1201,6 @@ const ncmecMessagesSchema = v.object({
 
 const validateNcmecMessages = (input: unknown): input is NcmecMessageResponse =>
   v.safeParse(ncmecMessagesSchema, input).success;
-
-const rawItemDataSchema = v.custom<RawItemData>(
-  (input) =>
-    typeof input === 'object' && input !== null && !Array.isArray(input),
-);
 
 const ncmecAdditionalInfoSchema = v.object({
   users: v.array(
