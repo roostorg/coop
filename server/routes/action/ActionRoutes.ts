@@ -45,7 +45,7 @@ export default {
   pathPrefix: '/actions',
   routes: [
     route.get<GetActionsOutput>('/', (deps) => [
-      createApiKeyMiddleware<never, GetActionsOutput>(deps),
+      createApiKeyMiddleware<never, GetActionsOutput>(deps, ['config:read']),
       getActions(deps),
     ]),
     route.post<SubmitActionInput, undefined>(
@@ -54,7 +54,9 @@ export default {
         bodySchema: submitActionInputSchema,
       },
       (deps) => [
-        createApiKeyMiddleware<SubmitActionInput, undefined>(deps),
+        createApiKeyMiddleware<SubmitActionInput, undefined>(deps, [
+          'actions:execute',
+        ]),
         submitAction(deps),
       ],
     ),

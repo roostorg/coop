@@ -7,7 +7,7 @@ export default {
   pathPrefix: '/item_types',
   routes: [
     route.get<GetItemTypesOutput>('/', (deps) => [
-      createApiKeyMiddleware<never, GetItemTypesOutput>(deps),
+      createApiKeyMiddleware<never, GetItemTypesOutput>(deps, ['config:read']),
       getItemTypes(deps),
     ]),
   ] as ControllerRouteList,

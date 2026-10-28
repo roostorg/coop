@@ -7,6 +7,10 @@ export {
   default as makeApiKeyService,
 } from './apiKeyService.js';
 export { type ApiKeyServicePg } from './dbTypes.js';
+export {
+  type ApiKeyPermission,
+  LEGACY_API_KEY_PERMISSIONS,
+} from './permissions.js';
 
 export interface ApiKeyStorage {
   store(

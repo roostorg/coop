@@ -326,6 +326,7 @@ export type GQLApiKey = {
   readonly isActive: Scalars['Boolean']['output'];
   readonly lastUsedAt?: Maybe<Scalars['String']['output']>;
   readonly name: Scalars['String']['output'];
+  readonly permissions: ReadonlyArray<Scalars['String']['output']>;
 };
 
 export type GQLApiKeyMutationError = GQLError & {
@@ -744,6 +745,7 @@ export type GQLCreateActionInput = {
 export type GQLCreateApiKeyInput = {
   readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly name: Scalars['String']['input'];
+  readonly permissions: ReadonlyArray<Scalars['String']['input']>;
 };
 
 export type GQLCreateApiKeyResponse =
@@ -5651,6 +5653,7 @@ export type GQLApiKeysQuery = {
     readonly id: string;
     readonly name: string;
     readonly description?: string | null;
+    readonly permissions: ReadonlyArray<string>;
     readonly createdAt: string;
     readonly lastUsedAt?: string | null;
   }>;
@@ -5753,6 +5756,7 @@ export type GQLRotateApiKeyMutation = {
           readonly id: string;
           readonly name: string;
           readonly description?: string | null;
+          readonly permissions: ReadonlyArray<string>;
           readonly createdAt: string;
           readonly lastUsedAt?: string | null;
           readonly createdBy?: string | null;
@@ -27307,6 +27311,7 @@ export const GQLApiKeysDocument = gql`
       id
       name
       description
+      permissions
       createdAt
       lastUsedAt
     }
@@ -27677,6 +27682,7 @@ export const GQLRotateApiKeyDocument = gql`
           id
           name
           description
+          permissions
           createdAt
           lastUsedAt
           createdBy

@@ -1,4 +1,5 @@
 import { Button } from '@/coop-ui/Button';
+import { Checkbox } from '@/coop-ui/Checkbox';
 import {
   Dialog,
   DialogContent,
@@ -22,6 +23,22 @@ import { useState } from 'react';
 
 type Key = GQLApiKeysQuery['apiKeys'][number];
 
+const PERMISSIONS = [
+  {
+    value: 'items:read',
+    description: 'Read items, derived data, and user scores.',
+  },
+  { value: 'items:write', description: 'Ingest and evaluate items.' },
+  { value: 'reports:write', description: 'Submit reports.' },
+  { value: 'appeals:write', description: 'Submit appeals.' },
+  { value: 'actions:execute', description: 'Execute actions.' },
+  {
+    value: 'config:read',
+    description: 'Read action definitions, item types, and policies.',
+  },
+  { value: 'config:write', description: 'Create and update definitions.' },
+];
+
 export default function ApiKeyManagement() {
   const { data, loading, error, refetch } = useGQLApiKeysQuery();
   const [createKey] = useGQLCreateApiKeyMutation();
@@ -35,6 +52,7 @@ export default function ApiKeyManagement() {
   >(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [permissions, setPermissions] = useState<string[]>([]);
   const [secret, setSecret] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [mutationError, setMutationError] = useState<string | null>(null);
@@ -51,6 +69,7 @@ export default function ApiKeyManagement() {
             input: {
               name: name.trim(),
               description: description.trim() || null,
+              permissions,
             },
           },
         });
@@ -110,7 +129,7 @@ export default function ApiKeyManagement() {
       className="flex flex-col gap-4 mb-8"
       aria-label="API key management"
     >
-      <div className="flex justify-between items-center gap-4">
+      <div className="flex flex-wrap justify-between items-center gap-4">
         <Text size="SM">
           Use a separate named key for each integration. Send it in the
           x-api-key request header.
@@ -122,6 +141,7 @@ export default function ApiKeyManagement() {
           onClick={() => {
             setName('');
             setDescription('');
+            setPermissions([]);
             setMutationError(null);
             setDialog({ action: 'create' });
           }}
@@ -194,6 +214,20 @@ export default function ApiKeyManagement() {
           <div className="min-w-0 break-words">
             <Text className="font-semibold">{key.name}</Text>
             {key.description && <Text size="SM">{key.description}</Text>}
+            {key.permissions.length ? (
+              <ul
+                aria-label={`Permissions for ${key.name}`}
+                className="flex flex-wrap gap-x-3 gap-y-1 my-2 text-sm"
+              >
+                {key.permissions.map((permission) => (
+                  <li key={permission} className="font-mono">
+                    {permission}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <Text size="SM">No permissions</Text>
+            )}
             <Text size="SM" className="text-gray-500">
               Created {new Date(key.createdAt).toLocaleDateString()} · Last used{' '}
               {key.lastUsedAt
@@ -264,7 +298,7 @@ export default function ApiKeyManagement() {
               : dialog?.action === 'edit'
                 ? 'Update the name and description. The API key itself will not change, and applications will keep working.'
                 : dialog?.action === 'rotate'
-                  ? `Replace the secret for “${dialog.key.name}”. Its current secret will stop working immediately. Other keys are not affected.`
+                  ? `Replace the secret for “${dialog.key.name}”. Its current secret will stop working immediately. Permissions stay the same. Other keys are not affected.`
                   : dialog &&
                     `Permanently delete “${dialog.key.name}”. Applications using it will lose access immediately. Other keys are not affected.`}
           </DialogDescription>
@@ -295,6 +329,53 @@ export default function ApiKeyManagement() {
                   maxLength={2000}
                   disabled={busy}
                 />
+                {dialog.action === 'create' && (
+                  <fieldset
+                    disabled={busy}
+                    className="min-w-0 flex flex-col gap-3"
+                  >
+                    <legend className="mb-2 text-sm font-semibold">
+                      Permissions
+                    </legend>
+                    <Text size="SM">
+                      Select only what this integration needs. Permissions are
+                      independent: write does not include read. No permissions
+                      are selected by default. To change permissions later,
+                      delete this key and create a new one.
+                    </Text>
+                    {PERMISSIONS.map(({ value, description }) => (
+                      <div key={value} className="flex items-start gap-3">
+                        <Checkbox
+                          id={`api-key-${value}`}
+                          className="mt-1"
+                          checked={permissions.includes(value)}
+                          disabled={busy}
+                          aria-describedby={`api-key-${value}-description`}
+                          onCheckedChange={(checked) =>
+                            setPermissions((current) =>
+                              checked
+                                ? [...current, value]
+                                : current.filter(
+                                    (permission) => permission !== value,
+                                  ),
+                            )
+                          }
+                        />
+                        <div className="min-w-0">
+                          <Label
+                            htmlFor={`api-key-${value}`}
+                            className="font-mono"
+                          >
+                            {value}
+                          </Label>
+                          <Text id={`api-key-${value}-description`} size="SM">
+                            {description}
+                          </Text>
+                        </div>
+                      </div>
+                    ))}
+                  </fieldset>
+                )}
               </div>
             )}
             {mutationError && (
