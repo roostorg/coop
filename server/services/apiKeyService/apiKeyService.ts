@@ -80,24 +80,14 @@ class ApiKeyService {
 
   /**
    * Replaces one active key's secret without affecting other keys.
-   * Without a key ID, rotates the most recently created active key.
    */
   async rotateApiKey(
     orgId: string,
     name: string,
     description: string | null,
-    createdBy: string | null,
-    keyId?: string,
+    keyId: string,
   ): Promise<{ apiKey: string; record: ApiKeyRecord }> {
     const apiKey = this.generateApiKey();
-    const selectedKey = this.db
-      .selectFrom('public.api_keys')
-      .select('id')
-      .where('org_id', '=', orgId)
-      .where('is_active', '=', true)
-      .orderBy('created_at', 'desc')
-      .orderBy('id', 'desc')
-      .limit(1);
     const result = await this.db
       .updateTable('public.api_keys')
       .set({
@@ -108,13 +98,10 @@ class ApiKeyService {
       })
       .where('org_id', '=', orgId)
       .where('is_active', '=', true)
-      .where('id', '=', keyId ?? selectedKey)
+      .where('id', '=', keyId)
       .returningAll()
       .executeTakeFirst();
 
-    if (!result && keyId === undefined) {
-      return this.createApiKey(orgId, name, description, createdBy);
-    }
     if (!result) {
       throw new Error('Active API key not found');
     }
