@@ -63,7 +63,7 @@ class ApiKeyService {
     if (
       permissions.some(
         (permission) =>
-          !API_KEY_PERMISSIONS.some((allowed) => allowed === permission),
+          !API_KEY_PERMISSIONS.some((allowed) => allowed.value === permission),
       )
     ) {
       throw makeBadRequestError('Unknown API key permission', {

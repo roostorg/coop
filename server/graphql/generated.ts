@@ -409,6 +409,12 @@ export type GQLApiKeyMutationError = GQLError & {
   readonly type: ReadonlyArray<Scalars['String']['output']>;
 };
 
+export type GQLApiKeyPermissionDefinition = {
+  readonly __typename?: 'ApiKeyPermissionDefinition';
+  readonly description: Scalars['String']['output'];
+  readonly value: Scalars['String']['output'];
+};
+
 export const GQLAppealDecision = {
   Accept: 'ACCEPT',
   Reject: 'REJECT',
@@ -3787,6 +3793,7 @@ export type GQLQuery = {
   readonly allRuleInsights?: Maybe<GQLAllRuleInsights>;
   /** @deprecated Use `apiKeys` instead. */
   readonly apiKey: Scalars['String']['output'];
+  readonly apiKeyPermissions: ReadonlyArray<GQLApiKeyPermissionDefinition>;
   readonly apiKeys: ReadonlyArray<GQLApiKey>;
   readonly appealSettings?: Maybe<GQLAppealSettings>;
   readonly availableIntegrations: ReadonlyArray<GQLIntegrationMetadata>;
@@ -6192,6 +6199,7 @@ export type GQLResolversTypes = {
   AllRuleInsights: ResolverTypeWrapper<GQLAllRuleInsights>;
   ApiKey: ResolverTypeWrapper<GQLApiKey>;
   ApiKeyMutationError: ResolverTypeWrapper<GQLApiKeyMutationError>;
+  ApiKeyPermissionDefinition: ResolverTypeWrapper<GQLApiKeyPermissionDefinition>;
   AppealDecision: GQLAppealDecision;
   AppealEnqueueSourceInfo: ResolverTypeWrapper<GQLAppealEnqueueSourceInfo>;
   AppealSettings: ResolverTypeWrapper<GQLAppealSettings>;
@@ -7088,6 +7096,7 @@ export type GQLResolversParentTypes = {
   AllRuleInsights: GQLAllRuleInsights;
   ApiKey: GQLApiKey;
   ApiKeyMutationError: GQLApiKeyMutationError;
+  ApiKeyPermissionDefinition: GQLApiKeyPermissionDefinition;
   AppealEnqueueSourceInfo: GQLAppealEnqueueSourceInfo;
   AppealSettings: GQLAppealSettings;
   AppealSettingsInput: GQLAppealSettingsInput;
@@ -8161,6 +8170,15 @@ export type GQLApiKeyMutationErrorResolvers<
     ContextType
   >;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type GQLApiKeyPermissionDefinitionResolvers<
+  ContextType = Context,
+  ParentType extends GQLResolversParentTypes['ApiKeyPermissionDefinition'] =
+    GQLResolversParentTypes['ApiKeyPermissionDefinition'],
+> = {
+  description?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  value?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
 };
 
 export type GQLAppealEnqueueSourceInfoResolvers<
@@ -13375,6 +13393,11 @@ export type GQLQueryResolvers<
     ContextType
   >;
   apiKey?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  apiKeyPermissions?: Resolver<
+    ReadonlyArray<GQLResolversTypes['ApiKeyPermissionDefinition']>,
+    ParentType,
+    ContextType
+  >;
   apiKeys?: Resolver<
     ReadonlyArray<GQLResolversTypes['ApiKey']>,
     ParentType,
@@ -16135,6 +16158,7 @@ export type GQLResolvers<ContextType = Context> = {
   AllRuleInsights?: GQLAllRuleInsightsResolvers<ContextType>;
   ApiKey?: GQLApiKeyResolvers<ContextType>;
   ApiKeyMutationError?: GQLApiKeyMutationErrorResolvers<ContextType>;
+  ApiKeyPermissionDefinition?: GQLApiKeyPermissionDefinitionResolvers<ContextType>;
   AppealEnqueueSourceInfo?: GQLAppealEnqueueSourceInfoResolvers<ContextType>;
   AppealSettings?: GQLAppealSettingsResolvers<ContextType>;
   AutomaticCloseDecisionComponent?: GQLAutomaticCloseDecisionComponentResolvers<ContextType>;

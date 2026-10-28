@@ -25,6 +25,7 @@ describe('ApiKeyManagement', () => {
               maxUsageCount: Infinity,
               result: {
                 data: {
+                  apiKeyPermissions: [],
                   apiKeys: [
                     {
                       __typename: 'ApiKey',
@@ -42,7 +43,13 @@ describe('ApiKeyManagement', () => {
             {
               request: {
                 query: GQLCreateApiKeyDocument,
-                variables: { input: { name: 'Reports', description: null, permissions: [] } },
+                variables: {
+                  input: {
+                    name: 'Reports',
+                    description: null,
+                    permissions: [],
+                  },
+                },
               },
               result: {
                 data: {

@@ -128,7 +128,10 @@ describe('ApiKeyService', () => {
       })
       .mockResolvedValueOnce({ rows: [], command: 'UPDATE', rowCount: 1 });
 
-    expect(await sut.validateApiKey('test-key')).toEqual({ orgId, permissions: row.permissions });
+    expect(await sut.validateApiKey('test-key')).toEqual({
+      orgId,
+      permissions: row.permissions,
+    });
 
     const hash = crypto.createHash('sha256').update('test-key').digest('hex');
     expect(query).toHaveBeenCalledTimes(2);
