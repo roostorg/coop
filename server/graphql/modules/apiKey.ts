@@ -14,6 +14,7 @@ const typeDefs = /* GraphQL */ `
     id: ID!
     name: String!
     description: String
+    isActive: Boolean!
     createdAt: String!
     lastUsedAt: String
     createdBy: String
@@ -93,6 +94,7 @@ function serializeApiKey(record: ApiKeyRecord) {
     id: record.id,
     name: record.name,
     description: record.description,
+    isActive: record.isActive,
     createdAt: record.createdAt.toISOString(),
     lastUsedAt: record.lastUsedAt?.toISOString() ?? null,
     createdBy: record.createdBy,
