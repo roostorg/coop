@@ -2,6 +2,10 @@ import { gql } from '@apollo/client';
 
 export const API_KEYS_QUERY = gql`
   query ApiKeys {
+    apiKeyPermissions {
+      value
+      description
+    }
     apiKeys {
       id
       name

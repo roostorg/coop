@@ -339,6 +339,12 @@ export type GQLApiKeyMutationError = GQLError & {
   readonly type: ReadonlyArray<Scalars['String']['output']>;
 };
 
+export type GQLApiKeyPermissionDefinition = {
+  readonly __typename: 'ApiKeyPermissionDefinition';
+  readonly description: Scalars['String']['output'];
+  readonly value: Scalars['String']['output'];
+};
+
 export const GQLAppealDecision = {
   Accept: 'ACCEPT',
   Reject: 'REJECT',
@@ -3734,6 +3740,7 @@ export type GQLQuery = {
   readonly allRuleInsights?: Maybe<GQLAllRuleInsights>;
   /** @deprecated Use `apiKeys` instead. */
   readonly apiKey: Scalars['String']['output'];
+  readonly apiKeyPermissions: ReadonlyArray<GQLApiKeyPermissionDefinition>;
   readonly apiKeys: ReadonlyArray<GQLApiKey>;
   readonly appealSettings?: Maybe<GQLAppealSettings>;
   readonly availableIntegrations: ReadonlyArray<GQLIntegrationMetadata>;
@@ -5648,6 +5655,11 @@ export type GQLApiKeysQueryVariables = Exact<{ [key: string]: never }>;
 
 export type GQLApiKeysQuery = {
   readonly __typename: 'Query';
+  readonly apiKeyPermissions: ReadonlyArray<{
+    readonly __typename: 'ApiKeyPermissionDefinition';
+    readonly value: string;
+    readonly description: string;
+  }>;
   readonly apiKeys: ReadonlyArray<{
     readonly __typename: 'ApiKey';
     readonly id: string;
@@ -27307,6 +27319,10 @@ export const GQLActionFragmentFragmentDoc = gql`
 `;
 export const GQLApiKeysDocument = gql`
   query ApiKeys {
+    apiKeyPermissions {
+      value
+      description
+    }
     apiKeys {
       id
       name
