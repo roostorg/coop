@@ -11,11 +11,7 @@ X-API-KEY: <<apiKey>>
 Content-Type: application/json
 ```
 
-Copy each key when you create or rotate it; Coop stores only its hash and cannot display the secret again. The key list shows each key's name, description, permissions, status, creation date, and last-used date.
-
-You can rotate or revoke an individual key from the same page without affecting other keys. Rotation replaces that key's secret immediately; update applications that use it. Revocation immediately disables that key and retains its metadata in the list.
-
-For GraphQL integrations, use `apiKeys` to list metadata, `createApiKey` to create a key, and `revokeApiKey(id:)` to revoke one. Creation requires an explicit `input.permissions` list; an empty list grants no access. Unknown permission values are rejected. Supply `input.id` to `rotateApiKey` to rotate a specific active key. Without an ID, `rotateApiKey` targets the most recently created active key, or creates a key with no permissions if none exists. Rotation preserves permissions. All key-management operations require the `MANAGE_ORG` user permission and a user session; an API key does not grant dashboard or GraphQL access.
+You can rotate individual API keys at any time from the same page.
 
 ### Permissions
 
