@@ -8,8 +8,7 @@ import PoliciesRoutes from './policies/PoliciesRoutes.js';
 import ReportingRoutes from './reporting/ReportingRoutes.js';
 import UserScoresRoutes from './user_scores/UserScoresRoutes.js';
 
-/** Array of GET routes (no body) and routes with arbitrary typed bodies. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Controller preserves each route's body type
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Controllers collect heterogeneous request and response body types.
 export type ControllerRouteList = (Route<never, any> | Route<any, any>)[];
 
 export type Controller = {

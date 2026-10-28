@@ -197,6 +197,7 @@ describe('validateActionParameters', () => {
 
   it('does not include rejected values in structural validation details', () => {
     const secret = 'private-token-secret';
+    let error: unknown;
 
     try {
       validateActionParameters([
@@ -207,14 +208,16 @@ describe('validateActionParameters', () => {
           required: false,
         },
       ]);
-      expect.unreachable('expected validation to fail');
-    } catch (error) {
-      expect(error).toMatchObject({
-        title: 'Invalid action parameters',
-        detail: '/0/type: must be equal to one of the allowed values',
-      });
-      expect((error as { detail?: string }).detail).not.toContain(secret);
+    } catch (caughtError) {
+      error = caughtError;
     }
+
+    expect(error, 'expected validation to fail').toBeDefined();
+    expect(error).toMatchObject({
+      title: 'Invalid action parameters',
+      detail: '/0/type: must be equal to one of the allowed values',
+    });
+    expect((error as { detail?: string }).detail).not.toContain(secret);
   });
 
   it('identifies a missing parameter field', () => {
