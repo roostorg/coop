@@ -24,6 +24,26 @@ export type Policy = {
   applyUserStrikeCountConfigToChildren: boolean;
 };
 
+// The policy whose score is copied onto a policy: the highest ancestor with
+// "Apply to sub-policies" on, counting unsaved edits. When that ancestor is
+// saved, a database trigger copies its score to every descendant at any depth.
+function scoreSourcePolicy(
+  parent: TreeNode<Policy> | undefined,
+  updatedPolicyScores: Record<string, Policy>,
+) {
+  let source: Policy | undefined;
+  for (let node = parent; node && node.value.id !== '-1'; node = node.parent) {
+    const pending = updatedPolicyScores[node.value.id];
+    if (
+      pending?.applyUserStrikeCountConfigToChildren ??
+      node.value.applyUserStrikeCountConfigToChildren
+    ) {
+      source = pending ?? node.value;
+    }
+  }
+  return source;
+}
+
 export default function PolicyScoresTab() {
   const navigate = useNavigate();
   const {
@@ -148,27 +168,38 @@ export default function PolicyScoresTab() {
 
       const savePolicyScores = async (policyId: string) => {
         // only update this policy and it's child policies, not the whole list
-        // of policies
-        await Promise.all(
-          [policyId, ...childPolicyIds].map(async (key) => {
-            if (updatedPolicyScores[key]) {
-              return updatePolicy({
-                variables: {
-                  input: {
-                    ...updatedPolicyScores[key],
-                  },
-                },
-              });
-            }
-          }),
-        );
+        // of policies. Save one at a time, parents first: each save runs
+        // database triggers that update the policy's descendants, so
+        // concurrent saves of related policies deadlock. Stop at the first
+        // failure so a child isn't saved against a parent that wasn't; the
+        // drafts are kept so the user can retry.
+        for (const key of [policyId, ...childPolicyIds]) {
+          const update = updatedPolicyScores[key];
+          if (!update) {
+            continue;
+          }
+          // An inherited score is written by the database trigger, so
+          // sending this policy's own score could overwrite it.
+          const childPolicy = flattenedChildPolicies.find(
+            (p) => p.value.id === key,
+          );
+          const scoreInherited =
+            childPolicy !== undefined &&
+            scoreSourcePolicy(childPolicy.parent, updatedPolicyScores) !==
+              undefined;
+          const { errors } = await updatePolicy({
+            variables: {
+              input: scoreInherited
+                ? omit(update, 'userStrikeCount')
+                : { ...update },
+            },
+          });
+          if (errors) {
+            return false;
+          }
+        }
+        return true;
       };
-
-      // don't allow editing child policies when this is set to true
-      const editingChildrenDisabled =
-        updatedPolicyScores[policy.value.id]
-          ?.applyUserStrikeCountConfigToChildren ??
-        policy.value.applyUserStrikeCountConfigToChildren;
 
       const isTopLevel = !policy.parent || policy.parent.value.id === '-1';
       return (
@@ -211,7 +242,9 @@ export default function PolicyScoresTab() {
                           className="!fill-none"
                           startIcon={Check}
                           onClick={async () => {
-                            await savePolicyScores(policy.value.id);
+                            if (!(await savePolicyScores(policy.value.id))) {
+                              return;
+                            }
                             if (expandedPolicies.includes(policy.value.name)) {
                               toggleExpanded(policy.value.name);
                             }
@@ -292,7 +325,9 @@ export default function PolicyScoresTab() {
                     <div className="pt-4 ml-8">
                       <Switch
                         disabled={!editingPolicies.includes(policy.value.id)}
-                        defaultChecked={
+                        checked={
+                          updatedPolicyScores[policy.value.id]
+                            ?.applyUserStrikeCountConfigToChildren ??
                           policy.value.applyUserStrikeCountConfigToChildren
                         }
                         onCheckedChange={(checked) => {
@@ -337,11 +372,7 @@ export default function PolicyScoresTab() {
               flattenedChildPolicies.length > 0 ? (
                 <ChildPoliciesTable
                   policies={flattenedChildPolicies}
-                  editingDisabled={
-                    editingChildrenDisabled ||
-                    !editingPolicies.includes(policy.value.id)
-                  }
-                  scoresInheritedFromParent={editingChildrenDisabled}
+                  editingDisabled={!editingPolicies.includes(policy.value.id)}
                   updatedPolicyScores={updatedPolicyScores}
                   setUpdatedPolicyScores={setUpdatedPolicyScores}
                 />
@@ -417,7 +448,6 @@ function ChildPoliciesTable(props: {
     parent: TreeNode<Policy> | undefined;
   }[];
   editingDisabled: boolean;
-  scoresInheritedFromParent: boolean;
   updatedPolicyScores: Record<string, Policy>;
   setUpdatedPolicyScores: (
     value: React.SetStateAction<Record<string, Policy>>,
@@ -426,7 +456,6 @@ function ChildPoliciesTable(props: {
   const {
     policies,
     editingDisabled,
-    scoresInheritedFromParent,
     updatedPolicyScores,
     setUpdatedPolicyScores,
   } = props;
@@ -452,6 +481,8 @@ function ChildPoliciesTable(props: {
   );
   const tableData = useMemo(() => {
     return policies?.slice().map((policy) => {
+      const scoreSource = scoreSourcePolicy(policy.parent, updatedPolicyScores);
+      const rowDisabled = editingDisabled || scoreSource !== undefined;
       return {
         name: policy.value.name,
         userStrikeCount: (
@@ -459,25 +490,10 @@ function ChildPoliciesTable(props: {
             type="number"
             min={0}
             max={100}
-            disabled={editingDisabled}
+            disabled={rowDisabled}
             value={
-              // order to display user strike values for the child policies
-              // 1. if the parent is dictating child's value, show the parent's
-              // most up to date value from the UI, if it exists
-              // 2. if the paren't value hasn't been updated, use the parent's
-              // original value
-              // 3. if the parent isn't dictating the child's value, show the
-              // most up to date user strike score for this policy from the UI
-              // 4. if the value hasn't been updated in the UI, show this
-              // policy's original value
-              // TODO: if we want to support 3-levels of policies this logic
-              // will need to account for the whole parent tree
-              scoresInheritedFromParent
-                ? policy?.parent?.value.id
-                  ? (updatedPolicyScores[policy?.parent?.value.id]
-                      ?.userStrikeCount ??
-                    policy?.parent?.value?.userStrikeCount)
-                  : undefined
+              scoreSource
+                ? scoreSource.userStrikeCount
                 : (updatedPolicyScores[policy.value.id]?.userStrikeCount ??
                   policy.value.userStrikeCount)
             }
@@ -509,7 +525,12 @@ function ChildPoliciesTable(props: {
         applyUserStrikeCountConfigToChildren: policy.hasChildren ? (
           <div className="mt-1">
             <Switch
-              disabled={editingDisabled}
+              disabled={rowDisabled}
+              checked={
+                updatedPolicyScores[policy.value.id]
+                  ?.applyUserStrikeCountConfigToChildren ??
+                policy.value.applyUserStrikeCountConfigToChildren
+              }
               onCheckedChange={(checked) => {
                 setUpdatedPolicyScores({
                   ...updatedPolicyScores,
@@ -525,12 +546,6 @@ function ChildPoliciesTable(props: {
         ) : null,
       };
     });
-  }, [
-    editingDisabled,
-    scoresInheritedFromParent,
-    updatedPolicyScores,
-    policies,
-    setUpdatedPolicyScores,
-  ]);
+  }, [editingDisabled, updatedPolicyScores, policies, setUpdatedPolicyScores]);
   return <Table columns={columns} data={tableData} disableFilter={true} />;
 }
