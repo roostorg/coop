@@ -72,7 +72,7 @@ const typeDefs = /* GraphQL */ `
     | RotateWebhookSigningKeyError
 
   type Query {
-    apiKey: String!
+    apiKey: String! @deprecated(reason: "Use \`apiKeys\` instead.")
     apiKeys: [ApiKey!]!
   }
 

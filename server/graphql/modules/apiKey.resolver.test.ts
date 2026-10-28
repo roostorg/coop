@@ -7,6 +7,10 @@ import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../test/fixtureHelpers/createUser.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
 import {
+  type GQLCreateApiKeySuccessResponse,
+  type GQLRotateApiKeySuccessResponse,
+} from '../generated.js';
+import {
   Mutation as MutationResolvers,
   Query as QueryResolvers,
   resolvers,
@@ -67,36 +71,28 @@ describe('apiKey resolvers', () => {
   }
 
   describe('multiple-key management', () => {
-    const testWithOrg = makeTransactionalTestWithFixture(
-      async ({ deps, request }) => {
-        const { org, apiKey } = await createOrg(deps);
-        const { user } = await createUser(deps.KyselyPg, org.id, {
-          approvedByAdmin: true,
-          loginMethods: ['password'],
-          password: 'Api-key-management-test-password-123!',
+    const testWithOrg = makeTransactionalTestWithFixture(async ({ deps }) => {
+      const { org, apiKey } = await createOrg(deps);
+      const { user } = await createUser(deps.KyselyPg, org.id);
+      const execute = async (
+        source: string,
+        variableValues?: Record<string, unknown>,
+      ) =>
+        graphql({
+          schema,
+          source,
+          variableValues,
+          contextValue: { getUser: () => user, services: deps },
         });
-        const login = await request.post('/api/v1/graphql').send({
-          query: `mutation Login($input: LoginInput!) {
-          login(input: $input) { __typename }
-        }`,
-          variables: {
-            input: {
-              email: user.email,
-              password: 'Api-key-management-test-password-123!',
-            },
-          },
-        });
-        expect(login.body.data?.login.__typename).toBe('LoginSuccessResponse');
-        const { org: otherOrg } = await createOrg(deps);
-        const foreignKey = await deps.ApiKeyService.createApiKey(
-          otherOrg.id,
-          'Foreign key',
-          null,
-          null,
-        );
-        return { org, apiKey, user, foreignKey };
-      },
-    );
+      const { org: otherOrg } = await createOrg(deps);
+      const foreignKey = await deps.ApiKeyService.createApiKey(
+        otherOrg.id,
+        'Foreign key',
+        null,
+        null,
+      );
+      return { org, apiKey, user, foreignKey, execute };
+    });
 
     const operations = [
       '{ apiKeys { id name isActive } }',
@@ -122,17 +118,16 @@ describe('apiKey resolvers', () => {
 
     testWithOrg(
       'lists metadata and scopes creation and revocation to the authenticated organization',
-      async ({ deps, request, org, apiKey, user, foreignKey }) => {
-        const created = await request.post('/api/v1/graphql').send({
-          query: `mutation {
+      async ({ deps, execute, org, apiKey, user, foreignKey }) => {
+        const created = await execute(`mutation {
             createApiKey(input: { name: "Reports", description: "Report ingestion", permissions: ["reports:write"] }) {
               apiKey
               record { id name description permissions isActive createdAt lastUsedAt createdBy }
             }
-          }`,
-        });
-        expect(created.body.errors).toBeUndefined();
-        const { apiKey: secret, record } = created.body.data.createApiKey;
+          }`);
+        expect(created.errors).toBeUndefined();
+        const { apiKey: secret, record } = created.data!
+          .createApiKey as GQLCreateApiKeySuccessResponse;
         expect(record).toEqual({
           id: expect.any(String),
           name: 'Reports',
@@ -148,39 +143,38 @@ describe('apiKey resolvers', () => {
           permissions: ['reports:write'],
         });
 
-        const listed = await request.post('/api/v1/graphql').send({
-          query:
-            '{ apiKeys { id name description permissions isActive createdAt lastUsedAt createdBy } }',
-        });
-        expect(listed.body.errors).toBeUndefined();
-        expect(listed.body.data.apiKeys).toHaveLength(2);
-        expect(listed.body.data.apiKeys).toEqual(
+        const listed = await execute(
+          '{ apiKeys { id name description permissions isActive createdAt lastUsedAt createdBy } }',
+        );
+        expect(listed.errors).toBeUndefined();
+        expect(listed.data!.apiKeys).toHaveLength(2);
+        expect(listed.data!.apiKeys).toEqual(
           expect.arrayContaining([
             { ...record, lastUsedAt: expect.any(String) },
           ]),
         );
-        expect(listed.body.data.apiKeys).not.toEqual(
+        expect(listed.data!.apiKeys).not.toEqual(
           expect.arrayContaining([
             expect.objectContaining({ id: foreignKey.record.id }),
           ]),
         );
 
-        const foreignRevocation = await request.post('/api/v1/graphql').send({
-          query: 'mutation Revoke($id: ID!) { revokeApiKey(id: $id) }',
-          variables: { id: foreignKey.record.id },
-        });
-        expect(foreignRevocation.body.errors).toBeUndefined();
-        expect(foreignRevocation.body.data.revokeApiKey).toBe(false);
+        const foreignRevocation = await execute(
+          'mutation Revoke($id: ID!) { revokeApiKey(id: $id) }',
+          { id: foreignKey.record.id },
+        );
+        expect(foreignRevocation.errors).toBeUndefined();
+        expect(foreignRevocation.data!.revokeApiKey).toBe(false);
         expect(
           await deps.ApiKeyService.validateApiKey(foreignKey.apiKey),
         ).toEqual({ orgId: foreignKey.record.orgId, permissions: [] });
 
-        const revoked = await request.post('/api/v1/graphql').send({
-          query: 'mutation Revoke($id: ID!) { revokeApiKey(id: $id) }',
-          variables: { id: record.id },
-        });
-        expect(revoked.body.errors).toBeUndefined();
-        expect(revoked.body.data.revokeApiKey).toBe(true);
+        const revoked = await execute(
+          'mutation Revoke($id: ID!) { revokeApiKey(id: $id) }',
+          { id: record.id },
+        );
+        expect(revoked.errors).toBeUndefined();
+        expect(revoked.data!.revokeApiKey).toBe(true);
         expect(await deps.ApiKeyService.validateApiKey(secret)).toBeNull();
         expect(await deps.ApiKeyService.validateApiKey(apiKey)).toEqual(
           expect.objectContaining({ orgId: org.id }),
@@ -195,10 +189,8 @@ describe('apiKey resolvers', () => {
           created_by: user.id,
           is_active: false,
         });
-        const hiddenHash = await request.post('/api/v1/graphql').send({
-          query: '{ apiKeys { keyHash } }',
-        });
-        expect(hiddenHash.body.errors?.[0].message).toContain(
+        const hiddenHash = await execute('{ apiKeys { keyHash } }');
+        expect(hiddenHash.errors?.[0].message).toContain(
           'Cannot query field "keyHash"',
         );
       },
@@ -206,7 +198,7 @@ describe('apiKey resolvers', () => {
 
     testWithOrg(
       'rotation requires an explicit active key in the authenticated organization and never creates a key',
-      async ({ deps, request, org, apiKey, foreignKey }) => {
+      async ({ deps, execute, org, apiKey, foreignKey }) => {
         const [selected] = await deps.ApiKeyService.getApiKeysForOrg(org.id);
         const other = await deps.ApiKeyService.createApiKey(
           org.id,
@@ -224,41 +216,36 @@ describe('apiKey resolvers', () => {
           { name: 'Rotated' },
           { name: 'Rotated', id: null },
         ]) {
-          const response = await request.post('/api/v1/graphql').send({
-            query,
-            variables: { input },
-          });
-          expect(response.body.errors?.[0].message).toContain('ID!');
+          const response = await execute(query, { input });
+          expect(response.errors?.[0].message).toContain('ID!');
         }
         for (const id of [
           '00000000-0000-4000-8000-000000000000',
           foreignKey.record.id,
         ]) {
-          const response = await request.post('/api/v1/graphql').send({
-            query,
-            variables: { input: { name: 'Rotated', id } },
+          const response = await execute(query, {
+            input: { name: 'Rotated', id },
           });
-          expect(response.body.errors).toBeUndefined();
-          expect(response.body.data.rotateApiKey.__typename).toBe(
-            'RotateApiKeyError',
-          );
+          expect(response.errors).toBeUndefined();
+          expect(response.data!.rotateApiKey).toMatchObject({
+            __typename: 'RotateApiKeyError',
+          });
         }
         expect(await deps.ApiKeyService.getOrgIdFromActivatedKey(apiKey)).toBe(
           org.id,
         );
-        const rotated = await request.post('/api/v1/graphql').send({
-          query,
-          variables: { input: { name: 'Rotated', id: selected.id } },
+        const rotated = await execute(query, {
+          input: { name: 'Rotated', id: selected.id },
         });
-        expect(rotated.body.errors).toBeUndefined();
-        expect(rotated.body.data.rotateApiKey.record.id).toBe(selected.id);
+        expect(rotated.errors).toBeUndefined();
+        const rotatedKey = rotated.data!
+          .rotateApiKey as GQLRotateApiKeySuccessResponse;
+        expect(rotatedKey.record.id).toBe(selected.id);
         expect(
           await deps.ApiKeyService.getOrgIdFromActivatedKey(apiKey),
         ).toBeNull();
         expect(
-          await deps.ApiKeyService.getOrgIdFromActivatedKey(
-            rotated.body.data.rotateApiKey.apiKey,
-          ),
+          await deps.ApiKeyService.getOrgIdFromActivatedKey(rotatedKey.apiKey),
         ).toBe(org.id);
         expect(
           await deps.ApiKeyService.getOrgIdFromActivatedKey(other.apiKey),
@@ -268,14 +255,13 @@ describe('apiKey resolvers', () => {
         ).toBe(foreignKey.record.orgId);
 
         await deps.ApiKeyService.deactivateApiKey(selected.id, org.id);
-        const revoked = await request.post('/api/v1/graphql').send({
-          query,
-          variables: { input: { name: 'Rotated', id: selected.id } },
+        const revoked = await execute(query, {
+          input: { name: 'Rotated', id: selected.id },
         });
-        expect(revoked.body.errors).toBeUndefined();
-        expect(revoked.body.data.rotateApiKey.__typename).toBe(
-          'RotateApiKeyError',
-        );
+        expect(revoked.errors).toBeUndefined();
+        expect(revoked.data!.rotateApiKey).toMatchObject({
+          __typename: 'RotateApiKeyError',
+        });
         expect(await deps.ApiKeyService.getApiKeysForOrg(org.id)).toHaveLength(
           2,
         );
@@ -311,6 +297,22 @@ describe('apiKey resolvers', () => {
         'API key exists (hidden for security)',
       );
       expect(getActiveApiKeyForOrg).toHaveBeenCalledWith('org-1');
+      const introspection = await graphql({
+        schema,
+        source: `{ __type(name: "Query") {
+          fields(includeDeprecated: true) { name isDeprecated deprecationReason }
+        } }`,
+      });
+      expect(introspection.errors).toBeUndefined();
+      expect(introspection.data?.__type).toMatchObject({
+        fields: expect.arrayContaining([
+          {
+            name: 'apiKey',
+            isDeprecated: true,
+            deprecationReason: 'Use `apiKeys` instead.',
+          },
+        ]),
+      });
     });
   });
 
