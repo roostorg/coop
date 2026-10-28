@@ -722,6 +722,17 @@ export type GQLCreateActionInput = {
   readonly parameters?: InputMaybe<ReadonlyArray<GQLActionParameterInput>>;
 };
 
+export type GQLCreateApiKeyInput = {
+  readonly description?: InputMaybe<Scalars['String']['input']>;
+  readonly name: Scalars['String']['input'];
+};
+
+export type GQLCreateApiKeySuccessResponse = {
+  readonly __typename: 'CreateApiKeySuccessResponse';
+  readonly apiKey: Scalars['String']['output'];
+  readonly record: GQLApiKey;
+};
+
 export type GQLCreateBacktestInput = {
   readonly ruleId: Scalars['ID']['input'];
   readonly sampleDesiredSize: Scalars['Int']['input'];
@@ -2568,6 +2579,7 @@ export type GQLMutation = {
   readonly bulkExecuteActions: GQLExecuteBulkActionResponse;
   readonly changePassword: GQLChangePasswordResponse;
   readonly createAction: GQLMutateActionResponse;
+  readonly createApiKey: GQLCreateApiKeySuccessResponse;
   readonly createBacktest?: Maybe<GQLCreateBacktestResponse>;
   readonly createContentItemType: GQLMutateContentItemTypeResponse;
   readonly createContentRule: GQLCreateContentRuleResponse;
@@ -2623,6 +2635,7 @@ export type GQLMutation = {
    * successful submission, or an error with a user-safe summary on failure.
    */
   readonly retryNcmecSubmission: GQLRetryNcmecSubmissionResponse;
+  readonly revokeApiKey: Scalars['Boolean']['output'];
   readonly rotateApiKey: GQLRotateApiKeyResponse;
   readonly rotateWebhookSigningKey: GQLRotateWebhookSigningKeyResponse;
   readonly runRetroaction?: Maybe<GQLRunRetroactionResponse>;
@@ -2703,6 +2716,10 @@ export type GQLMutationChangePasswordArgs = {
 
 export type GQLMutationCreateActionArgs = {
   input: GQLCreateActionInput;
+};
+
+export type GQLMutationCreateApiKeyArgs = {
+  input: GQLCreateApiKeyInput;
 };
 
 export type GQLMutationCreateBacktestArgs = {
@@ -2871,6 +2888,10 @@ export type GQLMutationResetPasswordArgs = {
 
 export type GQLMutationRetryNcmecSubmissionArgs = {
   decisionId: Scalars['ID']['input'];
+};
+
+export type GQLMutationRevokeApiKeyArgs = {
+  id: Scalars['ID']['input'];
 };
 
 export type GQLMutationRotateApiKeyArgs = {
@@ -3571,6 +3592,7 @@ export type GQLQuery = {
   readonly actionStatistics: ReadonlyArray<GQLActionData>;
   readonly allRuleInsights?: Maybe<GQLAllRuleInsights>;
   readonly apiKey: Scalars['String']['output'];
+  readonly apiKeys: ReadonlyArray<GQLApiKey>;
   readonly appealSettings?: Maybe<GQLAppealSettings>;
   readonly availableIntegrations: ReadonlyArray<GQLIntegrationMetadata>;
   readonly exchangeApiSchema?: Maybe<GQLExchangeApiSchema>;
@@ -4171,6 +4193,7 @@ export type GQLRotateApiKeyError = GQLError & {
 
 export type GQLRotateApiKeyInput = {
   readonly description?: InputMaybe<Scalars['String']['input']>;
+  readonly id?: InputMaybe<Scalars['ID']['input']>;
   readonly name: Scalars['String']['input'];
 };
 
@@ -5412,11 +5435,47 @@ export type GQLZentropiLabelerVersionInput = {
   readonly labelerId?: InputMaybe<Scalars['String']['input']>;
 };
 
+export type GQLApiKeysQueryVariables = Exact<{ [key: string]: never }>;
+
+export type GQLApiKeysQuery = {
+  readonly __typename: 'Query';
+  readonly apiKeys: ReadonlyArray<{
+    readonly __typename: 'ApiKey';
+    readonly id: string;
+    readonly name: string;
+    readonly description?: string | null;
+    readonly isActive: boolean;
+    readonly createdAt: string;
+    readonly lastUsedAt?: string | null;
+  }>;
+};
+
+export type GQLCreateApiKeyMutationVariables = Exact<{
+  input: GQLCreateApiKeyInput;
+}>;
+
+export type GQLCreateApiKeyMutation = {
+  readonly __typename: 'Mutation';
+  readonly createApiKey: {
+    readonly __typename: 'CreateApiKeySuccessResponse';
+    readonly apiKey: string;
+    readonly record: { readonly __typename: 'ApiKey'; readonly id: string };
+  };
+};
+
+export type GQLRevokeApiKeyMutationVariables = Exact<{
+  id: Scalars['ID']['input'];
+}>;
+
+export type GQLRevokeApiKeyMutation = {
+  readonly __typename: 'Mutation';
+  readonly revokeApiKey: boolean;
+};
+
 export type GQLApiAuthQueryVariables = Exact<{ [key: string]: never }>;
 
 export type GQLApiAuthQuery = {
   readonly __typename: 'Query';
-  readonly apiKey: string;
   readonly myOrg?: {
     readonly __typename: 'Org';
     readonly id: string;
@@ -26628,9 +26687,207 @@ export const GQLActionFragmentFragmentDoc = gql`
     }
   }
 `;
+export const GQLApiKeysDocument = gql`
+  query ApiKeys {
+    apiKeys {
+      id
+      name
+      description
+      isActive
+      createdAt
+      lastUsedAt
+    }
+  }
+`;
+
+/**
+ * __useGQLApiKeysQuery__
+ *
+ * To run a query within a React component, call `useGQLApiKeysQuery` and pass it any options that fit your needs.
+ * When your component renders, `useGQLApiKeysQuery` returns an object from Apollo Client that contains loading, error, and data properties
+ * you can use to render your UI.
+ *
+ * @param baseOptions options that will be passed into the query, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options;
+ *
+ * @example
+ * const { data, loading, error } = useGQLApiKeysQuery({
+ *   variables: {
+ *   },
+ * });
+ */
+export function useGQLApiKeysQuery(
+  baseOptions?: Apollo.QueryHookOptions<
+    GQLApiKeysQuery,
+    GQLApiKeysQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useQuery<GQLApiKeysQuery, GQLApiKeysQueryVariables>(
+    GQLApiKeysDocument,
+    options,
+  );
+}
+export function useGQLApiKeysLazyQuery(
+  baseOptions?: Apollo.LazyQueryHookOptions<
+    GQLApiKeysQuery,
+    GQLApiKeysQueryVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useLazyQuery<GQLApiKeysQuery, GQLApiKeysQueryVariables>(
+    GQLApiKeysDocument,
+    options,
+  );
+}
+// @ts-ignore
+export function useGQLApiKeysSuspenseQuery(
+  baseOptions?: Apollo.SuspenseQueryHookOptions<
+    GQLApiKeysQuery,
+    GQLApiKeysQueryVariables
+  >,
+): Apollo.UseSuspenseQueryResult<GQLApiKeysQuery, GQLApiKeysQueryVariables>;
+export function useGQLApiKeysSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLApiKeysQuery,
+        GQLApiKeysQueryVariables
+      >,
+): Apollo.UseSuspenseQueryResult<
+  GQLApiKeysQuery | undefined,
+  GQLApiKeysQueryVariables
+>;
+export function useGQLApiKeysSuspenseQuery(
+  baseOptions?:
+    | Apollo.SkipToken
+    | Apollo.SuspenseQueryHookOptions<
+        GQLApiKeysQuery,
+        GQLApiKeysQueryVariables
+      >,
+) {
+  const options =
+    baseOptions === Apollo.skipToken
+      ? baseOptions
+      : { ...defaultOptions, ...baseOptions };
+  return Apollo.useSuspenseQuery<GQLApiKeysQuery, GQLApiKeysQueryVariables>(
+    GQLApiKeysDocument,
+    options,
+  );
+}
+export type GQLApiKeysQueryHookResult = ReturnType<typeof useGQLApiKeysQuery>;
+export type GQLApiKeysLazyQueryHookResult = ReturnType<
+  typeof useGQLApiKeysLazyQuery
+>;
+export type GQLApiKeysSuspenseQueryHookResult = ReturnType<
+  typeof useGQLApiKeysSuspenseQuery
+>;
+export type GQLApiKeysQueryResult = Apollo.QueryResult<
+  GQLApiKeysQuery,
+  GQLApiKeysQueryVariables
+>;
+export const GQLCreateApiKeyDocument = gql`
+  mutation CreateApiKey($input: CreateApiKeyInput!) {
+    createApiKey(input: $input) {
+      apiKey
+      record {
+        id
+      }
+    }
+  }
+`;
+export type GQLCreateApiKeyMutationFn = Apollo.MutationFunction<
+  GQLCreateApiKeyMutation,
+  GQLCreateApiKeyMutationVariables
+>;
+
+/**
+ * __useGQLCreateApiKeyMutation__
+ *
+ * To run a mutation, you first call `useGQLCreateApiKeyMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLCreateApiKeyMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlCreateApiKeyMutation, { data, loading, error }] = useGQLCreateApiKeyMutation({
+ *   variables: {
+ *      input: // value for 'input'
+ *   },
+ * });
+ */
+export function useGQLCreateApiKeyMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLCreateApiKeyMutation,
+    GQLCreateApiKeyMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLCreateApiKeyMutation,
+    GQLCreateApiKeyMutationVariables
+  >(GQLCreateApiKeyDocument, options);
+}
+export type GQLCreateApiKeyMutationHookResult = ReturnType<
+  typeof useGQLCreateApiKeyMutation
+>;
+export type GQLCreateApiKeyMutationResult =
+  Apollo.MutationResult<GQLCreateApiKeyMutation>;
+export type GQLCreateApiKeyMutationOptions = Apollo.BaseMutationOptions<
+  GQLCreateApiKeyMutation,
+  GQLCreateApiKeyMutationVariables
+>;
+export const GQLRevokeApiKeyDocument = gql`
+  mutation RevokeApiKey($id: ID!) {
+    revokeApiKey(id: $id)
+  }
+`;
+export type GQLRevokeApiKeyMutationFn = Apollo.MutationFunction<
+  GQLRevokeApiKeyMutation,
+  GQLRevokeApiKeyMutationVariables
+>;
+
+/**
+ * __useGQLRevokeApiKeyMutation__
+ *
+ * To run a mutation, you first call `useGQLRevokeApiKeyMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLRevokeApiKeyMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlRevokeApiKeyMutation, { data, loading, error }] = useGQLRevokeApiKeyMutation({
+ *   variables: {
+ *      id: // value for 'id'
+ *   },
+ * });
+ */
+export function useGQLRevokeApiKeyMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLRevokeApiKeyMutation,
+    GQLRevokeApiKeyMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLRevokeApiKeyMutation,
+    GQLRevokeApiKeyMutationVariables
+  >(GQLRevokeApiKeyDocument, options);
+}
+export type GQLRevokeApiKeyMutationHookResult = ReturnType<
+  typeof useGQLRevokeApiKeyMutation
+>;
+export type GQLRevokeApiKeyMutationResult =
+  Apollo.MutationResult<GQLRevokeApiKeyMutation>;
+export type GQLRevokeApiKeyMutationOptions = Apollo.BaseMutationOptions<
+  GQLRevokeApiKeyMutation,
+  GQLRevokeApiKeyMutationVariables
+>;
 export const GQLApiAuthDocument = gql`
   query ApiAuth {
-    apiKey
     myOrg {
       id
       publicSigningKey
@@ -46045,6 +46302,7 @@ export type GQLSetOrgDefaultSafetySettingsMutationOptions =
   >;
 export const namedOperations = {
   Query: {
+    ApiKeys: 'ApiKeys',
     ApiAuth: 'ApiAuth',
     HashBanks: 'HashBanks',
     HashBankById: 'HashBankById',
@@ -46177,6 +46435,8 @@ export const namedOperations = {
     OrgDefaultSafetySettings: 'OrgDefaultSafetySettings',
   },
   Mutation: {
+    CreateApiKey: 'CreateApiKey',
+    RevokeApiKey: 'RevokeApiKey',
     RotateApiKey: 'RotateApiKey',
     RotateWebhookSigningKey: 'RotateWebhookSigningKey',
     CreateHashBank: 'CreateHashBank',

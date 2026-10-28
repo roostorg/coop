@@ -1,9 +1,13 @@
+import { makeExecutableSchema } from '@graphql-tools/schema';
+import { graphql } from 'graphql/index.js';
 import { vi } from 'vitest';
 
 import { UserPermission } from '../../services/userManagementService/index.js';
 import {
   Mutation as MutationResolvers,
   Query as QueryResolvers,
+  resolvers,
+  typeDefs,
 } from './apiKey.js';
 
 const Query = QueryResolvers as {
@@ -28,6 +32,14 @@ const Mutation = MutationResolvers as {
 };
 
 describe('apiKey resolvers', () => {
+  const schema = makeExecutableSchema({
+    typeDefs: [
+      typeDefs,
+      `interface Error { title: String! status: Int! type: [String!]! pointer: String detail: String requestId: String }`,
+    ],
+    resolvers,
+  });
+
   function makeCtx(permissions: readonly UserPermission[]) {
     const getActiveApiKeyForOrg = vi.fn(async () => ({ key: 'secret' }));
     const rotateApiKey = vi.fn();
@@ -50,6 +62,102 @@ describe('apiKey resolvers', () => {
       rotateWebhookSigningKey,
     };
   }
+
+  describe('multiple-key management', () => {
+    const operations = [
+      '{ apiKeys { id name isActive } }',
+      'mutation { createApiKey(input: { name: "Reports" }) { apiKey record { id } } }',
+      'mutation { revokeApiKey(id: "key-2") }',
+    ];
+
+    it.each(operations)('requires an administrator for %s', async (source) => {
+      const { ctx } = makeCtx([UserPermission.VIEW_MRT]);
+      const forbidden = await graphql({ schema, source, contextValue: ctx });
+      expect(forbidden.errors?.[0].message).toBe(
+        'User does not have permission to manage API keys',
+      );
+      const unauthenticated = await graphql({
+        schema,
+        source,
+        contextValue: { ...ctx, getUser: () => null },
+      });
+      expect(unauthenticated.errors?.[0].message).toBe(
+        'Authenticated user required',
+      );
+    });
+
+    it('lists metadata and scopes creation and revocation to the authenticated organization', async () => {
+      const record = {
+        id: 'key-2',
+        orgId: 'org-1',
+        keyHash: 'not-public',
+        name: 'Reports',
+        description: null,
+        isActive: true,
+        createdAt: new Date('2026-01-01'),
+        lastUsedAt: null,
+        createdBy: 'user-1',
+      };
+      const { ctx } = makeCtx([UserPermission.MANAGE_ORG]);
+      const service = {
+        getApiKeysForOrg: vi.fn(async () => [record]),
+        createApiKey: vi.fn(async () => ({ apiKey: 'new-secret', record })),
+        deactivateApiKey: vi.fn(async () => true),
+      };
+      const contextValue = { ...ctx, services: { ApiKeyService: service } };
+      const listed = await graphql({
+        schema,
+        source:
+          '{ apiKeys { id name description isActive createdAt lastUsedAt createdBy } }',
+        contextValue,
+      });
+      expect(listed.errors).toBeUndefined();
+      expect(listed.data?.apiKeys).toEqual([
+        {
+          id: 'key-2',
+          name: 'Reports',
+          description: null,
+          isActive: true,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          lastUsedAt: null,
+          createdBy: 'user-1',
+        },
+      ]);
+      expect(service.getApiKeysForOrg).toHaveBeenCalledWith('org-1');
+      const created = await graphql({
+        schema,
+        source: operations[1],
+        contextValue,
+      });
+      expect(created.errors).toBeUndefined();
+      expect(created.data?.createApiKey).toEqual({
+        apiKey: 'new-secret',
+        record: { id: 'key-2' },
+      });
+      expect(service.createApiKey).toHaveBeenCalledWith(
+        'org-1',
+        'Reports',
+        null,
+        'user-1',
+      );
+      const revoked = await graphql({
+        schema,
+        source: operations[2],
+        contextValue,
+      });
+      expect(revoked.errors).toBeUndefined();
+      expect(revoked.data?.revokeApiKey).toBe(true);
+      expect(service.deactivateApiKey).toHaveBeenCalledWith('key-2', 'org-1');
+      const secret = await graphql({
+        schema,
+        source: '{ apiKeys { keyHash } }',
+        contextValue,
+      });
+      expect(secret.errors?.[0].message).toContain(
+        'Cannot query field "keyHash"',
+      );
+    });
+  });
 
   describe('Query.apiKey', () => {
     it('throws unauthenticatedError when caller is not authenticated', async () => {

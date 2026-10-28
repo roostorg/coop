@@ -2,7 +2,7 @@
 
 ## Sending requests to Coop
 
-To authenticate the requests you send to Coop, add an HTTP header to every API request with your organization's API key. You can find or manage your API key in **Settings** → **API Keys** in the Coop UI.
+To authenticate the requests you send to Coop, add an HTTP header to every API request with one of your organization's API keys. Administrators can create named keys and manage them in **Settings** → **API Keys** in the Coop UI. Use a separate key for each integration.
 
 Format the header as follows:
 
@@ -11,7 +11,11 @@ X-API-KEY: <<apiKey>>
 Content-Type: application/json
 ```
 
-You can rotate your API key at any time from the same page. After rotating, update any applications or scripts that use the previous key.
+Copy each key when you create or rotate it; Coop stores only its hash and cannot display the secret again. The key list shows each key's name, description, status, creation date, and last-used date.
+
+You can rotate or revoke an individual key from the same page without affecting other keys. Rotation replaces that key's secret immediately; update applications that use it. Revocation immediately disables that key and retains its metadata in the list.
+
+For GraphQL integrations, use `apiKeys` to list metadata, `createApiKey` to create a key, and `revokeApiKey(id:)` to revoke one. Supply `input.id` to `rotateApiKey` to rotate a specific active key. Without an ID, `rotateApiKey` targets the most recently created active key, or creates a key if none exists. All key-management operations require the `MANAGE_ORG` user permission.
 
 ## Verifying incoming requests from Coop
 
