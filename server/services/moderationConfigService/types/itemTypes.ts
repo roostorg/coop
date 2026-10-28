@@ -4,7 +4,10 @@ import {
   type ScalarTypes,
 } from '@roostorg/coop-types';
 
-import { type NonEmptyArray } from '../../../utils/typescript-types.js';
+import {
+  type NonEmptyArray,
+  type Satisfies,
+} from '../../../utils/typescript-types.js';
 // Imported w/ underscore for use in a jsdoc @link/@see w/o it being flagged as
 // unused. See https://github.com/microsoft/TypeScript/issues/43950
 import { type ModerationConfigService as _ModerationConfigService } from '../moderationConfigService.js';

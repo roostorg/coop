@@ -67,6 +67,12 @@ export type ItemTypeRoleColumns = Partial<
   >
 >;
 
+type RoleForColumn<Column extends string> = SnakeToCamelCase<
+  Column extends `${infer Name}_field` ? Name : never
+> &
+  keyof FieldRoleToScalarType &
+  (typeof itemTypeRoleNames)[ItemTypeKind][number];
+
 const roleDefinitions = {
   display_name_field: { role: 'displayName', type: 'STRING' },
   creator_id_field: { role: 'creatorId', type: 'RELATED_ITEM' },
@@ -78,32 +84,6 @@ const roleDefinitions = {
   is_deleted_field: { role: 'isDeleted', type: 'BOOLEAN' },
   ip_address_field: { role: 'ipAddress', type: 'IP_ADDRESS' },
   email_field: { role: 'email', type: 'EMAIL_ADDRESS' },
-} as const satisfies {
-  [Column in keyof Required<ItemTypeRoleColumns>]: {
-    role: SnakeToCamelCase<
-      Column extends `${infer Name}_field` ? Name : never
-    > &
-      keyof FieldRoleToScalarType &
-      (typeof itemTypeRoleNames)[ItemTypeKind][number];
-    type: string;
-  };
-type RoleForColumn<Column extends string> = SnakeToCamelCase<
-  Column extends `${infer Name}_field` ? Name : never
-> &
-  keyof FieldRoleToScalarType &
-  (typeof itemTypeRoleNames)[ItemTypeKind][number];
-
-const roleDefinitions = {
-display_name_field: { role: 'displayName', type: 'STRING' },
-creator_id_field: { role: 'creatorId', type: 'RELATED_ITEM' },
-thread_id_field: { role: 'threadId', type: 'RELATED_ITEM' },
-parent_id_field: { role: 'parentId', type: 'RELATED_ITEM' },
-created_at_field: { role: 'createdAt', type: 'DATETIME' },
-profile_icon_field: { role: 'profileIcon', type: 'IMAGE' },
-background_image_field: { role: 'backgroundImage', type: 'IMAGE' },
-is_deleted_field: { role: 'isDeleted', type: 'BOOLEAN' },
-ip_address_field: { role: 'ipAddress', type: 'IP_ADDRESS' },
-email_field: { role: 'email', type: 'EMAIL_ADDRESS' },
 } as const satisfies {
   [Column in keyof Required<ItemTypeRoleColumns>]: {
     role: RoleForColumn<Column>;
