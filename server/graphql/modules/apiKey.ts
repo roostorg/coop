@@ -14,7 +14,6 @@ const typeDefs = /* GraphQL */ `
     id: ID!
     name: String!
     description: String
-    isActive: Boolean!
     createdAt: String!
     lastUsedAt: String
     createdBy: String
@@ -43,6 +42,12 @@ const typeDefs = /* GraphQL */ `
   }
 
   input CreateApiKeyInput {
+    name: String!
+    description: String
+  }
+
+  input UpdateApiKeyInput {
+    id: ID!
     name: String!
     description: String
   }
@@ -76,7 +81,8 @@ const typeDefs = /* GraphQL */ `
 
   type Mutation {
     createApiKey(input: CreateApiKeyInput!): CreateApiKeySuccessResponse!
-    revokeApiKey(id: ID!): Boolean!
+    updateApiKey(input: UpdateApiKeyInput!): ApiKey
+    deleteApiKey(id: ID!): Boolean!
     rotateApiKey(input: RotateApiKeyInput!): RotateApiKeyResponse!
     rotateWebhookSigningKey: RotateWebhookSigningKeyResponse!
   }
@@ -87,7 +93,6 @@ function serializeApiKey(record: ApiKeyRecord) {
     id: record.id,
     name: record.name,
     description: record.description,
-    isActive: record.isActive,
     createdAt: record.createdAt.toISOString(),
     lastUsedAt: record.lastUsedAt?.toISOString() ?? null,
     createdBy: record.createdBy,
@@ -150,7 +155,7 @@ const Mutation: GQLMutationResolvers = {
       record: serializeApiKey(record),
     };
   },
-  async revokeApiKey(_, { id }, context) {
+  async updateApiKey(_, { input }, context) {
     const user = context.getUser();
     if (!user?.orgId) {
       throw unauthenticatedError('Authenticated user required');
@@ -158,7 +163,23 @@ const Mutation: GQLMutationResolvers = {
     if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
       throw forbiddenError('User does not have permission to manage API keys');
     }
-    return context.services.ApiKeyService.deactivateApiKey(id, user.orgId);
+    const record = await context.services.ApiKeyService.updateApiKey(
+      input.id,
+      user.orgId,
+      input.name,
+      input.description ?? null,
+    );
+    return record ? serializeApiKey(record) : null;
+  },
+  async deleteApiKey(_, { id }, context) {
+    const user = context.getUser();
+    if (!user?.orgId) {
+      throw unauthenticatedError('Authenticated user required');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError('User does not have permission to manage API keys');
+    }
+    return context.services.ApiKeyService.deleteApiKey(id, user.orgId);
   },
   async rotateApiKey(_, { input }, context) {
     const user = context.getUser();

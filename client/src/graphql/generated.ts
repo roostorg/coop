@@ -314,7 +314,6 @@ export type GQLApiKey = {
   readonly createdBy?: Maybe<Scalars['String']['output']>;
   readonly description?: Maybe<Scalars['String']['output']>;
   readonly id: Scalars['ID']['output'];
-  readonly isActive: Scalars['Boolean']['output'];
   readonly lastUsedAt?: Maybe<Scalars['String']['output']>;
   readonly name: Scalars['String']['output'];
 };
@@ -2595,6 +2594,7 @@ export type GQLMutation = {
   readonly createUserRule: GQLCreateUserRuleResponse;
   readonly deleteAction?: Maybe<Scalars['Boolean']['output']>;
   readonly deleteAllJobsFromQueue: GQLDeleteAllJobsFromQueueResponse;
+  readonly deleteApiKey: Scalars['Boolean']['output'];
   readonly deleteHashBank: Scalars['Boolean']['output'];
   readonly deleteInvite?: Maybe<Scalars['Boolean']['output']>;
   readonly deleteItemType: GQLDeleteItemTypeResponse;
@@ -2635,7 +2635,6 @@ export type GQLMutation = {
    * successful submission, or an error with a user-safe summary on failure.
    */
   readonly retryNcmecSubmission: GQLRetryNcmecSubmissionResponse;
-  readonly revokeApiKey: Scalars['Boolean']['output'];
   readonly rotateApiKey: GQLRotateApiKeyResponse;
   readonly rotateWebhookSigningKey: GQLRotateWebhookSigningKeyResponse;
   readonly runRetroaction?: Maybe<GQLRunRetroactionResponse>;
@@ -2652,6 +2651,7 @@ export type GQLMutation = {
   readonly updateAccountInfo?: Maybe<Scalars['Boolean']['output']>;
   readonly updateAction: GQLMutateActionResponse;
   readonly updateAllowMultiplePoliciesPerAction: Scalars['Boolean']['output'];
+  readonly updateApiKey?: Maybe<GQLApiKey>;
   readonly updateAppealSettings: GQLAppealSettings;
   readonly updateContentItemType: GQLMutateContentItemTypeResponse;
   readonly updateContentRule: GQLUpdateContentRuleResponse;
@@ -2782,6 +2782,10 @@ export type GQLMutationDeleteAllJobsFromQueueArgs = {
   queueId: Scalars['ID']['input'];
 };
 
+export type GQLMutationDeleteApiKeyArgs = {
+  id: Scalars['ID']['input'];
+};
+
 export type GQLMutationDeleteHashBankArgs = {
   id: Scalars['ID']['input'];
 };
@@ -2890,10 +2894,6 @@ export type GQLMutationRetryNcmecSubmissionArgs = {
   decisionId: Scalars['ID']['input'];
 };
 
-export type GQLMutationRevokeApiKeyArgs = {
-  id: Scalars['ID']['input'];
-};
-
 export type GQLMutationRotateApiKeyArgs = {
   input: GQLRotateApiKeyInput;
 };
@@ -2953,6 +2953,10 @@ export type GQLMutationUpdateActionArgs = {
 
 export type GQLMutationUpdateAllowMultiplePoliciesPerActionArgs = {
   enabled: Scalars['Boolean']['input'];
+};
+
+export type GQLMutationUpdateApiKeyArgs = {
+  input: GQLUpdateApiKeyInput;
 };
 
 export type GQLMutationUpdateAppealSettingsArgs = {
@@ -4922,6 +4926,12 @@ export type GQLUpdateActionInput = {
   readonly parameters?: InputMaybe<ReadonlyArray<GQLActionParameterInput>>;
 };
 
+export type GQLUpdateApiKeyInput = {
+  readonly description?: InputMaybe<Scalars['String']['input']>;
+  readonly id: Scalars['ID']['input'];
+  readonly name: Scalars['String']['input'];
+};
+
 export type GQLUpdateContentItemTypeInput = {
   readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly fieldRoles?: InputMaybe<GQLContentSchemaFieldRolesInput>;
@@ -5445,7 +5455,6 @@ export type GQLApiKeysQuery = {
     readonly id: string;
     readonly name: string;
     readonly description?: string | null;
-    readonly isActive: boolean;
     readonly createdAt: string;
     readonly lastUsedAt?: string | null;
   }>;
@@ -5464,13 +5473,27 @@ export type GQLCreateApiKeyMutation = {
   };
 };
 
-export type GQLRevokeApiKeyMutationVariables = Exact<{
+export type GQLUpdateApiKeyMutationVariables = Exact<{
+  input: GQLUpdateApiKeyInput;
+}>;
+
+export type GQLUpdateApiKeyMutation = {
+  readonly __typename: 'Mutation';
+  readonly updateApiKey?: {
+    readonly __typename: 'ApiKey';
+    readonly id: string;
+    readonly name: string;
+    readonly description?: string | null;
+  } | null;
+};
+
+export type GQLDeleteApiKeyMutationVariables = Exact<{
   id: Scalars['ID']['input'];
 }>;
 
-export type GQLRevokeApiKeyMutation = {
+export type GQLDeleteApiKeyMutation = {
   readonly __typename: 'Mutation';
-  readonly revokeApiKey: boolean;
+  readonly deleteApiKey: boolean;
 };
 
 export type GQLApiAuthQueryVariables = Exact<{ [key: string]: never }>;
@@ -5513,7 +5536,6 @@ export type GQLRotateApiKeyMutation = {
           readonly id: string;
           readonly name: string;
           readonly description?: string | null;
-          readonly isActive: boolean;
           readonly createdAt: string;
           readonly lastUsedAt?: string | null;
           readonly createdBy?: string | null;
@@ -26694,7 +26716,6 @@ export const GQLApiKeysDocument = gql`
       id
       name
       description
-      isActive
       createdAt
       lastUsedAt
     }
@@ -26839,53 +26860,105 @@ export type GQLCreateApiKeyMutationOptions = Apollo.BaseMutationOptions<
   GQLCreateApiKeyMutation,
   GQLCreateApiKeyMutationVariables
 >;
-export const GQLRevokeApiKeyDocument = gql`
-  mutation RevokeApiKey($id: ID!) {
-    revokeApiKey(id: $id)
+export const GQLUpdateApiKeyDocument = gql`
+  mutation UpdateApiKey($input: UpdateApiKeyInput!) {
+    updateApiKey(input: $input) {
+      id
+      name
+      description
+    }
   }
 `;
-export type GQLRevokeApiKeyMutationFn = Apollo.MutationFunction<
-  GQLRevokeApiKeyMutation,
-  GQLRevokeApiKeyMutationVariables
+export type GQLUpdateApiKeyMutationFn = Apollo.MutationFunction<
+  GQLUpdateApiKeyMutation,
+  GQLUpdateApiKeyMutationVariables
 >;
 
 /**
- * __useGQLRevokeApiKeyMutation__
+ * __useGQLUpdateApiKeyMutation__
  *
- * To run a mutation, you first call `useGQLRevokeApiKeyMutation` within a React component and pass it any options that fit your needs.
- * When your component renders, `useGQLRevokeApiKeyMutation` returns a tuple that includes:
+ * To run a mutation, you first call `useGQLUpdateApiKeyMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLUpdateApiKeyMutation` returns a tuple that includes:
  * - A mutate function that you can call at any time to execute the mutation
  * - An object with fields that represent the current status of the mutation's execution
  *
  * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
  *
  * @example
- * const [gqlRevokeApiKeyMutation, { data, loading, error }] = useGQLRevokeApiKeyMutation({
+ * const [gqlUpdateApiKeyMutation, { data, loading, error }] = useGQLUpdateApiKeyMutation({
+ *   variables: {
+ *      input: // value for 'input'
+ *   },
+ * });
+ */
+export function useGQLUpdateApiKeyMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLUpdateApiKeyMutation,
+    GQLUpdateApiKeyMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLUpdateApiKeyMutation,
+    GQLUpdateApiKeyMutationVariables
+  >(GQLUpdateApiKeyDocument, options);
+}
+export type GQLUpdateApiKeyMutationHookResult = ReturnType<
+  typeof useGQLUpdateApiKeyMutation
+>;
+export type GQLUpdateApiKeyMutationResult =
+  Apollo.MutationResult<GQLUpdateApiKeyMutation>;
+export type GQLUpdateApiKeyMutationOptions = Apollo.BaseMutationOptions<
+  GQLUpdateApiKeyMutation,
+  GQLUpdateApiKeyMutationVariables
+>;
+export const GQLDeleteApiKeyDocument = gql`
+  mutation DeleteApiKey($id: ID!) {
+    deleteApiKey(id: $id)
+  }
+`;
+export type GQLDeleteApiKeyMutationFn = Apollo.MutationFunction<
+  GQLDeleteApiKeyMutation,
+  GQLDeleteApiKeyMutationVariables
+>;
+
+/**
+ * __useGQLDeleteApiKeyMutation__
+ *
+ * To run a mutation, you first call `useGQLDeleteApiKeyMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLDeleteApiKeyMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlDeleteApiKeyMutation, { data, loading, error }] = useGQLDeleteApiKeyMutation({
  *   variables: {
  *      id: // value for 'id'
  *   },
  * });
  */
-export function useGQLRevokeApiKeyMutation(
+export function useGQLDeleteApiKeyMutation(
   baseOptions?: Apollo.MutationHookOptions<
-    GQLRevokeApiKeyMutation,
-    GQLRevokeApiKeyMutationVariables
+    GQLDeleteApiKeyMutation,
+    GQLDeleteApiKeyMutationVariables
   >,
 ) {
   const options = { ...defaultOptions, ...baseOptions };
   return Apollo.useMutation<
-    GQLRevokeApiKeyMutation,
-    GQLRevokeApiKeyMutationVariables
-  >(GQLRevokeApiKeyDocument, options);
+    GQLDeleteApiKeyMutation,
+    GQLDeleteApiKeyMutationVariables
+  >(GQLDeleteApiKeyDocument, options);
 }
-export type GQLRevokeApiKeyMutationHookResult = ReturnType<
-  typeof useGQLRevokeApiKeyMutation
+export type GQLDeleteApiKeyMutationHookResult = ReturnType<
+  typeof useGQLDeleteApiKeyMutation
 >;
-export type GQLRevokeApiKeyMutationResult =
-  Apollo.MutationResult<GQLRevokeApiKeyMutation>;
-export type GQLRevokeApiKeyMutationOptions = Apollo.BaseMutationOptions<
-  GQLRevokeApiKeyMutation,
-  GQLRevokeApiKeyMutationVariables
+export type GQLDeleteApiKeyMutationResult =
+  Apollo.MutationResult<GQLDeleteApiKeyMutation>;
+export type GQLDeleteApiKeyMutationOptions = Apollo.BaseMutationOptions<
+  GQLDeleteApiKeyMutation,
+  GQLDeleteApiKeyMutationVariables
 >;
 export const GQLApiAuthDocument = gql`
   query ApiAuth {
@@ -26994,7 +27067,6 @@ export const GQLRotateApiKeyDocument = gql`
           id
           name
           description
-          isActive
           createdAt
           lastUsedAt
           createdBy
@@ -46437,7 +46509,8 @@ export const namedOperations = {
   },
   Mutation: {
     CreateApiKey: 'CreateApiKey',
-    RevokeApiKey: 'RevokeApiKey',
+    UpdateApiKey: 'UpdateApiKey',
+    DeleteApiKey: 'DeleteApiKey',
     RotateApiKey: 'RotateApiKey',
     RotateWebhookSigningKey: 'RotateWebhookSigningKey',
     CreateHashBank: 'CreateHashBank',
