@@ -1,0 +1,18 @@
+docs/integrations/hma.md
+  h_228f5682388812 3
+docs/integrations/ncmec.md
+  h_228f5682388812 60
+client/.env.example
+  h_228f5682388812 7
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6f0c57e5277966f8c957f89ad67ef121684b259a",
+  "prompts": {},
+  "humans": {
+    "h_228f5682388812": {
+      "author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
