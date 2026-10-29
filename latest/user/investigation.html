@@ -40,7 +40,7 @@
             const path_to_root = "../";
             const default_light_theme = "roost";
             const default_dark_theme = "roost";
-            window.path_to_searchindex_js = "../searchindex-22857738.js";
+            window.path_to_searchindex_js = "../searchindex-0945085a.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-6e080ddd.js"></script>
@@ -204,6 +204,7 @@
 <h2 id="taking-action"><a class="header" href="#taking-action">Taking action</a></h2>
 <p>You can take action on an item directly from Investigation without being in a review queue. Use the <strong>Take action on this item</strong> form: select an action, choose a policy if required, and click <strong>Submit Actions</strong>.</p>
 <p>This is useful for acting on content outside of a normal review flow, for example when investigating a user after receiving a report through another channel, or taking a follow-up action after an earlier decision.</p>
+<p>Manual actions taken here are recorded in the <a href="metrics.html#recent-decisions">Recent Decisions</a> log.</p>
 <h2 id="reversing-an-action"><a class="header" href="#reversing-an-action">Reversing an action</a></h2>
 <p>Coop has no built-in undo. To reverse an action (like unbanning a user), you need a custom action in Settings that calls your platform’s reverse endpoint, for example an “Unban user” action that calls your platform’s unban API.</p>
 <p>Once that action is configured, run it from Investigation or navigate to the item via the Recent Decisions log. Taking the action sends the callback to your platform to carry out the reversal.</p>
