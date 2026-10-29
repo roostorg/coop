@@ -1,6 +1,6 @@
 import { DateRangePicker } from '@/coop-ui/DateRangePicker';
 import { gql } from '@apollo/client';
-import { format } from 'date-fns';
+import { endOfDay, format, startOfDay, subDays } from 'date-fns';
 import last from 'lodash/last';
 import orderBy from 'lodash/orderBy';
 import sortBy from 'lodash/sortBy';
@@ -34,7 +34,6 @@ import {
 } from '../../../../../graphql/generated';
 import { filterNullOrUndefined } from '../../../../../utils/collections';
 import { safePick } from '../../../../../utils/misc';
-import { WEEK } from '../../../../../utils/time';
 import { PRIMARY_COLOR } from '../../dashboard/visualization/chartColors';
 import {
   ChartType,
@@ -45,7 +44,8 @@ import RuleInsightsEmptyCard from './RuleInsightsEmptyCard';
 
 gql`
   query ReportingRulePassRateAnalytics($id: ID!) {
-    rule(id: $id) {
+    reportingRule(id: $id) {
+      id
       insights {
         passRateData {
           date
@@ -66,26 +66,28 @@ export default function ReportingRuleInsightsActionsChart(props: {
   });
 
   const [timeWindow, setTimeWindow] = useState<TimeWindow>({
-    start: new Date(Date.now() - WEEK),
-    end: new Date(),
+    start: startOfDay(subDays(new Date(), 6)),
+    end: endOfDay(new Date()),
   });
 
   const [chartType, setChartType] = useState(ChartType.LINE);
 
-  const passRateData = data?.rule?.insights.passRateData ?? undefined;
+  const passRateData = data?.reportingRule?.insights.passRateData ?? undefined;
 
   const getDataInTimeWindow = useCallback(
     (
       arr?: NonNullable<
-        NonNullable<GQLReportingRulePassRateAnalyticsQuery['rule']>['insights']
+        NonNullable<
+          GQLReportingRulePassRateAnalyticsQuery['reportingRule']
+        >['insights']
       >['passRateData'],
-    ) =>
-      filterNullOrUndefined(arr ?? []).filter((elemWithDate) => {
-        const time = new Date(elemWithDate.date).getTime();
-        return (
-          time > timeWindow.start.getTime() && time < timeWindow.end.getTime()
-        );
-      }),
+    ) => {
+      const start = format(timeWindow.start, 'yyyy-MM-dd');
+      const end = format(timeWindow.end, 'yyyy-MM-dd');
+      return filterNullOrUndefined(arr ?? []).filter(
+        ({ date }) => date >= start && date <= end,
+      );
+    },
     [timeWindow],
   );
 
@@ -188,7 +190,7 @@ export default function ReportingRuleInsightsActionsChart(props: {
                 <span className="mr-2 text-lg font-semibold text-primary">
                   {sumBy(data, 'value')}
                 </span>
-                actioned in total
+                rule matches in total
               </div>
               <div className="mx-3 mt-0 mb-2 divider" />
             </div>
@@ -247,6 +249,7 @@ export default function ReportingRuleInsightsActionsChart(props: {
           <Line
             type="monotone"
             dataKey="totalMatches"
+            name="Rule Matches"
             stroke={PRIMARY_COLOR}
             dot={renderDot}
           />
@@ -301,6 +304,7 @@ export default function ReportingRuleInsightsActionsChart(props: {
             stackId="a"
             type="monotone"
             dataKey="totalMatches"
+            name="Rule Matches"
             fill={PRIMARY_COLOR}
           />
         </BarChart>
@@ -382,15 +386,12 @@ export default function ReportingRuleInsightsActionsChart(props: {
 
   const noActionsInTimeWindow = chartData !== null && chartData.length === 0;
 
-  // TODO: This copy (and all the copy in this component) doesn't really describe
-  // the data accurately, as the rule could pass but not have triggered any actions
-  // (e.g., a background rule), or have passed and triggered multiple actions.
   const noRuleRunsComponent = (
     <div className="text-center">
       <RuleInsightsEmptyCard
         icon={<LineChart className="w-4 h-4" />}
-        title="No Actions"
-        subtitle="Your rule has not executed any actions yet. As soon as it does, you'll see the data here."
+        title="No Rule Matches"
+        subtitle="No rule matches in this time period."
       />
     </div>
   );
@@ -413,7 +414,7 @@ export default function ReportingRuleInsightsActionsChart(props: {
               stats={[
                 {
                   value: totalActionedSubmissionsInTimeWindow.toLocaleString(),
-                  title: 'reports actioned on',
+                  title: 'rule matches',
                   icon: <InvestmentFilled className="w-10 h-10 text-primary" />,
                 },
               ]}
