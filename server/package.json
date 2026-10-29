@@ -22,6 +22,7 @@
     "create-org": "node --env-file-if-exists=.env --loader ts-node/esm bin/create-org-and-user.ts",
     "get-invite": "node --env-file-if-exists=.env --loader ts-node/esm bin/get-invite-token.ts",
     "recover-mrt-queue": "node --env-file-if-exists=.env --loader ts-node/esm bin/recover-mrt-queue.ts",
+    "dump-config": "tsc -p tsconfig.build.json && node --env-file-if-exists=.env ./transpiled/bin/dump-config.js",
     "knip": "knip"
   },
   "author": "Roostorg",
