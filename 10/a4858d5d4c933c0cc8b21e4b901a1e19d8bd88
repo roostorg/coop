@@ -1,0 +1,14 @@
+hma/Dockerfile
+  h_228f5682388812 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "10a4858d5d4c933c0cc8b21e4b901a1e19d8bd88",
+  "prompts": {},
+  "humans": {
+    "h_228f5682388812": {
+      "author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
