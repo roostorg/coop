@@ -26,6 +26,13 @@ WORKDIR /app/server
 FROM server_base AS build_backend
 RUN pnpm run build
 
+FROM node:24.14.1-bullseye-slim AS build_client
+WORKDIR /app
+COPY ["client/package.json", "client/package-lock.json", "./"]
+RUN npm ci
+COPY ["client", "./"]
+RUN npm run build
+
 # make a shared layer that can be the base for worker and api images.
 FROM node:24.22.1-bookworm-slim AS backend_base
 WORKDIR /app
@@ -51,6 +58,7 @@ ENV BUILD_ID=$BUILD_ID
 # Expose 8080 because the backend will run on this port absent a
 # process.env.PORT to the contrary.
 FROM backend_base AS build_server
+COPY --from=build_client /app/build ./client-build
 EXPOSE 8080
 CMD ["node", "bin/www.js"]
 
