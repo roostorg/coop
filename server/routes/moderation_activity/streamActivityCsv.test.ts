@@ -1,6 +1,11 @@
 import { Writable } from 'node:stream';
 
-import { type ActivityRow } from '../../services/moderationActivityFeed/index.js';
+import {
+  activityCsvHeader,
+  activityCsvLine,
+  type ActivityCsvLookups,
+  type ActivityRow,
+} from '../../services/moderationActivityFeed/index.js';
 import { streamActivityCsv } from './streamActivityCsv.js';
 
 const row = (id: string): ActivityRow => ({
@@ -19,31 +24,32 @@ const row = (id: string): ActivityRow => ({
   },
 });
 
-const stream = async (pages: AsyncIterable<ActivityRow[]>, out: Writable) =>
-  streamActivityCsv({
-    pages,
-    out,
-    includeActions: false,
-    lookups: {
-      actionNames: new Map(),
-      policyNames: new Map(),
-      queueNames: new Map(),
-      reviewerNames: new Map(),
-      uiUrl: 'https://coop.example',
-    },
-  });
+const lookups: ActivityCsvLookups = {
+  actionNames: new Map(),
+  policyNames: new Map(),
+  queueNames: new Map(),
+  reviewerNames: new Map(),
+  uiUrl: 'https://coop.example',
+};
 
-const slowSink = () =>
+const stream = async (pages: AsyncIterable<ActivityRow[]>, out: Writable) =>
+  streamActivityCsv({ pages, out, includeActions: false, lookups });
+
+const slowSink = (onChunk: (chunk: string) => void = () => {}) =>
   new Writable({
     highWaterMark: 1,
-    write(_chunk, _enc, cb) {
+    write(chunk, _enc, cb) {
+      onChunk(String(chunk));
       setImmediate(cb);
     },
   });
 
 describe('streamActivityCsv', () => {
-  it('waits for each write to drain without piling up listeners', async () => {
-    const out = slowSink();
+  it('writes the header and every row, then ends, while waiting for each drain', async () => {
+    let written = '';
+    const out = slowSink((chunk) => {
+      written += chunk;
+    });
     let pulls: { buffered: number; closeListeners: number }[] = [];
     async function* pages() {
       for (let i = 0; i < 30; i += 1) {
@@ -63,6 +69,13 @@ describe('streamActivityCsv', () => {
     expect(pulls).toHaveLength(30);
     expect(pulls.every((it) => it.buffered === 0)).toBe(true);
     expect(Math.max(...pulls.map((it) => it.closeListeners))).toBeLessThan(3);
+    expect(written).toBe(
+      activityCsvHeader(false) +
+        Array.from({ length: 30 }, (_, i) =>
+          activityCsvLine(row(`d-${i}`), false, lookups),
+        ).join(''),
+    );
+    expect(out.writableEnded).toBe(true);
   });
 
   it('stops paging when the response closes', async () => {

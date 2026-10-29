@@ -1,6 +1,7 @@
 import { vi } from 'vitest';
 
 import { type ActivityRow } from '../../services/moderationActivityFeed/index.js';
+import { UserRole } from '../../services/userManagementService/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../test/fixtureHelpers/createUser.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
@@ -52,14 +53,14 @@ describe('GET /moderation_activity/export', () => {
               throw new Error('clickhouse down');
             }
           });
-      const login = async () =>
+      const login = async (user: { email: string } = admin) =>
         request
           .post('/api/v1/graphql')
           .send({
             query: `mutation Login($input: LoginInput!) {
               login(input: $input) { __typename }
             }`,
-            variables: { input: { email: admin.email, password: PASSWORD } },
+            variables: { input: { email: user.email, password: PASSWORD } },
           })
           .expect(200);
       return { org, admin, stubFeed, login };
@@ -69,6 +70,26 @@ describe('GET /moderation_activity/export', () => {
   testExport('returns 401 without a session', async ({ request }) => {
     await request.get(exportUrl({})).expect(401);
   });
+
+  testExport(
+    'returns 403 for a user without VIEW_MRT_DATA, before any lookups',
+    async ({ request, deps, org, stubFeed, login }) => {
+      const { user: rulesManager } = await createUser(deps.KyselyPg, org.id, {
+        role: UserRole.RULES_MANAGER,
+        approvedByAdmin: true,
+        loginMethods: ['password'],
+        password: PASSWORD,
+      });
+      const iterateAll = stubFeed();
+      const getActions = vi.spyOn(deps.ModerationConfigService, 'getActions');
+      await login(rulesManager);
+
+      await request.get(exportUrl({})).expect(403);
+
+      expect(iterateAll).not.toHaveBeenCalled();
+      expect(getActions).not.toHaveBeenCalled();
+    },
+  );
 
   testExport(
     'streams every page as a CSV download with reviewer names',
@@ -144,12 +165,38 @@ describe('GET /moderation_activity/export', () => {
       { startTime: 'yesterday-ish' },
       { startTime: daysAgo(30), reviewerIds: 5 },
       { startTime: daysAgo(30), decisions: [{ ignoreDecision: { _: true } }] },
+      { startTime: daysAgo(30), decisions: [{ type: 'NOT_A_DECISION' }] },
     ];
     for (const input of badInputs) {
       await request.get(rawExportUrl(input)).expect(400);
     }
     await request.get(`${EXPORT_PATH}?input=%7Bnot-json`).expect(400);
   });
+
+  testExport(
+    'accepts every decision type the filter supports',
+    async ({ request, stubFeed, login }) => {
+      stubFeed();
+      await login();
+
+      await request
+        .get(
+          exportUrl({
+            decisions: [
+              { type: 'IGNORE' },
+              { type: 'REJECT_APPEAL' },
+              { type: 'ACCEPT_APPEAL' },
+              { type: 'CUSTOM_ACTION', actionIds: ['act-1'] },
+              { type: 'SUBMIT_NCMEC_REPORT' },
+              { type: 'TRANSFORM_JOB_AND_RECREATE_IN_QUEUE' },
+              { type: 'AUTOMATIC_CLOSE' },
+              { type: 'RELATED_ACTION', actionIds: ['act-2'] },
+            ],
+          }),
+        )
+        .expect(200);
+    },
+  );
 
   testExport(
     'refuses requests started by another site',

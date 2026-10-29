@@ -6,7 +6,7 @@ import {
   type ActivityFeedFilterInput,
   type ActivityView,
 } from '../../services/moderationActivityFeed/index.js';
-import { type UserPermission } from '../../services/userManagementService/index.js';
+import { UserPermission } from '../../services/userManagementService/index.js';
 import { tryJsonParse } from '../../utils/encoding.js';
 import {
   makeBadRequestError,
@@ -44,6 +44,17 @@ type ExportInput = {
 
 const stringArray = { type: 'array', items: { type: 'string' } };
 
+const DECISION_TYPES: Record<DecisionType, true> = {
+  IGNORE: true,
+  REJECT_APPEAL: true,
+  ACCEPT_APPEAL: true,
+  CUSTOM_ACTION: true,
+  SUBMIT_NCMEC_REPORT: true,
+  TRANSFORM_JOB_AND_RECREATE_IN_QUEUE: true,
+  AUTOMATIC_CLOSE: true,
+  RELATED_ACTION: true,
+};
+
 const validateExportInput = ajv.compile<ExportInput>({
   type: 'object',
   additionalProperties: false,
@@ -62,7 +73,10 @@ const validateExportInput = ajv.compile<ExportInput>({
         type: 'object',
         additionalProperties: false,
         required: ['type'],
-        properties: { type: { type: 'string' }, actionIds: stringArray },
+        properties: {
+          type: { type: 'string', enum: Object.keys(DECISION_TYPES) },
+          actionIds: stringArray,
+        },
       },
     },
   },
@@ -146,6 +160,15 @@ export default function exportActivityCsv(
         makeUnauthenticatedError('Authenticated user required', {
           shouldErrorSpan: false,
         }),
+      );
+    }
+
+    if (!user.getPermissions().includes(UserPermission.VIEW_MRT_DATA)) {
+      return next(
+        makeUnauthorizedError(
+          'You do not have permission to export moderation activity.',
+          { shouldErrorSpan: false },
+        ),
       );
     }
 
