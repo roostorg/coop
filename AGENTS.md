@@ -159,7 +159,7 @@ docker compose down -v     # also drop DB volumes (fresh DBs next run)
 
 Note: `check_migration_order` runs only in GitHub Actions — it's GitHub-specific and not needed locally. When adding a migration, use `date -u +"%Y.%m.%dT%H.%M.%S"` for the filename prefix.
 
-PR workflows must also run on stacked PRs (PRs whose base is another PR's branch): don't add a `branches` filter to `pull_request` triggers. Limit `push` triggers to `main` so a PR branch doesn't get both a push and a pull_request run for the same commit.
++PR workflows must also run on stacked PRs (PRs whose base is another PR's branch): don't add a `branches` filter to `pull_request` triggers. For PR workflows, limit `push` triggers to `main` so a PR branch doesn't get both a push and a pull_request run for the same commit.
 
 ## Security
 
