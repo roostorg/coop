@@ -57,7 +57,7 @@ Content is routed to the NCMEC queue through three automatic detection paths and
 
 ### 1. Hash-matching known CSAM (HMA)
 
-Coop integrates with Meta's [Hasher-Matcher-Actioner (HMA)](https://github.com/facebook/ThreatExchange/tree/main/hasher-matcher-actioner) to match uploaded media against NCMEC's database of known CSAM hashes. This is the most reliable detection path: a hash match is a strong signal that content is confirmed CSAM.
+Coop integrates with Meta's [Hasher-Matcher-Actioner (HMA)](https://github.com/meta/ThreatExchange/tree/main/hasher-matcher-actioner) to match uploaded media against NCMEC's database of known CSAM hashes. This is the most reliable detection path: a hash match is a strong signal that content is confirmed CSAM.
 
 HMA syncs hashes from NCMEC via NCMEC's [Hash Sharing API](https://report.cybertip.org/ws-hashsharing/v2/documentation/), which gives you local access to NCMEC's database of image and video fingerprints for known CSAM for fast matching.
 

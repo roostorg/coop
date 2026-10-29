@@ -249,7 +249,7 @@
 <h2 id="routing-content-to-ncmec"><a class="header" href="#routing-content-to-ncmec">Routing content to NCMEC</a></h2>
 <p>Content is routed to the NCMEC queue through three automatic detection paths and one manual path. For the manual escalation workflow and an explanation of how jobs are aggregated once content is enqueued, see the <a href="../user/child-safety.html">Child Safety (NCMEC)</a> user docs.</p>
 <h3 id="1-hash-matching-known-csam-hma"><a class="header" href="#1-hash-matching-known-csam-hma">1. Hash-matching known CSAM (HMA)</a></h3>
-<p>Coop integrates with Meta’s <a href="https://github.com/facebook/ThreatExchange/tree/main/hasher-matcher-actioner">Hasher-Matcher-Actioner (HMA)</a> to match uploaded media against NCMEC’s database of known CSAM hashes. This is the most reliable detection path: a hash match is a strong signal that content is confirmed CSAM.</p>
+<p>Coop integrates with Meta’s <a href="https://github.com/meta/ThreatExchange/tree/main/hasher-matcher-actioner">Hasher-Matcher-Actioner (HMA)</a> to match uploaded media against NCMEC’s database of known CSAM hashes. This is the most reliable detection path: a hash match is a strong signal that content is confirmed CSAM.</p>
 <p>HMA syncs hashes from NCMEC via NCMEC’s <a href="https://report.cybertip.org/ws-hashsharing/v2/documentation/">Hash Sharing API</a>, which gives you local access to NCMEC’s database of image and video fingerprints for known CSAM for fast matching.</p>
 <p>See the <a href="hma.html">Hasher-Matcher-Actioner (HMA) integration</a> for details.</p>
 <h3 id="2-novel-csam-detection-content-safety-api"><a class="header" href="#2-novel-csam-detection-content-safety-api">2. Novel CSAM detection (Content Safety API)</a></h3>
