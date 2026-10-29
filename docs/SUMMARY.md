@@ -26,6 +26,7 @@
   - [Data Warehouse Abstraction](development/data-warehouse.md)
   - [Docker Images](development/docker.md)
   - [Releases](development/releases.md)
+    - [Security Releases](development/security-releases.md)
   - [Deployment](development/deployment.md)
   - [Email](development/email.md)
 
