@@ -1,0 +1,1 @@
+ALTER TABLE public.org_settings DROP COLUMN IF EXISTS is_demo_org;
