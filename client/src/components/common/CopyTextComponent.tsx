@@ -1,8 +1,7 @@
-import { Tooltip } from 'antd';
 import { Copy as CopyAlt } from 'lucide-react';
-import { ReactElement, useState } from 'react';
+import { ReactElement } from 'react';
 
-const DEFAULT_TOOLTIP_TEXT = 'Copy to clipboard';
+import CopyToClipboard from './CopyToClipboard';
 
 /**
  * Text component that allows the user to copy the text to their clipboard.
@@ -23,37 +22,16 @@ export default function CopyTextComponent(props: {
   const {
     value,
     displayValue = value,
-    initialTooltipText = DEFAULT_TOOLTIP_TEXT,
+    initialTooltipText,
     footerItems = [],
     isError = false,
     wrapText = false,
   } = props;
-  const [copyTextTooltipTitle, setCopyTextTooltipTitle] =
-    useState<string>(initialTooltipText);
-
-  const resetTextTooltipTitle = () => {
-    setTimeout(() => setCopyTextTooltipTitle(initialTooltipText), 20);
-  };
 
   return (
     <div className="flex flex-col">
-      <Tooltip
-        title={copyTextTooltipTitle}
-        onOpenChange={(visible: boolean) => {
-          if (!visible) {
-            resetTextTooltipTitle();
-          }
-        }}
-      >
-        <div
-          className="flex flex-row items-center cursor-pointer grow"
-          onClick={(event) => {
-            event.preventDefault();
-            event.stopPropagation();
-            navigator.clipboard.writeText(value);
-            setCopyTextTooltipTitle('Copied!');
-          }}
-        >
+      <CopyToClipboard value={value} initialTooltipText={initialTooltipText}>
+        <div className="flex flex-row items-center cursor-pointer grow">
           {typeof displayValue === 'string' ? (
             <span
               className={`font-normal ${
@@ -71,7 +49,7 @@ export default function CopyTextComponent(props: {
             } ${isError ? 'text-red-400' : 'text-slate-400'}`}
           />
         </div>
-      </Tooltip>
+      </CopyToClipboard>
       <div className="flex flex-row">{footerItems}</div>
     </div>
   );
