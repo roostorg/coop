@@ -83,6 +83,23 @@ jobs:
       - name: Check Node version parity
         run: pnpm run check:node-version
 
+  check_openapi_spec:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup pnpm and Node.js
+        uses: pnpm/setup@fbda4c85fc2e1e08721cd8763afea8f48d60f024 # v3.0.0
+
+      - name: Lint OpenAPI spec
+        run: >-
+          pnpm dlx @stoplight/spectral-cli@6.17.0 lint docs/api/openapi.yaml
+          --ruleset docs/api/.spectral.yaml --fail-severity=info
+
   check_generated_graphql:
     timeout-minutes: 5
     needs: [changes]
