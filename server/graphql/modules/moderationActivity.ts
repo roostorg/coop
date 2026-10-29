@@ -15,7 +15,7 @@ import {
 } from '../generated.js';
 import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
 
-const MAX_PAGE_SIZE = 200;
+const MAX_PAGE_SIZE = 100;
 const DEFAULT_ITEM_PAGE_SIZE = 100;
 /** Bulk Actioning submits at most 1000 items per run. */
 const MAX_ITEM_PAGE_SIZE = 1000;
@@ -24,7 +24,7 @@ const typeDefs = /* GraphQL */ `
   input RecentModerationActivityInput {
     "Opaque cursor from a previous page. Absent for the newest page."
     cursor: Cursor
-    "Rows per page. Defaults to 100, capped at 200."
+    "Rows per page. Defaults to 100, capped at 100."
     limit: Int
     view: ActivityView
     startTime: DateTime
@@ -179,6 +179,11 @@ const Query: GQLQueryResolvers = {
     const user = context.getUser();
     if (user == null) {
       throw unauthenticatedError('Authenticated user required');
+    }
+    if (!user.getPermissions().includes(UserPermission.VIEW_MRT_DATA)) {
+      throw forbiddenError(
+        'VIEW_MRT_DATA permission required to view moderation activity.',
+      );
     }
 
     return context.services.ModerationActivityFeed.getPage({

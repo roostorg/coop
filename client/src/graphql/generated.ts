@@ -4012,7 +4012,7 @@ export type GQLRecentModerationActivityInput = {
     ReadonlyArray<GQLRecentManualReviewDecisionType>
   >;
   readonly endTime?: InputMaybe<Scalars['DateTime']['input']>;
-  /** Rows per page. Defaults to 100, capped at 200. */
+  /** Rows per page. Defaults to 100, capped at 100. */
   readonly limit?: InputMaybe<Scalars['Int']['input']>;
   readonly policyIds?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
   readonly queueIds?: InputMaybe<ReadonlyArray<Scalars['ID']['input']>>;
