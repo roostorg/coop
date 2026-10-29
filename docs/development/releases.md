@@ -33,11 +33,13 @@ Then:
 4. Title the release `Coop x.y.z` and **draft the release notes**, starting from [CHANGELOG.md](https://github.com/roostorg/coop/blob/main/CHANGELOG.md)
 5. Check **Create a discussion for this release** for at least major and minor releases
 6. **Publish** the release
-7. Confirm the **Publish Docker images** workflow run for the tag succeeds and the version-tagged images exist
+7. Confirm the **Publish Docker images** workflow run for the tag succeeds, the version-tagged images exist, and the release has an SBOM attached for each image
 
 Publishing a release triggers automations:
 
-- **Docker images**: builds and pushes version-tagged Docker images for `coop-server`, `coop-worker`, `coop-client`, and `coop-migrations`
+- **Docker images**: builds and pushes version-tagged Docker images for `coop-server`, `coop-worker`, `coop-client`, and `coop-migrations`, each with SBOM and provenance attestations
+- **SBOMs**: attaches a CycloneDX SBOM for each image (`<image>-x.y.z.cdx.json`) to the release
+- **Image scans**: scans each image with Trivy and reports findings to code scanning, which is visible only to maintainers; findings never block publishing. See [Vulnerability scanning](vulnerability-scanning.md)
 - **Docs**: adds a folder for the release to the [index](https://roostorg.github.io/coop/) with a snapshot of the docs
 
 `@roostorg/coop-types` and `@roostorg/db-migrator` are not released this way; they publish to npm from `main` whenever `types/**` or `migrator/**` changes.

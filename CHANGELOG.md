@@ -11,6 +11,7 @@ For more information about each release including git tags and artifacts, see [R
 ### Added
 
 - Formatting toolbar for policy definitions and enforcement guidelines ([#1432](https://github.com/roostorg/coop/pull/1432) by [@taobojlen](https://github.com/taobojlen)).
+- CycloneDX SBOM for each Docker image attached to GitHub releases ([#1494](https://github.com/roostorg/coop/pull/1494) by [@reitblatt](https://github.com/reitblatt))
 
 ### Changed
 

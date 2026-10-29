@@ -43,6 +43,11 @@ env:
     type=semver,pattern={{version}}
     type=semver,pattern={{major}}.{{minor}}
     type=raw,value=${{ github.event.inputs.version }},enable=${{ github.event.inputs.version != '' }}
+  # Trivy is installed from its release tarball with a pinned checksum rather
+  # than through aquasecurity/trivy-action or setup-trivy (GHSA-69fq-xp46-6x23).
+  TRIVY_VERSION: 0.76.1
+  TRIVY_SHA256: c7cbe3137fb8a48a17574bede3dd6beb16742d1e9772929940fc90082c39d9c0
+  TRIVY_DB_REPOSITORY: mirror.gcr.io/aquasec/trivy-db:2,ghcr.io/aquasecurity/trivy-db:2
 
 jobs:
   changes:
@@ -100,6 +105,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      security-events: write
     strategy:
       matrix:
         include:
@@ -129,6 +135,7 @@ jobs:
           tags: ${{ env.TAGS }}
 
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        id: build
         with:
           context: .
           file: Dockerfile
@@ -145,6 +152,46 @@ jobs:
             type=gha,scope=coop-worker
           cache-to: type=gha,scope=${{ matrix.image }},mode=max
           platforms: linux/amd64,linux/arm64
+          sbom: true
+          provenance: mode=max
+
+      - name: Install Trivy
+        run: |
+          curl -fsSLo "$RUNNER_TEMP/trivy.tar.gz" "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          echo "${TRIVY_SHA256}  $RUNNER_TEMP/trivy.tar.gz" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/trivy-bin"
+          tar -xzf "$RUNNER_TEMP/trivy.tar.gz" -C "$RUNNER_TEMP/trivy-bin" trivy
+          echo "$RUNNER_TEMP/trivy-bin" >> "$GITHUB_PATH"
+
+      # Report-only: findings go to code scanning (visible to maintainers, not
+      # the public) and never block a push, so a security release can always
+      # ship. continue-on-error keeps a Trivy or DB outage from failing a job
+      # whose images are already published.
+      - name: Scan image
+        continue-on-error: true
+        env:
+          IMAGE: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}@${{ steps.build.outputs.digest }}
+        run: trivy image --quiet --scanners vuln --platform linux/amd64 --format sarif --output trivy.sarif "$IMAGE"
+
+      - uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        continue-on-error: true
+        with:
+          sarif_file: trivy.sarif
+          category: trivy-${{ matrix.image }}-${{ github.event_name == 'release' && 'release' || 'edge' }}
+
+      - name: Generate SBOM
+        if: github.event_name == 'release'
+        env:
+          IMAGE: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}@${{ steps.build.outputs.digest }}
+          SBOM: ${{ matrix.image }}-${{ github.event.release.tag_name }}.cdx.json
+        run: trivy image --quiet --platform linux/amd64 --format cyclonedx --output "$SBOM" "$IMAGE"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: github.event_name == 'release'
+        with:
+          name: sbom-${{ matrix.image }}
+          path: ${{ matrix.image }}-${{ github.event.release.tag_name }}.cdx.json
+          if-no-files-found: error
 
   build-client:
     needs: changes
@@ -153,6 +200,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      security-events: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -175,6 +223,7 @@ jobs:
           tags: ${{ env.TAGS }}
 
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        id: build
         with:
           context: .
           file: client/Dockerfile
@@ -187,6 +236,46 @@ jobs:
           cache-from: type=gha,scope=coop-client
           cache-to: type=gha,scope=coop-client,mode=max
           platforms: linux/amd64,linux/arm64
+          sbom: true
+          provenance: mode=max
+
+      - name: Install Trivy
+        run: |
+          curl -fsSLo "$RUNNER_TEMP/trivy.tar.gz" "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          echo "${TRIVY_SHA256}  $RUNNER_TEMP/trivy.tar.gz" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/trivy-bin"
+          tar -xzf "$RUNNER_TEMP/trivy.tar.gz" -C "$RUNNER_TEMP/trivy-bin" trivy
+          echo "$RUNNER_TEMP/trivy-bin" >> "$GITHUB_PATH"
+
+      # Report-only: findings go to code scanning (visible to maintainers, not
+      # the public) and never block a push, so a security release can always
+      # ship. continue-on-error keeps a Trivy or DB outage from failing a job
+      # whose images are already published.
+      - name: Scan image
+        continue-on-error: true
+        env:
+          IMAGE: ${{ env.REGISTRY }}/${{ github.repository_owner }}/coop-client@${{ steps.build.outputs.digest }}
+        run: trivy image --quiet --scanners vuln --platform linux/amd64 --format sarif --output trivy.sarif "$IMAGE"
+
+      - uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        continue-on-error: true
+        with:
+          sarif_file: trivy.sarif
+          category: trivy-coop-client-${{ github.event_name == 'release' && 'release' || 'edge' }}
+
+      - name: Generate SBOM
+        if: github.event_name == 'release'
+        env:
+          IMAGE: ${{ env.REGISTRY }}/${{ github.repository_owner }}/coop-client@${{ steps.build.outputs.digest }}
+          SBOM: coop-client-${{ github.event.release.tag_name }}.cdx.json
+        run: trivy image --quiet --platform linux/amd64 --format cyclonedx --output "$SBOM" "$IMAGE"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: github.event_name == 'release'
+        with:
+          name: sbom-coop-client
+          path: coop-client-${{ github.event.release.tag_name }}.cdx.json
+          if-no-files-found: error
 
   # Bundles the db/ migration files + configs into an image meant to be run as a
   # one-shot task on deploy.
@@ -199,6 +288,7 @@ jobs:
     permissions:
       contents: read
       packages: write
+      security-events: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -221,6 +311,7 @@ jobs:
           tags: ${{ env.TAGS }}
 
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        id: build
         with:
           context: .
           file: db/Dockerfile
@@ -230,3 +321,65 @@ jobs:
           cache-from: type=gha,scope=coop-migrations
           cache-to: type=gha,scope=coop-migrations,mode=max
           platforms: linux/amd64,linux/arm64
+          sbom: true
+          provenance: mode=max
+
+      - name: Install Trivy
+        run: |
+          curl -fsSLo "$RUNNER_TEMP/trivy.tar.gz" "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          echo "${TRIVY_SHA256}  $RUNNER_TEMP/trivy.tar.gz" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/trivy-bin"
+          tar -xzf "$RUNNER_TEMP/trivy.tar.gz" -C "$RUNNER_TEMP/trivy-bin" trivy
+          echo "$RUNNER_TEMP/trivy-bin" >> "$GITHUB_PATH"
+
+      # Report-only: findings go to code scanning (visible to maintainers, not
+      # the public) and never block a push, so a security release can always
+      # ship. continue-on-error keeps a Trivy or DB outage from failing a job
+      # whose images are already published.
+      - name: Scan image
+        continue-on-error: true
+        env:
+          IMAGE: ${{ env.REGISTRY }}/${{ github.repository_owner }}/coop-migrations@${{ steps.build.outputs.digest }}
+        run: trivy image --quiet --scanners vuln --platform linux/amd64 --format sarif --output trivy.sarif "$IMAGE"
+
+      - uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+        continue-on-error: true
+        with:
+          sarif_file: trivy.sarif
+          category: trivy-coop-migrations-${{ github.event_name == 'release' && 'release' || 'edge' }}
+
+      - name: Generate SBOM
+        if: github.event_name == 'release'
+        env:
+          IMAGE: ${{ env.REGISTRY }}/${{ github.repository_owner }}/coop-migrations@${{ steps.build.outputs.digest }}
+          SBOM: coop-migrations-${{ github.event.release.tag_name }}.cdx.json
+        run: trivy image --quiet --platform linux/amd64 --format cyclonedx --output "$SBOM" "$IMAGE"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: github.event_name == 'release'
+        with:
+          name: sbom-coop-migrations
+          path: coop-migrations-${{ github.event.release.tag_name }}.cdx.json
+          if-no-files-found: error
+
+  # Kept separate so contents: write never sits in a job holding registry
+  # credentials.
+  attach-sboms:
+    needs: [build-server, build-client, build-migrations]
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: sbom-*
+          merge-multiple: true
+          path: sboms
+
+      - name: Attach SBOMs to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$TAG" sboms/*.cdx.json --clobber
