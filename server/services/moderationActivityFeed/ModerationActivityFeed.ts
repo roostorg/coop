@@ -11,7 +11,7 @@ export type ActivityView = 'ALL' | 'DECISIONS' | 'ACTIONS';
 
 export type ActivityFeedFilterInput = Omit<RecentDecisionsFilterInput, 'page'>;
 
-export const EXPORT_PAGE_SIZE = 200;
+export const EXPORT_PAGE_SIZE = 100;
 
 /**
  * Filters that only a decision can satisfy. A manual action has no queue and no

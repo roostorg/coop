@@ -2,7 +2,10 @@ import { afterEach, vi } from 'vitest';
 
 import { UserPermission } from '../userManagementService/index.js';
 import { serializeActivityCursor } from './activityCursor.js';
-import { ModerationActivityFeed } from './ModerationActivityFeed.js';
+import {
+  ModerationActivityFeed,
+  type ActivityView,
+} from './ModerationActivityFeed.js';
 
 const CAN_VIEW_ACTIONS = [UserPermission.VIEW_INVESTIGATION];
 
@@ -368,6 +371,8 @@ describe('ModerationActivityFeed.iterateAll', () => {
   const minute = (n: number) =>
     new Date(Date.UTC(2026, 7, 1, 0, 0, 0) + n * 60_000);
 
+  const STORE_LIMIT = 200;
+
   const decisions = Array.from({ length: 250 }, (_, i) => ({
     id: `d-${String(i).padStart(3, '0')}`,
     createdAt: minute(i - (i % 2)).toISOString(),
@@ -385,14 +390,14 @@ describe('ModerationActivityFeed.iterateAll', () => {
     ts < cursor.ts.getTime() ||
     (cursor.id !== null && ts === cursor.ts.getTime() && id < cursor.id);
 
-  const newFeed = () =>
+  const newFeed = (decisionRows = decisions, actionRows = actions) =>
     new ModerationActivityFeed(
       {
         getDecisionsForActivityFeed: async (opts: {
           cursor?: { ts: Date; id: string | null };
           limit: number;
         }) =>
-          decisions
+          decisionRows
             .filter((it) =>
               isBefore(new Date(it.createdAt).getTime(), it.id, opts.cursor),
             )
@@ -401,7 +406,7 @@ describe('ModerationActivityFeed.iterateAll', () => {
                 b.createdAt.localeCompare(a.createdAt) ||
                 b.id.localeCompare(a.id),
             )
-            .slice(0, opts.limit),
+            .slice(0, Math.min(opts.limit, STORE_LIMIT)),
       } as never,
       {
         getRecentModeratorActions: async (opts: {
@@ -409,7 +414,7 @@ describe('ModerationActivityFeed.iterateAll', () => {
           before?: Date;
           limit: number;
         }) =>
-          actions
+          actionRows
             .filter(
               (it) =>
                 (opts.before === undefined || it.occurredAt <= opts.before) &&
@@ -427,17 +432,29 @@ describe('ModerationActivityFeed.iterateAll', () => {
                 b.occurredAt.getTime() - a.occurredAt.getTime() ||
                 b.correlationId.localeCompare(a.correlationId),
             )
-            .slice(0, opts.limit),
+            .slice(0, Math.min(opts.limit, STORE_LIMIT)),
       } as never,
     );
 
-  const exportAll = (feed: ModerationActivityFeed, endTime?: Date) =>
+  const exportAll = (
+    feed: ModerationActivityFeed,
+    endTime?: Date,
+    view: ActivityView = 'ALL',
+  ) =>
     feed.iterateAll({
       userPermissions: CAN_VIEW_ACTIONS,
       orgId: 'org-1',
       input: { endTime },
-      view: 'ALL',
+      view,
     });
+
+  const collect = async (pages: AsyncIterable<{ id: string }[]>) => {
+    let rows: { id: string }[] = [];
+    for await (const page of pages) {
+      rows = [...rows, ...page];
+    }
+    return rows;
+  };
 
   afterEach(() => {
     vi.useRealTimers();
@@ -456,6 +473,24 @@ describe('ModerationActivityFeed.iterateAll', () => {
         (row, i) => i === 0 || rows[i - 1].ts.getTime() >= row.ts.getTime(),
       ),
     ).toBe(true);
+  });
+
+  it('exports every row when one store fills each page on its own', async () => {
+    const manyActions = Array.from({ length: 250 }, (_, i) =>
+      actionRow(`b-${String(i).padStart(3, '0')}`, minute(i * 2).toISOString()),
+    );
+
+    const decisionsOnly = await collect(
+      exportAll(newFeed(), minute(1000), 'DECISIONS'),
+    );
+    const actionsOnly = await collect(
+      exportAll(newFeed([], manyActions), minute(1000), 'ACTIONS'),
+    );
+
+    expect(decisionsOnly).toHaveLength(250);
+    expect(new Set(decisionsOnly.map((it) => it.id)).size).toBe(250);
+    expect(actionsOnly).toHaveLength(250);
+    expect(new Set(actionsOnly.map((it) => it.id)).size).toBe(250);
   });
 
   it('fixes endTime to the start of the export when none is given', async () => {
