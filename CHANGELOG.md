@@ -25,6 +25,7 @@ For more information about each release including git tags and artifacts, see [R
 
 - Fix missing database row for new deployments ([#1486](https://github.com/roostorg/coop/pull/1486) by [@taobojlen](https://github.com/taobojlen)).
 - Opening a review queue with no unskipped jobs no longer leaves reviewers on a loading spinner ([#1392](https://github.com/roostorg/coop/pull/1392) by [@Joseph-Mutua](https://github.com/Joseph-Mutua))
+- Fix the HMA image build, which pulled its base image from the old `ghcr.io/facebook` registry path ([#1498](https://github.com/roostorg/coop/pull/1498) by [@juanmrad](https://github.com/juanmrad))
 
 ## [1.2.0] - 2026-10-21
 
