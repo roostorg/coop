@@ -3,7 +3,7 @@
 Get Coop running on your own infrastructure. You may also be interested in the [Docker images](docker.md) and [architecture information](architecture.md).
 
 > [!IMPORTANT]
-> When you run migrations, we create a sample org which contains users with default passwords. Make sure you clean up in a production environment.
+> Use `--env prod` for production migrations. This initializes required operational data without loading staging sample data.
 
 ## Self-hosting checklist
 
@@ -43,7 +43,7 @@ Many other settings are only required if you are enabling specific features or c
 
 After the first successful migration and bootstrap:
 
-1. Remove or secure the sample org and any users created with default passwords.
+1. If you loaded staging sample data, remove or secure its sample org and default-password users.
 
 2. Confirm the production hostname and email settings are correct.
 

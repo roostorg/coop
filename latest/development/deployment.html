@@ -40,7 +40,7 @@
             const path_to_root = "../";
             const default_light_theme = "roost";
             const default_dark_theme = "roost";
-            window.path_to_searchindex_js = "../searchindex-5e48c212.js";
+            window.path_to_searchindex_js = "../searchindex-4d4f4db2.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-6e080ddd.js"></script>
@@ -194,7 +194,7 @@
 <p>Get Coop running on your own infrastructure. You may also be interested in the <a href="docker.html">Docker images</a> and <a href="architecture.html">architecture information</a>.</p>
 <blockquote class="blockquote-tag blockquote-tag-important">
 <p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M0 1.75C0 .784.784 0 1.75 0h12.5C15.216 0 16 .784 16 1.75v9.5A1.75 1.75 0 0 1 14.25 13H8.06l-2.573 2.573A1.458 1.458 0 0 1 3 14.543V13H1.75A1.75 1.75 0 0 1 0 11.25Zm1.75-.25a.25.25 0 0 0-.25.25v9.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h6.5a.25.25 0 0 0 .25-.25v-9.5a.25.25 0 0 0-.25-.25Zm7 2.25v2.5a.75.75 0 0 1-1.5 0v-2.5a.75.75 0 0 1 1.5 0ZM9 9a1 1 0 1 1-2 0 1 1 0 0 1 2 0Z"></path></svg>Important</p>
-<p>When you run migrations, we create a sample org which contains users with default passwords. Make sure you clean up in a production environment.</p>
+<p>Use <code>--env prod</code> for production migrations. This initializes required operational data without loading staging sample data.</p>
 </blockquote>
 <h2 id="self-hosting-checklist"><a class="header" href="#self-hosting-checklist">Self-hosting checklist</a></h2>
 <p>Coop does not currently ship a single production deployment recipe, but the repository does include the configuration surface you need to stand up a self-hosted instance. Treat the example environment files in <code>db/.env.example</code>, <code>server/.env.example</code>, and <code>client/.env.example</code> as the starting point for your deployment-specific configuration.</p>
@@ -241,7 +241,7 @@
 <p>After the first successful migration and bootstrap:</p>
 <ol>
 <li>
-<p>Remove or secure the sample org and any users created with default passwords.</p>
+<p>If you loaded staging sample data, remove or secure its sample org and default-password users.</p>
 </li>
 <li>
 <p>Confirm the production hostname and email settings are correct.</p>
