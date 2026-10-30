@@ -38,14 +38,12 @@ describe('ApiKeyService', () => {
     await db.destroy();
   });
 
-  it('deactivates old keys and stores a hashed new key', async () => {
-    query
-      .mockResolvedValueOnce({ rows: [], command: 'UPDATE', rowCount: 0 })
-      .mockImplementationOnce(async ({ parameters }) => ({
-        rows: [{ ...row, key_hash: parameters[1] }],
-        command: 'INSERT',
-        rowCount: 1,
-      }));
+  it('stores a hashed new key without deactivating other keys', async () => {
+    query.mockImplementationOnce(async ({ parameters }) => ({
+      rows: [{ ...row, key_hash: parameters[1] }],
+      command: 'INSERT',
+      rowCount: 1,
+    }));
 
     const result = await sut.createApiKey(
       orgId,
@@ -66,13 +64,11 @@ describe('ApiKeyService', () => {
       name: row.name,
       description: row.description,
     });
-    expect(query).toHaveBeenCalledTimes(2);
-    expect(query.mock.calls[0][0].sql).toContain('update "public"."api_keys"');
-    expect(query.mock.calls[0][0].parameters).toEqual([false, orgId]);
-    expect(query.mock.calls[1][0].sql).toContain(
+    expect(query).toHaveBeenCalledTimes(1);
+    expect(query.mock.calls[0][0].sql).toContain(
       'insert into "public"."api_keys"',
     );
-    expect(query.mock.calls[1][0].parameters).toEqual([
+    expect(query.mock.calls[0][0].parameters).toEqual([
       orgId,
       hash,
       'Test Key',
@@ -95,7 +91,10 @@ describe('ApiKeyService', () => {
     expect(query.mock.calls[0][0].sql).toContain(
       'select * from "public"."api_keys"',
     );
-    expect(query.mock.calls[0][0].parameters).toEqual([orgId, true]);
+    expect(query.mock.calls[0][0].sql).toContain(
+      'where "org_id" = $1 and "is_active" = $2 order by "created_at" desc, "id" desc limit $3',
+    );
+    expect(query.mock.calls[0][0].parameters).toEqual([orgId, true, 1]);
   });
 
   it('returns null when there is no active key', async () => {

@@ -801,6 +801,17 @@ export type GQLCreateActionInput = {
   readonly parameters?: InputMaybe<ReadonlyArray<GQLActionParameterInput>>;
 };
 
+export type GQLCreateApiKeyInput = {
+  readonly description?: InputMaybe<Scalars['String']['input']>;
+  readonly name: Scalars['String']['input'];
+};
+
+export type GQLCreateApiKeySuccessResponse = {
+  readonly __typename?: 'CreateApiKeySuccessResponse';
+  readonly apiKey: Scalars['String']['output'];
+  readonly record: GQLApiKey;
+};
+
 export type GQLCreateBacktestInput = {
   readonly ruleId: Scalars['ID']['input'];
   readonly sampleDesiredSize: Scalars['Int']['input'];
@@ -2702,6 +2713,7 @@ export type GQLMutation = {
   readonly bulkExecuteActions: GQLExecuteBulkActionResponse;
   readonly changePassword: GQLChangePasswordResponse;
   readonly createAction: GQLMutateActionResponse;
+  readonly createApiKey: GQLCreateApiKeySuccessResponse;
   readonly createBacktest?: Maybe<GQLCreateBacktestResponse>;
   readonly createContentItemType: GQLMutateContentItemTypeResponse;
   readonly createContentRule: GQLCreateContentRuleResponse;
@@ -2717,6 +2729,7 @@ export type GQLMutation = {
   readonly createUserRule: GQLCreateUserRuleResponse;
   readonly deleteAction?: Maybe<Scalars['Boolean']['output']>;
   readonly deleteAllJobsFromQueue: GQLDeleteAllJobsFromQueueResponse;
+  readonly deleteApiKey: Scalars['Boolean']['output'];
   readonly deleteHashBank: Scalars['Boolean']['output'];
   readonly deleteInvite?: Maybe<Scalars['Boolean']['output']>;
   readonly deleteItemType: GQLDeleteItemTypeResponse;
@@ -2773,6 +2786,7 @@ export type GQLMutation = {
   readonly updateAccountInfo?: Maybe<Scalars['Boolean']['output']>;
   readonly updateAction: GQLMutateActionResponse;
   readonly updateAllowMultiplePoliciesPerAction: Scalars['Boolean']['output'];
+  readonly updateApiKey?: Maybe<GQLApiKey>;
   readonly updateAppealSettings: GQLAppealSettings;
   readonly updateContentItemType: GQLMutateContentItemTypeResponse;
   readonly updateContentRule: GQLUpdateContentRuleResponse;
@@ -2839,6 +2853,10 @@ export type GQLMutationCreateActionArgs = {
   input: GQLCreateActionInput;
 };
 
+export type GQLMutationCreateApiKeyArgs = {
+  input: GQLCreateApiKeyInput;
+};
+
 export type GQLMutationCreateBacktestArgs = {
   input: GQLCreateBacktestInput;
 };
@@ -2897,6 +2915,10 @@ export type GQLMutationDeleteActionArgs = {
 
 export type GQLMutationDeleteAllJobsFromQueueArgs = {
   queueId: Scalars['ID']['input'];
+};
+
+export type GQLMutationDeleteApiKeyArgs = {
+  id: Scalars['ID']['input'];
 };
 
 export type GQLMutationDeleteHashBankArgs = {
@@ -3066,6 +3088,10 @@ export type GQLMutationUpdateActionArgs = {
 
 export type GQLMutationUpdateAllowMultiplePoliciesPerActionArgs = {
   enabled: Scalars['Boolean']['input'];
+};
+
+export type GQLMutationUpdateApiKeyArgs = {
+  input: GQLUpdateApiKeyInput;
 };
 
 export type GQLMutationUpdateAppealSettingsArgs = {
@@ -3703,7 +3729,9 @@ export type GQLQuery = {
   readonly action?: Maybe<GQLAction>;
   readonly actionStatistics: ReadonlyArray<GQLActionData>;
   readonly allRuleInsights?: Maybe<GQLAllRuleInsights>;
+  /** @deprecated Use `apiKeys` instead. */
   readonly apiKey: Scalars['String']['output'];
+  readonly apiKeys: ReadonlyArray<GQLApiKey>;
   readonly appealSettings?: Maybe<GQLAppealSettings>;
   readonly availableIntegrations: ReadonlyArray<GQLIntegrationMetadata>;
   readonly exchangeApiSchema?: Maybe<GQLExchangeApiSchema>;
@@ -4346,6 +4374,7 @@ export type GQLRotateApiKeyError = GQLError & {
 
 export type GQLRotateApiKeyInput = {
   readonly description?: InputMaybe<Scalars['String']['input']>;
+  readonly id: Scalars['ID']['input'];
   readonly name: Scalars['String']['input'];
 };
 
@@ -5071,6 +5100,12 @@ export type GQLUpdateActionInput = {
   readonly name?: InputMaybe<Scalars['String']['input']>;
   /** Replace the parameter list (`[]` clears it). Omit to leave unchanged. */
   readonly parameters?: InputMaybe<ReadonlyArray<GQLActionParameterInput>>;
+};
+
+export type GQLUpdateApiKeyInput = {
+  readonly description?: InputMaybe<Scalars['String']['input']>;
+  readonly id: Scalars['ID']['input'];
+  readonly name: Scalars['String']['input'];
 };
 
 export type GQLUpdateContentItemTypeInput = {
@@ -6141,6 +6176,8 @@ export type GQLResolversTypes = {
   CountByPolicyByDayPolicy: ResolverTypeWrapper<GQLCountByPolicyByDayPolicy>;
   CountByTagByDay: ResolverTypeWrapper<GQLCountByTagByDay>;
   CreateActionInput: GQLCreateActionInput;
+  CreateApiKeyInput: GQLCreateApiKeyInput;
+  CreateApiKeySuccessResponse: ResolverTypeWrapper<GQLCreateApiKeySuccessResponse>;
   CreateBacktestInput: GQLCreateBacktestInput;
   CreateBacktestResponse: ResolverTypeWrapper<
     Omit<GQLCreateBacktestResponse, 'backtest'> & {
@@ -6830,6 +6867,7 @@ export type GQLResolversTypes = {
   TransformJobAndRecreateInQueue: GQLTransformJobAndRecreateInQueue;
   TransformJobAndRecreateInQueueDecisionComponent: ResolverTypeWrapper<GQLTransformJobAndRecreateInQueueDecisionComponent>;
   UpdateActionInput: GQLUpdateActionInput;
+  UpdateApiKeyInput: GQLUpdateApiKeyInput;
   UpdateContentItemTypeInput: GQLUpdateContentItemTypeInput;
   UpdateContentRuleInput: GQLUpdateContentRuleInput;
   UpdateContentRuleResponse: ResolverTypeWrapper<
@@ -7005,6 +7043,8 @@ export type GQLResolversParentTypes = {
   CountByPolicyByDayPolicy: GQLCountByPolicyByDayPolicy;
   CountByTagByDay: GQLCountByTagByDay;
   CreateActionInput: GQLCreateActionInput;
+  CreateApiKeyInput: GQLCreateApiKeyInput;
+  CreateApiKeySuccessResponse: GQLCreateApiKeySuccessResponse;
   CreateBacktestInput: GQLCreateBacktestInput;
   CreateBacktestResponse: Omit<GQLCreateBacktestResponse, 'backtest'> & {
     backtest: GQLResolversParentTypes['Backtest'];
@@ -7516,6 +7556,7 @@ export type GQLResolversParentTypes = {
   TransformJobAndRecreateInQueue: GQLTransformJobAndRecreateInQueue;
   TransformJobAndRecreateInQueueDecisionComponent: GQLTransformJobAndRecreateInQueueDecisionComponent;
   UpdateActionInput: GQLUpdateActionInput;
+  UpdateApiKeyInput: GQLUpdateApiKeyInput;
   UpdateContentItemTypeInput: GQLUpdateContentItemTypeInput;
   UpdateContentRuleInput: GQLUpdateContentRuleInput;
   UpdateContentRuleResponse: GQLResolversUnionTypes<GQLResolversParentTypes>['UpdateContentRuleResponse'];
@@ -8692,6 +8733,15 @@ export type GQLCountByTagByDayResolvers<
   count?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
   date?: Resolver<GQLResolversTypes['Date'], ParentType, ContextType>;
   tag?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type GQLCreateApiKeySuccessResponseResolvers<
+  ContextType = Context,
+  ParentType extends GQLResolversParentTypes['CreateApiKeySuccessResponse'] =
+    GQLResolversParentTypes['CreateApiKeySuccessResponse'],
+> = {
+  apiKey?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  record?: Resolver<GQLResolversTypes['ApiKey'], ParentType, ContextType>;
 };
 
 export type GQLCreateBacktestResponseResolvers<
@@ -11563,6 +11613,12 @@ export type GQLMutationResolvers<
     ContextType,
     RequireFields<GQLMutationCreateActionArgs, 'input'>
   >;
+  createApiKey?: Resolver<
+    GQLResolversTypes['CreateApiKeySuccessResponse'],
+    ParentType,
+    ContextType,
+    RequireFields<GQLMutationCreateApiKeyArgs, 'input'>
+  >;
   createBacktest?: Resolver<
     Maybe<GQLResolversTypes['CreateBacktestResponse']>,
     ParentType,
@@ -11652,6 +11708,12 @@ export type GQLMutationResolvers<
     ParentType,
     ContextType,
     RequireFields<GQLMutationDeleteAllJobsFromQueueArgs, 'queueId'>
+  >;
+  deleteApiKey?: Resolver<
+    GQLResolversTypes['Boolean'],
+    ParentType,
+    ContextType,
+    RequireFields<GQLMutationDeleteApiKeyArgs, 'id'>
   >;
   deleteHashBank?: Resolver<
     GQLResolversTypes['Boolean'],
@@ -11926,6 +11988,12 @@ export type GQLMutationResolvers<
       GQLMutationUpdateAllowMultiplePoliciesPerActionArgs,
       'enabled'
     >
+  >;
+  updateApiKey?: Resolver<
+    Maybe<GQLResolversTypes['ApiKey']>,
+    ParentType,
+    ContextType,
+    RequireFields<GQLMutationUpdateApiKeyArgs, 'input'>
   >;
   updateAppealSettings?: Resolver<
     GQLResolversTypes['AppealSettings'],
@@ -13063,6 +13131,11 @@ export type GQLQueryResolvers<
     ContextType
   >;
   apiKey?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  apiKeys?: Resolver<
+    ReadonlyArray<GQLResolversTypes['ApiKey']>,
+    ParentType,
+    ContextType
+  >;
   appealSettings?: Resolver<
     Maybe<GQLResolversTypes['AppealSettings']>,
     ParentType,
@@ -15827,6 +15900,7 @@ export type GQLResolvers<ContextType = Context> = {
   CountByPolicyByDay?: GQLCountByPolicyByDayResolvers<ContextType>;
   CountByPolicyByDayPolicy?: GQLCountByPolicyByDayPolicyResolvers<ContextType>;
   CountByTagByDay?: GQLCountByTagByDayResolvers<ContextType>;
+  CreateApiKeySuccessResponse?: GQLCreateApiKeySuccessResponseResolvers<ContextType>;
   CreateBacktestResponse?: GQLCreateBacktestResponseResolvers<ContextType>;
   CreateContentRuleResponse?: GQLCreateContentRuleResponseResolvers<ContextType>;
   CreateManualReviewQueueResponse?: GQLCreateManualReviewQueueResponseResolvers<ContextType>;

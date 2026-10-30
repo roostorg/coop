@@ -59,9 +59,6 @@ class ApiKeyService {
     const apiKey = this.generateApiKey();
     const keyHash = this.hashApiKey(apiKey);
 
-    // Deactivate any existing active keys for this org
-    await this.deactivateAllKeysForOrg(orgId);
-
     const result = await this.db
       .insertInto('public.api_keys')
       .values({
@@ -82,15 +79,51 @@ class ApiKeyService {
   }
 
   /**
-   * Rotates (creates new and deactivates old) API key for an organization
+   * Replaces one active key's secret without affecting other keys.
    */
   async rotateApiKey(
     orgId: string,
     name: string,
     description: string | null,
-    createdBy: string | null,
+    keyId: string,
   ): Promise<{ apiKey: string; record: ApiKeyRecord }> {
-    return this.createApiKey(orgId, name, description, createdBy);
+    const apiKey = this.generateApiKey();
+    const result = await this.db
+      .updateTable('public.api_keys')
+      .set({
+        key_hash: this.hashApiKey(apiKey),
+        name,
+        description,
+        last_used_at: null,
+      })
+      .where('org_id', '=', orgId)
+      .where('is_active', '=', true)
+      .where('id', '=', keyId)
+      .returningAll()
+      .executeTakeFirst();
+
+    if (!result) {
+      throw new Error('Active API key not found');
+    }
+    return { apiKey, record: this.mapDbRecordToApiKeyRecord(result) };
+  }
+
+  async updateApiKey(
+    keyId: string,
+    orgId: string,
+    name: string,
+    description: string | null,
+  ): Promise<ApiKeyRecord | null> {
+    const result = await this.db
+      .updateTable('public.api_keys')
+      .set({ name, description })
+      .where('id', '=', keyId)
+      .where('org_id', '=', orgId)
+      .where('is_active', '=', true)
+      .returningAll()
+      .executeTakeFirst();
+
+    return result ? this.mapDbRecordToApiKeyRecord(result) : null;
   }
 
   /**
@@ -102,19 +135,23 @@ class ApiKeyService {
       .selectAll()
       .where('org_id', '=', orgId)
       .where('is_active', '=', true)
+      .orderBy('created_at', 'desc')
+      .orderBy('id', 'desc')
+      .limit(1)
       .executeTakeFirst();
 
     return result ? this.mapDbRecordToApiKeyRecord(result) : null;
   }
 
   /**
-   * Gets all API keys for an organization
+   * Gets the organization's usable API keys.
    */
   async getApiKeysForOrg(orgId: string): Promise<ApiKeyRecord[]> {
     const results = await this.db
       .selectFrom('public.api_keys')
       .selectAll()
       .where('org_id', '=', orgId)
+      .where('is_active', '=', true)
       .orderBy('created_at', 'desc')
       .execute();
 
@@ -149,31 +186,6 @@ class ApiKeyService {
   }
 
   /**
-   * Deactivates a specific API key
-   */
-  async deactivateApiKey(keyId: string, orgId: string): Promise<boolean> {
-    const result = await this.db
-      .updateTable('public.api_keys')
-      .set({ is_active: false })
-      .where('id', '=', keyId)
-      .where('org_id', '=', orgId)
-      .execute();
-
-    return result.length > 0;
-  }
-
-  /**
-   * Deactivates all API keys for an organization
-   */
-  async deactivateAllKeysForOrg(orgId: string): Promise<void> {
-    await this.db
-      .updateTable('public.api_keys')
-      .set({ is_active: false })
-      .where('org_id', '=', orgId)
-      .execute();
-  }
-
-  /**
    * Deletes a specific API key
    */
   async deleteApiKey(keyId: string, orgId: string): Promise<boolean> {
@@ -181,9 +193,9 @@ class ApiKeyService {
       .deleteFrom('public.api_keys')
       .where('id', '=', keyId)
       .where('org_id', '=', orgId)
-      .execute();
+      .executeTakeFirst();
 
-    return result.length > 0;
+    return result.numDeletedRows > 0n;
   }
   /**
    * Gets the org ID from an activated API key

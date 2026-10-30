@@ -2,7 +2,7 @@
 
 ## Sending requests to Coop
 
-To authenticate the requests you send to Coop, add an HTTP header to every API request with your organization's API key. You can find or manage your API key in **Settings** → **API Keys** in the Coop UI.
+To authenticate the requests you send to Coop, add an HTTP header to every API request with one of your organization's API keys. Administrators can create named keys and manage them in **Settings** → **API Keys** in the Coop UI. Use a separate key for each integration.
 
 Format the header as follows:
 
@@ -11,7 +11,7 @@ X-API-KEY: <<apiKey>>
 Content-Type: application/json
 ```
 
-You can rotate your API key at any time from the same page. After rotating, update any applications or scripts that use the previous key.
+You can rotate individual API keys at any time from the same page.
 
 ## Verifying incoming requests from Coop
 

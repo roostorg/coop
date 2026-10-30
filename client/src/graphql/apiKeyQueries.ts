@@ -1,8 +1,46 @@
 import { gql } from '@apollo/client';
 
+export const API_KEYS_QUERY = gql`
+  query ApiKeys {
+    apiKeys {
+      id
+      name
+      description
+      createdAt
+      lastUsedAt
+    }
+  }
+`;
+
+export const CREATE_API_KEY_MUTATION = gql`
+  mutation CreateApiKey($input: CreateApiKeyInput!) {
+    createApiKey(input: $input) {
+      apiKey
+      record {
+        id
+      }
+    }
+  }
+`;
+
+export const UPDATE_API_KEY_MUTATION = gql`
+  mutation UpdateApiKey($input: UpdateApiKeyInput!) {
+    updateApiKey(input: $input) {
+      id
+      name
+      description
+    }
+  }
+`;
+
+export const DELETE_API_KEY_MUTATION = gql`
+  mutation DeleteApiKey($id: ID!) {
+    deleteApiKey(id: $id)
+  }
+`;
+
 export const API_AUTH_QUERY = gql`
   query ApiAuth {
-    apiKey
     myOrg {
       id
       publicSigningKey
@@ -23,7 +61,6 @@ export const ROTATE_API_KEY_MUTATION = gql`
           id
           name
           description
-          isActive
           createdAt
           lastUsedAt
           createdBy
