@@ -17,6 +17,8 @@ overrides:
   # passport pins pause@0.0.1, which has no license field; 0.1.0 is the same
   # code with an MIT license.
   'passport>pause': '0.1.0'
+  # CVE-2026-111181: body-parser < 2.4.0 crashes on malformed compressed bodies.
+  'body-parser': '^2.4.0'
 
   '@googlemaps/google-maps-services-js@^3.3.16>retry-axios': 'npm:@ethanresnick/retry-axios@2.6.1'
   'tailwindcss>sucrase': '^3.35.1'
