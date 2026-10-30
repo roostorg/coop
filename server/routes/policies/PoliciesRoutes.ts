@@ -12,7 +12,7 @@ export default {
   pathPrefix: '/policies',
   routes: [
     route.get<GetPoliciesOutput>('/', (deps) => [
-      createApiKeyMiddleware<never, GetPoliciesOutput>(deps),
+      createApiKeyMiddleware<never, GetPoliciesOutput>(deps, ['config:read']),
       getPolicies(deps),
     ]),
   ] as ControllerRouteList,

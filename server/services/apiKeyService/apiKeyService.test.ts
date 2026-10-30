@@ -17,6 +17,7 @@ describe('ApiKeyService', () => {
     key_hash: 'stored-hash',
     name: 'Test Key',
     description: 'Test Description',
+    permissions: ['items:read'],
     is_active: true,
     created_at: new Date('2026-01-01'),
     updated_at: new Date('2026-01-01'),
@@ -75,6 +76,7 @@ describe('ApiKeyService', () => {
       'Test Description',
       true,
       null,
+      [],
     ]);
   });
 
@@ -106,13 +108,16 @@ describe('ApiKeyService', () => {
   it('validates a key by its hash and updates last-used time', async () => {
     query
       .mockResolvedValueOnce({
-        rows: [{ org_id: orgId, last_used_at: null }],
+        rows: [{ org_id: orgId, permissions: ['items:read'] }],
         command: 'SELECT',
         rowCount: 1,
       })
       .mockResolvedValueOnce({ rows: [], command: 'UPDATE', rowCount: 1 });
 
-    expect(await sut.validateApiKey('test-key')).toBe(orgId);
+    expect(await sut.validateApiKey('test-key')).toEqual({
+      orgId,
+      permissions: ['items:read'],
+    });
 
     const hash = crypto.createHash('sha256').update('test-key').digest('hex');
     expect(query).toHaveBeenCalledTimes(2);

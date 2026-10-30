@@ -1,4 +1,7 @@
-import { type ApiKeyRecord } from '../../services/apiKeyService/index.js';
+import {
+  API_KEY_PERMISSIONS,
+  type ApiKeyRecord,
+} from '../../services/apiKeyService/index.js';
 import { UserPermission } from '../../services/userManagementService/index.js';
 import { CoopError, ErrorType } from '../../utils/errors.js';
 import { logErrorJson } from '../../utils/logging.js';
@@ -10,10 +13,16 @@ import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 
 const typeDefs = /* GraphQL */ `
+  type ApiKeyPermissionDefinition {
+    value: String!
+    description: String!
+  }
+
   type ApiKey {
     id: ID!
     name: String!
     description: String
+    permissions: [String!]!
     isActive: Boolean!
     createdAt: String!
     lastUsedAt: String
@@ -45,6 +54,7 @@ const typeDefs = /* GraphQL */ `
   input CreateApiKeyInput {
     name: String!
     description: String
+    permissions: [String!]!
   }
 
   input UpdateApiKeyInput {
@@ -78,6 +88,7 @@ const typeDefs = /* GraphQL */ `
   type Query {
     apiKey: String! @deprecated(reason: "Use \`apiKeys\` instead.")
     apiKeys: [ApiKey!]!
+    apiKeyPermissions: [ApiKeyPermissionDefinition!]!
   }
 
   type Mutation {
@@ -94,6 +105,7 @@ function serializeApiKey(record: ApiKeyRecord) {
     id: record.id,
     name: record.name,
     description: record.description,
+    permissions: record.permissions,
     isActive: record.isActive,
     createdAt: record.createdAt.toISOString(),
     lastUsedAt: record.lastUsedAt?.toISOString() ?? null,
@@ -102,6 +114,7 @@ function serializeApiKey(record: ApiKeyRecord) {
 }
 
 const Query: GQLQueryResolvers = {
+  apiKeyPermissions: () => API_KEY_PERMISSIONS,
   async apiKeys(_, __, context) {
     const user = context.getUser();
     if (!user?.orgId) {
@@ -151,6 +164,7 @@ const Mutation: GQLMutationResolvers = {
         input.name,
         input.description ?? null,
         user.id,
+        input.permissions,
       );
     return {
       apiKey,

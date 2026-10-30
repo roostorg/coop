@@ -2,8 +2,10 @@ import crypto from 'node:crypto';
 import type { Kysely, Selectable } from 'kysely';
 
 import { inject } from '../../iocContainer/utils.js';
+import { makeBadRequestError } from '../../utils/errors.js';
 import { type CombinedPg } from '../combinedDbTypes.js';
 import { type ApiKeyServicePg } from './dbTypes.js';
+import { API_KEY_PERMISSIONS } from './permissions.js';
 
 type ApiKeyRow = Selectable<ApiKeyServicePg['public.api_keys']>;
 
@@ -23,6 +25,7 @@ export interface ApiKeyRecord {
   keyHash: string;
   name: string;
   description: string | null;
+  permissions: readonly string[];
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -55,7 +58,18 @@ class ApiKeyService {
     name: string,
     description: string | null,
     createdBy: string | null,
+    permissions: readonly string[] = [],
   ): Promise<{ apiKey: string; record: ApiKeyRecord }> {
+    if (
+      permissions.some(
+        (permission) =>
+          !API_KEY_PERMISSIONS.some((allowed) => allowed.value === permission),
+      )
+    ) {
+      throw makeBadRequestError('Unknown API key permission', {
+        shouldErrorSpan: true,
+      });
+    }
     const apiKey = this.generateApiKey();
     const keyHash = this.hashApiKey(apiKey);
 
@@ -68,6 +82,7 @@ class ApiKeyService {
         description,
         is_active: true,
         created_by: createdBy,
+        permissions: [...new Set(permissions)],
       })
       .returningAll()
       .executeTakeFirstOrThrow();
@@ -159,14 +174,16 @@ class ApiKeyService {
   }
 
   /**
-   * Validates an API key and returns the associated org ID
+   * Validates an API key and returns its organization and explicit grants.
    */
-  async validateApiKey(apiKey: string): Promise<string | null> {
+  async validateApiKey(
+    apiKey: string,
+  ): Promise<{ orgId: string; permissions: readonly string[] } | null> {
     const keyHash = this.hashApiKey(apiKey);
 
     const result = await this.db
       .selectFrom('public.api_keys')
-      .select(['org_id', 'last_used_at'])
+      .select(['org_id', 'permissions'])
       .where('key_hash', '=', keyHash)
       .where('is_active', '=', true)
       .executeTakeFirst();
@@ -182,7 +199,7 @@ class ApiKeyService {
       .where('key_hash', '=', keyHash)
       .execute();
 
-    return result.org_id;
+    return { orgId: result.org_id, permissions: result.permissions };
   }
 
   /**
@@ -224,6 +241,7 @@ class ApiKeyService {
       keyHash: record.key_hash,
       name: record.name,
       description: record.description,
+      permissions: record.permissions,
       isActive: record.is_active,
       createdAt: record.created_at,
       updatedAt: record.updated_at,
