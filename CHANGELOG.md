@@ -26,11 +26,17 @@ For more information about each release including git tags and artifacts, see [R
 
 - Fix missing database row for new deployments ([#1486](https://github.com/roostorg/coop/pull/1486) by [@taobojlen](https://github.com/taobojlen)).
 - Opening a review queue with no unskipped jobs no longer leaves reviewers on a loading spinner ([#1392](https://github.com/roostorg/coop/pull/1392) by [@Joseph-Mutua](https://github.com/Joseph-Mutua))
-- Fix the HMA image build, which pulled its base image from the old `ghcr.io/facebook` registry path ([#1498](https://github.com/roostorg/coop/pull/1498) by [@juanmrad](https://github.com/juanmrad))
+- Failed NCMEC and Whisper media downloads are cancelled before retry ([#1427](https://github.com/roostorg/coop/pull/1427) by [@juanmrad](https://github.com/juanmrad))
+
+## [1.2.1] - 2026-10-31
 
 ### Security
 
-- Upgrade body-parser to 2.4.0 for CVE-2026-111181 ([GHSA-c3r3-vg94-mqrx](https://github.com/roostorg/coop/security/advisories/GHSA-c3r3-vg94-mqrx) by [@serendipty01](https://github.com/serendipty01))
+- Update body-parser to 2.4.0 to fix denial of service from malformed compressed request bodies ([GHSA-c3r3-vg94-mqrx](https://github.com/roostorg/coop/security/advisories/GHSA-c3r3-vg94-mqrx), [CVE-2026-111181](https://github.com/advisories/GHSA-27r3-jxmh-p828) by [@serendipty01](https://github.com/serendipty01))
+- Build HMA from `ghcr.io/meta/threatexchange/hma`, pinned by digest, after Meta's organization rename ([#1498](https://github.com/roostorg/coop/pull/1498) by [@juanmrad](https://github.com/juanmrad), [#1503](https://github.com/roostorg/coop/pull/1503) by [@reitblatt](https://github.com/reitblatt))
+- Update undici to 7.30.1 to fix denial of service from malicious responses to outbound requests ([GHSA-75wr-5gj4-p3cx](https://github.com/roostorg/coop/security/advisories/GHSA-75wr-5gj4-p3cx), [CVE-2026-87018](https://github.com/advisories/GHSA-qrxm-fqhp-jwvm), [CVE-2026-109869](https://github.com/advisories/GHSA-xjj6-f33q-929c), [#1464](https://github.com/roostorg/coop/pull/1464) by [@dependabot](https://github.com/dependabot))
+- Update follow-redirects to 1.16.1 to fix credential header exposure on redirects ([CVE-2026-111755](https://github.com/advisories/GHSA-8r9p-f939-6h3c), [#1457](https://github.com/roostorg/coop/pull/1457) by [@reitblatt](https://github.com/reitblatt))
+- Update markdown-it to 14.3.3 to fix denial of service in the policy editor ([CVE-2026-111758](https://github.com/advisories/GHSA-gfr2-rv44-r23c), [#1457](https://github.com/roostorg/coop/pull/1457) by [@reitblatt](https://github.com/reitblatt))
 
 ## [1.2.0] - 2026-10-21
 
@@ -55,7 +61,6 @@ For more information about each release including git tags and artifacts, see [R
 - NCMEC review escalations silently succeeding when the item cannot resolve to a user ([#1331](https://github.com/roostorg/coop/pull/1331) by [@Joseph-Mutua](https://github.com/Joseph-Mutua))
 - Rule conditions on multi-value inputs (e.g. Any image, Relevant Policy) now check every value instead of only the first ([#1389](https://github.com/roostorg/coop/pull/1389) by [@reitblatt](https://github.com/reitblatt))
 - Recent Decisions page no longer gets stuck in an infinite loop ([#1422](https://github.com/roostorg/coop/pull/1422) by [@jess-upscrolled](https://github.com/jess-upscrolled))
-- Failed NCMEC and Whisper media downloads are cancelled before retry ([#1427](https://github.com/roostorg/coop/pull/1427) by [@juanmrad](https://github.com/juanmrad))
 
 ### Security
 
@@ -434,7 +439,8 @@ We're developing Coop in the open and want to hear from you. Whether you're test
 
 This release was possible because of the efforts of contributors who worked through complex redesign, partners who believed in the vision of open source safety tools, and the broader trust and safety community who provided feedback and guidance. Thank you especially to @juanmrad, @pawiecz, @kbicevski, Sjoerd Simons, @emanueleaina, @dom-notion, @cassidyjames, @vinaysrao1, @wayjaywang, and @julietshen.
 
-[unreleased]: https://github.com/roostorg/coop/compare/1.2.0...HEAD
+[unreleased]: https://github.com/roostorg/coop/compare/1.2.1...HEAD
+[1.2.1]: https://github.com/roostorg/coop/compare/1.2.0...1.2.1
 [1.2.0]: https://github.com/roostorg/coop/compare/1.1.1...1.2.0
 [1.1.1]: https://github.com/roostorg/coop/compare/1.1.0...1.1.1
 [1.1.0]: https://github.com/roostorg/coop/compare/1.0.2...1.1.0
