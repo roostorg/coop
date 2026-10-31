@@ -21,6 +21,7 @@ For more information about each release including git tags and artifacts, see [R
 ### Removed
 
 - `isDemoOrg` field from the GraphQL `Org` type ([#1448](https://github.com/roostorg/coop/pull/1448) by [@emma-green](https://github.com/emma-green))
+- `is_demo_org` column from `org_settings` ([#1500](https://github.com/roostorg/coop/pull/1500) by [@emma-green](https://github.com/emma-green))
 
 ### Fixed
 
