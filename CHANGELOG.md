@@ -8,6 +8,16 @@ For more information about each release including git tags and artifacts, see [R
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-10-31
+
+### Security
+
+- Update body-parser to 2.4.0 to fix denial of service from malformed compressed request bodies ([GHSA-c3r3-vg94-mqrx](https://github.com/roostorg/coop/security/advisories/GHSA-c3r3-vg94-mqrx), [CVE-2026-111181](https://github.com/advisories/GHSA-27r3-jxmh-p828) by [@serendipty01](https://github.com/serendipty01))
+- Build HMA from `ghcr.io/meta/threatexchange/hma`, pinned by digest, after Meta's organization rename ([#1498](https://github.com/roostorg/coop/pull/1498) by [@juanmrad](https://github.com/juanmrad), [#1503](https://github.com/roostorg/coop/pull/1503) by [@reitblatt](https://github.com/reitblatt))
+- Update undici to 7.30.1 to fix TLS certificate validation bypass and other issues ([CVE-2026-109383](https://github.com/advisories/GHSA-2m5v-pch6-74hx), [#1464](https://github.com/roostorg/coop/pull/1464) by [@dependabot](https://github.com/dependabot))
+- Update follow-redirects to 1.16.1 to fix credential header exposure on redirects ([CVE-2026-111755](https://github.com/advisories/GHSA-8r9p-f939-6h3c), [#1457](https://github.com/roostorg/coop/pull/1457) by [@reitblatt](https://github.com/reitblatt))
+- Update markdown-it to 14.3.3 to fix denial of service in the policy editor ([CVE-2026-111758](https://github.com/advisories/GHSA-gfr2-rv44-r23c), [#1457](https://github.com/roostorg/coop/pull/1457) by [@reitblatt](https://github.com/reitblatt))
+
 ## [1.2.0] - 2026-10-21
 
 ### Added
@@ -409,7 +419,8 @@ We're developing Coop in the open and want to hear from you. Whether you're test
 
 This release was possible because of the efforts of contributors who worked through complex redesign, partners who believed in the vision of open source safety tools, and the broader trust and safety community who provided feedback and guidance. Thank you especially to @juanmrad, @pawiecz, @kbicevski, Sjoerd Simons, @emanueleaina, @dom-notion, @cassidyjames, @vinaysrao1, @wayjaywang, and @julietshen.
 
-[unreleased]: https://github.com/roostorg/coop/compare/1.2.0...HEAD
+[unreleased]: https://github.com/roostorg/coop/compare/1.2.1...HEAD
+[1.2.1]: https://github.com/roostorg/coop/compare/1.2.0...1.2.1
 [1.2.0]: https://github.com/roostorg/coop/compare/1.1.1...1.2.0
 [1.1.1]: https://github.com/roostorg/coop/compare/1.1.0...1.1.1
 [1.1.0]: https://github.com/roostorg/coop/compare/1.0.2...1.1.0
