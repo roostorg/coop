@@ -1,7 +1,4 @@
-import _ from 'lodash';
-
-import { type Policy } from '../../services/moderationConfigService/index.js';
-import { isCoopErrorOfType } from '../../utils/errors.js';
+import { isCoopErrorOfType, sanitizeError } from '../../utils/errors.js';
 import {
   type GQLMutationDeletePolicyArgs,
   type GQLMutationResolvers,
@@ -11,8 +8,6 @@ import {
 } from '../generated.js';
 import { unauthenticatedError } from '../utils/errors.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
-
-const { partition } = _;
 
 const typeDefs = /* GraphQL */ `
   type Policy {
@@ -88,6 +83,17 @@ const typeDefs = /* GraphQL */ `
   type AddPoliciesResponse {
     policies: [Policy!]!
     failures: [String!]!
+    failureDetails: [PolicyCreationFailure!]!
+  }
+
+  type PolicyCreationFailure implements Error {
+    name: String!
+    title: String!
+    status: Int!
+    type: [String!]!
+    pointer: String
+    detail: String
+    requestId: String
   }
 `;
 
@@ -136,25 +142,25 @@ const Mutation: GQLMutationResolvers = {
         },
       })
         .then((response) => ({ success: true as const, policy: response }))
-        .catch(() => ({ success: false as const, name: policy.name })),
+        .catch((error: unknown) => ({
+          success: false as const,
+          name: policy.name,
+          error: sanitizeError(error),
+        })),
     );
 
     return Promise.all(createPolicyPromises).then((responses) => {
-      const [successResponses, failedResponses] = partition(
-        responses,
-        (it) => it.success,
-      );
-      // NB: The casts below are safe. We have to do them because lodash's
-      // partition function isn't smart enough to narrow the types appropriately
-      // from the response union type
-      const policies = (
-        successResponses as unknown as { policy: Policy }[]
-      ).map((it: { policy: Policy }) => it.policy);
-      const failures = (failedResponses as { name: string }[]).map(
-        (it) => it.name,
-      );
+      const policies = responses
+        .filter((it) => it.success)
+        .map((it) => it.policy);
+      const failedResponses = responses.filter((it) => !it.success);
+      const failures = failedResponses.map((it) => it.name);
+      const failureDetails = failedResponses.map(({ name, error }) => ({
+        ...error,
+        name,
+      }));
 
-      return { policies, failures };
+      return { policies, failures, failureDetails };
     });
   },
   async updatePolicy(_: unknown, { input }, context) {
