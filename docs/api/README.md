@@ -22,6 +22,7 @@ You can find or rotate your API key under **Settings** → **API Keys** in the C
 
 See also:
 
+- [OpenAPI specification](openapi.yaml): machine-readable description of the REST endpoints above, plus `POST /api/v1/actions/`, `POST /api/v1/content/` and `GET /api/v1/user_scores/`
 - [Handling Actions](actions.md): receive action webhooks from Coop for automated actions, moderator decisions, crossing user strike thresholds, and appeal decisions
 - [Partial Items API](../api/partial-items.md): support Coop fetching Items and their attributes on demand
 - [Errors](errors.md): details of error responses from Coop
