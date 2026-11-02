@@ -40,7 +40,7 @@
             const path_to_root = "../";
             const default_light_theme = "roost";
             const default_dark_theme = "roost";
-            window.path_to_searchindex_js = "../searchindex-1075740c.js";
+            window.path_to_searchindex_js = "../searchindex-7a779854.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-6e080ddd.js"></script>
@@ -255,7 +255,7 @@ docker compose -f docker-compose.images.yaml down -v
 <tbody>
 <tr><td><code>coop-server</code></td><td><code>Dockerfile</code></td><td><code>build_server</code></td><td>node:24.22.1-trixie-slim + dumb-init</td></tr>
 <tr><td><code>coop-worker</code></td><td><code>Dockerfile</code></td><td><code>build_worker_runner</code></td><td>node:24.22.1-trixie-slim + dumb-init</td></tr>
-<tr><td><code>coop-client</code></td><td><code>client/Dockerfile</code></td><td><code>serve</code></td><td>nginx:1.29.1-bookworm</td></tr>
+<tr><td><code>coop-client</code></td><td><code>client/Dockerfile</code></td><td><code>serve</code></td><td>nginx:1.31.8-alpine</td></tr>
 <tr><td><code>coop-migrations</code></td><td><code>db/Dockerfile</code></td><td><em>(final stage)</em></td><td>node:24.22.1-trixie-slim</td></tr>
 </tbody>
 </table>
