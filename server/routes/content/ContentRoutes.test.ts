@@ -2,6 +2,7 @@ import { faker } from '@faker-js/faker';
 import _ from 'lodash';
 import { uid } from 'uid';
 
+import { API_KEY_PERMISSIONS } from '../../services/apiKeyService/index.js';
 import { serializeDerivedFieldSpec } from '../../services/derivedFieldsService/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../test/fixtureHelpers/createUser.js';
@@ -57,8 +58,144 @@ describe('POST Content', () => {
 
     await createUser(KyselyPg, orgId, { id: uid() });
 
-    return { apiKey, contentType2, analytics: deps.DataWarehouseAnalytics };
+    return {
+      orgId,
+      apiKey,
+      contentType2,
+      analytics: deps.DataWarehouseAnalytics,
+    };
   });
+
+  testWithFixture(
+    'content evaluation requires write, and derived data additionally requires read',
+    async ({ deps, request, orgId }) => {
+      const type = await deps.ModerationConfigService.createContentType(orgId, {
+        name: 'Video',
+        schema: [
+          { name: 'video', type: 'VIDEO', required: false, container: null },
+        ],
+        schemaFieldRoles: {},
+      });
+      const field = serializeDerivedFieldSpec({
+        source: {
+          type: 'CONTENT_FIELD',
+          name: 'video',
+          contentTypeId: type.id,
+        },
+        derivationType: 'VIDEO_TRANSCRIPTION',
+      });
+      const body = {
+        contentId: 'item',
+        contentType: 'Video',
+        content: {},
+        sync: true,
+      };
+      const write = await deps.ApiKeyService.createApiKey(
+        orgId,
+        'Write',
+        null,
+        null,
+        ['items:write'],
+      );
+      const read = await deps.ApiKeyService.createApiKey(
+        orgId,
+        'Read',
+        null,
+        null,
+        ['items:read'],
+      );
+      const both = await deps.ApiKeyService.createApiKey(
+        orgId,
+        'Both',
+        null,
+        null,
+        ['items:write', 'items:read'],
+      );
+      await request
+        .post('/api/v1/content')
+        .set('x-api-key', write.apiKey)
+        .send(body)
+        .expect(200, { actionsTriggered: [], derivedFields: {} });
+      await request
+        .post('/api/v1/content')
+        .set('x-api-key', read.apiKey)
+        .send(body)
+        .expect(403);
+      const url = `/api/v1/content?includeDerivedField=${field}`;
+      await request
+        .post(url)
+        .set('x-api-key', write.apiKey)
+        .send(body)
+        .expect(403);
+      await request
+        .post(url)
+        .set('x-api-key', read.apiKey)
+        .send(body)
+        .expect(403);
+      const response = await request
+        .post(url)
+        .set('x-api-key', both.apiKey)
+        .send(body)
+        .expect(200);
+      expect(response.body.derivedFields[field].value).toBeNull();
+
+      const longUrl = `/api/v1/content?${'a=1&'.repeat(1000)}includeDerivedField=${field}`;
+      await request
+        .post(longUrl)
+        .set('x-api-key', write.apiKey)
+        .send(body)
+        .expect(403);
+      const longResponse = await request
+        .post(longUrl)
+        .set('x-api-key', both.apiKey)
+        .send(body)
+        .expect(200);
+      expect(longResponse.body.derivedFields[field].value).toBeNull();
+    },
+  );
+
+  testWithFixture(
+    'POST /content rejects valid keys without items:write',
+    async ({ deps, request, orgId }) => {
+      const payload = {
+        contentId: 'item',
+        contentType: 'test',
+        content: { name: 'Post' },
+        sync: true,
+      };
+      for (const permissions of [
+        [],
+        API_KEY_PERMISSIONS.filter(
+          (permission) => permission.value !== 'items:write',
+        ).map((permission) => permission.value),
+      ]) {
+        const { apiKey } = await deps.ApiKeyService.createApiKey(
+          orgId,
+          'Restricted',
+          null,
+          null,
+          permissions,
+        );
+        await request
+          .post('/api/v1/content')
+          .set('x-api-key', apiKey)
+          .send(payload)
+          .expect(403);
+      }
+      const { apiKey } = await deps.ApiKeyService.createApiKey(
+        orgId,
+        'Allowed',
+        null,
+        null,
+        ['items:write'],
+      );
+      await request
+        .post('/api/v1/content')
+        .set('x-api-key', apiKey)
+        .send(payload)
+        .expect(200);
+    },
+  );
 
   testWithFixture(
     'should return the expected response',

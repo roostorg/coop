@@ -1,5 +1,6 @@
 import { vi } from 'vitest';
 
+import { API_KEY_PERMISSIONS } from '../../services/apiKeyService/index.js';
 import { UserPermission } from '../../services/userManagementService/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
@@ -11,6 +12,41 @@ const testWithOrg = makeTransactionalTestWithFixture(async ({ deps }) => {
 });
 
 describe('GET policies', () => {
+  testWithOrg(
+    'GET /policies rejects valid keys without config:read',
+    async ({ deps, request, orgId }) => {
+      for (const permissions of [
+        [],
+        API_KEY_PERMISSIONS.filter(
+          (permission) => permission.value !== 'config:read',
+        ).map((permission) => permission.value),
+      ]) {
+        const { apiKey } = await deps.ApiKeyService.createApiKey(
+          orgId,
+          'Restricted',
+          null,
+          null,
+          permissions,
+        );
+        await request
+          .get('/api/v1/policies')
+          .set('x-api-key', apiKey)
+          .expect(403);
+      }
+      const { apiKey } = await deps.ApiKeyService.createApiKey(
+        orgId,
+        'Allowed',
+        null,
+        null,
+        ['config:read'],
+      );
+      await request
+        .get('/api/v1/policies')
+        .set('x-api-key', apiKey)
+        .expect(200);
+    },
+  );
+
   testWithOrg(
     'returns the full public shape for only the authenticated organization',
     async ({ request, deps, apiKey, orgId, otherOrgId }) => {

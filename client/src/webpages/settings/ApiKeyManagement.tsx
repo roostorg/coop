@@ -1,3 +1,4 @@
+import { Badge } from '@/coop-ui/Badge';
 import { Button } from '@/coop-ui/Button';
 import { Checkbox } from '@/coop-ui/Checkbox';
 import {
@@ -67,6 +68,7 @@ export default function ApiKeyManagement() {
           variables: {
             input: {
               id: dialog.key.id,
+              permissions,
               name: name.trim(),
               description: description.trim() || null,
             },
@@ -201,11 +203,13 @@ export default function ApiKeyManagement() {
             {key.permissions.length ? (
               <ul
                 aria-label={`Permissions for ${key.name}`}
-                className="flex flex-wrap gap-x-3 gap-y-1 my-2 text-sm"
+                className="flex flex-wrap gap-1.5 my-2"
               >
                 {key.permissions.map((permission) => (
-                  <li key={permission} className="font-mono">
-                    {permission}
+                  <li key={permission}>
+                    <Badge variant="secondary" size="sm" className="font-mono">
+                      {permission}
+                    </Badge>
                   </li>
                 ))}
               </ul>
@@ -227,6 +231,7 @@ export default function ApiKeyManagement() {
               onClick={() => {
                 setName(key.name);
                 setDescription(key.description ?? '');
+                setPermissions([...key.permissions]);
                 setMutationError(null);
                 setDialog({ action: 'edit', key });
               }}
@@ -280,7 +285,7 @@ export default function ApiKeyManagement() {
             {dialog?.action === 'create'
               ? 'Name this key for the integration that will use it. Existing keys will keep working.'
               : dialog?.action === 'edit'
-                ? 'Update the name and description. The API key itself will not change, and applications will keep working.'
+                ? 'Update the name, description, and permissions. Permission changes take effect immediately; the API key stays the same.'
                 : dialog?.action === 'rotate'
                   ? `Replace the secret for “${dialog.key.name}”. Its current secret will stop working immediately. Permissions stay the same. Other keys are not affected.`
                   : dialog &&
@@ -313,52 +318,48 @@ export default function ApiKeyManagement() {
                   maxLength={2000}
                   disabled={busy}
                 />
-                {dialog.action === 'create' && (
-                  <fieldset
-                    disabled={busy}
-                    className="min-w-0 flex flex-col gap-3"
-                  >
-                    <legend className="mb-2 text-sm font-semibold">
-                      Permissions
-                    </legend>
-                    <Text size="SM">
-                      Select only what this integration needs. Permissions are
-                      independent: write does not include read. To change
-                      permissions later, delete this key and create a new one.
-                    </Text>
-                    {data?.apiKeyPermissions.map(({ value, description }) => (
-                      <div key={value} className="flex items-start gap-3">
-                        <Checkbox
-                          id={`api-key-${value}`}
-                          className="mt-1"
-                          checked={permissions.includes(value)}
-                          disabled={busy}
-                          aria-describedby={`api-key-${value}-description`}
-                          onCheckedChange={(checked) =>
-                            setPermissions((current) =>
-                              checked
-                                ? [...current, value]
-                                : current.filter(
-                                    (permission) => permission !== value,
-                                  ),
-                            )
-                          }
-                        />
-                        <div className="min-w-0">
-                          <Label
-                            htmlFor={`api-key-${value}`}
-                            className="font-mono"
-                          >
-                            {value}
-                          </Label>
-                          <Text id={`api-key-${value}-description`} size="SM">
-                            {description}
-                          </Text>
-                        </div>
+                <fieldset
+                  disabled={busy}
+                  className="min-w-0 flex flex-col gap-3"
+                >
+                  <legend className="mb-2 text-sm font-semibold">
+                    Permissions
+                  </legend>
+                  <Text size="SM">
+                    Select only what this integration needs.
+                  </Text>
+                  {data?.apiKeyPermissions.map(({ value, description }) => (
+                    <div key={value} className="flex items-start gap-3">
+                      <Checkbox
+                        id={`api-key-${value}`}
+                        className="mt-1"
+                        checked={permissions.includes(value)}
+                        disabled={busy}
+                        aria-describedby={`api-key-${value}-description`}
+                        onCheckedChange={(checked) =>
+                          setPermissions((current) =>
+                            checked
+                              ? [...current, value]
+                              : current.filter(
+                                  (permission) => permission !== value,
+                                ),
+                          )
+                        }
+                      />
+                      <div className="min-w-0">
+                        <Label
+                          htmlFor={`api-key-${value}`}
+                          className="font-mono"
+                        >
+                          {value}
+                        </Label>
+                        <Text id={`api-key-${value}-description`} size="SM">
+                          {description}
+                        </Text>
                       </div>
-                    ))}
-                  </fieldset>
-                )}
+                    </div>
+                  ))}
+                </fieldset>
               </div>
             )}
             {mutationError && (

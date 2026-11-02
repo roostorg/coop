@@ -5167,6 +5167,7 @@ export type GQLUpdateApiKeyInput = {
   readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly id: Scalars['ID']['input'];
   readonly name: Scalars['String']['input'];
+  readonly permissions?: InputMaybe<ReadonlyArray<Scalars['String']['input']>>;
 };
 
 export type GQLUpdateApiKeyResponse =

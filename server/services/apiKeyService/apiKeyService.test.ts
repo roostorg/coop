@@ -93,6 +93,18 @@ describe('ApiKeyService', () => {
     },
   );
 
+  it.each(['items:*', ''])(
+    'rejects an invalid permission update (%j) without writing',
+    async (permission) => {
+      await expect(
+        sut.updateApiKey(row.id, orgId, row.name, row.description, [
+          permission,
+        ]),
+      ).rejects.toThrow(`Unknown API key permission: "${permission}"`);
+      expect(query).not.toHaveBeenCalled();
+    },
+  );
+
   it('returns null when rotation matches no active key in the organization', async () => {
     query.mockResolvedValueOnce({ rows: [], command: 'UPDATE', rowCount: 0 });
 

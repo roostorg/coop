@@ -150,7 +150,13 @@ describe('apiKey resolvers', () => {
           expect(service).toHaveBeenCalledWith(
             ...(operation === 'createApiKey'
               ? ['org-1', expectedName, expectedDescription, 'user-1', []]
-              : ['key-1', 'org-1', expectedName, expectedDescription]),
+              : [
+                  'key-1',
+                  'org-1',
+                  expectedName,
+                  expectedDescription,
+                  undefined,
+                ]),
           );
         },
       );
@@ -360,6 +366,53 @@ describe('apiKey resolvers', () => {
             permissions,
           });
         }
+      },
+    );
+
+    testWithOrg(
+      'edits permissions without changing the secret and preserves them when omitted',
+      async ({ deps, execute, org, foreignKey }) => {
+        const { apiKey, record } = await deps.ApiKeyService.createApiKey(
+          org.id,
+          'Reports',
+          null,
+          null,
+          ['items:read'],
+        );
+        const update = `mutation Update($id: ID!, $permissions: [String!]) {
+          updateApiKey(input: { id: $id, name: "Reports", permissions: $permissions }) {
+            ... on UpdateApiKeySuccessResponse { record { id permissions } }
+            ... on ApiKeyMutationError { status }
+          }
+        }`;
+        for (const permissions of [
+          ['reports:write', 'reports:write'],
+          undefined,
+          [],
+        ]) {
+          const expected =
+            permissions === undefined
+              ? ['reports:write']
+              : [...new Set(permissions)];
+          const result = await execute(update, { id: record.id, permissions });
+          expect(result.errors).toBeUndefined();
+          expect(result.data!.updateApiKey).toEqual({
+            record: { id: record.id, permissions: expected },
+          });
+          expect(await deps.ApiKeyService.validateApiKey(apiKey)).toEqual({
+            orgId: org.id,
+            permissions: expected,
+          });
+        }
+        const foreign = await execute(update, {
+          id: foreignKey.record.id,
+          permissions: ['items:write'],
+        });
+        expect(foreign.errors).toBeUndefined();
+        expect(foreign.data!.updateApiKey).toEqual({ status: 404 });
+        expect(
+          await deps.ApiKeyService.validateApiKey(foreignKey.apiKey),
+        ).toEqual({ orgId: foreignKey.record.orgId, permissions: [] });
       },
     );
 

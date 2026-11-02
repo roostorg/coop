@@ -5096,6 +5096,7 @@ export type GQLUpdateApiKeyInput = {
   readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly id: Scalars['ID']['input'];
   readonly name: Scalars['String']['input'];
+  readonly permissions?: InputMaybe<ReadonlyArray<Scalars['String']['input']>>;
 };
 
 export type GQLUpdateApiKeyResponse =
@@ -5676,6 +5677,7 @@ export type GQLUpdateApiKeyMutation = {
           readonly id: string;
           readonly name: string;
           readonly description?: string | null;
+          readonly permissions: ReadonlyArray<string>;
         };
       };
 };
@@ -27274,6 +27276,7 @@ export const GQLUpdateApiKeyDocument = gql`
           id
           name
           description
+          permissions
         }
       }
       ... on ApiKeyMutationError {

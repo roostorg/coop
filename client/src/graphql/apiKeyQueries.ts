@@ -41,6 +41,7 @@ export const UPDATE_API_KEY_MUTATION = gql`
           id
           name
           description
+          permissions
         }
       }
       ... on ApiKeyMutationError {
