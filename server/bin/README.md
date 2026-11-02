@@ -2,6 +2,28 @@
 
 This directory contains utility scripts for managing the Coop server.
 
+## dump-config.ts
+
+Prints the effective server and worker configuration as JSON with secrets redacted, for bug reports. See [Sharing configuration for debugging](../../docs/development/deployment.md#sharing-configuration-for-debugging) for what it includes and how redaction works.
+
+### Usage
+
+From the `server` directory (builds, then loads `server/.env`):
+
+```bash
+pnpm run dump-config
+```
+
+Inside a server or worker image:
+
+```bash
+node bin/dump-config.js
+```
+
+New env vars must be added to `utils/configDump/catalog.ts`; `catalog.test.ts` fails until they are.
+
+---
+
 ## get-invite-token.ts
 
 Retrieves the signup invite link for a user that was invited from the UI.

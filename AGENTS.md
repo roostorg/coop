@@ -37,6 +37,7 @@ Reference files: `README.md` (getting started), `server/bin/README.md` (utility 
   After step 3, run `pnpm run generate` from the repo root to refresh the codegen output.
 
 - **Data model:** Use Kysely query builder for Postgres; ClickHouse via raw SQL in `server/storage/dataWarehouse/ClickhouseAdapter.ts`; Scylla via Cassandra driver.
+- **Configuration:** Server and worker config is read from env vars (`server/.env.example`). When you read a new env var, add it with its default to `server/utils/configDump/catalog.ts`; `catalog.test.ts` fails until you do. `pnpm --filter server run dump-config` prints the effective config with secrets redacted (rules in `server/utils/configDump/redact.ts`); operators run `node bin/dump-config.js` in the server image.
 - **Dependency injection:** Server uses BottleJS DI (wired in `server/iocContainer/`). Register services in `iocContainer`, don't export singletons from service files. Consumers receive dependencies via DI rather than importing directly. Bypassing `iocContainer` will work at runtime but breaks test mocking patterns.
 
 ## Build and run
