@@ -58,6 +58,7 @@ export default {
           EvaluateContentInputCamelCase,
           EvaluateContentOutput
         >(deps, (req) =>
+          // Returning derived fields also requires read access.
           new URL(req.originalUrl, 'http://example.com/').searchParams.has(
             'includeDerivedField',
           )

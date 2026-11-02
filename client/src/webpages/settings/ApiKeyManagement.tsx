@@ -323,9 +323,8 @@ export default function ApiKeyManagement() {
                     </legend>
                     <Text size="SM">
                       Select only what this integration needs. Permissions are
-                      independent: write does not include read. No permissions
-                      are selected by default. To change permissions later,
-                      delete this key and create a new one.
+                      independent: write does not include read. To change
+                      permissions later, delete this key and create a new one.
                     </Text>
                     {data?.apiKeyPermissions.map(({ value, description }) => (
                       <div key={value} className="flex items-start gap-3">

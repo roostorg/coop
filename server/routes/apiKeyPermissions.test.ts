@@ -1,4 +1,3 @@
-import crypto from 'node:crypto';
 import { sql } from 'kysely';
 import { assert } from 'vitest';
 
@@ -41,9 +40,14 @@ describe('API key permissions', () => {
   testWithOrg(
     'older application inserts retain only the fixed six compatibility grants',
     async ({ deps, request, orgId }) => {
-      const apiKey = 'legacy-test-key';
-      const hash = crypto.createHash('sha256').update(apiKey).digest('hex');
-      await sql`INSERT INTO public.api_keys (org_id, key_hash, name) VALUES (${orgId}, ${hash}, 'Older instance')`.execute(
+      const { apiKey, record } = await deps.ApiKeyService.createApiKey(
+        orgId,
+        'Older instance',
+        null,
+        null,
+      );
+      await deps.ApiKeyService.deleteApiKey(record.id, orgId);
+      await sql`INSERT INTO public.api_keys (org_id, key_hash, name) VALUES (${orgId}, ${record.keyHash}, 'Older instance')`.execute(
         deps.KyselyPg,
       );
       expect(await deps.ApiKeyService.validateApiKey(apiKey)).toEqual({

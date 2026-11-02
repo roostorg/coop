@@ -80,6 +80,19 @@ describe('ApiKeyService', () => {
     ]);
   });
 
+  it.each(['items:*', ''])(
+    'identifies an invalid permission (%j) before storing a key',
+    async (permission) => {
+      await expect(
+        sut.createApiKey(orgId, 'Invalid', null, null, [
+          'items:read',
+          permission,
+        ]),
+      ).rejects.toThrow(`Unknown API key permission: "${permission}"`);
+      expect(query).not.toHaveBeenCalled();
+    },
+  );
+
   it('returns null when rotation matches no active key in the organization', async () => {
     query.mockResolvedValueOnce({ rows: [], command: 'UPDATE', rowCount: 0 });
 

@@ -60,15 +60,17 @@ class ApiKeyService {
     createdBy: string | null,
     permissions: readonly string[] = [],
   ): Promise<{ apiKey: string; record: ApiKeyRecord }> {
-    if (
-      permissions.some(
-        (permission) =>
-          !API_KEY_PERMISSIONS.some((allowed) => allowed.value === permission),
-      )
-    ) {
-      throw makeBadRequestError('Unknown API key permission', {
-        shouldErrorSpan: true,
-      });
+    for (const permission of permissions) {
+      if (
+        !API_KEY_PERMISSIONS.some((allowed) => allowed.value === permission)
+      ) {
+        throw makeBadRequestError(
+          `Unknown API key permission: "${permission}"`,
+          {
+            shouldErrorSpan: true,
+          },
+        );
+      }
     }
     const apiKey = this.generateApiKey();
     const keyHash = this.hashApiKey(apiKey);
