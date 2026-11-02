@@ -159,6 +159,8 @@ docker compose down -v     # also drop DB volumes (fresh DBs next run)
 
 Note: `check_migration_order` runs only in GitHub Actions — it's GitHub-specific and not needed locally. When adding a migration, use `date -u +"%Y.%m.%dT%H.%M.%S"` for the filename prefix.
 
++PR workflows must also run on stacked PRs (PRs whose base is another PR's branch): don't add a `branches` filter to `pull_request` triggers. For PR workflows, limit `push` triggers to `main` so a PR branch doesn't get both a push and a pull_request run for the same commit.
+
 ## Security
 
 - No secrets in code or committed files. Use environment variables via `.env` (gitignored).
@@ -185,6 +187,8 @@ Note: `check_migration_order` runs only in GitHub Actions — it's GitHub-specif
 - Keep each entry to a single concise line, essentially a title: no reasoning, mechanism, or caveats. Anyone who needs the detail follows the PR link.
 - Format: `- Description ([#123](https://github.com/roostorg/coop/pull/123) by [@user](https://github.com/user))`.
 - Omit related issue links (e.g. `closes [#456](...)`); this information is accessible at the PR link.
+- Security fixes list the advisory before the PR link: `- Prevent cross-organization item disclosure ([GHSA-xxxx-xxxx-xxxx](https://github.com/roostorg/coop/security/advisories/GHSA-xxxx-xxxx-xxxx), [#123](https://github.com/roostorg/coop/pull/123) by [@user](https://github.com/user))`. Add the CVE when one is assigned.
+- For a vulnerable dependency, name the package, its new version and the upstream CVE: `- Update <package> to <x.y.z> to fix <issue> ([CVE-…](…), [#123](…) by …)`.
 - Removing a GraphQL enum value, type, or field, or removing or renaming an environment variable, always earns an entry.
 - Never edit a released version's section; it's a historical record. Corrections go under `## [Unreleased]`.
 

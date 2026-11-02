@@ -54,7 +54,13 @@ export {
 
 export { BUILT_IN_ACTIONS } from './modules/ActionOperations.js';
 
-export { Policy, PolicyType } from './types/policies.js';
+export type { ModerationConfigServicePg } from './dbTypes.js';
+
+export {
+  Policy,
+  PolicyType,
+  type PolicyMutationInvoker,
+} from './types/policies.js';
 
 export { UserPenaltySeverity } from './types/shared.js';
 
@@ -81,11 +87,20 @@ export {
 } from './moderationConfigService.js';
 
 export {
+  type ItemTypeErrorType,
+  makeInvalidItemTypeSchemaError,
+  makeInvalidItemTypeHiddenFieldsError,
+  makeItemTypeNameAlreadyExistsError,
   makeRuleNameExistsError,
   makeRuleIsMissingContentTypeError,
   makeRuleHasRunningBacktestsError,
   makeLocationBankNameExistsError,
 } from './errors.js';
+
+export {
+  assertValidItemSchema,
+  assertHiddenFieldsExist,
+} from './modules/itemTypeSchemaValidation.js';
 
 export {
   ACTION_PARAMETER_TYPES,
@@ -101,6 +116,11 @@ export {
   resolveConfiguredActionParameterValues,
   validateActionParameterValues,
 } from './modules/actionParameterValueValidation.js';
+export {
+  makeInvalidPolicyParentError,
+  makePolicyHierarchyCycleError,
+} from './modules/PolicyOperations.js';
+export { makeInvalidActionItemTypeIdsError } from './modules/ActionOperations.js';
 export {
   MAX_ACTOR_NOTE_LENGTH,
   validateActorNote,

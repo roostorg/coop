@@ -1,6 +1,6 @@
 # Hasher-Matcher-Actioner (HMA)
 
-Coop integrates with Meta's open-source [Hasher-Matcher-Actioner (HMA)](https://github.com/facebook/ThreatExchange/tree/main/hasher-matcher-actioner) to provide perceptual hash matching for known CSAM, non-consensual intimate imagery (NCII), terrorist and violent extremist content (TVEC), and any custom hash banks you maintain.
+Coop integrates with Meta's open-source [Hasher-Matcher-Actioner (HMA)](https://github.com/meta/ThreatExchange/tree/main/hasher-matcher-actioner) to provide perceptual hash matching for known CSAM, non-consensual intimate imagery (NCII), terrorist and violent extremist content (TVEC), and any custom hash banks you maintain.
 
 Hash matching works by computing a perceptual fingerprint (PDQ for images, MD5 for video) of submitted media and checking it against databases of known harmful content. Unlike AI classifiers, a hash match against a verified database like NCMEC's is a strong, reliable signal; known content will match reliably even if it's been slightly modified.
 

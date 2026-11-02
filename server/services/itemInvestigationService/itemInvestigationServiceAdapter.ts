@@ -3,7 +3,11 @@ import { trace } from '@opentelemetry/api';
 import type { ItemIdentifier } from '@roostorg/coop-types';
 
 import { type Dependencies } from '../../iocContainer/index.js';
-import { type IActionExecutionsAdapter } from '../../plugins/warehouse/queries/IActionExecutionsAdapter.js';
+import {
+  type IActionExecutionsAdapter,
+  type ManualActionItemsInput,
+  type RecentModeratorActionsInput,
+} from '../../plugins/warehouse/queries/IActionExecutionsAdapter.js';
 import { type IContentApiRequestsAdapter } from '../../plugins/warehouse/queries/IContentApiRequestsAdapter.js';
 import { type Scylla } from '../../scylla/index.js';
 import { type CorrelationId } from '../../utils/correlationIds.js';
@@ -343,6 +347,14 @@ export class ItemInvestigationServiceAdapter {
     itemSubmissionTime: Date | undefined;
   }) {
     return this.service.getItemActionHistory(opts);
+  }
+
+  async getRecentModeratorActions(input: RecentModeratorActionsInput) {
+    return this.service.getRecentModeratorActions(input);
+  }
+
+  async getManualActionItems(input: ManualActionItemsInput) {
+    return this.service.getManualActionItems(input);
   }
 
   /** See `synthesizeUserItemFromCreatorReferences.ts`. */
