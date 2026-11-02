@@ -23,6 +23,7 @@ Before cutting a release, ensure:
 - [ ] **CI is passing** for the `main` branch
 - [ ] **You understand the correct version** according to SemVer
 - [ ] **[CHANGELOG.md](https://github.com/roostorg/coop/blob/main/CHANGELOG.md) is up-to-date**
+- [ ] **Security advisories fixed in this release** have their patched version set to `x.y.z` and are linked from their `CHANGELOG.md` entries
 
 Then:
 
