@@ -15,9 +15,14 @@ export const API_KEYS_QUERY = gql`
 export const CREATE_API_KEY_MUTATION = gql`
   mutation CreateApiKey($input: CreateApiKeyInput!) {
     createApiKey(input: $input) {
-      apiKey
-      record {
-        id
+      ... on CreateApiKeySuccessResponse {
+        apiKey
+        record {
+          id
+        }
+      }
+      ... on ApiKeyMutationError {
+        detail
       }
     }
   }
@@ -26,16 +31,30 @@ export const CREATE_API_KEY_MUTATION = gql`
 export const UPDATE_API_KEY_MUTATION = gql`
   mutation UpdateApiKey($input: UpdateApiKeyInput!) {
     updateApiKey(input: $input) {
-      id
-      name
-      description
+      ... on UpdateApiKeySuccessResponse {
+        record {
+          id
+          name
+          description
+        }
+      }
+      ... on ApiKeyMutationError {
+        detail
+      }
     }
   }
 `;
 
 export const DELETE_API_KEY_MUTATION = gql`
   mutation DeleteApiKey($id: ID!) {
-    deleteApiKey(id: $id)
+    deleteApiKey(id: $id) {
+      ... on DeleteApiKeySuccessResponse {
+        id
+      }
+      ... on ApiKeyMutationError {
+        detail
+      }
+    }
   }
 `;
 

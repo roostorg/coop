@@ -54,8 +54,11 @@ export default function ApiKeyManagement() {
             },
           },
         });
-        if (!result.data) throw new Error('Failed to create API key');
-        setSecret(result.data.createApiKey.apiKey);
+        const response = result.data?.createApiKey;
+        if (response?.__typename !== 'CreateApiKeySuccessResponse') {
+          throw new Error(response?.detail ?? 'Failed to create API key');
+        }
+        setSecret(response.apiKey);
       } else if (dialog.action === 'edit') {
         const result = await updateKey({
           variables: {
@@ -66,14 +69,15 @@ export default function ApiKeyManagement() {
             },
           },
         });
-        if (!result.data?.updateApiKey) throw new Error('API key not found');
+        const response = result.data?.updateApiKey;
+        if (response?.__typename !== 'UpdateApiKeySuccessResponse') {
+          throw new Error(response?.detail ?? 'Failed to update API key');
+        }
       } else if (dialog.action === 'rotate') {
         const result = await rotateKey({
           variables: {
             input: {
               id: dialog.key.id,
-              name: dialog.key.name,
-              description: dialog.key.description,
             },
           },
         });
@@ -84,7 +88,10 @@ export default function ApiKeyManagement() {
         setSecret(response.apiKey);
       } else {
         const result = await deleteKey({ variables: { id: dialog.key.id } });
-        if (!result.data?.deleteApiKey) throw new Error('API key not found');
+        const response = result.data?.deleteApiKey;
+        if (response?.__typename !== 'DeleteApiKeySuccessResponse') {
+          throw new Error(response?.detail ?? 'Failed to delete API key');
+        }
       }
       setCopied(false);
       setDialog(null);
@@ -116,7 +123,6 @@ export default function ApiKeyManagement() {
             setName('');
             setDescription('');
             setMutationError(null);
-            setSecret(null);
             setDialog({ action: 'create' });
           }}
         >
@@ -204,7 +210,6 @@ export default function ApiKeyManagement() {
                 setName(key.name);
                 setDescription(key.description ?? '');
                 setMutationError(null);
-                setSecret(null);
                 setDialog({ action: 'edit', key });
               }}
             >
@@ -216,7 +221,6 @@ export default function ApiKeyManagement() {
               aria-label={`Rotate ${key.name}`}
               onClick={() => {
                 setMutationError(null);
-                setSecret(null);
                 setDialog({ action: 'rotate', key });
               }}
             >
@@ -228,7 +232,6 @@ export default function ApiKeyManagement() {
               aria-label={`Delete ${key.name}`}
               onClick={() => {
                 setMutationError(null);
-                setSecret(null);
                 setDialog({ action: 'delete', key });
               }}
             >
@@ -289,6 +292,7 @@ export default function ApiKeyManagement() {
                   id="api-key-description"
                   value={description}
                   onChange={(event) => setDescription(event.target.value)}
+                  maxLength={2000}
                   disabled={busy}
                 />
               </div>

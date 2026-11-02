@@ -78,6 +78,20 @@ describe('ApiKeyService', () => {
     ]);
   });
 
+  it('returns null when rotation matches no active key in the organization', async () => {
+    query.mockResolvedValueOnce({ rows: [], command: 'UPDATE', rowCount: 0 });
+
+    await expect(sut.rotateApiKey(orgId, row.id)).resolves.toBeNull();
+    expect(query.mock.calls[0][0].sql).toContain(
+      'where "org_id" = $3 and "is_active" = $4 and "id" = $5',
+    );
+    expect(query.mock.calls[0][0].parameters.slice(2)).toEqual([
+      orgId,
+      true,
+      row.id,
+    ]);
+  });
+
   it('returns the active key for the requested organization', async () => {
     query.mockResolvedValueOnce({
       rows: [row],

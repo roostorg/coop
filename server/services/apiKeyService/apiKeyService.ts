@@ -83,17 +83,13 @@ class ApiKeyService {
    */
   async rotateApiKey(
     orgId: string,
-    name: string,
-    description: string | null,
     keyId: string,
-  ): Promise<{ apiKey: string; record: ApiKeyRecord }> {
+  ): Promise<{ apiKey: string; record: ApiKeyRecord } | null> {
     const apiKey = this.generateApiKey();
     const result = await this.db
       .updateTable('public.api_keys')
       .set({
         key_hash: this.hashApiKey(apiKey),
-        name,
-        description,
         last_used_at: null,
       })
       .where('org_id', '=', orgId)
@@ -103,7 +99,7 @@ class ApiKeyService {
       .executeTakeFirst();
 
     if (!result) {
-      throw new Error('Active API key not found');
+      return null;
     }
     return { apiKey, record: this.mapDbRecordToApiKeyRecord(result) };
   }
