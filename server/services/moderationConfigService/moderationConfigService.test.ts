@@ -16,6 +16,7 @@ import {
 } from '../../test/stubs/KyselyPg.js';
 import { makeTestWithFixture } from '../../test/utils.js';
 import { ErrorType } from '../../utils/errors.js';
+import { makeKyselyTransactionWithRetry } from '../../utils/kyselyTransactionWithRetry.js';
 import { type Satisfies } from '../../utils/typescript-types.js';
 import { type ModerationConfigServicePg } from './dbTypes.js';
 import {
@@ -30,6 +31,43 @@ import { PolicyType } from './types/policies.js';
 type TestDeps = MockedServer['deps'];
 
 type Sut = ConstructorParameters<typeof ModerationConfigService>[0];
+
+type ItemTypeMutationMethod =
+  | 'createContentType'
+  | 'updateContentType'
+  | 'createThreadType'
+  | 'updateThreadType'
+  | 'createUserType'
+  | 'updateUserType';
+
+async function mutateItemTypeAndHiddenFields<T extends ItemTypeMutationMethod>(
+  config: ModerationConfigService,
+  deps: Pick<TestDeps, 'KyselyPg' | 'ManualReviewToolService'>,
+  orgId: string,
+  method: T,
+  input: Parameters<ModerationConfigService[T]>[1],
+  hiddenFields: readonly string[],
+) {
+  const item = await makeKyselyTransactionWithRetry(deps.KyselyPg)(
+    async (trx) => {
+      const transactionConfig = config.forTransaction(trx);
+      const review = deps.ManualReviewToolService.forTransaction(trx);
+      try {
+        const item = await transactionConfig[method](orgId, input as never);
+        await review.setHiddenFieldsForItemType({
+          orgId,
+          itemTypeId: item.id,
+          hiddenFields,
+        });
+        return item;
+      } finally {
+        await transactionConfig.close();
+      }
+    },
+  );
+  await config.invalidateLatestItemTypesCache(orgId);
+  return item;
+}
 
 // We test the moderationConfigService as a black box: every test gets a fresh
 // org and seeds data only through the public methods, then verifies it can read
@@ -193,6 +231,397 @@ describe('ModerationConfigService', () => {
   });
 
   describe('ItemType-Returning methods', () => {
+    describe('hidden fields', () => {
+      testWithOrg(
+        'persists hidden fields and isolates them by organization',
+        async ({ sutWithPrimary, deps, org }) => {
+          const manualReviewTool = deps.ManualReviewToolService;
+          const itemType = await sutWithPrimary.createContentType(org.id, {
+            schema: [
+              { ...dummySchema[0], name: 'internalNote' },
+              { ...dummySchema[0], name: 'email' },
+            ],
+            description: null,
+            name: 'Content Item Type',
+            schemaFieldRoles: {},
+          });
+
+          await expect(
+            manualReviewTool.getHiddenFieldsForItemType({
+              orgId: org.id,
+              itemTypeId: itemType.id,
+            }),
+          ).resolves.toEqual([]);
+
+          await manualReviewTool.setHiddenFieldsForItemType({
+            orgId: org.id,
+            itemTypeId: itemType.id,
+            hiddenFields: ['internalNote', 'email'],
+          });
+          await expect(
+            manualReviewTool.getHiddenFieldsForItemType({
+              orgId: org.id,
+              itemTypeId: itemType.id,
+            }),
+          ).resolves.toEqual(['internalNote', 'email']);
+
+          await manualReviewTool.setHiddenFieldsForItemType({
+            orgId: org.id,
+            itemTypeId: itemType.id,
+            hiddenFields: ['internalNote'],
+          });
+          await expect(
+            manualReviewTool.getHiddenFieldsForItemType({
+              orgId: org.id,
+              itemTypeId: itemType.id,
+            }),
+          ).resolves.toEqual(['internalNote']);
+
+          const { org: otherOrg } = await createOrg(
+            {
+              KyselyPg: deps.KyselyPg,
+              ModerationConfigService: deps.ModerationConfigService,
+              ApiKeyService: deps.ApiKeyService,
+            },
+            uid(),
+          );
+          await expect(
+            manualReviewTool.getHiddenFieldsForItemType({
+              orgId: otherOrg.id,
+              itemTypeId: itemType.id,
+            }),
+          ).resolves.toEqual([]);
+          await expect(
+            manualReviewTool.setHiddenFieldsForItemType({
+              orgId: otherOrg.id,
+              itemTypeId: itemType.id,
+              hiddenFields: ['email'],
+            }),
+          ).rejects.toMatchObject({ name: 'NotFoundError' });
+          await expect(
+            manualReviewTool.getHiddenFieldsForItemType({
+              orgId: org.id,
+              itemTypeId: itemType.id,
+            }),
+          ).resolves.toEqual(['internalNote']);
+
+          await manualReviewTool.setHiddenFieldsForItemType({
+            orgId: org.id,
+            itemTypeId: itemType.id,
+            hiddenFields: [],
+          });
+          await expect(
+            manualReviewTool.getHiddenFieldsForItemType({
+              orgId: org.id,
+              itemTypeId: itemType.id,
+            }),
+          ).resolves.toEqual([]);
+          await expect(
+            deps.KyselyPg.selectFrom(
+              'manual_review_tool.manual_review_hidden_item_fields',
+            )
+              .select('item_type_id')
+              .where('org_id', '=', org.id)
+              .where('item_type_id', '=', itemType.id)
+              .executeTakeFirst(),
+          ).resolves.toBeUndefined();
+        },
+      );
+    });
+
+    describe('atomic item type configuration mutations', () => {
+      const schema = [
+        { name: 'required', type: 'STRING', required: true, container: null },
+        { name: 'optional', type: 'STRING', required: false, container: null },
+      ] as const;
+
+      testWithOrg(
+        'update with omitted hiddenFields leaves them unchanged',
+        async ({ sutWithPrimary, deps, org }) => {
+          const item = await mutateItemTypeAndHiddenFields(
+            sutWithPrimary,
+            deps,
+            org.id,
+            'createUserType',
+            {
+              name: 'user hidden',
+              schema,
+              schemaFieldRoles: {},
+            },
+            ['optional'],
+          );
+          await sutWithPrimary.updateUserType(org.id, {
+            id: item.id,
+            description: 'changed',
+          });
+          await expect(
+            deps.ManualReviewToolService.getHiddenFieldsForItemType({
+              orgId: org.id,
+              itemTypeId: item.id,
+            }),
+          ).resolves.toEqual(['optional']);
+        },
+      );
+
+      testWithOrg(
+        'update can change the schema while retaining the previous version',
+        async ({ sutWithPrimary, org }) => {
+          const item = await sutWithPrimary.createContentType(org.id, {
+            name: 'evolving',
+            schema,
+            schemaFieldRoles: {},
+          });
+          const proposedSchema = [
+            { ...schema[1], required: true },
+            { name: 'added', type: 'BOOLEAN', required: true, container: null },
+          ] as const;
+          const updated = await sutWithPrimary.updateContentType(org.id, {
+            id: item.id,
+            schema: proposedSchema,
+          });
+          expect(updated.schema).toEqual(proposedSchema);
+          expect(updated.version).not.toBe(item.version);
+          await expect(
+            sutWithPrimary.getItemType({
+              orgId: org.id,
+              itemTypeSelector: { id: item.id, version: item.version },
+            }),
+          ).resolves.toMatchObject({ schema });
+        },
+      );
+
+      testWithOrg(
+        'rejects an invalid schema without changing the source row',
+        async ({ sutWithPrimary, org }) => {
+          const item = await sutWithPrimary.createContentType(org.id, {
+            name: 'unchanged',
+            schema,
+            schemaFieldRoles: {},
+          });
+          await expect(
+            sutWithPrimary.updateContentType(org.id, {
+              id: item.id,
+              name: 'must not persist',
+              schema: [schema[0], schema[0]],
+            }),
+          ).rejects.toMatchObject({ name: 'InvalidItemTypeSchemaError' });
+          await expect(
+            sutWithPrimary.getItemType({
+              orgId: org.id,
+              itemTypeSelector: { id: item.id },
+              directives: { maxAge: 0 },
+            }),
+          ).resolves.toMatchObject({ name: 'unchanged', schema });
+        },
+      );
+
+      testWithOrg(
+        'rejects hidden fields absent from the proposed schema without changing either store',
+        async ({ sutWithPrimary, deps, org }) => {
+          const item = await mutateItemTypeAndHiddenFields(
+            sutWithPrimary,
+            deps,
+            org.id,
+            'createUserType',
+            {
+              name: 'invalid hidden',
+              schema,
+              schemaFieldRoles: {},
+            },
+            ['optional'],
+          );
+          await expect(
+            mutateItemTypeAndHiddenFields(
+              sutWithPrimary,
+              deps,
+              org.id,
+              'updateUserType',
+              { id: item.id, description: 'bad' },
+              ['missing'],
+            ),
+          ).rejects.toMatchObject({ name: 'InvalidItemTypeHiddenFieldsError' });
+          await expect(
+            sutWithPrimary.getItemType({
+              orgId: org.id,
+              itemTypeSelector: { id: item.id },
+              directives: { maxAge: 0 },
+            }),
+          ).resolves.toMatchObject({ description: null, schema });
+          await expect(
+            deps.ManualReviewToolService.getHiddenFieldsForItemType({
+              orgId: org.id,
+              itemTypeId: item.id,
+            }),
+          ).resolves.toEqual(['optional']);
+        },
+      );
+
+      testWithOrg(
+        'wrong-org updates use not-found and do not reveal or mutate the row',
+        async ({ sutWithPrimary, deps, org }) => {
+          const item = await sutWithPrimary.createThreadType(org.id, {
+            name: 'private thread',
+            schema,
+            schemaFieldRoles: {},
+          });
+          const { org: otherOrg } = await createOrg(
+            {
+              KyselyPg: deps.KyselyPg,
+              ModerationConfigService: deps.ModerationConfigService,
+              ApiKeyService: deps.ApiKeyService,
+            },
+            uid(),
+          );
+          await expect(
+            sutWithPrimary.updateThreadType(otherOrg.id, {
+              id: item.id,
+              name: 'stolen',
+            }),
+          ).rejects.toMatchObject({
+            type: expect.arrayContaining([ErrorType.NotFound]),
+          });
+          await expect(
+            sutWithPrimary.getItemType({
+              orgId: org.id,
+              itemTypeSelector: { id: item.id },
+              directives: { maxAge: 0 },
+            }),
+          ).resolves.toMatchObject({ name: 'private thread' });
+        },
+      );
+
+      testWithOrg(
+        'kind is immutable because update inputs do not accept it',
+        async ({ sutWithPrimary, org }) => {
+          const item = await sutWithPrimary.createContentType(org.id, {
+            name: 'content forever',
+            schema,
+            schemaFieldRoles: {},
+          });
+          const updated = await sutWithPrimary.updateContentType(org.id, {
+            id: item.id,
+            description: 'still content',
+            // @ts-expect-error kind is intentionally absent from update inputs.
+            kind: 'USER',
+          });
+          expect(updated.kind).toBe('CONTENT');
+        },
+      );
+
+      testWithOrg(
+        'rolls hidden-field writes back when the item-type name update conflicts',
+        async ({ sutWithPrimary, deps, org }) => {
+          const a = await mutateItemTypeAndHiddenFields(
+            sutWithPrimary,
+            deps,
+            org.id,
+            'createContentType',
+            { name: 'A', schema, schemaFieldRoles: {} },
+            ['optional'],
+          );
+          await sutWithPrimary.createContentType(org.id, {
+            name: 'B',
+            schema,
+            schemaFieldRoles: {},
+          });
+          await expect(
+            makeKyselyTransactionWithRetry(deps.KyselyPg)(async (trx) => {
+              const transactionConfig = sutWithPrimary.forTransaction(trx);
+              const review = deps.ManualReviewToolService.forTransaction(trx);
+              try {
+                await review.setHiddenFieldsForItemType({
+                  orgId: org.id,
+                  itemTypeId: a.id,
+                  hiddenFields: ['required'],
+                });
+                await transactionConfig.updateContentType(org.id, {
+                  id: a.id,
+                  name: 'B',
+                });
+              } finally {
+                await transactionConfig.close();
+              }
+            }),
+          ).rejects.toMatchObject({ name: 'ItemTypeNameAlreadyExistsError' });
+          await expect(
+            deps.ManualReviewToolService.getHiddenFieldsForItemType({
+              orgId: org.id,
+              itemTypeId: a.id,
+            }),
+          ).resolves.toEqual(['optional']);
+        },
+      );
+
+      testWithOrg(
+        'normalizes empty role strings on creation for every kind',
+        async ({ sutWithPrimary, org }) => {
+          const cases = [
+            ['createContentType', 'creatorId'],
+            ['createThreadType', 'creatorId'],
+            ['createUserType', 'profileIcon'],
+          ] as const;
+          for (const [create, role] of cases) {
+            const item = await sutWithPrimary[create](org.id, {
+              name: `empty role ${create}`,
+              schema,
+              schemaFieldRoles: { [role]: '' },
+            });
+            expect(item.schemaFieldRoles).toHaveProperty(role, undefined);
+          }
+        },
+      );
+
+      testWithOrg(
+        'role patches preserve omitted and undefined keys and clear null keys for every kind',
+        async ({ sutWithPrimary, org }) => {
+          const cases = [
+            [
+              'createContentType',
+              'updateContentType',
+              'creatorId',
+              'RELATED_ITEM',
+            ],
+            [
+              'createThreadType',
+              'updateThreadType',
+              'creatorId',
+              'RELATED_ITEM',
+            ],
+            ['createUserType', 'updateUserType', 'profileIcon', 'IMAGE'],
+          ] as const;
+          for (const [create, update, role, type] of cases) {
+            const item = await sutWithPrimary[create](org.id, {
+              name: create,
+              schema: [
+                ...schema,
+                { name: 'roleField', type, required: false, container: null },
+              ],
+              schemaFieldRoles: {
+                [role]: 'roleField',
+                displayName: 'required',
+              },
+            });
+            const preserved = await sutWithPrimary[update](org.id, {
+              id: item.id,
+              name: `renamed ${create}`,
+            });
+            expect(preserved.schemaFieldRoles).toMatchObject({
+              [role]: 'roleField',
+              displayName: 'required',
+            });
+            const patched = await sutWithPrimary[update](org.id, {
+              id: item.id,
+              schemaFieldRoles: { [role]: undefined, displayName: null },
+            });
+            expect(patched.schemaFieldRoles).toMatchObject({
+              [role]: 'roleField',
+              displayName: undefined,
+            });
+          }
+        },
+      );
+    });
+
     describe('Creation methods', () => {
       describe('#createContentType', () => {
         testWithOrg(
@@ -616,6 +1045,51 @@ describe('ModerationConfigService', () => {
             expect(saved).toEqual(fetched);
           },
         );
+
+        testWithOrg(
+          'rejects nonexistent item type IDs',
+          async ({ sutWithPrimary, org }) => {
+            await expect(
+              sutWithPrimary.createAction(org.id, {
+                name: faker.string.alphanumeric(16),
+                description: null,
+                type: 'CUSTOM_ACTION',
+                callbackUrl: 'https://example.com',
+                callbackUrlHeaders: null,
+                callbackUrlBody: null,
+                itemTypeIds: ['missing-item-type'],
+              }),
+            ).rejects.toMatchObject({
+              name: 'InvalidActionItemTypeIdsError',
+              status: 400,
+              type: [ErrorType.InvalidUserInput],
+            });
+          },
+        );
+
+        testWithOrg(
+          'rejects item type IDs owned by another organization generically',
+          async ({ sutWithPrimary, deps, org }) => {
+            const { defaultUserItemType: otherItemType } = await setupOrg(deps);
+            await expect(
+              sutWithPrimary.createAction(org.id, {
+                name: faker.string.alphanumeric(16),
+                description: null,
+                type: 'CUSTOM_ACTION',
+                callbackUrl: 'https://example.com',
+                callbackUrlHeaders: null,
+                callbackUrlBody: null,
+                itemTypeIds: [otherItemType.id],
+              }),
+            ).rejects.toMatchObject({
+              name: 'InvalidActionItemTypeIdsError',
+              status: 400,
+              type: [ErrorType.InvalidUserInput],
+              title: 'Invalid action item type IDs',
+              detail: 'One or more item type IDs are invalid',
+            });
+          },
+        );
       });
     });
 
@@ -799,6 +1273,26 @@ describe('ModerationConfigService', () => {
               applyUserStrikes: false,
             });
             return { ...base, action };
+          },
+        );
+
+        testWithOrg(
+          'rejects updates to built-in actions as not found',
+          async ({ sutWithPrimary, org }) => {
+            const builtIn = (
+              await sutWithPrimary.getActions({ orgId: org.id })
+            ).find((action) => action.actionType !== 'CUSTOM_ACTION')!;
+
+            await expect(
+              sutWithPrimary.updateCustomAction(org.id, {
+                actionId: builtIn.id,
+                patch: { description: 'updated' },
+              }),
+            ).rejects.toMatchObject({
+              name: 'NotFoundError',
+              status: 404,
+              type: [ErrorType.NotFound],
+            });
           },
         );
 
@@ -995,11 +1489,12 @@ describe('ModerationConfigService', () => {
                 actionId: action.id,
                 patch: { name: other.name },
               }),
-            ).rejects.toThrow(
-              expect.objectContaining({
-                type: [ErrorType.UniqueViolation],
-              }),
-            );
+            ).rejects.toMatchObject({
+              name: 'ActionNameExistsError',
+              status: 409,
+              type: [ErrorType.UniqueViolation],
+              title: 'An action with this name already exists',
+            });
           },
         );
 
@@ -1056,6 +1551,52 @@ describe('ModerationConfigService', () => {
             ).toEqual([]);
           },
         );
+
+        for (const [caseName, ids] of [
+          ['duplicate', (id: string) => [id, id]],
+          ['nonexistent', () => ['missing-item-type']],
+        ] as const) {
+          testWithAction(
+            `rejects ${caseName} item type IDs and rolls back action and associations`,
+            async ({
+              sutWithPrimary,
+              deps,
+              org,
+              action,
+              defaultUserItemType,
+            }) => {
+              await sutWithPrimary.updateCustomAction(org.id, {
+                actionId: action.id,
+                patch: {},
+                itemTypeIds: [defaultUserItemType.id],
+              });
+              await expect(
+                sutWithPrimary.updateCustomAction(org.id, {
+                  actionId: action.id,
+                  patch: { description: 'must roll back' },
+                  itemTypeIds: ids(defaultUserItemType.id),
+                }),
+              ).rejects.toMatchObject({
+                name: 'InvalidActionItemTypeIdsError',
+                status: 400,
+                type: [ErrorType.InvalidUserInput],
+                title: 'Invalid action item type IDs',
+                detail: 'One or more item type IDs are invalid',
+              });
+              const row = await deps.KyselyPg.selectFrom('public.actions')
+                .select('description')
+                .where('id', '=', action.id)
+                .executeTakeFirstOrThrow();
+              expect(row.description).toBe('before');
+              expect(
+                await deps.KyselyPg.selectFrom('public.actions_and_item_types')
+                  .select('item_type_id')
+                  .where('action_id', '=', action.id)
+                  .execute(),
+              ).toEqual([{ item_type_id: defaultUserItemType.id }]);
+            },
+          );
+        }
       });
     });
 
@@ -1371,7 +1912,58 @@ describe('ModerationConfigService', () => {
         async ({ deps }) => {
           const base = await setupOrg(deps);
           const { user } = await createUser(deps.KyselyPg, base.org.id);
-          return { ...base, user };
+          return { ...base, user, deps };
+        },
+      );
+
+      testWithUserAndOrg(
+        'supports user and matching API-key policy invokers while rejecting unauthorized invokers',
+        async ({ sutWithPrimary, org, user }) => {
+          const userInvoker = {
+            orgId: org.id,
+            userId: user.id,
+            permissions: user.getPermissions(),
+          };
+          const created = await sutWithPrimary.createPolicy({
+            orgId: org.id,
+            policy: { name: 'User policy' },
+            invokedBy: userInvoker,
+          });
+          await expect(
+            sutWithPrimary.updatePolicy({
+              orgId: org.id,
+              policy: { id: created.id, name: 'User-updated policy' },
+              invokedBy: userInvoker,
+            }),
+          ).resolves.toMatchObject({ name: 'User-updated policy' });
+          await expect(
+            sutWithPrimary.updatePolicy({
+              orgId: org.id,
+              policy: { id: created.id, name: 'No permission update' },
+              invokedBy: { ...userInvoker, permissions: [] },
+            }),
+          ).rejects.toMatchObject({ name: 'UnauthorizedError', status: 403 });
+          await expect(
+            sutWithPrimary.updatePolicy({
+              orgId: org.id,
+              policy: { id: created.id, name: 'API key policy' },
+              invokedBy: { type: 'organizationApiKey', orgId: org.id },
+            }),
+          ).resolves.toMatchObject({ name: 'API key policy' });
+          await expect(
+            sutWithPrimary.createPolicy({
+              orgId: org.id,
+              policy: { name: 'No permission' },
+              invokedBy: { ...userInvoker, permissions: [] },
+            }),
+          ).rejects.toMatchObject({ name: 'UnauthorizedError', status: 403 });
+          await expect(
+            sutWithPrimary.updatePolicy({
+              orgId: org.id,
+              policy: { id: created.id, name: 'Wrong org' },
+              invokedBy: { type: 'organizationApiKey', orgId: 'wrong-org' },
+            }),
+          ).rejects.toMatchObject({ name: 'UnauthorizedError', status: 403 });
         },
       );
 
@@ -1488,43 +2080,250 @@ describe('ModerationConfigService', () => {
       );
 
       testWithUserAndOrg(
-        'Prevent creation of policy with the same name as an existing policy',
-        async ({ sutWithPrimary, org, user }) => {
-          await sutWithPrimary.createPolicy({
-            orgId: org.id,
+        'rejects missing and cross-org parents without disclosing which case occurred',
+        async ({ sutWithPrimary, org, user, deps }) => {
+          const other = await setupOrg(deps);
+          const { user: otherUser } = await createUser(
+            deps.KyselyPg,
+            other.org.id,
+          );
+          const otherParent = await other.sutWithPrimary.createPolicy({
+            orgId: other.org.id,
             policy: {
-              name: 'Test Policy',
-              policyText: 'Test policy text',
-              enforcementGuidelines: 'Test enforcement guidelines',
-              policyType: PolicyType.DRUG_SALES,
+              name: 'Other parent',
               parentId: null,
+              policyText: null,
+              enforcementGuidelines: null,
+              policyType: null,
             },
             invokedBy: {
-              orgId: org.id,
-              userId: user.id,
-              permissions: user.getPermissions(),
+              orgId: other.org.id,
+              userId: otherUser.id,
+              permissions: otherUser.getPermissions(),
             },
           });
+          const invokedBy = {
+            orgId: org.id,
+            userId: user.id,
+            permissions: user.getPermissions(),
+          };
 
+          const errors = await Promise.all(
+            ['missing-policy', otherParent.id].map(async (parentId) => {
+              try {
+                await sutWithPrimary.createPolicy({
+                  orgId: org.id,
+                  policy: {
+                    name: `Child ${parentId}`,
+                    parentId,
+                    policyText: null,
+                    enforcementGuidelines: null,
+                    policyType: null,
+                  },
+                  invokedBy,
+                });
+                throw new Error('Expected createPolicy to reject');
+              } catch (error) {
+                return error;
+              }
+            }),
+          );
+          for (const error of errors) {
+            expect(error).toEqual(
+              expect.objectContaining({
+                name: 'InvalidPolicyParentError',
+                status: 400,
+              }),
+            );
+          }
+          expect((errors[0] as { title: string }).title).toBe(
+            (errors[1] as { title: string }).title,
+          );
+
+          const root = await sutWithPrimary.createPolicy({
+            orgId: org.id,
+            policy: {
+              name: 'Local root',
+              parentId: null,
+              policyText: null,
+              enforcementGuidelines: null,
+              policyType: null,
+            },
+            invokedBy,
+          });
+          const child = await sutWithPrimary.createPolicy({
+            orgId: org.id,
+            policy: {
+              name: 'Local child',
+              parentId: root.id,
+              policyText: null,
+              enforcementGuidelines: null,
+              policyType: null,
+            },
+            invokedBy,
+          });
+          const updateErrors = await Promise.all(
+            ['missing-policy', otherParent.id].map(async (parentId) => {
+              try {
+                await sutWithPrimary.updatePolicy({
+                  orgId: org.id,
+                  policy: { id: child.id, parentId },
+                  invokedBy,
+                });
+                throw new Error('Expected updatePolicy to reject');
+              } catch (error) {
+                expect(
+                  (await sutWithPrimary.getPolicy({
+                    orgId: org.id,
+                    policyId: child.id,
+                  }))!.parentId,
+                ).toBe(root.id);
+                return error;
+              }
+            }),
+          );
+          expect(updateErrors).toEqual([
+            expect.objectContaining({
+              name: 'InvalidPolicyParentError',
+              status: 400,
+            }),
+            expect.objectContaining({
+              name: 'InvalidPolicyParentError',
+              status: 400,
+            }),
+          ]);
+          expect((updateErrors[0] as { title: string }).title).toBe(
+            (updateErrors[1] as { title: string }).title,
+          );
+        },
+      );
+
+      testWithUserAndOrg(
+        'rejects self, direct, and multi-level policy cycles and preserves the original edge',
+        async ({ sutWithPrimary, org, user }) => {
+          const invokedBy = {
+            orgId: org.id,
+            userId: user.id,
+            permissions: user.getPermissions(),
+          };
+          const create = async (name: string, parentId: string | null) =>
+            sutWithPrimary.createPolicy({
+              orgId: org.id,
+              policy: {
+                name,
+                parentId,
+                policyText: null,
+                enforcementGuidelines: null,
+                policyType: null,
+              },
+              invokedBy,
+            });
+          const root = await create('Root', null);
+          const child = await create('Child', root.id);
+          const grandchild = await create('Grandchild', child.id);
+
+          for (const [id, parentId] of [
+            [root.id, root.id],
+            [root.id, child.id],
+            [root.id, grandchild.id],
+          ]) {
+            await expect(
+              sutWithPrimary.updatePolicy({
+                orgId: org.id,
+                policy: { id, parentId },
+                invokedBy,
+              }),
+            ).rejects.toEqual(
+              expect.objectContaining({
+                name: 'PolicyHierarchyCycleError',
+                status: 409,
+              }),
+            );
+            expect(
+              (await sutWithPrimary.getPolicy({
+                orgId: org.id,
+                policyId: root.id,
+              }))!.parentId,
+            ).toBeNull();
+          }
+        },
+      );
+
+      testWithUserAndOrg(
+        'supports reparenting and clearing while rejecting wrong-org invokers without changes',
+        async ({ sutWithPrimary, org, user }) => {
+          const invokedBy = {
+            orgId: org.id,
+            userId: user.id,
+            permissions: user.getPermissions(),
+          };
+          const create = async (name: string, parentId: string | null) =>
+            sutWithPrimary.createPolicy({
+              orgId: org.id,
+              policy: {
+                name,
+                parentId,
+                policyText: null,
+                enforcementGuidelines: null,
+                policyType: null,
+              },
+              invokedBy,
+            });
+          const first = await create('First', null);
+          const second = await create('Second', null);
+          const child = await create('Child', first.id);
+          expect(
+            (
+              await sutWithPrimary.updatePolicy({
+                orgId: org.id,
+                policy: { id: child.id, parentId: second.id },
+                invokedBy,
+              })
+            ).parentId,
+          ).toBe(second.id);
+          expect(
+            (
+              await sutWithPrimary.updatePolicy({
+                orgId: org.id,
+                policy: { id: child.id, parentId: null },
+                invokedBy,
+              })
+            ).parentId,
+          ).toBeNull();
+
+          await expect(
+            sutWithPrimary.updatePolicy({
+              orgId: org.id,
+              policy: { id: child.id, parentId: first.id },
+              invokedBy: { ...invokedBy, orgId: 'wrong-org' },
+            }),
+          ).rejects.toEqual(
+            expect.objectContaining({ type: [ErrorType.Unauthorized] }),
+          );
+          expect(
+            (await sutWithPrimary.getPolicy({
+              orgId: org.id,
+              policyId: child.id,
+            }))!.parentId,
+          ).toBeNull();
           await expect(
             sutWithPrimary.createPolicy({
               orgId: org.id,
               policy: {
-                name: 'Test Policy',
-                policyText: 'Test policy text',
-                enforcementGuidelines: 'Test enforcement guidelines',
-                policyType: PolicyType.DRUG_SALES,
+                name: 'Unauthorized',
                 parentId: null,
+                policyText: null,
+                enforcementGuidelines: null,
+                policyType: null,
               },
-              invokedBy: {
-                orgId: org.id,
-                userId: user.id,
-                permissions: user.getPermissions(),
-              },
+              invokedBy: { ...invokedBy, orgId: 'wrong-org' },
             }),
-          ).rejects.toThrow(
-            expect.objectContaining({ type: [ErrorType.UniqueViolation] }),
+          ).rejects.toEqual(
+            expect.objectContaining({ type: [ErrorType.Unauthorized] }),
           );
+          expect(
+            await sutWithPrimary.getPolicies({ orgId: org.id }),
+          ).toHaveLength(3);
         },
       );
     });
