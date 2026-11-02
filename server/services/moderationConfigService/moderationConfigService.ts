@@ -34,7 +34,7 @@ import {
   type ThreadItemType,
   type UserItemType,
 } from './types/itemTypes.js';
-import type { PolicyType } from './types/policies.js';
+import type { PolicyMutationInvoker, PolicyType } from './types/policies.js';
 import { type PlainRuleWithLatestVersion } from './types/rules.js';
 
 export type ModerationConfigErrorType =
@@ -308,12 +308,14 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
     orgId: string;
     policy: {
       name: string;
-      parentId: string | null;
-      policyText: string | null;
-      enforcementGuidelines: string | null;
-      policyType: PolicyType | null;
+      parentId?: string | null;
+      policyText?: string | null;
+      enforcementGuidelines?: string | null;
+      policyType?: PolicyType | null;
+      userStrikeCount?: number;
+      applyUserStrikeCountConfigToChildren?: boolean;
     };
-    invokedBy: Invoker;
+    invokedBy: PolicyMutationInvoker;
   }): Promise<Policy> {
     return this.policyOps.createPolicy(opts);
   }
@@ -330,7 +332,7 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
       userStrikeCount?: number | null;
       applyUserStrikeCountConfigToChildren?: boolean | null;
     };
-    invokedBy: Invoker;
+    invokedBy: PolicyMutationInvoker;
   }): Promise<Policy> {
     return this.policyOps.updatePolicy(opts);
   }
