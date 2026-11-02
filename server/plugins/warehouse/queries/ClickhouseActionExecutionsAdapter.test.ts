@@ -695,6 +695,22 @@ describe('ClickhouseActionExecutionsAdapter.getManualActionItems', () => {
     );
   });
 
+  it('lists failed items first so a capped page never hides a failure', async () => {
+    const { adapter, query } = makeAdapter([]);
+
+    await adapter.getManualActionItems({
+      orgId: 'org-1',
+      correlationId: 'manual-action-run:abc',
+      occurredAt: new Date('2026-08-05T12:00:00.000Z'),
+      limit: 100,
+      offset: 0,
+    });
+
+    expect(query.mock.calls[0][0]).toContain(
+      'ORDER BY failed DESC, item_id ASC',
+    );
+  });
+
   it('reports zero total when the operation has no rows', async () => {
     const { adapter } = makeAdapter([]);
 

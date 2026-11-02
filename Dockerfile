@@ -7,7 +7,7 @@
 # Docker's cache will let us skip installs when the dependencies haven't changed.
 # We build on debian because it has fewer dependency issues than Alpine for our
 # native modules, and we don't really care about the larger image size.
-FROM node:24.22.1-bookworm-slim AS server_base
+FROM node:24.22.1-trixie-slim AS server_base
 WORKDIR /app
 
 RUN npm install -g pnpm@11.28.2
@@ -26,7 +26,7 @@ WORKDIR /app/server
 FROM server_base AS build_backend
 RUN pnpm run build
 
-FROM node:24.22.1-bookworm-slim AS backend_prod_deps
+FROM node:24.22.1-trixie-slim AS backend_prod_deps
 WORKDIR /app
 RUN npm install -g pnpm@11.28.2
 COPY ["pnpm-lock.yaml", "pnpm-workspace.yaml", "package.json", "./"]
@@ -35,7 +35,7 @@ RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --filte
     pnpm rebuild --filter server
 
 # make a shared layer that can be the base for worker and api images.
-FROM node:24.22.1-bookworm-slim AS backend_base
+FROM node:24.22.1-trixie-slim AS backend_base
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends dumb-init && rm -rf /var/lib/apt/lists/*
 # The server and worker run with plain `node`, so drop the package managers
