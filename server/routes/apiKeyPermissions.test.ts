@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import { sql } from 'kysely';
+import { assert } from 'vitest';
 
 import { serializeDerivedFieldSpec } from '../services/derivedFieldsService/index.js';
 import createOrg from '../test/fixtureHelpers/createOrg.js';
@@ -268,11 +269,9 @@ describe('API key permissions', () => {
       await request.get(scores).set('x-api-key', write.apiKey).expect(403);
       const rotated = await deps.ApiKeyService.rotateApiKey(
         orgId,
-        'Read',
-        null,
-        null,
         read.record.id,
       );
+      assert.isNotNull(rotated);
       expect(rotated.record.permissions).toEqual(['items:read']);
       await request.get(scores).set('x-api-key', read.apiKey).expect(401);
       await request
@@ -284,7 +283,7 @@ describe('API key permissions', () => {
         .set('x-api-key', rotated.apiKey)
         .send({ items: [] })
         .expect(403);
-      await deps.ApiKeyService.deactivateApiKey(read.record.id, orgId);
+      await deps.ApiKeyService.deleteApiKey(read.record.id, orgId);
       await request.get(scores).set('x-api-key', rotated.apiKey).expect(401);
       await request
         .post('/api/v1/items/async')
@@ -333,7 +332,7 @@ describe('API key permissions', () => {
   });
 
   testWithOrg(
-    'cannot rotate or revoke a foreign organization key',
+    'cannot rotate or delete a foreign organization key',
     async ({ deps, orgId }) => {
       const other = await createOrg(deps);
       const key = await deps.ApiKeyService.createApiKey(
@@ -344,17 +343,11 @@ describe('API key permissions', () => {
         ['config:read'],
       );
       await expect(
-        deps.ApiKeyService.rotateApiKey(
-          orgId,
-          'Other',
-          null,
-          null,
-          key.record.id,
-        ),
-      ).rejects.toThrow('Active API key not found');
-      expect(
-        await deps.ApiKeyService.deactivateApiKey(key.record.id, orgId),
-      ).toBe(false);
+        deps.ApiKeyService.rotateApiKey(orgId, key.record.id),
+      ).resolves.toBeNull();
+      expect(await deps.ApiKeyService.deleteApiKey(key.record.id, orgId)).toBe(
+        false,
+      );
       expect(await deps.ApiKeyService.getApiKeysForOrg(orgId)).not.toEqual(
         expect.arrayContaining([
           expect.objectContaining({ id: key.record.id }),
