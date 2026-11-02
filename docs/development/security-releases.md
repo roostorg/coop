@@ -96,8 +96,16 @@ Dependency updates usually conflict in `pnpm-lock.yaml`. Resolve them so the bra
 2. Set the fixed packages to the same specifier and version as `main`, then run `pnpm install` to update the lockfile for them alone.
 3. Run `pnpm install --frozen-lockfile`, and confirm that `pnpm install` leaves `pnpm-lock.yaml` unchanged (`git diff --exit-code pnpm-lock.yaml`).
 4. Check that only the intended packages changed versions, e.g. `git diff origin/release/x.y -- pnpm-lock.yaml`.
+5. After committing, and before tagging, check that the branch's lockfile has no package newer than `main`'s:
 
-<!-- TODO(R5): reference the lockfile check script once it lands. -->
+   ```bash
+   git fetch origin
+   node scripts/check-lockfile-backport.mjs origin/main
+   ```
+
+   It reads the committed lockfiles, and exits 1 and lists each package that pnpm resolved to a version newer than `main` has. If it does, redo the conflict resolution from step 1 so those packages keep the branch's versions. If the script is on `main` but not yet on `release/x.y`, run `main`'s copy: `git show origin/main:scripts/check-lockfile-backport.mjs > "$TMPDIR/check-lockfile-backport.mjs" && node "$TMPDIR/check-lockfile-backport.mjs" origin/main`.
+
+The script depends on [#1524](https://github.com/roostorg/coop/pull/1524) ([#1520](https://github.com/roostorg/coop/issues/1520), item 5).
 
 ## 3. Bump the version and changelog
 
