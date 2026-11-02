@@ -161,6 +161,19 @@ async function runApiKeyMutation<T>(operation: () => Promise<T>) {
   try {
     return await operation();
   } catch (error) {
+    if (
+      error instanceof CoopError &&
+      error.status === 400 &&
+      error.type.includes(ErrorType.InvalidUserInput)
+    ) {
+      return gqlErrorResult(
+        new CoopError({
+          ...error,
+          name: 'ApiKeyMutationError',
+          shouldErrorSpan: false,
+        }),
+      );
+    }
     // Resolvers do not receive a request-scoped logger.
     // eslint-disable-next-line no-restricted-syntax -- log unexpected errors without exposing them to clients
     logErrorJson({ message: 'API key operation failed', error });

@@ -41,7 +41,7 @@ describe('ApiKeyService', () => {
 
   it('stores a hashed new key without deactivating other keys', async () => {
     query.mockImplementationOnce(async ({ parameters }) => ({
-      rows: [{ ...row, key_hash: parameters[1] }],
+      rows: [{ ...row, key_hash: parameters[1], permissions: parameters[6] }],
       command: 'INSERT',
       rowCount: 1,
     }));
@@ -64,6 +64,7 @@ describe('ApiKeyService', () => {
       keyHash: hash,
       name: row.name,
       description: row.description,
+      permissions: [],
     });
     expect(query).toHaveBeenCalledTimes(1);
     expect(query.mock.calls[0][0].sql).toContain(

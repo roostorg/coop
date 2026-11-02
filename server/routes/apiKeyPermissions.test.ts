@@ -167,11 +167,13 @@ describe('API key permissions', () => {
   );
 
   testWithOrg('rejects unknown permission values', async ({ deps, orgId }) => {
-    await expect(
-      deps.ApiKeyService.createApiKey(orgId, 'Invalid', null, null, [
-        'items:*',
-      ]),
-    ).rejects.toThrow('Unknown API key permission');
+    for (const permission of ['items:*', 'config:write']) {
+      await expect(
+        deps.ApiKeyService.createApiKey(orgId, 'Invalid', null, null, [
+          permission,
+        ]),
+      ).rejects.toThrow(`Unknown API key permission: "${permission}"`);
+    }
   });
 
   testWithOrg(
