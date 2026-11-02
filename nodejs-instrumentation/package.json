@@ -10,19 +10,19 @@
   "author": "Roostorg",
   "license": "ISC",
   "dependencies": {
-    "@opentelemetry/api": "^1.9.0",
-    "@opentelemetry/auto-instrumentations-node": "^0.81.2",
-    "@opentelemetry/exporter-metrics-otlp-grpc": "^0.223.0",
-    "@opentelemetry/exporter-trace-otlp-grpc": "^0.223.0",
+    "@opentelemetry/api": "^1.10.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.82.0",
+    "@opentelemetry/exporter-metrics-otlp-grpc": "^0.300.0",
+    "@opentelemetry/exporter-trace-otlp-grpc": "^0.300.0",
     "@opentelemetry/propagator-aws-xray": "^2.2.0",
     "@opentelemetry/resource-detector-aws": "^2.23.0",
-    "@opentelemetry/resource-detector-container": "^0.8.14",
+    "@opentelemetry/resource-detector-container": "^0.9.0",
     "@opentelemetry/resources": "^2.12.0",
     "@opentelemetry/sdk-metrics": "^2.12.0",
-    "@opentelemetry/sdk-node": "^0.223.0",
+    "@opentelemetry/sdk-node": "^0.300.0",
     "@opentelemetry/sdk-trace-base": "^2.12.0",
     "@opentelemetry/semantic-conventions": "^1.43.0",
-    "@opentelemetry/winston-transport": "^0.34.0"
+    "@opentelemetry/winston-transport": "^0.35.0"
   },
   "devDependencies": {
     "typescript": "^6.0.3"
