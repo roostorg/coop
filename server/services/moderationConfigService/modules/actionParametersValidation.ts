@@ -84,7 +84,7 @@ const parameterSchema = {
   },
 } as const;
 
-const parameterListSchema = {
+export const parameterListSchema = {
   type: 'array',
   items: parameterSchema,
   maxItems: 50,

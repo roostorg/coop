@@ -27,6 +27,28 @@ Returns your organization's custom and built-in actions:
 }
 ```
 
+## Create and update custom actions
+
+```http
+POST /api/v1/actions/custom
+PATCH /api/v1/actions/action-id
+```
+
+```json
+{
+  "name": "Remove post",
+  "callbackUrl": "https://example.com/moderation/remove",
+  "itemTypeIds": ["item-type-id"]
+}
+```
+
+Create requires `name` and `callbackUrl` and returns `201`. PATCH returns
+`200`, leaves omitted fields unchanged, and replaces supplied arrays and
+callback header/body objects. Nullable callback objects can be cleared with
+`null`. Responses have the same public shape as list actions and never expose
+callback URLs, headers, or bodies. `POST /api/v1/actions/` continues to execute
+an action; it does not create one.
+
 ## Setting up your callback endpoint
 
 For each Action you define in Coop, provide a publicly accessible callback URL and any authentication headers your endpoint requires (e.g. an API key Coop should send). Coop includes these headers on every outgoing request to that endpoint.
