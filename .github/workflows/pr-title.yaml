@@ -1,0 +1,60 @@
+name: PR title
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  check_pr_title:
+    name: Check PR title
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: write
+    steps:
+      # GitHub titles multi-commit PRs after the branch name, but single-commit PRs
+      # after the commit. Give multi-commit PRs the first commit's title too, so
+      # authors who write conventional commits don't have to retitle the PR.
+      # Fork PRs only get a read-only token, so they keep GitHub's default title.
+      - name: Use first commit title instead of branch name
+        id: first_commit
+        if: github.event.action == 'opened' && github.event.pull_request.head.repo.full_name == github.repository
+        shell: bash
+        run: |
+          # GitHub's branch-name title turns - and _ into spaces and capitalizes the first letter.
+          branch_title="$(printf '%s' "$HEAD_REF" | tr -- '-_' '  ')"
+          branch_title="$(printf '%s' "${branch_title:0:1}" | tr '[:lower:]' '[:upper:]')${branch_title:1}"
+          if [[ "$PR_TITLE" != "$branch_title" ]]; then
+            exit 0
+          fi
+          title="$(gh api "repos/$GH_REPO/pulls/$PR_NUMBER/commits" --jq '.[0].commit.message | split("\n")[0]')"
+          gh pr edit "$PR_NUMBER" --title "$title"
+          echo "title=$title" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+
+      - name: Recognize GitHub revert titles
+        id: revert
+        shell: bash
+        run: |
+          if [[ "$PR_TITLE" =~ ^Revert\ \".+\"$ && "$PR_TITLE" != *$'\n'* && "$PR_TITLE" != *$'\r'* ]]; then
+            echo 'is_revert=true' >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          PR_TITLE: ${{ steps.first_commit.outputs.title || github.event.pull_request.title }}
+
+      - name: Validate PR title
+        if: steps.revert.outputs.is_revert != 'true'
+        uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
+        with:
+          subjectPattern: ^(?![A-Z])\S(?:.*\S)?(?<!\.)$
+          subjectPatternError: 'Start the description with a lowercase word, omit leading or trailing whitespace, and do not end it with a period.'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
