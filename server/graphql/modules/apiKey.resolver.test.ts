@@ -341,7 +341,7 @@ describe('apiKey resolvers', () => {
       async ({ deps, execute, org }) => {
         for (const permissions of [
           [],
-          ['items:write', 'config:write'],
+          ['items:write', 'actions:execute'],
           ['items:read', 'reports:write'],
         ]) {
           const result = await execute(
@@ -368,6 +368,47 @@ describe('apiKey resolvers', () => {
         }
       },
     );
+
+    for (const operation of ['createApiKey', 'updateApiKey'] as const) {
+      testWithOrg(
+        `returns invalid input for unknown permissions in ${operation}`,
+        async ({ deps, execute, org }) => {
+          const { record } = await deps.ApiKeyService.createApiKey(
+            org.id,
+            'Reports',
+            null,
+            null,
+            ['items:read'],
+          );
+          const before = await deps.ApiKeyService.getApiKeysForOrg(org.id);
+          const result = await execute(
+            `mutation Save($input: ${operation === 'createApiKey' ? 'CreateApiKeyInput' : 'UpdateApiKeyInput'}!) {
+              ${operation}(input: $input) {
+                __typename
+                ... on ApiKeyMutationError { status type title }
+              }
+            }`,
+            {
+              input: {
+                ...(operation === 'updateApiKey' ? { id: record.id } : {}),
+                name: 'Changed',
+                permissions: ['unknown:permission'],
+              },
+            },
+          );
+          expect(result.errors).toBeUndefined();
+          expect(result.data?.[operation]).toEqual({
+            __typename: 'ApiKeyMutationError',
+            status: 400,
+            type: ['/errors/invalid-user-input'],
+            title: 'Unknown API key permission: "unknown:permission"',
+          });
+          expect(await deps.ApiKeyService.getApiKeysForOrg(org.id)).toEqual(
+            before,
+          );
+        },
+      );
+    }
 
     testWithOrg(
       'edits permissions without changing the secret and preserves them when omitted',

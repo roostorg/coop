@@ -42,9 +42,13 @@ export default function ApiKeyManagement() {
   const [busy, setBusy] = useState(false);
   const [mutationError, setMutationError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const permissionsReady =
+    !loading && !error && Boolean(data?.apiKeyPermissions);
+  const editingPermissions =
+    dialog?.action === 'create' || dialog?.action === 'edit';
 
   const submit = async () => {
-    if (!dialog) return;
+    if (!dialog || busy || (editingPermissions && !permissionsReady)) return;
     setBusy(true);
     setMutationError(null);
     try {
@@ -124,6 +128,7 @@ export default function ApiKeyManagement() {
           variant="outline"
           size="sm"
           className="shrink-0 whitespace-nowrap"
+          disabled={!permissionsReady || busy}
           onClick={() => {
             setName('');
             setDescription('');
@@ -228,6 +233,7 @@ export default function ApiKeyManagement() {
               variant="outline"
               size="sm"
               aria-label={`Edit ${key.name}`}
+              disabled={!permissionsReady || busy}
               onClick={() => {
                 setName(key.name);
                 setDescription(key.description ?? '');
@@ -297,7 +303,7 @@ export default function ApiKeyManagement() {
               void submit();
             }}
           >
-            {(dialog?.action === 'create' || dialog?.action === 'edit') && (
+            {editingPermissions && (
               <div className="px-4 flex flex-col gap-3">
                 <Label htmlFor="api-key-name">Name</Label>
                 <Input
@@ -319,7 +325,7 @@ export default function ApiKeyManagement() {
                   disabled={busy}
                 />
                 <fieldset
-                  disabled={busy}
+                  disabled={busy || !permissionsReady}
                   className="min-w-0 flex flex-col gap-3"
                 >
                   <legend className="mb-2 text-sm font-semibold">
@@ -381,8 +387,7 @@ export default function ApiKeyManagement() {
                 variant="outline"
                 disabled={
                   busy ||
-                  ((dialog?.action === 'create' || dialog?.action === 'edit') &&
-                    !name.trim())
+                  (editingPermissions && (!name.trim() || !permissionsReady))
                 }
               >
                 {busy

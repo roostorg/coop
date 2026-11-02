@@ -24,6 +24,7 @@ import {
   hashPassword,
   UserRole,
 } from '../services/userManagementService/index.js';
+import { createPrimaryApiKey } from './create-primary-api-key.js';
 
 const argv = await yargs(hideBin(process.argv))
   .options({
@@ -89,11 +90,9 @@ async function createOrgAndUser() {
     // Create signing keys and API key (both reference org via FK)
     await container.SigningKeyPairService.createAndStoreSigningKeys(orgId);
 
-    const { apiKey: rawApiKey } = await container.ApiKeyService.createApiKey(
+    const { apiKey: rawApiKey } = await createPrimaryApiKey(
+      container.ApiKeyService,
       orgId,
-      'Main API Key',
-      'Primary API key for organization',
-      null,
     );
 
     // Initialize org settings

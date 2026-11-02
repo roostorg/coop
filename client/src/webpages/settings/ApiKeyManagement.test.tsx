@@ -15,6 +15,101 @@ import {
 import ApiKeyManagement from './ApiKeyManagement';
 
 describe('ApiKeyManagement', () => {
+  it('waits for permission definitions before allowing creation', async () => {
+    render(
+      <MockedProvider
+        mocks={[
+          {
+            request: { query: GQLApiKeysDocument },
+            delay: 100,
+            maxUsageCount: Infinity,
+            result: {
+              data: {
+                apiKeys: [],
+                apiKeyPermissions: [
+                  {
+                    __typename: 'ApiKeyPermissionDefinition',
+                    value: 'items:read',
+                    description: 'Read items',
+                  },
+                ],
+              },
+            },
+          },
+          {
+            request: {
+              query: GQLCreateApiKeyDocument,
+              variables: {
+                input: {
+                  name: 'Reports',
+                  description: null,
+                  permissions: ['items:read'],
+                },
+              },
+            },
+            result: {
+              data: {
+                createApiKey: {
+                  __typename: 'CreateApiKeySuccessResponse',
+                  apiKey: 'new-secret',
+                  record: { __typename: 'ApiKey', id: 'key-1' },
+                },
+              },
+            },
+          },
+        ]}
+      >
+        <ApiKeyManagement />
+      </MockedProvider>,
+    );
+    expect(screen.getByText('Loading API keys…')).toBeInTheDocument();
+    const createButton = screen.getByRole('button', { name: 'Create key' });
+    expect(createButton).toBeDisabled();
+    fireEvent.click(createButton);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+    await waitFor(() => expect(createButton).toBeEnabled());
+    fireEvent.click(createButton);
+    const dialog = within(screen.getByRole('dialog'));
+    fireEvent.change(dialog.getByLabelText('Name'), {
+      target: { value: 'Reports' },
+    });
+    fireEvent.click(dialog.getByRole('checkbox', { name: 'items:read' }));
+    fireEvent.click(dialog.getByRole('button', { name: 'Create key' }));
+    await waitFor(() =>
+      expect(screen.getByLabelText('New API key')).toHaveValue('new-secret'),
+    );
+  });
+
+  it('keeps creation disabled after a query failure until retry succeeds', async () => {
+    render(
+      <MockedProvider
+        mocks={[
+          {
+            request: { query: GQLApiKeysDocument },
+            error: new Error('Network unavailable'),
+          },
+          {
+            request: { query: GQLApiKeysDocument },
+            result: { data: { apiKeys: [], apiKeyPermissions: [] } },
+          },
+        ]}
+      >
+        <ApiKeyManagement />
+      </MockedProvider>,
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Unable to load API keys.',
+    );
+    const createButton = screen.getByRole('button', { name: 'Create key' });
+    expect(createButton).toBeDisabled();
+    fireEvent.click(createButton);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    await waitFor(() => expect(createButton).toBeEnabled());
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
   it.each([{ permissions: ['items:write'] }, { permissions: [] }])(
     'edits existing permissions to $permissions',
     async ({ permissions }) => {
