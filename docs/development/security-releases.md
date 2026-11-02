@@ -67,7 +67,7 @@ If Dependabot has already opened the bump, use its PR. If its PR groups the secu
 
 If `## [Unreleased]` in `CHANGELOG.md` contains only the fix, release from `main` as usual and skip to step 3.
 
-If `main` has unreleased changes, choose one of the options below. **Pending decision (H1):** option B as a standing model is a proposal; until it is decided, agree the base with a maintainer for each release.
+If `main` has unreleased changes, choose one of the options below. **Pending decision ([#1520](https://github.com/roostorg/coop/issues/1520), item 11):** option B as a standing model is a proposal; until it is decided, agree the base with a maintainer for each release.
 
 **A. Release from `main`.** Ship the fix together with everything already on `main`.
 
@@ -209,7 +209,7 @@ Post to [security-announce@roost.tools](https://groups.google.com/a/roost.tools/
 
 ### Upgrade wording
 
-**Pending decision (H9):**
+**Pending decision ([#1520](https://github.com/roostorg/coop/issues/1520), item 18):**
 
 - An advisory rated High or Critical: "All deployments should upgrade."
 - Otherwise: "We recommend you upgrade."
