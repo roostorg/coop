@@ -14,6 +14,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Changed
 
+- db container image no longer has a writeable home directory ([#1511](https://github.com/roostorg/coop/pull/1511) by [@taobojlen](https://github.com/taobojlen))
 - Improve list editing in the policy editor ([#1400](https://github.com/roostorg/coop/pull/1400) by [@taobojlen](https://github.com/taobojlen))
 - Review console hides "Enqueue to NCMEC" when NCMEC reporting isn't enabled ([#1470](https://github.com/roostorg/coop/pull/1470) by [@serendipty01](https://github.com/serendipty01))
 - Add validation for changes to item types ([#1272](https://github.com/roostorg/coop/pull/1272) by [@taobojlen](https://github.com/taobojlen))
