@@ -20,6 +20,7 @@ For more information about each release including git tags and artifacts, see [R
 - Add validation for changes to item types ([#1272](https://github.com/roostorg/coop/pull/1272) by [@taobojlen](https://github.com/taobojlen))
 - Production Node images moved from Debian 12 (bookworm) to Debian 13 (trixie) ([#1496](https://github.com/roostorg/coop/pull/1496) by [@reitblatt](https://github.com/reitblatt))
 - `coop-client` image is based on nginx Alpine instead of Debian ([#1495](https://github.com/roostorg/coop/pull/1495) by [@reitblatt](https://github.com/reitblatt))
+- Recent Decisions CSV export is generated on the server with no row limit and requires a start date ([#1419](https://github.com/roostorg/coop/pull/1419) by [@calebmcquaid](https://github.com/calebmcquaid))
 
 ### Removed
 
