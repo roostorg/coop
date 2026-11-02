@@ -33,9 +33,10 @@ concurrency:
 
 env:
   REGISTRY: ghcr.io
-  # Shared tag policy: release -> version tags + auto `latest` (newest
-  # non-prerelease); main -> `edge` + sha; manual dispatch -> sha (+ optional
-  # `version`). Use `github.event.inputs` since `inputs` is unset on push/release.
+  # Shared tag policy: release -> version tags, plus `latest` only when the
+  # release is the highest stable semver tag (see the `latest` step); main ->
+  # `edge` + sha; manual dispatch -> sha (+ optional `version`). Use
+  # `github.event.inputs` since `inputs` is unset on push/release.
   TAGS: |
     type=sha,prefix=
     type=edge,branch=main,enable=${{ github.event_name != 'workflow_dispatch' }}
@@ -51,6 +52,7 @@ jobs:
       server: ${{ steps.filter.outputs.server }}
       client: ${{ steps.filter.outputs.client }}
       db: ${{ steps.filter.outputs.db }}
+      latest: ${{ steps.latest.outputs.latest }}
     steps:
       # Reject arbitrary dispatch input so it can't become an image tag like
       # `coop-server:squirtle`. Passed via env to avoid shell injection.
@@ -67,6 +69,27 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      # A patch on an older line (e.g. 1.1.2 from release/1.1 after 1.2.0)
+      # must not move `latest` backwards, so it moves only when this release
+      # is the highest stable x.y.z tag in the repo.
+      - name: Decide whether to move latest
+        id: latest
+        if: github.event_name == 'release'
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+        run: |
+          highest=$(git ls-remote --tags --refs "$REPO_URL" \
+            | sed 's|.*refs/tags/||' \
+            | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' \
+            | sort -V | tail -n 1)
+          if [ "$RELEASE_TAG" = "$highest" ]; then
+            echo "latest=auto" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::$RELEASE_TAG is not the highest release ($highest); not moving latest."
+            echo "latest=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
@@ -127,6 +150,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}
           tags: ${{ env.TAGS }}
+          flavor: latest=${{ needs.changes.outputs.latest || 'auto' }}
 
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
@@ -173,6 +197,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/coop-client
           tags: ${{ env.TAGS }}
+          flavor: latest=${{ needs.changes.outputs.latest || 'auto' }}
 
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
@@ -219,6 +244,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/coop-migrations
           tags: ${{ env.TAGS }}
+          flavor: latest=${{ needs.changes.outputs.latest || 'auto' }}
 
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
