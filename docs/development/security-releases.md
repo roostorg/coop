@@ -15,8 +15,8 @@ The scope tiers, response targets and communication rules below come from [RFC: 
 
 ## Before you start
 
-- [ ] The vulnerability has been triaged: which released versions ship it, whether it is reachable from Coop's code, whether it is exploitable in the documented default configuration, and whether it is [known exploited](https://www.cisa.gov/known-exploited-vulnerabilities-catalog) or has a high EPSS score.
-- [ ] A draft [security advisory](https://github.com/roostorg/coop/security/advisories/new) exists for any tier 1 issue that is exploitable, and for every vulnerability in Coop's own code. It is the private record of the triage.
+- [ ] Every vulnerability going into the release has been triaged: the reported one, and every upstream advisory fixed by a dependency update in the release (see [Finding a release's security fixes](#finding-a-releases-security-fixes)). For each, record which released versions ship it, whether it is reachable from Coop's code, whether it is exploitable in the documented default configuration, and whether it is [known exploited](https://www.cisa.gov/known-exploited-vulnerabilities-catalog) or has a high EPSS score. Reproduce it against Coop where feasible.
+- [ ] Each reachable vulnerability has a draft [security advisory](https://github.com/roostorg/coop/security/advisories/new), scored for how Coop uses the affected code rather than copied from the upstream score. So does every vulnerability in Coop's own code. Upstream advisories that are not reachable get no Coop advisory; the release notes list them as precautionary updates.
 - [ ] You know which path in step 1 applies.
 
 Proposed response targets:
@@ -31,28 +31,43 @@ Proposed response targets:
 
 Reachability and exploitability details stay in the draft advisory or the private triage queue until the fix is released. Never put them in a public issue, PR, commit message or changelog entry.
 
+The steps run in this order: choose the release base (step 2) before merging anything from a private fork; then merge the fix, publish the release, publish the advisories, and announce.
+
+### Finding a release's security fixes
+
+<!-- TODO(R1): replace with the `security` label query once the labeling workflow lands. -->
+
+List the PRs merged since the last release and pick out the security fixes and dependency updates:
+
+```bash
+gh pr list --state merged --base main --search "merged:>YYYY-MM-DD" --json number,title,labels
+```
+
+For each dependency update, read the release notes or advisories of every package version it changes.
+
 ## 1. Prepare the fix
 
 ### Undisclosed vulnerability: private fork
 
 Use this path for a vulnerability in Coop's own code, or any issue not yet public.
 
-1. In the draft advisory, select **Start a temporary private fork**.
-2. Clone the fork and open a PR against it with the fix, a regression test, and the version and changelog changes from step 3, so that a single merge makes everything public.
-3. GitHub Actions does not run in temporary private forks. Run the [CI checks](https://github.com/roostorg/coop/blob/main/AGENTS.md#ci) locally and record the results in the PR.
-4. Once the PR is reviewed and the release base is agreed (step 2), select **Merge pull request** in the advisory. The fix is public from this point, so tag the release (step 4) straight after.
+1. Choose the release base (step 2). On option B, create `release/x.y` first if it does not exist.
+2. In the draft advisory, select **Start a temporary private fork**.
+3. Clone the fork and open a PR against it with the fix, a regression test, and the version and changelog changes from step 3, so that a single merge makes everything public. Target `main` on option A, or `release/x.y` on option B.
+4. GitHub Actions does not run in temporary private forks. Run the [CI checks](https://github.com/roostorg/coop/blob/main/AGENTS.md#ci) locally and record the results in the PR.
+5. Once the PR is reviewed, select **Merge pull request** in the advisory. The fix is public from this point, so publish the release (step 4) straight after.
 
 ### Public upstream CVE: normal PR
 
-Use this path when the vulnerability is already public, e.g. a CVE in a dependency or base image. Open a normal PR that bumps the dependency or pin, and add a `### Security` changelog entry for it under `## [Unreleased]`. The PR can name the upstream CVE, but not Coop-specific reachability or exploitability details.
+Use this path when the vulnerability is already public, e.g. a CVE in a dependency or base image. Open a normal PR against `main` that bumps the dependency or pin, and add a `### Security` changelog entry for it under `## [Unreleased]`. The PR can name the upstream CVE, but not Coop-specific reachability or exploitability details.
 
-If Dependabot has already opened the bump, use its PR.
+If Dependabot has already opened the bump, use its PR. If its PR groups the security update with other updates, release only the security update (on option B, a separate PR to `release/x.y` that applies the same specifier and version as `main`).
 
 ## 2. Choose the release base
 
 If `## [Unreleased]` in `CHANGELOG.md` contains only the fix, release from `main` as usual and skip to step 3.
 
-If `main` has unreleased changes, choose one of the options below. This choice is not yet settled policy; agree it with a maintainer for each release.
+If `main` has unreleased changes, choose one of the options below. **Pending decision (H1):** option B as a standing model is a proposal; until it is decided, agree the base with a maintainer for each release.
 
 **A. Release from `main`.** Ship the fix together with everything already on `main`.
 
@@ -60,37 +75,84 @@ If `main` has unreleased changes, choose one of the options below. This choice i
 - The release contains changes that were not planned for release yet. If `## [Unreleased]` has entries under `### Added`, or any backward-incompatible change, the next version is a minor or major release, not a patch, under [Versioning](releases.md#versioning).
 - Unreleased migrations and behavior changes reach adopters who only wanted the security fix.
 
-**B. Branch from the latest tag.** Ship only the fix as `x.y.(z+1)`.
+**B. Release from `release/x.y`.** Ship only the fixes as `x.y.(z+1)`, from a release branch kept for the latest minor version.
 
-1. Create a branch from the latest release tag, e.g. `git switch -c release/x.y x.y.z`, and push it to `origin`.
-2. Open the fix and step 3 PRs against `release/x.y`. On the private fork path, push `release/x.y` before starting the fork, and target the fork PR at it.
-3. Tag the release from `release/x.y` in step 4.
-4. In a follow-up PR to `main`, cherry-pick the fix (if it is not already on `main`), and add the `## [x.y.(z+1)]` section and its compare link to `CHANGELOG.md` below `## [Unreleased]`, without the fix's entry in `## [Unreleased]`.
-
-- Adopters get only the fix, as a true patch release.
+- Create the branch once per minor version, from its first release tag: `git switch -c release/x.y x.y.0`, then push it to `origin`.
+- Fixes land on `main` first, then are cherry-picked to `release/x.y` with `git cherry-pick -x`, one PR per cherry-picked commit. The exception is a private-fork fix, which merges into `release/x.y` directly and is forward-ported to `main` in step 8.
 - PR checks run on PRs against `release/x.y`, but `main`'s branch protection rules do not cover it.
-- `@roostorg/coop-types` and `@roostorg/db-migrator` only publish from `main` (see step 5), so a fix in `types/` or `migrator/` still has to land on `main` to reach npm.
+- `@roostorg/coop-types` and `@roostorg/db-migrator` only publish from `main` (see step 5), so a fix in `types/` or `migrator/` reaches npm only through `main`.
+
+### Cherry-picking deterministically
+
+Dependency updates usually conflict in `pnpm-lock.yaml`. Resolve them so the branch keeps its own versions of everything except the packages being fixed:
+
+1. Take the branch's lockfile, `git checkout --ours pnpm-lock.yaml`, and its `package.json` versions for anything outside the fix.
+2. Set the fixed packages to the same specifier and version as `main`, then run `pnpm install` to update the lockfile for them alone.
+3. Run `pnpm install --frozen-lockfile`, and confirm that `pnpm install` leaves `pnpm-lock.yaml` unchanged (`git diff --exit-code pnpm-lock.yaml`).
+4. Check that only the intended packages changed versions, e.g. `git diff origin/release/x.y -- pnpm-lock.yaml`.
+
+<!-- TODO(R5): reference the lockfile check script once it lands. -->
 
 ## 3. Bump the version and changelog
 
-Follow step 1 of [Creating a release](releases.md#creating-a-release) with the patch version `x.y.z`, in a PR against the release base from step 2 (on the private fork path, in the fork PR). In the new `## [x.y.z]` section, the fix goes under `### Security` as a single line:
+Follow step 1 of [Creating a release](releases.md#creating-a-release) with the patch version `x.y.z`, in a PR against the release base from step 2 (on the private fork path, in the fork PR). Each fix goes under `### Security` in the new `## [x.y.z]` section as a single line, in the formats from [`AGENTS.md`](https://github.com/roostorg/coop/blob/main/AGENTS.md#changelog):
 
 ```markdown
 ### Security
 
-- Update <dependency> to <version> to fix <CVE-ID> ([#123](https://github.com/roostorg/coop/pull/123) by [@user](https://github.com/user))
+- Prevent <impact> ([GHSA-xxxx-xxxx-xxxx](https://github.com/roostorg/coop/security/advisories/GHSA-xxxx-xxxx-xxxx), [#123](https://github.com/roostorg/coop/pull/123) by [@user](https://github.com/user))
+- Update <package> to <x.y.z> to fix <issue> ([CVE-…](https://github.com/advisories/GHSA-…), [#123](https://github.com/roostorg/coop/pull/123) by [@user](https://github.com/user))
 ```
 
-For an undisclosed vulnerability, describe the impact in a few words and link the advisory (`https://github.com/roostorg/coop/security/advisories/GHSA-xxxx-xxxx-xxxx`) instead of a PR, with no reproduction details.
+List a Coop advisory before the PR link, and the upstream CVE when there is one. A fix from a private fork has no PR in this repository, so link only the advisory.
 
 If the fix touches `types/` or `migrator/`, bump `version` in `types/package.json` or `migrator/package.json` in the same PR; npm publishing is skipped when the version already exists.
 
 ## 4. Tag and publish the release
 
-Follow steps 2–6 of [Creating a release](releases.md#creating-a-release), creating the tag from the release base chosen in step 2. Publishing the release triggers:
+On option A, follow steps 2–6 of [Creating a release](releases.md#creating-a-release).
+
+On option B, create the release from the branch:
+
+```bash
+gh release create x.y.z --target release/x.y --title "Coop x.y.z" --notes-file notes.md
+```
+
+<!-- TODO(R6): describe what publish-docker.yaml, mdbook.yml and the npm publish workflows do for a release from release/x.y. -->
+
+Publishing the release triggers:
 
 - `.github/workflows/publish-docker.yaml` on the `release` event, which pushes the `x.y.z` and `x.y` tags of each image and moves `latest`
 - `.github/workflows/mdbook.yml` on the tag push, which adds the docs snapshot for the release
+
+### Release notes template
+
+```markdown
+> [!IMPORTANT]
+> **This release addresses <a reported security advisory | N reported security advisories>**: [GHSA-xxxx-xxxx-xxxx](https://github.com/roostorg/coop/security/advisories/GHSA-xxxx-xxxx-xxxx) (<Severity>, CVSS <n.n>). <Upgrade wording>. For security announcements, we encourage adopters to subscribe to the [security-announce@roost.tools mailing list](https://groups.google.com/a/roost.tools/g/security-announce).
+
+<One paragraph per advisory: the affected component, the upstream CVE if any, the affected versions, and the fixed version.>
+
+<The risk, in one or two sentences, without exploitation details.>
+
+Thanks to @<reporter> for reporting <GHSA-xxxx-xxxx-xxxx>.
+
+## Other security updates
+
+- **<package>** <x.y.z> fixes [CVE-…](https://github.com/advisories/GHSA-…) (<Severity>) ([#123](https://github.com/roostorg/coop/pull/123))
+
+### Upstream advisories that don't affect Coop
+
+The updates in this release also fix these upstream advisories. They're in code that Coop doesn't use, so they don't affect Coop:
+
+- **<package>** <x.y.z> fixes [CVE-…](https://github.com/advisories/GHSA-…) (<Severity>) ([#123](https://github.com/roostorg/coop/pull/123))
+
+## Upgrade notes
+
+- Images: `ghcr.io/roostorg/coop-server:x.y.z`, `coop-worker:x.y.z`, `coop-client:x.y.z` and `coop-migrations:x.y.z`.
+```
+
+Leave out sections that do not apply. For upgrade wording, see [Upgrade wording](#upgrade-wording).
 
 ## 5. Confirm artifacts published
 
@@ -100,14 +162,29 @@ Follow steps 2–6 of [Creating a release](releases.md#creating-a-release), crea
 
 ## 6. Publish the advisory
 
-For a vulnerability in Coop's own code, and for tier 1 vulnerabilities that are exploitable, publish a GitHub Security Advisory:
+Publish each Coop advisory after the release, so that its patched version exists. Tier 1 vulnerabilities that are not exploitable get only the `### Security` changelog entry, not an advisory.
 
-1. In the draft advisory, set the affected product to package `@roostorg/coop`, affected versions to `< x.y.z` (narrower if older versions are not affected) and patched versions to `x.y.z`.
-2. For an upstream CVE, name it and link the upstream advisory in the description, and say which Coop component ships it and what adopters need to do.
-3. For an undisclosed vulnerability in Coop's own code, request a CVE from the advisory.
-4. Publish the advisory.
+### Advisory template
 
-Tier 1 vulnerabilities that are not exploitable get only the `### Security` changelog entry, not an advisory.
+- **Title:** `<Impact> via <vector>`, with the upstream package in parentheses for a dependency, e.g. `Denial of service via malformed request bodies (<package>)`.
+- **Affected product:** ecosystem left empty, package `@roostorg/coop`, affected versions `< x.y.z` (narrower if older versions are not affected), patched versions `x.y.z`.
+- **Severity:** CVSS scored for how Coop uses the affected code.
+- **Description**, with these sections:
+  - `### Summary`: one or two sentences.
+  - `### Details`: the affected component and why Coop is affected.
+  - `### Proof of concept`: the steps in prose. No exploit code.
+  - `### Impact`: who can exploit it and what they get.
+  - `### Patches`: the fixed version and the fixing change.
+  - `### Workarounds`: mitigations for deployments that cannot upgrade yet, or "None".
+  - `### References`: the upstream advisory and CVE, the release, and the fix.
+
+### Before publishing
+
+- [ ] The description is rewritten in the template's form; a reporter's draft is source material, not the published text.
+- [ ] Affected and patched versions match the release.
+- [ ] Credits are listed and every credited person has accepted.
+- [ ] For a vulnerability in Coop's own code, a CVE is requested from the advisory.
+- [ ] The release and changelog link the advisory.
 
 ## 7. Notify
 
@@ -120,7 +197,7 @@ Vendors who host Coop so that their users cannot self-patch can receive early no
 
 ### security-announce@roost.tools
 
-Post to [security-announce@roost.tools](https://groups.google.com/a/roost.tools/g/security-announce) once the release and any advisory are published. Describe the vulnerability, the affected versions and what adopters need to do, and link the release and the advisory.
+Post to [security-announce@roost.tools](https://groups.google.com/a/roost.tools/g/security-announce) once the release and its advisories are published. The email lists only Coop advisories; upstream advisories that do not affect Coop stay in the release notes.
 
 | Situation               | Advisory | security-announce                                                                       | Changelog  |
 | ----------------------- | -------- | --------------------------------------------------------------------------------------- | ---------- |
@@ -130,15 +207,72 @@ Post to [security-announce@roost.tools](https://groups.google.com/a/roost.tools/
 | Tier 3                  | No       | Yes: the new minimum version and upgrade guidance                                       | `Security` |
 | Tier 4                  | No       | No                                                                                      | If notable |
 
+### Upgrade wording
+
+**Pending decision (H9):**
+
+- An advisory rated High or Critical: "All deployments should upgrade."
+- Otherwise: "We recommend you upgrade."
+
+Don't qualify the wording by exposure (e.g. "if your API is public").
+
+### Email templates
+
+One advisory:
+
+```text
+Subject: Coop x.y.z security release
+
+Coop x.y.z fixes a security vulnerability:
+
+- <Advisory title>: https://github.com/roostorg/coop/security/advisories/GHSA-xxxx-xxxx-xxxx (<Severity>, CVSS <n.n>)
+
+<Upgrade wording>
+
+Release notes and images: https://github.com/roostorg/coop/releases/tag/x.y.z
+```
+
+More than one advisory:
+
+```text
+Subject: Coop x.y.z security release
+
+Coop x.y.z fixes N security vulnerabilities:
+
+- <Advisory title>: https://github.com/roostorg/coop/security/advisories/GHSA-xxxx-xxxx-xxxx (<Severity>, CVSS <n.n>)
+- <Advisory title>: https://github.com/roostorg/coop/security/advisories/GHSA-yyyy-yyyy-yyyy (<Severity>, CVSS <n.n>)
+
+<Upgrade wording, for the highest severity listed>
+
+Release notes and images: https://github.com/roostorg/coop/releases/tag/x.y.z
+```
+
+No advisory (tier 2 or 3):
+
+```text
+Subject: Coop x.y.z: <component> security update
+
+Coop x.y.z updates <component> to <version>, which fixes <CVE-…>. <What adopters need to do, e.g. pull the new docker-compose.yaml, or the new minimum version>.
+
+Release notes: https://github.com/roostorg/coop/releases/tag/x.y.z
+```
+
+## 8. Forward-port to `main`
+
+On option B, open a PR to `main` that brings over the release, as in [#1510](https://github.com/roostorg/coop/pull/1510):
+
+- Add the `## [x.y.z]` section and its compare link to `CHANGELOG.md` below `## [Unreleased]`, matching the release notes, and remove from `## [Unreleased]` the entries that shipped in it.
+- Cherry-pick any fix that merged into `release/x.y` from a private fork and is not yet on `main`.
+
 ## Checklist
 
-- [ ] Triage recorded privately; path chosen
-- [ ] Fix merged (private fork or normal PR), with a regression test where possible
-- [ ] Release base agreed (`main` or `release/x.y`)
-- [ ] Changelog `### Security` entry and version bump merged
+- [ ] Every vulnerability in the release triaged privately; reachable ones have draft advisories
+- [ ] Release base agreed (`main` or `release/x.y`) before any private-fork merge
+- [ ] Fix merged (private fork or normal PR), with a regression test where possible; cherry-picks leave the lockfile unchanged under `pnpm install`
+- [ ] Changelog `### Security` entries and version bump merged
 - [ ] Release `x.y.z` published from the agreed base
 - [ ] Images (and npm packages, if changed) confirmed published
-- [ ] Advisory published, if required
+- [ ] Advisories published after the pre-publish checks
 - [ ] Hosted vendors notified
 - [ ] security-announce posted, if required
-- [ ] If released from `release/x.y`: fix and changelog forward-ported to `main`
+- [ ] If released from `release/x.y`: release forward-ported to `main`
