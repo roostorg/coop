@@ -35,12 +35,17 @@ The steps run in this order: choose the release base (step 2) before merging any
 
 ### Finding a release's security fixes
 
-<!-- TODO(R1): replace with the `security` label query once the labeling workflow lands. -->
-
-List the PRs merged since the last release and pick out the security fixes and dependency updates:
+Security fixes carry the `security` label: Dependabot PRs that fix a published advisory get it automatically, and authors or maintainers add it to manual fixes. To list the fixes merged since the last release:
 
 ```bash
-gh pr list --state merged --base main --search "merged:>YYYY-MM-DD" --json number,title,labels
+LAST=$(gh release view --repo roostorg/coop --json publishedAt --jq .publishedAt)
+gh pr list --repo roostorg/coop --state merged --label security --search "merged:>=${LAST%%T*}" --limit 200
+```
+
+This depends on the labeling workflow in [#1519](https://github.com/roostorg/coop/pull/1519) and on the `security` label existing ([#1520](https://github.com/roostorg/coop/issues/1520), items 1 and 15). PRs merged before both are in place are not labeled, so also check the unlabeled PRs merged since the last release:
+
+```bash
+gh pr list --repo roostorg/coop --state merged --search "merged:>=${LAST%%T*} -label:security" --limit 200 --json number,title
 ```
 
 For each dependency update, read the release notes or advisories of every package version it changes.
@@ -80,6 +85,7 @@ If `main` has unreleased changes, choose one of the options below. **Pending dec
 - Create the branch once per minor version, from its first release tag: `git switch -c release/x.y x.y.0`, then push it to `origin`.
 - Fixes land on `main` first, then are cherry-picked to `release/x.y` with `git cherry-pick -x`, one PR per cherry-picked commit. The exception is a private-fork fix, which merges into `release/x.y` directly and is forward-ported to `main` in step 8.
 - PR checks run on PRs against `release/x.y`, but `main`'s branch protection rules do not cover it.
+- A release runs the workflow files at its tag, so fixes to `.github/workflows/` on `main` must also be cherry-picked to `release/x.y` before they apply to its releases.
 - `@roostorg/coop-types` and `@roostorg/db-migrator` only publish from `main` (see step 5), so a fix in `types/` or `migrator/` reaches npm only through `main`.
 
 ### Cherry-picking deterministically
@@ -118,12 +124,12 @@ On option B, create the release from the branch:
 gh release create x.y.z --target release/x.y --title "Coop x.y.z" --notes-file notes.md
 ```
 
-<!-- TODO(R6): describe what publish-docker.yaml, mdbook.yml and the npm publish workflows do for a release from release/x.y. -->
+Publishing the release, from `main` or from `release/x.y`, triggers:
 
-Publishing the release triggers:
-
-- `.github/workflows/publish-docker.yaml` on the `release` event, which pushes the `x.y.z` and `x.y` tags of each image and moves `latest`
+- `.github/workflows/publish-docker.yaml` on the `release` event, which pushes the `x.y.z`, `x.y` and commit SHA tags of each image, and moves `latest` only when `x.y.z` is the highest stable release tag. The `latest` check depends on the `publish-docker.yaml` change tracked in [#1520](https://github.com/roostorg/coop/issues/1520), item 6; a release without that change at its tag moves `latest` regardless.
 - `.github/workflows/mdbook.yml` on the tag push, which adds the docs snapshot for the release
+
+`@roostorg/coop-types` and `@roostorg/db-migrator` are not published by a release; they publish only from pushes to `main` that change `types/` or `migrator/` (see step 5).
 
 ### Release notes template
 
