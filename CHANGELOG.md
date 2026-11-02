@@ -19,6 +19,7 @@ For more information about each release including git tags and artifacts, see [R
 - Review console hides "Enqueue to NCMEC" when NCMEC reporting isn't enabled ([#1470](https://github.com/roostorg/coop/pull/1470) by [@serendipty01](https://github.com/serendipty01))
 - Add validation for changes to item types ([#1272](https://github.com/roostorg/coop/pull/1272) by [@taobojlen](https://github.com/taobojlen))
 - Production Node images moved from Debian 12 (bookworm) to Debian 13 (trixie) ([#1496](https://github.com/roostorg/coop/pull/1496) by [@reitblatt](https://github.com/reitblatt))
+- `coop-client` image is based on nginx Alpine instead of Debian ([#1495](https://github.com/roostorg/coop/pull/1495) by [@reitblatt](https://github.com/reitblatt))
 
 ### Removed
 
