@@ -1,0 +1,65 @@
+# Posts each new repository security advisory in triage or draft state to the
+# private security Discord channel: GHSA ID, title, severity and link only.
+# GitHub Actions has no advisory event, so this polls the REST API.
+#
+# Secrets (the job skips silently when either is missing):
+#   SECURITY_DISCORD_WEBHOOK  webhook URL of the private security channel
+#   ADVISORY_READ_TOKEN       fine-grained token, this repository only,
+#                             "Repository security advisories: Read-only"
+#
+# Logs, step summaries and caches on this repository are readable by anyone,
+# so nothing about an advisory is printed and the "already posted" state
+# cached between runs holds HMACs of GHSA IDs keyed by the webhook URL.
+
+name: Security advisory notifications
+
+on:
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: security-advisory-notify
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    name: Post new advisories to Discord
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CONFIGURED: ${{ secrets.SECURITY_DISCORD_WEBHOOK != '' && secrets.ADVISORY_READ_TOKEN != '' }}
+    steps:
+      - name: Checkout notifier script
+        if: env.CONFIGURED == 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/scripts/notify_security_advisories.py
+          sparse-checkout-cone-mode: false
+
+      - name: Restore posted-advisory state
+        if: env.CONFIGURED == 'true'
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/security-advisory-notify/state.json
+          key: security-advisory-notify-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: security-advisory-notify-
+
+      - name: Post new advisories
+        id: notify
+        if: env.CONFIGURED == 'true'
+        env:
+          SECURITY_DISCORD_WEBHOOK: ${{ secrets.SECURITY_DISCORD_WEBHOOK }}
+          ADVISORY_READ_TOKEN: ${{ secrets.ADVISORY_READ_TOKEN }}
+          STATE_FILE: ${{ runner.temp }}/security-advisory-notify/state.json
+        run: python3 .github/scripts/notify_security_advisories.py
+
+      - name: Save posted-advisory state
+        if: always() && env.CONFIGURED == 'true' && steps.notify.outputs.changed == 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/security-advisory-notify/state.json
+          key: security-advisory-notify-${{ github.run_id }}-${{ github.run_attempt }}
