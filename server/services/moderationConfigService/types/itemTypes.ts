@@ -4,7 +4,10 @@ import {
   type ScalarTypes,
 } from '@roostorg/coop-types';
 
-import { type NonEmptyArray } from '../../../utils/typescript-types.js';
+import {
+  type NonEmptyArray,
+  type Satisfies,
+} from '../../../utils/typescript-types.js';
 // Imported w/ underscore for use in a jsdoc @link/@see w/o it being flagged as
 // unused. See https://github.com/microsoft/TypeScript/issues/43950
 import { type ModerationConfigService as _ModerationConfigService } from '../moderationConfigService.js';
@@ -84,6 +87,45 @@ export type ContentSchemaFieldRoles = {
 export type SchemaFieldRoles =
   UserSchemaFieldRoles | ThreadSchemaFieldRoles | ContentSchemaFieldRoles;
 
+export const itemTypeRoleNames = {
+  CONTENT: [
+    'displayName',
+    'createdAt',
+    'creatorId',
+    'isDeleted',
+    'ipAddress',
+    'parentId',
+    'threadId',
+  ],
+  THREAD: ['displayName', 'createdAt', 'creatorId', 'isDeleted', 'ipAddress'],
+  USER: [
+    'displayName',
+    'profileIcon',
+    'backgroundImage',
+    'createdAt',
+    'isDeleted',
+    'ipAddress',
+    'email',
+  ],
+} as const satisfies {
+  [K in ItemTypeKind]: readonly RoleNameForKind<K>[];
+};
+
+type RoleNameForKind<K extends ItemTypeKind> = keyof Extract<
+  ItemType,
+  { kind: K }
+>['schemaFieldRoles'];
+
+// This will be a type error if a kind's list leaves out one of its roles.
+type _ItemTypeRoleNamesCompleteCheck = Satisfies<
+  {
+    [K in ItemTypeKind]: Exclude<
+      RoleNameForKind<K>,
+      (typeof itemTypeRoleNames)[K][number]
+    >;
+  }[ItemTypeKind],
+  never
+>;
 /**
  * These three fields uniquely identify a particular "incarnation" of a given
  * item type (where an incarnation refers to both a version of the item type, in

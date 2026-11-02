@@ -1,12 +1,13 @@
 import { ContainerTypes, ScalarTypes } from '@roostorg/coop-types';
 
-import { assertUnreachable } from '../../../utils/misc.js';
+import { type SnakeToCamelCase } from '../../../utils/typescript-types.js';
 import { type ModerationConfigServicePg } from '../dbTypes.js';
 import {
   makeInvalidItemTypeHiddenFieldsError,
   makeInvalidItemTypeSchemaError,
 } from '../errors.js';
 import {
+  itemTypeRoleNames,
   type FieldRoleToScalarType,
   type ItemSchema,
   type ItemTypeKind,
@@ -66,6 +67,12 @@ export type ItemTypeRoleColumns = Partial<
   >
 >;
 
+type RoleForColumn<Column extends string> = SnakeToCamelCase<
+  Column extends `${infer Name}_field` ? Name : never
+> &
+  keyof FieldRoleToScalarType &
+  (typeof itemTypeRoleNames)[ItemTypeKind][number];
+
 const roleDefinitions = {
   display_name_field: { role: 'displayName', type: 'STRING' },
   creator_id_field: { role: 'creatorId', type: 'RELATED_ITEM' },
@@ -77,10 +84,12 @@ const roleDefinitions = {
   is_deleted_field: { role: 'isDeleted', type: 'BOOLEAN' },
   ip_address_field: { role: 'ipAddress', type: 'IP_ADDRESS' },
   email_field: { role: 'email', type: 'EMAIL_ADDRESS' },
-} as const satisfies Record<
-  keyof Required<ItemTypeRoleColumns>,
-  { role: keyof FieldRoleToScalarType; type: string }
->;
+} as const satisfies {
+  [Column in keyof Required<ItemTypeRoleColumns>]: {
+    role: RoleForColumn<Column>;
+    type: FieldRoleToScalarType[RoleForColumn<Column>];
+  };
+};
 
 export function mergeItemTypeRoleColumns(
   current: Required<ItemTypeRoleColumns>,
@@ -143,34 +152,13 @@ function assertRolesAllowedForKind(
   kind: ItemTypeKind,
   roles: ItemTypeRoleColumns,
 ): void {
+  const allowed: readonly string[] = itemTypeRoleNames[kind];
   for (const [column, { role }] of Object.entries(roleDefinitions)) {
-    if (roles[column as keyof ItemTypeRoleColumns] == null) continue;
-    switch (role) {
-      case 'profileIcon':
-      case 'backgroundImage':
-      case 'email':
-        if (kind !== 'USER') {
-          throwInvalidRole(role, `is not valid for ${kind}`);
-        }
-        break;
-      case 'threadId':
-      case 'parentId':
-        if (kind !== 'CONTENT') {
-          throwInvalidRole(role, `is not valid for ${kind}`);
-        }
-        break;
-      case 'creatorId':
-        if (kind === 'USER') {
-          throwInvalidRole(role, `is not valid for ${kind}`);
-        }
-        break;
-      case 'displayName':
-      case 'createdAt':
-      case 'isDeleted':
-      case 'ipAddress':
-        break;
-      default:
-        assertUnreachable(role);
+    if (
+      roles[column as keyof ItemTypeRoleColumns] != null &&
+      !allowed.includes(role)
+    ) {
+      throwInvalidRole(role, `is not valid for ${kind}`);
     }
   }
 }
