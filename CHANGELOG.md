@@ -14,6 +14,7 @@ For more information about each release including git tags and artifacts, see [R
 
 ### Changed
 
+- Correctly validate actions and policies ([#1274](https://github.com/roostorg/coop/pull/1274) by [@taobojlen](https://github.com/taobojlen))
 - Improve list editing in the policy editor ([#1400](https://github.com/roostorg/coop/pull/1400) by [@taobojlen](https://github.com/taobojlen))
 - Review console hides "Enqueue to NCMEC" when NCMEC reporting isn't enabled ([#1470](https://github.com/roostorg/coop/pull/1470) by [@serendipty01](https://github.com/serendipty01))
 - Add validation for changes to item types ([#1272](https://github.com/roostorg/coop/pull/1272) by [@taobojlen](https://github.com/taobojlen))
@@ -26,7 +27,6 @@ For more information about each release including git tags and artifacts, see [R
 ### Fixed
 
 - Fix missing database row for new deployments ([#1486](https://github.com/roostorg/coop/pull/1486) by [@taobojlen](https://github.com/taobojlen)).
-- Policy and action updates reject invalid cross-organization relationships and policy cycles ([#1274](https://github.com/roostorg/coop/pull/1274) by [@taobojlen](https://github.com/taobojlen))
 - Opening a review queue with no unskipped jobs no longer leaves reviewers on a loading spinner ([#1392](https://github.com/roostorg/coop/pull/1392) by [@Joseph-Mutua](https://github.com/Joseph-Mutua))
 - Fix the HMA image build, which pulled its base image from the old `ghcr.io/facebook` registry path ([#1498](https://github.com/roostorg/coop/pull/1498) by [@juanmrad](https://github.com/juanmrad))
 
