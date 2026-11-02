@@ -1,11 +1,16 @@
-import { type Kysely } from 'kysely';
+import { type Kysely, type Transaction } from 'kysely';
 import _ from 'lodash';
 import { type JsonObject, type ReadonlyDeep } from 'type-fest';
 
 import { type ConsumerDirectives } from '../../lib/cache/index.js';
+import { type CombinedPg } from '../combinedDbTypes.js';
 import type { Invoker } from '../userManagementService/index.js';
 import { type ModerationConfigServicePg } from './dbTypes.js';
-import { type LocationBankErrorType, type RuleErrorType } from './errors.js';
+import {
+  type ItemTypeErrorType,
+  type LocationBankErrorType,
+  type RuleErrorType,
+} from './errors.js';
 import { type Action, type CustomAction, type Policy } from './index.js';
 import ActionOperations, {
   type ActionErrorType,
@@ -23,7 +28,6 @@ import UserStrikeOperations, {
 } from './modules/UserStrikeOperations.js';
 import {
   type ContentItemType,
-  type ItemSchema,
   type ItemType,
   type ItemTypeKind,
   type ItemTypeSelector,
@@ -35,6 +39,7 @@ import { type PlainRuleWithLatestVersion } from './types/rules.js';
 
 export type ModerationConfigErrorType =
   | 'AttemptingToDeleteDefaultUserType'
+  | ItemTypeErrorType
   | ActionErrorType
   | PolicyErrorType
   | UserStrikeThresholdErrorType
@@ -46,7 +51,7 @@ export type ModerationConfigErrorType =
 // for us that every ModerationConfigService method returns one of our public
 // types.
 type ReturnsModerationConfigTypes = {
-  [K in keyof ModerationConfigService]: ReturnType<
+  [K in Exclude<keyof ModerationConfigService, 'forTransaction'>]: ReturnType<
     ModerationConfigService[K]
   > extends ArrayOrPromiseOf<void | ItemType | Action | Policy | boolean>
     ? ModerationConfigService[K]
@@ -58,27 +63,6 @@ type ArrayOrPromiseOf<T> =
   | readonly ReadonlyDeep<T>[]
   | Promise<readonly ReadonlyDeep<T>[]>
   | Promise<ReadonlyDeep<T>>;
-
-type ContentTypeSchemaFieldRoles = {
-  creatorId?: string | null;
-  threadId?: string | null;
-  parentId?: string | null;
-  createdAt?: string | null;
-  displayName?: string | null;
-};
-
-type ThreadTypeSchemaFieldRoles = {
-  createdAt?: string | null;
-  displayName?: string | null;
-  creatorId?: string | null;
-};
-
-type UserTypeSchemaFieldRoles = {
-  profileIcon?: string | null;
-  backgroundImage?: string | null;
-  createdAt?: string | null;
-  displayName?: string | null;
-};
 
 /**
  * This service will eventually manage all CRUD operations on entities that are
@@ -125,6 +109,15 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
     return this.itemTypeOps.getItemTypes(opts);
   }
 
+  forTransaction(trx: Transaction<CombinedPg>) {
+    const query = trx.$pickTables<keyof ModerationConfigServicePg>();
+    return new ModerationConfigService(query, query, this.onDeletePolicyId);
+  }
+
+  async invalidateLatestItemTypesCache(orgId: string): Promise<void> {
+    return this.itemTypeOps.invalidateLatestItemTypesCache(orgId);
+  }
+
   async getItemType(opts: {
     orgId: string;
     itemTypeSelector: ItemTypeSelector;
@@ -153,78 +146,39 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
   }
 
   async createContentType(
-    orgId: string,
-    input: {
-      name: string;
-      schema: ItemSchema;
-      description?: string | null;
-      schemaFieldRoles: ContentTypeSchemaFieldRoles;
-    },
+    ...args: Parameters<ItemTypeOperations['createContentType']>
   ): Promise<ReadonlyDeep<ContentItemType>> {
-    return this.itemTypeOps.createContentType(orgId, input);
+    return this.itemTypeOps.createContentType(...args);
   }
 
   async updateContentType(
-    orgId: string,
-    input: {
-      id: string;
-      name?: string;
-      schema?: ItemSchema;
-      description?: string | null;
-      schemaFieldRoles: ContentTypeSchemaFieldRoles;
-    },
+    ...args: Parameters<ItemTypeOperations['updateContentType']>
   ): Promise<ReadonlyDeep<ContentItemType>> {
-    return this.itemTypeOps.updateContentType(orgId, input);
+    return this.itemTypeOps.updateContentType(...args);
   }
 
   async createThreadType(
-    orgId: string,
-    input: {
-      name: string;
-      schema: ItemSchema;
-      description?: string | null;
-      schemaFieldRoles: ThreadTypeSchemaFieldRoles;
-    },
+    ...args: Parameters<ItemTypeOperations['createThreadType']>
   ): Promise<ReadonlyDeep<ThreadItemType>> {
-    return this.itemTypeOps.createThreadType(orgId, input);
+    return this.itemTypeOps.createThreadType(...args);
   }
 
   async updateThreadType(
-    orgId: string,
-    input: {
-      id: string;
-      name?: string;
-      schema?: ItemSchema;
-      description?: string | null;
-      schemaFieldRoles: ThreadTypeSchemaFieldRoles;
-    },
+    ...args: Parameters<ItemTypeOperations['updateThreadType']>
   ): Promise<ReadonlyDeep<ThreadItemType>> {
-    return this.itemTypeOps.updateThreadType(orgId, input);
+    return this.itemTypeOps.updateThreadType(...args);
   }
 
   async createUserType(
-    orgId: string,
-    input: {
-      name: string;
-      schema: ItemSchema;
-      description?: string | null;
-      schemaFieldRoles: UserTypeSchemaFieldRoles;
-    },
+    ...args: Parameters<ItemTypeOperations['createUserType']>
   ): Promise<ReadonlyDeep<UserItemType>> {
-    return this.itemTypeOps.createUserType(orgId, input);
+    return this.itemTypeOps.createUserType(...args);
   }
 
   async updateUserType(
-    orgId: string,
-    input: {
-      id: string;
-      name?: string;
-      schema?: ItemSchema;
-      description?: string | null;
-      schemaFieldRoles: UserTypeSchemaFieldRoles;
-    },
+    ...args: Parameters<ItemTypeOperations['updateUserType']>
   ): Promise<ReadonlyDeep<UserItemType>> {
-    return this.itemTypeOps.updateUserType(orgId, input);
+    return this.itemTypeOps.updateUserType(...args);
   }
 
   async deleteItemType(opts: { orgId: string; itemTypeId: string }) {
