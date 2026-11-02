@@ -2,6 +2,7 @@ import { faker } from '@faker-js/faker';
 import { uid } from 'uid';
 import { vi } from 'vitest';
 
+import { API_KEY_PERMISSIONS } from '../../services/apiKeyService/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../test/fixtureHelpers/createUser.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
@@ -94,6 +95,100 @@ describe('POST Report', () => {
       getBulkWriteMock: () => deps.DataWarehouseAnalytics.bulkWrite,
     };
   });
+
+  testWithFixture(
+    'POST /report/appeal rejects valid keys without appeals:write',
+    async ({ deps, request, orgId, userTypeId, contentTypeId }) => {
+      const payload = {
+        appealId: 'appeal',
+        appealedBy: { id: 'appealer', typeId: userTypeId },
+        appealedAt: new Date().toISOString(),
+        actionedItem: {
+          id: 'item',
+          typeId: contentTypeId,
+          data: { name: 'Post' },
+        },
+        actionsTaken: [],
+      };
+      for (const permissions of [
+        [],
+        API_KEY_PERMISSIONS.filter(
+          (permission) => permission.value !== 'appeals:write',
+        ).map((permission) => permission.value),
+      ]) {
+        const { apiKey } = await deps.ApiKeyService.createApiKey(
+          orgId,
+          'Restricted',
+          null,
+          null,
+          permissions,
+        );
+        await request
+          .post('/api/v1/report/appeal')
+          .set('x-api-key', apiKey)
+          .send(payload)
+          .expect(403);
+      }
+      const { apiKey } = await deps.ApiKeyService.createApiKey(
+        orgId,
+        'Allowed',
+        null,
+        null,
+        ['appeals:write'],
+      );
+      await request
+        .post('/api/v1/report/appeal')
+        .set('x-api-key', apiKey)
+        .send(payload)
+        .expect(204);
+    },
+  );
+
+  testWithFixture(
+    'POST /report rejects valid keys without reports:write',
+    async ({ deps, request, orgId, userTypeId, contentTypeId }) => {
+      const payload = {
+        reporter: { kind: 'user', id: 'reporter', typeId: userTypeId },
+        reportedAt: new Date().toISOString(),
+        reportedItem: {
+          id: 'item',
+          typeId: contentTypeId,
+          data: { name: 'Post' },
+        },
+      };
+      for (const permissions of [
+        [],
+        API_KEY_PERMISSIONS.filter(
+          (permission) => permission.value !== 'reports:write',
+        ).map((permission) => permission.value),
+      ]) {
+        const { apiKey } = await deps.ApiKeyService.createApiKey(
+          orgId,
+          'Restricted',
+          null,
+          null,
+          permissions,
+        );
+        await request
+          .post('/api/v1/report')
+          .set('x-api-key', apiKey)
+          .send(payload)
+          .expect(403);
+      }
+      const { apiKey } = await deps.ApiKeyService.createApiKey(
+        orgId,
+        'Allowed',
+        null,
+        null,
+        ['reports:write'],
+      );
+      await request
+        .post('/api/v1/report')
+        .set('x-api-key', apiKey)
+        .send(payload)
+        .expect(201);
+    },
+  );
 
   testWithFixture(
     'Should return the expected response for user report and thread',

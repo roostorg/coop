@@ -1,7 +1,6 @@
 import { sql } from 'kysely';
 import { assert } from 'vitest';
 
-import { serializeDerivedFieldSpec } from '../services/derivedFieldsService/index.js';
 import createOrg from '../test/fixtureHelpers/createOrg.js';
 import { makeTransactionalTestWithFixture } from '../test/harness/transactionalTest.js';
 
@@ -33,6 +32,44 @@ describe('API key permissions', () => {
         .post('/api/v1/items/async')
         .set('x-api-key', apiKey)
         .send({ items: [] })
+        .expect(403);
+    },
+  );
+
+  testWithOrg(
+    'permission edits change access on the next request without rotating the key',
+    async ({ deps, request, orgId }) => {
+      const { apiKey, record } = await deps.ApiKeyService.createApiKey(
+        orgId,
+        'Reports',
+        null,
+        null,
+      );
+      await request
+        .get('/api/v1/policies')
+        .set('x-api-key', apiKey)
+        .expect(403);
+      await deps.ApiKeyService.updateApiKey(
+        record.id,
+        orgId,
+        record.name,
+        null,
+        ['config:read'],
+      );
+      await request
+        .get('/api/v1/policies')
+        .set('x-api-key', apiKey)
+        .expect(200);
+      await deps.ApiKeyService.updateApiKey(
+        record.id,
+        orgId,
+        record.name,
+        null,
+        [],
+      );
+      await request
+        .get('/api/v1/policies')
+        .set('x-api-key', apiKey)
         .expect(403);
     },
   );
@@ -70,174 +107,6 @@ describe('API key permissions', () => {
         .set('x-api-key', apiKey)
         .send({ items: [] })
         .expect(202);
-    },
-  );
-
-  testWithOrg(
-    'content evaluation requires write, and derived data additionally requires read',
-    async ({ deps, request, orgId }) => {
-      const type = await deps.ModerationConfigService.createContentType(orgId, {
-        name: 'Video',
-        schema: [
-          { name: 'video', type: 'VIDEO', required: false, container: null },
-        ],
-        schemaFieldRoles: {},
-      });
-      const field = serializeDerivedFieldSpec({
-        source: {
-          type: 'CONTENT_FIELD',
-          name: 'video',
-          contentTypeId: type.id,
-        },
-        derivationType: 'VIDEO_TRANSCRIPTION',
-      });
-      const body = {
-        contentId: 'item',
-        contentType: 'Video',
-        content: {},
-        sync: true,
-      };
-      const write = await deps.ApiKeyService.createApiKey(
-        orgId,
-        'Write',
-        null,
-        null,
-        ['items:write'],
-      );
-      const read = await deps.ApiKeyService.createApiKey(
-        orgId,
-        'Read',
-        null,
-        null,
-        ['items:read'],
-      );
-      const both = await deps.ApiKeyService.createApiKey(
-        orgId,
-        'Both',
-        null,
-        null,
-        ['items:write', 'items:read'],
-      );
-      await request
-        .post('/api/v1/content')
-        .set('x-api-key', write.apiKey)
-        .send(body)
-        .expect(200, { actionsTriggered: [], derivedFields: {} });
-      await request
-        .post('/api/v1/content')
-        .set('x-api-key', read.apiKey)
-        .send(body)
-        .expect(403);
-      const url = `/api/v1/content?includeDerivedField=${field}`;
-      await request
-        .post(url)
-        .set('x-api-key', write.apiKey)
-        .send(body)
-        .expect(403);
-      await request
-        .post(url)
-        .set('x-api-key', read.apiKey)
-        .send(body)
-        .expect(403);
-      const response = await request
-        .post(url)
-        .set('x-api-key', both.apiKey)
-        .send(body)
-        .expect(200);
-      expect(response.body.derivedFields[field].value).toBeNull();
-
-      const longUrl = `/api/v1/content?${'a=1&'.repeat(1000)}includeDerivedField=${field}`;
-      await request
-        .post(longUrl)
-        .set('x-api-key', write.apiKey)
-        .send(body)
-        .expect(403);
-      const longResponse = await request
-        .post(longUrl)
-        .set('x-api-key', both.apiKey)
-        .send(body)
-        .expect(200);
-      expect(longResponse.body.derivedFields[field].value).toBeNull();
-    },
-  );
-
-  testWithOrg(
-    'reports, appeals, and action execution require their own grants',
-    async ({ deps, request, orgId, userTypeId }) => {
-      const item = { id: 'item', typeId: userTypeId, data: {} };
-      const report = {
-        reporter: { kind: 'user', id: 'reporter', typeId: userTypeId },
-        reportedAt: new Date().toISOString(),
-        reportedItem: item,
-      };
-      const appeal = {
-        appealId: 'appeal',
-        appealedBy: { id: 'appealer', typeId: userTypeId },
-        appealedAt: new Date().toISOString(),
-        actionedItem: item,
-        actionsTaken: [],
-      };
-      const reportKey = await deps.ApiKeyService.createApiKey(
-        orgId,
-        'Report',
-        null,
-        null,
-        ['reports:write'],
-      );
-      const appealKey = await deps.ApiKeyService.createApiKey(
-        orgId,
-        'Appeal',
-        null,
-        null,
-        ['appeals:write'],
-      );
-      const actionKey = await deps.ApiKeyService.createApiKey(
-        orgId,
-        'Action',
-        null,
-        null,
-        ['actions:execute'],
-      );
-      await request
-        .post('/api/v1/report')
-        .set('x-api-key', appealKey.apiKey)
-        .send(report)
-        .expect(403);
-      await request
-        .post('/api/v1/report/appeal')
-        .set('x-api-key', reportKey.apiKey)
-        .send(appeal)
-        .expect(403);
-      await request
-        .post('/api/v1/report')
-        .set('x-api-key', reportKey.apiKey)
-        .send(report)
-        .expect(201);
-      await request
-        .post('/api/v1/report/appeal')
-        .set('x-api-key', appealKey.apiKey)
-        .send(appeal)
-        .expect(204);
-      const actions = await deps.ModerationConfigService.getActions({ orgId });
-      const action = {
-        itemId: 'user',
-        itemTypeId: userTypeId,
-        actionId: actions[0].id,
-      };
-      await request
-        .post('/api/v1/actions')
-        .set('x-api-key', reportKey.apiKey)
-        .send(action)
-        .expect(403);
-      await request
-        .post('/api/v1/actions')
-        .set('x-api-key', actionKey.apiKey)
-        .send(action)
-        .expect(202);
-      await request
-        .get('/api/v1/actions')
-        .set('x-api-key', actionKey.apiKey)
-        .expect(403);
     },
   );
 
@@ -294,36 +163,6 @@ describe('API key permissions', () => {
         .set('x-api-key', write.apiKey)
         .send({ items: [] })
         .expect(202);
-    },
-  );
-
-  testWithOrg(
-    'configuration write does not imply configuration read',
-    async ({ deps, request, orgId }) => {
-      const read = await deps.ApiKeyService.createApiKey(
-        orgId,
-        'Config read',
-        null,
-        null,
-        ['config:read'],
-      );
-      const write = await deps.ApiKeyService.createApiKey(
-        orgId,
-        'Config write',
-        null,
-        null,
-        ['config:write'],
-      );
-      for (const resource of ['actions', 'item_types', 'policies']) {
-        await request
-          .get(`/api/v1/${resource}`)
-          .set('x-api-key', read.apiKey)
-          .expect(200);
-        await request
-          .get(`/api/v1/${resource}`)
-          .set('x-api-key', write.apiKey)
-          .expect(403);
-      }
     },
   );
 

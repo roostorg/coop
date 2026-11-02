@@ -11,7 +11,11 @@ export const API_KEY_PERMISSIONS = [
     value: 'config:read',
     description: 'Read action definitions, item types, and policies.',
   },
-  { value: 'config:write', description: 'Create and update definitions.' },
+  {
+    value: 'config:write',
+    description:
+      'Create and update action definitions, item types, and policies.',
+  },
 ] as const;
 
 export type ApiKeyPermission = (typeof API_KEY_PERMISSIONS)[number]['value'];

@@ -63,6 +63,7 @@ const typeDefs = /* GraphQL */ `
     id: ID!
     name: String!
     description: String
+    permissions: [String!]
   }
 
   type CreateApiKeySuccessResponse {
@@ -268,6 +269,7 @@ const Mutation: GQLMutationResolvers = {
         user.orgId,
         name,
         description,
+        input.permissions ?? undefined,
       );
       return record
         ? gqlSuccessResult(

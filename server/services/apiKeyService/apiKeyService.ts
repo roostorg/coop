@@ -50,16 +50,7 @@ class ApiKeyService {
     return crypto.createHash('sha256').update(apiKey).digest('hex');
   }
 
-  /**
-   * Creates a new API key for an organization
-   */
-  async createApiKey(
-    orgId: string,
-    name: string,
-    description: string | null,
-    createdBy: string | null,
-    permissions: readonly string[] = [],
-  ): Promise<{ apiKey: string; record: ApiKeyRecord }> {
+  private validatePermissions(permissions: readonly string[]): string[] {
     for (const permission of permissions) {
       if (
         !API_KEY_PERMISSIONS.some((allowed) => allowed.value === permission)
@@ -72,6 +63,20 @@ class ApiKeyService {
         );
       }
     }
+    return [...new Set(permissions)];
+  }
+
+  /**
+   * Creates a new API key for an organization
+   */
+  async createApiKey(
+    orgId: string,
+    name: string,
+    description: string | null,
+    createdBy: string | null,
+    permissions: readonly string[] = [],
+  ): Promise<{ apiKey: string; record: ApiKeyRecord }> {
+    const validatedPermissions = this.validatePermissions(permissions);
     const apiKey = this.generateApiKey();
     const keyHash = this.hashApiKey(apiKey);
 
@@ -84,7 +89,7 @@ class ApiKeyService {
         description,
         is_active: true,
         created_by: createdBy,
-        permissions: [...new Set(permissions)],
+        permissions: validatedPermissions,
       })
       .returningAll()
       .executeTakeFirstOrThrow();
@@ -126,10 +131,21 @@ class ApiKeyService {
     orgId: string,
     name: string,
     description: string | null,
+    permissions?: readonly string[],
   ): Promise<ApiKeyRecord | null> {
+    const validatedPermissions =
+      permissions === undefined
+        ? undefined
+        : this.validatePermissions(permissions);
     const result = await this.db
       .updateTable('public.api_keys')
-      .set({ name, description })
+      .set({
+        name,
+        description,
+        ...(validatedPermissions === undefined
+          ? {}
+          : { permissions: validatedPermissions }),
+      })
       .where('id', '=', keyId)
       .where('org_id', '=', orgId)
       .where('is_active', '=', true)
