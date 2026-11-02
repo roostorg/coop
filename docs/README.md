@@ -23,12 +23,20 @@ If you're new to the project, we recommend you:
 
 Writing code is not the only way to help the project. Reviewing pull requests, answering questions, providing feedback, organizing and teaching tutorials, and improving the documentation are all priceless contributions.
 
-### Report an issue
+### Contribute a GitHub issue
 
 Found a bug or have a feature request? We'd love to hear from you!
 
-- Search [existing issues](https://github.com/roostorg/coop/issues) to see if it's already been filed
-- Create a [new issue](https://github.com/roostorg/coop/issues/new) if it's unique
+- Search [existing issues](https://github.com/roostorg/coop/issues) to see if it's already been filed.
+- Create a [new issue](https://github.com/roostorg/coop/issues/new) if it's unique. Its status on the [project board](https://github.com/orgs/roostorg/projects/15) will be set to Backlog, and [maintainers](https://community.roost.tools/roles.html) will set it to Ready once they've scoped it.
+
+### Work on an issue
+
+- Browse issues on the [project board](https://github.com/orgs/roostorg/projects/15) rather than the repository's Issues tab, which doesn't show whether an issue is **Ready**.
+
+- Pick from issues that are [Ready and unassigned](https://github.com/orgs/roostorg/projects/15/views/10?filterQuery=status%3AReady+no%3Aassignee), since those are approved for work and not yet claimed.
+
+- New to Coop? Start with a [good first issue](https://github.com/orgs/roostorg/projects/15/views/10?filterQuery=label%3A%22good+first+issue%22+status%3AReady+no%3Aassignee).
 
 ## Get help
 
