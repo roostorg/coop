@@ -34,6 +34,10 @@ For more information about each release including git tags and artifacts, see [R
 
 - Upgrade body-parser to 2.4.0 for CVE-2026-111181 ([GHSA-c3r3-vg94-mqrx](https://github.com/roostorg/coop/security/advisories/GHSA-c3r3-vg94-mqrx) by [@serendipty01](https://github.com/serendipty01))
 
+### Fixed
+
+- Sub-policy strike scores and "Apply to sub-policies" on the User Strikes Policy Scores tab ([#1409](https://github.com/roostorg/coop/pull/1409) by [@serendipty01](https://github.com/serendipty01))
+
 ## [1.2.0] - 2026-10-21
 
 ### Added
