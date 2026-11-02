@@ -98,6 +98,9 @@ updates:
         applies-to: 'security-updates'
         patterns:
           - '*'
+      # A patched version can reach these groups before its advisory is
+      # published; no setting here prevents that. To backport such a fix, split
+      # that package's bump out of the group PR and backport it alone.
       npm-prod:
         dependency-type: 'production'
         applies-to: 'version-updates'
