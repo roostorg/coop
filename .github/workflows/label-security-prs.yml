@@ -1,0 +1,94 @@
+name: Label security PRs
+
+# Adds the `security` label to Dependabot PRs that fix a published advisory,
+# so a release's security fixes can be listed with
+# `gh pr list --state merged --label security`.
+#
+# A PR counts as a security fix when one of its updated dependencies is
+# affected by a GitHub Advisory Database advisory at the old version and not at
+# the new one. This uses the public advisories API rather than fetch-metadata's
+# `alert-lookup`, which needs a PAT or GitHub App token.
+
+on:
+  # Dependabot `pull_request` runs get a read-only token, and labeling needs
+  # write. This workflow never checks out or runs PR code: it reads the PR's
+  # commit metadata through the API and only adds a label.
+  pull_request_target: # zizmor: ignore[dangerous-triggers]
+    types: [opened, reopened, synchronize]
+
+permissions: {}
+
+jobs:
+  label:
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+
+      - name: Label if it fixes an advisory
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          UPDATED_DEPENDENCIES: ${{ steps.metadata.outputs.updated-dependencies-json }}
+          LABEL: security
+        run: |
+          set -euo pipefail
+
+          # Dependabot package-ecosystem -> GitHub Advisory Database ecosystem
+          advisory_ecosystem() {
+            case "$1" in
+              npm_and_yarn | bun) echo npm ;;
+              pip | uv) echo pip ;;
+              github_actions) echo actions ;;
+              go_modules) echo go ;;
+              cargo) echo rust ;;
+              bundler) echo rubygems ;;
+              maven | gradle) echo maven ;;
+              composer | nuget | pub | swift) echo "$1" ;;
+              mix) echo erlang ;;
+            esac
+          }
+
+          affecting_advisories() {
+            gh api --paginate -X GET /advisories \
+              -f ecosystem="$1" -f affects="$2@$3" -f per_page=100 \
+              --jq '.[] | select(.withdrawn_at == null) | .ghsa_id' | sort -u
+          }
+
+          fixes_advisory=false
+          while IFS= read -r dep; do
+            name=$(jq -r '.dependencyName' <<<"$dep")
+            prev=$(jq -r '.prevVersion // ""' <<<"$dep")
+            new=$(jq -r '.newVersion // ""' <<<"$dep")
+            ecosystem=$(advisory_ecosystem "$(jq -r '.packageEcosystem // ""' <<<"$dep")")
+            if [[ -z "$ecosystem" || -z "$prev" || -z "$new" ]]; then
+              echo "Skipping $name: no advisory ecosystem or versions"
+              continue
+            fi
+            before=$(affecting_advisories "$ecosystem" "$name" "$prev")
+            after=$(affecting_advisories "$ecosystem" "$name" "$new")
+            if [[ -n "$(comm -23 <(echo "$before") <(echo "$after"))" ]]; then
+              echo "$name $prev -> $new fixes a published advisory"
+              fixes_advisory=true
+            fi
+          done < <(jq -c '.[]' <<<"$UPDATED_DEPENDENCIES")
+
+          if [[ "$fixes_advisory" != true ]]; then
+            echo "No published advisory fixed; not labeling"
+            exit 0
+          fi
+
+          if ! gh api --paginate "repos/$REPO/labels" --jq '.[].name' | grep -Fxq "$LABEL"; then
+            # Adding a missing label through the API would create it.
+            echo "::warning::Label '$LABEL' does not exist in $REPO; create it to label security PRs"
+            exit 0
+          fi
+
+          gh api -X POST "repos/$REPO/issues/$PR_NUMBER/labels" -f "labels[]=$LABEL" --silent
+          echo "Added '$LABEL' to #$PR_NUMBER"
