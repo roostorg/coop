@@ -45,9 +45,7 @@ WORKDIR /app/db
 # development and chown can take a long time to run
 FROM base
 
-# -m creates a home dir for `coop` so `npm run` has a writable HOME for its
-# cache/logs (the container runs `npm run db:*` as this non-root user).
-RUN groupadd -r coop && useradd -r -g coop -u 1001 -m coop
+RUN groupadd -r coop && useradd -r -g coop -u 1001 coop
 
 RUN chown -R coop:coop /app
 
@@ -55,5 +53,5 @@ RUN chown -R coop:coop /app
 USER 1001
 
 # One-shot migrations task; override the command at runtime, e.g.
-#   npm run db:update -- --db api-server-pg --env prod
+#   node build/index.js apply --db api-server-pg --env prod
 CMD ["node", "build/index.js"]
