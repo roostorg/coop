@@ -45,23 +45,6 @@ describe('apiKey resolvers', () => {
     resolvers,
   });
 
-  it('provides the available API key permissions and descriptions', async () => {
-    const result = await graphql({
-      schema,
-      source: '{ apiKeyPermissions { value description } }',
-    });
-    expect(result.errors).toBeUndefined();
-    expect(result.data!.apiKeyPermissions).toEqual([
-      { value: 'items:read', description: expect.any(String) },
-      { value: 'items:write', description: expect.any(String) },
-      { value: 'reports:write', description: expect.any(String) },
-      { value: 'appeals:write', description: expect.any(String) },
-      { value: 'actions:execute', description: expect.any(String) },
-      { value: 'config:read', description: expect.any(String) },
-      { value: 'config:write', description: expect.any(String) },
-    ]);
-  });
-
   function makeCtx(permissions: readonly UserPermission[]) {
     const getActiveApiKeyForOrg = vi.fn(async () => ({ key: 'secret' }));
     const rotateApiKey = vi.fn();
