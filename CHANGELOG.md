@@ -34,6 +34,10 @@ For more information about each release including git tags and artifacts, see [R
 
 - Upgrade body-parser to 2.4.0 for CVE-2026-111181 ([GHSA-c3r3-vg94-mqrx](https://github.com/roostorg/coop/security/advisories/GHSA-c3r3-vg94-mqrx) by [@serendipty01](https://github.com/serendipty01))
 
+### Fixed
+
+- `create-org`, `get-invite`, `recover-mrt-queue` and `runWorkerOrJob` scripts crashing on startup ([#1477](https://github.com/roostorg/coop/pull/1477) by [@reitblatt](https://github.com/reitblatt))
+
 ## [1.2.0] - 2026-10-21
 
 ### Added
