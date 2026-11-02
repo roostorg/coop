@@ -327,6 +327,16 @@ export type GQLApiKey = {
   readonly name: Scalars['String']['output'];
 };
 
+export type GQLApiKeyMutationError = GQLError & {
+  readonly __typename: 'ApiKeyMutationError';
+  readonly detail?: Maybe<Scalars['String']['output']>;
+  readonly pointer?: Maybe<Scalars['String']['output']>;
+  readonly requestId?: Maybe<Scalars['String']['output']>;
+  readonly status: Scalars['Int']['output'];
+  readonly title: Scalars['String']['output'];
+  readonly type: ReadonlyArray<Scalars['String']['output']>;
+};
+
 export const GQLAppealDecision = {
   Accept: 'ACCEPT',
   Reject: 'REJECT',
@@ -735,6 +745,9 @@ export type GQLCreateApiKeyInput = {
   readonly name: Scalars['String']['input'];
 };
 
+export type GQLCreateApiKeyResponse =
+  GQLApiKeyMutationError | GQLCreateApiKeySuccessResponse;
+
 export type GQLCreateApiKeySuccessResponse = {
   readonly __typename: 'CreateApiKeySuccessResponse';
   readonly apiKey: Scalars['String']['output'];
@@ -1021,6 +1034,14 @@ export type GQLDeleteAllJobsUnauthorizedError = GQLError & {
   readonly status: Scalars['Int']['output'];
   readonly title: Scalars['String']['output'];
   readonly type: ReadonlyArray<Scalars['String']['output']>;
+};
+
+export type GQLDeleteApiKeyResponse =
+  GQLApiKeyMutationError | GQLDeleteApiKeySuccessResponse;
+
+export type GQLDeleteApiKeySuccessResponse = {
+  readonly __typename: 'DeleteApiKeySuccessResponse';
+  readonly id: Scalars['ID']['output'];
 };
 
 export type GQLDeleteItemTypeResponse =
@@ -2674,7 +2695,7 @@ export type GQLMutation = {
   readonly bulkExecuteActions: GQLExecuteBulkActionResponse;
   readonly changePassword: GQLChangePasswordResponse;
   readonly createAction: GQLMutateActionResponse;
-  readonly createApiKey: GQLCreateApiKeySuccessResponse;
+  readonly createApiKey: GQLCreateApiKeyResponse;
   readonly createBacktest?: Maybe<GQLCreateBacktestResponse>;
   readonly createContentItemType: GQLMutateContentItemTypeResponse;
   readonly createContentRule: GQLCreateContentRuleResponse;
@@ -2690,7 +2711,7 @@ export type GQLMutation = {
   readonly createUserRule: GQLCreateUserRuleResponse;
   readonly deleteAction?: Maybe<Scalars['Boolean']['output']>;
   readonly deleteAllJobsFromQueue: GQLDeleteAllJobsFromQueueResponse;
-  readonly deleteApiKey: Scalars['Boolean']['output'];
+  readonly deleteApiKey: GQLDeleteApiKeyResponse;
   readonly deleteHashBank: Scalars['Boolean']['output'];
   readonly deleteInvite?: Maybe<Scalars['Boolean']['output']>;
   readonly deleteItemType: GQLDeleteItemTypeResponse;
@@ -2747,7 +2768,7 @@ export type GQLMutation = {
   readonly updateAccountInfo?: Maybe<Scalars['Boolean']['output']>;
   readonly updateAction: GQLMutateActionResponse;
   readonly updateAllowMultiplePoliciesPerAction: Scalars['Boolean']['output'];
-  readonly updateApiKey?: Maybe<GQLApiKey>;
+  readonly updateApiKey: GQLUpdateApiKeyResponse;
   readonly updateAppealSettings: GQLAppealSettings;
   readonly updateContentItemType: GQLMutateContentItemTypeResponse;
   readonly updateContentRule: GQLUpdateContentRuleResponse;
@@ -3461,6 +3482,7 @@ export type GQLOrg = {
   readonly __typename: 'Org';
   readonly actions: ReadonlyArray<GQLAction>;
   readonly allowMultiplePoliciesPerAction: Scalars['Boolean']['output'];
+  /** @deprecated Use Query.apiKeys instead. */
   readonly apiKey: Scalars['String']['output'];
   readonly appealsRoutingRules: ReadonlyArray<GQLRoutingRule>;
   readonly banks?: Maybe<GQLMatchingBanks>;
@@ -4334,9 +4356,7 @@ export type GQLRotateApiKeyError = GQLError & {
 };
 
 export type GQLRotateApiKeyInput = {
-  readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly id: Scalars['ID']['input'];
-  readonly name: Scalars['String']['input'];
 };
 
 export type GQLRotateApiKeyResponse =
@@ -5069,6 +5089,14 @@ export type GQLUpdateApiKeyInput = {
   readonly name: Scalars['String']['input'];
 };
 
+export type GQLUpdateApiKeyResponse =
+  GQLApiKeyMutationError | GQLUpdateApiKeySuccessResponse;
+
+export type GQLUpdateApiKeySuccessResponse = {
+  readonly __typename: 'UpdateApiKeySuccessResponse';
+  readonly record: GQLApiKey;
+};
+
 export type GQLUpdateContentItemTypeInput = {
   readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly fieldRoles?: InputMaybe<GQLContentSchemaFieldRolesInput>;
@@ -5603,11 +5631,16 @@ export type GQLCreateApiKeyMutationVariables = Exact<{
 
 export type GQLCreateApiKeyMutation = {
   readonly __typename: 'Mutation';
-  readonly createApiKey: {
-    readonly __typename: 'CreateApiKeySuccessResponse';
-    readonly apiKey: string;
-    readonly record: { readonly __typename: 'ApiKey'; readonly id: string };
-  };
+  readonly createApiKey:
+    | {
+        readonly __typename: 'ApiKeyMutationError';
+        readonly detail?: string | null;
+      }
+    | {
+        readonly __typename: 'CreateApiKeySuccessResponse';
+        readonly apiKey: string;
+        readonly record: { readonly __typename: 'ApiKey'; readonly id: string };
+      };
 };
 
 export type GQLUpdateApiKeyMutationVariables = Exact<{
@@ -5616,12 +5649,20 @@ export type GQLUpdateApiKeyMutationVariables = Exact<{
 
 export type GQLUpdateApiKeyMutation = {
   readonly __typename: 'Mutation';
-  readonly updateApiKey?: {
-    readonly __typename: 'ApiKey';
-    readonly id: string;
-    readonly name: string;
-    readonly description?: string | null;
-  } | null;
+  readonly updateApiKey:
+    | {
+        readonly __typename: 'ApiKeyMutationError';
+        readonly detail?: string | null;
+      }
+    | {
+        readonly __typename: 'UpdateApiKeySuccessResponse';
+        readonly record: {
+          readonly __typename: 'ApiKey';
+          readonly id: string;
+          readonly name: string;
+          readonly description?: string | null;
+        };
+      };
 };
 
 export type GQLDeleteApiKeyMutationVariables = Exact<{
@@ -5630,7 +5671,15 @@ export type GQLDeleteApiKeyMutationVariables = Exact<{
 
 export type GQLDeleteApiKeyMutation = {
   readonly __typename: 'Mutation';
-  readonly deleteApiKey: boolean;
+  readonly deleteApiKey:
+    | {
+        readonly __typename: 'ApiKeyMutationError';
+        readonly detail?: string | null;
+      }
+    | {
+        readonly __typename: 'DeleteApiKeySuccessResponse';
+        readonly id: string;
+      };
 };
 
 export type GQLApiAuthQueryVariables = Exact<{ [key: string]: never }>;
@@ -27141,9 +27190,14 @@ export type GQLApiKeysQueryResult = Apollo.QueryResult<
 export const GQLCreateApiKeyDocument = gql`
   mutation CreateApiKey($input: CreateApiKeyInput!) {
     createApiKey(input: $input) {
-      apiKey
-      record {
-        id
+      ... on CreateApiKeySuccessResponse {
+        apiKey
+        record {
+          id
+        }
+      }
+      ... on ApiKeyMutationError {
+        detail
       }
     }
   }
@@ -27194,9 +27248,16 @@ export type GQLCreateApiKeyMutationOptions = Apollo.BaseMutationOptions<
 export const GQLUpdateApiKeyDocument = gql`
   mutation UpdateApiKey($input: UpdateApiKeyInput!) {
     updateApiKey(input: $input) {
-      id
-      name
-      description
+      ... on UpdateApiKeySuccessResponse {
+        record {
+          id
+          name
+          description
+        }
+      }
+      ... on ApiKeyMutationError {
+        detail
+      }
     }
   }
 `;
@@ -27245,7 +27306,14 @@ export type GQLUpdateApiKeyMutationOptions = Apollo.BaseMutationOptions<
 >;
 export const GQLDeleteApiKeyDocument = gql`
   mutation DeleteApiKey($id: ID!) {
-    deleteApiKey(id: $id)
+    deleteApiKey(id: $id) {
+      ... on DeleteApiKeySuccessResponse {
+        id
+      }
+      ... on ApiKeyMutationError {
+        detail
+      }
+    }
   }
 `;
 export type GQLDeleteApiKeyMutationFn = Apollo.MutationFunction<
