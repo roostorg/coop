@@ -1,12 +1,11 @@
 import { type JsonObject } from 'type-fest';
+import { type InferOutput } from 'valibot';
 
 import { createApiKeyMiddleware } from '../../utils/apiKeyMiddleware.js';
-import { type JSONSchemaV4 } from '../../utils/json-schema-types.js';
 import { route } from '../../utils/route-helpers.js';
 import {
   createItemTypeSchema,
   patchItemTypeSchema,
-  type ItemTypeWrite,
 } from '../configurationWrites.js';
 import { type Controller, type ControllerRouteList } from '../index.js';
 import getItemTypes, { type GetItemTypesOutput } from './getItemTypes.js';
@@ -19,14 +18,14 @@ export default {
       createApiKeyMiddleware<never, GetItemTypesOutput>(deps),
       getItemTypes(deps),
     ]),
-    route.post<ItemTypeWrite, JsonObject>(
+    route.post<InferOutput<typeof createItemTypeSchema>, JsonObject>(
       '/',
-      { bodySchema: createItemTypeSchema as JSONSchemaV4<ItemTypeWrite> },
+      { bodySchema: createItemTypeSchema },
       (deps) => [createApiKeyMiddleware(deps), createItemType(deps)],
     ),
-    route.patch<ItemTypeWrite, JsonObject>(
+    route.patch<InferOutput<typeof patchItemTypeSchema>, JsonObject>(
       '/:id',
-      { bodySchema: patchItemTypeSchema as JSONSchemaV4<ItemTypeWrite> },
+      { bodySchema: patchItemTypeSchema },
       (deps) => [createApiKeyMiddleware(deps), patchItemType(deps)],
     ),
   ] as ControllerRouteList,

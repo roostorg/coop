@@ -1,4 +1,8 @@
-export { rawItemSubmissionSchema, RawItemSubmission } from './types.js';
+export {
+  rawItemDataSchema,
+  rawItemSubmissionSchema,
+  RawItemSubmission,
+} from './types.js';
 export {
   rawItemSubmissionToItemSubmission,
   ItemSubmission,

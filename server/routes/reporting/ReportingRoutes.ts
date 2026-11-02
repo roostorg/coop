@@ -1,4 +1,5 @@
-import { type ItemIdentifier } from '@roostorg/coop-types';
+import { type JsonObject } from 'type-fest';
+import * as v from 'valibot';
 
 import {
   rawItemSubmissionSchema,
@@ -10,31 +11,66 @@ import { type Controller } from '../index.js';
 import submitAppeal from './submitAppeal.js';
 import submitReport from './submitReport.js';
 
-export type ReportItemInput = {
-  reporter:
-    { kind: 'rule'; id: string } | { kind: 'user'; typeId: string; id: string };
-  reportedAt: string;
-  reportedForReason?: {
-    policyId?: string | null;
-    reason?: string | null;
-    csam?: boolean | null;
-  } | null;
-  reportedItem: RawItemSubmission;
-  reportedItemThread?: RawItemSubmission[];
-  reportedItemsInThread?: ItemIdentifier[];
-  additionalItems?: RawItemSubmission[];
-};
+const itemIdentifierSchema = v.object({
+  id: v.string(),
+  typeId: v.string(),
+});
+// The shared schema starts from unknown to enforce its exclusive alternatives;
+// REST route handlers receive the validated submission type.
+const rawItemBodySchema = rawItemSubmissionSchema as v.GenericSchema<
+  RawItemSubmission,
+  RawItemSubmission
+>;
+const reportItemInputSchema = v.object({
+  reporter: v.object({
+    kind: v.pipe(v.literal('user'), v.metadata({ jsonSchemaType: 'string' })),
+    typeId: v.string(),
+    id: v.string(),
+  }),
+  reportedAt: v.string(),
+  reportedForReason: v.optional(
+    v.pipe(
+      v.custom<JsonObject>(
+        (input) =>
+          typeof input === 'object' && input !== null && !Array.isArray(input),
+        'must be object',
+      ),
+      v.object({
+        policyId: v.optional(v.nullable(v.string())),
+        reason: v.optional(v.nullable(v.string())),
+        csam: v.optional(v.nullable(v.boolean())),
+      }),
+    ),
+  ),
+  reportedItem: rawItemBodySchema,
+  reportedItemThread: v.optional(v.array(rawItemBodySchema)),
+  reportedItemsInThread: v.optional(v.array(itemIdentifierSchema)),
+  additionalItems: v.optional(v.array(rawItemBodySchema)),
+});
+const appealItemInputSchema = v.pipe(
+  v.object({
+    appealId: v.string(),
+    appealedBy: v.object({ typeId: v.string(), id: v.string() }),
+    appealedAt: v.string(),
+    actionedItem: rawItemBodySchema,
+    additionalItems: v.optional(v.array(rawItemBodySchema)),
+    actionsTaken: v.array(v.string()),
+    appealReason: v.optional(v.string()),
+    violatingPolicies: v.optional(v.array(v.object({ id: v.string() }))),
+  }),
+  v.metadata({
+    requiredOrder: [
+      'appealId',
+      'appealedAt',
+      'actionedItem',
+      'appealedBy',
+      'actionsTaken',
+    ],
+  }),
+);
 
-export type AppealItemInput = {
-  appealId: string;
-  appealedBy: { typeId: string; id: string };
-  appealedAt: string;
-  actionedItem: RawItemSubmission;
-  additionalItems?: RawItemSubmission[];
-  actionsTaken: string[];
-  appealReason?: string;
-  violatingPolicies?: Array<{ id: string }>;
-};
+export type ReportItemInput = v.InferOutput<typeof reportItemInputSchema>;
+export type AppealItemInput = v.InferOutput<typeof appealItemInputSchema>;
 
 export type ReportItemOutput = { reportId: string };
 export type AppealItemOutput = never;
@@ -46,58 +82,7 @@ export default {
     route.post<ReportItemInput, ReportItemOutput>(
       '/',
       {
-        bodySchema: {
-          $schema: 'http://json-schema.org/draft-04/schema#',
-          title: 'ReportContentInputModel',
-          type: 'object',
-          properties: {
-            reporter: {
-              type: 'object',
-              properties: {
-                kind: { type: 'string', enum: ['user'] },
-                typeId: { type: 'string' },
-                id: { type: 'string' },
-              },
-              required: ['kind', 'typeId', 'id'],
-            },
-            reportedAt: { type: 'string' },
-            reportedForReason: {
-              type: 'object' as const,
-              properties: {
-                policyId: {
-                  type: ['string', 'null'] as const,
-                },
-                reason: {
-                  type: ['string', 'null'] as const,
-                },
-                csam: {
-                  type: ['boolean', 'null'] as const,
-                },
-              },
-            },
-            reportedItem: rawItemSubmissionSchema,
-            reportedItemThread: {
-              type: 'array',
-              items: rawItemSubmissionSchema,
-            },
-            reportedItemsInThread: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  id: { type: 'string' },
-                  typeId: { type: 'string' },
-                },
-                required: ['id', 'typeId'],
-              },
-            },
-            additionalItems: {
-              type: 'array',
-              items: rawItemSubmissionSchema,
-            },
-          },
-          required: ['reporter', 'reportedAt', 'reportedItem'],
-        },
+        bodySchema: reportItemInputSchema,
       },
       (deps) => [
         createApiKeyMiddleware<ReportItemInput, ReportItemOutput>(deps),
@@ -107,50 +92,7 @@ export default {
     route.post<AppealItemInput, AppealItemOutput>(
       '/appeal',
       {
-        bodySchema: {
-          $schema: 'http://json-schema.org/draft-04/schema#',
-          title: 'AppealContentInputModel',
-          type: 'object',
-          properties: {
-            appealId: { type: 'string' },
-            appealedBy: {
-              type: 'object',
-              properties: {
-                typeId: { type: 'string' },
-                id: { type: 'string' },
-              },
-              required: ['typeId', 'id'],
-            },
-            appealedAt: { type: 'string' },
-            actionedItem: rawItemSubmissionSchema,
-            actionsTaken: {
-              type: 'array',
-              items: { type: 'string' },
-            },
-            additionalItems: {
-              type: 'array',
-              items: rawItemSubmissionSchema,
-            },
-            violatingPolicies: {
-              type: 'array',
-              items: {
-                type: 'object',
-                properties: {
-                  id: { type: 'string' },
-                },
-                required: ['id'],
-              },
-            },
-            appealReason: { type: 'string' },
-          },
-          required: [
-            'appealId',
-            'appealedAt',
-            'actionedItem',
-            'appealedBy',
-            'actionsTaken',
-          ],
-        },
+        bodySchema: appealItemInputSchema,
       },
       (deps) => [
         createApiKeyMiddleware<AppealItemInput, AppealItemOutput>(deps),

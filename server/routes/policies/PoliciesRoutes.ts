@@ -1,13 +1,12 @@
 import { type JsonObject } from 'type-fest';
+import { type InferOutput } from 'valibot';
 
 import { type Policy } from '../../services/moderationConfigService/index.js';
 import { createApiKeyMiddleware } from '../../utils/apiKeyMiddleware.js';
-import { type JSONSchemaV4 } from '../../utils/json-schema-types.js';
 import { route } from '../../utils/route-helpers.js';
 import {
   createPolicySchema,
   patchPolicySchema,
-  type PolicyWrite,
 } from '../configurationWrites.js';
 import { type Controller, type ControllerRouteList } from '../index.js';
 import getPolicies from './getPolicies.js';
@@ -24,14 +23,14 @@ export default {
       createApiKeyMiddleware<never, GetPoliciesOutput>(deps),
       getPolicies(deps),
     ]),
-    route.post<PolicyWrite, JsonObject>(
+    route.post<InferOutput<typeof createPolicySchema>, JsonObject>(
       '/',
-      { bodySchema: createPolicySchema as JSONSchemaV4<PolicyWrite> },
+      { bodySchema: createPolicySchema },
       (deps) => [createApiKeyMiddleware(deps), createPolicy(deps)],
     ),
-    route.patch<Partial<PolicyWrite>, JsonObject>(
+    route.patch<InferOutput<typeof patchPolicySchema>, JsonObject>(
       '/:id',
-      { bodySchema: patchPolicySchema as JSONSchemaV4<Partial<PolicyWrite>> },
+      { bodySchema: patchPolicySchema },
       (deps) => [createApiKeyMiddleware(deps), patchPolicy(deps)],
     ),
   ] as ControllerRouteList,
