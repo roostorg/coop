@@ -2,8 +2,6 @@ import { JSONPath } from 'jsonpath-plus';
 import lodash from 'lodash';
 import { Snapshots } from 'vitest';
 
-import { getOwn } from '../utils/misc.js';
-
 const { toMatchSnapshot } = Snapshots;
 const { set } = lodash;
 
@@ -46,12 +44,12 @@ expect.extend({
         keyof typeof propertyMatchers;
 
       if (isJsonPath(k)) {
-        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete, functional/immutable-data, security/detect-object-injection -- key comes from the snapshot matchers' own keys
+        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete, functional/immutable-data -- derived snapshot matchers
         delete generatedPropertyMatchers[key];
         JSONPath({ path: k, json: received, resultType: 'path' }).forEach(
           (pathStr: string) => {
             const path = JSONPath.toPathArray(pathStr).slice(1);
-            set(generatedPropertyMatchers, path, getOwn(propertyMatchers, key));
+            set(generatedPropertyMatchers, path, propertyMatchers[key]);
           },
         );
       }

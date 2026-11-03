@@ -9,7 +9,6 @@ import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../test/fixtureHelpers/createUser.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
 import { createBodySchemaValidator } from '../../utils/bodySchemaValidation.js';
-import { getOwn } from '../../utils/misc.js';
 import contentRoutes from './ContentRoutes.js';
 
 const { omit } = _;
@@ -186,14 +185,16 @@ describe('POST Content', () => {
         })
         .expect(200)
         .expect(({ body }) => {
-          const derivedField = getOwn(body.derivedFields, fieldId);
-          expect(derivedField.field.source.contentTypeId).toBe(contentType.id);
+          expect(body.derivedFields[fieldId].field.source.contentTypeId).toBe(
+            contentType.id,
+          );
 
-          expect(derivedField.value).toMatchInlineSnapshot(
+          expect(body.derivedFields[fieldId].value).toMatchInlineSnapshot(
             `"Yeah. To do you. What? Do you like to say something?"`,
           );
-          expect(omit(derivedField.field, 'source.contentTypeId'))
-            .toMatchInlineSnapshot(`
+          expect(
+            omit(body.derivedFields[fieldId].field, 'source.contentTypeId'),
+          ).toMatchInlineSnapshot(`
                       Object {
                         "derivationType": "VideoTranscription",
                         "source": Object {
@@ -234,11 +235,13 @@ describe('POST Content', () => {
         })
         .expect(200)
         .expect(({ body }) => {
-          const derivedField = getOwn(body.derivedFields, fieldId);
-          expect(derivedField.field.source.contentTypeId).toBe(contentType2.id);
+          expect(body.derivedFields[fieldId].field.source.contentTypeId).toBe(
+            contentType2.id,
+          );
 
-          expect(omit(derivedField, 'field.source.contentTypeId'))
-            .toMatchInlineSnapshot(`
+          expect(
+            omit(body.derivedFields[fieldId], 'field.source.contentTypeId'),
+          ).toMatchInlineSnapshot(`
             {
               "field": {
                 "derivationType": "VIDEO_TRANSCRIPTION",
