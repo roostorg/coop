@@ -54,7 +54,7 @@ jobs:
           # Only added lines count. The workflow and the docs describing the
           # convention contain the marker themselves.
           hits=$(
-            git diff --no-color --no-ext-diff -U0 "origin/${BASE_REF}...HEAD" -- . \
+            git -c core.quotePath=false diff --no-color --no-ext-diff -U0 "origin/${BASE_REF}...HEAD" -- . \
               ':(exclude).github/workflows/nocommit.yml' \
               ':(exclude)docs/development/README.md' |
               awk -v re="$MARKER" '
