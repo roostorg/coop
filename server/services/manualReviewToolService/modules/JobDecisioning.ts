@@ -11,7 +11,7 @@ import {
   ErrorType,
   type ErrorInstanceData,
 } from '../../../utils/errors.js';
-import { assertUnreachable } from '../../../utils/misc.js';
+import { assertUnreachable, getOwn, setOwn } from '../../../utils/misc.js';
 import { isValidDate } from '../../../utils/time.js';
 import { isNonEmptyString } from '../../../utils/typescript-types.js';
 import { getFieldValueForRole } from '../../itemProcessingService/index.js';
@@ -58,12 +58,12 @@ export function relatedActionPublishPayloads(
     .filter((actionId) => actionId.length > 0)
     .map((actionId) => ({
       actionId,
-      ...(payloads?.[actionId] != null
+      ...(getOwn(payloads, actionId) != null
         ? {
-            customMrtApiParamDecisionPayload: payloads[actionId] as Record<
-              string,
-              string | boolean | unknown
-            >,
+            customMrtApiParamDecisionPayload: getOwn(
+              payloads,
+              actionId,
+            ) as Record<string, string | boolean | unknown>,
           }
         : {}),
     }));
@@ -103,11 +103,13 @@ export function validateRelatedActionParameterPayloads(
       if (spec.length === 0) {
         continue;
       }
-      const raw =
-        relatedAction.actionIdsToMrtApiParamDecisionPayload?.[actionId];
+      const raw = getOwn(
+        relatedAction.actionIdsToMrtApiParamDecisionPayload,
+        actionId,
+      );
       const validated = validateActionParameterValues(spec, raw ?? null);
       if (Object.keys(validated).length > 0) {
-        validatedPayloads[actionId] = validated as JsonObject;
+        setOwn(validatedPayloads, actionId, validated as JsonObject);
       }
     }
     const { actionIdsToMrtApiParamDecisionPayload: _dropped, ...rest } =

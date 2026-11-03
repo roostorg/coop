@@ -10,6 +10,7 @@ import {
 import { toCorrelationId } from '../utils/correlationIds.js';
 import { jsonStringify } from '../utils/encoding.js';
 import { logErrorJson } from '../utils/logging.js';
+import { getOwn, setOwn } from '../utils/misc.js';
 
 export default inject(
   [
@@ -53,8 +54,11 @@ export default inject(
       const orgId = row.org_id;
       const itemId = row.job_payload.payload.item.itemId;
       const itemTypeId = row.job_payload.payload.item.itemTypeIdentifier.id;
-      usersByOrg[orgId] ??= await userManagementService.getUsersForOrg(orgId);
-      const user = usersByOrg[orgId].find((it) => it.id === itemId);
+      const users =
+        getOwn(usersByOrg, orgId) ??
+        (await userManagementService.getUsersForOrg(orgId));
+      setOwn(usersByOrg, orgId, users);
+      const user = users.find((it) => it.id === itemId);
       if (itemType === undefined || itemType.kind !== 'USER') {
         await ncmecService.insertOrUpdateNcmecReportError({
           jobId: row.job_payload.id,

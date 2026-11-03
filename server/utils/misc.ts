@@ -81,6 +81,38 @@ export function hasOwn(obj: object, key: string | symbol) {
   return Object.prototype.hasOwnProperty.call(obj, key);
 }
 
+/** Reads a dictionary's own property, never a value from its prototype. */
+export function getOwn<T extends object, K extends keyof T>(
+  object: T | null | undefined,
+  key: K,
+): T[K] | undefined;
+export function getOwn<T>(
+  object: Readonly<Record<string, T | undefined>> | null | undefined,
+  key: string,
+): T | undefined;
+export function getOwn(
+  object: object | null | undefined,
+  key: PropertyKey,
+): unknown {
+  if (object == null || !Object.hasOwn(object, key)) return undefined;
+  // eslint-disable-next-line security/detect-object-injection -- own property checked above
+  return (object as Record<PropertyKey, unknown>)[key];
+}
+
+/** Writes an own data property without invoking inherited setters. */
+export function setOwn<T extends object, K extends keyof T>(
+  object: T,
+  key: K,
+  value: T[K],
+): void {
+  Object.defineProperty(object, key, {
+    value,
+    writable: true,
+    enumerable: true,
+    configurable: true,
+  });
+}
+
 /**
  * Returns a promise that resolves after `ms` milliseconds.
  *
@@ -195,8 +227,9 @@ function _camelCaseObjectKeysToSnakeCaseDeepHelper<O>(
  */
 export function patchInPlace<T extends object>(object: T, patch: Partial<T>) {
   for (const k of Object.keys(patch) as (keyof T)[]) {
-    if (typeof patch[k] !== 'undefined') {
-      object[k] = patch[k]!;
+    const value = getOwn(patch, k);
+    if (value !== undefined) {
+      setOwn(object, k, value);
     }
   }
 }
@@ -206,16 +239,15 @@ export function removeUndefinedKeys<T extends object>(object: T) {
 }
 
 /**
- * Gets the value of a property at a path, but short-circuits if any key along
- * the way isn't found. It's like `?.`, except it returns a magic symbol to
+ * Gets an own property at a path, but short-circuits if any key along
+ * the way isn't an own property. It's like `?.`, except it returns a symbol to
  * represent the None/short circuit case, so you can differentiate that from the
- * property's value actually being null or undefined.
+ * property's value actually being null or undefined. Getters and proxies can
+ * still execute code or throw; inherited properties are never traversed.
  *
  * This function is also much more convenient than `?.` when handling `unknown`
  * values with TS (as you'd get in a catch block, where nothing's guaranteed
- * about the thrown value), as TS won't let you do `unknownValue?.someProp` even
- * though this can't crash at runtime (even if the LHS is a primitive) and
- * should probably just produce `unknown`.
+ * about the thrown value), as TS won't let you do `unknownValue?.someProp`.
  *
  * For example, imagine you have some value `err` that's `unknown`, but you
  * expect it might well be `{ response: { status: number } }`, and you want to
@@ -242,9 +274,12 @@ export function safeGet(value: unknown, path: readonly string[]): unknown {
   if (typeof value === 'object' && value !== null) {
     const [firstKey, ...remainingKeys] = path;
 
-    return !(firstKey in value)
+    return !Object.hasOwn(value, firstKey)
       ? noPropertyValueFound
-      : safeGet((value as { [k: string]: unknown })[firstKey], remainingKeys);
+      : safeGet(
+          getOwn(value as Record<string, unknown>, firstKey),
+          remainingKeys,
+        );
   } else {
     return noPropertyValueFound;
   }
@@ -258,7 +293,7 @@ export function pickFromKeys<
 >(object: T, newNamesToKeys: U) {
   const newEntries = Object.entries(newNamesToKeys).map(([newName, key]) => [
     newName,
-    object[key],
+    getOwn(object, key),
   ]);
   return Object.fromEntries(newEntries) as RenameEach<
     PickEach<T, U[keyof U]>,

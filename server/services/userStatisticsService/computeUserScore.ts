@@ -3,6 +3,7 @@ import { type ReadonlyDeep } from 'type-fest';
 
 import { jsonStringify, type JsonOf } from '../../utils/encoding.js';
 import { unzip2 } from '../../utils/fp-helpers.js';
+import { getOwn, setOwn } from '../../utils/misc.js';
 import { type PolicyActionPenalties } from '../policyActionPenalties.js';
 import { type UserActionStatistics } from './fetchUserActionStatistics.js';
 import { type UserSubmissionStatistics } from './fetchUserSubmissionStatistics.js';
@@ -72,8 +73,12 @@ export function computeUserScore(
       const { itemSubmissionIds, actionId, policyId } = stats;
 
       for (const submissionId of itemSubmissionIds) {
-        res[submissionId] = (res[submissionId] ?? []).concat(
-          getPenaltyKey({ actionId, policyId }),
+        setOwn(
+          res,
+          submissionId,
+          (getOwn(res, submissionId) ?? []).concat(
+            getPenaltyKey({ actionId, policyId }),
+          ),
         );
       }
     }
@@ -88,14 +93,13 @@ export function computeUserScore(
   ).flatMap(([_, penaltyKeys]) => {
     const maxPenalty = Math.max(
       ...penaltyKeys.map(
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        (it) => penaltiesByActionAndPolicy[it]?.penalties[0] ?? 0,
+        (it) => getOwn(penaltiesByActionAndPolicy, it)?.penalties[0] ?? 0,
       ),
     );
 
     const maxPenaltyKey = penaltyKeys.find(
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      (it) => penaltiesByActionAndPolicy[it]?.penalties[0] === maxPenalty,
+      (it) =>
+        getOwn(penaltiesByActionAndPolicy, it)?.penalties[0] === maxPenalty,
     );
     return maxPenaltyKey ? [maxPenaltyKey] : [];
   });
@@ -105,7 +109,7 @@ export function computeUserScore(
     .concat(itemSubmissionMostSeverePenaltyKeys.map((it) => [it, 1] as const))
     .reduce(
       (acc, [penaltyKey, count]) => {
-        acc[penaltyKey] = (acc[penaltyKey] ?? 0) + count;
+        setOwn(acc, penaltyKey, (getOwn(acc, penaltyKey) ?? 0) + count);
         return acc;
       },
       {} as { [penaltyKey: string]: number },
@@ -114,8 +118,7 @@ export function computeUserScore(
   const penalties = Object.entries(finalCountsByPenaltyKey).flatMap(
     ([key, count]) => {
       const penaltiesForAction: readonly number[] =
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        penaltiesByActionAndPolicy[key]?.penalties ?? [];
+        getOwn(penaltiesByActionAndPolicy, key)?.penalties ?? [];
 
       // If the user has had an action taken against them more times than there
       // are penalty values defined -- e.g., action X was taken 4 times, but the

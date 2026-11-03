@@ -779,8 +779,8 @@ importers:
         specifier: ^7.2.1
         version: 7.3.0(eslint@9.39.5(jiti@2.7.0)(supports-color@10.2.2))
       eslint-plugin-security:
-        specifier: ^1.7.1
-        version: 1.7.1
+        specifier: ^4.2.1
+        version: 4.2.1
       eslint-plugin-switch-statement:
         specifier: ^0.0.12
         version: 0.0.12(eslint@9.39.5(jiti@2.7.0)(supports-color@10.2.2))(supports-color@10.2.2)(typescript@6.0.3)
@@ -6802,8 +6802,9 @@ packages:
     peerDependencies:
       eslint: ^3 || ^4 || ^5 || ^6 || ^7 || ^8 || ^9.7
 
-  eslint-plugin-security@1.7.1:
-    resolution: {integrity: sha512-sMStceig8AFglhhT2LqlU5r+/fn9OwsA72O5bBuQVTssPCdQAOQzL+oMn/ZcpeUY6KcNfLJArgcrsSULNjYYdQ==}
+  eslint-plugin-security@4.2.1:
+    resolution: {integrity: sha512-iF95SSqdSUVTvB7srNXoNeTQIqwfALTn9nmoqJyixSIKqEydlW01Cqb7xNveqE4Zd6YWBoQICQ4FH9NkR1byDg==}
+    engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
   eslint-plugin-switch-statement@0.0.12:
     resolution: {integrity: sha512-LJd6sTnm/nptvFcHfCau6Kx946LPBMFhF8Gz1gEPhlt5Kzv8wIEYCaut1W9xYksDKwbvk8Ir3QBZKRnzCO+R2g==}
@@ -17161,7 +17162,7 @@ snapshots:
       string.prototype.matchall: 4.0.12
       string.prototype.repeat: 1.0.0
 
-  eslint-plugin-security@1.7.1:
+  eslint-plugin-security@4.2.1:
     dependencies:
       safe-regex: 2.1.1
 

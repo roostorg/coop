@@ -1,6 +1,7 @@
 import { vi, type Mock } from 'vitest';
 
 import { jsonParse } from '../../utils/encoding.js';
+import { getOwn } from '../../utils/misc.js';
 import type { HashBank } from './dbTypes.js';
 import {
   HashBankUserError,
@@ -164,7 +165,7 @@ function routeFetch(routes: Partial<Record<string, Res | (() => Res)>>): Mock {
   return vi.fn(async (req: { url: string; method: string }) => {
     const path = new URL(req.url).pathname.replace(/^\/+/, '/');
     const key = `${req.method.toUpperCase()} ${path}`;
-    const route = allRoutes[key];
+    const route = getOwn(allRoutes, key);
     if (route === undefined) {
       throw new Error(`Unexpected request: ${key}`);
     }

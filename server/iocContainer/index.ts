@@ -248,7 +248,7 @@ import {
 } from '../utils/correlationIds.js';
 import { jsonStringify, type JsonOf } from '../utils/encoding.js';
 import { logErrorJson, logJson } from '../utils/logging.js';
-import { __throw, assertUnreachable } from '../utils/misc.js';
+import { __throw, assertUnreachable, getOwn } from '../utils/misc.js';
 import SafeTracer from '../utils/SafeTracer.js';
 import {
   isNonEmptyArray,
@@ -1853,6 +1853,7 @@ export default async function getBottle(
               serviceHasBeenAccessed(container, serviceName),
             )
             .map(
+              // eslint-disable-next-line security/detect-object-injection -- names come from the explicit shutdown service list
               (serviceName) => [serviceName, container[serviceName]] as const,
             );
 
@@ -1937,7 +1938,7 @@ function serviceHasBeenAccessed<Deps extends object>(
  * alert if there are any.
  */
 function getEnvVarOrWarn(varName: string) {
-  const value = process.env[varName];
+  const value = getOwn(process.env, varName);
 
   if (value == null) {
     // NB: using this format for the logged JSON is taking on some tech debt

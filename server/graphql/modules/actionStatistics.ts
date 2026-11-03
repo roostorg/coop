@@ -98,6 +98,7 @@ const Query: GQLQueryResolvers = {
       AUTOMATED_RULE: 'automated-rule',
       POST_ACTIONS: 'post-actions',
     } as const;
+    // eslint-disable-next-line security/detect-object-injection -- GraphQL validates source values against the enum
     const sources = input.filterBy.sources.map((it) => a[it]);
 
     try {

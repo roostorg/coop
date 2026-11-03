@@ -1,5 +1,6 @@
 const fs = require('node:fs');
 const path = require('node:path');
+const security = require('eslint-plugin-security');
 
 /******************************************************************************
  * If you need to write one of these selectors, use
@@ -382,7 +383,7 @@ const replacedByTSRules = {
 };
 
 module.exports = {
-  extends: ['plugin:security/recommended'],
+  extends: ['plugin:security/recommended-legacy'],
   parser: '@typescript-eslint/parser',
   parserOptions: {
     // tsconfig.json alone: it owns every file, so nothing falls outside a
@@ -409,8 +410,9 @@ module.exports = {
     'switch-statement',
   ],
   rules: {
-    // Disable overly-naggy/inappropriate rules from the configs we extend.
-    'security/detect-object-injection': ['off'],
+    ...Object.fromEntries(
+      Object.keys(security.rules).map((name) => [`security/${name}`, 'error']),
+    ),
 
     ...correctnessRules,
     'no-restricted-syntax': ['error', ...restrictedSyntax],

@@ -7,6 +7,7 @@ import {
   type CoopError,
 } from '../../utils/errors.js';
 import { type JSON } from '../../utils/json-schema-types.js';
+import { getOwn } from '../../utils/misc.js';
 import {
   instantiateOpaqueType,
   type NonEmptyArray,
@@ -87,7 +88,7 @@ export function toNormalizedItemDataOrErrors(
   // object, as any fields in the data object that aren't in the schema will
   // have been left as-is and can't have errors.
   const errors = itemType.schema.flatMap(({ name, required }) => {
-    const normalizedValueOrError = potentialNormalizedResult[name];
+    const normalizedValueOrError = getOwn(potentialNormalizedResult, name);
 
     // Either, the data didn't have a key for this field, or the field was
     // provided as null, or another value was provided, but that value was
@@ -110,7 +111,7 @@ export function toNormalizedItemDataOrErrors(
         makeBadRequestError('Invalid Data for Item', {
           detail:
             `The field '${name}' has an invalid value. The value you ` +
-            `provided was: ${jsonStringify(data[name])}. ${message}`,
+            `provided was: ${jsonStringify(getOwn(data, name))}. ${message}`,
           type: [ErrorType.DataInvalidForItemType],
           shouldErrorSpan: true,
         }),

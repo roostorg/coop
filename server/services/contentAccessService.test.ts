@@ -353,12 +353,13 @@ describe('content access extension', () => {
       let active = [0, 1, 2];
       try {
         for (const index of order) {
-          cleanup[index]();
-          cleanup[index]();
+          const remove = cleanup.at(index)!;
+          remove();
+          remove();
           active = active.filter((entry) => entry !== index);
           const latest = active.at(-1);
           expect(getRegisteredContentAccessExtension()).toBe(
-            latest === undefined ? before : entries[latest],
+            latest === undefined ? before : entries.at(latest),
           );
         }
       } finally {

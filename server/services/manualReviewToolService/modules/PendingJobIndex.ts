@@ -77,6 +77,7 @@ export default class PendingJobIndex {
     );
     const entries: PendingJobIndexEntry[] = [];
     for (let i = 0; i + 1 < flat.length; i += 2) {
+      // eslint-disable-next-line security/detect-object-injection -- loop bounds cover both entries in the Redis result pair
       entries.push({ jobId: flat[i], createdAtMs: Number(flat[i + 1]) });
     }
     return entries;

@@ -24,11 +24,10 @@ export class StringNumberKeyValueStore {
 
   async getAll(keys: string[]) {
     const results = await Promise.all(
-      keys.map(async (key) => this.redis.get(key)),
+      keys.map(async (key) => [key, await this.redis.get(key)] as const),
     );
 
-    return keys.reduce((acc, key, i) => {
-      const result = results[i];
+    return results.reduce((acc, [key, result]) => {
       if (result === null) {
         return acc;
       }

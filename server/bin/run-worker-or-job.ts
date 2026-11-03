@@ -27,6 +27,7 @@ if (!isWorkerOrJobName(workerOrJobName)) {
 
 const { container } = await getBottle();
 
+// eslint-disable-next-line security/detect-object-injection -- isWorkerOrJobName validated the name against registered workers/jobs
 const workerOrJob = container[workerOrJobName];
 const controller = new AbortController();
 
