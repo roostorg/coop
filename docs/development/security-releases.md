@@ -86,7 +86,7 @@ If `main` has unreleased changes, choose one of the options below. **Pending dec
 - Fixes land on `main` first, then are cherry-picked to `release/x.y` with `git cherry-pick -x`, one PR per cherry-picked commit. The exception is a private-fork fix, which merges into `release/x.y` directly and is forward-ported to `main` in step 8.
 - PR checks run on PRs against `release/x.y`, but `main`'s branch protection rules do not cover it.
 - A release runs the workflow files at its tag, so fixes to `.github/workflows/` on `main` must also be cherry-picked to `release/x.y` before they apply to its releases.
-- `@roostorg/coop-types` and `@roostorg/db-migrator` only publish from `main` (see step 5), so a fix in `types/` or `migrator/` reaches npm only through `main`.
+- `@roostorg/coop-types` and `@roostorg/db-migrator` only publish from `main` (see step 5), so a fix in `types/` or `migrator/` reaches npm only through `main`. Publishing either package from `release/x.y` would move its npm `latest` backwards; the workflows do not support it, so ask a maintainer.
 
 ### Cherry-picking deterministically
 
@@ -126,7 +126,7 @@ If the fix touches `types/` or `migrator/`, bump `version` in `types/package.jso
 
 On option A, follow steps 2–6 of [Creating a release](releases.md#creating-a-release).
 
-On option B, create the release from the branch:
+On option B, create the release from the branch; the web UI's target defaults to `main`:
 
 ```bash
 gh release create x.y.z --target release/x.y --title "Coop x.y.z" --notes-file notes.md
@@ -134,7 +134,7 @@ gh release create x.y.z --target release/x.y --title "Coop x.y.z" --notes-file n
 
 Publishing the release, from `main` or from `release/x.y`, triggers:
 
-- `.github/workflows/publish-docker.yaml` on the `release` event, which pushes the `x.y.z`, `x.y` and commit SHA tags of each image, and moves `latest` only when `x.y.z` is the highest stable release tag. The `latest` check depends on the `publish-docker.yaml` change tracked in [#1520](https://github.com/roostorg/coop/issues/1520), item 6; a release without that change at its tag moves `latest` regardless.
+- `.github/workflows/publish-docker.yaml` on the `release` event, which pushes the `x.y.z`, `x.y` and commit SHA tags of each image, and moves `latest` only when `x.y.z` is the highest stable release tag. The `latest` check depends on [#1535](https://github.com/roostorg/coop/pull/1535); a release without that change at its tag moves `latest` regardless.
 - `.github/workflows/mdbook.yml` on the tag push, which adds the docs snapshot for the release
 
 `@roostorg/coop-types` and `@roostorg/db-migrator` are not published by a release; they publish only from pushes to `main` that change `types/` or `migrator/` (see step 5).
@@ -170,7 +170,7 @@ Leave out sections that do not apply. For upgrade wording, see [Upgrade wording]
 
 ## 5. Confirm artifacts published
 
-- [ ] The **Publish Docker Images** run for the tag succeeded, and `ghcr.io/roostorg/coop-server:x.y.z`, `coop-worker:x.y.z`, `coop-client:x.y.z` and `coop-migrations:x.y.z` exist, e.g. `docker buildx imagetools inspect ghcr.io/roostorg/coop-server:x.y.z`.
+- [ ] The **Publish Docker Images** run for the tag succeeded, and `ghcr.io/roostorg/coop-server:x.y.z`, `coop-worker:x.y.z`, `coop-client:x.y.z` and `coop-migrations:x.y.z` exist, e.g. `docker buildx imagetools inspect ghcr.io/roostorg/coop-server:x.y.z`. The run's tag list includes `latest` only if `x.y.z` is the highest stable release.
 - [ ] If a tier 1 dependency or base image was fixed, the new images no longer contain the vulnerable version, using the image scan or SBOM attached to the release where available.
 - [ ] If `types/` or `migrator/` changed, the **Publish Packages** run on `main` succeeded and `pnpm view @roostorg/coop-types version` or `pnpm view @roostorg/db-migrator version` shows the new version.
 
