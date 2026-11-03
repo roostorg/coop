@@ -99,17 +99,18 @@ export function getOwn(
   return (object as Record<PropertyKey, unknown>)[key];
 }
 
-/** Writes an own data property without invoking inherited setters. */
+/** Writes an own data property, preserving existing attributes without invoking setters. */
 export function setOwn<T extends object, K extends keyof T>(
   object: T,
   key: K,
   value: T[K],
 ): void {
+  const descriptor = Object.getOwnPropertyDescriptor(object, key);
   Object.defineProperty(object, key, {
     value,
-    writable: true,
-    enumerable: true,
-    configurable: true,
+    writable: descriptor?.writable ?? true,
+    enumerable: descriptor?.enumerable ?? true,
+    configurable: descriptor?.configurable ?? true,
   });
 }
 

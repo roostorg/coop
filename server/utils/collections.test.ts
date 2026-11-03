@@ -47,6 +47,18 @@ describe('Collections utils functions', () => {
       const array = [1, 2, 3, 4];
       expect(moveArrayElement(array, 1, 10)).toEqual(array);
     });
+    test.each([
+      [0.5, 2],
+      [2, 0.5],
+      [NaN, 2],
+      [2, NaN],
+    ])('Do nothing for non-integer indices %s, %s', (fromIndex, toIndex) => {
+      const array = [1, 2, 3, 4];
+      const result = moveArrayElement(array, fromIndex, toIndex);
+      expect(result).toEqual([1, 2, 3, 4]);
+      expect(result).not.toBe(array);
+      expect(array).toEqual([1, 2, 3, 4]);
+    });
     test('Move element from index 0 to index 1', () => {
       const array = [1, 2, 3, 4];
       expect(moveArrayElement(array, 0, 1)).toEqual([2, 1, 3, 4]);
