@@ -1,0 +1,4 @@
+*.actual
+*.testproj/
+*.trap.gz
+*.trap

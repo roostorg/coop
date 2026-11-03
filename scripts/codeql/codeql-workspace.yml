@@ -1,0 +1,3 @@
+provide:
+  - qlpack.yml
+  - tests/qlpack.yml

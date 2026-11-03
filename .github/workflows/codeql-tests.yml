@@ -1,0 +1,53 @@
+name: CodeQL query tests
+
+on:
+  pull_request:
+    paths:
+      - '.github/codeql/**'
+      - '.github/workflows/codeql-tests.yml'
+      - 'scripts/codeql/**'
+  push:
+    branches: [main]
+    paths:
+      - '.github/codeql/**'
+      - '.github/workflows/codeql-tests.yml'
+      - 'scripts/codeql/**'
+
+concurrency:
+  group: codeql-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test custom CodeQL queries
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install CodeQL CLI
+        working-directory: ${{ runner.temp }}
+        # Keep the version and checksum aligned with scripts/codeql/README.md.
+        run: |
+          curl --fail --location --retry 3 --output codeql-linux64.zip \
+            https://github.com/github/codeql-cli-binaries/releases/download/v2.27.4/codeql-linux64.zip
+          echo '393bf92b66596141ec93baf9b483f4a350f3749916c922fed0dd63c67706047d  codeql-linux64.zip' | sha256sum --check
+          unzip -q codeql-linux64.zip
+          echo "$PWD/codeql" >> "$GITHUB_PATH"
+
+      - name: Install locked query dependencies
+        run: |
+          codeql pack ci scripts/codeql
+          codeql pack ci scripts/codeql/tests
+
+      - name: Compile report query
+        run: codeql query compile scripts/codeql/ExternalHttpUrl.ql --check-only --threads=2 --ram=4096
+
+      - name: Run native fixture tests
+        run: codeql test run scripts/codeql/tests --threads=2 --ram=4096

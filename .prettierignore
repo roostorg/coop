@@ -4,6 +4,9 @@ server/signals/text_matching/fuzzy_matching/homoglyphReplacements.*
 .dockerignore
 .github/pull_request_template.md
 
+# CodeQL keeps extracted test databases when a fixture test fails.
+scripts/codeql/tests/**/*.testproj/
+
 # pnpm's lockfile is regenerated deterministically by `pnpm install`; letting
 # Prettier reformat it would fight that and break the frozen-lockfile check.
 pnpm-lock.yaml
