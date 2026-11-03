@@ -16,6 +16,8 @@ export function moveArrayElement<T>(
   toIndex: number,
 ) {
   if (
+    !Number.isInteger(fromIndex) ||
+    !Number.isInteger(toIndex) ||
     fromIndex === toIndex ||
     fromIndex < 0 ||
     toIndex < 0 ||
@@ -25,7 +27,7 @@ export function moveArrayElement<T>(
     return array.slice();
   }
 
-  // eslint-disable-next-line security/detect-object-injection -- numeric array index is bounds-checked above
+  // eslint-disable-next-line security/detect-object-injection -- integer array index is bounds-checked above
   const element = array[fromIndex]; // Get the element at the original index
   const newArray = array.slice(0, fromIndex).concat(array.slice(fromIndex + 1)); // Remove the element from the original index
   newArray.splice(toIndex, 0, element); // Insert the element at the new index

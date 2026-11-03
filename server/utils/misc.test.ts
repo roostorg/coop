@@ -57,6 +57,28 @@ describe('Misc utils', () => {
       expect(getOwn(object, 'secret')).toBe(false);
     });
 
+    test.each([
+      { writable: true, enumerable: false, configurable: false },
+      { writable: true, enumerable: false, configurable: true },
+      { writable: false, enumerable: true, configurable: true },
+    ])('preserves existing data-property attributes: %j', (attributes) => {
+      const object: Record<string, number> = Object.defineProperty(
+        {},
+        'value',
+        {
+          value: 1,
+          ...attributes,
+        },
+      );
+
+      setOwn(object, 'value', 2);
+
+      expect(Object.getOwnPropertyDescriptor(object, 'value')).toEqual({
+        value: 2,
+        ...attributes,
+      });
+    });
+
     test('patches own values, including prototype-like keys, and skips undefined', () => {
       const object: Record<string, unknown> = { keep: 1, replace: 2 };
       const patch = Object.fromEntries([
