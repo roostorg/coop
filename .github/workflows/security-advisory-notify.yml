@@ -28,6 +28,9 @@ concurrency:
 jobs:
   notify:
     name: Post new advisories to Discord
+    # A manual dispatch from another branch would run that branch's copy of the
+    # script with these secrets, so only main runs it.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -67,7 +70,9 @@ jobs:
           event: repository_advisory
           payload-path: ${{ runner.temp }}/security-advisory-notify/advisories.jsonl
 
-      # Only after posting succeeds, so a failed post is retried next run.
+      # Only after posting succeeds, so a failed post is retried next run. If a
+      # post fails partway through a batch, the advisories posted before it are
+      # posted again on the next run: a duplicate rather than a missed alert.
       - name: Save posted-advisory state
         if: env.CONFIGURED == 'true' && steps.list.outputs.changed == 'true'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0

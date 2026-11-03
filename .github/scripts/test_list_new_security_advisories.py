@@ -13,9 +13,9 @@ import sys
 import tempfile
 import threading
 import unittest
+import unittest.mock as mock
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import ClassVar
-from unittest import mock
 from urllib.parse import parse_qs, urlparse
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
