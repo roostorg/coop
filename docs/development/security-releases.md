@@ -132,6 +132,8 @@ On option B, create the release from the branch; the web UI's target defaults to
 gh release create x.y.z --target release/x.y --title "Coop x.y.z" --notes-file notes.md
 ```
 
+If a newer minor version has already been released, add `--latest=false` so that GitHub's **Latest** release does not move back to `x.y.z`.
+
 Publishing the release, from `main` or from `release/x.y`, triggers:
 
 - `.github/workflows/publish-docker.yaml` on the `release` event, which pushes the `x.y.z`, `x.y` and commit SHA tags of each image, and moves `latest` only when `x.y.z` is the highest stable release tag. The `latest` check depends on [#1535](https://github.com/roostorg/coop/pull/1535); a release without that change at its tag moves `latest` regardless.
