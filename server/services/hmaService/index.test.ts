@@ -1,15 +1,10 @@
-import { once } from 'node:events';
-import express from 'express';
 import fc from 'fast-check';
 import { assert, vi, type Mock } from 'vitest';
 
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
 import { jsonParse } from '../../utils/encoding.js';
-import {
-  type CoopRequestQuery,
-  type HandleResponseBody,
-} from '../networkingService/index.js';
+import { type CoopRequestQuery } from '../networkingService/index.js';
 import type { HashBank } from './dbTypes.js';
 import {
   HashBankUserError,
@@ -622,96 +617,82 @@ describe('HmaService', () => {
           ]),
         ]);
         let remoteState: Record<string, unknown> = initialState;
-        const app = express();
-        app.use(express.json());
-        app.get('/c/exchanges/api/ncmec/schema', (_req, res) => {
-          res.json(NCMEC_SCHEMA);
+        const fetchHTTP = vi.fn(async (req: CoopRequestQuery<'as-json'>) => {
+          const path = new URL(req.url).pathname.replace(/^\/+/, '/');
+          if (req.method === 'post') {
+            // Record every write, including an accidental provider-global route.
+            assert(typeof req.body === 'string');
+            remoteState = { ...remoteState, [path]: jsonParse(req.body) };
+            return ok({ has_credentials: true, source: 'exchange' });
+          }
+          if (req.method === 'get') {
+            if (path === '/c/exchanges/api/ncmec/schema') {
+              return ok(NCMEC_SCHEMA);
+            }
+            if (banks.some((bank) => path === `/c/exchange/${bank.hma_name}`)) {
+              return ok({ api: 'ncmec' });
+            }
+          }
+          throw new Error(`Unexpected request: ${req.method} ${path}`);
         });
-        app.get('/c/exchange/:bank', (_req, res) => {
-          res.json({ api: 'ncmec' });
+        const service = new HmaService(
+          fetchHTTP as never,
+          deps.KyselyPg,
+          deps.Tracer,
+        );
+        const operation = fc.record({
+          actor: fc.integer({ min: 0, max: 1 }),
+          bank: fc.integer({ min: 0, max: 3 }),
+          password: fc.string({ minLength: 1, maxLength: 32 }),
         });
-        // Record every write, including an accidental provider-global route.
-        app.post(/.*/, (req, res) => {
-          remoteState = { ...remoteState, [req.path]: req.body as unknown };
-          res.json({ has_credentials: true, source: 'exchange' });
-        });
-        const server = app.listen(0, '127.0.0.1');
-        await once(server, 'listening');
-        try {
-          const address = server.address();
-          assert(address !== null && typeof address !== 'string');
-          const service = new HmaService(
-            async <T extends HandleResponseBody>(
-              options: CoopRequestQuery<T>,
-            ) =>
-              deps.fetchHTTP<T>({
-                ...options,
-                url: new URL(
-                  new URL(options.url).pathname,
-                  `http://127.0.0.1:${address.port}`,
-                ).href,
-              }),
-            deps.KyselyPg,
-            deps.Tracer,
-          );
-          const operation = fc.record({
-            actor: fc.integer({ min: 0, max: 1 }),
-            bank: fc.integer({ min: 0, max: 3 }),
-            password: fc.string({ minLength: 1, maxLength: 32 }),
-          });
-          await fc.assert(
-            fc.asyncProperty(
-              fc.array(operation, { minLength: 1, maxLength: 10 }),
-              async (operations) => {
-                remoteState = initialState;
-                let expected = initialState;
-                for (const { actor, bank: index, password } of operations) {
-                  const bank = banks[index];
-                  const orgId = orgs[actor].org.id;
-                  const credentials = { user: `user-${actor}`, password };
-                  const result = service.setBankExchangeCredentials(
-                    orgId,
-                    bank.id,
-                    credentials,
-                  );
-                  if (bank.org_id === orgId) {
-                    await expect(result).resolves.toEqual({
-                      has_credentials: true,
-                      has_own_credentials: true,
-                    });
-                    expected = {
-                      ...expected,
-                      [`/c/exchange/${bank.hma_name}/credentials`]: {
-                        credential_json: credentials,
-                      },
-                    };
-                  } else {
-                    await expect(result).rejects.toThrow('Hash bank not found');
-                  }
-                  expect(remoteState).toEqual(expected);
+        await fc.assert(
+          fc.asyncProperty(
+            fc.array(operation, { minLength: 1, maxLength: 10 }),
+            async (operations) => {
+              remoteState = initialState;
+              let expected = initialState;
+              for (const { actor, bank: index, password } of operations) {
+                const bank = banks[index];
+                const orgId = orgs[actor].org.id;
+                const credentials = { user: `user-${actor}`, password };
+                const result = service.setBankExchangeCredentials(
+                  orgId,
+                  bank.id,
+                  credentials,
+                );
+                if (bank.org_id === orgId) {
+                  await expect(result).resolves.toEqual({
+                    has_credentials: true,
+                    has_own_credentials: true,
+                  });
+                  expected = {
+                    ...expected,
+                    [`/c/exchange/${bank.hma_name}/credentials`]: {
+                      credential_json: credentials,
+                    },
+                  };
+                } else {
+                  await expect(result).rejects.toThrow('Hash bank not found');
                 }
-              },
-            ),
-            {
-              numRuns: 25,
-              examples: [
+                expect(remoteState).toEqual(expected);
+              }
+            },
+          ),
+          {
+            numRuns: 25,
+            examples: [
+              [
                 [
-                  [
-                    { actor: 0, bank: 0, password: 'first' },
-                    { actor: 1, bank: 1, password: 'second' },
-                    { actor: 0, bank: 1, password: 'forbidden' },
-                    { actor: 0, bank: 2, password: 'third' },
-                    { actor: 0, bank: 0, password: 'replacement' },
-                  ],
+                  { actor: 0, bank: 0, password: 'first' },
+                  { actor: 1, bank: 1, password: 'second' },
+                  { actor: 0, bank: 1, password: 'forbidden' },
+                  { actor: 0, bank: 2, password: 'third' },
+                  { actor: 0, bank: 0, password: 'replacement' },
                 ],
               ],
-            },
-          );
-        } finally {
-          await new Promise<void>((resolve, reject) => {
-            server.close((error) => (error ? reject(error) : resolve()));
-          });
-        }
+            ],
+          },
+        );
       },
       20_000,
     );
