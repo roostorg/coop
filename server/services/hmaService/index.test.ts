@@ -7,10 +7,10 @@ import { jsonParse, tryJsonParse } from '../../utils/encoding.js';
 import { type CoopRequestQuery } from '../networkingService/index.js';
 import type { HashBank } from './dbTypes.js';
 import {
+  HashBankService,
   HashBankUserError,
   HmaService,
   type ExchangeInfo,
-  type HashBankService,
 } from './index.js';
 
 const MOCK_BANK: HashBank = {
@@ -589,17 +589,17 @@ describe('HmaService', () => {
 
     const testWithBanks = makeTransactionalTestWithFixture(async ({ deps }) => {
       const orgs = [await createOrg(deps), await createOrg(deps)];
-      const banks = await deps.KyselyPg.insertInto('public.hash_banks')
-        .values(
-          [0, 1, 2, 3].map((index) => ({
+      const hashBankService = new HashBankService(deps.KyselyPg);
+      const banks = await Promise.all(
+        [0, 1, 2, 3].map(async (index) =>
+          hashBankService.create({
             org_id: orgs[index % 2].org.id,
             name: `bank-${Math.floor(index / 2)}`,
             hma_name: `EXCHANGE_${orgs[index % 2].org.id}_${index}`,
             enabled_ratio: 1,
-          })),
-        )
-        .returningAll()
-        .execute();
+          }),
+        ),
+      );
       return { orgs, banks };
     });
 
