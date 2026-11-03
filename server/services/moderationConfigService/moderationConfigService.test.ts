@@ -53,7 +53,6 @@ async function mutateItemTypeAndHiddenFields<T extends ItemTypeMutationMethod>(
       const transactionConfig = config.forTransaction(trx);
       const review = deps.ManualReviewToolService.forTransaction(trx);
       try {
-        // eslint-disable-next-line security/detect-object-injection -- method is a fixed item-type creation method under test
         const item = await transactionConfig[method](orgId, input as never);
         await review.setHiddenFieldsForItemType({
           orgId,
@@ -144,11 +143,8 @@ async function expectReadReplicaUse<T extends SupportsReplicaMethod>(
 
   // We're calling these to test that none of them throw, which'll only be
   // true if the proper db is used.
-  // eslint-disable-next-line security/detect-object-injection -- method is selected from the fixed replica-read test cases
   await suts.sutWithPrimary[method](filters);
-  // eslint-disable-next-line security/detect-object-injection -- method is selected from the fixed replica-read test cases
   await suts.sutWithPrimary[method]({ ...filters, readFromReplica: false });
-  // eslint-disable-next-line security/detect-object-injection -- method is selected from the fixed replica-read test cases
   await suts.sutWithReadReplica[method]({ ...filters, readFromReplica: true });
 }
 
@@ -565,7 +561,6 @@ describe('ModerationConfigService', () => {
             ['createUserType', 'profileIcon'],
           ] as const;
           for (const [create, role] of cases) {
-            // eslint-disable-next-line security/detect-object-injection -- create comes from the fixed test cases above
             const item = await sutWithPrimary[create](org.id, {
               name: `empty role ${create}`,
               schema,
@@ -595,7 +590,6 @@ describe('ModerationConfigService', () => {
             ['createUserType', 'updateUserType', 'profileIcon', 'IMAGE'],
           ] as const;
           for (const [create, update, role, type] of cases) {
-            // eslint-disable-next-line security/detect-object-injection -- create comes from the fixed test cases above
             const item = await sutWithPrimary[create](org.id, {
               name: create,
               schema: [
@@ -607,7 +601,6 @@ describe('ModerationConfigService', () => {
                 displayName: 'required',
               },
             });
-            // eslint-disable-next-line security/detect-object-injection -- update comes from the fixed test cases above
             const preserved = await sutWithPrimary[update](org.id, {
               id: item.id,
               name: `renamed ${create}`,
@@ -616,7 +609,6 @@ describe('ModerationConfigService', () => {
               [role]: 'roleField',
               displayName: 'required',
             });
-            // eslint-disable-next-line security/detect-object-injection -- update comes from the fixed test cases above
             const patched = await sutWithPrimary[update](org.id, {
               id: item.id,
               schemaFieldRoles: { [role]: undefined, displayName: null },

@@ -683,6 +683,8 @@ module.exports = {
     {
       files: ['test/**/*.ts', 'e2e/**/*.ts', './**/*.{spec,test}.ts'],
       rules: {
+        // Test fixtures and parameterized assertions use dynamic keys.
+        'security/detect-object-injection': 'off',
         // Match prior test-only mutation policy: allow `this`, class internals,
         // and `process.env.*`; production code is not in this override.
         'functional/immutable-data': [

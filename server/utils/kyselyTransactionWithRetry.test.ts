@@ -48,7 +48,7 @@ function makeFakeKysely(
       attemptCount = attemptCount + 1;
       lastIsolationLevel = isolationLevel;
 
-      const behavior = behaviors.at(i);
+      const behavior = behaviors[i];
       if (behavior === undefined) {
         throw new Error(
           `Test setup error: callback invoked more times than configured (got attempt ${i + 1})`,

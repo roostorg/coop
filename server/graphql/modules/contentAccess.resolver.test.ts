@@ -173,7 +173,7 @@ describe('content access with production GraphQL types and Apollo formatter', ()
         `{ ${field} { id ${selectPayload} } }`,
         makeContext({ authorize: async () => false, record }),
       );
-      expect(result.data).toHaveProperty([field], null);
+      expect(result.data?.[field]).toBeNull();
       expect(result.errors?.[0].extensions?.code).toBe('FORBIDDEN');
       expect(result.errors?.[0].path).toEqual([field, 'payload']);
       expect(record).toHaveBeenCalledWith(
@@ -198,7 +198,7 @@ describe('content access with production GraphQL types and Apollo formatter', ()
         `{ ${field} { data } }`,
         makeContext({ authorize: async () => false, record }),
       );
-      expect(result.data).toHaveProperty([field], null);
+      expect(result.data?.[field]).toBeNull();
       expect(result.errors?.[0].extensions?.code).toBe('FORBIDDEN');
       expect(record).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -225,8 +225,7 @@ describe('content access with production GraphQL types and Apollo formatter', ()
       `{ ${field} { ${text} } }`,
       makeContext({ authorize: async () => false, record }),
     );
-    expect(result.data).toHaveProperty(
-      [field],
+    expect(result.data?.[field]).toEqual(
       field === 'comment' ? null : { [text]: null },
     );
     expect(result.errors?.[0].extensions?.code).toBe('FORBIDDEN');

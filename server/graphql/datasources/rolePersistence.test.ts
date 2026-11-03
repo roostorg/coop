@@ -90,12 +90,12 @@ describe('seedSystemRolesForOrg', () => {
         .select(['id', 'key', 'display_name', 'description', 'is_system'])
         .where('org_id', '=', org.id)
         .execute();
-      for (const [roleKey, defaults] of Object.entries(SystemRoleDefaults)) {
+      for (const roleKey of Object.values(UserRole)) {
         const role = roles.find(({ key }) => key === roleKey);
         expect(role).toMatchObject({
           key: roleKey,
-          display_name: defaults.displayName,
-          description: defaults.description,
+          display_name: SystemRoleDefaults[roleKey].displayName,
+          description: SystemRoleDefaults[roleKey].description,
           is_system: true,
         });
         const permissions = await deps.KyselyPg.selectFrom(
