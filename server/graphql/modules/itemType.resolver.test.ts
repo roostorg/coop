@@ -116,6 +116,7 @@ const callMutation = async (
   input: object,
   context: Context,
 ) => {
+  // eslint-disable-next-line security/detect-object-injection -- name is selected from the resolver test cases
   const resolver = resolvers.Mutation[name];
   if (typeof resolver !== 'function')
     throw new Error(`Missing resolver ${name}`);
@@ -180,6 +181,7 @@ describe.each(variants)(
         expect(ModerationConfigService.forTransaction).toHaveBeenCalledWith(
           trx,
         );
+        // eslint-disable-next-line security/detect-object-injection -- createService is selected from the fixed test cases
         expect(transactionConfig[createService]).toHaveBeenCalledWith(orgId, {
           name: 'type name',
           description: 'A deliberately detailed type',
@@ -220,6 +222,7 @@ describe.each(variants)(
         context,
       );
 
+      // eslint-disable-next-line security/detect-object-injection -- updateService is selected from the fixed test cases
       expect(transactionConfig[updateService]).toHaveBeenCalledWith(orgId, {
         id: itemTypeId,
         name: 'renamed type',
@@ -244,6 +247,7 @@ describe.each(variants)(
     it('preserves omitted hidden fields and clears an explicit empty list', async () => {
       const first = makeContext();
       await callMutation(updateResolver, { id: itemTypeId }, first.context);
+      // eslint-disable-next-line security/detect-object-injection -- updateService is selected from the fixed test cases
       expect(first.transactionConfig[updateService]).toHaveBeenCalledWith(
         orgId,
         {
@@ -264,6 +268,7 @@ describe.each(variants)(
         { id: itemTypeId, hiddenFields: [] },
         second.context,
       );
+      // eslint-disable-next-line security/detect-object-injection -- updateService is selected from the fixed test cases
       expect(second.transactionConfig[updateService]).toHaveBeenCalledWith(
         orgId,
         {
@@ -288,6 +293,7 @@ describe.each(variants)(
           transactionCompleted,
           transactionConfig,
         } = makeContext();
+        // eslint-disable-next-line security/detect-object-injection -- createService is selected from the fixed test cases
         transactionConfig[createService].mockRejectedValueOnce(error);
 
         await expect(
@@ -314,6 +320,7 @@ describe.each(variants)(
           transactionCompleted,
           transactionConfig,
         } = makeContext();
+        // eslint-disable-next-line security/detect-object-injection -- updateService is selected from the fixed test cases
         transactionConfig[updateService].mockRejectedValueOnce(error);
 
         await expect(

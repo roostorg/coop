@@ -6,6 +6,7 @@ import createMrtQueue from '../../../test/fixtureHelpers/createMrtQueue.js';
 import createOrg from '../../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../../test/fixtureHelpers/createUser.js';
 import { makeTestWithFixture } from '../../../test/utils.js';
+import { getOwn } from '../../../utils/misc.js';
 import { instantiateOpaqueType } from '../../../utils/typescript-types.js';
 import {
   makeSubmissionId,
@@ -521,7 +522,7 @@ describe('QueueOperations job priorities', () => {
           orgId: org.id,
           queueId: queue.id,
           enqueueSourceInfo: { kind: 'REPORT' },
-          priority: priorityByItem[itemId],
+          priority: getOwn(priorityByItem, itemId)!,
           jobPayload: {
             createdAt: new Date(base + index * 1000),
             policyIds: [],

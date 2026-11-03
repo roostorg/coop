@@ -3,7 +3,7 @@
 import type Bottle from '@ethanresnick/bottlejs';
 
 import { jsonStringify } from '../utils/encoding.js';
-import { __throw } from '../utils/misc.js';
+import { __throw, getOwn } from '../utils/misc.js';
 import { type Dependencies as Deps } from './index.js';
 
 const DEPENDENCIES = Symbol();
@@ -623,6 +623,7 @@ export function inject<F extends (...it: any[]) => any>(
   deps: DepName[],
   factory: F,
 ): F & { [DEPENDENCIES]: DepName[] } {
+  // eslint-disable-next-line security/detect-object-injection -- DEPENDENCIES is a module-local symbol
   (factory as any)[DEPENDENCIES] = deps;
   return factory as any;
 }
@@ -632,6 +633,7 @@ export function register<T extends keyof Deps & string>(
   name: T,
   factory: AnnotatedFactory<Deps[T]>,
 ) {
+  // eslint-disable-next-line security/detect-object-injection -- DEPENDENCIES is a module-local symbol
   const deps = factory[DEPENDENCIES];
   if (isConstructable(factory)) {
     bottle.service<T>(name, factory, ...deps);
@@ -658,7 +660,8 @@ function isConstructable(fn: any): fn is new (...args: any[]) => any {
  */
 export function safeGetEnvVar(varName: string): string {
   return (
-    process.env[varName] ?? __throw(new Error(`Missing env var ${varName}`))
+    getOwn(process.env, varName) ??
+    __throw(new Error(`Missing env var ${varName}`))
   );
 }
 
@@ -668,7 +671,7 @@ export function safeGetEnvVar(varName: string): string {
  * common aliases. Any other value (including unset) returns false.
  */
 export function isEnvTrue(varName: string): boolean {
-  const raw = process.env[varName];
+  const raw = getOwn(process.env, varName);
   if (raw == null) return false;
   return ['true', '1', 'yes'].includes(raw.trim().toLowerCase());
 }
@@ -678,7 +681,7 @@ export function isEnvTrue(varName: string): boolean {
  * if the variable is unset or invalid, logging an error on misconfiguration.
  */
 export function safeGetEnvInt(varName: string, defaultValue: number): number {
-  const raw = process.env[varName];
+  const raw = getOwn(process.env, varName);
   if (raw === undefined) return defaultValue;
   const parsed = parseInt(raw, 10);
   if (!Number.isInteger(parsed) || parsed <= 0) {
@@ -699,7 +702,7 @@ export function safeGetEnvNonNegativeInt(
   varName: string,
   defaultValue: number,
 ): number {
-  const raw = process.env[varName];
+  const raw = getOwn(process.env, varName);
   if (raw === undefined) return defaultValue;
   const parsed = parseInt(raw, 10);
   if (!Number.isInteger(parsed) || parsed < 0) {

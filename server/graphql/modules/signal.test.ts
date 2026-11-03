@@ -185,15 +185,10 @@ describe('flattenSubcategories', () => {
  * that every built-in is exposed.
  */
 describe('GraphQL SignalType enum coverage', () => {
-  function extractGraphQlEnumValues(
-    sdl: string,
-    enumName: string,
-  ): Set<string> {
-    const match = sdl.match(
-      new RegExp(`enum\\s+${enumName}\\s*\\{([^}]+)\\}`, 'm'),
-    );
+  function extractGraphQlEnumValues(sdl: string): Set<string> {
+    const match = sdl.match(/enum\s+SignalType\s*\{([^}]+)\}/m);
     if (!match) {
-      throw new Error(`Could not find enum ${enumName} in typeDefs`);
+      throw new Error('Could not find enum SignalType in typeDefs');
     }
     return new Set(
       match[1]
@@ -203,7 +198,7 @@ describe('GraphQL SignalType enum coverage', () => {
     );
   }
 
-  const graphQlSignalTypes = extractGraphQlEnumValues(typeDefs, 'SignalType');
+  const graphQlSignalTypes = extractGraphQlEnumValues(typeDefs);
 
   test.each(Object.keys(BuiltInExternalSignalType))(
     'GraphQL SignalType enum includes BuiltInExternalSignalType: %s',

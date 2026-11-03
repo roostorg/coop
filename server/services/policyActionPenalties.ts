@@ -49,7 +49,8 @@ export function computeActionPolicyPenalty(
 
   return actionPenalty === UserPenaltySeverity.NONE
     ? 0
-    : penaltySeverityMap[actionPenalty] + penaltySeverityMap[policyPenalty];
+    : // eslint-disable-next-line security/detect-object-injection -- both keys are UserPenaltySeverity enum values
+      penaltySeverityMap[actionPenalty] + penaltySeverityMap[policyPenalty];
 }
 
 export async function getPolicyActionPenaltiesForOrg(

@@ -129,13 +129,15 @@ export default class PolicyOperations {
       .where('rap.rule_id', 'in', [...ruleIds])
       .execute()) as Row[];
 
-    const out: Record<string, Policy[]> = {};
+    const out = new Map<string, Policy[]>();
     for (const row of rows) {
       const { ruleId, ...policyFields } = row;
       const policy = this.#dbResultToPolicy(policyFields);
-      (out[ruleId] ??= []).push(policy);
+      const policies = out.get(ruleId) ?? [];
+      policies.push(policy);
+      out.set(ruleId, policies);
     }
-    return out;
+    return Object.fromEntries(out);
   }
 
   async getPolicy(opts: {

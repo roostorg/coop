@@ -4,6 +4,7 @@ import { assert, vi, type Mock } from 'vitest';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
 import { jsonParse, tryJsonParse } from '../../utils/encoding.js';
+import { getOwn } from '../../utils/misc.js';
 import { type CoopRequestQuery } from '../networkingService/index.js';
 import type { HashBank } from './dbTypes.js';
 import {
@@ -168,7 +169,7 @@ function routeFetch(routes: Partial<Record<string, Res | (() => Res)>>): Mock {
   return vi.fn(async (req: { url: string; method: string }) => {
     const path = new URL(req.url).pathname.replace(/^\/+/, '/');
     const key = `${req.method.toUpperCase()} ${path}`;
-    const route = allRoutes[key];
+    const route = getOwn(allRoutes, key);
     if (route === undefined) {
       throw new Error(`Unexpected request: ${key}`);
     }

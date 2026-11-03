@@ -50,6 +50,7 @@ export const WORKER_AND_JOB_NAMES = Object.keys(
 
 export function registerWorkersAndJobs(bottle: Bottle<Dependencies>) {
   for (const name of WORKER_AND_JOB_NAMES) {
+    // eslint-disable-next-line security/detect-object-injection -- names come from the factory registry's own keys
     register(bottle, name, workerAndJobFactories[name]);
   }
 }

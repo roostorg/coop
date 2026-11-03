@@ -92,10 +92,9 @@ export default function getRuleAlarmStatus(
   // test that relies on the absolute number of (weighted) prior runs to derive
   // some uncertainty bounds, we'll need to scale the weights to sum to 1 first.
   const alpha = 0.02;
-  const weights = priorPeriods.map((_, i) => (1 - alpha) ** i);
   const historicalWeightedPassRate =
-    sum(priorPeriods.map((it, i) => it.passes * weights[i])) /
-    sum(priorPeriods.map((it, i) => it.runs * weights[i]));
+    sum(priorPeriods.map((it, i) => it.passes * (1 - alpha) ** i)) /
+    sum(priorPeriods.map((it, i) => it.runs * (1 - alpha) ** i));
 
   // We've got a few options for the kind of test we can do here:
   //

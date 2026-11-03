@@ -16,7 +16,7 @@ import Geohash from 'latlon-geohash';
 import _ from 'lodash';
 import { match } from 'ts-pattern';
 
-import { doesThrow } from '../../utils/misc.js';
+import { doesThrow, getOwn } from '../../utils/misc.js';
 import { isValidUrl, makeUrlString } from '../../utils/url.js';
 
 const { isPlainObject } = _;
@@ -284,7 +284,9 @@ export const fieldTypeHandlers: Handlers = {
         return new Error('This field, if given, must be an object.');
       }
       const { keyScalarType, valueScalarType } = container;
+      // eslint-disable-next-line security/detect-object-injection -- scalar type selects a built-in handler
       const coerceKey = fieldTypeHandlers[keyScalarType].coerce;
+      // eslint-disable-next-line security/detect-object-injection -- scalar type selects a built-in handler
       const coerceValue = fieldTypeHandlers[valueScalarType].coerce;
 
       const normalizedEntries = Object.entries(v as object)
@@ -383,7 +385,7 @@ export function detectMediaKindFromUrl(url: string): MediaKind | null {
   const dot = pathname.lastIndexOf('.');
   if (dot < 0 || dot === pathname.length - 1) return null;
   const ext = pathname.slice(dot + 1).toLowerCase();
-  return MEDIA_EXTENSION_TO_KIND[ext] ?? null;
+  return getOwn(MEDIA_EXTENSION_TO_KIND, ext) ?? null;
 }
 
 function coerceMediaInput(value: unknown) {

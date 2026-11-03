@@ -54,6 +54,7 @@ describe('ReviewJobDecisionRow resolvers', () => {
       payload: { assignedAt, jobCreatedAt },
     };
     const call = (field: 'assignedAt' | 'jobCreatedAt') =>
+      // eslint-disable-next-line security/detect-object-injection -- field is one of the two resolver names under test
       (resolvers.ReviewJobDecisionRow[field] as (r: unknown) => unknown)(row);
 
     expect(call('assignedAt')).toBe(assignedAt);
@@ -68,6 +69,7 @@ describe('ReviewJobDecisionRow resolvers', () => {
       payload: { assignedAt: null, jobCreatedAt: null },
     };
     const call = (field: 'assignedAt' | 'jobCreatedAt') =>
+      // eslint-disable-next-line security/detect-object-injection -- field is one of the two resolver names under test
       (resolvers.ReviewJobDecisionRow[field] as (r: unknown) => unknown)(row);
 
     expect(call('assignedAt')).toBeNull();

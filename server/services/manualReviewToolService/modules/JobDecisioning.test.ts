@@ -64,16 +64,25 @@ describe('relatedActionPublishPayloads', () => {
     ]);
   });
 
-  test('omits parameter payload when none were provided', () => {
-    expect(
-      relatedActionPublishPayloads({
-        actionIds: ['hide_content'],
-        itemIds: ['post_1'],
-        itemTypeId: 'content',
-        policyIds: ['policy_spam'],
-      }),
-    ).toEqual([{ actionId: 'hide_content' }]);
-  });
+  test.each([
+    ['hide_content', undefined],
+    ['hide_content', {}],
+    ['__proto__', {}],
+    ['constructor', {}],
+  ] as const)(
+    'omits absent parameter payload for action %s with %j',
+    (actionId, payloads) => {
+      expect(
+        relatedActionPublishPayloads({
+          actionIds: [actionId],
+          itemIds: ['post_1'],
+          itemTypeId: 'content',
+          policyIds: ['policy_spam'],
+          actionIdsToMrtApiParamDecisionPayload: payloads,
+        }),
+      ).toEqual([{ actionId }]);
+    },
+  );
 });
 
 describe('actionableRelatedActions', () => {

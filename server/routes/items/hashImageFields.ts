@@ -131,11 +131,9 @@ export async function addHashesToImageFields({
       } else if (field.type === 'MAP') {
         const entries = Object.entries(value as Record<string, ImageValue>);
         const hashed = await Promise.all(
-          entries.map(async ([, it]) => hashImage(it)),
+          entries.map(async ([key, it]) => [key, await hashImage(it)] as const),
         );
-        data[field.name] = Object.fromEntries(
-          entries.map(([key], i) => [key, hashed[i]]),
-        );
+        data[field.name] = Object.fromEntries(hashed);
       } else {
         const hashed = await hashImage(value as ImageValue);
         if (hashed) {

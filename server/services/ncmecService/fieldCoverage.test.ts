@@ -18,6 +18,7 @@
  */
 import { js2xml } from 'xml-js';
 
+import { getOwn } from '../../utils/misc.js';
 import {
   buildSubmitReportObject,
   NCMECEvent,
@@ -245,13 +246,13 @@ describe('NCMEC field coverage', () => {
   type ScenarioKey = keyof typeof scenarios;
 
   const has = (path: (r: AnyReport) => unknown, key: ScenarioKey): boolean =>
-    path(scenarios[key]) !== undefined;
+    path(getOwn(scenarios, key)) !== undefined;
 
   describe('presence table', () => {
     for (const row of presenceTable) {
       it(`emits ${row.field} per scenario expectations`, () => {
         for (const key of ['min', 'field-roles', 'max'] as ScenarioKey[]) {
-          expect(has(row.path, key)).toBe(row.expected[key]);
+          expect(has(row.path, key)).toBe(getOwn(row.expected, key));
         }
       });
     }
@@ -309,13 +310,14 @@ describe('NCMEC field coverage', () => {
         absent: [],
       },
     };
-    for (const key of ['min', 'field-roles', 'max'] as ScenarioKey[]) {
-      const xml = renderXml(scenarios[key]);
+    for (const [key, scenario] of Object.entries(scenarios)) {
+      const xml = renderXml(scenario);
+      const { present, absent } = getOwn(markers, key)!;
       expect(xml.length).toBeGreaterThan(0);
-      for (const marker of markers[key].present) {
+      for (const marker of present) {
         expect(xml).toContain(marker);
       }
-      for (const marker of markers[key].absent) {
+      for (const marker of absent) {
         expect(xml).not.toContain(marker);
       }
     }
