@@ -40,7 +40,7 @@
             const path_to_root = "../";
             const default_light_theme = "roost";
             const default_dark_theme = "roost";
-            window.path_to_searchindex_js = "../searchindex-70ca6fa0.js";
+            window.path_to_searchindex_js = "../searchindex-e7356035.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-6e080ddd.js"></script>
@@ -210,18 +210,16 @@
 <ul>
 <li><input disabled="" type="checkbox"> <strong>CI is passing</strong> for the <code>main</code> branch</li>
 <li><input disabled="" type="checkbox"> <strong>You understand the correct version</strong> according to SemVer</li>
-<li><input disabled="" type="checkbox"> <strong><a href="https://github.com/roostorg/coop/blob/main/CHANGELOG.md">CHANGELOG.md</a> is up-to-date</strong></li>
-<li><input disabled="" type="checkbox"> <strong>Security advisories fixed in this release</strong> have their patched version set to <code>x.y.z</code> and are linked from their <code>CHANGELOG.md</code> entries</li>
+<li><input disabled="" type="checkbox"> <strong>The draft release notes include all notable changes</strong></li>
+<li><input disabled="" type="checkbox"> <strong>Security advisories fixed in this release</strong> have their patched version set to <code>x.y.z</code> and are linked from their release notes</li>
 </ul>
 <p>Then:</p>
 <ol>
-<li>In a PR, replace <code>## [Unreleased]</code> in <code>CHANGELOG.md</code> with <code>## [x.y.z] - YYYY-MM-DD</code>, leaving an empty <code>## [Unreleased]</code>, and update the compare links at the bottom of the file. Remove related issue links (e.g. <code>closes [#456](...)</code>) from entries, preserving the PR and contributor links. Merge it before continuing to the next step.</li>
-<li>In GitHub: <strong>Releases</strong> → <strong>Draft a new release</strong></li>
-<li><strong>Create a tag</strong> in SemVer format <code>x.y.z</code> (no <code>v</code> prefix) from the <code>main</code> branch, at or after the changelog PR’s merge commit</li>
-<li>Title the release <code>Coop x.y.z</code> and <strong>draft the release notes</strong>, starting from <a href="https://github.com/roostorg/coop/blob/main/CHANGELOG.md">CHANGELOG.md</a></li>
-<li>Check <strong>Create a discussion for this release</strong> for at least major and minor releases</li>
-<li><strong>Publish</strong> the release</li>
-<li>Confirm the <strong>Publish Docker images</strong> workflow run for the tag succeeds and the version-tagged images exist</li>
+<li>Open the draft in <strong>GitHub → Releases</strong> and review its notes. Release Drafter’s proposed version is a suggestion; choose the correct version according to SemVer.</li>
+<li>Set the tag to <code>x.y.z</code> (no <code>v</code> prefix), confirm the target commit on <code>main</code>, and title the release <code>Coop x.y.z</code>.</li>
+<li>Check <strong>Create a discussion for this release</strong> for at least major and minor releases.</li>
+<li><strong>Publish</strong> the release.</li>
+<li>Confirm the <strong>Publish Docker images</strong> workflow succeeds and the version-tagged images exist.</li>
 </ol>
 <p>Publishing a release triggers automations:</p>
 <ul>
