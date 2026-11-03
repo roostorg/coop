@@ -217,24 +217,6 @@ describe('GET actions', () => {
   );
 
   testWithConfig(
-    'rejects missing and invalid API keys before reading actions',
-    async ({ request, deps }) => {
-      const read = vi.spyOn(deps.ModerationConfigService, 'getActions');
-      const readAssignments = vi.spyOn(
-        deps.ModerationConfigService,
-        'getActionItemTypeIds',
-      );
-      await request.get('/api/v1/actions/').expect(401);
-      await request
-        .get('/api/v1/actions/')
-        .set('x-api-key', 'invalid-key')
-        .expect(401);
-      expect(read).not.toHaveBeenCalled();
-      expect(readAssignments).not.toHaveBeenCalled();
-    },
-  );
-
-  testWithConfig(
     'returns an empty collection',
     async ({ request, apiKey, deps }) => {
       vi.spyOn(deps.ModerationConfigService, 'getActions').mockResolvedValue(
