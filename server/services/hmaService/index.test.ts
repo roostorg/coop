@@ -3,7 +3,7 @@ import { assert, vi, type Mock } from 'vitest';
 
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
-import { jsonParse } from '../../utils/encoding.js';
+import { jsonParse, tryJsonParse } from '../../utils/encoding.js';
 import { type CoopRequestQuery } from '../networkingService/index.js';
 import type { HashBank } from './dbTypes.js';
 import {
@@ -622,7 +622,7 @@ describe('HmaService', () => {
           if (req.method === 'post') {
             // Record every write, including an accidental provider-global route.
             assert(typeof req.body === 'string');
-            remoteState = { ...remoteState, [path]: jsonParse(req.body) };
+            remoteState = { ...remoteState, [path]: tryJsonParse(req.body) };
             return ok({ has_credentials: true, source: 'exchange' });
           }
           if (req.method === 'get') {
