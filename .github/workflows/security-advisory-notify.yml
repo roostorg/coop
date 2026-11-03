@@ -3,7 +3,8 @@
 # severity and link only. GitHub Actions has no advisory event, so this polls
 # the REST API.
 #
-# Secrets (the job skips silently when either is missing):
+# Secrets of the security-advisory-notify environment, which only main can
+# deploy to (the job skips silently when either is missing):
 #   SECURITY_DISCORD_WEBHOOK  webhook URL of the private security channel
 #   ADVISORY_READ_TOKEN       fine-grained token, this repository only,
 #                             "Repository security advisories: Read-only"
@@ -28,9 +29,10 @@ concurrency:
 jobs:
   notify:
     name: Post new advisories to Discord
-    # A manual dispatch from another branch would run that branch's copy of the
-    # script with these secrets, so only main runs it.
+    # The environment's branch policy keeps its secrets on main; the if skips
+    # other branches quietly instead of failing on that policy.
     if: github.ref == 'refs/heads/main'
+    environment: security-advisory-notify
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
