@@ -1,6 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { type Profile } from '@node-saml/passport-saml';
 import { type Request } from 'express';
+import fc from 'fast-check';
 import { uid } from 'uid';
 import { vi } from 'vitest';
 
@@ -47,60 +48,72 @@ describe('resolveSamlUser', () => {
   });
 
   testWithFixture(
-    'passes the user to done when the email belongs to the path org',
+    'resolves generated identities only in their callback organization',
     async ({ deps, org }) => {
-      const input = samlUserInput(org.id);
-      await kyselyUserInsert({ db: deps.KyselyPg, ...input });
-      const done = vi.fn();
-      await resolveSamlUser(
-        deps.KyselyPg,
-        deps.Tracer,
-        makeReq(org.id),
-        { email: input.email },
-        done,
-      );
-      expect(done).toHaveBeenCalledTimes(1);
-      const [err, user] = done.mock.calls[0];
-      expect(err).toBeNull();
-      expect(user).toMatchObject({ id: input.id, orgId: org.id });
-    },
-  );
+      const { org: otherOrg } = await createOrg(deps);
+      await seedSystemRolesForOrg(deps.KyselyPg, otherOrg.id);
+      const orgIds = [org.id, otherOrg.id];
 
-  // Security regression (GHSA-2v93-383c-9fw2): an assertion authenticating one
-  // org must never resolve a user who lives in another org.
-  testWithFixture(
-    'rejects when the email belongs to a different org',
-    async ({ deps, org }) => {
-      const input = samlUserInput(org.id);
-      await kyselyUserInsert({ db: deps.KyselyPg, ...input });
-      const done = vi.fn();
-      await resolveSamlUser(
-        deps.KyselyPg,
-        deps.Tracer,
-        makeReq(`different-org-${uid()}`),
-        { email: input.email },
-        done,
+      await fc.assert(
+        fc.asyncProperty(
+          fc.array(fc.integer({ min: 0, max: 1 }), {
+            minLength: 2,
+            maxLength: 6,
+          }),
+          async (owners) => {
+            // Email is globally unique in the database. Generate its tenant
+            // relationship rather than inserting impossible duplicate emails.
+            const users = owners.map((owner, index) => ({
+              ...samlUserInput(orgIds[owner]),
+              email: `identity-${index}-${org.id}@example.com`,
+            }));
+            try {
+              for (const user of users) {
+                await kyselyUserInsert({ db: deps.KyselyPg, ...user });
+              }
+              for (const email of [
+                ...users.map((user) => user.email),
+                `missing-${uid()}@example.com`,
+              ]) {
+                for (const orgId of [...orgIds, `missing-${uid()}`]) {
+                  const expected = users.find(
+                    (user) => user.orgId === orgId && user.email === email,
+                  );
+                  const result = await new Promise<{
+                    error: unknown;
+                    user: unknown;
+                  }>((resolve, reject) => {
+                    resolveSamlUser(
+                      deps.KyselyPg,
+                      deps.Tracer,
+                      makeReq(orgId),
+                      { email },
+                      (error, user) => resolve({ error, user }),
+                    ).catch(reject);
+                  });
+                  expect(result).toEqual({
+                    error: expected ? null : expect.any(Error),
+                    user: expected
+                      ? expect.objectContaining({ id: expected.id, orgId })
+                      : undefined,
+                  });
+                }
+              }
+            } finally {
+              await deps.KyselyPg.deleteFrom('public.users')
+                .where(
+                  'id',
+                  'in',
+                  users.map((user) => user.id),
+                )
+                .execute();
+            }
+          },
+        ),
+        { numRuns: 25, examples: [[[0, 1]], [[1, 0]]] },
       );
-      const [err, user] = done.mock.calls[0];
-      expect(err).toBeInstanceOf(Error);
-      expect(user).toBeUndefined();
     },
-  );
-
-  testWithFixture(
-    'rejects when no user exists for the email in that org',
-    async ({ deps, org }) => {
-      const done = vi.fn();
-      await resolveSamlUser(
-        deps.KyselyPg,
-        deps.Tracer,
-        makeReq(org.id),
-        { email: `missing-${uid()}@example.com` },
-        done,
-      );
-      expect(done.mock.calls[0][0]).toBeInstanceOf(Error);
-      expect(done.mock.calls[0][1]).toBeUndefined();
-    },
+    15_000,
   );
 
   testWithFixture(
