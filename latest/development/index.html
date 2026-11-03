@@ -40,7 +40,7 @@
             const path_to_root = "../";
             const default_light_theme = "roost";
             const default_dark_theme = "roost";
-            window.path_to_searchindex_js = "../searchindex-7a779854.js";
+            window.path_to_searchindex_js = "../searchindex-70ca6fa0.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-6e080ddd.js"></script>
@@ -279,6 +279,40 @@ pnpm run start
 <p>Log in at <a href="http://localhost:3000">localhost:3000</a> using the credentials you provided when running <code>create-org</code>. The initial page load may take a moment.</p>
 </li>
 </ol>
+<h2 id="pull-requests-and-commit-messages"><a class="header" href="#pull-requests-and-commit-messages">Pull requests and commit messages</a></h2>
+<p>Follow the <a href="https://github.com/roostorg/.github/blob/main/CONTRIBUTING.md">ROOST contribution guidelines</a>. For nontrivial changes, start with an issue and link it in your pull request. Keep changes focused and small enough to review.</p>
+<p>PR titles must follow <a href="https://www.conventionalcommits.org/en/v1.0.0/">Conventional Commits</a>:</p>
+<pre><code class="language-text">&lt;type&gt;[optional scope][!]: &lt;description&gt;
+</code></pre>
+<p>Use a lowercase type from this list:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Type</th><th>Purpose</th></tr>
+</thead>
+<tbody>
+<tr><td><code>feat</code></td><td>Add a feature</td></tr>
+<tr><td><code>fix</code></td><td>Fix a bug</td></tr>
+<tr><td><code>docs</code></td><td>Change documentation</td></tr>
+<tr><td><code>style</code></td><td>Change formatting without changing behavior</td></tr>
+<tr><td><code>refactor</code></td><td>Restructure code without changing behavior</td></tr>
+<tr><td><code>perf</code></td><td>Improve performance</td></tr>
+<tr><td><code>test</code></td><td>Add or update tests</td></tr>
+<tr><td><code>build</code></td><td>Change dependencies or build tooling</td></tr>
+<tr><td><code>ci</code></td><td>Change CI configuration</td></tr>
+<tr><td><code>chore</code></td><td>Perform other maintenance</td></tr>
+<tr><td><code>revert</code></td><td>Revert a change</td></tr>
+</tbody>
+</table>
+</div>
+<p>Scopes are optional. Use a component name such as <code>client</code>, <code>server</code>, or <code>api</code>. Write a concise, imperative description after the colon and space. Start the description with a lowercase word and do not end it with a period.</p>
+<p>Examples:</p>
+<pre><code class="language-text">feat(client): add review queue filters
+fix(server): handle missing item identifiers
+docs: explain local development setup
+feat(api)!: require a queue identifier
+</code></pre>
+<p>For breaking changes, put <code>!</code> immediately before the colon and explain the impact and migration steps in the PR description. Preserve that explanation in the squash commit body, preferably with a <code>BREAKING CHANGE: &lt;explanation&gt;</code> footer.</p>
 
                     </main>
 
