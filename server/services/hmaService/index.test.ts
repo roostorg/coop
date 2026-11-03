@@ -1,8 +1,7 @@
-import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import express from 'express';
 import fc from 'fast-check';
-import { vi, type Mock } from 'vitest';
+import { assert, vi, type Mock } from 'vitest';
 
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
