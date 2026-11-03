@@ -1,5 +1,5 @@
 # Posts each new repository security advisory in triage or draft state to the
-# private security Discord channel with roostorg/discord-bot: GHSA ID, title,
+# private security Discord channel with roostorg/discord-bot: GHSA ID, state,
 # severity and link only. GitHub Actions has no advisory event, so this polls
 # the REST API.
 #
@@ -66,7 +66,7 @@ jobs:
 
       - name: Post new advisories
         if: env.CONFIGURED == 'true' && steps.list.outputs.post == 'true'
-        uses: roostorg/discord-bot@493e4f5f707a1ab338ca2c33319f54b79ae2c603 # reitblatt/repository-advisories
+        uses: roostorg/discord-bot@017c8e460a052d8461f2d612129b993dbbbd90fc # reitblatt/repository-advisories
         with:
           webhook-url: ${{ secrets.SECURITY_DISCORD_WEBHOOK }}
           event: repository_advisory

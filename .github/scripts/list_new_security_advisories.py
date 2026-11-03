@@ -3,7 +3,7 @@
 
 Run by .github/workflows/security-advisory-notify.yml, which posts the result
 with roostorg/discord-bot. Writes PAYLOAD_FILE with one repository_advisory
-payload per line, holding only the GHSA ID, title, severity and link, and
+payload per line, holding only the GHSA ID, state, severity and link, and
 updates STATE_FILE to include them. The workflow saves the state only after
 posting succeeds.
 
@@ -118,11 +118,12 @@ def fetch_advisories(api_url: str, repo: str, token: str) -> list[dict]:
 def payload(advisory: dict, server_url: str, repo: str) -> dict:
     """The repository_advisory payload for discord-bot, with only what it posts."""
     ghsa_id = advisory["ghsa_id"]
+    state = advisory.get("state")
     severity = advisory.get("severity")
     return {
         "repository_advisory": {
             "ghsa_id": ghsa_id,
-            "summary": str(advisory.get("summary") or ""),
+            "state": state if state in STATES else None,
             "severity": severity if severity in SEVERITIES else None,
             "html_url": f"{server_url}/{repo}/security/advisories/{ghsa_id}",
         }

@@ -28,7 +28,7 @@ def advisory(ghsa_id, state="triage", created="2026-10-01T00:00:00Z", **extra):
     return {
         "ghsa_id": ghsa_id,
         "state": state,
-        "summary": f"Summary of {ghsa_id}",
+        "summary": SECRET_TEXT,
         "severity": "high",
         "created_at": created,
         "description": SECRET_TEXT,
@@ -143,7 +143,7 @@ class ListerTest(unittest.TestCase):
         self.assertEqual(self.payloads(), [])
         self.assertEqual(self.outputs(), {"post": "false", "changed": "false"})
 
-    def test_payload_contains_only_id_title_severity_and_link(self):
+    def test_payload_contains_only_id_state_severity_and_link(self):
         FakeGitHub.advisories = {"triage": [advisory(A1)]}
         self.run_ci()
         self.assertEqual(
@@ -152,7 +152,7 @@ class ListerTest(unittest.TestCase):
                 {
                     "repository_advisory": {
                         "ghsa_id": A1,
-                        "summary": f"Summary of {A1}",
+                        "state": "triage",
                         "severity": "high",
                         "html_url": f"https://github.com/roostorg/coop/security/advisories/{A1}",
                     }
