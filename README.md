@@ -49,6 +49,8 @@ To contribute code or documentation, see the [development guide](docs/developmen
 
 Run Coop with a single command using Docker Compose. See the [Docker guide](docs/development/docker.md) for setup instructions and published image details.
 
+Want to populate a local instance with real content instead of test fixtures? See [`server/bin/README.md`](server/bin/README.md#atproto-demomts) for a script that feeds it live posts from the [AT Protocol](https://atproto.com/) (Bluesky) firehose.
+
 ## Learn more
 
 See our comprehensive [documentation](https://roostorg.github.io/coop/latest) covering both functional and technical information including a user guide, development guide, API reference, and integration details.
