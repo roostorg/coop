@@ -13,7 +13,7 @@ Note that the docs are versioned; other versions can be found at the [documentat
 
 ## Install Coop
 
-Coop publishes ready-to-use Docker images. See the [Docker image guide](development/docker.md) for details.
+Coop publishes ready-to-use Docker images. Go directly to the [Docker image guide](development/docker.md) for details.
 
 ## Contributing
 
