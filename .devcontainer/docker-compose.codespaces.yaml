@@ -28,8 +28,28 @@ services:
           --firstName "Demo" \
           --lastName "Admin" \
           --password "$$COOP_DEMO_PASSWORD" 2>&1) \
-        && echo "Created the demo login $$COOP_DEMO_EMAIL." \
-        || { echo "$$OUTPUT" | grep -q "duplicate key" && echo "The demo login already exists." || { echo "$$OUTPUT"; exit 1; }; }
+        && { echo "Created the demo login $$COOP_DEMO_EMAIL."; exit 0; }
+        # On a restart the org already exists, so creating it fails. A run that
+        # stopped part-way leaves the org without its user, though, so check
+        # for the user itself.
+        node --input-type=module -e "
+          import pg from 'pg';
+          const db = new pg.Client({
+            host: process.env.DATABASE_HOST,
+            port: process.env.DATABASE_PORT,
+            database: process.env.DATABASE_NAME,
+            user: process.env.DATABASE_USER,
+            password: process.env.DATABASE_PASSWORD,
+          });
+          await db.connect();
+          const { rowCount } = await db.query(
+            'SELECT 1 FROM users WHERE email = \$$1', [process.env.COOP_DEMO_EMAIL]);
+          await db.end();
+          process.exit(rowCount > 0 ? 0 : 1);
+        " && { echo "The demo login already exists."; exit 0; }
+        echo "$$OUTPUT"
+        echo "Couldn't create the demo login $$COOP_DEMO_EMAIL."
+        exit 1
 
   server:
     image: coop-server:codespace
@@ -58,3 +78,8 @@ services:
       context: .
       dockerfile: client/Dockerfile
       target: serve
+    # Codespaces can open the UI in the browser as soon as port 3000 is published,
+    # so start the client only once the server answers.
+    depends_on:
+      server:
+        condition: service_healthy
