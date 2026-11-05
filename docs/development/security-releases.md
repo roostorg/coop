@@ -76,6 +76,13 @@ Use this path for a vulnerability in Coop's own code, or any issue not yet publi
 3. Clone the fork and open a PR against it with the fix and a regression test. Target `main` on option A, or `release/x.y` on option B.
 4. GitHub Actions does not run in temporary private forks. Run the [CI checks](https://github.com/roostorg/coop/blob/main/AGENTS.md#ci) locally and record the results in the PR.
 5. Once the PR is reviewed, select **Merge pull request** in the advisory. The fix is public from this point, so publish the release (step 4) straight after.
+6. The merge lands as one squashed commit titled "Merge commit from fork", with the PR's title only in the commit body, so `git log --oneline` does not show it as a security fix. Whoever merges it tells the release owner the commit SHA.
+
+If a fork fix for option B merged into `main` instead of `release/x.y`, the fix is public from that merge, and the response clock runs from it. Cherry-pick it to `release/x.y` with `git cherry-pick -x` in a public backport PR:
+
+- Use only the commit's own wording in the PR title and description, nothing about the vulnerability.
+- Leave its `## Release notes` section blank, and write the entry in the release notes directly (step 3).
+- Skip step 8's forward-port; the fix is already on `main`.
 
 ### Public upstream CVE: normal PR
 
@@ -227,7 +234,7 @@ Publish each Coop advisory after the release, so that its patched version exists
 ### Advisory template
 
 - **Title:** `<Impact> via <vector>`, with the upstream package in parentheses for a dependency, e.g. `Denial of service via malformed request bodies (<package>)`.
-- **Affected product:** ecosystem left empty, package `@roostorg/coop`, affected versions `< x.y.z` (narrower if older versions are not affected), patched versions `x.y.z`.
+- **Affected product:** ecosystem left empty, package `@roostorg/coop`, affected versions `< x.y.z` (narrower if older versions are not affected), patched versions `x.y.z`. Set these and the severity in the draft before step 4; a draft can be saved with them blank.
 - **Severity:** CVSS scored for how Coop uses the affected code.
 - **Description**, with these sections:
   - `### Summary`: one or two sentences.
