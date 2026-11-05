@@ -102,11 +102,12 @@ function makeDeps(
     publishActions: Mock;
     getNCMECActionsToRunAndPolicies: Mock;
     decisions: NcmecDecisionRow[];
+    reports: { userId: string; userItemTypeId: string; orgId: string }[];
   }> = {},
 ) {
   const ncmecService = {
     submitReport: overrides.submitReport ?? vi.fn(async () => 'SUCCESS'),
-    getUsersWithNcmecDecision: vi.fn(async () => []),
+    getUsersWithNcmecDecision: vi.fn(async () => overrides.reports ?? []),
     getNcmecErrorsForJobIds: vi.fn(async () => []),
     insertOrUpdateNcmecReportError: vi.fn(async () => undefined),
     getNCMECActionsToRunAndPolicies:
@@ -274,4 +275,46 @@ describe('RetryFailedNcmecDecisionsJob', () => {
     expect(deps.ncmecService.submitReport).toHaveBeenCalledTimes(1);
     expect(deps.actionPublisher.publishActions).toHaveBeenCalledTimes(1);
   });
+
+  // Test reports count as reported in both modes, so a switch to production
+  // doesn't resubmit test-era decisions to NCMEC.
+  it.each([undefined, 'production'])(
+    'does not resubmit a decision whose user has a test report (NCMEC_ENV=%s)',
+    async (ncmecEnv) => {
+      if (ncmecEnv === undefined) {
+        delete process.env.NCMEC_ENV;
+      } else {
+        process.env.NCMEC_ENV = ncmecEnv;
+      }
+      const decision = makeNcmecDecisionRow(ORG_ID);
+      const { item } = decision.job_payload.payload;
+      const deps = makeDeps({
+        decisions: [decision],
+        reports: [
+          {
+            userId: item.itemId,
+            userItemTypeId: item.itemTypeIdentifier.id,
+            orgId: ORG_ID,
+          },
+        ],
+      });
+      const job = makeRetryFailedNcmecDecisionsJob(
+        vi.fn() as never,
+        deps.manualReviewToolService as never,
+        deps.ncmecService as never,
+        deps.getItemTypeEventuallyConsistent as never,
+        deps.actionPublisher as never,
+        deps.moderationConfigService as never,
+        deps.userManagementService as never,
+      );
+
+      await job.run();
+
+      // Fails if an is_test flag comes back into the lookup.
+      expect(deps.ncmecService.getUsersWithNcmecDecision).toHaveBeenCalledWith({
+        startDate: expect.any(Date),
+      });
+      expect(deps.ncmecService.submitReport).not.toHaveBeenCalled();
+    },
+  );
 });

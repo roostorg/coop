@@ -1673,6 +1673,9 @@ export default class NcmecReporting {
   // (user_id, user_item_type_id, org_id) for uniqueness, before an hour before
   // it executes, to allow for concurrent decisions to finish executing. Only
   // meant to be used in the NCMEC retry script.
+  //
+  // Test reports count too: in test mode that stops endless resubmits, and
+  // after a switch to production it stops test-era decisions reaching NCMEC.
   async getUsersWithNcmecDecision(opts: { startDate: Date }) {
     const { startDate } = opts;
     return this.pqQueryReadReplica
@@ -1683,9 +1686,6 @@ export default class NcmecReporting {
         'org_id as orgId',
       ])
       .where('created_at', '>=', startDate)
-      .where((eb) =>
-        eb.or([eb('is_test', '=', null), eb('is_test', '=', false)]),
-      )
       .groupBy(['user_id', 'user_item_type_id', 'org_id'])
       .execute();
   }

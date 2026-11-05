@@ -4,6 +4,7 @@ import { v1 as uuidv1 } from 'uuid';
 import { inject } from '../iocContainer/utils.js';
 import {
   buildSubmitReportParamsFromDecision,
+  isNcmecTestMode,
   LEGACY_FALLBACK_INCIDENT_TYPE,
   summarizeNcmecErrorForReviewer,
 } from '../services/ncmecService/index.js';
@@ -118,7 +119,7 @@ export default inject(
           getItemTypeEventuallyConsistent,
         });
         submitReportInvoked = true;
-        const isTest = process.env.NCMEC_ENV !== 'production';
+        const isTest = isNcmecTestMode();
         const reportResult = await ncmecService.submitReport(
           reportParams,
           isTest,

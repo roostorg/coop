@@ -289,7 +289,9 @@ Coop only checks for a successful HTTP status code. The response body is ignored
 
 If a CyberTip submission fails (e.g. due to a transient network error or NCMEC API outage), Coop automatically retries the submission. A background job runs periodically and retries any failed NCMEC decisions that:
 
-- Have not already been successfully submitted (no matching report in the database)
+- Have not already been successfully submitted (no matching report, test or production, in the database)
 - Have fewer than 10 prior retry attempts
 - Are not marked as a permanent error (e.g. all media missing)
 - Were decided within the past 30 days
+
+Reports are matched by reported user, not by decision. If a user already has a report from the past 30 days, a later failed decision against that same user is not retried automatically.
