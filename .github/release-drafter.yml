@@ -1,0 +1,42 @@
+name-template: 'Coop $RESOLVED_VERSION'
+tag-template: '$RESOLVED_VERSION'
+category-template: '### $TITLE'
+change-template: '$BODY ([#$NUMBER]($URL) by [@$AUTHOR]($AUTHOR_URL))'
+no-changes-template: ''
+sync-labels: true
+# Ignore instructions, empty bullets, and subsequent sections.
+autolabeler:
+  - labels: [has-release-notes]
+    body:
+      - '/^## Release notes[ \t]*\r?\n(?:\s|<!--[\s\S]*?-->|[-*][ \t]+)*(?!<!--|#{1,2}(?:[ \t]|\r?$)|[-*](?:[ \t]|\r?$))\S/im'
+categories:
+  - type: pre-include
+    when:
+      label: has-release-notes
+  - title: Added
+    when:
+      conventional:
+        type: feat
+  - title: Changed
+  - title: Fixed
+    when:
+      conventional:
+        type: fix
+replacers:
+  - target: change-body
+    search: '/^## Release notes[ \t]*\r?$/gim'
+    replace: '## Release notes'
+  - target: change-body
+    section: '## Release notes'
+    not-found: empty
+  - target: change-body
+    search: '/<!--[\s\S]*?-->/g'
+    replace: ''
+  - target: change-body
+    search: '/^\s+|\s+$/g'
+    replace: ''
+  - target: change-body
+    search: '/^(?![-*][ \t]+)(?=\S)/'
+    replace: '- '
+template: |
+  $CHANGES

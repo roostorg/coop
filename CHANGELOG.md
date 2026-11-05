@@ -1,41 +1,8 @@
 # Changelog
 
-All notable changes to Coop will be documented in this file.
+For current release notes, see [GitHub Releases](https://github.com/roostorg/coop/releases). This file contains release notes through 1.2.0.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/2.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-For more information about each release including git tags and artifacts, see [Releases](https://github.com/roostorg/coop/releases).
-
-## [Unreleased]
-
-### Added
-
-- Formatting toolbar for policy definitions and enforcement guidelines ([#1432](https://github.com/roostorg/coop/pull/1432) by [@taobojlen](https://github.com/taobojlen)).
-
-### Changed
-
-- Improve list editing in the policy editor ([#1400](https://github.com/roostorg/coop/pull/1400) by [@taobojlen](https://github.com/taobojlen))
-- Review console hides "Enqueue to NCMEC" when NCMEC reporting isn't enabled ([#1470](https://github.com/roostorg/coop/pull/1470) by [@serendipty01](https://github.com/serendipty01))
-
-### Removed
-
-- `isDemoOrg` field from the GraphQL `Org` type ([#1448](https://github.com/roostorg/coop/pull/1448) by [@emma-green](https://github.com/emma-green))
-
-### Fixed
-
-- Fix missing database row for new deployments ([#1486](https://github.com/roostorg/coop/pull/1486) by [@taobojlen](https://github.com/taobojlen)).
-- Opening a review queue with no unskipped jobs no longer leaves reviewers on a loading spinner ([#1392](https://github.com/roostorg/coop/pull/1392) by [@Joseph-Mutua](https://github.com/Joseph-Mutua))
-- Failed NCMEC and Whisper media downloads are cancelled before retry ([#1427](https://github.com/roostorg/coop/pull/1427) by [@juanmrad](https://github.com/juanmrad))
-
-## [1.2.1] - 2026-10-31
-
-### Security
-
-- Update body-parser to 2.4.0 to fix denial of service from malformed compressed request bodies ([GHSA-c3r3-vg94-mqrx](https://github.com/roostorg/coop/security/advisories/GHSA-c3r3-vg94-mqrx), [CVE-2026-111181](https://github.com/advisories/GHSA-27r3-jxmh-p828) by [@serendipty01](https://github.com/serendipty01))
-- Build HMA from `ghcr.io/meta/threatexchange/hma`, pinned by digest, after Meta's organization rename ([#1498](https://github.com/roostorg/coop/pull/1498) by [@juanmrad](https://github.com/juanmrad), [#1503](https://github.com/roostorg/coop/pull/1503) by [@reitblatt](https://github.com/reitblatt))
-- Update undici to 7.30.1 to fix denial of service from malicious responses to outbound requests ([GHSA-75wr-5gj4-p3cx](https://github.com/roostorg/coop/security/advisories/GHSA-75wr-5gj4-p3cx), [CVE-2026-87018](https://github.com/advisories/GHSA-qrxm-fqhp-jwvm), [CVE-2026-109869](https://github.com/advisories/GHSA-xjj6-f33q-929c), [#1464](https://github.com/roostorg/coop/pull/1464) by [@dependabot](https://github.com/dependabot))
-- Update follow-redirects to 1.16.1 to fix credential header exposure on redirects ([CVE-2026-111755](https://github.com/advisories/GHSA-8r9p-f939-6h3c), [#1457](https://github.com/roostorg/coop/pull/1457) by [@reitblatt](https://github.com/reitblatt))
-- Update markdown-it to 14.3.3 to fix denial of service in the policy editor ([CVE-2026-111758](https://github.com/advisories/GHSA-gfr2-rv44-r23c), [#1457](https://github.com/roostorg/coop/pull/1457) by [@reitblatt](https://github.com/reitblatt))
 
 ## [1.2.0] - 2026-10-21
 
@@ -438,8 +405,6 @@ We're developing Coop in the open and want to hear from you. Whether you're test
 
 This release was possible because of the efforts of contributors who worked through complex redesign, partners who believed in the vision of open source safety tools, and the broader trust and safety community who provided feedback and guidance. Thank you especially to @juanmrad, @pawiecz, @kbicevski, Sjoerd Simons, @emanueleaina, @dom-notion, @cassidyjames, @vinaysrao1, @wayjaywang, and @julietshen.
 
-[unreleased]: https://github.com/roostorg/coop/compare/1.2.1...HEAD
-[1.2.1]: https://github.com/roostorg/coop/compare/1.2.0...1.2.1
 [1.2.0]: https://github.com/roostorg/coop/compare/1.1.1...1.2.0
 [1.1.1]: https://github.com/roostorg/coop/compare/1.1.0...1.1.1
 [1.1.0]: https://github.com/roostorg/coop/compare/1.0.2...1.1.0

@@ -1,4 +1,4 @@
-FROM node:24.22.1-bookworm-slim AS client_base
+FROM node:24.22.1-trixie-slim AS client_base
 WORKDIR /app
 
 # ARG is used to get the release id into the ENV from the command line, and then
@@ -28,7 +28,7 @@ ARG VITE_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
 ENV DISABLE_ESLINT_PLUGIN=true
 RUN NODE_OPTIONS="--max-old-space-size=5250" VITE_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=$VITE_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT pnpm run build
 
-FROM nginx:1.29.1-bookworm AS serve
+FROM nginx:1.31.8-alpine AS serve
 COPY --from=build /app/client/build /usr/share/nginx/html
 ENV NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1
 ENV NGINX_ENVSUBST_FILTER=NGINX_
