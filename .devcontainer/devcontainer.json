@@ -2,7 +2,12 @@
   "name": "Coop demo",
   "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
   "features": {
-    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      // Only the `docker compose` plugin is used. Skipping the standalone
+      // docker-compose binary avoids a download from GitHub that, when it
+      // fails, fails the whole container build.
+      "dockerDashComposeVersion": "none"
+    }
   },
   "hostRequirements": {
     "cpus": 4,
