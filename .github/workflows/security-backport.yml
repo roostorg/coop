@@ -1,0 +1,146 @@
+name: Security backports
+
+# Keeps release/x.y, the branch for the next patch of the latest release
+# x.y.z, ready for a security release: creates it when it's missing, opens a
+# backport PR for each `security`-labelled PR merged to main, and keeps a draft
+# release for x.y.(z+1). See docs/development/security-backports.md.
+
+on:
+  # Runs main's copy of this workflow and scripts; never checks out PR code.
+  pull_request_target: # zizmor: ignore[dangerous-triggers]
+    types: [closed, labeled]
+    branches: [main, 'release/**']
+  release:
+    types: [published]
+  schedule:
+    - cron: '23 6 * * *'
+  workflow_dispatch:
+    inputs:
+      pr:
+        description: Only backport this PR number
+        required: false
+        type: string
+      retry:
+        description: Retry PRs whose backport was reported as failed
+        required: false
+        type: boolean
+        default: false
+
+permissions: {}
+
+concurrency:
+  group: security-backport
+  cancel-in-progress: false
+
+jobs:
+  backport:
+    if: >-
+      github.repository == 'roostorg/coop' &&
+      (github.event_name != 'pull_request_target' ||
+       (github.event.pull_request.merged == true &&
+        github.event.pull_request.base.ref == 'main' &&
+        (github.event.action == 'closed' || github.event.label.name == 'security')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
+        with:
+          install: false
+
+      - name: Cherry-pick pending security PRs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ inputs.pr }}
+          RETRY: ${{ inputs.retry }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          args=()
+          if [[ -n "$PR" ]]; then args+=(--pr "$PR"); fi
+          if [[ "$RETRY" == 'true' ]]; then args+=(--retry); fi
+          node scripts/security-backport.mjs prepare "${args[@]}"
+
+      - name: Check whether there is anything to push
+        id: plan
+        run: |
+          jq -r '"push=" + ((.target.exists | not) or (.backports + .failures | length > 0) | tostring)' \
+            "$RUNNER_TEMP/security-backport/plan.json" >> "$GITHUB_OUTPUT"
+
+      # An app token, unlike GITHUB_TOKEN, triggers CI on the PRs it opens.
+      - uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        if: steps.plan.outputs.push == 'true'
+        id: app
+        with:
+          app-id: ${{ vars.BACKPORT_APP_ID }}
+          private-key: ${{ secrets.BACKPORT_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-issues: write
+
+      - name: Push branches, open PRs and report failures
+        if: steps.plan.outputs.push == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          BACKPORT_PUSH_URL: https://x-access-token:${{ steps.app.outputs.token }}@github.com/${{ github.repository }}.git
+        run: node scripts/security-backport.mjs publish
+
+  draft:
+    needs: backport
+    if: >-
+      always() && github.repository == 'roostorg/coop' &&
+      (github.event_name != 'pull_request_target' ||
+       (github.event.action == 'closed' && github.event.pull_request.merged == true &&
+        startsWith(github.event.pull_request.base.ref, 'release/')))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: release-draft-security
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Find the release branch
+        id: target
+        run: |
+          # Without filter-by-commitish, Release Drafter would update main's draft.
+          if ! grep -q '^filter-by-commitish: true' .github/release-drafter.yml; then
+            echo '::warning::release-drafter.yml lacks filter-by-commitish: true; not drafting'
+            exit 0
+          fi
+          tag=$(git tag --list | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
+          IFS=. read -r major minor patch <<< "$tag"
+          branch="release/$major.$minor"
+          if ! git ls-remote --exit-code --heads origin "$branch" > /dev/null; then
+            echo "::notice::$branch does not exist yet; not drafting"
+            exit 0
+          fi
+          {
+            echo "tag=$tag"
+            echo "branch=$branch"
+            echo "next=$major.$minor.$((patch + 1))"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: release-drafter/release-drafter@978bb0b30c5ee8cdd332ced253758157150d43f0 # v7.10.0
+        if: steps.target.outputs.branch != ''
+        with:
+          commitish: ${{ steps.target.outputs.branch }}
+          from: ${{ steps.target.outputs.tag }}
+          version: ${{ steps.target.outputs.next }}
+          publish: false
+          latest: false
