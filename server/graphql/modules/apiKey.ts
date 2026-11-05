@@ -1,3 +1,4 @@
+import { type ApiKeyRecord } from '../../services/apiKeyService/index.js';
 import { UserPermission } from '../../services/userManagementService/index.js';
 import { CoopError, ErrorType } from '../../utils/errors.js';
 import { logErrorJson } from '../../utils/logging.js';
@@ -5,7 +6,11 @@ import {
   type GQLMutationResolvers,
   type GQLQueryResolvers,
 } from '../generated.js';
-import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
+import {
+  forbiddenError,
+  unauthenticatedError,
+  userInputError,
+} from '../utils/errors.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 
 const typeDefs = /* GraphQL */ `
@@ -36,9 +41,45 @@ const typeDefs = /* GraphQL */ `
   union RotateApiKeyResponse = RotateApiKeySuccessResponse | RotateApiKeyError
 
   input RotateApiKeyInput {
+    id: ID!
+  }
+
+  input CreateApiKeyInput {
     name: String!
     description: String
   }
+
+  input UpdateApiKeyInput {
+    id: ID!
+    name: String!
+    description: String
+  }
+
+  type CreateApiKeySuccessResponse {
+    apiKey: String!
+    record: ApiKey!
+  }
+
+  type UpdateApiKeySuccessResponse {
+    record: ApiKey!
+  }
+
+  type DeleteApiKeySuccessResponse {
+    id: ID!
+  }
+
+  type ApiKeyMutationError implements Error {
+    title: String!
+    status: Int!
+    type: [String!]!
+    pointer: String
+    detail: String
+    requestId: String
+  }
+
+  union CreateApiKeyResponse = CreateApiKeySuccessResponse | ApiKeyMutationError
+  union UpdateApiKeyResponse = UpdateApiKeySuccessResponse | ApiKeyMutationError
+  union DeleteApiKeyResponse = DeleteApiKeySuccessResponse | ApiKeyMutationError
 
   type RotateWebhookSigningKeySuccessResponse {
     publicSigningKey: String!
@@ -58,16 +99,98 @@ const typeDefs = /* GraphQL */ `
     | RotateWebhookSigningKeyError
 
   type Query {
-    apiKey: String!
+    apiKey: String! @deprecated(reason: "Use \`apiKeys\` instead.")
+    apiKeys: [ApiKey!]!
   }
 
   type Mutation {
+    createApiKey(input: CreateApiKeyInput!): CreateApiKeyResponse!
+    updateApiKey(input: UpdateApiKeyInput!): UpdateApiKeyResponse!
+    deleteApiKey(id: ID!): DeleteApiKeyResponse!
     rotateApiKey(input: RotateApiKeyInput!): RotateApiKeyResponse!
     rotateWebhookSigningKey: RotateWebhookSigningKeyResponse!
   }
 `;
 
+function validateApiKeyMetadata(input: {
+  name: string;
+  description?: string | null;
+}) {
+  const name = input.name.trim();
+  const description = input.description?.trim() ?? '';
+  if (!name) {
+    throw userInputError('API key name must not be empty');
+  }
+  if (name.length > 255) {
+    throw userInputError('API key name must be at most 255 characters');
+  }
+  if (description.length > 2000) {
+    throw userInputError('API key description must be at most 2000 characters');
+  }
+  return { name, description: description.length === 0 ? null : description };
+}
+
+function apiKeyNotFoundResult<
+  T extends 'ApiKeyMutationError' | 'RotateApiKeyError',
+>(name: T) {
+  return gqlErrorResult(
+    new CoopError({
+      name,
+      status: 404,
+      type: [ErrorType.NotFound],
+      title: 'API key not found',
+      detail: 'API key not found',
+      shouldErrorSpan: false,
+    }),
+  );
+}
+
+async function runApiKeyMutation<T>(operation: () => Promise<T>) {
+  try {
+    return await operation();
+  } catch (error) {
+    // Resolvers do not receive a request-scoped logger.
+    // eslint-disable-next-line no-restricted-syntax -- log unexpected errors without exposing them to clients
+    logErrorJson({ message: 'API key operation failed', error });
+    return gqlErrorResult(
+      new CoopError({
+        name: 'ApiKeyMutationError',
+        status: 500,
+        type: [ErrorType.InternalServerError],
+        title: 'API key operation failed',
+        detail: 'An error occurred while managing the API key',
+        shouldErrorSpan: true,
+      }),
+    );
+  }
+}
+
+function serializeApiKey(record: ApiKeyRecord) {
+  return {
+    id: record.id,
+    name: record.name,
+    description: record.description,
+    isActive: record.isActive,
+    createdAt: record.createdAt.toISOString(),
+    lastUsedAt: record.lastUsedAt?.toISOString() ?? null,
+    createdBy: record.createdBy,
+  };
+}
+
 const Query: GQLQueryResolvers = {
+  async apiKeys(_, __, context) {
+    const user = context.getUser();
+    if (!user?.orgId) {
+      throw unauthenticatedError('Authenticated user required');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError('User does not have permission to manage API keys');
+    }
+    const records = await context.services.ApiKeyService.getApiKeysForOrg(
+      user.orgId,
+    );
+    return records.map(serializeApiKey);
+  },
   async apiKey(_, __, context) {
     const user = context.getUser();
     if (!user || !user.orgId) {
@@ -90,6 +213,74 @@ const Query: GQLQueryResolvers = {
 };
 
 const Mutation: GQLMutationResolvers = {
+  async createApiKey(_, { input }, context) {
+    const user = context.getUser();
+    if (!user?.orgId) {
+      throw unauthenticatedError('Authenticated user required');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError('User does not have permission to manage API keys');
+    }
+    const { name, description } = validateApiKeyMetadata(input);
+    return runApiKeyMutation(async () => {
+      const { apiKey, record } =
+        await context.services.ApiKeyService.createApiKey(
+          user.orgId,
+          name,
+          description,
+          user.id,
+        );
+      return gqlSuccessResult(
+        {
+          apiKey,
+          record: serializeApiKey(record),
+        },
+        'CreateApiKeySuccessResponse',
+      );
+    });
+  },
+  async updateApiKey(_, { input }, context) {
+    const user = context.getUser();
+    if (!user?.orgId) {
+      throw unauthenticatedError('Authenticated user required');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError('User does not have permission to manage API keys');
+    }
+    const { name, description } = validateApiKeyMetadata(input);
+    return runApiKeyMutation(async () => {
+      const record = await context.services.ApiKeyService.updateApiKey(
+        input.id,
+        user.orgId,
+        name,
+        description,
+      );
+      return record
+        ? gqlSuccessResult(
+            { record: serializeApiKey(record) },
+            'UpdateApiKeySuccessResponse',
+          )
+        : apiKeyNotFoundResult('ApiKeyMutationError');
+    });
+  },
+  async deleteApiKey(_, { id }, context) {
+    const user = context.getUser();
+    if (!user?.orgId) {
+      throw unauthenticatedError('Authenticated user required');
+    }
+    if (!user.getPermissions().includes(UserPermission.MANAGE_ORG)) {
+      throw forbiddenError('User does not have permission to manage API keys');
+    }
+    return runApiKeyMutation(async () => {
+      const deleted = await context.services.ApiKeyService.deleteApiKey(
+        id,
+        user.orgId,
+      );
+      return deleted
+        ? gqlSuccessResult({ id }, 'DeleteApiKeySuccessResponse')
+        : apiKeyNotFoundResult('ApiKeyMutationError');
+    });
+  },
   async rotateApiKey(_, { input }, context) {
     const user = context.getUser();
     if (!user || !user.orgId) {
@@ -102,26 +293,19 @@ const Mutation: GQLMutationResolvers = {
     }
 
     try {
-      const { apiKey, record } =
-        await context.services.ApiKeyService.rotateApiKey(
-          user.orgId,
-          input.name,
-          input.description ?? null,
-          user.id,
-        );
+      const result = await context.services.ApiKeyService.rotateApiKey(
+        user.orgId,
+        input.id,
+      );
+      if (!result) {
+        return apiKeyNotFoundResult('RotateApiKeyError');
+      }
+      const { apiKey, record } = result;
 
       return gqlSuccessResult(
         {
           apiKey,
-          record: {
-            id: record.id,
-            name: record.name,
-            description: record.description,
-            isActive: record.isActive,
-            createdAt: record.createdAt.toISOString(),
-            lastUsedAt: record.lastUsedAt?.toISOString() ?? null,
-            createdBy: record.createdBy,
-          },
+          record: serializeApiKey(record),
         },
         'RotateApiKeySuccessResponse',
       );
