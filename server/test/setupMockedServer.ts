@@ -1,4 +1,4 @@
-import otel from '@opentelemetry/api';
+import { ProxyTracerProvider } from '@opentelemetry/api';
 import type pg from 'pg';
 import * as superTest from 'supertest';
 import { vi, type Mock, type Mocked } from 'vitest';
@@ -79,9 +79,7 @@ export async function getBottleContainerWithIOMocks(
   // The mutation rule below is a false positive, as we're just doing
   // initial setup on this mock object before exposing it.
 
-  const tracer = new SafeTracer(
-    new otel.ProxyTracerProvider().getTracer('noop'),
-  );
+  const tracer = new SafeTracer(new ProxyTracerProvider().getTracer('noop'));
 
   const queryMock = vi.fn(
     async (_query: string, _tracer: SafeTracer, _binds?: readonly unknown[]) =>

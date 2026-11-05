@@ -54,6 +54,7 @@ export enum ErrorType {
   ConcurrencyConflict = '/errors/concurrent-update-conflict',
 
   InternalServerError = '/errors/internal-server-error',
+  Timeout = '/errors/timeout',
 
   // authz
   Unauthenticated = '/errors/authentication-failed-or-missing',
@@ -258,6 +259,7 @@ export type CoopErrorName =
   // generic errors
   | 'NotFoundError'
   | 'InternalServerError'
+  | 'TimeoutError'
   | 'BadRequestError'
   | 'UnauthenticatedError'
   | 'UnauthorizedError'
@@ -354,6 +356,15 @@ export const makeInternalServerError = (
     type: [...(data.type ?? []), ErrorType.InternalServerError],
     title,
     name: 'InternalServerError',
+  });
+
+export const makeTimeoutError = (title: string, data: ErrorInstanceData) =>
+  new CoopError({
+    ...data,
+    status: 504,
+    type: [...(data.type ?? []), ErrorType.Timeout],
+    title,
+    name: 'TimeoutError',
   });
 
 export const makeBadRequestError = (title: string, data: ErrorInstanceData) =>

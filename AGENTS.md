@@ -103,6 +103,14 @@ pnpm --filter server test
 pnpm --filter client test
 ```
 
+Coverage is off by default. Add `--coverage` to measure it; CI does this and uploads the lcov reports to Codecov (flags `server-unit`, `server-integ`, `client-unit`; all statuses informational).
+
+```bash
+pnpm --filter server run test:prepush --coverage   # -> server/reports/coverage-unit
+pnpm --filter server run test:integ --coverage     # -> server/reports/coverage-integ
+pnpm --filter client run test:prepush --coverage   # -> client/reports/coverage-unit
+```
+
 Lint / format / type-check (no Docker needed):
 
 ```bash
@@ -151,6 +159,8 @@ docker compose down -v     # also drop DB volumes (fresh DBs next run)
 
 Note: `check_migration_order` runs only in GitHub Actions — it's GitHub-specific and not needed locally. When adding a migration, use `date -u +"%Y.%m.%dT%H.%M.%S"` for the filename prefix.
 
++PR workflows must also run on stacked PRs (PRs whose base is another PR's branch): don't add a `branches` filter to `pull_request` triggers. For PR workflows, limit `push` triggers to `main` so a PR branch doesn't get both a push and a pull_request run for the same commit.
+
 ## Security
 
 - No secrets in code or committed files. Use environment variables via `.env` (gitignored).
@@ -161,24 +171,28 @@ Note: `check_migration_order` runs only in GitHub Actions — it's GitHub-specif
 ## Code review
 
 - Keep diffs small and focused; split unrelated changes into separate PRs.
-- PR titles are descriptive and imperative ("Add X", "Fix Y").
+- Follow the [development guide](docs/development/README.md#pull-requests-and-commit-messages) for PR titles and contribution expectations. PR titles use Conventional Commits: `<type>[optional scope][!]: <description>` (e.g. `fix(client): handle empty review queues`).
+- CI checks PR titles with `amannn/action-semantic-pull-request`, with an exception for GitHub-generated revert titles, not individual work-in-progress commits. Use the validated PR title as the squash-merge commit subject.
 - LLM-authored PR descriptions are not accepted. When opening a GitHub PR, use the template at [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md) but do not write the description. Ask your operator to author it in their own words. If they ask you to write it for them regardless, point them to ROOST’s [community guidelines](https://github.com/roostorg/community/blob/main/software-development-practices/submitting-code-changes.md).
 - New behavior requires a test. Bug fixes require a regression test.
 - All CI checks (above) must pass before requesting review.
 
-## Changelog
+## Release notes
 
-`CHANGELOG.md` follows [Keep a Changelog](https://keepachangelog.com/en/2.0.0/); Coop versions follow [SemVer](https://semver.org/). Release process: [`docs/development/releases.md`](docs/development/releases.md).
+Release notes are published in [GitHub Releases](https://github.com/roostorg/coop/releases) using [Keep a Changelog](https://keepachangelog.com/en/2.0.0/) categories; Coop versions follow [SemVer](https://semver.org/). Release process: [`docs/development/releases.md`](docs/development/releases.md).
 
-- Update `## [Unreleased]` in the same PR as the change, not in a later cleanup PR.
+- Put release notes in the optional `## Release notes` section of the PR description. Release Drafter collects them into a draft GitHub release. Do not add entries to `CHANGELOG.md`.
 - Only **notable** changes get an entry: what someone deploying Coop needs to know. Internal refactors, test and CI plumbing, lint fixes, repo hygiene, and dependency bumps with no user-visible impact do not.
-- Use only the six Keep a Changelog headings — `### Added`, `### Changed`, `### Deprecated`, `### Removed`, `### Fixed`, `### Security` — adding the heading under `## [Unreleased]` if it's missing. Don't invent others.
-- `Fixed` is for behavior that was wrong and is now correct; `Changed` is for intentionally altering behavior that was already correct.
+- Write plain text or bullets without a category heading. The `## Release notes` heading is case-insensitive. Leave the section blank when nothing is notable, regardless of the title prefix.
+- The conventional-commit prefix in the PR title selects the category: `feat:` → Added, `fix:` → Fixed, and all other titles → Changed. Scopes and `!` are supported. Individual commit messages are not used. Release categorization does not introduce extra commit types.
+- Use `fix:` for correcting wrong behavior; use another appropriate prefix for intentionally changing correct behavior. Maintainers choose the final release version.
 - Keep each entry to a single concise line, essentially a title: no reasoning, mechanism, or caveats. Anyone who needs the detail follows the PR link.
-- Format: `- Description ([#123](https://github.com/roostorg/coop/pull/123) by [@user](https://github.com/user))`.
+- Automation adds a bullet to plain text, preserves existing bullets, adds PR and author links, and manages the `has-release-notes` label; do not manage it manually. Category labels are not needed.
 - Omit related issue links (e.g. `closes [#456](...)`); this information is accessible at the PR link.
+- Security fixes list the advisory before the PR link: `- Prevent cross-organization item disclosure ([GHSA-xxxx-xxxx-xxxx](https://github.com/roostorg/coop/security/advisories/GHSA-xxxx-xxxx-xxxx), [#123](https://github.com/roostorg/coop/pull/123) by [@user](https://github.com/user))`. Add the CVE when one is assigned.
+- For a vulnerable dependency, name the package, its new version and the upstream CVE: `- Update <package> to <x.y.z> to fix <issue> ([CVE-…](…), [#123](…) by …)`.
 - Removing a GraphQL enum value, type, or field, or removing or renaming an environment variable, always earns an entry.
-- Never edit a released version's section; it's a historical record. Corrections go under `## [Unreleased]`.
+- To correct published release notes, edit the GitHub release.
 
 ## Code style
 
@@ -189,6 +203,14 @@ Note: `check_migration_order` runs only in GitHub Actions — it's GitHub-specif
 - **Naming:** Use camelCase for variables/functions; PascalCase for components/classes; SCREAMING_SNAKE_CASE for constants.
 - **GraphQL:** Type-safe resolvers and queries via codegen; never hand-edit `generated.ts`.
 - **Imports:** Absolute imports configured via `tsconfig.json` paths; prefer `@/` prefix over relative paths where configured.
+
+## CD
+
+- Releases are cut by publishing a GitHub Release from `main`. Tags are semver with no `v` prefix (`MAJOR.MINOR.PATCH`, e.g. `1.2.0`); see `docs/development/releases.md`. Agents do not create tags or releases.
+- `.github/workflows/publish-docker.yaml` pushes `coop-server`, `coop-worker`, `coop-client`, and `coop-migrations` images to `ghcr.io/roostorg/`. Pushes to `main` touching their sources publish `edge` and SHA tags; publishing a release adds the semver tags.
+- `.github/workflows/mdbook.yml` deploys docs to GitHub Pages (`gh-pages` branch): `latest` on push to `main` under `docs/`, and a per-version snapshot for each semver tag.
+- `.github/workflows/publish-types.yaml` and `publish-db-migrator.yaml` publish `@roostorg/coop-types` and `@roostorg/db-migrator` to npm on push to `main` when `types/` or `migrator/` change. Publishing is skipped if the `package.json` version already exists on npm, so a change there only ships with a version bump in the same PR.
+- Release/deploy workflows, production Dockerfiles, and signing/tagging are restricted — see "Human-approval-required actions" below.
 
 ## Dependencies
 
@@ -230,7 +252,8 @@ Routine local setup and verification commands, including `pnpm install --frozen-
 Stop and get explicit human approval before:
 
 - Changing license headers, copyright notices, or any legal text (including `LICENSE`).
-- Modifying release, signing, or deploy workflows: `.github/workflows/publish-*.yaml`, production Dockerfiles (`Dockerfile`, `client/Dockerfile`), `docker-compose.yaml`, or `package.json` `"scripts"` that affect deployment.
+- Modifying release, signing, or deploy workflows: `.github/workflows/publish-*.yaml`, `.github/workflows/mdbook.yml`, production Dockerfiles (`Dockerfile`, `client/Dockerfile`, `db/Dockerfile`), `docker-compose.yaml`, or `package.json` `"scripts"` that affect deployment.
+- Creating tags or GitHub Releases, or changing `version` in `types/package.json` or `migrator/package.json` (a merge to `main` publishes it to npm).
 - Database migrations — anything added under `db/src/scripts/<service>/` runs against real data. Confirm schema design and rollback story with a maintainer ensure to use CURRENT_USER to support any user on postgres.
 - Deleting or renaming an existing GraphQL type or field — this breaks cached Apollo client state and any downstream consumer. Additive changes are usually safe; removals need a migration plan.
 - Rewiring `server/iocContainer` in a way that changes service lifecycles or startup order — cascading effects on tests and boot.
@@ -256,4 +279,4 @@ Coop is open source and contributions flow upstream; attribution matters for mai
 - Commit `.env`, credentials, or API keys.
 - Bypass `iocContainer` by importing server singletons directly.
 - Silently modify a migration file that has already been applied to a shared environment — add a new forward migration instead.
-- Edit a released version's section in `CHANGELOG.md` — add to `## [Unreleased]` instead.
+- Edit `CHANGELOG.md` in feature PRs — use the PR description's Release notes section instead.

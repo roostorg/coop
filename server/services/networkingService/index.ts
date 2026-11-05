@@ -100,6 +100,12 @@ export type CoopRequestQuery<T extends HandleResponseBody> = {
    * when the timeout is hit and future reads from it will fail.
    */
   timeoutMs?: number;
+  /**
+   * Aborts the in-flight request. Used to drop a media download when the
+   * caller fails before consuming the body, so a retry does not leave the
+   * previous response stream open.
+   */
+  signal?: AbortSignal;
 } & (
   | {
       body?: SignableBody | ReadableStream | FormData | FormDataLikeWithStreams;
@@ -192,6 +198,7 @@ export async function fetchHTTP<T extends HandleResponseBody>(
         body,
         handleResponseBody,
         timeoutMs = Infinity,
+        signal: callerSignal,
       } = query;
 
       const signature = await (async () => {
@@ -276,7 +283,7 @@ export async function fetchHTTP<T extends HandleResponseBody>(
         return [toReadableStream(encoder), encoder.headers];
       })();
 
-      const signal =
+      const timeoutSignal =
         timeoutMs > 0 && timeoutMs !== Infinity
           ? (() => {
               const controller = new AbortController();
@@ -292,6 +299,10 @@ export async function fetchHTTP<T extends HandleResponseBody>(
               return controller.signal;
             })()
           : undefined;
+      const signal =
+        timeoutSignal && callerSignal
+          ? AbortSignal.any([timeoutSignal, callerSignal])
+          : (timeoutSignal ?? callerSignal);
 
       // NB: use of fetch here is okay, since this is our wrapper function that
       // should be used instead of fetch everywhere else in the codebase

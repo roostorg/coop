@@ -1,3 +1,5 @@
+import type { IntegrationConfigField } from '@roostorg/coop-types';
+
 import { getIntegrationRegistry } from '../../services/integrationRegistry/index.js';
 import { Integration } from '../../services/signalsService/index.js';
 import { UserPermission } from '../../services/userManagementService/index.js';
@@ -8,6 +10,8 @@ import {
 } from '../datasources/IntegrationApi.js';
 import {
   type GQLIntegrationConfig,
+  type GQLIntegrationConfigFieldInputType,
+  type GQLIntegrationConfigResolvers,
   type GQLMutationResolvers,
   type GQLQueryResolvers,
 } from '../generated.js';
@@ -94,6 +98,35 @@ const typeDefs = /* GraphQL */ `
     requiresConfig: Boolean!
     logoUrl: String
     logoWithBackgroundUrl: String
+    """
+    Form fields declared by a plugin manifest. Empty for built-in integrations,
+    which have custom forms.
+    """
+    configurationFields: [IntegrationConfigField!]!
+  }
+
+  enum IntegrationConfigFieldInputType {
+    TEXT
+    PASSWORD
+    JSON
+    ARRAY
+    SELECT
+  }
+
+  type IntegrationConfigFieldOption {
+    value: String!
+    label: String!
+  }
+
+  type IntegrationConfigField {
+    key: String!
+    label: String!
+    required: Boolean!
+    inputType: IntegrationConfigFieldInputType!
+    "Choices for SELECT fields; null otherwise."
+    options: [IntegrationConfigFieldOption!]
+    placeholder: String
+    description: String
   }
 
   input GoogleContentSafetyApiIntegrationApiCredentialInput {
@@ -265,9 +298,37 @@ const Query: GQLQueryResolvers = {
   },
 };
 
+const fieldInputTypeToGql = {
+  text: 'TEXT',
+  password: 'PASSWORD',
+  json: 'JSON',
+  array: 'ARRAY',
+  select: 'SELECT',
+} as const satisfies Record<
+  IntegrationConfigField['inputType'],
+  GQLIntegrationConfigFieldInputType
+>;
+
 const PluginIntegrationApiCredential = {
   credential(it: TIntegrationConfigWithMetadata['apiCredential']) {
     return it;
+  },
+};
+
+const IntegrationConfig: GQLIntegrationConfigResolvers = {
+  configurationFields(it) {
+    const fields =
+      getIntegrationRegistry().getManifest(it.name)?.configurationFields ?? [];
+    return fields.map((field) => ({
+      key: field.key,
+      label: field.label,
+      required: field.required,
+      inputType: fieldInputTypeToGql[field.inputType],
+      options:
+        field.options?.map(({ value, label }) => ({ value, label })) ?? null,
+      placeholder: field.placeholder ?? null,
+      description: field.description ?? null,
+    }));
   },
 };
 
@@ -347,6 +408,7 @@ const Mutation: GQLMutationResolvers = {
 const resolvers = {
   IntegrationApiCredential,
   PluginIntegrationApiCredential,
+  IntegrationConfig,
   Query,
   Mutation,
 };

@@ -9,6 +9,8 @@ node_modules/
 coverage/
 server/coverage/
 client/coverage/
+client/reports/
+server/reports/
 
 # production
 /build
@@ -18,6 +20,7 @@ docs/book/
 
 # misc
 .DS_Store
+*.textClipping
 .swp
 .env
 .env.local

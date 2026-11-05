@@ -70,6 +70,7 @@ import {
   type JobSortType,
   type UserIdentifier,
 } from './JobPriority.js';
+import PendingJobIndex from './PendingJobIndex.js';
 
 export type ManualReviewQueue = {
   id: string;
@@ -89,6 +90,15 @@ export type ManualReviewQueue = {
 const OLDEST_JOB_PRIORITIZED_SCAN_LIMIT = 10_000;
 
 const MAX_RECOMPUTE_SNAPSHOT_PASSES = 10;
+
+// Bounds the BullMQ lookups one oldest-job read can spend confirming index
+// entries. Past it the read reports "unknown" rather than an unconfirmed age.
+const OLDEST_JOB_MAX_CANDIDATES = 50;
+const OLDEST_JOB_CANDIDATE_BATCH_SIZE = 10;
+
+const PENDING_JOB_INDEX_BACKFILL_BATCH_SIZE = 1_000;
+
+const PENDING_JOB_STATES = new Set(['waiting', 'prioritized', 'delayed']);
 
 const PgQueueSelection = [
   'id',
@@ -174,6 +184,8 @@ export default class QueueOperations {
     Bind1<typeof getBullWorker<ManualReviewAppealJob>>
   >;
   private readonly transactionWithRetry: KyselyTransactionWithRetry<ManualReviewToolServicePg>;
+  private readonly pendingJobIndex: PendingJobIndex;
+  readonly #pendingJobIndexBackfills = new Map<string, Promise<void>>();
 
   constructor(
     private readonly pgQuery: Kysely<ManualReviewToolServicePg>,
@@ -184,6 +196,7 @@ export default class QueueOperations {
     private readonly meter?: Dependencies['Meter'],
   ) {
     this.transactionWithRetry = makeKyselyTransactionWithRetry(this.pgQuery);
+    this.pendingJobIndex = new PendingJobIndex(redis);
     // Reassingment here is a hack to work around TS syntax limitations
     // with generic instantiation expressions.
     const getOrCreateBullQueue_ = getOrCreateBullQueue<StoredManualReviewJob>;
@@ -302,8 +315,9 @@ export default class QueueOperations {
     await assertRolesInOrg(this.pgQuery, { orgId, roleIds });
     const uniqueRoleIds = [...new Set(roleIds)];
 
+    let createdQueue: ManualReviewQueue;
     try {
-      return await this.transactionWithRetry(async (transaction) => {
+      createdQueue = await this.transactionWithRetry(async (transaction) => {
         // In newer versions of kysely, this is greatly simplified with
         // `transaction.selectNoFrom(eb => eb.exists(...))`, but we're blocked on
         // updating by https://github.com/kysely-org/kysely/issues/577#issuecomment-1804900006
@@ -377,6 +391,15 @@ export default class QueueOperations {
       }
       throw e;
     }
+
+    // A brand-new queue has no jobs, so its index is complete from the start.
+    if (!createdQueue.isAppealsQueue) {
+      await this.pendingJobIndex.markBuilt({
+        orgId,
+        queueId: createdQueue.id,
+      });
+    }
+    return createdQueue;
   }
 
   async updateManualReviewQueue(input: {
@@ -584,6 +607,9 @@ export default class QueueOperations {
         // the DB delete itself succeeded.
         this.tracer.logActiveSpanFailedIfAny(e);
       }
+      await this.pendingJobIndex
+        .clear({ orgId, queueId })
+        .catch((e: unknown) => this.tracer.logActiveSpanFailedIfAny(e));
     }
 
     return numDeletedRows === 1n;
@@ -596,6 +622,7 @@ export default class QueueOperations {
     const queue = await this.getOrCreateBullQueue({ orgId, queueId });
 
     await queue.obliterate({ force: true });
+    await this.pendingJobIndex.clear({ orgId, queueId });
 
     // See `deleteManualReviewQueue` for why this is serialized + ownership-
     // checked. Same pattern, just without the default-queue guard.
@@ -970,6 +997,16 @@ export default class QueueOperations {
     const jobId = bullJobIdtoExternalJobId(bullJobId);
     const createdAt = jobPayload.createdAt ?? new Date();
 
+    const indexable = Number.isFinite(createdAt.getTime());
+    // Indexed before the add so a read never sees the job without an entry.
+    if (indexable) {
+      await this.pendingJobIndex.add({
+        orgId,
+        queueId,
+        entries: [{ jobId, createdAtMs: createdAt.getTime() }],
+      });
+    }
+
     const newJob = await queue.add(
       bullJobId,
       {
@@ -987,6 +1024,32 @@ export default class QueueOperations {
         ...(priority != null && { priority }),
       },
     );
+
+    // A read that ran while the add was in flight found no BullMQ job for
+    // our entry and dropped it, so write it again now that the job exists.
+    // If BullMQ instead ignored the add because the BullJobId was taken, our
+    // entry names a job that was never stored. A failure here mustn't fail
+    // an enqueue that succeeded.
+    if (indexable) {
+      try {
+        const storedJob = await queue.getJob(bullJobId);
+        if (storedJob?.data.id === jobId) {
+          await this.pendingJobIndex.add({
+            orgId,
+            queueId,
+            entries: [{ jobId, createdAtMs: createdAt.getTime() }],
+          });
+        } else {
+          await this.pendingJobIndex.remove({
+            orgId,
+            queueId,
+            jobIds: [jobId],
+          });
+        }
+      } catch (error: unknown) {
+        this.tracer.logActiveSpanFailedIfAny(error);
+      }
+    }
 
     this.meter?.recordManualReviewEvent('enqueue_call_succeeded', {
       queue_id: queueId,
@@ -1148,6 +1211,14 @@ export default class QueueOperations {
     // clobber a reviewer's in-flight decision payload.
     if (!job || job.data.id !== jobId) {
       return undefined;
+    }
+    const createdAtMs = new Date(data.createdAt).getTime();
+    if (Number.isFinite(createdAtMs)) {
+      await this.pendingJobIndex.add({
+        orgId,
+        queueId,
+        entries: [{ jobId, createdAtMs }],
+      });
     }
     await job.updateData(data);
 
@@ -1474,6 +1545,9 @@ export default class QueueOperations {
     // doesn't conflate them with "already gone".
     try {
       const status = await queue.remove(bullJobId);
+      if (status === 1) {
+        await this.pendingJobIndex.remove({ orgId, queueId, jobIds: [jobId] });
+      }
       return status === 1;
     } catch (err: unknown) {
       if (isJobLockedError(err)) {
@@ -1508,6 +1582,7 @@ export default class QueueOperations {
     try {
       const status = await queue.remove(bullJobId);
       if (status === 1) {
+        await this.pendingJobIndex.remove({ orgId, queueId, jobIds: [jobId] });
         return true;
       }
     } catch (err: unknown) {
@@ -1519,6 +1594,7 @@ export default class QueueOperations {
 
     try {
       await job.moveToCompleted(null, invokerUserId, false);
+      await this.pendingJobIndex.remove({ orgId, queueId, jobIds: [jobId] });
       return true;
     } catch {
       // Lock token mismatch (different user) or the job's state moved
@@ -1544,6 +1620,9 @@ export default class QueueOperations {
 
     const queue = await this.#getBullQueue(orgId, queueId);
     await queue.obliterate({ force: true });
+    // Left unbuilt rather than reset to empty: a job enqueued while the queue
+    // was being wiped may have lost its entry, and the backfill picks it up.
+    await this.pendingJobIndex.clear({ orgId, queueId });
   }
 
   async dequeueNextAppealJobWithLock(opts: {
@@ -1933,12 +2012,12 @@ export default class QueueOperations {
     jobId: JobId;
     lockToken: string;
   }) {
+    const { orgId, queueId, jobId } = opts;
     try {
       await this.#markLockedJobCompleted(opts);
     } catch (error: unknown) {
       // The most common case where this throws if the lock token has expired,
       // so try to remove it manually.
-      const { orgId, queueId, jobId } = opts;
       const queue = await this.getOrCreateBullQueue({ orgId, queueId });
       const bullJobId = parseExternalId(jobId).bullId;
       const removeJobStatus = await queue.remove(bullJobId);
@@ -1946,6 +2025,7 @@ export default class QueueOperations {
         throw new Error('Failed to remove job');
       }
     }
+    await this.pendingJobIndex.remove({ orgId, queueId, jobIds: [jobId] });
   }
 
   /**
@@ -2026,6 +2106,185 @@ export default class QueueOperations {
   }
 
   async getOldestJobCreatedAt(opts: {
+    orgId: string;
+    queueId: string;
+    isAppealsQueue: boolean;
+  }): Promise<Date | null> {
+    const { orgId, queueId, isAppealsQueue } = opts;
+
+    // Appeal jobs are never prioritized, so the scan below is already O(1)
+    // for them and they aren't indexed.
+    if (!isAppealsQueue) {
+      if (await this.pendingJobIndex.isBuilt({ orgId, queueId })) {
+        return this.#getOldestJobCreatedAtFromIndex({ orgId, queueId });
+      }
+      this.#startPendingJobIndexBackfill({ orgId, queueId });
+    }
+
+    return this.#scanOldestJobCreatedAt({ orgId, queueId, isAppealsQueue });
+  }
+
+  /**
+   * Walks the index oldest-first and returns the first entry BullMQ confirms
+   * is still pending. Entries for jobs that are gone are dropped; dequeued
+   * (active) jobs are skipped but kept, since they come back if the reviewer
+   * skips them or the lock lapses.
+   */
+  async #getOldestJobCreatedAtFromIndex(opts: {
+    orgId: string;
+    queueId: string;
+  }): Promise<Date | null> {
+    const { orgId, queueId } = opts;
+    const queue = await this.#getBullQueue(orgId, queueId);
+
+    let offset = 0;
+    let checked = 0;
+    let prunedAny = false;
+    while (checked < OLDEST_JOB_MAX_CANDIDATES) {
+      const entries = await this.pendingJobIndex.range({
+        orgId,
+        queueId,
+        offset,
+        count: Math.min(
+          OLDEST_JOB_CANDIDATE_BATCH_SIZE,
+          OLDEST_JOB_MAX_CANDIDATES - checked,
+        ),
+      });
+      if (entries.length === 0) {
+        return null;
+      }
+      checked += entries.length;
+
+      const candidates = await Promise.all(
+        entries.map(async (entry) => {
+          const { bullId } = parseExternalId(
+            instantiateOpaqueType<JobId>(entry.jobId),
+          );
+          const job = await queue.getJob(bullId);
+          const isSameJob = job != null && job.data.id === entry.jobId;
+          return {
+            entry,
+            job: isSameJob ? job : undefined,
+            state: isSameJob ? await job.getState() : undefined,
+          };
+        }),
+      );
+
+      const gone: string[] = [];
+      for (const { entry, job, state } of candidates) {
+        if (job === undefined || state === undefined) {
+          gone.push(entry.jobId);
+          continue;
+        }
+        if (state === 'active') {
+          offset++;
+          continue;
+        }
+        if (!PENDING_JOB_STATES.has(state)) {
+          gone.push(entry.jobId);
+          continue;
+        }
+        const createdAt = new Date(job.data.createdAt);
+        if (!Number.isFinite(createdAt.getTime())) {
+          offset++;
+          continue;
+        }
+        if (createdAt.getTime() !== entry.createdAtMs) {
+          // The entry is out of order. Its corrected position may be ahead of
+          // entries already skipped, so walk again from the start.
+          await this.pendingJobIndex.add({
+            orgId,
+            queueId,
+            entries: [{ jobId: entry.jobId, createdAtMs: createdAt.getTime() }],
+          });
+          offset = 0;
+          break;
+        }
+        await this.pendingJobIndex.remove({ orgId, queueId, jobIds: gone });
+        return createdAt;
+      }
+      // Removed entries shift later ones down, so `offset` only counts the
+      // ones we kept.
+      await this.pendingJobIndex.remove({ orgId, queueId, jobIds: gone });
+      prunedAny ||= gone.length > 0;
+    }
+    // Pruning means the next read starts further along. Otherwise every
+    // candidate is a live job reviewers are holding, and the next read would
+    // stall on the same ones, so fall back to the scan.
+    return prunedAny
+      ? null
+      : this.#scanOldestJobCreatedAt({
+          orgId,
+          queueId,
+          isAppealsQueue: false,
+        });
+  }
+
+  /**
+   * Populates the index from BullMQ for a queue that predates it. Jobs
+   * enqueued meanwhile index themselves, so the scan only has to catch the
+   * ones already there. Runs at most once at a time per queue per process;
+   * concurrent runs on other processes are harmless because writes are
+   * idempotent.
+   */
+  #startPendingJobIndexBackfill(opts: { orgId: string; queueId: string }) {
+    const key = `${opts.orgId}:${opts.queueId}`;
+    if (this.#pendingJobIndexBackfills.has(key)) {
+      return;
+    }
+    const backfill = this.backfillPendingJobIndex(opts)
+      .catch((error: unknown) => {
+        this.tracer.logActiveSpanFailedIfAny(error);
+      })
+      .finally(() => {
+        this.#pendingJobIndexBackfills.delete(key);
+      });
+    this.#pendingJobIndexBackfills.set(key, backfill);
+  }
+
+  async awaitPendingJobIndexBackfills() {
+    await Promise.all(this.#pendingJobIndexBackfills.values());
+  }
+
+  async backfillPendingJobIndex(opts: { orgId: string; queueId: string }) {
+    const { orgId, queueId } = opts;
+    const queue = await this.#getBullQueue(orgId, queueId);
+
+    const seen = new Set<string>();
+    // Offset paging while reviewers dequeue can skip jobs, because removing
+    // a job shifts every later job to a lower offset. Repeat full passes
+    // until one finds nothing new; if that never happens, leave the index
+    // unbuilt so a later read retries.
+    for (let pass = 0; pass < MAX_RECOMPUTE_SNAPSHOT_PASSES; pass++) {
+      const seenBeforePass = seen.size;
+      let start = 0;
+      while (true) {
+        const jobs = await queue.getJobs(
+          ['waiting', 'prioritized', 'delayed', 'active'],
+          start,
+          start + PENDING_JOB_INDEX_BACKFILL_BATCH_SIZE - 1,
+        );
+        if (jobs.length === 0) break;
+        const entries = jobs.flatMap((job) => {
+          const jobId = job.data.id;
+          const createdAtMs = new Date(job.data.createdAt).getTime();
+          if (seen.has(jobId)) return [];
+          seen.add(jobId);
+          // A job without a usable createdAt has no age to report.
+          return Number.isFinite(createdAtMs) ? [{ jobId, createdAtMs }] : [];
+        });
+        await this.pendingJobIndex.add({ orgId, queueId, entries });
+        if (jobs.length < PENDING_JOB_INDEX_BACKFILL_BATCH_SIZE) break;
+        start += PENDING_JOB_INDEX_BACKFILL_BATCH_SIZE;
+      }
+      if (seen.size === seenBeforePass) {
+        await this.pendingJobIndex.markBuilt({ orgId, queueId });
+        return;
+      }
+    }
+  }
+
+  async #scanOldestJobCreatedAt(opts: {
     orgId: string;
     queueId: string;
     isAppealsQueue: boolean;
