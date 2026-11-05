@@ -36,6 +36,7 @@ Then:
 Publishing a release triggers automations:
 
 - **Docker images**: builds and pushes version-tagged Docker images for `coop-server`, `coop-worker`, `coop-client`, and `coop-migrations`
+- **Image scans**: scans each image with Trivy and reports findings to code scanning, which is visible only to maintainers; findings never block publishing. See [Vulnerability scanning](vulnerability-scanning.md)
 - **Docs**: adds a folder for the release to the [index](https://roostorg.github.io/coop/) with a snapshot of the docs
 
 `@roostorg/coop-types` and `@roostorg/db-migrator` are not released this way; they publish to npm from `main` whenever `types/**` or `migrator/**` changes.
