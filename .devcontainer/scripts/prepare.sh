@@ -12,8 +12,10 @@ echo -e "${BOLD}Preparing the Coop demo. The first time, this takes several minu
 wait_for_docker || exit 0
 
 # Most images come from Docker Hub, which rate-limits anonymous pulls per IP address.
-# Signing in (from Codespaces secrets, if you've set them) avoids the limit.
+# Signing in (from Codespaces secrets, if you've set them) avoids the limit. Sign
+# out again on exit, so a prebuild doesn't keep the token in ~/.docker.
 if [ -n "${DOCKERHUB_USERNAME:-}" ] && [ -n "${DOCKERHUB_TOKEN:-}" ]; then
+    trap 'docker logout >/dev/null 2>&1' EXIT
     echo "$DOCKERHUB_TOKEN" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin >/dev/null &&
         ok "Signed in to Docker Hub as $DOCKERHUB_USERNAME"
 fi
@@ -33,7 +35,12 @@ docker compose pull --ignore-buildable --quiet || pull_failed
 ok "Images downloaded"
 
 step "Building the Coop server, client and migrations images from this branch"
-docker compose build --quiet || pull_failed
+# The full build log is long, so show its end only if the build fails.
+BUILD_LOG=$(mktemp)
+if ! docker compose --progress plain build >"$BUILD_LOG" 2>&1; then
+    tail -n 60 "$BUILD_LOG"
+    pull_failed
+fi
 ok "Images built"
 
 echo -e "${GREEN}Preparation finished. The demo starts next.${NC}"
