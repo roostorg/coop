@@ -6,13 +6,7 @@ import {
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import { asyncIterableToArray } from '../../utils/collections.js';
-import { jsonStringify } from '../../utils/encoding.js';
-import {
-  __throw,
-  assertUnreachable,
-  safePick,
-  withRetries,
-} from '../../utils/misc.js';
+import { __throw, assertUnreachable, safePick } from '../../utils/misc.js';
 import { instantiateOpaqueType } from '../../utils/typescript-types.js';
 import { type ActionExecutionCorrelationId } from '../analyticsLoggers/ActionExecutionLogger.js';
 import { type RuleExecutionCorrelationId } from '../analyticsLoggers/ruleExecutionLoggingUtils.js';
@@ -48,8 +42,6 @@ export default class NcmecEnqueueToMrt {
     private moderationConfigService: Dependencies['ModerationConfigService'],
     private manualReviewToolService: Dependencies['ManualReviewToolService'],
     private itemInvestigationService: Dependencies['ItemInvestigationService'],
-    readonly fetchHTTP: Dependencies['fetchHTTP'],
-    readonly signingKeyPairService: Dependencies['SigningKeyPairService'],
     private ncmecReporting: NcmecReporting,
   ) {}
 
@@ -129,37 +121,6 @@ export default class NcmecEnqueueToMrt {
         userIdentifier: targetUser.userIdentifier,
         userItemType: targetUser.userItemType,
       });
-    }
-
-    try {
-      await withRetries(
-        {
-          maxRetries: 5,
-          initialTimeMsBetweenRetries: 5,
-          maxTimeMsBetweenRetries: 500,
-          jitter: true,
-        },
-        async () => {
-          const prePreservationResponse = await this.fetchHTTP({
-            url: 'https://tas-infra-ml.net/data/coop/content/pre-preserve',
-            method: 'post',
-            handleResponseBody: 'discard',
-            body: jsonStringify({
-              userId: userSubmission.itemId,
-              typeId: userSubmission.itemType.id,
-            }),
-            signWith: this.signingKeyPairService.sign.bind(
-              this.signingKeyPairService,
-              input.orgId,
-            ),
-          });
-          if (prePreservationResponse.status !== 200) {
-            throw new Error('Pre-preservation failed');
-          }
-        },
-      )();
-    } catch (e) {
-      // Pre-preservation call failed (expected for test/local environments)
     }
 
     const reportedItemIdentifier =
