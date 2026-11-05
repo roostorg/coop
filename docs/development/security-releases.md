@@ -16,7 +16,7 @@ The scope tiers, response targets and communication rules below come from [RFC: 
 ## Before you start
 
 - [ ] Every vulnerability going into the release has been triaged: the reported one, and every upstream advisory fixed by a dependency update in the release (see [Finding a release's security fixes](#finding-a-releases-security-fixes)), including Dependabot alerts that closed when their fix merged. For each, record which released versions ship it, whether it is reachable from Coop's code, whether it is exploitable in the documented default configuration, and whether it is [known exploited](https://www.cisa.gov/known-exploited-vulnerabilities-catalog) or has a high EPSS score. Reproduce it against Coop where feasible.
-- [ ] Each reachable vulnerability has a draft [security advisory](https://github.com/roostorg/coop/security/advisories/new), scored for how Coop uses the affected code rather than copied from the upstream score. So does every vulnerability in Coop's own code; request its CVE from the draft now (see [CVEs](#cves)). Upstream advisories that are not reachable get no Coop advisory; the release notes list them under **Other security updates**, without saying whether they affect Coop.
+- [ ] Each reachable vulnerability has a draft [security advisory](https://github.com/roostorg/coop/security/advisories/new), scored for how Coop uses the affected code rather than copied from the upstream score. So does every vulnerability in Coop's own code. Upstream advisories that are not reachable get no Coop advisory; the release notes list them under **Other security updates**, without saying whether they affect Coop.
 - [ ] You know which path in step 1 applies.
 
 Proposed response targets:
@@ -250,15 +250,16 @@ Publish each Coop advisory after the release, so that its patched version exists
 ### CVEs
 
 - Request a CVE only for a vulnerability in Coop's own code. For an upstream dependency issue that already has a CVE, reference the upstream CVE instead of requesting a new one.
-- Request it from the draft advisory as early as possible; GitHub usually reviews requests within 72 hours. Requesting does not make the advisory public, and GitHub publishes the CVE when the advisory is published. GitHub does not document requesting a CVE after publication, so request it while the advisory is a draft.
+- Requesting a CVE sends the advisory's content to GitHub for review, so request it from the draft advisory only once the draft passes the content checks in [Before publishing](#before-publishing), and before publishing it. GitHub usually reviews requests within 72 hours. Requesting does not make the advisory public, and GitHub publishes the CVE when the advisory is published. GitHub does not document requesting a CVE after publication, so request it while the advisory is a draft.
 - Don't hold the release, the advisory or the announcement for the CVE. If it is assigned after publication, edit the GitHub release notes to add it next to the advisory. The email links the advisory page, which shows the CVE, so it need not be resent.
 
 ### Before publishing
 
-- [ ] The description is rewritten in the template's form; a reporter's draft is source material, not the published text.
+- [ ] The description is rewritten in the template's form, including References; a reporter's draft is source material, not the published text.
 - [ ] Affected and patched versions match the release.
+- [ ] Severity and CVSS score are consistent with the Impact section, and the CWE is set.
 - [ ] Credits are listed and every credited person has accepted.
-- [ ] For a vulnerability in Coop's own code, a CVE was requested while the advisory was a draft.
+- [ ] Then, for a vulnerability in Coop's own code, a CVE is requested from the draft (see [CVEs](#cves)).
 - [ ] The release notes link the advisory.
 
 ## 7. Notify
