@@ -16,7 +16,7 @@ The scope tiers, response targets and communication rules below come from [RFC: 
 ## Before you start
 
 - [ ] Every vulnerability going into the release has been triaged: the reported one, and every upstream advisory fixed by a dependency update in the release (see [Finding a release's security fixes](#finding-a-releases-security-fixes)). For each, record which released versions ship it, whether it is reachable from Coop's code, whether it is exploitable in the documented default configuration, and whether it is [known exploited](https://www.cisa.gov/known-exploited-vulnerabilities-catalog) or has a high EPSS score. Reproduce it against Coop where feasible.
-- [ ] Each reachable vulnerability has a draft [security advisory](https://github.com/roostorg/coop/security/advisories/new), scored for how Coop uses the affected code rather than copied from the upstream score. So does every vulnerability in Coop's own code. Upstream advisories that are not reachable get no Coop advisory; the release notes list them as precautionary updates.
+- [ ] Each reachable vulnerability has a draft [security advisory](https://github.com/roostorg/coop/security/advisories/new), scored for how Coop uses the affected code rather than copied from the upstream score. So does every vulnerability in Coop's own code. Upstream advisories that are not reachable get no Coop advisory; the release notes list them under **Other security updates**, without saying whether they affect Coop.
 - [ ] You know which path in step 1 applies.
 
 Proposed response targets:
@@ -84,6 +84,7 @@ If `main` has unreleased changes, choose one of the options below. **Pending dec
 
 - Create the branch once per minor version, from its first release tag: `git switch -c release/x.y x.y.0`, then push it to `origin`.
 - Fixes land on `main` first, then are cherry-picked to `release/x.y` with `git cherry-pick -x`, one PR per cherry-picked commit. The exception is a private-fork fix, which merges into `release/x.y` directly and is forward-ported to `main` in step 8.
+- The [Security backports](security-backports.md) workflow creates `release/x.y` and opens a backport PR for each `security`-labelled PR merged to `main`, from a `backport/<n>-to-release/x.y` branch. It depends on [#1550](https://github.com/roostorg/coop/pull/1550); without it, cherry-pick by hand as below.
 - PR checks run on PRs against `release/x.y`, but `main`'s branch protection rules do not cover it.
 - A release runs the workflow files at its tag, so fixes to `.github/workflows/` on `main` must also be cherry-picked to `release/x.y` before they apply to its releases.
 - `@roostorg/coop-types` and `@roostorg/db-migrator` only publish from `main` (see step 5), so a fix in `types/` or `migrator/` reaches npm only through `main`. Publishing either package from `release/x.y` would move its npm `latest` backwards; the workflows do not support it, so ask a maintainer.
@@ -121,7 +122,7 @@ Each fix's release note goes in its PR description's `## Release notes` section,
 The release itself gets notes written from the [release notes template](#release-notes-template), using these entries as source material:
 
 - On option A, edit the draft release for `main`.
-- On option B, Release Drafter does not draft releases for `release/x.y`, so write the notes in a file for step 4, copying the fixes' entries from the draft release for `main`.
+- On option B, edit the draft release for `x.y.(z+1)` that the Security backports workflow keeps for `release/x.y`, and publish it in step 4. Without that draft (it depends on [#1548](https://github.com/roostorg/coop/pull/1548) and [#1550](https://github.com/roostorg/coop/pull/1550)), write the notes in a file for step 4, copying the fixes' entries from the draft release for `main`.
 - A fix from a private fork has no PR in this repository, so write its entry in the release notes directly, linking only the advisory:
 
 ```markdown
@@ -134,7 +135,7 @@ If the fix touches `types/` or `migrator/`, bump `version` in `types/package.jso
 
 On option A, follow [Creating a release](releases.md#creating-a-release), with the notes from step 3.
 
-On option B, create the release from the branch; the web UI's target defaults to `main`:
+On option B, publish the draft release for `x.y.(z+1)` after checking that its target is `release/x.y`. Without a draft, create the release from the branch; the web UI's target defaults to `main`:
 
 ```bash
 gh release create x.y.z --target release/x.y --title "Coop x.y.z" --notes-file notes.md
@@ -165,18 +166,12 @@ Thanks to @<reporter> for reporting <GHSA-xxxx-xxxx-xxxx>.
 
 - **<package>** <x.y.z> fixes [CVE-…](https://github.com/advisories/GHSA-…) (<Severity>) ([#123](https://github.com/roostorg/coop/pull/123))
 
-### Upstream advisories that don't affect Coop
-
-The updates in this release also fix these upstream advisories. They're in code that Coop doesn't use, so they don't affect Coop:
-
-- **<package>** <x.y.z> fixes [CVE-…](https://github.com/advisories/GHSA-…) (<Severity>) ([#123](https://github.com/roostorg/coop/pull/123))
-
 ## Upgrade notes
 
 - Images: `ghcr.io/roostorg/coop-server:x.y.z`, `coop-worker:x.y.z`, `coop-client:x.y.z` and `coop-migrations:x.y.z`.
 ```
 
-Leave out sections that do not apply. For upgrade wording, see [Upgrade wording](#upgrade-wording).
+List every upstream advisory fixed by a dependency update that has no Coop advisory under **Other security updates**, without saying whether it affects Coop: reachability stays private (see [Before you start](#before-you-start)). Leave out sections that do not apply. For upgrade wording, see [Upgrade wording](#upgrade-wording).
 
 ## 5. Confirm artifacts published
 
@@ -221,7 +216,7 @@ Vendors who host Coop so that their users cannot self-patch can receive early no
 
 ### security-announce@roost.tools
 
-Post to [security-announce@roost.tools](https://groups.google.com/a/roost.tools/g/security-announce) once the release and its advisories are published. The email lists only Coop advisories; upstream advisories that do not affect Coop stay in the release notes.
+Post to [security-announce@roost.tools](https://groups.google.com/a/roost.tools/g/security-announce) once the release and its advisories are published. The email lists only Coop advisories; upstream advisories without a Coop advisory are listed only in the release notes.
 
 | Situation               | Advisory | security-announce                                                                       | Release note |
 | ----------------------- | -------- | --------------------------------------------------------------------------------------- | ------------ |
