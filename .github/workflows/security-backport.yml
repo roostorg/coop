@@ -85,6 +85,9 @@ jobs:
           permission-contents: write
           permission-pull-requests: write
           permission-issues: write
+          # Creating release/x.y at an older tag, or backporting a workflow
+          # change, updates files under .github/workflows.
+          permission-workflows: write
 
       - name: Push branches, open PRs and report failures
         if: steps.plan.outputs.push == 'true'

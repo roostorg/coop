@@ -332,13 +332,16 @@ function prepare({ prFilter, retry }) {
       );
       continue;
     }
-    if (
-      tryRun('git', ['ls-remote', '--exit-code', '--heads', 'origin', branch])
-        .ok
-    ) {
-      skip(`branch ${branch} already exists`);
-      continue;
-    }
+    // A branch without a PR is from a run that failed to open the PR, or a
+    // manual backport: verify it and open the PR for it.
+    const existingRef = tryRun('git', [
+      'fetch',
+      '--quiet',
+      'origin',
+      `+refs/heads/${branch}:refs/remotes/origin/${branch}`,
+    ]).ok
+      ? `origin/${branch}`
+      : undefined;
     if (!retry) {
       const comments = ghJson([
         'api',
@@ -353,7 +356,7 @@ function prepare({ prFilter, retry }) {
         continue;
       }
     }
-    const result = backportOne({ pr, sha, target, base, workdir });
+    const result = backportOne({ pr, sha, target, base, workdir, existingRef });
     if (result.skip) skip(result.skip);
     else if (result.ok) plan.backports.push(result);
     else plan.failures.push(result);
@@ -368,7 +371,7 @@ function prepare({ prFilter, retry }) {
   );
 }
 
-function backportOne({ pr, sha, target, base, workdir }) {
+function backportOne({ pr, sha, target, base, workdir, existingRef }) {
   const branch = backportBranchName(pr.number, target.branch);
   const dir = path.join(workdir, `pr-${pr.number}`);
   const parents =
@@ -388,12 +391,33 @@ function backportOne({ pr, sha, target, base, workdir }) {
     };
   };
 
-  run('git', ['worktree', 'add', '--quiet', '-B', branch, dir, base]);
-  const pick = tryRun(
-    'git',
-    ['cherry-pick', '-x', ...(parents > 1 ? ['-m', '1'] : []), sha],
-    { cwd: dir },
-  );
+  if (existingRef) {
+    run('git', ['worktree', 'add', '--quiet', '-B', branch, dir, existingRef]);
+    const log = run('git', ['log', '--format=%s%n%b', `${base}..HEAD`], {
+      cwd: dir,
+    });
+    if (
+      !tryRun('git', ['merge-base', '--is-ancestor', base, 'HEAD'], {
+        cwd: dir,
+      }).ok
+    ) {
+      return fail(
+        `branch ${branch} exists but is not based on ${target.branch}`,
+      );
+    }
+    if (!alreadyOnBranch(log, pr.number, sha)) {
+      return fail(`branch ${branch} exists but does not contain ${sha}`);
+    }
+  } else {
+    run('git', ['worktree', 'add', '--quiet', '-B', branch, dir, base]);
+  }
+  const pick = existingRef
+    ? { ok: true }
+    : tryRun(
+        'git',
+        ['cherry-pick', '-x', ...(parents > 1 ? ['-m', '1'] : []), sha],
+        { cwd: dir },
+      );
   if (!pick.ok) {
     const conflicted = tryRun(
       'git',
@@ -475,6 +499,7 @@ function backportOne({ pr, sha, target, base, workdir }) {
   console.log(`#${pr.number}: ready as ${branch} (${head.slice(0, 12)})`);
   return {
     ok: true,
+    pushed: Boolean(existingRef),
     pr: pr.number,
     url: pr.url,
     title: pr.title,
@@ -550,7 +575,9 @@ function publish() {
   }
 
   for (const b of plan.backports) {
-    run('git', ['push', pushUrl, `${b.head}:refs/heads/${b.branch}`]);
+    if (!b.pushed) {
+      run('git', ['push', pushUrl, `${b.head}:refs/heads/${b.branch}`]);
+    }
     const bodyFile = path.join(workdir, `body-${b.pr}.md`);
     writeFileSync(bodyFile, backportBody(b, target));
     const draft = new Set(b.upgrades.map((u) => u.name)).size > 1;
