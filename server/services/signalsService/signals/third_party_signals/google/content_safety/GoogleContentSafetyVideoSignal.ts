@@ -1,0 +1,122 @@
+import { ScalarTypes } from '@roostorg/coop-types';
+
+import { type GetCredentials } from '../../../../../signalAuthService/signalAuthService.js';
+import { Integration } from '../../../../types/Integration.js';
+import { type RecommendedThresholds } from '../../../../types/RecommendedThresholds.js';
+import { SignalPricingStructure } from '../../../../types/SignalPricingStructure.js';
+import { SignalType } from '../../../../types/SignalType.js';
+import SignalBase, { type SignalInput } from '../../../SignalBase.js';
+import {
+  GOOGLE_CONTENT_SAFETY_PRIORITIES,
+  runGoogleContentSafetyImpl,
+  type FetchGoogleContentSafetyScores,
+} from './googleContentSafetyLib.js';
+
+export default class GoogleContentSafetyVideoSignal extends SignalBase<
+  ScalarTypes['VIDEO'],
+  {
+    scalarType: ScalarTypes['STRING'];
+    enum: typeof GOOGLE_CONTENT_SAFETY_PRIORITIES;
+    ordered: true;
+  }
+> {
+  constructor(
+    protected readonly getGoogleContentSafetyCredentials: GetCredentials<'GOOGLE_CONTENT_SAFETY_API'>,
+    protected readonly getGoogleContentSafetyScores: FetchGoogleContentSafetyScores,
+  ) {
+    super();
+  }
+
+  override get id() {
+    return { type: SignalType.GOOGLE_CONTENT_SAFETY_API_VIDEO };
+  }
+
+  override get displayName() {
+    return 'Google Content Safety API - Video';
+  }
+
+  override get description() {
+    return `Google's Content Safety API uses AI to classify and prioritize files for child safety manual review. The API returns a priority value (VERY_LOW, LOW, MEDIUM, HIGH, VERY_HIGH) indicating the likelihood that the video is abusive.`;
+  }
+
+  override get docsUrl() {
+    return 'https://protectingchildren.google/tools-for-partners/';
+  }
+
+  override get integration() {
+    return Integration.GOOGLE_CONTENT_SAFETY_API;
+  }
+
+  override get pricingStructure() {
+    return SignalPricingStructure.FREE;
+  }
+
+  override get recommendedThresholds(): RecommendedThresholds | null {
+    return {
+      highPrecisionThreshold: 'VERY_HIGH',
+      highRecallThreshold: 'MEDIUM',
+    };
+  }
+
+  override get supportedLanguages(): 'ALL' {
+    return 'ALL';
+  }
+
+  override get eligibleSubcategories() {
+    return [];
+  }
+
+  override get needsActionPenalties() {
+    return false;
+  }
+
+  override get needsMatchingValues() {
+    return false;
+  }
+
+  override async getDisabledInfo(orgId: string) {
+    const credential = await this.getGoogleContentSafetyCredentials(orgId);
+
+    return !credential?.apiKey
+      ? {
+          disabled: true as const,
+          disabledMessage: `You need to input your Google Content Safety API key to use Google's signals`,
+        }
+      : { disabled: false as const };
+  }
+
+  override get eligibleInputs() {
+    return [ScalarTypes.VIDEO];
+  }
+
+  override get outputType() {
+    return {
+      scalarType: ScalarTypes.STRING,
+      enum: GOOGLE_CONTENT_SAFETY_PRIORITIES,
+      ordered: true as const,
+    };
+  }
+
+  /**
+   * Placeholder estimate - higher than images since each run re-encodes a video
+   */
+  override getCost() {
+    return 20;
+  }
+
+  /**
+   * Google Content Safety API is designed for routing/prioritization only.
+   * It provides priority levels for manual review, not automated decisions.
+   */
+  override get allowedInAutomatedRules() {
+    return false;
+  }
+
+  async run(input: SignalInput<ScalarTypes['VIDEO']>) {
+    return runGoogleContentSafetyImpl(
+      this.getGoogleContentSafetyCredentials,
+      input,
+      this.getGoogleContentSafetyScores,
+    );
+  }
+}

@@ -23,6 +23,7 @@ export function receivesRegexInput(type: string) {
 export function integrationForSignalType(type: string) {
   switch (type) {
     case 'GOOGLE_CONTENT_SAFETY_API_IMAGE':
+    case 'GOOGLE_CONTENT_SAFETY_API_VIDEO':
       return GQLIntegration.GoogleContentSafetyApi;
     case 'OPEN_AI_GRAPHIC_VIOLENCE_IMAGE_MODEL':
     case 'OPEN_AI_GRAPHIC_VIOLENCE_TEXT_MODEL':

@@ -8,7 +8,7 @@ import { SignalType } from '../../../../types/SignalType.js';
 import SignalBase, { type SignalInput } from '../../../SignalBase.js';
 import {
   GOOGLE_CONTENT_SAFETY_PRIORITIES,
-  runGoogleContentSafetyImageImpl,
+  runGoogleContentSafetyImpl,
   type FetchGoogleContentSafetyScores,
 } from './googleContentSafetyLib.js';
 
@@ -113,7 +113,7 @@ export default class GoogleContentSafetyImageSignal extends SignalBase<
   }
 
   async run(input: SignalInput<ScalarTypes['IMAGE']>) {
-    return runGoogleContentSafetyImageImpl(
+    return runGoogleContentSafetyImpl(
       this.getGoogleContentSafetyCredentials,
       input,
       this.getGoogleContentSafetyScores,

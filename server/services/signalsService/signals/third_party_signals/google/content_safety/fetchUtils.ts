@@ -23,21 +23,23 @@ export async function fetchWithTimeout(
   });
 }
 
-export async function fetchImage(
+export async function fetchMedia(
   fetchHTTP: FetchHTTP,
   url: string,
   timeoutMs: number,
+  maxResponseSize?: '5mb' | '25mb',
 ): Promise<Buffer> {
   const response = await fetchHTTP({
     url,
     method: 'get',
     timeoutMs,
     handleResponseBody: 'as-array-buffer',
+    maxResponseSize,
   });
 
   if (!response.ok || response.body === undefined) {
     throw new Error(
-      `Failed to fetch image: ${response.status} ${response.headers.get('content-type') ?? 'unknown'}`,
+      `Failed to fetch media: ${response.status} ${response.headers.get('content-type') ?? 'unknown'}`,
     );
   }
 
