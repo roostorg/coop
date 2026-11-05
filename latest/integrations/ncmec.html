@@ -40,7 +40,7 @@
             const path_to_root = "../";
             const default_light_theme = "roost";
             const default_dark_theme = "roost";
-            window.path_to_searchindex_js = "../searchindex-b56c1b34.js";
+            window.path_to_searchindex_js = "../searchindex-4cbbe3ad.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-6e080ddd.js"></script>
@@ -351,6 +351,13 @@
 </ul>
 <p>Operators are responsible for ensuring <code>NCMEC_ENV</code> matches the credentials they have configured in <strong>Settings</strong> → <strong>NCMEC</strong>. NCMEC issues separate test and production credentials, and submitting from an unapproved integration to the production endpoint can result in your credentials being revoked.</p>
 <p>Reports submitted against the test endpoint are stored in Coop’s database with an <code>is_test</code> flag and are only visible in the NCMEC Reports dashboard to the reviewer who submitted them. Production reports are visible to anyone in the org with the <code>VIEW_CHILD_SAFETY_DATA</code> permission.</p>
+<h4 id="switching-to-production"><a class="header" href="#switching-to-production">Switching to production</a></h4>
+<p>When you change <code>NCMEC_ENV</code> to <code>production</code>, the <a href="#retry-behavior">retry job</a> handles decisions from the past 30 days that were made in test mode like this:</p>
+<ul>
+<li><strong>Decisions that were submitted to the test endpoint</strong> are not resent. Their test report counts as already submitted.</li>
+<li><strong>Decisions whose test submission failed</strong> are still retried, and the retry goes to the production endpoint.</li>
+</ul>
+<p>To send a real report for a user whose report only went to the test endpoint, put the user back into NCMEC review and submit a new decision.</p>
 <h2 id="webhooks"><a class="header" href="#webhooks">Webhooks</a></h2>
 <h3 id="additional-info-endpoint"><a class="header" href="#additional-info-endpoint">Additional Info endpoint</a></h3>
 <p>Coop calls this webhook <strong>before</strong> building a CyberTip to retrieve enriched metadata for the reported user and their media. This endpoint is optional but <strong>strongly recommended</strong> since without it, Coop submits the CyberTip with only the user’s ID and whatever data was already sent to Coop via the Items API.</p>
@@ -485,11 +492,12 @@ If all media items have <code>missing: true</code>, Coop will not file the Cyber
 <h2 id="retry-behavior"><a class="header" href="#retry-behavior">Retry behavior</a></h2>
 <p>If a CyberTip submission fails (e.g. due to a transient network error or NCMEC API outage), Coop automatically retries the submission. A background job runs periodically and retries any failed NCMEC decisions that:</p>
 <ul>
-<li>Have not already been successfully submitted (no matching report in the database)</li>
+<li>Have not already been successfully submitted (no production report for the user, and no test report for the user made after the decision)</li>
 <li>Have fewer than 10 prior retry attempts</li>
 <li>Are not marked as a permanent error (e.g. all media missing)</li>
 <li>Were decided within the past 30 days</li>
 </ul>
+<p>Reports are matched by reported user, not by decision. If a user already has a production report from the past 30 days, a later failed decision against that same user is not retried automatically. A test report only covers the user’s decisions made before it, so a later failed decision is still retried.</p>
 
                     </main>
 
