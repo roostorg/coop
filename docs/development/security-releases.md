@@ -186,10 +186,18 @@ gh release create x.y.z --target release/x.y --title "Coop x.y.z" --notes-file n
 
 If a newer minor version has already been released, add `--latest=false` so that GitHub's **Latest** release does not move back to `x.y.z`.
 
-Publishing the release, from `main` or from `release/x.y`, triggers:
+If `gh release create` fails, for example with HTTP 500, check that it created neither a release nor a tag before retrying; otherwise a retry can leave a duplicate release or an orphaned tag:
 
-- `.github/workflows/publish-docker.yaml` on the `release` event, which pushes the `x.y.z`, `x.y` and commit SHA tags of each image, and moves `latest` only when `x.y.z` is the highest stable release tag. The `latest` check depends on [#1535](https://github.com/roostorg/coop/pull/1535); a release without that change at its tag moves `latest` regardless.
-- `.github/workflows/mdbook.yml` on the tag push, which adds the docs snapshot for the release
+```bash
+gh release list --repo roostorg/coop --limit 3 --json tagName,isDraft
+git ls-remote --tags origin x.y.z
+```
+
+Publishing the release, from `main` or from `release/x.y`, triggers the following at once, so the notes must be final before you publish:
+
+- `.github/workflows/publish-docker.yaml` on the `release` event, which pushes the `x.y.z`, `x.y` and commit SHA tags of each image, and moves `latest` only when `x.y.z` is the highest stable release tag. The `latest` check depends on [#1535](https://github.com/roostorg/coop/pull/1535); a release without that change at its tag, such as one from a `release/x.y` branched before it, moves `latest` regardless. That is correct only while `x.y.z` is the highest release; otherwise cherry-pick #1535 to `release/x.y` first.
+- `.github/workflows/mdbook.yml` on the tag push, which adds the docs snapshot for the release.
+- `.github/workflows/discord-bot.yml` on the `release` event, which announces the release on Discord.
 
 `@roostorg/coop-types` and `@roostorg/db-migrator` are not published by a release; they publish only from pushes to `main` that change `types/` or `migrator/` (see step 5).
 
@@ -273,7 +281,7 @@ Vendors who host Coop so that their users cannot self-patch can receive early no
 
 ### security-announce@roost.tools
 
-Post to [security-announce@roost.tools](https://groups.google.com/a/roost.tools/g/security-announce) once the release and its advisories are published. The email lists only Coop advisories; upstream advisories without a Coop advisory are listed only in the release notes.
+Post to [security-announce@roost.tools](https://groups.google.com/a/roost.tools/g/security-announce) once the release and its advisories are published. The email lists only Coop advisories; upstream advisories without a Coop advisory are listed only in the release notes. A sent email cannot be corrected, so keep it to the facts in the templates below. Workarounds, impact details and upgrade caveats go in the release notes and the advisory, which can be edited.
 
 | Situation               | Advisory | security-announce                                                                       | Release note |
 | ----------------------- | -------- | --------------------------------------------------------------------------------------- | ------------ |
