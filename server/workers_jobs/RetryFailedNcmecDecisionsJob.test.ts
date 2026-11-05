@@ -28,6 +28,7 @@ function makeNcmecDecisionRow(orgId: string): NcmecDecisionRow {
     id: uuidv1(),
     queue_id: uuidv1(),
     reviewer_id: 'reviewer-1',
+    created_at: new Date(),
     decision_components: [
       {
         type: 'SUBMIT_NCMEC_REPORT',
@@ -102,7 +103,13 @@ function makeDeps(
     publishActions: Mock;
     getNCMECActionsToRunAndPolicies: Mock;
     decisions: NcmecDecisionRow[];
-    reports: { userId: string; userItemTypeId: string; orgId: string }[];
+    reports: {
+      userId: string;
+      userItemTypeId: string;
+      orgId: string;
+      hasProductionReport: boolean;
+      latestTestReportAt: Date | null;
+    }[];
   }> = {},
 ) {
   const ncmecService = {
@@ -276,17 +283,28 @@ describe('RetryFailedNcmecDecisionsJob', () => {
     expect(deps.actionPublisher.publishActions).toHaveBeenCalledTimes(1);
   });
 
-  // Test reports count as reported in both modes, so a switch to production
-  // doesn't resubmit test-era decisions to NCMEC.
-  it.each([undefined, 'production'])(
-    'does not resubmit a decision whose user has a test report (NCMEC_ENV=%s)',
-    async (ncmecEnv) => {
-      if (ncmecEnv === undefined) {
-        delete process.env.NCMEC_ENV;
-      } else {
-        process.env.NCMEC_ENV = ncmecEnv;
-      }
-      const decision = makeNcmecDecisionRow(ORG_ID);
+  // A test report covers only the decisions made at or before it, so a later
+  // production decision on the same user is still retried.
+  it.each([
+    { report: 'a production report', testReportOffsetMs: null, retried: false },
+    {
+      report: 'a later test report',
+      testReportOffsetMs: 60_000,
+      retried: false,
+    },
+    {
+      report: 'an earlier test report',
+      testReportOffsetMs: -60_000,
+      retried: true,
+    },
+  ])(
+    'decision whose user has $report: retried=$retried',
+    async ({ testReportOffsetMs, retried }) => {
+      const decidedAt = new Date('2026-11-01T12:00:00Z');
+      const decision = {
+        ...makeNcmecDecisionRow(ORG_ID),
+        created_at: decidedAt,
+      };
       const { item } = decision.job_payload.payload;
       const deps = makeDeps({
         decisions: [decision],
@@ -295,6 +313,11 @@ describe('RetryFailedNcmecDecisionsJob', () => {
             userId: item.itemId,
             userItemTypeId: item.itemTypeIdentifier.id,
             orgId: ORG_ID,
+            hasProductionReport: testReportOffsetMs === null,
+            latestTestReportAt:
+              testReportOffsetMs === null
+                ? null
+                : new Date(decidedAt.getTime() + testReportOffsetMs),
           },
         ],
       });
@@ -310,11 +333,9 @@ describe('RetryFailedNcmecDecisionsJob', () => {
 
       await job.run();
 
-      // Fails if an is_test flag comes back into the lookup.
-      expect(deps.ncmecService.getUsersWithNcmecDecision).toHaveBeenCalledWith({
-        startDate: expect.any(Date),
-      });
-      expect(deps.ncmecService.submitReport).not.toHaveBeenCalled();
+      expect(deps.ncmecService.submitReport).toHaveBeenCalledTimes(
+        retried ? 1 : 0,
+      );
     },
   );
 });
