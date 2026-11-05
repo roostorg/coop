@@ -240,7 +240,7 @@ npx @devcontainers/cli up --workspace-folder .
 ```
 
 - The browser only reaches the forwarded port 3000; the client's nginx proxies `/api/` to the server. Keep **Apollo's GraphQL URI relative** (`/api/v1/graphql`, the `HttpLink` in `client/src/index.tsx`): an absolute `http://localhost:...` URL breaks behind the Codespaces proxy.
-- `seed-demo.mjs` uses the public GraphQL schema. If you rename or remove a mutation or input field it uses, update it and run it (`bash .devcontainer/scripts/start.sh` inside the container).
+- `seed-demo.mjs` uses the public GraphQL schema and the REST routes `items/async` and `report`. If you rename or remove a mutation, input field or route it uses, update it and run it (`bash .devcontainer/scripts/start.sh` inside the container).
 
 ## ROOST guiding principles
 

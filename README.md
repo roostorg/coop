@@ -49,7 +49,7 @@ To contribute code or documentation, see the [development guide](docs/developmen
 
 Run Coop with a single command using Docker Compose. See the [Docker guide](docs/development/docker.md) for setup instructions and published image details.
 
-Or try it in your browser with nothing to install: open Coop in GitHub Codespaces, wait a few minutes, and log in to a demo org with sample data. [Step-by-step guide](https://roostorg.github.io/coop/latest/development/codespaces.html).
+Or try it in your browser with nothing to install: open Coop in GitHub Codespaces, wait about 10 minutes the first time (a minute or two when you come back to it), and log in to a demo org with sample data. [Step-by-step guide](https://roostorg.github.io/coop/latest/development/codespaces.html).
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/roostorg/coop?quickstart=1)
 

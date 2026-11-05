@@ -26,8 +26,8 @@ If you've opened one before, GitHub offers to **resume** it instead of making a 
 A code editor opens in your browser tab, showing this guide. You can ignore the code. In the bottom half of the window, a terminal shows progress:
 
 1. **Preparing**: the first time, the codespace downloads Coop's databases and builds Coop. This takes about 10 minutes, or under a minute if the repository has a prebuild ready.
-2. **Starting the Coop demo**: the databases start, migrations run, then Coop starts and the demo data is added, each with a green ✓ beside it. This takes 1–3 minutes.
-3. **Coop is ready**: the terminal prints the address of the UI and the demo login, and the Coop UI opens in a new browser tab.
+2. **Starting the Coop demo**: Coop and its databases start, then the demo data is added, with a green ✓ beside each step. This takes 1–3 minutes. The Coop UI may open in a new browser tab during this step, before the demo data is there.
+3. **Coop is ready**: the terminal prints the address of the UI and the demo login.
 
 If the new tab doesn't appear (browsers sometimes block it), open the **Ports** tab next to the terminal, find **Coop UI (3000)**, and click the globe icon.
 
@@ -46,7 +46,7 @@ You're an admin of **Demo Org**, which has:
 - two item types, **Post** and **Comment**, and 16 sample posts,
 - three policies: **Spam**, **Harassment** and **Violence**,
 - two actions, **Remove post** and **Warn author**,
-- a rule, **Remove obvious spam**, that has already removed the spam posts, and
+- a rule, **Remove obvious spam**, that has already applied **Remove post** to the spam posts (the demo isn't connected to a real platform, so nothing is actually taken down), and
 - eight user reports waiting in the **Reported posts** review queue.
 
 Things to try:
