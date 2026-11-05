@@ -538,6 +538,18 @@ class UserManagementService {
       .where('public.users.approved_by_admin', '=', true)
       .execute();
   }
+
+  async getUserNamesForOrg(orgId: string) {
+    return this.pgQuery
+      .selectFrom('public.users')
+      .select([
+        'public.users.id',
+        'public.users.first_name as firstName',
+        'public.users.last_name as lastName',
+      ])
+      .where('public.users.org_id', '=', orgId)
+      .execute();
+  }
 }
 
 export default inject(
