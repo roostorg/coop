@@ -89,19 +89,21 @@ GitHub's [Codespaces billing page](https://docs.github.com/en/billing/managing-b
 
 **The UI tab never opened.** Check the terminal: until it says **Coop is ready**, the UI isn't up yet. Once it is, open the **Ports** tab and click the globe icon next to **Coop UI (3000)**. If you see a GitHub sign-in page, sign in with the account that created the codespace.
 
-**The login page says the email or password is wrong.** Check the terminal said **Coop is ready**: the demo login is created while Coop starts. If it did, rebuild the container (see below).
+**The login page says the email or password is wrong.** Check the terminal said **Coop is ready**: the demo login is created while Coop starts. If it did, [start over](#start-over).
 
 **The review queue or rules are empty.** The terminal says **Couldn't add the demo data** if that step failed. Open a new terminal (**☰** menu → **Terminal** → **New Terminal**) and run `bash .devcontainer/scripts/start.sh` to try again.
 
-**The UI shows red error messages.** A service may have stopped. Press **Ctrl+Shift+P** (**Cmd+Shift+P** on a Mac), type **Rebuild Container**, and choose **Codespaces: Rebuild Container**. This restarts the demo from scratch, deleting its data.
+**The UI shows red error messages.** A service may have stopped. Press **Ctrl+Shift+P** (**Cmd+Shift+P** on a Mac), type **Rebuild Container**, and choose **Codespaces: Rebuild Container**. This restarts the demo and keeps its data.
 
 **"This codespace requires a machine with at least 4 cores and 16 GB of RAM"**, or no 4-core option. Your account or organization may limit machine types. Ask your organization admin, or create the codespace from a personal account.
 
 **The terminal mentions "rate limit" or "toomanyrequests".** Docker Hub, where Coop's databases come from, limits how often one network address can download without signing in. Wait an hour and rebuild the container (as above), or, if you have a Docker Hub account, add `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` (an [access token](https://docs.docker.com/security/for-developers/access-tokens/)) as [Codespaces secrets](https://github.com/settings/codespaces) for the `roostorg/coop` repository, then rebuild.
 
-**The terminal said "The Coop demo didn't start cleanly".** Rebuild the container as above. If it happens again, run `docker compose ps -a` in the terminal and share the output with the Coop maintainers in a [GitHub issue](https://github.com/roostorg/coop/issues) or on [Discord](https://discord.gg/5Csqnw2FSQ).
+**The terminal said "The Coop demo didn't start cleanly".** Rebuild the container as above. If it happens again, [start over](#start-over). If that fails too, run `docker compose ps -a` in the terminal and share the output with the Coop maintainers in a [GitHub issue](https://github.com/roostorg/coop/issues) or on [Discord](https://discord.gg/5Csqnw2FSQ).
 
 **A message says the codespace is running in recovery mode.** Setting up the codespace failed, often because of a temporary network problem, so it started without Coop. Rebuild the container as above.
+
+<a id="start-over"></a>**I want to start over with fresh demo data.** Rebuilding the container keeps the demo's data. To delete it, open a new terminal (**☰** menu → **Terminal** → **New Terminal**) and run `docker compose down -v && bash .devcontainer/scripts/start.sh`.
 
 **I closed the progress terminal.** Open a new one from the **☰** menu → **Terminal** → **New Terminal**, and run `bash .devcontainer/scripts/status.sh` to see whether the demo is ready.
 
