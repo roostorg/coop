@@ -21,9 +21,16 @@ echo
 wait_for_docker || on_failure
 
 # Creates the databases, runs migrations and creates the demo login before the
-# server starts.
+# server starts. A database that is slow to start on a busy machine fails its
+# healthcheck at first and passes a few seconds later, but `up --wait` gives up
+# as soon as a dependency is unhealthy, so retry.
 step "Starting databases, running migrations and starting Coop"
-docker compose up -d --quiet-pull --wait || on_failure
+for attempt in 1 2 3 4 5; do
+    docker compose up -d --quiet-pull --wait && break
+    [ "$attempt" -eq 5 ] && on_failure
+    echo "Some services aren't ready yet. Trying again (attempt $((attempt + 1)) of 5)..."
+    sleep 10
+done
 ok "Services started"
 
 wait_for "the Coop UI" 300 ui_ready || on_failure
