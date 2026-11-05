@@ -21,8 +21,6 @@ describe('NcmecReporting.getUsersWithNcmecDecision (integration)', () => {
       deps.KyselyPgReadReplica,
       makeStubFetchHTTP(uid(), 'f1').fetchHTTP,
       deps.SigningKeyPairService,
-      deps.ModerationConfigService,
-      deps.getItemTypeEventuallyConsistent,
       deps.Tracer,
     );
     const userItemTypeId = orgFixture.defaultUserItemType.id;
