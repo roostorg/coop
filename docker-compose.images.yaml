@@ -6,7 +6,10 @@ services:
     healthcheck:
       test: ['CMD', 'pg_isready', '-U', 'postgres', '-d', 'postgres']
       interval: 2s
-      start_period: 2s
+      # Failed checks don't count until start_period ends; the first passing
+      # one still marks it healthy. First boot runs initdb, which can take
+      # longer than the default retries allow on a busy machine.
+      start_period: 60s
     environment:
       POSTGRES_PASSWORD: postgres123
       POSTGRES_USER: postgres
@@ -55,6 +58,8 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+      # As for postgres: a slow start on a busy machine isn't a failure.
+      start_period: 60s
 
   migrations:
     image: ghcr.io/roostorg/coop-migrations:latest
