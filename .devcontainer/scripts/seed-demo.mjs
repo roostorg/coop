@@ -3,8 +3,8 @@
 // something to show. Uses only Coop's public GraphQL and REST APIs.
 //
 // Runs inside the `server` container (start.sh pipes it to `node`), against the
-// server on localhost:8080. Safe to run again: it does nothing if the demo org
-// already has its "Post" item type.
+// server on localhost:8080. Safe to run again: it reuses anything an earlier run
+// created, and does nothing once a run has finished.
 
 const BASE_URL = process.env.COOP_URL ?? 'http://localhost:8080';
 const EMAIL = process.env.COOP_DEMO_EMAIL;
@@ -80,6 +80,24 @@ async function getOrg() {
               id
               name
             }
+          }
+          policies {
+            id
+            name
+          }
+          actions {
+            ... on ActionBase {
+              id
+              name
+            }
+          }
+          mrtQueues {
+            id
+            name
+          }
+          rules {
+            id
+            name
           }
         }
       }
@@ -260,37 +278,39 @@ const REPORTS = [
   { post: 1, policy: 'Spam', reason: 'Not sure, seems off-topic' },
 ];
 
+// The id of the org's existing object with this name, or of a new one.
+async function findOrCreate(existing, name, create) {
+  return existing.find((o) => o.name === name)?.id ?? (await create());
+}
+
 async function main() {
   await login();
   const org = await getOrg();
-  if (org.itemTypes.some((t) => t.name === 'Post')) {
+  // Comment is created last, so it means an earlier run finished. After a run
+  // that stopped part-way, the setup below reuses what that run created; the
+  // posts and reports are sent again.
+  if (org.itemTypes.some((t) => t.name === 'Comment')) {
     console.log('Demo data is already there.');
     return;
   }
 
   const userType = org.itemTypes.find((t) => t.__typename === 'UserItemType');
 
-  const postTypeId = await createContentItemType({
-    name: 'Post',
-    description: 'A public post in the feed',
-    fields: [
-      { name: 'text', type: 'STRING', required: true },
-      { name: 'author', type: 'RELATED_ITEM', required: true },
-      { name: 'created_at', type: 'DATETIME', required: false },
-    ],
-    fieldRoles: { creatorId: 'author', createdAt: 'created_at' },
-  });
-  await createContentItemType({
-    name: 'Comment',
-    description: 'A reply to a post',
-    fields: [
-      { name: 'text', type: 'STRING', required: true },
-      { name: 'author', type: 'RELATED_ITEM', required: true },
-    ],
-    fieldRoles: { creatorId: 'author' },
-  });
+  const postTypeId = await findOrCreate(org.itemTypes, 'Post', () =>
+    createContentItemType({
+      name: 'Post',
+      description: 'A public post in the feed',
+      fields: [
+        { name: 'text', type: 'STRING', required: true },
+        { name: 'author', type: 'RELATED_ITEM', required: true },
+        { name: 'created_at', type: 'DATETIME', required: false },
+      ],
+      fieldRoles: { creatorId: 'author', createdAt: 'created_at' },
+    }),
+  );
 
-  const policies = await addPolicies([
+  const policies = Object.fromEntries(org.policies.map((p) => [p.name, p.id]));
+  const missingPolicies = [
     {
       name: 'Spam',
       policyType: 'SPAM',
@@ -306,57 +326,68 @@ async function main() {
       policyType: 'VIOLENCE',
       policyText: 'No threats of violence against people or groups.',
     },
-  ]);
+  ].filter((p) => !(p.name in policies));
+  if (missingPolicies.length > 0) {
+    Object.assign(policies, await addPolicies(missingPolicies));
+  }
 
   // Callbacks go to example.com, which ignores them: the demo has no platform
   // to act on, but the actions still appear in the UI and in decision logs.
-  const removeId = await createAction({
-    name: 'Remove post',
-    description: 'Takes the post down',
-    itemTypeIds: [postTypeId],
-    callbackUrl: 'https://example.com/coop-demo/remove',
-  });
-  await createAction({
-    name: 'Warn author',
-    description: 'Sends the author a warning about the policy',
-    itemTypeIds: [postTypeId],
-    callbackUrl: 'https://example.com/coop-demo/warn',
-  });
+  const removeId = await findOrCreate(org.actions, 'Remove post', () =>
+    createAction({
+      name: 'Remove post',
+      description: 'Takes the post down',
+      itemTypeIds: [postTypeId],
+      callbackUrl: 'https://example.com/coop-demo/remove',
+    }),
+  );
+  await findOrCreate(org.actions, 'Warn author', () =>
+    createAction({
+      name: 'Warn author',
+      description: 'Sends the author a warning about the policy',
+      itemTypeIds: [postTypeId],
+      callbackUrl: 'https://example.com/coop-demo/warn',
+    }),
+  );
 
-  await createQueue({
-    name: 'Reported posts',
-    description: 'Posts users have reported',
-    userIds: [org.userId],
-    roleIds: [],
-    hiddenActionIds: [],
-    isAppealsQueue: false,
-    autoCloseJobs: false,
-  });
+  await findOrCreate(org.mrtQueues, 'Reported posts', () =>
+    createQueue({
+      name: 'Reported posts',
+      description: 'Posts users have reported',
+      userIds: [org.userId],
+      roleIds: [],
+      hiddenActionIds: [],
+      isAppealsQueue: false,
+      autoCloseJobs: false,
+    }),
+  );
 
-  await createRule({
-    name: 'Remove obvious spam',
-    description: 'Removes posts with common spam phrases',
-    status: 'LIVE',
-    contentTypeIds: [postTypeId],
-    conditionSet: {
-      conjunction: 'OR',
-      conditions: [
-        {
-          input: { type: 'CONTENT_COOP_INPUT', name: 'All text' },
-          signal: {
-            id: JSON.stringify({ type: 'TEXT_MATCHING_CONTAINS_TEXT' }),
-            type: 'TEXT_MATCHING_CONTAINS_TEXT',
+  await findOrCreate(org.rules, 'Remove obvious spam', () =>
+    createRule({
+      name: 'Remove obvious spam',
+      description: 'Removes posts with common spam phrases',
+      status: 'LIVE',
+      contentTypeIds: [postTypeId],
+      conditionSet: {
+        conjunction: 'OR',
+        conditions: [
+          {
+            input: { type: 'CONTENT_COOP_INPUT', name: 'All text' },
+            signal: {
+              id: JSON.stringify({ type: 'TEXT_MATCHING_CONTAINS_TEXT' }),
+              type: 'TEXT_MATCHING_CONTAINS_TEXT',
+            },
+            matchingValues: {
+              strings: ['buy cheap followers', 'free gift cards', 'giveaway'],
+            },
           },
-          matchingValues: {
-            strings: ['buy cheap followers', 'free gift cards', 'giveaway'],
-          },
-        },
-      ],
-    },
-    actionIds: [removeId],
-    policyIds: [policies.Spam],
-    tags: ['demo'],
-  });
+        ],
+      },
+      actionIds: [removeId],
+      policyIds: [policies.Spam],
+      tags: ['demo'],
+    }),
+  );
 
   const apiKey = await rotateApiKey();
   const now = Date.now();
@@ -390,6 +421,16 @@ async function main() {
       reportedItem: postItem(report.post),
     });
   }
+
+  await createContentItemType({
+    name: 'Comment',
+    description: 'A reply to a post',
+    fields: [
+      { name: 'text', type: 'STRING', required: true },
+      { name: 'author', type: 'RELATED_ITEM', required: true },
+    ],
+    fieldRoles: { creatorId: 'author' },
+  });
 
   console.log(
     `Demo data added: ${POSTS.length} posts, ${REPORTS.length} reports.`,
