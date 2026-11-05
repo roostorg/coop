@@ -4,6 +4,7 @@ import ContentRoutes from './content/ContentRoutes.js';
 import IntegrationLogosRoutes from './integration_logos/IntegrationLogosRoutes.js';
 import ItemTypeRoutes from './item_types/ItemTypeRoutes.js';
 import ItemRoutes from './items/ItemRoutes.js';
+import ModerationActivityRoutes from './moderation_activity/ModerationActivityRoutes.js';
 import PoliciesRoutes from './policies/PoliciesRoutes.js';
 import ReportingRoutes from './reporting/ReportingRoutes.js';
 import UserScoresRoutes from './user_scores/UserScoresRoutes.js';
@@ -28,4 +29,5 @@ export default {
   UserScores: UserScoresRoutes,
   Actions: ActionRoutes,
   IntegrationLogos: IntegrationLogosRoutes,
+  ModerationActivity: ModerationActivityRoutes,
 } satisfies { [key: string]: Controller };
