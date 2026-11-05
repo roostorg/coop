@@ -136,10 +136,14 @@ export function releaseNotesSection(body) {
   if (start === -1) return '';
   const rest = lines.slice(start + 1);
   const end = rest.findIndex((l) => /^#{1,2}\s/.test(l));
-  return (end === -1 ? rest : rest.slice(0, end))
-    .join('\n')
-    .replace(/<!--[\s\S]*?-->/g, '')
-    .trim();
+  let text = (end === -1 ? rest : rest.slice(0, end)).join('\n');
+  // Repeat until stable: removing one comment can join `<!-` and `-` into a
+  // new `<!--`. An unclosed `<!--` would hide the rest of the backport body.
+  for (let prev; prev !== text;) {
+    prev = text;
+    text = text.replace(/<!--[\s\S]*?-->/g, '');
+  }
+  return text.replace(/<!--[\s\S]*$/, '').trim();
 }
 
 // Whether `log` (git log --format=%s%n%b of the release branch since it

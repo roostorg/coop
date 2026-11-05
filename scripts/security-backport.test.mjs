@@ -138,6 +138,17 @@ test('releaseNotesSection drops comments and later sections', () => {
   assert.equal(releaseNotesSection('no section'), '');
 });
 
+test('releaseNotesSection leaves no comment opener behind', () => {
+  assert.equal(
+    releaseNotesSection('## Release notes\nFix x <!-<!-- a -->- hidden'),
+    'Fix x',
+  );
+  assert.equal(
+    releaseNotesSection('## Release notes\nFix x\n<!-- unclosed'),
+    'Fix x',
+  );
+});
+
 test('backportBody warns when several packages change', () => {
   const target = { branch: 'release/1.2', next: '1.2.2' };
   const one = backportBody(
