@@ -3783,6 +3783,7 @@ export type GQLQuery = {
   readonly myOrg?: Maybe<GQLOrg>;
   readonly ncmecOrgSettings?: Maybe<GQLNcmecOrgSettings>;
   readonly ncmecReportById?: Maybe<GQLNcmecReport>;
+  /** @deprecated Not supported. Always returns an empty list. */
   readonly ncmecThreads: ReadonlyArray<GQLThreadWithMessagesAndIpAddress>;
   readonly org?: Maybe<GQLOrg>;
   readonly partialItems: GQLPartialItemsResponse;
