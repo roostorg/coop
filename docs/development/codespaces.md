@@ -101,6 +101,8 @@ GitHub's [Codespaces billing page](https://docs.github.com/en/billing/managing-b
 
 **The terminal said "The Coop demo didn't start cleanly".** Rebuild the container as above. If it happens again, run `docker compose ps -a` in the terminal and share the output with the Coop maintainers in a [GitHub issue](https://github.com/roostorg/coop/issues) or on [Discord](https://discord.gg/5Csqnw2FSQ).
 
+**A message says the codespace is running in recovery mode.** Setting up the codespace failed, often because of a temporary network problem, so it started without Coop. Rebuild the container as above.
+
 **I closed the progress terminal.** Open a new one from the **☰** menu → **Terminal** → **New Terminal**, and run `bash .devcontainer/scripts/status.sh` to see whether the demo is ready.
 
 ## For engineers
