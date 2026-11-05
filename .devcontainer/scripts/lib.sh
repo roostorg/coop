@@ -52,6 +52,28 @@ wait_for_docker() {
     return 1
 }
 
+# On a new codespace, the disk can be nearly full for a minute or two after the
+# images are built, before the space is released. Databases that start then fail
+# with "No space left on device", and ClickHouse doesn't recover, so wait for
+# space first. If it doesn't come back, start anyway: the errors then explain.
+docker_free_mb() {
+    df -BM --output=avail /var/lib/docker 2>/dev/null | tail -1 | tr -dc 0-9
+}
+
+wait_for_disk_space() {
+    local min_free_mb=4096 deadline=$((SECONDS + 300))
+    [ -n "$(docker_free_mb)" ] && [ "$(docker_free_mb)" -lt $min_free_mb ] || return 0
+    step "Waiting for disk space to be freed..."
+    while [ "$(docker_free_mb)" -lt $min_free_mb ]; do
+        if [ $SECONDS -ge $deadline ]; then
+            fail "Only $(docker_free_mb) MB of disk space is free. Starting anyway."
+            return 0
+        fi
+        sleep 5
+    done
+    ok "Disk space: $(docker_free_mb) MB free"
+}
+
 # wait_for <description> <timeout seconds> <command...>
 wait_for() {
     local what=$1 timeout=$2

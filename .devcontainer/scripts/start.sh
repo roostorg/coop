@@ -21,6 +21,7 @@ echo "Wait until this terminal says \"Coop is ready\" before you look around."
 echo
 
 wait_for_docker || on_failure
+wait_for_disk_space
 
 # Creates the databases, runs migrations and creates the demo login before the
 # server starts. A database that is slow to start on a busy machine fails its
