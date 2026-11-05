@@ -15,7 +15,7 @@
     "storage": "32gb"
   },
   "containerEnv": {
-    "COMPOSE_PROJECT_NAME": "coop",
+    "COMPOSE_PROJECT_NAME": "coop-demo",
     "COMPOSE_FILE": "${containerWorkspaceFolder}/docker-compose.images.yaml:${containerWorkspaceFolder}/.devcontainer/docker-compose.codespaces.yaml",
     "COOP_DEMO_EMAIL": "demo@coop.local",
     "COOP_DEMO_PASSWORD": "coop-demo"

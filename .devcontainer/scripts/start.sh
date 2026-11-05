@@ -5,6 +5,7 @@ set -uo pipefail
 source "$(dirname "$0")/lib.sh"
 
 on_failure() {
+    echo failed >"$DEMO_STATE_FILE"
     echo
     fail "The Coop demo didn't start cleanly."
     echo "  Try: Ctrl+Shift+P (Cmd+Shift+P on a Mac) → \"Codespaces: Rebuild Container\"."
@@ -13,9 +14,10 @@ on_failure() {
     exit 1
 }
 
+echo starting >"$DEMO_STATE_FILE"
 echo -e "${BOLD}Starting the Coop demo. This takes 1-3 minutes.${NC}"
-echo "The Coop UI opens in a new browser tab once it's ready; this terminal"
-echo "keeps showing progress."
+echo "The Coop UI may open in a new browser tab before the demo data is added."
+echo "Wait until this terminal says \"Coop is ready\" before you look around."
 echo
 
 wait_for_docker || on_failure
@@ -38,8 +40,10 @@ wait_for "the Coop UI" 300 ui_ready || on_failure
 step "Adding demo data"
 if seed_demo_data; then
     ok "Demo data ready"
+    echo ready >"$DEMO_STATE_FILE"
 else
     fail "Couldn't add the demo data. You can still log in; some pages will be empty."
+    echo no-demo-data >"$DEMO_STATE_FILE"
 fi
 
-print_ready_banner
+print_ready_banner "$(cat "$DEMO_STATE_FILE")"

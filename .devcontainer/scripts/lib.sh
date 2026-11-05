@@ -4,12 +4,19 @@
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$REPO_ROOT" || exit 1
 
-# devcontainer.json sets these; default them so the scripts also work when run by hand.
-export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-coop}"
+# devcontainer.json sets these; default them so the scripts also work when run by
+# hand. The project name keeps the demo's volumes apart from a local checkout's
+# own `docker compose` stack, which is named after the directory (often `coop`).
+export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-coop-demo}"
 export COMPOSE_FILE="${COMPOSE_FILE:-$REPO_ROOT/docker-compose.images.yaml:$REPO_ROOT/.devcontainer/docker-compose.codespaces.yaml}"
 export COOP_DEMO_EMAIL="${COOP_DEMO_EMAIL:-demo@coop.local}"
 export COOP_DEMO_PASSWORD="${COOP_DEMO_PASSWORD:-coop-demo}"
 export DOCKER_CLI_HINTS=false
+
+# start.sh records how far it got, for status.sh: starting, ready, no-demo-data
+# (ready, but adding the demo data failed) or failed. Named after the boot, so
+# a resumed codespace doesn't read the state from before it stopped.
+DEMO_STATE_FILE="/tmp/coop-demo-state-$(cat /proc/sys/kernel/random/boot_id 2>/dev/null)"
 
 BOLD='\033[1m'
 GREEN='\033[0;32m'
@@ -75,21 +82,27 @@ seed_demo_data() {
         server node --input-type=module - <"$REPO_ROOT/.devcontainer/scripts/seed-demo.mjs"
 }
 
+# print_ready_banner [no-demo-data]
 print_ready_banner() {
     echo
     echo -e "${GREEN}${BOLD}==============================================${NC}"
     echo -e "${GREEN}${BOLD}  Coop is ready${NC}"
     echo -e "${GREEN}${BOLD}==============================================${NC}"
     echo
-    echo -e "  Open the UI:  ${BOLD}$(ui_url)/login${NC}"
+    echo -e "  Open the UI:  ${BOLD}${COOP_UI_URL}/login${NC}"
     echo -e "  (or the ${BOLD}Ports${NC} tab → ${BOLD}Coop UI${NC} → globe icon)"
     echo
     echo -e "  Email:     ${BOLD}${COOP_DEMO_EMAIL}${NC}"
     echo -e "  Password:  ${BOLD}${COOP_DEMO_PASSWORD}${NC}"
     echo
-    echo "  The demo org has sample posts, policies, a spam rule, and user"
-    echo -e "  reports waiting in the ${BOLD}Reported posts${NC} review queue:"
-    echo "  $(ui_url)/dashboard/manual_review/queues"
+    if [ "${1:-}" = no-demo-data ]; then
+        echo "  Adding the demo data failed, so some pages are empty. To try again, run:"
+        echo "  bash .devcontainer/scripts/start.sh"
+    else
+        echo "  The demo org has sample posts, policies, a spam rule, and user"
+        echo -e "  reports waiting in the ${BOLD}Reported posts${NC} review queue:"
+        echo "  ${COOP_UI_URL}/dashboard/manual_review/queues"
+    fi
     echo
     echo "  Guide: docs/development/codespaces.md"
     echo
