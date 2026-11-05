@@ -15,7 +15,7 @@ The scope tiers, response targets and communication rules below come from [RFC: 
 
 ## Before you start
 
-- [ ] Every vulnerability going into the release has been triaged: the reported one, and every upstream advisory fixed by a dependency update in the release (see [Finding a release's security fixes](#finding-a-releases-security-fixes)). For each, record which released versions ship it, whether it is reachable from Coop's code, whether it is exploitable in the documented default configuration, and whether it is [known exploited](https://www.cisa.gov/known-exploited-vulnerabilities-catalog) or has a high EPSS score. Reproduce it against Coop where feasible.
+- [ ] Every vulnerability going into the release has been triaged: the reported one, and every upstream advisory fixed by a dependency update in the release (see [Finding a release's security fixes](#finding-a-releases-security-fixes)), including Dependabot alerts that closed when their fix merged. For each, record which released versions ship it, whether it is reachable from Coop's code, whether it is exploitable in the documented default configuration, and whether it is [known exploited](https://www.cisa.gov/known-exploited-vulnerabilities-catalog) or has a high EPSS score. Reproduce it against Coop where feasible.
 - [ ] Each reachable vulnerability has a draft [security advisory](https://github.com/roostorg/coop/security/advisories/new), scored for how Coop uses the affected code rather than copied from the upstream score. So does every vulnerability in Coop's own code. Upstream advisories that are not reachable get no Coop advisory; the release notes list them under **Other security updates**, without saying whether they affect Coop.
 - [ ] You know which path in step 1 applies.
 
@@ -35,20 +35,35 @@ The steps run in this order: choose the release base (step 2) before merging any
 
 ### Finding a release's security fixes
 
-Security fixes carry the `security` label: Dependabot PRs that fix a published advisory get it automatically, and authors or maintainers add it to manual fixes. To list the fixes merged since the last release:
+Security fixes carry the `security` label: Dependabot PRs that fix a published advisory get it automatically, and authors or maintainers add it to manual fixes. To list the fixes merged to `main` since the last release `x.y.z` of the line being patched:
 
 ```bash
-LAST=$(gh release view --repo roostorg/coop --json publishedAt --jq .publishedAt)
-gh pr list --repo roostorg/coop --state merged --label security --search "merged:>=${LAST%%T*}" --limit 200
+LAST=$(gh release view x.y.z --repo roostorg/coop --json publishedAt --jq .publishedAt)
+gh pr list --repo roostorg/coop --state merged --base main --label security --search "merged:>=${LAST%%T*}" --limit 200
+```
+
+Without a tag, `gh release view` returns the repository's **Latest** release, which may belong to another line.
+
+On option B, the date alone is not enough: a fix merged to `main` before `x.y.z` may not have shipped in it. Compare the fixes with what `release/x.y` already has, by the commits cherry-picked to it and by its lockfile:
+
+```bash
+git log origin/release/x.y --grep 'cherry picked from commit' --format='%h %s'
+git diff origin/release/x.y origin/main -- pnpm-lock.yaml
 ```
 
 This depends on the labeling workflow in [#1519](https://github.com/roostorg/coop/pull/1519) and on the `security` label existing ([#1520](https://github.com/roostorg/coop/issues/1520), items 1 and 15). PRs merged before both are in place are not labeled, so also check the unlabeled PRs merged since the last release:
 
 ```bash
-gh pr list --repo roostorg/coop --state merged --search "merged:>=${LAST%%T*} -label:security" --limit 200 --json number,title
+gh pr list --repo roostorg/coop --state merged --base main --search "merged:>=${LAST%%T*} -label:security" --limit 200 --json number,title
 ```
 
 For each dependency update, read the release notes or advisories of every package version it changes.
+
+Dependabot closes an alert when its fix merges, so it no longer shows as open. List the alerts fixed since the last release and check that each was triaged:
+
+```bash
+gh api --paginate "repos/roostorg/coop/dependabot/alerts?state=fixed&per_page=100" --jq ".[] | select(.fixed_at >= \"$LAST\") | [.number, .security_advisory.ghsa_id, .dependency.package.name] | @tsv"
+```
 
 ## 1. Prepare the fix
 
@@ -86,6 +101,8 @@ If `main` has unreleased changes, choose one of the options below. **Pending dec
 - Fixes land on `main` first, then are cherry-picked to `release/x.y` with `git cherry-pick -x`, one PR per cherry-picked commit. The exception is a private-fork fix, which merges into `release/x.y` directly and is forward-ported to `main` in step 8.
 - The [Security backports](security-backports.md) workflow creates `release/x.y` and opens a backport PR for each `security`-labelled PR merged to `main`, from a `backport/<n>-to-release/x.y` branch. It depends on [#1550](https://github.com/roostorg/coop/pull/1550); without it, cherry-pick by hand as below.
 - PR checks run on PRs against `release/x.y`, but `main`'s branch protection rules do not cover it.
+- Merge backport PRs with a merge commit or a rebase, not a squash: squashing can drop the `(cherry picked from commit …)` line that marks a commit as backported.
+- `release/x.y` keeps the `AGENTS.md`, PR template and `CHANGELOG.md` of its `x.y.0` tag, which may predate release notes in PR descriptions. Its release notes go only in the GitHub release: don't add entries to its `CHANGELOG.md`, and don't forward-port any to `main`.
 - A release runs the workflow files at its tag, so fixes to `.github/workflows/` on `main` must also be cherry-picked to `release/x.y` before they apply to its releases.
 - `@roostorg/coop-types` and `@roostorg/db-migrator` only publish from `main` (see step 5), so a fix in `types/` or `migrator/` reaches npm only through `main`. Publishing either package from `release/x.y` would move its npm `latest` backwards; the workflows do not support it, so ask a maintainer.
 
@@ -104,9 +121,17 @@ Dependency updates usually conflict in `pnpm-lock.yaml`. Resolve them so the bra
    node scripts/check-lockfile-backport.mjs origin/main
    ```
 
-   It reads the committed lockfiles, and exits 1 and lists each package that pnpm resolved to a version newer than `main` has. If it does, redo the conflict resolution from step 1 so those packages keep the branch's versions. If the script is on `main` but not yet on `release/x.y`, run `main`'s copy: `git show origin/main:scripts/check-lockfile-backport.mjs > "$TMPDIR/check-lockfile-backport.mjs" && node "$TMPDIR/check-lockfile-backport.mjs" origin/main`.
+   It reads the committed lockfiles, and exits 1 and lists each package that pnpm resolved to a version newer than `main` has. If it does, redo the conflict resolution from step 1 so those packages keep the branch's versions. If the script is on `main` but not yet on `release/x.y`, run `main`'s copy: `D=$(mktemp -d) && git show origin/main:scripts/check-lockfile-backport.mjs > "$D/check-lockfile-backport.mjs" && node "$D/check-lockfile-backport.mjs" origin/main`.
 
 The script depends on [#1524](https://github.com/roostorg/coop/pull/1524) ([#1520](https://github.com/roostorg/coop/issues/1520), item 5).
+
+For a fix that only changes `pnpm-lock.yaml`, regenerating on the branch is simpler than resolving the cherry-pick:
+
+```bash
+pnpm update -r <package>... --lockfile-only --no-save
+```
+
+Then run steps 3 to 5 above, and end the commit message with `(cherry picked from commit <sha on main>)` by hand, as `git cherry-pick -x` would. The Security backports workflow skips a fix whose commit carries that line; without it, the workflow opens a duplicate backport.
 
 ## 3. Write the release notes
 
@@ -123,6 +148,8 @@ The release itself gets notes written from the [release notes template](#release
 
 - On option A, edit the draft release for `main`.
 - On option B, edit the draft release for `x.y.(z+1)` that the Security backports workflow keeps for `release/x.y`, and publish it in step 4. Without that draft (it depends on [#1548](https://github.com/roostorg/coop/pull/1548) and [#1550](https://github.com/roostorg/coop/pull/1550)), write the notes in a file for step 4, copying the fixes' entries from the draft release for `main`.
+- Release Drafter only collects PRs with a `## Release notes` section. Dependabot PRs have none, so write their entries by hand in the format above.
+- [#1548](https://github.com/roostorg/coop/pull/1548) adds a **Security** category for PRs labelled `security`, and sets `filter-by-commitish: true` so that the draft release for `main` and the draft for `release/x.y` stay separate. Without it, Release Drafter for `main` updates whichever draft it finds first.
 - A fix from a private fork has no PR in this repository, so write its entry in the release notes directly, linking only the advisory:
 
 ```markdown
@@ -135,7 +162,13 @@ If the fix touches `types/` or `migrator/`, bump `version` in `types/package.jso
 
 On option A, follow [Creating a release](releases.md#creating-a-release), with the notes from step 3.
 
-On option B, publish the draft release for `x.y.(z+1)` after checking that its target is `release/x.y`. Without a draft, create the release from the branch; the web UI's target defaults to `main`:
+On option B, first check that no other draft release uses the tag or title `x.y.z`; the draft release for `main` may name the next patch version:
+
+```bash
+gh release list --repo roostorg/coop --json tagName,name,isDraft
+```
+
+If the draft for `main` holds `x.y.z`, rename it, or re-run the **Draft release notes** workflow on `main` once [#1548](https://github.com/roostorg/coop/pull/1548) is in. Then publish the draft release for `x.y.(z+1)` after checking that its target is `release/x.y`. Without a draft, create the release from the branch; the web UI's target defaults to `main`:
 
 ```bash
 gh release create x.y.z --target release/x.y --title "Coop x.y.z" --notes-file notes.md
@@ -169,6 +202,13 @@ Thanks to @<reporter> for reporting <GHSA-xxxx-xxxx-xxxx>.
 ## Upgrade notes
 
 - Images: `ghcr.io/roostorg/coop-server:x.y.z`, `coop-worker:x.y.z`, `coop-client:x.y.z` and `coop-migrations:x.y.z`.
+```
+
+For a release with no Coop advisory, replace everything above **Other security updates** with:
+
+```markdown
+> [!IMPORTANT]
+> **This is a security release.** It updates dependencies to versions that fix published upstream advisories, listed below. <Upgrade wording>. For security announcements, we encourage adopters to subscribe to the [security-announce@roost.tools mailing list](https://groups.google.com/a/roost.tools/g/security-announce).
 ```
 
 List every upstream advisory fixed by a dependency update that has no Coop advisory under **Other security updates**, without saying whether it affects Coop: reachability stays private (see [Before you start](#before-you-start)). Leave out sections that do not apply. For upgrade wording, see [Upgrade wording](#upgrade-wording).
