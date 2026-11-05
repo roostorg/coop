@@ -30,8 +30,8 @@ A few things that shape how we build it:
 
 Coop is used by:
 
-| ![Kyodo](docs/images/adopters/kyodo.svg) | ![Notion](docs/images/adopters/notion.svg) | ![Musubi](docs/images/adopters/musubi.svg) |
-| ---------------------------------------- | ------------------------------------------ | ------------------------------------------ |
+| ![Kyodo](docs/images/adopters/kyodo.svg) | ![Notion](docs/images/adopters/notion.svg) | ![Musubi](docs/images/adopters/musubi.svg) | ![UpScrolled](docs/images/adopters/upscrolled.svg) |
+| ---------------------------------------- | ------------------------------------------ | ------------------------------------------ | -------------------------------------------------- |
 
 Using Coop and want to add your project/organization to this list? [Open a pull request!](https://github.com/roostorg/coop/edit/main/README.md)
 
@@ -43,9 +43,15 @@ We want to hear from you! Whether you're testing it out, running into issues, or
 
 Your feedback directly shapes our [roadmap](https://roostorg.github.io/community/roadmap).
 
-## Quick start
+To contribute code or documentation, see the [development guide](docs/development/README.md) for setup and PR title conventions.
 
-Run Coop with a single command using Docker Compose. See the [Docker guide](docs/development/docker.md) for setup instructions and published image details.
+## How to use
+
+Ready to deploy images are available for use. See the [Docker guide](docs/development/docker.md) for published image details.
+
+### Quick start
+
+Run Coop with a single command using Docker Compose. See the [Quick Start guide](docs/development/docker.md#quick-start) for local setup instructions.
 
 ## Learn more
 
