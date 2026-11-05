@@ -232,10 +232,15 @@ pnpm install
 
 ## Codespaces
 
-Two things differ from a local dev setup:
+`.devcontainer/` is a demo for non-engineers: Docker-in-Docker running `docker-compose.images.yaml` plus `.devcontainer/docker-compose.codespaces.yaml`, which builds the server, client and migrations images from the checkout and creates the demo login (`demo@coop.local` / `coop-demo`); `.devcontainer/scripts/seed-demo.mjs` adds demo data through the GraphQL and REST APIs. Guide: `docs/development/codespaces.md`.
 
-1. **Use the production client build**, not the vite dev server: `(cd client && pnpm run build)`, then `pnpm run server:start` serves the built assets. Vite's HMR websocket does not reliably traverse the Codespace port proxy.
-2. **Apollo's GraphQL URI must be relative** (`/api/v1/graphql`). Hard-coded `http://localhost:3000/...` breaks because the Codespace proxies to a different host. Source of truth is the `HttpLink` in `client/src/index.tsx`.
+```bash
+# Same container locally
+npx @devcontainers/cli up --workspace-folder .
+```
+
+- The browser only reaches the forwarded port 3000; the client's nginx proxies `/api/` to the server. Keep **Apollo's GraphQL URI relative** (`/api/v1/graphql`, the `HttpLink` in `client/src/index.tsx`): an absolute `http://localhost:...` URL breaks behind the Codespaces proxy.
+- `seed-demo.mjs` uses the public GraphQL schema. If you rename or remove a mutation or input field it uses, update it and run it (`bash .devcontainer/scripts/start.sh` inside the container).
 
 ## ROOST guiding principles
 

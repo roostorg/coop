@@ -1,0 +1,71 @@
+# Layered over docker-compose.images.yaml; devcontainer.json sets COMPOSE_FILE so
+# plain `docker compose` picks this up. It builds Coop from this checkout instead
+# of pulling the published images, so a codespace on a branch shows that branch,
+# and it creates the demo login from COOP_DEMO_EMAIL and COOP_DEMO_PASSWORD.
+
+services:
+  migrations:
+    image: coop-migrations:codespace
+    build:
+      context: .
+      dockerfile: db/Dockerfile
+
+  scylla:
+    healthcheck:
+      # The image's cqlshrc keeps the container's first IP address. Resuming a
+      # codespace restarts the containers with new addresses, so connect to the
+      # current one or Scylla never reports healthy.
+      test:
+        [
+          'CMD-SHELL',
+          'cqlsh "$$(hostname -i | cut -d'' '' -f1)" -e "SELECT release_version FROM system.local" || exit 1',
+        ]
+
+  seed:
+    image: coop-server:codespace
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: build_server
+    environment:
+      COOP_DEMO_EMAIL: ${COOP_DEMO_EMAIL:?}
+      COOP_DEMO_PASSWORD: ${COOP_DEMO_PASSWORD:?}
+    command:
+      - |
+        OUTPUT=$$(node bin/create-org-and-user.js \
+          --name "Demo Org" \
+          --email "$$COOP_DEMO_EMAIL" \
+          --website "https://demo.coop.local" \
+          --firstName "Demo" \
+          --lastName "Admin" \
+          --password "$$COOP_DEMO_PASSWORD" 2>&1) \
+        && echo "Created the demo login $$COOP_DEMO_EMAIL." \
+        || { echo "$$OUTPUT" | grep -q "duplicate key" && echo "The demo login already exists." || { echo "$$OUTPUT"; exit 1; }; }
+
+  server:
+    image: coop-server:codespace
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: build_server
+    environment:
+      # Links the server puts in emails and invites.
+      UI_URL: ${COOP_UI_URL:-http://localhost:3000}
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:8080/api/v1/ready').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+
+  client:
+    image: coop-client:codespace
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+      target: serve
