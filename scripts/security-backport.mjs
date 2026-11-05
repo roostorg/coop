@@ -24,7 +24,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const LABEL = 'security';
-export const MARKER = '<!-- security-backport -->';
+export const failureMarker = (branch) => `<!-- security-backport ${branch} -->`;
 const STABLE_TAG = /^(\d+)\.(\d+)\.(\d+)$/;
 
 export function latestStableTag(tags) {
@@ -349,7 +349,7 @@ function prepare({ prFilter, retry }) {
         '--paginate',
         '--slurp',
       ]).flat();
-      if (comments.some((c) => c.body.includes(`${MARKER}${target.branch}`))) {
+      if (comments.some((c) => c.body.includes(failureMarker(target.branch)))) {
         skip(
           'backport already reported as failed; rerun with --retry after fixing',
         );
@@ -538,12 +538,12 @@ export function backportBody(b, target) {
     );
   }
   lines.push('', '## Release notes', '', b.releaseNotes);
-  return `${lines.join('\n')}\n`;
+  return `${lines.join('\n').trimEnd()}\n`;
 }
 
 function failureComment(f, target) {
   return [
-    `${MARKER}${target.branch}`,
+    failureMarker(target.branch),
     `The security backport workflow could not backport this PR to \`${target.branch}\` for ${target.next}: ${f.reason}.`,
     '',
     f.details,

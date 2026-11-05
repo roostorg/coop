@@ -5,7 +5,7 @@ The **Security backports** workflow (`.github/workflows/security-backport.yml`) 
 ## What it does
 
 - **Creates `release/x.y`** at the `x.y.z` tag if it doesn't exist, e.g. after `x.y.0` is released from `main`. After a release from `release/x.y` the branch is already at the tag, so it needs no change. Once `x.(y+1).0` is released, the workflow moves on to `release/x.(y+1)` and leaves `release/x.y` alone.
-- **Opens a backport PR** to `release/x.y` for each PR merged to `main` with the `security` label, from a `backport/<n>-to-release-x.y` branch. It cherry-picks the PR's merge commit with `git cherry-pick -x`, copies the PR's `## Release notes` section, and labels the backport `security`. A PR qualifies whether the label came from the [labeling workflow](https://github.com/roostorg/coop/pull/1519) or from a person, and whether it was added before or after the merge.
+- **Opens a backport PR** to `release/x.y` for each PR merged to `main` with the `security` label, from a `backport/<n>-to-release/x.y` branch. It cherry-picks the PR's merge commit with `git cherry-pick -x`, copies the PR's `## Release notes` section, and labels the backport `security`. A PR qualifies whether the label came from the [labeling workflow](https://github.com/roostorg/coop/pull/1519) or from a person, and whether it was added before or after the merge.
 - **Keeps a draft release** for `x.y.(z+1)` targeting `release/x.y`. Release Drafter collects the release notes of the PRs merged into `release/x.y` since `x.y.z`. Draft releases are visible only to people with write access.
 
 It runs when a PR to `main` is merged or labelled `security`, when a PR to `release/**` is merged, when a release is published, daily, and on demand. Every run checks all `security` PRs merged since `release/x.y` diverged from `main`. A run skips a PR that is already on the branch, that has a backport PR (open, merged or closed), or whose backport already failed.
@@ -26,7 +26,7 @@ If a backport changes more than one package, as with a grouped Dependabot PR, it
 
 ## When it fails
 
-If a cherry-pick conflicts or a check fails, the workflow comments on the source PR with the reason and the commands to backport it by hand, and the run fails. It never force-pushes, and never pushes to `release/x.y` directly. Backport by hand following "Cherry-picking deterministically" in the [runbook](security-releases.md). Use the `backport/<n>-to-release-x.y` branch name and `git cherry-pick -x`, so the workflow recognizes the result. Alternatively, fix the cause and run the workflow with `pr` set to the PR number and `retry` checked.
+If a cherry-pick conflicts or a check fails, the workflow comments on the source PR with the reason and the commands to backport it by hand, and the run fails. It never force-pushes, and never pushes to `release/x.y` directly. Backport by hand following "Cherry-picking deterministically" in the [runbook](security-releases.md). Use the `backport/<n>-to-release/x.y` branch name and `git cherry-pick -x`, so the workflow recognizes the result. Alternatively, fix the cause and run the workflow with `pr` set to the PR number and `retry` checked.
 
 ## What it doesn't handle
 
