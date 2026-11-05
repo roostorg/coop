@@ -75,17 +75,3 @@ export async function* mapAsyncIterable<OriginalItem, MappedItem>(
     yield await mapFn(item);
   }
 }
-
-/**
- * A version of {@link mapAsyncIterable} designed to support partial application
- * of the mapping function.
- */
-export function makeMapAsyncIterable<OriginalItem, MappedItem>(
-  mapFn: (it: OriginalItem) => MappedItem | Promise<MappedItem>,
-) {
-  return async function* (
-    iterable: AsyncIterable<OriginalItem> | Iterable<OriginalItem>,
-  ) {
-    yield* mapAsyncIterable(iterable, mapFn);
-  };
-}

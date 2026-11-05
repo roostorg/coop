@@ -1,13 +1,5 @@
 import { GQLUserPenaltySeverity } from '../graphql/generated';
 
-export const UserPenaltySeverityOrder = [
-  GQLUserPenaltySeverity.None,
-  GQLUserPenaltySeverity.Low,
-  GQLUserPenaltySeverity.Medium,
-  GQLUserPenaltySeverity.High,
-  GQLUserPenaltySeverity.Severe,
-];
-
 export function getSeverityColor(severity: GQLUserPenaltySeverity) {
   switch (severity) {
     case GQLUserPenaltySeverity.None:

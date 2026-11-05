@@ -8,9 +8,8 @@ import {
   type CoopInput,
   type LeafConditionWithResult,
 } from '../../services/moderationConfigService/index.js';
-import { isSignalId } from '../../services/signalsService/index.js';
 import { type CorrelationId } from '../../utils/correlationIds.js';
-import { jsonParse, tryJsonParse, type JsonOf } from '../../utils/encoding.js';
+import { type JsonOf } from '../../utils/encoding.js';
 import {
   type SafeErrorKey,
   type SerializableError,
@@ -78,11 +77,6 @@ export type LeafConditionWithResultAsLogged = {
     | { type: 'CONTENT_COOP_INPUT'; name: CoopInput }
     | { type: 'CONTENT_DERIVED_FIELD'; spec: DerivedFieldSpec }
   >;
-  /**
-   * NB: to figure out which Signal a logged condition references, use
-   * {@link signalIdFromLoggedCondition}. Do not try to read the fields of the
-   * condition directly, as there are too many legacy formats to account for.
-   */
   signal:
     | {
         // Given that, you'd expect `id` to be typed as
@@ -187,36 +181,4 @@ export function pickLeafConditionPropsTolog(
         : undefined),
     },
   };
-}
-
-/**
- * Signal ids have been logged in conditions in very haphazard ways over-time.
- * This function attempts to account for all the different iterations in order
- * to return a SignalId if at all possible.
- */
-export function signalIdFromLoggedCondition(
-  it: LeafConditionWithResultAsLogged,
-) {
-  if (!it.signal) {
-    return undefined;
-  }
-
-  // Very old logged conditions have `signal.id` as `null` or omit it when the
-  // condition was targeting a built-in signal; in that case, we build a
-  // `SignalId` from the type. Slightly newer conditions contain the bare signal
-  // type in `condition.signal.id`, which isn't a valid JSON string. So, if we
-  // try to parse it as JSON and it fails, we assume we're in that case and
-  // likewise construct the id from the type. Finally, newer conditions contain
-  // `JsonOf<SignalId>` (or, really, `JsonOf<SignalId>` where `SignalId` is
-  // whatever shape it had when the row was written -- not necessarily its
-  // current shape), so we parse that.
-  const candidateSignalId =
-    !it.signal.id || !tryJsonParse(it.signal.id)
-      ? { type: it.signal.type }
-      : jsonParse(it.signal.id satisfies string | JsonOf<JSON> as JsonOf<JSON>);
-
-  // Finally, it's possible that the stored condition references a signal that
-  // no longer has a corresponding SignalType in our codebase (e.g., the deleted
-  // LangaugeDetection signal). In that case, we just return undefined.
-  return isSignalId(candidateSignalId) ? candidateSignalId : undefined;
 }

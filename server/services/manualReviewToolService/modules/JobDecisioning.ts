@@ -1259,15 +1259,6 @@ export const makeSubmittedJobActionNotFoundError = (data: ErrorInstanceData) =>
     ...data,
   });
 
-export const makeNoJobWithIdInQueueError = (data: ErrorInstanceData) =>
-  new CoopError({
-    status: 404,
-    type: [ErrorType.NotFound],
-    title: String(data.detail),
-    name: 'NoJobWithIdInQueueError',
-    ...data,
-  });
-
 export const makeMissingRequiredDecisionReasonError = (
   data: ErrorInstanceData,
 ) =>

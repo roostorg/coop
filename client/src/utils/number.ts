@@ -24,7 +24,3 @@ export function truncateAndFormatLargeNumber(num: number) {
     return num.toString();
   }
 }
-
-export function decimalToPercentage(decimal: number) {
-  return `${Math.round(decimal * 100)}%`;
-}

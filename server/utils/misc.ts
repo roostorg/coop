@@ -2,25 +2,16 @@ import crypto from 'node:crypto';
 import { setTimeout } from 'node:timers';
 import { promisify } from 'node:util';
 import _ from 'lodash';
-import { type Simplify, type SnakeCasedProperties } from 'type-fest';
+import { type Simplify } from 'type-fest';
 
 import {
   type CamelToSnakeCase,
   type PickEach,
-  type RenameEach,
   type SnakeCasedPropertiesDeepWithArrays,
   type SnakeToCamelCase,
 } from './typescript-types.js';
 
 const { pick } = _;
-
-export function pad(padWithChar: string, targetLength: number, str: string) {
-  const strFinal = String(str);
-  const padding = padWithChar.repeat(
-    Math.max(0, targetLength - strFinal.length),
-  );
-  return padding + strFinal;
-}
 
 /**
  * Takes a function, calls it, and returns whether the function threw
@@ -92,35 +83,6 @@ export async function sleep(ms: number) {
   });
 }
 
-/**
- * Returns a promise that resolves when the (optionally async) predicate becomes
- * true. Waits `pollingIntervalMs` between tests of the predicate's truthiness;
- * rejects if `timeoutMs` is reached.
- */
-export async function waitFor(
-  predicate: () => Promise<boolean>,
-  opts: { pollingIntervalMs: number; timeoutMs?: number },
-): Promise<void> {
-  const { pollingIntervalMs, timeoutMs = Infinity } = opts;
-
-  let timeoutElapsed = false;
-  if (timeoutMs !== Infinity && timeoutMs > 0) {
-    setTimeout(() => {
-      timeoutElapsed = true;
-    }, timeoutMs).unref();
-  }
-
-  while (!timeoutElapsed) {
-    if (await predicate()) {
-      return;
-    }
-
-    await sleep(pollingIntervalMs);
-  }
-
-  throw new Error('Timeout reached.');
-}
-
 export function snakeToCamelCase<S extends string>(s: S) {
   return s.replace(/_(.)/g, (_m, p1) =>
     p1.toUpperCase(),
@@ -132,16 +94,6 @@ export function camelToSnakeCase<S extends string>(s: S) {
     .split(/(?=[A-Z])/)
     .join('_')
     .toLowerCase() as CamelToSnakeCase<S>;
-}
-
-/**
- * NB: If you pass in an array, any objects within that array won't have their
- * keys snake cased.
- */
-export function camelCaseObjectKeysToSnakeCase<O extends object>(o: O) {
-  return Object.fromEntries(
-    Object.entries(o).map(([k, v]) => [camelToSnakeCase(k), v]),
-  ) as SnakeCasedProperties<O>;
 }
 
 /**
@@ -170,35 +122,6 @@ function _camelCaseObjectKeysToSnakeCaseDeepHelper<O>(
           ]),
         ) as SnakeCasedPropertiesDeepWithArrays<O>)
       : (o as SnakeCasedPropertiesDeepWithArrays<O>);
-}
-
-/**
- * This function merges the data from patch into object. It's very similar to
- * `Object.assign` _except_ that if the `patch` has an enumerable, own property
- * whose value is undefined, then the property from the `patch` is ignored and
- * the original value from `object` (if any) is left in place. Object.assign, by
- * contrast, would copy the value `undefined`. It's also similar to lodash's
- * merge, except it's not recursive.
- *
- * This is useful for working with GraphQL argument objects, where we
- * might pick some subset of known argument names into a new object, but give
- * them an undefined value in the process. E.g., imagine `someQuery(id: true)`,
- * where `id` is not mutable, and there are also optional arguments `y` and `z`.
- * So, the original args argument looked like `{ id: true }` and simply had no
- * key for `y` or `z`. But, if we do `{ id, y, z } = args`, and then
- * `patchInPlace(await getObjectById(id), { y, z })`, suddenly there are keys
- * for `y` and `z`, just with undefined values that we want to ignore.
- *
- * @param object The object to mutate by assigning the patch's fields to it.
- * @param patch An object of fields to set on the object.
- * @returns
- */
-export function patchInPlace<T extends object>(object: T, patch: Partial<T>) {
-  for (const k of Object.keys(patch) as (keyof T)[]) {
-    if (typeof patch[k] !== 'undefined') {
-      object[k] = patch[k]!;
-    }
-  }
 }
 
 export function removeUndefinedKeys<T extends object>(object: T) {
@@ -251,20 +174,6 @@ export function safeGet(value: unknown, path: readonly string[]): unknown {
 }
 
 export const noPropertyValueFound = Symbol();
-
-export function pickFromKeys<
-  T extends object,
-  U extends { [K in string]: keyof T },
->(object: T, newNamesToKeys: U) {
-  const newEntries = Object.entries(newNamesToKeys).map(([newName, key]) => [
-    newName,
-    object[key],
-  ]);
-  return Object.fromEntries(newEntries) as RenameEach<
-    PickEach<T, U[keyof U]>,
-    { [K in keyof U]: U[K] }
-  >;
-}
 
 /**
  * This takes a retry policy and a function and returns a version of the

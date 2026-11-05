@@ -70,12 +70,6 @@ export const configurableIntegrations = [
  */
 export type ConfigurableIntegration = (typeof configurableIntegrations)[number];
 
-export function isConfigurableIntegration(
-  it: unknown,
-): it is ConfigurableIntegration {
-  return configurableIntegrations.includes(it as ConfigurableIntegration);
-}
-
 // By mapping over ConfigurableIntegrations, rather than the keys of CredentialTypes,
 // we're making the type require an implementation for every integration
 export type CredentialImplementations = {

@@ -79,14 +79,9 @@ export const SignalType = {
   ...ExternalSignalType,
 };
 
-export const InternalSignalTypeArbitrary = enumToArbitrary(InternalSignalType);
 export const BuiltInExternalSignalTypeArbitrary = enumToArbitrary(
   BuiltInExternalSignalType,
 );
-export const UserCreatedExternalSignalTypeArbitrary = enumToArbitrary(
-  UserCreatedExternalSignalType,
-);
-export const ExternalSignalTypeArbitrary = enumToArbitrary(ExternalSignalType);
 
 /** Accepts SignalType or plugin signal type string (e.g. RANDOM_SIGNAL_SELECTION). */
 // eslint-disable-next-line complexity
