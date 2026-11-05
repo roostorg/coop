@@ -1,3 +1,4 @@
+import { type DateRangePickerProps } from '@/coop-ui/DateRangePicker';
 import {
   GQLDequeueManualReviewJobDocument,
   GQLGetDecidedJobDocument,
@@ -19,10 +20,25 @@ import {
   within,
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { type FC } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
 import { MemoryRouter } from 'react-router';
 
 import ManualReviewRecentDecisions from './ManualReviewRecentDecisions';
+
+const TEST_RANGE = vi.hoisted(() => ({
+  from: new Date('2026-08-01T00:00:00.000Z'),
+  to: new Date('2026-08-31T00:00:00.000Z'),
+}));
+
+vi.mock('@/coop-ui/DateRangePicker', () => {
+  const DateRangePickerStub: FC<DateRangePickerProps> = ({ onUpdate }) => (
+    <button type="button" onClick={() => onUpdate?.({ range: TEST_RANGE })}>
+      Pick one month
+    </button>
+  );
+  return { DateRangePicker: DateRangePickerStub };
+});
 
 // jsdom implements neither the Pointer Events capture API nor
 // `scrollIntoView`. The `Show` control (`@/coop-ui/Select`, a Radix select)
@@ -240,6 +256,22 @@ async function applyQueueFilter(container: HTMLElement) {
   fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 }
 
+async function applyFilters(container: HTMLElement, withQueue = false) {
+  fireEvent.click(await screen.findByText('Select any'));
+  fireEvent.click(await screen.findByText('Date Range'));
+  fireEvent.click(
+    await screen.findByRole('button', { name: 'Pick one month' }),
+  );
+  if (withQueue) {
+    fireEvent.click(await screen.findByText('Queues'));
+    const queueSelector = container.querySelector('.ant-select-selector');
+    expect(queueSelector).not.toBeNull();
+    fireEvent.mouseDown(queueSelector as Element);
+    fireEvent.click(await screen.findByText('Appeals'));
+  }
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+}
+
 // Drives the `Show` control (a Radix `Select`, not a native <select>): open
 // it via its trigger (labelled "Show"), then click the option with the given
 // visible label.
@@ -413,6 +445,55 @@ describe('ManualReviewRecentDecisions', () => {
     expect(
       await screen.findByRole('button', { name: 'Download Skips' }),
     ).toBeInTheDocument();
+  });
+
+  async function clickDownload() {
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => {});
+    await userEvent.click(
+      await screen.findByRole('button', { name: 'Download' }),
+    );
+    const anchor = click.mock.contexts[0] as HTMLAnchorElement;
+    click.mockRestore();
+    return anchor;
+  }
+
+  const monthTimes = { startTime: TEST_RANGE.from, endTime: TEST_RANGE.to };
+
+  it('disables Download until a date range is set', async () => {
+    renderPage(activityMocks([]));
+
+    expect(
+      await screen.findByRole('button', { name: 'Download' }),
+    ).toBeDisabled();
+    expect(
+      screen.getByText('Set a date range to download.'),
+    ).toBeInTheDocument();
+  });
+
+  it('downloads the server export with the saved filters', async () => {
+    const { container } = renderPage([
+      ...activityMocks([]),
+      activityMockFor(
+        { ...monthTimes, view: 'DECISIONS', queueIds: ['q-appeals'] },
+        [],
+      ),
+    ]);
+    await applyFilters(container, true);
+    await screen.findByText(/manual actions have no queue/i);
+
+    const anchor = await clickDownload();
+    const url = new URL(anchor.href);
+
+    expect(anchor.hasAttribute('download')).toBe(true);
+    expect(url.pathname).toBe('/api/v1/moderation_activity/export');
+    expect(JSON.parse(url.searchParams.get('input')!)).toEqual({
+      view: 'DECISIONS',
+      queueIds: ['q-appeals'],
+      startTime: '2026-08-01T00:00:00.000Z',
+      endTime: '2026-08-31T00:00:00.000Z',
+    });
   });
 
   it('shows the item count on a bulk run', async () => {

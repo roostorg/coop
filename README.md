@@ -30,8 +30,8 @@ A few things that shape how we build it:
 
 Coop is used by:
 
-| ![Kyodo](docs/images/adopters/kyodo.svg) | ![Notion](docs/images/adopters/notion.svg) | ![Musubi](docs/images/adopters/musubi.svg) |
-| ---------------------------------------- | ------------------------------------------ | ------------------------------------------ |
+| ![Kyodo](docs/images/adopters/kyodo.svg) | ![Notion](docs/images/adopters/notion.svg) | ![Musubi](docs/images/adopters/musubi.svg) | ![UpScrolled](docs/images/adopters/upscrolled.svg) |
+| ---------------------------------------- | ------------------------------------------ | ------------------------------------------ | -------------------------------------------------- |
 
 Using Coop and want to add your project/organization to this list? [Open a pull request!](https://github.com/roostorg/coop/edit/main/README.md)
 
@@ -42,6 +42,8 @@ Coop is an open source project undergoing active development. Features and docum
 We want to hear from you! Whether you're testing it out, running into issues, or have ideas for improvements, please [open an issue](https://github.com/roostorg/coop/issues), [join or start a discussion](https://github.com/roostorg/coop/discussions), or join our [Discord](https://discord.gg/5Csqnw2FSQ).
 
 Your feedback directly shapes our [roadmap](https://roostorg.github.io/community/roadmap).
+
+To contribute code or documentation, see the [development guide](docs/development/README.md) for setup and PR title conventions.
 
 ## Quick start
 
