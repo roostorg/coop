@@ -14,12 +14,7 @@ import { type FixKyselyRowCorrelation } from '../../utils/kysely.js';
 import { logErrorJson } from '../../utils/logging.js';
 import { assertUnreachable, withRetries } from '../../utils/misc.js';
 import { type CollapseCases } from '../../utils/typescript-types.js';
-import { rawItemSubmissionToItemSubmission } from '../itemProcessingService/makeItemSubmission.js';
 import { type RawItemData } from '../itemProcessingService/toNormalizedItemDataOrErrors.js';
-import {
-  rawItemSubmissionSchema,
-  type RawItemSubmission,
-} from '../itemProcessingService/types.js';
 import type {
   NCMECReportedContentInThread,
   NCMECThreadReport,
@@ -1172,81 +1167,6 @@ const validateIpAddressEvent = {
   },
 } as const;
 
-type NcmecMessageResponse = {
-  conversations: {
-    threadId: string;
-    typeId: string;
-    messages: (RawItemSubmission & {
-      ipAddress: {
-        ip: string;
-        port: number;
-      };
-    })[];
-  }[];
-};
-
-const validateNcmecMessages = ajv.compile<NcmecMessageResponse>({
-  type: 'object',
-  properties: {
-    conversations: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          threadId: { type: 'string' },
-          typeId: { type: 'string' },
-          messages: {
-            type: 'array',
-            items: {
-              type: 'object',
-              oneOf: [
-                {
-                  ...rawItemSubmissionSchema.oneOf[0],
-                  properties: {
-                    ...rawItemSubmissionSchema.oneOf[0].properties,
-                    ipAddress: {
-                      type: 'object',
-                      properties: {
-                        ip: { type: 'string' },
-                        port: { type: 'integer' },
-                      },
-                      required: ['ip', 'port'],
-                    },
-                  },
-                  required: [
-                    ...rawItemSubmissionSchema.oneOf[0].required,
-                    'ipAddress',
-                  ],
-                },
-                {
-                  ...rawItemSubmissionSchema.oneOf[1],
-                  properties: {
-                    ...rawItemSubmissionSchema.oneOf[1].properties,
-                    ipAddress: {
-                      type: 'object',
-                      properties: {
-                        ip: { type: 'string' },
-                        port: { type: 'integer' },
-                      },
-                      required: ['ip', 'port'],
-                    },
-                  },
-                  required: [
-                    ...rawItemSubmissionSchema.oneOf[1].required,
-                    'ipAddress',
-                  ],
-                },
-              ],
-            },
-          },
-        },
-        required: ['threadId', 'typeId', 'messages'],
-      },
-    },
-  },
-  required: ['conversations'],
-} as const satisfies JSONSchemaV4<NcmecMessageResponse>);
-
 const validateNcmecAdditionalInfo = ajv.compile<NcmecAdditionalInfoResponse>({
   type: 'object',
   properties: {
@@ -1388,8 +1308,6 @@ export default class NcmecReporting {
     private pqQueryReadReplica: Kysely<NcmecReportingServicePg>,
     private fetchHTTP: Dependencies['fetchHTTP'],
     private signingKeyPairService: Dependencies['SigningKeyPairService'],
-    private moderationConfigService: Dependencies['ModerationConfigService'],
-    private getItemTypeEventuallyConsistent: Dependencies['getItemTypeEventuallyConsistent'],
     private readonly tracer: Dependencies['Tracer'],
   ) {}
   async hasNCMECReportingEnabled(orgId: string) {
@@ -1427,77 +1345,6 @@ export default class NcmecReporting {
     return row
       ? (row satisfies CollapseCases<ActionsOnReportCreationAndPoliciesSelectionResult> as ActionsOnReportCreationAndPoliciesSelectionResult)
       : undefined;
-  }
-
-  async getNcmecMessages(
-    orgId: string,
-    userId: ItemIdentifier,
-    reportedMedia: readonly ItemIdentifier[],
-  ) {
-    const fetchWithRetries = withRetries(
-      {
-        maxRetries: 5,
-        initialTimeMsBetweenRetries: 5,
-        maxTimeMsBetweenRetries: 500,
-        jitter: true,
-      },
-      async () => {
-        const response = await this.fetchHTTP({
-          url: 'https://tas-infra-ml.net/data/coop/content/pre-preserve/get',
-          method: 'post',
-          body: jsonStringify({
-            userId: userId.id,
-            typeId: userId.typeId,
-            reported_messages: reportedMedia,
-          }),
-          handleResponseBody: 'as-json',
-          signWith: this.signingKeyPairService.sign.bind(
-            this.signingKeyPairService,
-            orgId,
-          ),
-        });
-        if (!response.ok) {
-          throw new Error();
-        }
-        const responseBody = response.body;
-        if (!validateNcmecMessages(responseBody)) {
-          throw new Error(`NCMEC Messages failed validation`);
-        }
-        return responseBody;
-      },
-    );
-    const body = await fetchWithRetries();
-
-    return Promise.all(
-      body.conversations.map(async (conversation) => {
-        const messages = await Promise.all(
-          conversation.messages.map(async (message) => {
-            const { error, itemSubmission } =
-              await rawItemSubmissionToItemSubmission(
-                await this.moderationConfigService.getItemTypes({
-                  orgId,
-                  directives: { maxAge: 10 },
-                }),
-                orgId,
-                this.getItemTypeEventuallyConsistent,
-                message,
-              );
-            if (error) {
-              throw error;
-            }
-            return {
-              message: itemSubmission,
-              ipAddress: message.ipAddress,
-            };
-          }),
-        );
-        return {
-          messages: messages.slice(-50), // Get the last 50 items
-          threadId: conversation.threadId,
-          threadTypeId: conversation.typeId,
-        };
-      }),
-    );
   }
 
   async getNCMECAdditionalInfo(
