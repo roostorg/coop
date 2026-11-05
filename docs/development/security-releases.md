@@ -29,7 +29,7 @@ Proposed response targets:
 | Moderate, or tier 4                                      | Weekly          | Next scheduled release                      |
 | Low, or not reachable                                    | Weekly          | Dismissed with a reason                     |
 
-Reachability and exploitability details stay in the draft advisory or the private triage queue until the fix is released. Never put them in a public issue, PR, commit message or changelog entry.
+Reachability and exploitability details stay in the draft advisory or the private triage queue until the fix is released. Never put them in a public issue, PR, commit message or release note.
 
 The steps run in this order: choose the release base (step 2) before merging anything from a private fork; then merge the fix, publish the release, publish the advisories, and announce.
 
@@ -58,26 +58,26 @@ Use this path for a vulnerability in Coop's own code, or any issue not yet publi
 
 1. Choose the release base (step 2). On option B, create `release/x.y` first if it does not exist.
 2. In the draft advisory, select **Start a temporary private fork**.
-3. Clone the fork and open a PR against it with the fix, a regression test, and the version and changelog changes from step 3, so that a single merge makes everything public. Target `main` on option A, or `release/x.y` on option B.
+3. Clone the fork and open a PR against it with the fix and a regression test. Target `main` on option A, or `release/x.y` on option B.
 4. GitHub Actions does not run in temporary private forks. Run the [CI checks](https://github.com/roostorg/coop/blob/main/AGENTS.md#ci) locally and record the results in the PR.
 5. Once the PR is reviewed, select **Merge pull request** in the advisory. The fix is public from this point, so publish the release (step 4) straight after.
 
 ### Public upstream CVE: normal PR
 
-Use this path when the vulnerability is already public, e.g. a CVE in a dependency or base image. Open a normal PR against `main` that bumps the dependency or pin, and add a `### Security` changelog entry for it under `## [Unreleased]`. The PR can name the upstream CVE, but not Coop-specific reachability or exploitability details.
+Use this path when the vulnerability is already public, e.g. a CVE in a dependency or base image. Open a normal PR against `main` that bumps the dependency or pin, with a `fix` title (e.g. `fix(deps): update <package> to <x.y.z>`) and its release note in the PR description's `## Release notes` section, in the format from step 3. The PR can name the upstream CVE, but not Coop-specific reachability or exploitability details.
 
 If Dependabot has already opened the bump, use its PR. If its PR groups the security update with other updates, release only the security update (on option B, a separate PR to `release/x.y` that applies the same specifier and version as `main`).
 
 ## 2. Choose the release base
 
-If `## [Unreleased]` in `CHANGELOG.md` contains only the fix, release from `main` as usual and skip to step 3.
+If nothing else has merged to `main` since the last release, release from `main` as usual and skip to step 3.
 
 If `main` has unreleased changes, choose one of the options below. **Pending decision ([#1520](https://github.com/roostorg/coop/issues/1520), item 11):** option B as a standing model is a proposal; until it is decided, agree the base with a maintainer for each release.
 
 **A. Release from `main`.** Ship the fix together with everything already on `main`.
 
 - Uses the existing release process and workflows unchanged.
-- The release contains changes that were not planned for release yet. If `## [Unreleased]` has entries under `### Added`, or any backward-incompatible change, the next version is a minor or major release, not a patch, under [Versioning](releases.md#versioning).
+- The release contains changes that were not planned for release yet. If the draft release on [GitHub Releases](https://github.com/roostorg/coop/releases) has entries under **Added**, or `main` has any backward-incompatible change, the next version is a minor or major release, not a patch, under [Versioning](releases.md#versioning).
 - Unreleased migrations and behavior changes reach adopters who only wanted the security fix.
 
 **B. Release from `release/x.y`.** Ship only the fixes as `x.y.(z+1)`, from a release branch kept for the latest minor version.
@@ -107,24 +107,32 @@ Dependency updates usually conflict in `pnpm-lock.yaml`. Resolve them so the bra
 
 The script depends on [#1524](https://github.com/roostorg/coop/pull/1524) ([#1520](https://github.com/roostorg/coop/issues/1520), item 5).
 
-## 3. Bump the version and changelog
+## 3. Write the release notes
 
-Follow step 1 of [Creating a release](releases.md#creating-a-release) with the patch version `x.y.z`, in a PR against the release base from step 2 (on the private fork path, in the fork PR). Each fix goes under `### Security` in the new `## [x.y.z]` section as a single line, in the formats from [`AGENTS.md`](https://github.com/roostorg/coop/blob/main/AGENTS.md#changelog):
+Each fix's release note goes in its PR description's `## Release notes` section, one line per fix, in the formats from [`AGENTS.md`](https://github.com/roostorg/coop/blob/main/AGENTS.md#release-notes). Release Drafter collects these into the draft release for `main` and adds the PR and author links:
 
 ```markdown
-### Security
+## Release notes
 
-- Prevent <impact> ([GHSA-xxxx-xxxx-xxxx](https://github.com/roostorg/coop/security/advisories/GHSA-xxxx-xxxx-xxxx), [#123](https://github.com/roostorg/coop/pull/123) by [@user](https://github.com/user))
-- Update <package> to <x.y.z> to fix <issue> ([CVE-…](https://github.com/advisories/GHSA-…), [#123](https://github.com/roostorg/coop/pull/123) by [@user](https://github.com/user))
+- Prevent <impact> ([GHSA-xxxx-xxxx-xxxx](https://github.com/roostorg/coop/security/advisories/GHSA-xxxx-xxxx-xxxx))
+- Update <package> to <x.y.z> to fix <issue> ([CVE-…](https://github.com/advisories/GHSA-…))
 ```
 
-List a Coop advisory before the PR link, and the upstream CVE when there is one. A fix from a private fork has no PR in this repository, so link only the advisory.
+The release itself gets notes written from the [release notes template](#release-notes-template), using these entries as source material:
+
+- On option A, edit the draft release for `main`.
+- On option B, Release Drafter does not draft releases for `release/x.y`, so write the notes in a file for step 4, copying the fixes' entries from the draft release for `main`.
+- A fix from a private fork has no PR in this repository, so write its entry in the release notes directly, linking only the advisory:
+
+```markdown
+- Prevent <impact> ([GHSA-xxxx-xxxx-xxxx](https://github.com/roostorg/coop/security/advisories/GHSA-xxxx-xxxx-xxxx))
+```
 
 If the fix touches `types/` or `migrator/`, bump `version` in `types/package.json` or `migrator/package.json` in the same PR; npm publishing is skipped when the version already exists.
 
 ## 4. Tag and publish the release
 
-On option A, follow steps 2–6 of [Creating a release](releases.md#creating-a-release).
+On option A, follow [Creating a release](releases.md#creating-a-release), with the notes from step 3.
 
 On option B, create the release from the branch; the web UI's target defaults to `main`:
 
@@ -178,7 +186,7 @@ Leave out sections that do not apply. For upgrade wording, see [Upgrade wording]
 
 ## 6. Publish the advisory
 
-Publish each Coop advisory after the release, so that its patched version exists. Tier 1 vulnerabilities that are not exploitable get only the `### Security` changelog entry, not an advisory.
+Publish each Coop advisory after the release, so that its patched version exists. Tier 1 vulnerabilities that are not exploitable get only a release note, not an advisory.
 
 ### Advisory template
 
@@ -200,7 +208,7 @@ Publish each Coop advisory after the release, so that its patched version exists
 - [ ] Affected and patched versions match the release.
 - [ ] Credits are listed and every credited person has accepted.
 - [ ] For a vulnerability in Coop's own code, a CVE is requested from the advisory.
-- [ ] The release and changelog link the advisory.
+- [ ] The release notes link the advisory.
 
 ## 7. Notify
 
@@ -215,13 +223,13 @@ Vendors who host Coop so that their users cannot self-patch can receive early no
 
 Post to [security-announce@roost.tools](https://groups.google.com/a/roost.tools/g/security-announce) once the release and its advisories are published. The email lists only Coop advisories; upstream advisories that do not affect Coop stay in the release notes.
 
-| Situation               | Advisory | security-announce                                                                       | Changelog  |
-| ----------------------- | -------- | --------------------------------------------------------------------------------------- | ---------- |
-| Tier 1, exploitable     | Yes      | Yes                                                                                     | `Security` |
-| Tier 1, not exploitable | No       | No                                                                                      | `Security` |
-| Tier 2                  | No       | Yes: pull the new `docker-compose.yaml`, or update the image tag in your own deployment | `Security` |
-| Tier 3                  | No       | Yes: the new minimum version and upgrade guidance                                       | `Security` |
-| Tier 4                  | No       | No                                                                                      | If notable |
+| Situation               | Advisory | security-announce                                                                       | Release note |
+| ----------------------- | -------- | --------------------------------------------------------------------------------------- | ------------ |
+| Tier 1, exploitable     | Yes      | Yes                                                                                     | Yes          |
+| Tier 1, not exploitable | No       | No                                                                                      | Yes          |
+| Tier 2                  | No       | Yes: pull the new `docker-compose.yaml`, or update the image tag in your own deployment | Yes          |
+| Tier 3                  | No       | Yes: the new minimum version and upgrade guidance                                       | Yes          |
+| Tier 4                  | No       | No                                                                                      | If notable   |
 
 ### Upgrade wording
 
@@ -275,20 +283,20 @@ Release notes: https://github.com/roostorg/coop/releases/tag/x.y.z
 
 ## 8. Forward-port to `main`
 
-On option B, open a PR to `main` that brings over the release, as in [#1510](https://github.com/roostorg/coop/pull/1510):
+On option B:
 
-- Add the `## [x.y.z]` section and its compare link to `CHANGELOG.md` below `## [Unreleased]`, matching the release notes, and remove from `## [Unreleased]` the entries that shipped in it.
-- Cherry-pick any fix that merged into `release/x.y` from a private fork and is not yet on `main`.
+- Cherry-pick any fix that merged into `release/x.y` from a private fork and is not yet on `main`, in a PR to `main` with a blank `## Release notes` section, since the fix shipped in `x.y.z`.
+- Check the draft release for `main` and remove any entry for a fix that shipped in `x.y.z`.
 
 ## Checklist
 
 - [ ] Every vulnerability in the release triaged privately; reachable ones have draft advisories
 - [ ] Release base agreed (`main` or `release/x.y`) before any private-fork merge
 - [ ] Fix merged (private fork or normal PR), with a regression test where possible; cherry-picks leave the lockfile unchanged under `pnpm install`
-- [ ] Changelog `### Security` entries and version bump merged
+- [ ] Release notes written, in each fix PR and for the release
 - [ ] Release `x.y.z` published from the agreed base
 - [ ] Images (and npm packages, if changed) confirmed published
 - [ ] Advisories published after the pre-publish checks
 - [ ] Hosted vendors notified
 - [ ] security-announce posted, if required
-- [ ] If released from `release/x.y`: release forward-ported to `main`
+- [ ] If released from `release/x.y`: private-fork fixes forward-ported to `main`, and its draft release checked
