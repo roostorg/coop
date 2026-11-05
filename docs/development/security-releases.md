@@ -233,7 +233,14 @@ List every upstream advisory fixed by a dependency update that has no Coop advis
 
 ## 5. Confirm artifacts published
 
-- [ ] The **Publish Docker Images** run for the tag succeeded, and `ghcr.io/roostorg/coop-server:x.y.z`, `coop-worker:x.y.z`, `coop-client:x.y.z` and `coop-migrations:x.y.z` exist, e.g. `docker buildx imagetools inspect ghcr.io/roostorg/coop-server:x.y.z`. The run's tag list includes `latest` only if `x.y.z` is the highest stable release.
+- [ ] The **Publish Docker Images** run for the tag succeeded, and `ghcr.io/roostorg/coop-server:x.y.z`, `coop-worker:x.y.z`, `coop-client:x.y.z` and `coop-migrations:x.y.z` exist, e.g. `docker buildx imagetools inspect ghcr.io/roostorg/coop-server:x.y.z`. The run's tag list includes `latest` only if `x.y.z` is the highest stable release, and when it does, `x.y.z`, `x.y` and `latest` share one digest.
+- [ ] The fix is inside `coop-server` and `coop-worker` at `x.y.z`, checked against the previous release `x.y.(z-1)` as a control, which should still show the old code or version. For a code fix, count the compiled files that still contain a string the fix removed (0 at `x.y.z`); for a dependency, read the installed version:
+
+  ```bash
+  docker run --rm --entrypoint sh ghcr.io/roostorg/coop-server:x.y.z -c 'grep -rl "<removed string>" /app --include=*.js | grep -v node_modules | wc -l'
+  docker run --rm --entrypoint sh ghcr.io/roostorg/coop-server:x.y.z -c 'find /app -path "*/node_modules/<package>/package.json" -exec grep -H "\"version\"" {} +'
+  ```
+
 - [ ] If a tier 1 dependency or base image was fixed, the new images no longer contain the vulnerable version, using the image scan or SBOM attached to the release where available.
 - [ ] If `types/` or `migrator/` changed, the **Publish Packages** run on `main` succeeded and `pnpm view @roostorg/coop-types version` or `pnpm view @roostorg/db-migrator version` shows the new version.
 
