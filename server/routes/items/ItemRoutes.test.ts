@@ -1,6 +1,7 @@
 import { faker } from '@faker-js/faker';
 import { uid } from 'uid';
 
+import { API_KEY_PERMISSIONS } from '../../services/apiKeyService/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../test/fixtureHelpers/createUser.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
@@ -36,8 +37,53 @@ describe('POST Items', () => {
 
     await createUser(KyselyPg, orgId, { id: uid() });
 
-    return { apiKey, contentType, analytics: deps.DataWarehouseAnalytics };
+    return {
+      orgId,
+      apiKey,
+      contentType,
+      analytics: deps.DataWarehouseAnalytics,
+    };
   });
+
+  testWithFixture(
+    'POST /items/async rejects valid keys without items:write',
+    async ({ deps, request, orgId, contentType }) => {
+      const payload = {
+        items: [{ id: 'item', typeId: contentType.id, data: { name: 'Post' } }],
+      };
+      for (const permissions of [
+        [],
+        API_KEY_PERMISSIONS.filter(
+          (permission) => permission.value !== 'items:write',
+        ).map((permission) => permission.value),
+      ]) {
+        const { apiKey } = await deps.ApiKeyService.createApiKey(
+          orgId,
+          'Restricted',
+          null,
+          null,
+          permissions,
+        );
+        await request
+          .post('/api/v1/items/async')
+          .set('x-api-key', apiKey)
+          .send(payload)
+          .expect(403);
+      }
+      const { apiKey } = await deps.ApiKeyService.createApiKey(
+        orgId,
+        'Allowed',
+        null,
+        null,
+        ['items:write'],
+      );
+      await request
+        .post('/api/v1/items/async')
+        .set('x-api-key', apiKey)
+        .send(payload)
+        .expect(202);
+    },
+  );
 
   testWithFixture(
     'should return the expected response',

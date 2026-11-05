@@ -17,6 +17,7 @@ describe('ApiKeyService', () => {
     key_hash: 'stored-hash',
     name: 'Test Key',
     description: 'Test Description',
+    permissions: ['items:read'],
     is_active: true,
     created_at: new Date('2026-01-01'),
     updated_at: new Date('2026-01-01'),
@@ -40,7 +41,7 @@ describe('ApiKeyService', () => {
 
   it('stores a hashed new key without deactivating other keys', async () => {
     query.mockImplementationOnce(async ({ parameters }) => ({
-      rows: [{ ...row, key_hash: parameters[1] }],
+      rows: [{ ...row, key_hash: parameters[1], permissions: parameters[6] }],
       command: 'INSERT',
       rowCount: 1,
     }));
@@ -63,6 +64,7 @@ describe('ApiKeyService', () => {
       keyHash: hash,
       name: row.name,
       description: row.description,
+      permissions: [],
     });
     expect(query).toHaveBeenCalledTimes(1);
     expect(query.mock.calls[0][0].sql).toContain(
@@ -75,8 +77,34 @@ describe('ApiKeyService', () => {
       'Test Description',
       true,
       null,
+      [],
     ]);
   });
+
+  it.each(['items:*', ''])(
+    'identifies an invalid permission (%j) before storing a key',
+    async (permission) => {
+      await expect(
+        sut.createApiKey(orgId, 'Invalid', null, null, [
+          'items:read',
+          permission,
+        ]),
+      ).rejects.toThrow(`Unknown API key permission: "${permission}"`);
+      expect(query).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['items:*', ''])(
+    'rejects an invalid permission update (%j) without writing',
+    async (permission) => {
+      await expect(
+        sut.updateApiKey(row.id, orgId, row.name, row.description, [
+          permission,
+        ]),
+      ).rejects.toThrow(`Unknown API key permission: "${permission}"`);
+      expect(query).not.toHaveBeenCalled();
+    },
+  );
 
   it('returns null when rotation matches no active key in the organization', async () => {
     query.mockResolvedValueOnce({ rows: [], command: 'UPDATE', rowCount: 0 });
@@ -120,13 +148,16 @@ describe('ApiKeyService', () => {
   it('validates a key by its hash and updates last-used time', async () => {
     query
       .mockResolvedValueOnce({
-        rows: [{ org_id: orgId, last_used_at: null }],
+        rows: [{ org_id: orgId, permissions: row.permissions }],
         command: 'SELECT',
         rowCount: 1,
       })
       .mockResolvedValueOnce({ rows: [], command: 'UPDATE', rowCount: 1 });
 
-    expect(await sut.validateApiKey('test-key')).toBe(orgId);
+    expect(await sut.validateApiKey('test-key')).toEqual({
+      orgId,
+      permissions: row.permissions,
+    });
 
     const hash = crypto.createHash('sha256').update('test-key').digest('hex');
     expect(query).toHaveBeenCalledTimes(2);

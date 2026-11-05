@@ -1,10 +1,11 @@
 import { uid } from 'uid';
 
+import { API_KEY_PERMISSIONS } from '../../services/apiKeyService/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import createUserItemTypes from '../../test/fixtureHelpers/createUserItemTypes.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
 
-describe('GET policies', () => {
+describe('GET user scores', () => {
   const testUserScoresRoute = makeTransactionalTestWithFixture(
     async ({ deps }) => {
       const { ModerationConfigService, ApiKeyService, KyselyPg } = deps;
@@ -18,7 +19,44 @@ describe('GET policies', () => {
         orgId: org.id,
         extra: {},
       });
-      return { itemType: itemTypes[0], apiKey };
+      return { orgId: org.id, itemType: itemTypes[0], apiKey };
+    },
+  );
+
+  testUserScoresRoute(
+    'GET /user_scores rejects valid keys without items:read',
+    async ({ deps, request, orgId, itemType }) => {
+      for (const permissions of [
+        [],
+        API_KEY_PERMISSIONS.filter(
+          (permission) => permission.value !== 'items:read',
+        ).map((permission) => permission.value),
+      ]) {
+        const { apiKey } = await deps.ApiKeyService.createApiKey(
+          orgId,
+          'Restricted',
+          null,
+          null,
+          permissions,
+        );
+        await request
+          .get('/api/v1/user_scores')
+          .set('x-api-key', apiKey)
+          .query({ id: 'user', typeId: itemType.id })
+          .expect(403);
+      }
+      const { apiKey } = await deps.ApiKeyService.createApiKey(
+        orgId,
+        'Allowed',
+        null,
+        null,
+        ['items:read'],
+      );
+      await request
+        .get('/api/v1/user_scores')
+        .set('x-api-key', apiKey)
+        .query({ id: 'user', typeId: itemType.id })
+        .expect(200);
     },
   );
 

@@ -9,7 +9,7 @@ export default {
   pathPrefix: '/user_scores',
   routes: [
     route.get<GetUserScoresOutput>('/', (deps) => [
-      createApiKeyMiddleware<never, GetUserScoresOutput>(deps),
+      createApiKeyMiddleware<never, GetUserScoresOutput>(deps, ['items:read']),
       getUserScores(deps),
     ]),
   ] as ControllerRouteList,
