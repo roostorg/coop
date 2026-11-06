@@ -1,0 +1,36 @@
+# Example compose override that runs the CLIP-enabled HMA in place of the stock
+# `hma` service. It is not used by default; see docs/integrations/hma-clip.md.
+#
+# Usage, from the repository root:
+#   docker compose -f docker-compose.yaml -f hma/clip/docker-compose.clip.yaml up -d --build hma
+#
+# GPU (Linux + nvidia-container-toolkit): uncomment the `deploy` block below and
+# build with the PYTORCH_CUDA, TORCH_VERSION and TORCHVISION_VERSION for your
+# CUDA version (see the guide):
+#   PYTORCH_CUDA=cu128 TORCH_VERSION=2.11.0 TORCHVISION_VERSION=0.26.0 \
+#     docker compose -f docker-compose.yaml -f hma/clip/docker-compose.clip.yaml build hma
+
+services:
+  hma:
+    build:
+      context: ./hma
+      dockerfile: clip/Dockerfile
+      args:
+        PYTORCH_CUDA: ${PYTORCH_CUDA:-cpu}
+        TORCH_VERSION: ${TORCH_VERSION:-2.15.0}
+        TORCHVISION_VERSION: ${TORCHVISION_VERSION:-0.29.2}
+    environment:
+      HMA_ALLOWED_HOSTNAMES: ${HMA_ALLOWED_HOSTNAMES:-}
+    volumes:
+      # CLIP model weights (~1.4 GB) download on first use; keep them across rebuilds.
+      - hma_clip_model_cache:/root/.cache/huggingface
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
+volumes:
+  hma_clip_model_cache:
