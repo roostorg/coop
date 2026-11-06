@@ -6,6 +6,8 @@ Coop follows a lightweight release process so downstream users can depend on ver
 - Meaningful changes have accumulated and CI is green, and/or
 - A [security advisory](https://github.com/roostorg/coop/security/) is addressed
 
+For a release that fixes a vulnerability, also follow [Security releases](security-releases.md).
+
 We do not currently backport changes to or release patches for versions other than the latest.
 
 ## Versioning
