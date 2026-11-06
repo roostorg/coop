@@ -1106,6 +1106,45 @@ describe('HmaService', () => {
       expect(result.credentials_schema).toBeNull();
     });
   });
+  describe('addContentToBank', () => {
+    const BANK = 'COOP_ORG1_MY_BANK';
+    const file = new File([new Uint8Array([1, 2, 3])], 'a.jpg', {
+      type: 'image/jpeg',
+    });
+    const upload = async (metadata?: Record<string, unknown>) => {
+      const fetchHTTP = routeFetch({
+        [`POST /c/bank/${BANK}/content`]: ok({ id: 7, signals: {} }),
+      });
+      const result = await makeService(fetchHTTP).addContentToBank(BANK, {
+        file,
+        contentType: 'photo',
+        metadata,
+      });
+      const [call] = callsTo(fetchHTTP, 'post', '/content');
+      return { result, form: call.body as unknown as FormData };
+    };
+
+    it('uploads the file under its content type', async () => {
+      const { result, form } = await upload();
+      expect(result).toEqual({ id: 7, signals: {} });
+      expect([...form.keys()]).toEqual(['photo']);
+    });
+
+    it('sends metadata as the one JSON form field HMA reads, with only the keys HMA accepts', async () => {
+      const { form } = await upload({
+        content_id: 'abc',
+        json: { file_name: 'a.jpg' },
+      });
+      expect([...form.keys()].sort()).toEqual(['metadata', 'photo']);
+      expect(
+        jsonParse(form.get('metadata') as Parameters<typeof jsonParse>[0]),
+      ).toEqual({
+        content_id: 'abc',
+        json: { file_name: 'a.jpg' },
+      });
+    });
+  });
+
   describe('CLIP', () => {
     const HASH = 'ab'.repeat(2048);
     const BANKS = ['COOP_ORG1_A', 'COOP_ORG1_B'];

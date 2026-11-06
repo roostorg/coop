@@ -1152,13 +1152,10 @@ export class HmaService {
       const formData = new FormData();
       formData.append(contentType, file);
 
+      // HMA reads one `metadata` form field holding a JSON object with exactly
+      // these keys, and rejects any other key with a 400.
       if (metadata) {
-        if (metadata.content_id)
-          formData.append('content_id', metadata.content_id);
-        if (metadata.content_uri)
-          formData.append('content_uri', metadata.content_uri);
-        if (metadata.json)
-          formData.append('metadata', jsonStringify(metadata.json));
+        formData.append('metadata', jsonStringify(metadata));
       }
 
       response = await this.fetchHTTP({
