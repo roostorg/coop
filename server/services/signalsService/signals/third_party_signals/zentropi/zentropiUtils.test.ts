@@ -45,7 +45,7 @@ function makeCredentialGetter(
 
 describe('zentropiUtils', () => {
   describe('score mapping', () => {
-    it('maps label=1, high confidence to high score (violating)', async () => {
+    it('maps label=1, high confidence to high score (match)', async () => {
       const fetchScores: FetchZentropiScores = vi.fn().mockResolvedValue({
         label: 1,
         confidence: 0.95,
@@ -60,7 +60,7 @@ describe('zentropiUtils', () => {
       expect(result.score).toBe(0.95);
     });
 
-    it('maps label=0, high confidence to low score (safe)', async () => {
+    it('maps label=0, high confidence to low score (no match)', async () => {
       const fetchScores: FetchZentropiScores = vi.fn().mockResolvedValue({
         label: 0,
         confidence: 0.95,
@@ -75,7 +75,7 @@ describe('zentropiUtils', () => {
       expect(result.score).toBeCloseTo(0.05);
     });
 
-    it('maps label=0, low confidence to ~0.4 (uncertain, leaning safe)', async () => {
+    it('maps label=0, low confidence to ~0.4 (uncertain, leaning no match)', async () => {
       const fetchScores: FetchZentropiScores = vi.fn().mockResolvedValue({
         label: 0,
         confidence: 0.6,
@@ -90,7 +90,7 @@ describe('zentropiUtils', () => {
       expect(result.score).toBeCloseTo(0.4);
     });
 
-    it('maps label=1, low confidence to 0.6 (uncertain, leaning violating)', async () => {
+    it('maps label=1, low confidence to 0.6 (uncertain, leaning match)', async () => {
       const fetchScores: FetchZentropiScores = vi.fn().mockResolvedValue({
         label: 1,
         confidence: 0.6,
@@ -218,6 +218,51 @@ describe('zentropiUtils', () => {
     });
   });
 
+  describe('model selection', () => {
+    async function requestBodyFor(model: ZentropiLabelerVersion['model']) {
+      const mockFetchHTTP = vi.fn().mockResolvedValue({
+        ok: true,
+        body: { label: 0, confidence: 0.9 },
+      }) as unknown as FetchHTTP;
+
+      await runZentropiLabelerImpl(
+        makeCredentialGetter('test-api-key', [
+          { id: 'lv_abc123', label: 'Saved version', model },
+        ]),
+        makeInput(),
+        async (params) => getZentropiScores(mockFetchHTTP, params),
+      );
+
+      return vi.mocked(mockFetchHTTP).mock.calls[0][0].body;
+    }
+
+    it.each([
+      ['COPE_LATEST', 'cope-latest'],
+      ['COPE_B_A4B', 'cope-b-a4b'],
+      ['COPE_B_S1', 'cope-b-s1'],
+    ] as const)('sends %s as model %j', async (model, apiModelName) => {
+      expect(await requestBodyFor(model)).toBe(
+        jsonStringify({
+          content_text: 'test content',
+          labeler_version_id: 'lv_abc123',
+          model: apiModelName,
+        }),
+      );
+    });
+
+    it.each([undefined, null])(
+      'omits model when the saved version has model %j',
+      async (model) => {
+        expect(await requestBodyFor(model)).toBe(
+          jsonStringify({
+            content_text: 'test content',
+            labeler_version_id: 'lv_abc123',
+          }),
+        );
+      },
+    );
+  });
+
   describe('version-only configurations', () => {
     it.each([undefined, null, '', '   '])(
       'runs the saved version and omits labeler_id when it is %j',
@@ -283,39 +328,28 @@ describe('zentropiUtils', () => {
       ).rejects.toSatisfy((e) => isCoopErrorOfType(e, 'SignalPermanentError'));
     });
 
-    it('throws transient error for 5xx', async () => {
+    it('does not retry a 422', async () => {
       const mockFetchHTTP = vi.fn().mockResolvedValue({
         ok: false,
-        status: 500,
+        status: 422,
+        body: { detail: 'bad request' },
       }) as unknown as FetchHTTP;
 
       await expect(
         getZentropiScores(mockFetchHTTP, {
           text: 'test',
           apiKey: 'key',
-          labelerId: 'lb_123',
           labelerVersionId: 'lv_123',
         }),
-      ).rejects.toThrow('Zentropi API error: 500');
-
-      // Verify it's NOT a SignalPermanentError
-      await expect(
-        getZentropiScores(mockFetchHTTP, {
-          text: 'test',
-          apiKey: 'key',
-          labelerId: 'lb_123',
-          labelerVersionId: 'lv_123',
-        }),
-      ).rejects.not.toSatisfy((e) =>
-        isCoopErrorOfType(e, 'SignalPermanentError'),
-      );
+      ).rejects.toSatisfy((e) => isCoopErrorOfType(e, 'SignalPermanentError'));
+      expect(mockFetchHTTP).toHaveBeenCalledTimes(1);
     });
 
     it('returns parsed response on success', async () => {
       const mockResponse: ZentropiResponse = {
         label: 1,
         confidence: 0.85,
-        explanation: 'Content violates policy',
+        explanation: 'Content matches policy',
       };
 
       const mockFetchHTTP = vi.fn().mockResolvedValue({
@@ -397,6 +431,148 @@ describe('zentropiUtils', () => {
           e.detail ===
             'Value error, Exactly one of labeler_id or criteria_text must be provided',
       );
+    });
+
+    it('returns SignalPermanentError with the API message for 400', async () => {
+      const mockFetchHTTP = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        body: { detail: 'Model cope-b-s1 not configured' },
+      }) as unknown as FetchHTTP;
+
+      await expect(
+        getZentropiScores(mockFetchHTTP, {
+          text: 'test',
+          apiKey: 'key',
+          labelerVersionId: 'lv_123',
+          model: 'COPE_B_S1',
+        }),
+      ).rejects.toSatisfy(
+        (e) =>
+          isCoopErrorOfType(e, 'SignalPermanentError') &&
+          e.detail === 'Model cope-b-s1 not configured',
+      );
+    });
+  });
+
+  describe('retries', () => {
+    const params = { text: 'test', apiKey: 'key', labelerVersionId: 'lv_123' };
+    const ok = { ok: true, status: 200, body: { label: 1, confidence: 0.9 } };
+    const failure = (status: number, headers: Record<string, string> = {}) => ({
+      ok: false,
+      status,
+      body: { detail: 'Please slow down your requests' },
+      headers: new Headers(headers),
+    });
+
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+
+    it('retries a 429 with exponential backoff and then succeeds', async () => {
+      const mockFetchHTTP = vi
+        .fn()
+        .mockResolvedValueOnce(failure(429))
+        .mockResolvedValueOnce(failure(429))
+        .mockResolvedValueOnce(failure(429))
+        .mockResolvedValueOnce(failure(429))
+        .mockResolvedValueOnce(ok) as unknown as FetchHTTP;
+
+      const pending = getZentropiScores(mockFetchHTTP, params);
+      let expectedCalls = 1;
+      for (const delay of [250, 500, 1_000, 2_000]) {
+        await vi.advanceTimersByTimeAsync(delay - 1);
+        expect(mockFetchHTTP).toHaveBeenCalledTimes(expectedCalls);
+        await vi.advanceTimersByTimeAsync(1);
+        expectedCalls += 1;
+        expect(mockFetchHTTP).toHaveBeenCalledTimes(expectedCalls);
+      }
+
+      await expect(pending).resolves.toEqual(ok.body);
+      // Every attempt sends the same request.
+      const bodies = vi
+        .mocked(mockFetchHTTP)
+        .mock.calls.map((call) => call[0].body);
+      expect(new Set(bodies).size).toBe(1);
+    });
+
+    it('waits for Retry-After when it is longer than the backoff', async () => {
+      const mockFetchHTTP = vi
+        .fn()
+        .mockResolvedValueOnce(failure(429, { 'retry-after': '3' }))
+        .mockResolvedValueOnce(ok) as unknown as FetchHTTP;
+
+      const pending = getZentropiScores(mockFetchHTTP, params);
+      await vi.advanceTimersByTimeAsync(2_999);
+      expect(mockFetchHTTP).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(mockFetchHTTP).toHaveBeenCalledTimes(2);
+      await expect(pending).resolves.toEqual(ok.body);
+    });
+
+    it('caps the wait at five seconds', async () => {
+      const mockFetchHTTP = vi
+        .fn()
+        .mockResolvedValueOnce(failure(429, { 'retry-after': '120' }))
+        .mockResolvedValueOnce(ok) as unknown as FetchHTTP;
+
+      const pending = getZentropiScores(mockFetchHTTP, params);
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(mockFetchHTTP).toHaveBeenCalledTimes(2);
+      await expect(pending).resolves.toEqual(ok.body);
+    });
+
+    it('gives up after five attempts with a transient error', async () => {
+      const mockFetchHTTP = vi
+        .fn()
+        .mockResolvedValue(failure(429)) as unknown as FetchHTTP;
+
+      const pending = getZentropiScores(mockFetchHTTP, params);
+      // Attach the rejection handler before advancing timers.
+      const outcome = pending.then(
+        () => 'resolved',
+        (e: unknown) => e,
+      );
+      await vi.runAllTimersAsync();
+      const error = await outcome;
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toBe(
+        'Zentropi API error: 429 (after 5 attempts)',
+      );
+      expect(isCoopErrorOfType(error, 'SignalPermanentError')).toBe(false);
+      expect(mockFetchHTTP).toHaveBeenCalledTimes(5);
+    });
+
+    it('retries a 529 (overloaded) the same way', async () => {
+      const mockFetchHTTP = vi
+        .fn()
+        .mockResolvedValueOnce(failure(529))
+        .mockResolvedValueOnce(failure(429))
+        .mockResolvedValueOnce(ok) as unknown as FetchHTTP;
+
+      const pending = getZentropiScores(mockFetchHTTP, params);
+      await vi.advanceTimersByTimeAsync(249);
+      expect(mockFetchHTTP).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(mockFetchHTTP).toHaveBeenCalledTimes(2);
+      await vi.advanceTimersByTimeAsync(500);
+      expect(mockFetchHTTP).toHaveBeenCalledTimes(3);
+      await expect(pending).resolves.toEqual(ok.body);
+    });
+
+    it('does not retry other server errors', async () => {
+      const mockFetchHTTP = vi
+        .fn()
+        .mockResolvedValueOnce(failure(503))
+        .mockResolvedValueOnce(ok) as unknown as FetchHTTP;
+
+      const pending = getZentropiScores(mockFetchHTTP, params);
+      const outcome = pending.then(
+        () => 'resolved',
+        (e: unknown) => e,
+      );
+      await vi.runAllTimersAsync();
+      expect(await outcome).toBeInstanceOf(Error);
+      expect(mockFetchHTTP).toHaveBeenCalledTimes(1);
     });
   });
 });
