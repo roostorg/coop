@@ -1,3 +1,4 @@
+import fc from 'fast-check';
 import { uid } from 'uid';
 import { v1 as uuidv1 } from 'uuid';
 
@@ -104,7 +105,7 @@ describe('Item Investigation Service', () => {
   });
 
   test.each([true, false])(
-    'isolates Scylla item lookups by org (latestSubmissionOnly=%s)',
+    'isolates generated Scylla histories by org (latestSubmissionOnly=%s)',
     async (latestSubmissionOnly) => {
       const orgA = await createOrg(container);
       const orgB = await createOrg(container);
@@ -123,79 +124,111 @@ describe('Item Investigation Service', () => {
           ],
           schemaFieldRoles: {},
         });
-      const itemIdentifier = { id: uid(), typeId: itemType.id };
       const now = Date.now();
-      const submissions = [
-        { orgId: orgB.org.id, content: 'foreign-newest', time: now },
-        { orgId: orgA.org.id, content: 'own-latest', time: now - 1000 },
-        { orgId: orgB.org.id, content: 'foreign-oldest', time: now - 3000 },
-        { orgId: orgA.org.id, content: 'own-prior', time: now - 2000 },
-      ];
 
       try {
-        // Seed the real global index with an identifier shared across orgs.
-        // Explicit timestamps avoid ties and ensure foreign rows would appear
-        // in both latest and prior submissions without the org filter.
-        for (const { orgId, content, time } of submissions) {
-          await container.Scylla.insert({
-            into: 'item_submission_by_thread',
-            row: {
-              org_id: orgId,
-              request_id: null,
-              submission_id: uuidv1() as SubmissionId,
-              item_identifier:
-                itemIdentifierToScyllaItemIdentifier(itemIdentifier),
-              item_type_name: itemType.name,
-              item_type_version: itemType.version,
-              item_creator_identifier: ScyllaNilItemIdentifier,
-              item_data: jsonStringify(
-                instantiateOpaqueType<NormalizedItemData>({ content }),
-              ),
-              item_submission_time: new Date(time),
-              item_synthetic_created_at: new Date(now),
-              synthetic_thread_id: itemIdentifier.id,
-              parent_identifier: ScyllaNilItemIdentifier,
-              thread_identifier: ScyllaNilItemIdentifier,
-              item_type_schema_field_roles: jsonStringify(
-                itemType.schemaFieldRoles,
-              ),
-              item_type_schema: jsonStringify(itemType.schema),
-              item_type_schema_variant: 'original',
-              item_ip_address: null,
-            } satisfies ScyllaItemSubmissionsRow,
-            ttlInSeconds: 60,
-          });
-        }
+        await fc.assert(
+          fc.asyncProperty(
+            fc.uniqueArray(
+              fc.record({
+                owner: fc.integer({ min: 0, max: 1 }),
+                time: fc.integer({ min: -100, max: 100 }),
+              }),
+              { selector: (row) => row.time, minLength: 1, maxLength: 10 },
+            ),
+            async (history) => {
+              // Each case/shrink gets its own global-index key; TTL removes
+              // fixtures from Scylla, which is outside the Postgres rollback.
+              const itemIdentifier = { id: uid(), typeId: itemType.id };
+              const orgIds = [orgA.org.id, orgB.org.id, orgWithoutItem.org.id];
+              for (const { owner, time } of history) {
+                await container.Scylla.insert({
+                  into: 'item_submission_by_thread',
+                  row: {
+                    org_id: orgIds[owner],
+                    request_id: null,
+                    submission_id: uuidv1() as SubmissionId,
+                    item_identifier:
+                      itemIdentifierToScyllaItemIdentifier(itemIdentifier),
+                    item_type_name: itemType.name,
+                    item_type_version: itemType.version,
+                    item_creator_identifier: ScyllaNilItemIdentifier,
+                    item_data: jsonStringify(
+                      instantiateOpaqueType<NormalizedItemData>({
+                        content: `${owner}:${time}`,
+                      }),
+                    ),
+                    item_submission_time: new Date(now + time * 1000),
+                    item_synthetic_created_at: new Date(now),
+                    synthetic_thread_id: itemIdentifier.id,
+                    parent_identifier: ScyllaNilItemIdentifier,
+                    thread_identifier: ScyllaNilItemIdentifier,
+                    item_type_schema_field_roles: jsonStringify(
+                      itemType.schemaFieldRoles,
+                    ),
+                    item_type_schema: jsonStringify(itemType.schema),
+                    item_type_schema_variant: 'original',
+                    item_ip_address: null,
+                  } satisfies ScyllaItemSubmissionsRow,
+                  ttlInSeconds: 60,
+                });
+              }
 
-        const result = await itemInvestigationService.getItemByIdentifier({
-          orgId: orgA.org.id,
-          itemIdentifier,
-          latestSubmissionOnly,
-        });
-        expect(result?.latestSubmission.data).toEqual({
-          content: 'own-latest',
-        });
-        expect(
-          result?.priorSubmissions?.map((submission) => submission.data),
-        ).toEqual(
-          latestSubmissionOnly ? undefined : [{ content: 'own-prior' }],
+              for (const owner of [0, 2]) {
+                const orgId = orgIds[owner];
+                const owned = history
+                  .filter((row) => row.owner === owner)
+                  .sort((a, b) => b.time - a.time);
+                const result =
+                  await itemInvestigationService.getItemByIdentifier({
+                    orgId,
+                    itemIdentifier,
+                    latestSubmissionOnly,
+                  });
+                if (owned.length === 0) {
+                  // Real org-scoped fallbacks have no records for this key.
+                  expect(result).toBeNull();
+                } else {
+                  expect(result?.latestSubmission.data).toEqual({
+                    content: `${owner}:${owned[0].time}`,
+                  });
+                  expect(
+                    result?.priorSubmissions
+                      ?.map((row) => row.data.content)
+                      .sort(),
+                  ).toEqual(
+                    latestSubmissionOnly
+                      ? undefined
+                      : owned
+                          .slice(1)
+                          .map((row) => `${owner}:${row.time}`)
+                          .sort(),
+                  );
+                }
+              }
+            },
+          ),
+          {
+            numRuns: 20,
+            examples: [
+              [
+                [
+                  { owner: 1, time: 0 },
+                  { owner: 0, time: -1 },
+                  { owner: 1, time: -3 },
+                  { owner: 0, time: -2 },
+                ],
+              ],
+            ],
+          },
         );
-
-        // All Scylla rows are foreign to this org. Exercise the real fallback
-        // services too: no partial endpoint or warehouse records are configured.
-        await expect(
-          itemInvestigationService.getItemByIdentifier({
-            orgId: orgWithoutItem.org.id,
-            itemIdentifier,
-            latestSubmissionOnly,
-          }),
-        ).resolves.toBeNull();
       } finally {
         await orgA.cleanup();
         await orgB.cleanup();
         await orgWithoutItem.cleanup();
       }
     },
+    20_000,
   );
 
   test('closes a type-agnostic lookup when the caller deadline passes', async () => {
