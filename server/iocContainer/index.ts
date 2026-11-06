@@ -157,6 +157,7 @@ import {
 } from '../services/moderationConfigService/moderationConfigServiceQueries.js';
 import {
   buildSubmitReportParamsFromDecision,
+  isNcmecTestMode,
   makeNcmecService,
   type NcmecService,
 } from '../services/ncmecService/index.js';
@@ -1314,13 +1315,7 @@ export default async function getBottle(
                       getItemTypeEventuallyConsistent:
                         container.getItemTypeEventuallyConsistent,
                     });
-                  // Submissions go to the NCMEC test endpoint
-                  // (exttest.cybertip.org) unless the deployment is explicitly
-                  // configured for production via NCMEC_ENV=production. Operators
-                  // are responsible for matching this to whether the credentials
-                  // configured in Settings → NCMEC are production or test
-                  // credentials issued by NCMEC.
-                  const isTest = process.env.NCMEC_ENV !== 'production';
+                  const isTest = isNcmecTestMode();
                   await container.NcmecService.submitReport(
                     reportParams,
                     isTest,

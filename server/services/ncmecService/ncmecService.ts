@@ -1,4 +1,3 @@
-import { type ItemIdentifier } from '@roostorg/coop-types';
 import _Ajv from 'ajv-draft-04';
 import { sql, type Kysely } from 'kysely';
 
@@ -46,8 +45,6 @@ export class NcmecService {
       pqQueryReadReplica,
       fetchHTTP,
       signingKeyPairService,
-      moderationConfigService,
-      getItemTypeEventuallyConsistent,
       tracer,
     );
     this.ncmecEnqueueToMrt = new NcmecEnqueueToMrt(
@@ -55,8 +52,6 @@ export class NcmecService {
       moderationConfigService,
       manualReviewToolService,
       itemInvestigationService,
-      fetchHTTP,
-      signingKeyPairService,
       this.ncmecReporting,
     );
   }
@@ -97,14 +92,6 @@ export class NcmecService {
 
   async getNcmecReportById(opts: { orgId: string; reportId: string }) {
     return this.ncmecReporting.getNcmecReportById(opts);
-  }
-
-  async getNcmecMessages(
-    orgId: string,
-    userId: ItemIdentifier,
-    reportedMedia: readonly ItemIdentifier[],
-  ) {
-    return this.ncmecReporting.getNcmecMessages(orgId, userId, reportedMedia);
   }
 
   async getUserHasExistingNcmecReport(params: {
