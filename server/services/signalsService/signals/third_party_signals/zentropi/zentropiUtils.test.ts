@@ -328,32 +328,21 @@ describe('zentropiUtils', () => {
       ).rejects.toSatisfy((e) => isCoopErrorOfType(e, 'SignalPermanentError'));
     });
 
-    it('throws transient error for 5xx', async () => {
+    it('does not retry a 422', async () => {
       const mockFetchHTTP = vi.fn().mockResolvedValue({
         ok: false,
-        status: 500,
+        status: 422,
+        body: { detail: 'bad request' },
       }) as unknown as FetchHTTP;
 
       await expect(
         getZentropiScores(mockFetchHTTP, {
           text: 'test',
           apiKey: 'key',
-          labelerId: 'lb_123',
           labelerVersionId: 'lv_123',
         }),
-      ).rejects.toThrow('Zentropi API error: 500');
-
-      // Verify it's NOT a SignalPermanentError
-      await expect(
-        getZentropiScores(mockFetchHTTP, {
-          text: 'test',
-          apiKey: 'key',
-          labelerId: 'lb_123',
-          labelerVersionId: 'lv_123',
-        }),
-      ).rejects.not.toSatisfy((e) =>
-        isCoopErrorOfType(e, 'SignalPermanentError'),
-      );
+      ).rejects.toSatisfy((e) => isCoopErrorOfType(e, 'SignalPermanentError'));
+      expect(mockFetchHTTP).toHaveBeenCalledTimes(1);
     });
 
     it('returns parsed response on success', async () => {
@@ -463,6 +452,127 @@ describe('zentropiUtils', () => {
           isCoopErrorOfType(e, 'SignalPermanentError') &&
           e.detail === 'Model cope-b-s1 not configured',
       );
+    });
+  });
+
+  describe('retries', () => {
+    const params = { text: 'test', apiKey: 'key', labelerVersionId: 'lv_123' };
+    const ok = { ok: true, status: 200, body: { label: 1, confidence: 0.9 } };
+    const failure = (status: number, headers: Record<string, string> = {}) => ({
+      ok: false,
+      status,
+      body: { detail: 'Please slow down your requests' },
+      headers: new Headers(headers),
+    });
+
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+
+    it('retries a 429 with exponential backoff and then succeeds', async () => {
+      const mockFetchHTTP = vi
+        .fn()
+        .mockResolvedValueOnce(failure(429))
+        .mockResolvedValueOnce(failure(429))
+        .mockResolvedValueOnce(failure(429))
+        .mockResolvedValueOnce(failure(429))
+        .mockResolvedValueOnce(ok) as unknown as FetchHTTP;
+
+      const pending = getZentropiScores(mockFetchHTTP, params);
+      let expectedCalls = 1;
+      for (const delay of [250, 500, 1_000, 2_000]) {
+        await vi.advanceTimersByTimeAsync(delay - 1);
+        expect(mockFetchHTTP).toHaveBeenCalledTimes(expectedCalls);
+        await vi.advanceTimersByTimeAsync(1);
+        expectedCalls += 1;
+        expect(mockFetchHTTP).toHaveBeenCalledTimes(expectedCalls);
+      }
+
+      await expect(pending).resolves.toEqual(ok.body);
+      // Every attempt sends the same request.
+      const bodies = vi
+        .mocked(mockFetchHTTP)
+        .mock.calls.map((call) => call[0].body);
+      expect(new Set(bodies).size).toBe(1);
+    });
+
+    it('waits for Retry-After when it is longer than the backoff', async () => {
+      const mockFetchHTTP = vi
+        .fn()
+        .mockResolvedValueOnce(failure(429, { 'retry-after': '3' }))
+        .mockResolvedValueOnce(ok) as unknown as FetchHTTP;
+
+      const pending = getZentropiScores(mockFetchHTTP, params);
+      await vi.advanceTimersByTimeAsync(2_999);
+      expect(mockFetchHTTP).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(mockFetchHTTP).toHaveBeenCalledTimes(2);
+      await expect(pending).resolves.toEqual(ok.body);
+    });
+
+    it('caps the wait at five seconds', async () => {
+      const mockFetchHTTP = vi
+        .fn()
+        .mockResolvedValueOnce(failure(429, { 'retry-after': '120' }))
+        .mockResolvedValueOnce(ok) as unknown as FetchHTTP;
+
+      const pending = getZentropiScores(mockFetchHTTP, params);
+      await vi.advanceTimersByTimeAsync(5_000);
+      expect(mockFetchHTTP).toHaveBeenCalledTimes(2);
+      await expect(pending).resolves.toEqual(ok.body);
+    });
+
+    it('gives up after five attempts with a transient error', async () => {
+      const mockFetchHTTP = vi
+        .fn()
+        .mockResolvedValue(failure(429)) as unknown as FetchHTTP;
+
+      const pending = getZentropiScores(mockFetchHTTP, params);
+      // Attach the rejection handler before advancing timers.
+      const outcome = pending.then(
+        () => 'resolved',
+        (e: unknown) => e,
+      );
+      await vi.runAllTimersAsync();
+      const error = await outcome;
+      expect(error).toBeInstanceOf(Error);
+      expect((error as Error).message).toBe(
+        'Zentropi API error: 429 (after 5 attempts)',
+      );
+      expect(isCoopErrorOfType(error, 'SignalPermanentError')).toBe(false);
+      expect(mockFetchHTTP).toHaveBeenCalledTimes(5);
+    });
+
+    it('retries a 529 (overloaded) the same way', async () => {
+      const mockFetchHTTP = vi
+        .fn()
+        .mockResolvedValueOnce(failure(529))
+        .mockResolvedValueOnce(failure(429))
+        .mockResolvedValueOnce(ok) as unknown as FetchHTTP;
+
+      const pending = getZentropiScores(mockFetchHTTP, params);
+      await vi.advanceTimersByTimeAsync(249);
+      expect(mockFetchHTTP).toHaveBeenCalledTimes(1);
+      await vi.advanceTimersByTimeAsync(1);
+      expect(mockFetchHTTP).toHaveBeenCalledTimes(2);
+      await vi.advanceTimersByTimeAsync(500);
+      expect(mockFetchHTTP).toHaveBeenCalledTimes(3);
+      await expect(pending).resolves.toEqual(ok.body);
+    });
+
+    it('does not retry other server errors', async () => {
+      const mockFetchHTTP = vi
+        .fn()
+        .mockResolvedValueOnce(failure(503))
+        .mockResolvedValueOnce(ok) as unknown as FetchHTTP;
+
+      const pending = getZentropiScores(mockFetchHTTP, params);
+      const outcome = pending.then(
+        () => 'resolved',
+        (e: unknown) => e,
+      );
+      await vi.runAllTimersAsync();
+      expect(await outcome).toBeInstanceOf(Error);
+      expect(mockFetchHTTP).toHaveBeenCalledTimes(1);
     });
   });
 });

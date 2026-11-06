@@ -24,6 +24,14 @@ export interface ZentropiResponse {
 
 export type FetchZentropiScores = Bind1<typeof getZentropiScores, FetchHTTP>;
 
+// Zentropi rate-limits bursts with HTTP 429 and sheds load with HTTP 529.
+// Retry those with exponential backoff (250 ms, 500 ms, 1 s, 2 s), honoring
+// Retry-After, so a short burst does not silently turn the rule condition
+// into ERRORED.
+const MAX_ATTEMPTS = 5;
+const BASE_RETRY_DELAY_MS = 250;
+const MAX_RETRY_DELAY_MS = 5_000;
+
 export async function getZentropiScores(
   fetchHTTP: FetchHTTP,
   params: {
@@ -40,26 +48,31 @@ export async function getZentropiScores(
     Object.hasOwn(ZENTROPI_API_MODEL_NAMES, params.model)
       ? ZENTROPI_API_MODEL_NAMES[params.model]
       : undefined;
-  const response = await fetchHTTP({
-    url: 'https://api.zentropi.ai/v1/label',
-    method: 'post',
-    headers: {
-      Authorization: `Bearer ${params.apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: jsonStringify({
-      content_text: params.text,
-      // A specific version ID is sufficient. Omit blank IDs rather than
-      // sending empty strings or null to the API.
-      ...(labelerId ? { labeler_id: labelerId } : {}),
-      labeler_version_id: params.labelerVersionId,
-      ...(model ? { model } : {}),
-    }),
-    handleResponseBody: 'as-json',
-    timeoutMs: 5_000,
+  const body = jsonStringify({
+    content_text: params.text,
+    // A specific version ID is sufficient. Omit blank IDs rather than
+    // sending empty strings or null to the API.
+    ...(labelerId ? { labeler_id: labelerId } : {}),
+    labeler_version_id: params.labelerVersionId,
+    ...(model ? { model } : {}),
   });
 
-  if (!response.ok) {
+  for (let attempt = 1; ; attempt++) {
+    const response = await fetchHTTP({
+      url: 'https://api.zentropi.ai/v1/label',
+      method: 'post',
+      headers: {
+        Authorization: `Bearer ${params.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body,
+      handleResponseBody: 'as-json',
+      timeoutMs: 5_000,
+    });
+
+    if (response.ok) {
+      return response.body as unknown as ZentropiResponse;
+    }
     if (response.status === 404 || response.status === 401) {
       throw makeSignalPermanentError(
         `Zentropi API error: ${response.status}${
@@ -78,10 +91,50 @@ export async function getZentropiScores(
         shouldErrorSpan: true,
       });
     }
-    throw new Error(`Zentropi API error: ${response.status}`);
+    if (isRetryableStatus(response.status) && attempt < MAX_ATTEMPTS) {
+      await sleep(retryDelayMs(attempt, response.headers.get('retry-after')));
+      continue;
+    }
+    throw new Error(
+      `Zentropi API error: ${response.status}${
+        attempt > 1 ? ` (after ${attempt} attempts)` : ''
+      }`,
+    );
   }
+}
 
-  return response.body as unknown as ZentropiResponse;
+function isRetryableStatus(status: number) {
+  // 429: rate limited. 529: overloaded.
+  return status === 429 || status === 529;
+}
+
+/**
+ * Exponential backoff from BASE_RETRY_DELAY_MS, raised to the server's
+ * Retry-After (seconds or an HTTP date) when that is longer, and capped at
+ * MAX_RETRY_DELAY_MS so a rate-limited item does not stall the worker.
+ */
+function retryDelayMs(attempt: number, retryAfter: string | null) {
+  const backoff = BASE_RETRY_DELAY_MS * 2 ** (attempt - 1);
+  return Math.min(
+    Math.max(backoff, retryAfterMs(retryAfter)),
+    MAX_RETRY_DELAY_MS,
+  );
+}
+
+function retryAfterMs(retryAfter: string | null) {
+  if (retryAfter == null) {
+    return 0;
+  }
+  const seconds = Number(retryAfter);
+  if (Number.isFinite(seconds)) {
+    return Math.max(0, seconds * 1_000);
+  }
+  const date = Date.parse(retryAfter);
+  return Number.isNaN(date) ? 0 : Math.max(0, date - Date.now());
+}
+
+async function sleep(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
 }
 
 function getValidationErrorDetail(body: unknown): string | undefined {
