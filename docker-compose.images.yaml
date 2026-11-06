@@ -59,7 +59,7 @@ services:
   migrations:
     image: ghcr.io/roostorg/coop-migrations:latest
     command: sh -c 'set -e
-      && for db in api-server-pg scylla clickhouse; do npm run db:create -- --db "$$db" --env staging; npm run db:update -- --db "$$db" --env staging; done'
+      && for db in api-server-pg scylla clickhouse; do node build/index.js create --db "$$db" --env staging; node build/index.js apply --db "$$db" --env staging; done'
     env_file: ./.env.docker
     depends_on:
       postgres:
