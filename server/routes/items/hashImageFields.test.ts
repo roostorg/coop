@@ -348,6 +348,20 @@ describe('addHashesToImageFields', () => {
       expect(data.cover).toMatchObject({ matchedBanks: ['Bank'] });
     });
 
+    it('looks nothing up for an org without banks, but still stores the embedding', async () => {
+      HMAHashBankService.listBanks.mockResolvedValue([]);
+      const data = await run({ cover: { url: 'https://x.test/c.png' } });
+      expect(
+        HMAHashBankService.checkImageMatchWithDetails,
+      ).not.toHaveBeenCalled();
+      expect(HMAHashBankService.findClosestClipMatch).not.toHaveBeenCalled();
+      expect(data.cover).toEqual({
+        url: 'https://x.test/c.png',
+        hashes: { pdq: 'abc' },
+        embeddings: { clip_float: CLIP },
+      });
+    });
+
     it('does not look the embedding up when CLIP is not enabled', async () => {
       HMAHashBankService.isClipEnabled.mockReturnValue(false);
       await run({ cover: { url: 'https://x.test/c.png' } });

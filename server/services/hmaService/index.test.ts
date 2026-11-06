@@ -1116,7 +1116,7 @@ describe('HmaService', () => {
 
     it('is only enabled when the operator sets HMA_CLIP_ENABLED to true', () => {
       const enabled = (value: string | undefined) => {
-        vi.stubEnv('HMA_CLIP_ENABLED', value ?? '');
+        vi.stubEnv('HMA_CLIP_ENABLED', value);
         return makeService(vi.fn()).isClipEnabled();
       };
       expect(enabled(undefined)).toBe(false);
@@ -1136,7 +1136,8 @@ describe('HmaService', () => {
         ['a list', [1, 2]],
         ['an empty string', ''],
         ['a non-hex string', 'not hex!'],
-        ['an oversized string', 'a'.repeat(16_385)],
+        ['a shorter hex string', 'ab'.repeat(8)],
+        ['a longer hex string', 'a'.repeat(4097)],
       ])('rejects %s', (_name, value) => {
         expect(isClipEmbedding(value)).toBe(false);
       });
@@ -1228,6 +1229,15 @@ describe('HmaService', () => {
       it('copes with a bank entry that is not a list', async () => {
         const { result } = await find({ COOP_ORG1_A: 'unexpected' });
         expect(result.matchedBanks).toEqual([]);
+      });
+
+      it('does not call HMA when there are no banks to look in', async () => {
+        const { result, fetchHTTP } = await find({}, []);
+        expect(result).toEqual({
+          matchedBanks: [],
+          closestDistance: undefined,
+        });
+        expect(fetchHTTP).not.toHaveBeenCalled();
       });
 
       it('throws when HMA rejects the lookup', async () => {

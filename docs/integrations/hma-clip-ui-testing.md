@@ -84,7 +84,7 @@ for NAME in scene-resized scene-desaturated scene-blurred other-building other; 
 done
 ```
 
-`202` means Coop accepted the items for processing, nothing more. The hashing and the rule run afterwards in the background, so a problem such as an unreachable image never shows up in this response. It shows up in the file server's log and in what arrives in the queue. To submit the images again, change `RUN` so the item ids are new (`clip-ui-scene-resized-2`, and so on). Resubmitting the same ids is a resubmission of the same items, not new ones.
+`202` means Coop accepted the items for processing, nothing more. Coop hashes the images before it returns `202` (so slow hashing delays the response), and the rule runs afterwards in the background. A hashing failure is swallowed, so a problem such as an unreachable image never shows up in this response. It shows up in the file server's log and in what arrives in the queue. To submit the images again, change `RUN` so the item ids are new (`clip-ui-scene-resized-2`, and so on). Resubmitting the same ids is a resubmission of the same items, not new ones.
 
 ## 8. Check the result
 
@@ -95,7 +95,7 @@ Three images should not be there:
 - `clip-ui-scene-blurred-1` is a match, but its expected score of about 0.936 is below the rule's threshold of 0.95.
 - `clip-ui-other-building-1` and `clip-ui-other-1` are not close enough to the bank image for any score.
 
-To see the threshold at work, edit the rule and lower it to 0.90, then submit the blurred copy again with a new item id (`clip-ui-scene-blurred-2`). It now arrives in the queue. A threshold can only tighten the match, not loosen it, so lowering it below 0.90 changes nothing.
+To see the threshold at work, edit the rule and lower it to 0.90, then submit the blurred copy again with a new item id (`clip-ui-scene-blurred-2`). It now arrives in the queue. Lowering the threshold below 0.90 changes nothing, because HMA only reports matches with a similarity of 0.90 or more.
 
 If nothing arrives after a minute, see "If it does not work" below.
 

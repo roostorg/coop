@@ -1,6 +1,7 @@
 """Regenerates the fixture images. They are drawn from code, so they carry no
 third-party license and are identical on every run:
 
+  pip install pillow
   python3 hma/clip/fixtures/generate.py
 
 Used by docs/integrations/hma-clip-ui-testing.md.

@@ -27,8 +27,18 @@ run() { echo "+ $*" >&2; "$@"; }
 hash_of() { curl -fsS --max-time 900 -F "photo=@$1" "$BASE/h/hash" | python3 -c "import json,sys; print(json.load(sys.stdin)['clip_float'])"; }
 # Restricted to the temporary bank so other banks holding the same image cannot satisfy the check.
 # The 4 KB hash goes in the query string, which HMA accepts.
-lookup() { curl -fsS -G "$BASE/m/lookup" --data-urlencode "signal_type=clip_float" --data-urlencode "signal=$1" --data-urlencode "banks=$BANK"; }
+# lookup_raw prints the response body, then the HTTP status on its own last line.
+lookup_raw() { curl -sS --max-time 30 -G "$BASE/m/lookup" --data-urlencode "signal_type=clip_float" --data-urlencode "signal=$1" --data-urlencode "banks=$BANK" -w '\n%{http_code}'; }
 fail() { echo "FAIL: $*" >&2; exit 1; }
+
+# lookup prints the body of a successful lookup; any other status fails the test.
+lookup() {
+  local out code
+  out=$(lookup_raw "$1") || fail "the lookup request to $BASE failed"
+  code=${out##*$'\n'}
+  [ "$code" = 200 ] || fail "the lookup returned HTTP $code: ${out%$'\n'*}"
+  printf '%s' "${out%$'\n'*}"
+}
 
 cleanup() { curl -fsS -X DELETE "$BASE/c/bank/$BANK" >/dev/null 2>&1 || true; }
 trap cleanup EXIT
@@ -48,9 +58,16 @@ ATTEMPTS=0
 RESULT="{}"
 for _ in $(seq 1 30); do
   ATTEMPTS=$((ATTEMPTS + 1))
-  # HMA answers 503 until its first index is built; treat that as no match yet.
-  RESULT=$(lookup "$HASH" || echo "{}")
-  [ "$RESULT" != "{}" ] && break
+  OUT=$(lookup_raw "$HASH") || fail "the lookup request to $BASE failed"
+  CODE=${OUT##*$'\n'}
+  RESULT=$(printf '%s' "${OUT%$'\n'*}" | tr -d ' \n')
+  # HMA answers 503 until its first index is built, and {} until the bank is in
+  # it. Both mean "not yet"; any other status is a real failure.
+  case "$CODE" in
+    200) [ "$RESULT" != "{}" ] && break ;;
+    503) RESULT="{}" ;;
+    *) fail "the lookup returned HTTP $CODE: $RESULT" ;;
+  esac
   # One dot per retry, on a single line.
   [ "$ATTEMPTS" -eq 1 ] && printf '  waiting for HMA to index the bank (a dot per 10 seconds)' >&2
   printf '.' >&2
@@ -67,7 +84,7 @@ for probe in $PROBES; do
   IFS=: read -r name expect min <<<"$probe"
   PROBE_HASH=$(hash_of "$FIXTURES/probe/$name")
   # HMA reports the cosine distance of the closest match; the score is 1 minus it.
-  PROBE_RESULT=$(lookup "$PROBE_HASH") || fail "the lookup for $name failed"
+  PROBE_RESULT=$(lookup "$PROBE_HASH") || exit 1  # lookup has already said why
   OUTCOME=$(echo "$PROBE_RESULT" | python3 -c "
 import json,sys
 m=json.load(sys.stdin).get('$BANK')

@@ -22,10 +22,10 @@ ARG TX_EXTENSION_CLIP_COMMIT=b0ff722d947c52152ae0a1e0f0e56cf2e9ff66ea
 
 WORKDIR /app
 
-RUN pip install torch==${TORCH_VERSION} torchvision==${TORCHVISION_VERSION} \
+RUN pip install --no-cache-dir torch==${TORCH_VERSION} torchvision==${TORCHVISION_VERSION} \
     --index-url https://download.pytorch.org/whl/${PYTORCH_CUDA}
 
-RUN pip install "git+https://github.com/UMass-Rescue/tx-extension-clip@${TX_EXTENSION_CLIP_COMMIT}" \
+RUN pip install --no-cache-dir "git+https://github.com/UMass-Rescue/tx-extension-clip@${TX_EXTENSION_CLIP_COMMIT}" \
     && python -c "from tx_extension_clip import CLIPFloatSignal"
 
 # The stock config is kept as a module that the CLIP config extends.

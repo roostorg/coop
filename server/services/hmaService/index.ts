@@ -36,14 +36,14 @@ export interface LookupResponse {
   [bankName: string]: BankMatch[] | undefined;
 }
 
-// A clip_float embedding is 4096 hex characters; this only bounds a bad response.
-const MAX_CLIP_EMBEDDING_LENGTH = 16_384;
+// A clip_float embedding is always 4096 hex characters.
+const CLIP_EMBEDDING_LENGTH = 4096;
 
-/** Whether a value has the shape of a CLIP embedding: a bounded hex string. */
+/** Whether a value has the shape of a CLIP embedding: a hex string of the fixed length. */
 export function isClipEmbedding(value: unknown): value is string {
   return (
     typeof value === 'string' &&
-    value.length <= MAX_CLIP_EMBEDDING_LENGTH &&
+    value.length === CLIP_EMBEDDING_LENGTH &&
     /^[0-9a-f]+$/i.test(value)
   );
 }
@@ -1060,6 +1060,9 @@ export class HmaService {
     matchedBanks: string[];
     closestDistance: number | undefined;
   }> {
+    if (hmaBankIds.length === 0) {
+      return { matchedBanks: [], closestDistance: undefined };
+    }
     const matches = await this.lookupContent({
       signal: embedding,
       signalType: 'clip_float',

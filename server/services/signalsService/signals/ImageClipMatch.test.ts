@@ -9,7 +9,7 @@ import { type SignalInput } from './SignalBase.js';
 type MatchSignalInput = SignalInput<ScalarTypes['IMAGE'], true>;
 type MatchedValuePayload = { matchedBanks: string[] };
 
-const EMBEDDING = 'ab'.repeat(8);
+const EMBEDDING = 'ab'.repeat(2048);
 
 function makeBank(overrides: Partial<HashBank> = {}): HashBank {
   return {
@@ -203,13 +203,32 @@ describe('ImageClipMatchSignal', () => {
       );
     });
 
-    it('does not mark the trace as failed, since these cases are expected', async () => {
-      const { signal } = makeSignal();
-      const error: unknown = await signal
-        .run(makeInput({}, [clipBank]))
-        .catch((e: unknown) => e);
-      expect(error).toMatchObject({ shouldErrorSpan: false });
-    });
+    it.each([
+      [
+        'an image without an embedding',
+        async () => makeSignal().signal.run(makeInput({}, [clipBank])),
+      ],
+      [
+        'no selected banks',
+        async () => makeSignal().signal.run(makeInput(withEmbedding, [])),
+      ],
+      [
+        'CLIP not being enabled',
+        async () =>
+          makeSignal({
+            isClipEnabled: vi.fn().mockReturnValue(false),
+          }).signal.run(makeInput(withEmbedding, [clipBank])),
+      ],
+    ])(
+      'does not mark the trace as failed for %s, since these cases are expected',
+      async (_name, run) => {
+        const error: unknown = await run().catch((e: unknown) => e);
+        expect(error).toMatchObject({
+          name: 'SignalPermanentError',
+          shouldErrorSpan: false,
+        });
+      },
+    );
   });
 
   it('lets an error from HMA through, to be retried, not treated as a non-match', async () => {

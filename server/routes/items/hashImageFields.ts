@@ -105,26 +105,30 @@ export async function addHashesToImageFields({
       // themselves, so a failed lookup must not discard the hashes we have.
       const matchedBankNames: string[] = [];
       try {
-        const lookups: Promise<{ matchedBanks: string[] }>[] = Object.entries(
-          hashes,
-        ).map(async ([signalType, hash]) =>
-          HMAHashBankService.checkImageMatchWithDetails(
-            allBankNames,
-            signalType,
-            hash,
-          ),
-        );
-        if (embeddings) {
-          // Held to the same 0.10 cutoff as the CLIP signal, so matchedBanks
-          // never lists a bank that the signal scores 0.
+        // Nothing is looked up for an org without banks.
+        const lookups: Promise<{ matchedBanks: string[] }>[] = [];
+        if (allBankNames.length > 0) {
           lookups.push(
-            HMAHashBankService.findClosestClipMatch(
-              allBankNames,
-              embeddings.clip_float,
+            ...Object.entries(hashes).map(async ([signalType, hash]) =>
+              HMAHashBankService.checkImageMatchWithDetails(
+                allBankNames,
+                signalType,
+                hash,
+              ),
             ),
           );
+          if (embeddings) {
+            // Held to the same 0.10 cutoff as the CLIP signal, so matchedBanks
+            // never lists a bank that the signal scores 0.
+            lookups.push(
+              HMAHashBankService.findClosestClipMatch(
+                allBankNames,
+                embeddings.clip_float,
+              ),
+            );
+          }
         }
-        if (lookups.length > 0 && allBankNames.length > 0) {
+        if (lookups.length > 0) {
           const matchResults = await Promise.all(lookups);
 
           const allMatchedHmaBanks = new Set<string>();
