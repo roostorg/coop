@@ -1,0 +1,5 @@
+queries:
+  - uses: ./scripts/codeql/ExternalHttpUrl.ql
+
+paths-ignore:
+  - scripts/codeql/tests
