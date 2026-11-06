@@ -1,7 +1,10 @@
 import { vi } from 'vitest';
 
 import { type ItemType } from '../../services/moderationConfigService/index.js';
-import { addHashesToImageFields } from './hashImageFields.js';
+import {
+  addHashesToImageFields,
+  removeClientEmbeddings,
+} from './hashImageFields.js';
 
 const schema = [
   { name: 'text', type: 'STRING', required: false, container: null },
@@ -36,6 +39,8 @@ const HMAHashBankService = {
   listBanks: vi.fn(),
   hashContentFromUrl: vi.fn(),
   checkImageMatchWithDetails: vi.fn(),
+  isClipEnabled: vi.fn(),
+  findClosestClipMatch: vi.fn(),
 };
 
 describe('addHashesToImageFields', () => {
@@ -45,6 +50,11 @@ describe('addHashesToImageFields', () => {
       { hma_name: 'hma_bank', name: 'Bank' },
     ]);
     HMAHashBankService.hashContentFromUrl.mockResolvedValue({ pdq: 'abc' });
+    HMAHashBankService.isClipEnabled.mockReturnValue(false);
+    HMAHashBankService.findClosestClipMatch.mockResolvedValue({
+      matchedBanks: ['hma_bank'],
+      closestDistance: 0.03,
+    });
     HMAHashBankService.checkImageMatchWithDetails.mockResolvedValue({
       matchedBanks: ['hma_bank'],
     });
@@ -275,5 +285,159 @@ describe('addHashesToImageFields', () => {
     expect(data.text).toBe('hi');
     expect(data.cover).toMatchObject({ hashes: { pdq: 'abc' } });
     expect(HMAHashBankService.hashContentFromUrl).toHaveBeenCalledTimes(2);
+  });
+  describe('CLIP embeddings', () => {
+    const CLIP = 'ab'.repeat(2048);
+
+    beforeEach(() => {
+      HMAHashBankService.isClipEnabled.mockReturnValue(true);
+      HMAHashBankService.hashContentFromUrl.mockResolvedValue({
+        pdq: 'abc',
+        clip_float: CLIP,
+      });
+    });
+
+    it('stores clip_float under embeddings, never in hashes, which are forwarded to NCMEC', async () => {
+      const data = await run({ cover: { url: 'https://x.test/c.png' } });
+      expect(data.cover).toEqual({
+        url: 'https://x.test/c.png',
+        hashes: { pdq: 'abc' },
+        embeddings: { clip_float: CLIP },
+        matchedBanks: ['Bank'],
+      });
+    });
+
+    it('drops clip_float from hashes even when CLIP is not enabled, and stores nothing', async () => {
+      HMAHashBankService.isClipEnabled.mockReturnValue(false);
+      const data = await run({ cover: { url: 'https://x.test/c.png' } });
+      expect(data.cover).toEqual({
+        url: 'https://x.test/c.png',
+        hashes: { pdq: 'abc' },
+        matchedBanks: ['Bank'],
+      });
+    });
+
+    it('drops a clip_float that is not an embedding', async () => {
+      HMAHashBankService.hashContentFromUrl.mockResolvedValue({
+        pdq: 'abc',
+        clip_float: 'not hex!',
+      });
+      const data = await run({ cover: { url: 'https://x.test/c.png' } });
+      expect(data.cover).toEqual({
+        url: 'https://x.test/c.png',
+        hashes: { pdq: 'abc' },
+        matchedBanks: ['Bank'],
+      });
+    });
+
+    it('checks the embedding against the banks with the 0.10 cutoff, so matchedBanks can list CLIP matches', async () => {
+      HMAHashBankService.checkImageMatchWithDetails.mockResolvedValue({
+        matchedBanks: [],
+      });
+      const data = await run({ cover: { url: 'https://x.test/c.png' } });
+      expect(HMAHashBankService.findClosestClipMatch).toHaveBeenCalledWith(
+        ['hma_bank'],
+        CLIP,
+      );
+      expect(
+        HMAHashBankService.checkImageMatchWithDetails,
+      ).toHaveBeenCalledWith(['hma_bank'], 'pdq', 'abc');
+      expect(
+        HMAHashBankService.checkImageMatchWithDetails,
+      ).not.toHaveBeenCalledWith(expect.anything(), 'clip_float', CLIP);
+      expect(data.cover).toMatchObject({ matchedBanks: ['Bank'] });
+    });
+
+    it('looks nothing up for an org without banks, but still stores the embedding', async () => {
+      HMAHashBankService.listBanks.mockResolvedValue([]);
+      const data = await run({ cover: { url: 'https://x.test/c.png' } });
+      expect(
+        HMAHashBankService.checkImageMatchWithDetails,
+      ).not.toHaveBeenCalled();
+      expect(HMAHashBankService.findClosestClipMatch).not.toHaveBeenCalled();
+      expect(data.cover).toEqual({
+        url: 'https://x.test/c.png',
+        hashes: { pdq: 'abc' },
+        embeddings: { clip_float: CLIP },
+      });
+    });
+
+    it('does not look the embedding up when CLIP is not enabled', async () => {
+      HMAHashBankService.isClipEnabled.mockReturnValue(false);
+      await run({ cover: { url: 'https://x.test/c.png' } });
+      expect(HMAHashBankService.findClosestClipMatch).not.toHaveBeenCalled();
+    });
+
+    it('ignores an embedding supplied by the client, whether or not hashing works', async () => {
+      const forged = { clip_float: 'forged' };
+      HMAHashBankService.isClipEnabled.mockReturnValue(false);
+      const withoutClip = await run({
+        cover: { url: 'https://x.test/c.png', embeddings: forged },
+      });
+      expect(withoutClip.cover).not.toHaveProperty('embeddings');
+
+      HMAHashBankService.hashContentFromUrl.mockRejectedValue(
+        new Error('HMA down'),
+      );
+      const whenHashingFails = await run({
+        cover: { url: 'https://x.test/c.png', embeddings: forged },
+      });
+      expect(whenHashingFails.cover).not.toHaveProperty('embeddings');
+    });
+
+    it('ignores an embedding supplied on a video, which is not hashed', async () => {
+      const data = await run(
+        {
+          attachment: {
+            url: 'https://x.test/v.mp4',
+            mediaType: 'VIDEO',
+            embeddings: { clip_float: 'forged' },
+          },
+        },
+        makeSchema([{ name: 'attachment', type: 'MEDIA' }]),
+      );
+      expect(data.attachment).toEqual({
+        url: 'https://x.test/v.mp4',
+        mediaType: 'VIDEO',
+      });
+    });
+  });
+});
+
+describe('removeClientEmbeddings', () => {
+  it('drops embeddings from single, array and map image values and nothing else', () => {
+    const data: Record<string, unknown> = {
+      text: 'embeddings stay in text fields',
+      cover: { url: 'https://x.test/c.png', embeddings: { clip_float: 'ab' } },
+      profilePic: [
+        { url: 'https://x.test/1.png', embeddings: { clip_float: 'ab' } },
+        'https://x.test/2.png',
+      ],
+      byName: {
+        a: { url: 'https://x.test/3.png', embeddings: { clip_float: 'ab' } },
+      },
+    };
+    const mapSchema = [
+      ...schema,
+      {
+        name: 'byName',
+        type: 'MAP',
+        required: false,
+        container: {
+          containerType: 'MAP',
+          keyScalarType: 'STRING',
+          valueScalarType: 'IMAGE',
+        },
+      },
+    ] as unknown as ItemType['schema'];
+
+    removeClientEmbeddings({ schema: mapSchema }, data);
+
+    expect(data).toEqual({
+      text: 'embeddings stay in text fields',
+      cover: { url: 'https://x.test/c.png' },
+      profilePic: [{ url: 'https://x.test/1.png' }, 'https://x.test/2.png'],
+      byName: { a: { url: 'https://x.test/3.png' } },
+    });
   });
 });

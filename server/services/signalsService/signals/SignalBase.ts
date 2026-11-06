@@ -49,6 +49,11 @@ export interface ImageValue {
   hashes?: {
     pdq?: string;
   };
+  // CLIP embeddings, kept apart from `hashes` because everything in `hashes`
+  // is treated as an exact-match file hash and forwarded to NCMEC reports.
+  embeddings?: {
+    clip_float?: string;
+  };
   // Matched hash banks populated during rule execution
   matchedBanks?: string[];
 }

@@ -18,6 +18,7 @@ export type SignalArgsByType = Satisfies<
     [SignalType.TEXT_SIMILARITY_SCORE]: undefined;
     [SignalType.IMAGE_SIMILARITY_DOES_NOT_MATCH]: undefined;
     [SignalType.IMAGE_SIMILARITY_MATCH]: undefined;
+    [SignalType.IMAGE_CLIP_MATCH]: undefined;
     [SignalType.GEO_CONTAINED_WITHIN]: undefined;
     [SignalType.USER_SCORE]: undefined;
     [SignalType.USER_STRIKE_VALUE]: undefined;
@@ -57,6 +58,7 @@ export type RuntimeSignalArgsByType = Satisfies<
     [SignalType.TEXT_SIMILARITY_SCORE]: undefined;
     [SignalType.IMAGE_SIMILARITY_DOES_NOT_MATCH]: undefined;
     [SignalType.IMAGE_SIMILARITY_MATCH]: undefined;
+    [SignalType.IMAGE_CLIP_MATCH]: undefined;
     [SignalType.GEO_CONTAINED_WITHIN]: undefined;
     [SignalType.USER_SCORE]: undefined;
     [SignalType.USER_STRIKE_VALUE]: undefined;
