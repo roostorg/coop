@@ -39,6 +39,8 @@ Coop sends the text field value to the Zentropi API and receives a score between
 
 This score can be used with any comparator in a rule condition, for example `score > 0.8` to trigger only on high-confidence matches.
 
+Zentropi answers bursts of requests with HTTP 429 and sheds load with HTTP 529. Coop retries such a call up to four times, waiting 250 ms, 500 ms, 1 s and then 2 s, or longer if the API's `Retry-After` asks for it (up to five seconds per wait). If the call still fails, the condition is recorded as errored and the rule does not match for that item.
+
 ### Writing a policy
 
 Zentropi classifiers work best when policy definitions follow a structured format:
