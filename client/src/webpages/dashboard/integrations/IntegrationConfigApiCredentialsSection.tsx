@@ -161,15 +161,18 @@ export default function IntegrationConfigApiCredentialsSection(props: {
                 }
                 className="flex-1"
               />
-              <Select
-                aria-label="Model"
-                value={version.model ?? GQLZentropiModel.CopeLatest}
-                options={ZENTROPI_MODEL_OPTIONS}
-                onChange={(model) =>
-                  updateLabelerVersion(index, 'model', model)
-                }
-                className="flex-1"
-              />
+              <label className="flex flex-1 flex-col">
+                <span className="mb-1">Model</span>
+                <Select
+                  aria-label={`Model for ${version.label || 'labeler version'}`}
+                  value={version.model ?? GQLZentropiModel.CopeLatest}
+                  options={ZENTROPI_MODEL_OPTIONS}
+                  onChange={(model) =>
+                    updateLabelerVersion(index, 'model', model)
+                  }
+                  className="w-full"
+                />
+              </label>
               <Button
                 type="text"
                 icon={<Trash2 size={14} />}
