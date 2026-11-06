@@ -35,9 +35,10 @@ export async function getZentropiScores(
   },
 ): Promise<ZentropiResponse> {
   const labelerId = params.labelerId?.trim();
-  const model = params.model
-    ? ZENTROPI_API_MODEL_NAMES[params.model]
-    : undefined;
+  const model =
+    params.model != null && Object.hasOwn(ZENTROPI_API_MODEL_NAMES, params.model)
+      ? ZENTROPI_API_MODEL_NAMES[params.model]
+      : undefined;
   const response = await fetchHTTP({
     url: 'https://api.zentropi.ai/v1/label',
     method: 'post',
