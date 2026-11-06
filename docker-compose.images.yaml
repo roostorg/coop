@@ -30,11 +30,13 @@ services:
       - scylla_data:/var/lib/scylla
     healthcheck:
       # Real CQL query, not `nodetool status`, so 9042 accepts connections
-      # before migrations start.
+      # before migrations start. Connect to the current address: the image's
+      # cqlshrc keeps the container's first IP, which is stale once it
+      # restarts with a new one.
       test:
         [
           'CMD-SHELL',
-          'cqlsh -e "SELECT release_version FROM system.local" || exit 1',
+          'cqlsh "$$(hostname -i | cut -d'' '' -f1)" -e "SELECT release_version FROM system.local" || exit 1',
         ]
       interval: 5s
       timeout: 10s

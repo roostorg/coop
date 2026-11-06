@@ -127,11 +127,13 @@ services:
       # (9042) is accepting and completing queries yet — that gap lets
       # dependents (e.g. db:create/db:update via cassandra-driver) connect
       # before Scylla is actually ready, causing timeouts even though
-      # Compose reports the container healthy.
+      # Compose reports the container healthy. Connect to the current
+      # address: the image's cqlshrc keeps the container's first IP, which is
+      # stale once it restarts with a new one.
       test:
         [
           'CMD-SHELL',
-          'cqlsh -e "SELECT release_version FROM system.local" || exit 1',
+          'cqlsh "$$(hostname -i | cut -d'' '' -f1)" -e "SELECT release_version FROM system.local" || exit 1',
         ]
       interval: 5s
       timeout: 5s
