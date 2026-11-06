@@ -4,8 +4,17 @@ import { jsonStringify } from '../../../../../utils/encoding.js';
 import { makeSignalPermanentError } from '../../../../../utils/errors.js';
 import { type Bind1 } from '../../../../../utils/typescript-types.js';
 import { type FetchHTTP } from '../../../../networkingService/index.js';
-import { type GetCredentials } from '../../../../signalAuthService/signalAuthService.js';
+import {
+  type GetCredentials,
+  type ZentropiModel,
+} from '../../../../signalAuthService/signalAuthService.js';
 import { type SignalInput } from '../../SignalBase.js';
+
+export const ZENTROPI_API_MODEL_NAMES = {
+  COPE_LATEST: 'cope-latest',
+  COPE_B_A4B: 'cope-b-a4b',
+  COPE_B_S1: 'cope-b-s1',
+} as const satisfies Record<ZentropiModel, string>;
 
 export interface ZentropiResponse {
   label: 0 | 1 | '0' | '1';
@@ -22,9 +31,15 @@ export async function getZentropiScores(
     apiKey: string;
     labelerId?: string | null;
     labelerVersionId: string;
+    model?: ZentropiModel | null;
   },
 ): Promise<ZentropiResponse> {
   const labelerId = params.labelerId?.trim();
+  const model =
+    params.model != null &&
+    Object.hasOwn(ZENTROPI_API_MODEL_NAMES, params.model)
+      ? ZENTROPI_API_MODEL_NAMES[params.model]
+      : undefined;
   const response = await fetchHTTP({
     url: 'https://api.zentropi.ai/v1/label',
     method: 'post',
@@ -38,6 +53,7 @@ export async function getZentropiScores(
       // sending empty strings or null to the API.
       ...(labelerId ? { labeler_id: labelerId } : {}),
       labeler_version_id: params.labelerVersionId,
+      ...(model ? { model } : {}),
     }),
     handleResponseBody: 'as-json',
     timeoutMs: 5_000,
@@ -54,9 +70,10 @@ export async function getZentropiScores(
         { shouldErrorSpan: true },
       );
     }
-    // Zentropi rejects malformed requests with a 422; retrying won't help.
-    if (response.status === 422) {
-      throw makeSignalPermanentError('Zentropi API error: 422', {
+    // Zentropi rejects malformed requests with a 422 and unavailable models
+    // with a 400; retrying won't help.
+    if (response.status === 422 || response.status === 400) {
+      throw makeSignalPermanentError(`Zentropi API error: ${response.status}`, {
         detail: getValidationErrorDetail(response.body),
         shouldErrorSpan: true,
       });
@@ -128,12 +145,13 @@ export async function runZentropiLabelerImpl(
     apiKey: credential.apiKey,
     labelerId: labelerVersion.labelerId,
     labelerVersionId: labelerVersion.id,
+    model: labelerVersion.model,
   });
 
   // Composite score mapping:
-  // label=1 (violating) → pass confidence through
-  // label=0 (safe) → invert confidence
-  // Result: 0 = confidently safe, 0.5 = uncertain, 1 = confidently violating
+  // label=1 (content matches the policy) → pass confidence through
+  // label=0 (content does not match) → invert confidence
+  // Result: 0 = confidently no match, 0.5 = uncertain, 1 = confidently a match
   const { label, confidence } = response;
   const score = Number(label) === 1 ? confidence : 1 - confidence;
 
