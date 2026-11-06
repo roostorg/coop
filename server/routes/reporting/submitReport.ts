@@ -20,7 +20,10 @@ import {
 import { withRetries } from '../../utils/misc.js';
 import { type RequestHandlerWithBodies } from '../../utils/route-helpers.js';
 import { isValidDate } from '../../utils/time.js';
-import { addHashesToImageFields } from '../items/hashImageFields.js';
+import {
+  addHashesToImageFields,
+  removeClientEmbeddings,
+} from '../items/hashImageFields.js';
 import {
   type ReportItemInput,
   type ReportItemOutput,
@@ -118,6 +121,19 @@ export default function submitReport({
             additionalItems.map(async (message) => toItemSubmission(message)),
           )
         : undefined;
+
+      // These items are not hashed, so clear any embeddings the client sent.
+      [
+        ...(reportedThreadSubmission ?? []),
+        ...(additionalItemSubmissions ?? []),
+      ].forEach((it) => {
+        if (it.itemSubmission && !it.error) {
+          removeClientEmbeddings(
+            it.itemSubmission.itemType,
+            it.itemSubmission.data,
+          );
+        }
+      });
 
       // Check if there were any of the following error states and throw an aggregate error with them all:
       // 1. There were issues with the validation.

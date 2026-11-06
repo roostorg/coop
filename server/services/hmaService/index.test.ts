@@ -5,6 +5,7 @@ import type { HashBank } from './dbTypes.js';
 import {
   HashBankUserError,
   HmaService,
+  isClipEmbedding,
   type ExchangeInfo,
   type HashBankService,
 } from './index.js';
@@ -1103,6 +1104,138 @@ describe('HmaService', () => {
 
       expect(result.config_schema.fields).toHaveLength(0);
       expect(result.credentials_schema).toBeNull();
+    });
+  });
+  describe('CLIP', () => {
+    const HASH = 'ab'.repeat(2048);
+    const BANKS = ['COOP_ORG1_A', 'COOP_ORG1_B'];
+
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it('is only enabled when the operator sets HMA_CLIP_ENABLED to true', () => {
+      const enabled = (value: string | undefined) => {
+        vi.stubEnv('HMA_CLIP_ENABLED', value ?? '');
+        return makeService(vi.fn()).isClipEnabled();
+      };
+      expect(enabled(undefined)).toBe(false);
+      expect(enabled('false')).toBe(false);
+      expect(enabled('1')).toBe(false);
+      expect(enabled('true')).toBe(true);
+    });
+
+    describe('isClipEmbedding', () => {
+      it('accepts a hex string', () => {
+        expect(isClipEmbedding(HASH)).toBe(true);
+      });
+
+      it.each([
+        ['undefined', undefined],
+        ['a number', 12],
+        ['a list', [1, 2]],
+        ['an empty string', ''],
+        ['a non-hex string', 'not hex!'],
+        ['an oversized string', 'a'.repeat(16_385)],
+      ])('rejects %s', (_name, value) => {
+        expect(isClipEmbedding(value)).toBe(false);
+      });
+    });
+
+    describe('findClosestClipMatch', () => {
+      const find = async (body: unknown, banks = BANKS) => {
+        const fetchHTTP = routeFetch({ 'GET /m/lookup': ok(body) });
+        const result = await makeService(fetchHTTP).findClosestClipMatch(
+          banks,
+          HASH,
+        );
+        return { result, fetchHTTP };
+      };
+
+      it('returns the closest distance across the banks, and the banks that matched', async () => {
+        const { result } = await find({
+          COOP_ORG1_A: [
+            { bank_content_id: 1, distance: '0.08' },
+            { bank_content_id: 2, distance: '0.05' },
+          ],
+          COOP_ORG1_B: [{ bank_content_id: 3, distance: '0.03' }],
+        });
+        expect(result).toEqual({
+          matchedBanks: ['COOP_ORG1_A', 'COOP_ORG1_B'],
+          closestDistance: 0.03,
+        });
+      });
+
+      it('ignores matches beyond the 0.10 cutoff even if HMA returns them', async () => {
+        const { result } = await find({
+          COOP_ORG1_A: [{ bank_content_id: 1, distance: '0.25' }],
+          COOP_ORG1_B: [
+            { bank_content_id: 2, distance: '0.30' },
+            { bank_content_id: 3, distance: '0.10' },
+          ],
+        });
+        expect(result).toEqual({
+          matchedBanks: ['COOP_ORG1_B'],
+          closestDistance: 0.1,
+        });
+      });
+
+      it('looks the embedding up with a GET, which HMA accepts at this length', async () => {
+        const { fetchHTTP } = await find({});
+        const [call] = callsTo(fetchHTTP, 'get', '/m/lookup');
+        const params = new URL(call.url).searchParams;
+        expect(params.get('signal_type')).toBe('clip_float');
+        expect(params.get('signal')).toBe(HASH);
+      });
+
+      it('reports no match and no distance when nothing is close enough', async () => {
+        const { result } = await find({});
+        expect(result).toEqual({
+          matchedBanks: [],
+          closestDistance: undefined,
+        });
+      });
+
+      it('ignores banks it was not asked about', async () => {
+        const { result } = await find({
+          OTHER_BANK: [{ bank_content_id: 9, distance: '0.01' }],
+          COOP_ORG1_A: [{ bank_content_id: 1, distance: '0.07' }],
+        });
+        expect(result).toEqual({
+          matchedBanks: ['COOP_ORG1_A'],
+          closestDistance: 0.07,
+        });
+      });
+
+      it('ignores matches without a usable distance, since they cannot be scored', async () => {
+        const { result } = await find({
+          COOP_ORG1_A: [
+            { bank_content_id: 1, distance: '' },
+            { bank_content_id: 2, distance: null },
+            { bank_content_id: 3, distance: 'n/a' },
+          ],
+          COOP_ORG1_B: [
+            { bank_content_id: 4, distance: 'NaN' },
+            { bank_content_id: 5, distance: '0.09' },
+          ],
+        });
+        expect(result).toEqual({
+          matchedBanks: ['COOP_ORG1_B'],
+          closestDistance: 0.09,
+        });
+      });
+
+      it('copes with a bank entry that is not a list', async () => {
+        const { result } = await find({ COOP_ORG1_A: 'unexpected' });
+        expect(result.matchedBanks).toEqual([]);
+      });
+
+      it('throws when HMA rejects the lookup', async () => {
+        const fetchHTTP = routeFetch({ 'GET /m/lookup': fail(503) });
+        await expect(
+          makeService(fetchHTTP).findClosestClipMatch(BANKS, HASH),
+        ).rejects.toThrow('Failed to lookup content: 503');
+      });
     });
   });
 });

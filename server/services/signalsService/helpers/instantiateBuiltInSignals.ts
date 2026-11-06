@@ -7,6 +7,7 @@ import { type UserScore } from '../../userStatisticsService/userStatisticsServic
 import { type UserStrikeService } from '../../userStrikeService/index.js';
 import AggregationSignal from '../signals/aggregation/AggregationSignal.js';
 import GeoContainedWithinSignal from '../signals/GeoContainedWithinSignal.js';
+import ImageClipMatchSignal from '../signals/ImageClipMatch.js';
 import ImageSimilarityDoesNotMatchSignal from '../signals/ImageSimilarityDoesNotMatch.js';
 import ImageSimilarityMatchSignal from '../signals/ImageSimilarityMatch.js';
 import {
@@ -79,6 +80,7 @@ export function instantiateBuiltInSignals(
     [SignalType.IMAGE_SIMILARITY_MATCH]: new ImageSimilarityMatchSignal(
       hmaService,
     ),
+    [SignalType.IMAGE_CLIP_MATCH]: new ImageClipMatchSignal(hmaService),
     [SignalType.GOOGLE_CONTENT_SAFETY_API_IMAGE]:
       new GoogleContentSafetyImageSignal(
         credentialGetters.GOOGLE_CONTENT_SAFETY_API,
