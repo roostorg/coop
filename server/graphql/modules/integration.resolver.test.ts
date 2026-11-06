@@ -1,7 +1,9 @@
 import {
   assertInputType,
+  assertObjectType,
   buildASTSchema,
   coerceInputValue,
+  graphqlSync,
   Kind,
   parse,
 } from 'graphql';
@@ -18,7 +20,8 @@ describe('Zentropi integration input', () => {
     ...document,
     definitions: document.definitions.filter(
       (definition) =>
-        definition.kind === Kind.INPUT_OBJECT_TYPE_DEFINITION &&
+        (definition.kind === Kind.INPUT_OBJECT_TYPE_DEFINITION ||
+          definition.kind === Kind.ENUM_TYPE_DEFINITION) &&
         definition.name.value.startsWith('Zentropi'),
     ),
   });
@@ -50,6 +53,76 @@ describe('Zentropi integration input', () => {
       ).toThrow(/was not provided/);
     },
   );
+
+  it.each([{}, { model: null }, { model: 'COPE_B_S1' }])(
+    'accepts a version with optional model: %j',
+    (optionalFields) => {
+      const input = {
+        apiKey: 'test-key',
+        labelerVersions: [{ id: 'lv_123', label: 'Spam', ...optionalFields }],
+      };
+      expect(coerceInputValue(input, inputType)).toEqual(input);
+    },
+  );
+
+  it('rejects a model outside the ZentropiModel enum', () => {
+    expect(() =>
+      coerceInputValue(
+        {
+          apiKey: 'test-key',
+          labelerVersions: [
+            { id: 'lv_123', label: 'Spam', model: 'not-a-model' },
+          ],
+        },
+        inputType,
+      ),
+    ).toThrow(/does not exist in "ZentropiModel" enum/);
+  });
+});
+
+describe('Zentropi labeler version output', () => {
+  // Use the actual SDL and resolver so this catches enum serialization errors,
+  // which fail the whole integration settings query.
+  const document = parse(typeDefs);
+  const schema = buildASTSchema({
+    ...document,
+    definitions: [
+      ...document.definitions.filter(
+        (definition) =>
+          (definition.kind === Kind.OBJECT_TYPE_DEFINITION &&
+            definition.name.value === 'ZentropiLabelerVersion') ||
+          (definition.kind === Kind.ENUM_TYPE_DEFINITION &&
+            definition.name.value === 'ZentropiModel'),
+      ),
+      ...parse('type Query { version: ZentropiLabelerVersion }').definitions,
+    ],
+  });
+  const modelField = assertObjectType(
+    schema.getType('ZentropiLabelerVersion'),
+  ).getFields()['model'];
+  // eslint-disable-next-line functional/immutable-data -- wire the module's resolver into the test schema
+  modelField.resolve = (
+    resolvers.ZentropiLabelerVersion as {
+      model: (it: { model?: string | null }) => string | null;
+    }
+  ).model;
+
+  it.each([
+    ['COPE_B_S1', 'COPE_B_S1'],
+    [null, null],
+    [undefined, null],
+    ['COPE_FUTURE', null],
+  ])('returns stored model %j as %j', (stored, expected) => {
+    const result = graphqlSync({
+      schema,
+      source: '{ version { id model } }',
+      rootValue: { version: { id: 'lv_123', label: 'Spam', model: stored } },
+    });
+    expect(result.errors).toBeUndefined();
+    expect(result.data).toEqual({
+      version: { id: 'lv_123', model: expected },
+    });
+  });
 });
 
 // The MANAGE_ORG check fires before any data-source or integration-registry

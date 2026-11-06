@@ -2,7 +2,7 @@
 
 [Zentropi CoPE](https://zentropi.ai) (Content Policy Enforcement) is a policy-adaptive AI text classifier. Unlike classifiers with fixed taxonomies, CoPE has no predefined categories; instead, you write your own policy text describing what you want to detect, and the model classifies content against those policies. This makes it particularly useful for platforms with nuanced or unusual content policies that off-the-shelf classifiers handle poorly.
 
-The model powering the integration is **CoPE-A-9B** (version 1.x, released July 2025).
+You choose which Zentropi model evaluates content for each labeler version; see [Configuration](#configuration).
 
 ## Requirements
 
@@ -15,12 +15,19 @@ In Coop, go to **Settings → Integrations** and add your Zentropi credentials:
 
 - **API Key**: your Zentropi API key
 - **Labeler Versions**: one entry per deployed labeler version you want to use in rules, each with its **Version ID** and a display name. **Labeler ID** is optional when using a specific version ID. You can find both IDs in the Zentropi UI.
+- **Model**: the Zentropi model that evaluates content for that labeler version:
+
+  | Model         | Description                                                              |
+  | ------------- | ------------------------------------------------------------------------ |
+  | `cope-latest` | Default. An alias Zentropi points at its current recommended text model. |
+  | `cope-b-a4b`  | CoPE-B-A4B                                                               |
+  | `cope-b-s1`   | CoPE-B-S1                                                                |
 
 ## Signals
 
 Each labeler version configured in the integration settings is available as a subcategory of the Zentropi Labeler signal. When building a rule condition, select the Zentropi signal and pick the labeler version by name in the **subcategory** field.
 
-Existing version-only configurations continue to work without changes. Coop always sends the selected version ID to Zentropi and includes the labeler ID only when it is nonblank; it does not replace the selected version with the latest version.
+Existing version-only configurations continue to work without changes. Coop always sends the selected version ID to Zentropi and includes the labeler ID only when it is nonblank; it does not replace the selected version with the latest version. Labeler versions saved without a model use `cope-latest`.
 
 Coop sends the text field value to the Zentropi API and receives a score between 0 and 1:
 
