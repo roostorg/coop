@@ -309,34 +309,21 @@ Don't qualify the wording by exposure (e.g. "if your API is public").
 
 ### Email templates
 
-One advisory:
+With one or more advisories:
 
 ```text
-Subject: Coop x.y.z security release
+Subject: Security advisory for Coop: User action required
 
-Coop x.y.z fixes a security vulnerability:
+This is a security advisory for vulnerabilities discovered in the Coop project. Patches have been applied in the latest Coop release, version x.y.z. We recommend users upgrade.
 
-- <Advisory title>: https://github.com/roostorg/coop/security/advisories/GHSA-xxxx-xxxx-xxxx (<Severity>, CVSS <n.n>)
+The following vulnerabilities affect versions earlier than x.y.z:
 
-<Upgrade wording>
+* [GHSA-xxxx-xxxx-xxxx](https://github.com/roostorg/coop/security/advisories/GHSA-xxxx-xxxx-xxxx) (<Severity>, CVSS <n.n>)
 
-Release notes and images: https://github.com/roostorg/coop/releases/tag/x.y.z
+Release notes: https://github.com/roostorg/coop/releases/tag/x.y.z
 ```
 
-More than one advisory:
-
-```text
-Subject: Coop x.y.z security release
-
-Coop x.y.z fixes N security vulnerabilities:
-
-- <Advisory title>: https://github.com/roostorg/coop/security/advisories/GHSA-xxxx-xxxx-xxxx (<Severity>, CVSS <n.n>)
-- <Advisory title>: https://github.com/roostorg/coop/security/advisories/GHSA-yyyy-yyyy-yyyy (<Severity>, CVSS <n.n>)
-
-<Upgrade wording, for the highest severity listed>
-
-Release notes and images: https://github.com/roostorg/coop/releases/tag/x.y.z
-```
+Keep the email to these lines, with one bullet per advisory: no workarounds, impact or remediation details.
 
 No advisory (tier 2 or 3):
 
