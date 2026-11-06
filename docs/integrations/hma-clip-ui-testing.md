@@ -41,7 +41,15 @@ Bank "CLIP UI test" (COOP_..._CLIP_UI_TEST)
 1 added, 0 failed
 ```
 
-If you prefer `pnpm run seed-clip-bank` with the same arguments, that works where ts-node starts. HMA builds its search index on a timer, so matching starts working within about 3 minutes.
+The script reaches HMA through `HMA_SERVICE_URL` in `server/.env`, which must point at your HMA (`http://localhost:9876` in a local setup). If a run fails with `fetch failed`, that URL is wrong; you can set it for one run by putting `HMA_SERVICE_URL=http://localhost:9876` in front of the `node` command. If you prefer `pnpm run seed-clip-bank` with the same arguments, that works where ts-node starts.
+
+HMA builds its search index on a timer, so matching starts working within about 3 minutes. To wait until the bank is searchable, run this from the repository root, with the HMA bank name that the seed script printed in parentheses. It prints a dot every 10 seconds and then `indexed`:
+
+```bash
+BANK=COOP_..._CLIP_UI_TEST
+HASH=$(curl -s -F "photo=@hma/clip/fixtures/probe/scene-resized.jpg" http://localhost:9876/h/hash | python3 -c "import json,sys; print(json.load(sys.stdin)['clip_float'])")
+until curl -s -G http://localhost:9876/m/lookup --data-urlencode signal_type=clip_float --data-urlencode "signal=$HASH" --data-urlencode "banks=$BANK" | grep -q "$BANK"; do printf .; sleep 10; done; echo indexed
+```
 
 ## 4. Create an item type with an image field
 
@@ -53,7 +61,7 @@ If you prefer `pnpm run seed-clip-bank` with the same arguments, that works wher
 
 1. Go to **Automated Enforcement, Proactive Rules** and create a rule.
 2. Name it `CLIP UI test rule` and choose the item type `clip_ui_test`.
-3. Add a condition on the `image` field: the signal **Image similarity (CLIP)**, comparator **is greater than or equal to**, threshold **0.95**, with the bank `CLIP UI test`. The bank picker is the dropdown with the placeholder "Select media bank(s)". It only appears once you have chosen both an image input and the CLIP signal.
+3. Add a condition on the `image` field: the signal **Image similarity (CLIP)**, comparator **is greater than or equal to**, threshold **0.95**, with the bank `CLIP UI test`. The bank picker is the dropdown with the placeholder "Select media bank(s)". It only appears once you have chosen both an image input and the CLIP signal. The picker lists the banks that existed when the page was loaded, so if a bank you just created is missing, refresh the page.
 4. Set the action to **Enqueue Item to Manual Review**, and set the rule to **Live**. Rules are cached, so wait about 30 seconds before you submit images in step 7. Images submitted sooner can be checked against the old version of the rule.
 
 ## 6. Make sure a review queue exists
@@ -84,7 +92,7 @@ for NAME in scene-resized scene-desaturated scene-blurred other-building other; 
 done
 ```
 
-`202` means Coop accepted the items for processing, nothing more. Coop hashes the images before it returns `202` (so slow hashing delays the response), and the rule runs afterwards in the background. A hashing failure is swallowed, so a problem such as an unreachable image never shows up in this response. It shows up in the file server's log and in what arrives in the queue. To submit the images again, change `RUN` so the item ids are new (`clip-ui-scene-resized-2`, and so on). Resubmitting the same ids is a resubmission of the same items, not new ones.
+`202` means Coop accepted the items for processing, nothing more. Coop hashes the images before it returns `202` (so slow hashing delays the response), and the rule runs afterwards in the background. A hashing failure is swallowed, so a problem such as an unreachable image never shows up in this response. It shows up in the file server's log and in what arrives in the queue. To submit the images again, change `RUN` every time so the item ids are new (`clip-ui-scene-resized-2`, and so on). Resubmitting the same ids is a resubmission of the same items, not new ones, and an item that is already waiting in the queue does not get a second job, so a rerun with the same `RUN` can queue only some of the images.
 
 ## 8. Check the result
 
@@ -108,6 +116,7 @@ If nothing arrives after a minute, see "If it does not work" below.
 ## If it does not work
 
 - **Nothing arrives in the queue.** Check that the organization has a review queue and, for a non-admin user, that the user is a reviewer on it (step 6), that `HMA_CLIP_ENABLED=true` is set and the server was restarted, that the rule is Live (a rule left in Draft fails silently: nothing is logged and nothing is enqueued), and that it uses a threshold at or below the 0.985 the resized image scores, and that the bank was seeded (step 3 printed `1 added`). HMA needs up to 3 minutes after seeding before it can match. A lookup before then finds nothing.
+- **Only some of the expected images arrive.** Check that every submission used a new `RUN` number. Then check the rule's threshold: the images score about 0.985, 0.959 and 0.936, so a threshold of 0.95 queues two of them and 0.91 queues all three.
 - **The images were never fetched, or the queue shows only items without a CLIP match.** An item whose image could not be fetched is still processed, but it has no CLIP embedding, so the rule cannot match it. The file server's log shows whether each image was requested and with what status (`404` means wrong directory, no request at all means the HMA containers cannot reach your image host). Fix the host, then submit again with a new `RUN` number.
 - **The review console says "Image failed to load".** Your browser cannot load the image URL. See "Pick an image host" in step 7. This does not affect matching.
 

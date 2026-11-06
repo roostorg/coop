@@ -179,7 +179,7 @@ Create the bank under Automated Enforcement, Matching Banks, then add images fro
 pnpm run seed-clip-bank --org <orgId> --bank "<bank name>" --dir <directory of images> [--dry-run]
 ```
 
-It reads the `.env` in `server/`, adds every `.jpg`, `.jpeg`, `.png`, `.gif` and `.webp` file directly inside the directory (subfolders and symbolic links are skipped, and files over 20 MiB are skipped and reported) to the bank, and prints one line per image. HMA hashes each image with every signal it has enabled, so with CLIP enabled the bank gets CLIP embeddings too. `--dry-run` lists the images without adding them. The script stops with a message if the bank does not exist, and exits nonzero if any image fails.
+It reads the `.env` in `server/`, and reaches HMA through `HMA_SERVICE_URL` there (a run that fails with `fetch failed` usually has the wrong URL), adds every `.jpg`, `.jpeg`, `.png`, `.gif` and `.webp` file directly inside the directory (subfolders and symbolic links are skipped, and files over 20 MiB are skipped and reported) to the bank, and prints one line per image. HMA hashes each image with every signal it has enabled, so with CLIP enabled the bank gets CLIP embeddings too. `--dry-run` lists the images without adding them. The script stops with a message if the bank does not exist, and exits nonzero if any image fails.
 
 HMA cannot list a bank's contents, and adding the same image twice stores it twice (observed even with the same content id), so the script cannot tell which images are already there: running it twice on the same directory adds the images twice. This does not change matching, but it wastes space. To start over, delete the bank and create it again.
 
