@@ -41,6 +41,8 @@ export function integrationForSignalType(type: string) {
     case 'OPEN_AI_VIOLENCE_TEXT_MODEL':
     case 'OPEN_AI_WHISPER_TRANSCRIPTION':
       return GQLIntegration.OpenAi;
+    case 'SENTINEL_RARE_CLASS_AFFINITY':
+      return GQLIntegration.Sentinel;
     case 'ZENTROPI_LABELER':
       return GQLIntegration.Zentropi;
     case 'AGGREGATION':

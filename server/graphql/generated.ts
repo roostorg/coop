@@ -1507,6 +1507,7 @@ export type GQLIgnoreDecisionComponent =
 export const GQLIntegration = {
   GoogleContentSafetyApi: 'GOOGLE_CONTENT_SAFETY_API',
   OpenAi: 'OPEN_AI',
+  Sentinel: 'SENTINEL',
   Zentropi: 'ZENTROPI',
 } as const;
 
@@ -4822,6 +4823,7 @@ export const GQLSignalType = {
   OpenAiViolenceImageModel: 'OPEN_AI_VIOLENCE_IMAGE_MODEL',
   OpenAiViolenceTextModel: 'OPEN_AI_VIOLENCE_TEXT_MODEL',
   OpenAiWhisperTranscription: 'OPEN_AI_WHISPER_TRANSCRIPTION',
+  SentinelRareClassAffinity: 'SENTINEL_RARE_CLASS_AFFINITY',
   TextMatchingContainsRegex: 'TEXT_MATCHING_CONTAINS_REGEX',
   TextMatchingContainsText: 'TEXT_MATCHING_CONTAINS_TEXT',
   TextMatchingContainsVariant: 'TEXT_MATCHING_CONTAINS_VARIANT',

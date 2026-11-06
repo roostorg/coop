@@ -129,6 +129,7 @@ export class SignalsService {
     signalAuthService: Dependencies['SignalAuthService'],
     getUserScoreEventuallyConsistent: Dependencies['getUserScoreEventuallyConsistent'],
     fetchHTTP: Dependencies['fetchHTTP'],
+    itemInvestigationService: Dependencies['ItemInvestigationService'],
   ) {
     const cachedCredentialGetters =
       makeCachedCredentialGetters(signalAuthService);
@@ -143,6 +144,8 @@ export class SignalsService {
       this.userStrikeService,
       this.getPoliciesByIdEventuallyConsistent,
       this.hmaService,
+      itemInvestigationService,
+      fetchHTTP,
     );
 
     const pluginEntries = getIntegrationRegistry().getPluginEntries();
@@ -372,6 +375,7 @@ export default inject(
     'SignalAuthService',
     'getUserScoreEventuallyConsistent',
     'fetchHTTP',
+    'ItemInvestigationService',
   ],
   SignalsService,
 );
