@@ -683,7 +683,9 @@ export function fileAnnotationArrayToNCMECFileAnnotation(
   };
   const result: FileAnnotations = {};
   for (const annotation of fileAnnotations) {
+    // eslint-disable-next-line security/detect-object-injection -- annotation selects a fixed NCMEC field mapping
     const field = annotationFieldByType[annotation];
+    // eslint-disable-next-line security/detect-object-injection -- field comes from the fixed mapping above
     result[field] = undefined;
   }
   return result;

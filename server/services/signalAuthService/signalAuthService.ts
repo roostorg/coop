@@ -104,6 +104,7 @@ class SignalAuthService {
     integration: T,
     orgId: string,
   ): Promise<CredentialTypes[T] | undefined> {
+    // eslint-disable-next-line security/detect-object-injection -- integration selects a built-in credential implementation
     return this.implementations[integration].get(orgId);
   }
 
@@ -112,6 +113,7 @@ class SignalAuthService {
     orgId: string,
     args: CredentialTypes[T],
   ): Promise<CredentialTypes[T]> {
+    // eslint-disable-next-line security/detect-object-injection -- integration selects a built-in credential implementation
     return this.implementations[integration].set(orgId, args);
   }
 
@@ -119,6 +121,7 @@ class SignalAuthService {
     integration: T,
     orgId: string,
   ): Promise<void> {
+    // eslint-disable-next-line security/detect-object-injection -- integration selects a built-in credential implementation
     await this.implementations[integration].delete(orgId);
   }
 

@@ -23,6 +23,7 @@ import {
   makeNotFoundError,
   makeTimeoutError,
 } from '../../utils/errors.js';
+import { getOwn, setOwn } from '../../utils/misc.js';
 import { MONTH_MS } from '../../utils/time.js';
 import {
   type GQLQueryItemsWithIdArgs,
@@ -663,16 +664,15 @@ const Query: GQLQueryResolvers = {
           };
         }>((result, threadWithDate) => {
           const key = `${threadWithDate.thread.id}-${threadWithDate.thread.typeId}`;
-          const existing = result[key];
+          const existing = getOwn(result, key);
           if (
-            // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             !existing ||
             !existing.createdAt ||
             (threadWithDate.createdAt &&
               existing.createdAt &&
               threadWithDate.createdAt > existing.createdAt)
           ) {
-            result[key] = threadWithDate;
+            setOwn(result, key, threadWithDate);
           }
           return result;
         }, {}),

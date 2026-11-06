@@ -422,6 +422,7 @@ function isSerializableError(it: unknown): it is SerializableError {
 function isSafeError(
   it: unknown,
 ): it is SerializableError & { [safeErrorKey]: true } {
+  // eslint-disable-next-line security/detect-object-injection -- safeErrorKey is a module-local symbol
   return isSerializableError(it) && Boolean(it[safeErrorKey]);
 }
 

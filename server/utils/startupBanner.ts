@@ -47,7 +47,7 @@ export function printStartupBanner(): void {
   ];
 
   const lines = LOGO.map((logoLine, i) => {
-    const text = linkLines[i] ?? '';
+    const text = linkLines.at(i) ?? '';
     return `  ${logoLine}   ${text}`;
   });
 

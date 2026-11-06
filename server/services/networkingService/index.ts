@@ -65,6 +65,7 @@ function isFormDataLikeWithStreams(it: unknown): it is FormDataLikeWithStreams {
   return Boolean(
     typeof it === 'object' &&
     it != null &&
+    // eslint-disable-next-line security/detect-object-injection -- formDataLikeWithStreams is a module-local symbol
     (it as { [formDataLikeWithStreams]?: unknown })[formDataLikeWithStreams],
   );
 }

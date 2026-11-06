@@ -292,7 +292,7 @@ Dependencies): RequestHandlerWithBodies<
           orgId,
           itemSubmission: itemSubmissionOrError.itemSubmission,
           failureReason: `Rules failed to run for content: ${String(
-            safeGet(e, ['message']),
+            e instanceof Error ? e.message : safeGet(e, ['message']),
           )}`,
         },
         skipWarehouseEventualWriteBatch,
