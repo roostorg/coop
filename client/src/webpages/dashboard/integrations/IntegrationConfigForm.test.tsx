@@ -180,7 +180,9 @@ describe('Zentropi integration configuration', () => {
     ]);
     expect(screen.getByText('cope-b-a4b')).toBeInTheDocument();
 
-    fireEvent.mouseDown(screen.getByRole('combobox', { name: 'Model' }));
+    fireEvent.mouseDown(
+      screen.getByRole('combobox', { name: 'Model for Spam' }),
+    );
     fireEvent.click(screen.getByText('cope-b-s1'));
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
 
