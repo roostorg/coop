@@ -149,9 +149,9 @@ export async function runZentropiLabelerImpl(
   });
 
   // Composite score mapping:
-  // label=1 (violating) → pass confidence through
-  // label=0 (safe) → invert confidence
-  // Result: 0 = confidently safe, 0.5 = uncertain, 1 = confidently violating
+  // label=1 (content matches the policy) → pass confidence through
+  // label=0 (content does not match) → invert confidence
+  // Result: 0 = confidently no match, 0.5 = uncertain, 1 = confidently a match
   const { label, confidence } = response;
   const score = Number(label) === 1 ? confidence : 1 - confidence;
 

@@ -45,7 +45,7 @@ function makeCredentialGetter(
 
 describe('zentropiUtils', () => {
   describe('score mapping', () => {
-    it('maps label=1, high confidence to high score (violating)', async () => {
+    it('maps label=1, high confidence to high score (match)', async () => {
       const fetchScores: FetchZentropiScores = vi.fn().mockResolvedValue({
         label: 1,
         confidence: 0.95,
@@ -60,7 +60,7 @@ describe('zentropiUtils', () => {
       expect(result.score).toBe(0.95);
     });
 
-    it('maps label=0, high confidence to low score (safe)', async () => {
+    it('maps label=0, high confidence to low score (no match)', async () => {
       const fetchScores: FetchZentropiScores = vi.fn().mockResolvedValue({
         label: 0,
         confidence: 0.95,
@@ -75,7 +75,7 @@ describe('zentropiUtils', () => {
       expect(result.score).toBeCloseTo(0.05);
     });
 
-    it('maps label=0, low confidence to ~0.4 (uncertain, leaning safe)', async () => {
+    it('maps label=0, low confidence to ~0.4 (uncertain, leaning no match)', async () => {
       const fetchScores: FetchZentropiScores = vi.fn().mockResolvedValue({
         label: 0,
         confidence: 0.6,
@@ -90,7 +90,7 @@ describe('zentropiUtils', () => {
       expect(result.score).toBeCloseTo(0.4);
     });
 
-    it('maps label=1, low confidence to 0.6 (uncertain, leaning violating)', async () => {
+    it('maps label=1, low confidence to 0.6 (uncertain, leaning match)', async () => {
       const fetchScores: FetchZentropiScores = vi.fn().mockResolvedValue({
         label: 1,
         confidence: 0.6,
@@ -360,7 +360,7 @@ describe('zentropiUtils', () => {
       const mockResponse: ZentropiResponse = {
         label: 1,
         confidence: 0.85,
-        explanation: 'Content violates policy',
+        explanation: 'Content matches policy',
       };
 
       const mockFetchHTTP = vi.fn().mockResolvedValue({
