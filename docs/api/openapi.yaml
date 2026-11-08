@@ -1,0 +1,784 @@
+openapi: 3.1.0
+info:
+  title: Coop REST API
+  version: 1.2.0
+  summary: REST endpoints a platform uses to integrate with Coop.
+  description: |
+    Endpoints your platform calls to send items, reports and appeals to Coop,
+    and to read configuration. Every request except the integration logos
+    requires an API key in the `X-API-KEY` header; see
+    [API Keys & Authentication](../development/api-auth.md).
+
+    Webhooks that Coop sends to your platform (action callbacks, appeal
+    decisions, partial item fetches) are not described here; see
+    [Handling Actions](actions.md) and [Partial Items](partial-items.md).
+    The GraphQL API used by the Coop dashboard is out of scope.
+  contact:
+    name: Coop maintainers
+    url: https://github.com/roostorg/coop/issues
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Local development server
+security:
+  - apiKey: []
+tags:
+  - name: Items
+  - name: Reporting
+  - name: Configuration
+  - name: Actions
+  - name: Content
+  - name: User scores
+  - name: Integrations
+  - name: Health
+paths:
+  /items/async/:
+    post:
+      tags: [Items]
+      operationId: submitItems
+      summary: Submit items for rule evaluation
+      description: |
+        Validates the items, then queues them for asynchronous rule
+        evaluation. If any item fails validation, the request is rejected with
+        `400` and none are queued.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [items]
+              properties:
+                items:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/ItemSubmission'
+      responses:
+        '202':
+          description: Items accepted and queued.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '500':
+          description: The items could not be enqueued. The response has no body.
+  /content/:
+    post:
+      tags: [Content]
+      operationId: submitContent
+      summary: Submit a content item (legacy)
+      description: |
+        Legacy single-item submission. Unlike `POST /items/async/`, it can
+        evaluate rules synchronously and return the result. It does not accept
+        batches and does not hash images.
+      parameters:
+        - name: includeDerivedField
+          in: query
+          description: |
+            Derived field to compute and return when `sync` is `true`.
+            Repeatable. The value is a base64url-encoded JSON derived field
+            spec.
+          required: false
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [contentType, contentId, content]
+              properties:
+                userId:
+                  type: string
+                contentType:
+                  type: string
+                  description: Name (not ID) of an item type in your organization.
+                contentId:
+                  type: string
+                content:
+                  type: object
+                  additionalProperties: true
+                  description: Item payload, matching the item type's schema.
+                sync:
+                  type: boolean
+                  default: false
+                  description: |
+                    When `true`, wait for rule evaluation and return the
+                    result. When `false` or omitted, return `202` immediately.
+      responses:
+        '200':
+          description: Rule evaluation result. Returned only when `sync` is `true`.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [actionsTriggered, derivedFields]
+                properties:
+                  actionsTriggered:
+                    type: array
+                    description: |
+                      Best effort. Actions not known before the response time
+                      limit are omitted.
+                    items:
+                      type: object
+                      required: [id, name]
+                      properties:
+                        id:
+                          type: string
+                        name:
+                          type: string
+                  derivedFields:
+                    type: object
+                    description: |
+                      Requested derived fields, keyed by the
+                      `includeDerivedField` value.
+                    additionalProperties:
+                      type: object
+                      required: [value, field]
+                      properties:
+                        value:
+                          description: |
+                            The derived value, or a serialized error if
+                            derivation failed.
+                        field:
+                          type: object
+                          additionalProperties: true
+        '202':
+          description: Content accepted. Returned when `sync` is `false` or omitted.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /report:
+    post:
+      tags: [Reporting]
+      operationId: submitReport
+      summary: Submit a user report
+      description: Creates a moderation job in the Review Console.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReportRequest'
+      responses:
+        '201':
+          description: Report received.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [reportId]
+                properties:
+                  reportId:
+                    type: string
+                    description: ID assigned to the report by Coop.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /report/appeal:
+    post:
+      tags: [Reporting]
+      operationId: submitAppeal
+      summary: Submit a user appeal
+      description: Creates an appeal review job in the Review Console.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppealRequest'
+      responses:
+        '204':
+          description: Appeal received.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /policies/:
+    get:
+      tags: [Configuration]
+      operationId: listPolicies
+      summary: List policies
+      description: Use `parentId` to reconstruct the policy tree.
+      responses:
+        '200':
+          description: All policies for your organization.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [policies]
+                properties:
+                  policies:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Policy'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+  /item_types/:
+    get:
+      tags: [Configuration]
+      operationId: listItemTypes
+      summary: List item types
+      description: |
+        Current original schemas only; historical versions and partial
+        variants are not returned.
+      responses:
+        '200':
+          description: Item types for your organization.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [itemTypes]
+                properties:
+                  itemTypes:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ItemType'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+  /actions/:
+    get:
+      tags: [Actions]
+      operationId: listActions
+      summary: List actions
+      description: |
+        Action metadata and item type assignments. Webhook URLs, headers and
+        bodies are never returned.
+      responses:
+        '200':
+          description: Actions for your organization.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [actions]
+                properties:
+                  actions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Action'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+    post:
+      tags: [Actions]
+      operationId: submitAction
+      summary: Execute an action on an item
+      description: |
+        Publishes the action for the item, as if a moderator had taken it.
+        Coop then calls the action's configured callback.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmitActionRequest'
+      responses:
+        '202':
+          description: Action accepted for publishing.
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+  /user_scores/:
+    get:
+      tags: [User scores]
+      operationId: getUserScore
+      summary: Get a user's score
+      description: Returns the current score for one user.
+      parameters:
+        - name: id
+          in: query
+          required: true
+          description: Your identifier for the user.
+          schema:
+            type: string
+        - name: typeId
+          in: query
+          required: true
+          description: Item type ID of the user.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The user's score. May be eventually consistent.
+          content:
+            application/json:
+              schema:
+                type: number
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '500':
+          $ref: '#/components/responses/InternalError'
+  /integration-logos/{integrationId}:
+    get:
+      tags: [Integrations]
+      operationId: getIntegrationLogo
+      summary: Get an integration's logo
+      description: Public; does not require an API key.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/IntegrationId'
+      responses:
+        '200':
+          $ref: '#/components/responses/Logo'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /integration-logos/{integrationId}/with-background:
+    get:
+      tags: [Integrations]
+      operationId: getIntegrationLogoWithBackground
+      summary: Get an integration's logo on a background
+      description: Public; does not require an API key.
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/IntegrationId'
+      responses:
+        '200':
+          $ref: '#/components/responses/Logo'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /ready:
+    get:
+      tags: [Health]
+      operationId: getReadiness
+      summary: Readiness probe
+      description: Public; does not require an API key.
+      security: []
+      responses:
+        '200':
+          description: The server is up.
+          content:
+            text/html:
+              schema:
+                type: string
+                const: Healthy
+components:
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-KEY
+      description: |
+        API key from **Settings** → **API Keys** in the Coop UI. Identifies
+        your organization.
+  parameters:
+    IntegrationId:
+      name: integrationId
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    BadRequest:
+      description: Invalid request. See the error body.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthenticated:
+      description: The API key is missing or invalid.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    InternalError:
+      description: Unexpected server error.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Logo:
+      description: The logo image file.
+      headers:
+        Cache-Control:
+          schema:
+            type: string
+      content:
+        image/*:
+          schema:
+            type: string
+            contentEncoding: binary
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [errors]
+      properties:
+        errors:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/Error'
+    Error:
+      type: object
+      required: [status, type, title]
+      properties:
+        status:
+          type: integer
+          description: HTTP status code.
+        type:
+          type: array
+          items:
+            type: string
+          examples:
+            - ['/errors/invalid-user-input']
+        title:
+          type: string
+        detail:
+          type: string
+        pointer:
+          type: string
+          description: JSON pointer to the offending field.
+        requestId:
+          type: string
+          description: Correlation ID for tracing.
+    ItemIdentifier:
+      type: object
+      required: [id, typeId]
+      properties:
+        id:
+          type: string
+          description: Your identifier for the item.
+        typeId:
+          type: string
+          description: Coop item type ID.
+    SchemaVariant:
+      type: string
+      enum: [original, partial]
+    ItemSubmission:
+      description: |
+        An item, with its type given either as `typeId` (plus optional
+        `typeVersion` and `typeSchemaVariant`) or as a `type` selector.
+      oneOf:
+        - type: object
+          required: [id, data, typeId]
+          properties:
+            id:
+              type: string
+            typeId:
+              type: string
+            typeVersion:
+              type: string
+            typeSchemaVariant:
+              $ref: '#/components/schemas/SchemaVariant'
+            data:
+              $ref: '#/components/schemas/ItemData'
+        - type: object
+          required: [id, data, type]
+          properties:
+            id:
+              type: string
+            type:
+              type: object
+              required: [id]
+              properties:
+                id:
+                  type: string
+                version:
+                  type: string
+                schemaVariant:
+                  $ref: '#/components/schemas/SchemaVariant'
+            data:
+              $ref: '#/components/schemas/ItemData'
+    ItemData:
+      type: object
+      additionalProperties: true
+      description: |
+        Item payload. Must match the item type's schema. An `images` array of
+        URL strings triggers automated HMA image hashing.
+    ReportRequest:
+      type: object
+      required: [reporter, reportedAt, reportedItem]
+      properties:
+        reporter:
+          type: object
+          required: [kind, typeId, id]
+          properties:
+            kind:
+              type: string
+              enum: [user]
+            typeId:
+              type: string
+              description: Item type ID of the reporting user.
+            id:
+              type: string
+        reportedAt:
+          type: string
+          description: ISO 8601 timestamp.
+        reportedForReason:
+          type: object
+          properties:
+            policyId:
+              type: [string, 'null']
+            reason:
+              type: [string, 'null']
+            csam:
+              type: [boolean, 'null']
+              description: When `true`, the job is routed to the NCMEC queue.
+        reportedItem:
+          $ref: '#/components/schemas/ItemSubmission'
+        reportedItemThread:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemSubmission'
+        reportedItemsInThread:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemIdentifier'
+        additionalItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemSubmission'
+    AppealRequest:
+      type: object
+      required: [appealId, appealedBy, appealedAt, actionedItem, actionsTaken]
+      properties:
+        appealId:
+          type: string
+          description: Your ID for the appeal, returned in the appeal decision callback.
+        appealedBy:
+          $ref: '#/components/schemas/ItemIdentifier'
+        appealedAt:
+          type: string
+          description: ISO 8601 timestamp.
+        actionedItem:
+          $ref: '#/components/schemas/ItemSubmission'
+        actionsTaken:
+          type: array
+          description: IDs of the actions originally taken.
+          items:
+            type: string
+        appealReason:
+          type: string
+        violatingPolicies:
+          type: array
+          items:
+            type: object
+            required: [id]
+            properties:
+              id:
+                type: string
+        additionalItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemSubmission'
+    SubmitActionRequest:
+      type: object
+      required: [actionId, itemId, itemTypeId]
+      properties:
+        actionId:
+          type: string
+        itemId:
+          type: string
+        itemTypeId:
+          type: string
+        policyIds:
+          type: array
+          items:
+            type: string
+        reportedItems:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemIdentifier'
+        actorId:
+          type: string
+          description: ID of the Coop user taking the action.
+        parameters:
+          type: object
+          additionalProperties: true
+          description: |
+            Values for the action's parameters, validated against the
+            parameters returned by `GET /actions/`.
+        note:
+          type: string
+          maxLength: 5000
+          description: Sent to the callback as `actorNote`.
+    Penalty:
+      type: string
+      enum: [NONE, LOW, MEDIUM, HIGH, SEVERE]
+    Policy:
+      type: object
+      required:
+        - id
+        - name
+        - parentId
+        - policyText
+        - enforcementGuidelines
+        - policyType
+        - semanticVersion
+        - userStrikeCount
+        - applyUserStrikeCountConfigToChildren
+        - penalty
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        parentId:
+          type: [string, 'null']
+        policyText:
+          type: [string, 'null']
+        enforcementGuidelines:
+          type: [string, 'null']
+        policyType:
+          type: [string, 'null']
+          enum:
+            - HATE
+            - VIOLENCE
+            - HARRASSMENT
+            - SEXUAL_CONTENT
+            - SPAM
+            - DRUG_SALES
+            - WEAPON_SALES
+            - TERRORISM
+            - SEXUAL_EXPLOITATION
+            - SELF_HARM_AND_SUICIDE
+            - GROOMING
+            - PROFANITY
+            - PRIVACY
+            - FRAUD_AND_DECEPTION
+            - null
+        semanticVersion:
+          type: number
+        userStrikeCount:
+          type: number
+        applyUserStrikeCountConfigToChildren:
+          type: boolean
+        penalty:
+          $ref: '#/components/schemas/Penalty'
+    Action:
+      type: object
+      required:
+        - id
+        - name
+        - description
+        - actionType
+        - applyUserStrikes
+        - penalty
+        - itemTypeIds
+        - parameters
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: [string, 'null']
+        actionType:
+          type: string
+          enum:
+            - CUSTOM_ACTION
+            - ENQUEUE_TO_MRT
+            - ENQUEUE_TO_NCMEC
+            - ENQUEUE_AUTHOR_TO_MRT
+        applyUserStrikes:
+          type: boolean
+        penalty:
+          $ref: '#/components/schemas/Penalty'
+        itemTypeIds:
+          type: array
+          items:
+            type: string
+        parameters:
+          type: array
+          description: Parameter specs for custom actions; empty for other action types.
+          items:
+            type: object
+            additionalProperties: true
+    ItemType:
+      type: object
+      required:
+        - id
+        - kind
+        - name
+        - description
+        - schema
+        - schemaFieldRoles
+        - version
+        - schemaVariant
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+          enum: [CONTENT, THREAD, USER]
+        name:
+          type: string
+        description:
+          type: [string, 'null']
+        schema:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/Field'
+        schemaFieldRoles:
+          type: object
+          description: |
+            Maps a role (such as `displayName` or `createdAt`) to the name of
+            the schema field that fills it. Available roles depend on `kind`.
+          additionalProperties:
+            type: string
+        version:
+          type: string
+        schemaVariant:
+          $ref: '#/components/schemas/SchemaVariant'
+        isDefaultUserType:
+          type: boolean
+          description: Present only when `kind` is `USER`.
+    Field:
+      type: object
+      required: [name, type, required, container]
+      properties:
+        name:
+          type: string
+        type:
+          type: string
+          enum:
+            - USER_ID
+            - ID
+            - STRING
+            - BOOLEAN
+            - NUMBER
+            - AUDIO
+            - IMAGE
+            - VIDEO
+            - DATETIME
+            - GEOHASH
+            - RELATED_ITEM
+            - URL
+            - POLICY_ID
+            - IP_ADDRESS
+            - EMAIL_ADDRESS
+            - MEDIA
+            - ARRAY
+            - MAP
+        required:
+          type: boolean
+        container:
+          description: |
+            `null` for scalar fields. For `ARRAY` and `MAP` fields, describes
+            the type of the contained values.
+          type: [object, 'null']
+          additionalProperties: true

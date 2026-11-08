@@ -1,0 +1,4 @@
+extends: [spectral:oas]
+rules:
+  # Paths keep the trailing slash used by the route definitions and the prose docs.
+  path-keys-no-trailing-slash: off
