@@ -157,6 +157,9 @@ export async function runLeafCondition(
     Array.isArray(selectedValueOrValues)
       ? selectedValueOrValues
       : [selectedValueOrValues];
+  const signalContext = signal
+    ? await evaluationContext.getSignalContext(jsonParse(signal.id))
+    : undefined;
 
   // Now, transform the extracted content values by running them through the
   // signal. If the signal is null, we just treat it as the identity function
@@ -197,6 +200,7 @@ export async function runLeafCondition(
               ? ruleInput.itemType.name
               : undefined,
             args: signal.args,
+            ...(signalContext === undefined ? {} : { context: signalContext }),
             runtimeArgs: isFullSubmission(ruleInput)
               ? await getSignalRuntimeArgs(evaluationContext, ruleInput, signal)
               : undefined,

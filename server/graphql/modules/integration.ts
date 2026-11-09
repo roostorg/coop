@@ -384,6 +384,10 @@ const Mutation: GQLMutationResolvers = {
           params.input.credential,
           user.orgId,
         );
+      context.services.IntegrationContextSettingsService.invalidate(
+        user.orgId,
+        params.input.integrationId,
+      );
 
       return gqlSuccessResult(
         { config: newConfig as GQLIntegrationConfig },
