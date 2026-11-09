@@ -1,11 +1,14 @@
 import { uid } from 'uid';
 
-import { NcmecReporting } from '../../services/ncmecService/index.js';
+import {
+  filterDecisionsToUnreported,
+  NcmecReporting,
+} from '../../services/ncmecService/index.js';
 import createOrg from '../fixtureHelpers/createOrg.js';
 import { makeStubFetchHTTP } from '../fixtureHelpers/makeStubFetchHTTP.js';
 import { makeTransactionalTestWithFixture } from '../harness/transactionalTest.js';
 
-describe('NcmecReporting.getUsersWithNcmecDecision (integration)', () => {
+describe('NCMEC report coverage and attempt mode (integration)', () => {
   const testWithFixture = makeTransactionalTestWithFixture(async ({ deps }) => {
     const orgId = uid();
     const orgFixture = await createOrg(
@@ -24,7 +27,11 @@ describe('NcmecReporting.getUsersWithNcmecDecision (integration)', () => {
       deps.Tracer,
     );
     const userItemTypeId = orgFixture.defaultUserItemType.id;
-    const insertReport = async (userId: string, isTest: boolean | null) =>
+    const insertReport = async (
+      userId: string,
+      isTest: boolean | null,
+      jobId?: string,
+    ) =>
       deps.KyselyPg.insertInto('ncmec_reporting.ncmec_reports')
         .values({
           org_id: orgId,
@@ -43,38 +50,110 @@ describe('NcmecReporting.getUsersWithNcmecDecision (integration)', () => {
           additional_files: [],
           reported_messages: [],
           ...(isTest === null ? {} : { is_test: isTest }),
+          ...(jobId === undefined ? {} : { job_id: jobId }),
         })
         .execute();
-    return { orgId, ncmecReporting, insertReport };
+    return { orgId, ncmecReporting, insertReport, userItemTypeId };
   });
 
   testWithFixture(
-    'returns test and production reports, with the latest test report time',
-    async ({ ncmecReporting, insertReport, orgId }) => {
-      const [testUser, prodUser, legacyUser] = [uid(), uid(), uid()];
-      await insertReport(testUser, true);
-      await insertReport(prodUser, false);
+    'summarizes reports per user and matches linked reports by job id',
+    async ({ ncmecReporting, insertReport, orgId, userItemTypeId }) => {
+      const [unlinkedTestUser, linkedTestUser, prodUser, legacyUser] = [
+        uid(),
+        uid(),
+        uid(),
+        uid(),
+      ];
+      const linkedJobId = uid();
+      await insertReport(unlinkedTestUser, true);
+      await insertReport(linkedTestUser, true, linkedJobId);
+      await insertReport(prodUser, false, uid());
       await insertReport(legacyUser, null);
 
-      const rows = await ncmecReporting.getUsersWithNcmecDecision({
-        startDate: new Date(Date.now() - 60 * 60 * 1000),
-      });
-      const byUser = new Map(
-        rows.filter((r) => r.orgId === orgId).map((r) => [r.userId, r]),
-      );
+      const otherJobId = uid();
+      const { reportedJobIds, users } =
+        await ncmecReporting.getNcmecReportCoverage({
+          jobIds: [linkedJobId, otherJobId],
+          startDate: new Date(Date.now() - 60 * 60 * 1000),
+          orgId,
+        });
 
-      expect(byUser.get(testUser)).toMatchObject({
+      expect([...reportedJobIds]).toEqual([linkedJobId]);
+      const byUser = new Map(users.map((r) => [r.userId, r]));
+      expect(byUser.size).toBe(4);
+      expect(byUser.get(unlinkedTestUser)).toMatchObject({
+        userItemTypeId,
         hasProductionReport: false,
-        latestTestReportAt: expect.any(Date),
+        latestUnlinkedTestReportAt: expect.any(Date),
+      });
+      // A linked test report only covers its own decision, so it doesn't
+      // count toward the unlinked timestamp rule.
+      expect(byUser.get(linkedTestUser)).toMatchObject({
+        hasProductionReport: false,
+        latestUnlinkedTestReportAt: null,
       });
       expect(byUser.get(prodUser)).toMatchObject({
         hasProductionReport: true,
-        latestTestReportAt: null,
+        latestUnlinkedTestReportAt: null,
       });
+      // Rows from before is_test existed count as production.
       expect(byUser.get(legacyUser)).toMatchObject({
         hasProductionReport: true,
-        latestTestReportAt: null,
+        latestUnlinkedTestReportAt: null,
       });
+    },
+  );
+
+  testWithFixture(
+    "a test report for one decision doesn't cover another decision on the same user",
+    async ({ ncmecReporting, insertReport, orgId, userItemTypeId }) => {
+      const userId = uid();
+      const reportedJobId = uid();
+      const failedJobId = uid();
+      await insertReport(userId, true, reportedJobId);
+
+      const decisionFor = (jobId: string) => ({
+        jobId,
+        orgId,
+        userId,
+        userItemTypeId,
+        // Decided before the report was written.
+        decidedAt: new Date(Date.now() - 60_000),
+      });
+      const coverage = await ncmecReporting.getNcmecReportCoverage({
+        jobIds: [reportedJobId, failedJobId],
+        orgId,
+      });
+
+      expect(
+        filterDecisionsToUnreported(
+          [decisionFor(reportedJobId), decisionFor(failedJobId)],
+          coverage,
+        ).map((d) => d.jobId),
+      ).toEqual([failedJobId]);
+    },
+  );
+
+  testWithFixture(
+    'records the mode of the latest failed attempt',
+    async ({ deps, ncmecReporting, userItemTypeId }) => {
+      const jobId = uid();
+      expect(await ncmecReporting.getLatestAttemptIsTest(jobId)).toBeNull();
+
+      const recordError = async (isTest: boolean) =>
+        deps.NcmecService.insertOrUpdateNcmecReportError({
+          jobId,
+          userId: uid(),
+          userTypeId: userItemTypeId,
+          status: 'RETRYABLE_ERROR',
+          error: 'boom',
+          isTest,
+        });
+      await recordError(true);
+      expect(await ncmecReporting.getLatestAttemptIsTest(jobId)).toBe(true);
+      await recordError(false);
+      expect(await ncmecReporting.getLatestAttemptIsTest(jobId)).toBe(false);
     },
   );
 });

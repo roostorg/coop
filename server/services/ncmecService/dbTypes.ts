@@ -55,6 +55,9 @@ export type NcmecReportingServicePg = {
     // This value is undefined for the rows where we aren't sure if it's test or
     // not, before the column was added
     is_test?: boolean;
+    // MRT job id of the decision that produced this report. Null for reports
+    // written before the column was added.
+    job_id?: string | null;
   };
   'ncmec_reporting.ncmec_reports_errors': {
     job_id: string;
@@ -63,5 +66,8 @@ export type NcmecReportingServicePg = {
     status: 'RETRYABLE_ERROR' | 'PERMANENT_ERROR';
     retry_count: number;
     last_error: string;
+    // Whether the latest failed attempt ran against the NCMEC test endpoint.
+    // Null for rows written before the column was added.
+    is_test?: boolean | null;
   };
 };

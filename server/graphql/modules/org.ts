@@ -7,7 +7,11 @@ import {
   parseStoredParameters,
   validateActionParameterValues,
 } from '../../services/moderationConfigService/index.js';
-import { filterDecisionsToFailedSubmissions } from '../../services/ncmecService/index.js';
+import {
+  canRetryManually,
+  filterDecisionsToUnreported,
+  isNcmecTestMode,
+} from '../../services/ncmecService/index.js';
 import { UserPermission } from '../../services/userManagementService/index.js';
 import { __throw } from '../../utils/misc.js';
 import { isValidUrl } from '../../utils/url.js';
@@ -594,26 +598,29 @@ const Org: GQLOrgResolvers = {
       );
     }
 
-    // Pull all SUBMIT_NCMEC_REPORT decisions for the org, then subtract those
-    // that already produced a successful report. Whatever remains is "failed"
-    // (either retryable, permanently failed, or pending background retry).
-    const [decisions, successfulKeys] = await Promise.all([
-      context.services.ManualReviewToolService.getNcmecDecisionsForOrg({
+    // Pull the org's SUBMIT_NCMEC_REPORT decisions, then drop those a report
+    // covers. Whatever remains is "failed" (retryable, permanently failed, or
+    // pending background retry).
+    const decisions =
+      await context.services.ManualReviewToolService.getNcmecDecisionsForOrg({
         orgId: user.orgId,
-      }),
-      context.services.NcmecService.getSuccessfulSubmissionKeysForOrg(
-        user.orgId,
-      ),
-    ]);
-
-    const decisionsWithKey = decisions.map((d) => ({
-      decision: d,
-      userId: d.job_payload.payload.item.itemId,
-      userItemTypeId: d.job_payload.payload.item.itemTypeIdentifier.id,
-    }));
-    const failedDecisions = filterDecisionsToFailedSubmissions(
-      decisionsWithKey,
-      successfulKeys,
+      });
+    const coverage = await context.services.NcmecService.getNcmecReportCoverage(
+      {
+        orgId: user.orgId,
+        jobIds: decisions.map((d) => d.job_payload.id),
+      },
+    );
+    const failedDecisions = filterDecisionsToUnreported(
+      decisions.map((d) => ({
+        decision: d,
+        jobId: d.job_payload.id,
+        orgId: d.org_id,
+        userId: d.job_payload.payload.item.itemId,
+        userItemTypeId: d.job_payload.payload.item.itemTypeIdentifier.id,
+        decidedAt: d.created_at,
+      })),
+      coverage,
     );
 
     if (failedDecisions.length === 0) {
@@ -655,6 +662,16 @@ const Org: GQLOrgResolvers = {
         status,
         retryCount: errorRow?.retry_count ?? 0,
         lastError: errorRow?.last_error ?? null,
+        attemptMode:
+          errorRow?.is_test == null
+            ? null
+            : errorRow.is_test
+              ? ('TEST' as const)
+              : ('PRODUCTION' as const),
+        canRetryInCurrentMode: canRetryManually(
+          errorRow?.is_test,
+          isNcmecTestMode(),
+        ),
       };
     });
   },
