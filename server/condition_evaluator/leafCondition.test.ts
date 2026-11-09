@@ -49,6 +49,51 @@ describe('LeafCondition handling', () => {
     expect(result.outcome).toBe(ConditionCompletionOutcome.PASSED);
   });
 
+  test('does not load context when there are no values to score', async () => {
+    const getSignalContext = vi.fn(async () => undefined);
+    await runLeafCondition(
+      {
+        input: { type: 'CONTENT_FIELD', name: 'tags', contentTypeId: 'type' },
+        signal: {
+          id: jsonStringify({ type: SignalType.CUSTOM }),
+          subcategory: undefined,
+        },
+        comparator: 'EQUALS',
+        threshold: true,
+      } as unknown as LeafCondition,
+      {
+        input: {
+          itemId: 'item-1',
+          submissionId: 'submission-1',
+          data: { tags: [] },
+          itemType: {
+            id: 'type',
+            kind: 'CONTENT',
+            name: 'Post',
+            schema: [
+              {
+                name: 'tags',
+                type: 'ARRAY',
+                required: false,
+                container: {
+                  containerType: 'ARRAY',
+                  keyScalarType: null,
+                  valueScalarType: 'STRING',
+                },
+              },
+            ],
+            schemaFieldRoles: {},
+          },
+        },
+        org: { id: 'org-1' },
+        getSignalContext,
+        runSignal: vi.fn(),
+      } as unknown as RuleEvaluationContext,
+    );
+
+    expect(getSignalContext).not.toHaveBeenCalled();
+  });
+
   test('passes declared signal context to runSignal', async () => {
     const context = { truncated: false, item: { itemId: 'user-1' } };
     const runSignal = vi.fn(async (input: Record<string, unknown>) => {

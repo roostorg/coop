@@ -94,20 +94,21 @@ thread, or a section may time out.
 | `includeThread`   | `context.thread`, with `id`, `typeId`, and `messages`        |
 
 Each `SignalContextItem` contains `itemId`, `itemTypeId`, optional type
-metadata, normalized `data`, optional `createdAt`, and a creator identifier
-(`creator.id` and `creator.typeId`) only. `thread.messages` are the messages
-posted before the item, oldest first, and the thread has its own `truncated`
-flag. The context also has an optional `unavailable` list containing `item`,
+metadata, normalized `data`, optional `createdAt`, and, when the item has a
+creator, a `creator` with only its `id` and `typeId`. `thread.messages` are
+the messages posted in the 90 days before the item, oldest first, and the
+thread has its own `truncated` flag for when more messages exist in that
+window. The context also has an optional `unavailable` list containing `item`,
 `parent`, or `thread`. When the rule input is a full item, `context.item` is
 always included; `includeFullItem` loads it when the input is only an ID.
 
-Coop bounds threads only by message count: the default is 20 messages and the
-maximum is 100. Each requested section has a 3-second load timeout. A missing
-section is absent; a requested section that could not load is named in
-`unavailable`. Plugins are responsible for applying their own text and payload
-limits.
+Threads default to 20 messages and allow at most 100. Each requested section
+has a 3-second load timeout. A missing section is absent; a requested section
+that could not load is named in `unavailable`. Plugins are responsible for
+applying their own text and payload limits.
 
-Context is loaded once per rule-evaluation context and shared across signals.
+Context is loaded at most once per rule evaluation for each distinct set of
+needs, so signals asking for the same context share one load.
 User items are attached only by ID and type, never their data, and creator
 IDs are not expanded into user records. Context isn't loaded for an
 integration with `requiresConfig: true` that the organization hasn't

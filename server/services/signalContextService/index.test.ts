@@ -219,6 +219,28 @@ describe('SignalContextLoader', () => {
     expect(context.unavailable).toContain('parent');
   });
 
+  test('aborts the parent lookup when it times out', async () => {
+    const item = submission(
+      'child',
+      'CONTENT',
+      [field('parent', ScalarTypes.RELATED_ITEM)],
+      { parent: { id: 'parent', typeId: 'content-type' } },
+      { parentId: 'parent' },
+    );
+    let lookupSignal: AbortSignal | undefined;
+    const getItem = vi.fn(async (opts: { signal?: AbortSignal }) => {
+      lookupSignal = opts.signal;
+      return new Promise<never>(() => undefined);
+    });
+    const context = await factory(getItem, vi.fn(), { sectionTimeoutMs: 10 })({
+      orgId,
+      ruleInput: fullInput(item),
+    }).load({ includeParent: true });
+
+    expect(context.unavailable).toContain('parent');
+    expect(lookupSignal?.aborted).toBe(true);
+  });
+
   test('omits parent and thread without marking them unavailable when the item has no reference', async () => {
     const item = submission(
       'standalone',

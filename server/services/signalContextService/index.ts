@@ -45,7 +45,10 @@ export function makeSignalContextLoaderFactory(
       Promise<NonNullable<SignalEvaluationContext['thread']> | null>
     >();
 
-    const loadItemByIdentifier = async (identifier: ItemIdentifier) => {
+    const loadItemByIdentifier = async (
+      identifier: ItemIdentifier,
+      abortSignal: AbortSignal,
+    ) => {
       const key = `${identifier.typeId}:${identifier.id}`;
       const existing = itemByIdentifier.get(key);
       if (existing) return existing;
@@ -54,6 +57,7 @@ export function makeSignalContextLoaderFactory(
           orgId,
           itemIdentifier: identifier,
           latestSubmissionOnly: true,
+          signal: abortSignal,
         })
         .then((result) => result?.latestSubmission ?? null);
       itemByIdentifier.set(key, promise);
@@ -75,11 +79,11 @@ export function makeSignalContextLoaderFactory(
       if (!isFullRuleInput(ruleInput)) {
         if (normalized.includeFullItem) {
           const loaded = await withTimeout(
-            async () =>
-              loadItemByIdentifier({
-                id: ruleInput.itemId,
-                typeId: ruleInput.itemType.id,
-              }),
+            async (abortSignal) =>
+              loadItemByIdentifier(
+                { id: ruleInput.itemId, typeId: ruleInput.itemType.id },
+                abortSignal,
+              ),
             sectionTimeoutMs,
           );
           if (loaded) context.item = toContextItem(loaded);
@@ -110,7 +114,10 @@ export function makeSignalContextLoaderFactory(
       ) {
         sectionLoads.push(
           withTimeout(
-            async () => loadParent(submission, loadItemByIdentifier),
+            async (abortSignal) =>
+              loadParent(submission, async (identifier) =>
+                loadItemByIdentifier(identifier, abortSignal),
+              ),
             sectionTimeoutMs,
           ).then(
             (parent) => {
