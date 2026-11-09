@@ -51,7 +51,7 @@ _Only check items that apply to this PR; leave the rest unchecked._
   Did you fill in the Release notes section above?
 
 - [ ] **If this PR fixes a security vulnerability:**
-  Did you apply the `security` label, or ask a maintainer to? Don't describe the vulnerability here before its advisory is published.
+  Did you apply the `security-update` label, or ask a maintainer to? Don't describe the vulnerability here before its advisory is published.
 
 - [ ] **If you changed `db/src/scripts/**` and used `CREATE TABLE`, `ADD COLUMN`, or `ALTER COLUMN`:**
   Are as many columns marked `NOT NULL` as possible? If some columns can sometimes be null depending on other columns, are there `CHECK` constraints capturing those relationships, and are these also reflected using unions in the associated Kysely types?

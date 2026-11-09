@@ -1,8 +1,8 @@
 name: Label security PRs
 
-# Adds the `security` label to Dependabot PRs that fix a published advisory,
+# Adds the `security-update` label to Dependabot PRs that fix a published advisory,
 # so a release's security fixes can be listed with
-# `gh pr list --state merged --label security`.
+# `gh pr list --state merged --label security-update`.
 #
 # A PR counts as a security fix when one of its updated dependencies is
 # affected by a GitHub Advisory Database advisory at the old version and not at
@@ -36,7 +36,7 @@ jobs:
           REPO: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           UPDATED_DEPENDENCIES: ${{ steps.metadata.outputs.updated-dependencies-json }}
-          LABEL: security
+          LABEL: security-update
         run: |
           set -euo pipefail
 
