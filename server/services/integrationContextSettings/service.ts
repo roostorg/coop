@@ -3,13 +3,21 @@ import type { SignalContextNeeds } from '@roostorg/coop-types';
 import { type Dependencies } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
 import { getIntegrationRegistry } from '../integrationRegistry/index.js';
+import {
+  readOrgContextSettings,
+  resolveContextNeeds,
+  type OrgContextSettings,
+} from './settings.js';
 
-// Rule evaluation reads this on every condition; a short TTL keeps that off
+// Rule evaluation reads these on every condition; a short TTL keeps that off
 // Postgres. Saves on this instance invalidate immediately; other instances
 // converge within the TTL.
-const STATE_TTL_MS = 30_000;
+const SETTINGS_TTL_MS = 30_000;
 
-type OrgIntegrationState = Readonly<{ configured: boolean }>;
+type OrgIntegrationState = Readonly<{
+  configured: boolean;
+  settings: OrgContextSettings;
+}>;
 
 class IntegrationContextSettingsService {
   // Only derived state is cached, never the stored config (it holds API keys).
@@ -22,6 +30,13 @@ class IntegrationContextSettingsService {
     private readonly signalAuthService: Dependencies['SignalAuthService'],
   ) {}
 
+  async getOrgSettings(
+    orgId: string,
+    integrationId: string,
+  ): Promise<OrgContextSettings> {
+    return (await this.#getState(orgId, integrationId)).settings;
+  }
+
   async #getState(
     orgId: string,
     integrationId: string,
@@ -31,8 +46,11 @@ class IntegrationContextSettingsService {
     if (cached && cached.expiresAt > Date.now()) return cached.state;
     const state = this.signalAuthService
       .getByIntegrationId(integrationId, orgId)
-      .then((config) => ({ configured: config != null }));
-    this.#cache.set(key, { state, expiresAt: Date.now() + STATE_TTL_MS });
+      .then((config) => ({
+        configured: config != null,
+        settings: readOrgContextSettings(config),
+      }));
+    this.#cache.set(key, { state, expiresAt: Date.now() + SETTINGS_TTL_MS });
     state.catch(() => {
       if (this.#cache.get(key)?.state === state) this.#cache.delete(key);
     });
@@ -44,8 +62,9 @@ class IntegrationContextSettingsService {
   }
 
   /**
-   * The context to load for a signal. Nothing is loaded for an integration
-   * the org hasn't configured, since its signals can't run.
+   * The context to load for a signal: its own contextNeeds plus whatever the
+   * org enabled for the signal's integration. Nothing is loaded for an
+   * integration the org hasn't configured, since its signals can't run.
    */
   async getEffectiveContextNeeds(opts: {
     orgId: string;
@@ -55,13 +74,19 @@ class IntegrationContextSettingsService {
     }>;
   }): Promise<SignalContextNeeds | undefined> {
     const { orgId, signal } = opts;
-    if (signal.integration == null || signal.contextNeeds == null) {
-      return signal.contextNeeds;
-    }
+    if (signal.integration == null) return signal.contextNeeds;
     const manifest = getIntegrationRegistry().getManifest(signal.integration);
-    const { configured } = await this.#getState(orgId, signal.integration);
+    const options = manifest?.contextOptions;
+    if (options == null && signal.contextNeeds == null) return undefined;
+
+    const { configured, settings } = await this.#getState(
+      orgId,
+      signal.integration,
+    );
     if (!configured && manifest?.requiresConfig !== false) return undefined;
-    return signal.contextNeeds;
+    return options == null
+      ? signal.contextNeeds
+      : resolveContextNeeds(signal.contextNeeds, options, settings);
   }
 }
 

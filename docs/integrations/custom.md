@@ -134,5 +134,57 @@ See `SignalEvaluationContext` in `@roostorg/coop-types` for the full shape.
   context to your backend.
 - User items are passed by ID and type only, never their data.
 - No context is loaded for an integration the organization hasn't configured.
+- If Coop can't read an organization's context settings, it sends no context
+  rather than fall back to your defaults.
+
+## Org-configurable context (`contextOptions`)
+
+To let each organization choose whether your integration receives thread or
+parent context, declare `contextOptions` on the manifest as well. Coop adds an
+**Evaluation context** section to your integration's page with **Use
+integration default**, **Include**, or **Off** for each kind, plus a message
+count for threads.
+
+```ts
+const manifest: IntegrationManifest = {
+  // ...
+  contextOptions: {
+    thread: {
+      default: 'include',
+      defaultMaxMessages: 30,
+      maxMessagesLimit: 200,
+    },
+    parent: { default: 'off' },
+  },
+};
+```
+
+- Declare only the kinds your backend can use; the rest aren't shown.
+- `default` applies until the org changes it. `defaultMaxMessages` is the
+  count used until the org picks one, 20 if omitted, and orgs can't pick more
+  than `maxMessagesLimit`.
+- The org's choice adds to each signal's own `contextNeeds`. It can give a
+  signal more context but never removes what the signal declares, and Coop
+  passes the result as `input.context`.
+- The org's choices are stored with the integration config but aren't
+  returned by `getCredential()`.
+- If your backend needs a choice about how to use the context, such as
+  flattening messages to text or sending structured JSON, add a `select`
+  configuration field:
+
+```ts
+configurationFields: [
+  {
+    key: 'contextFormat',
+    label: 'Context format',
+    required: false,
+    inputType: 'select',
+    options: [
+      { value: 'flatten', label: 'Flatten to text' },
+      { value: 'structured', label: 'Structured JSON' },
+    ],
+  },
+],
+```
 
 Evaluation context requires `@roostorg/coop-types >= 3.0.0`.
