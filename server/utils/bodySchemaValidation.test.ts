@@ -126,6 +126,16 @@ describe('createBodySchemaValidator', () => {
       'must NOT have more than 2 characters',
     ],
     [
+      v.pipe(v.string(), v.minCodePoints(2)),
+      '😀',
+      'must NOT have fewer than 2 characters',
+    ],
+    [
+      v.pipe(v.string(), v.maxCodePoints(2)),
+      '😀e\u0301',
+      'must NOT have more than 2 characters',
+    ],
+    [
       v.pipe(v.array(v.string()), v.minLength(1)),
       [],
       'must NOT have fewer than 1 items',
