@@ -1,9 +1,18 @@
+import { makeExecutableSchema } from '@graphql-tools/schema';
+import { graphql } from 'graphql/index.js';
 import { vi } from 'vitest';
 
 import { UserPermission } from '../../services/userManagementService/index.js';
+import createOrg from '../../test/fixtureHelpers/createOrg.js';
+import createUser from '../../test/fixtureHelpers/createUser.js';
+import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
+import { disableConsoleLogging } from '../../test/setupMockedServer.js';
+import { type GQLCreateApiKeySuccessResponse } from '../generated.js';
 import {
   Mutation as MutationResolvers,
   Query as QueryResolvers,
+  resolvers,
+  typeDefs,
 } from './apiKey.js';
 
 const Query = QueryResolvers as {
@@ -17,7 +26,7 @@ const Query = QueryResolvers as {
 const Mutation = MutationResolvers as {
   rotateApiKey: (
     parent: unknown,
-    args: { input: { name: string; description?: string | null } },
+    args: { input: { id: string } },
     ctx: unknown,
   ) => Promise<unknown>;
   rotateWebhookSigningKey: (
@@ -28,6 +37,14 @@ const Mutation = MutationResolvers as {
 };
 
 describe('apiKey resolvers', () => {
+  const schema = makeExecutableSchema({
+    typeDefs: [
+      typeDefs,
+      `interface Error { title: String! status: Int! type: [String!]! pointer: String detail: String requestId: String }`,
+    ],
+    resolvers,
+  });
+
   function makeCtx(permissions: readonly UserPermission[]) {
     const getActiveApiKeyForOrg = vi.fn(async () => ({ key: 'secret' }));
     const rotateApiKey = vi.fn();
@@ -50,6 +67,412 @@ describe('apiKey resolvers', () => {
       rotateWebhookSigningKey,
     };
   }
+
+  describe.each(['createApiKey', 'updateApiKey'] as const)(
+    '%s validation',
+    (operation) => {
+      const source =
+        operation === 'createApiKey'
+          ? 'mutation Save($input: CreateApiKeyInput!) { createApiKey(input: $input) { ... on CreateApiKeySuccessResponse { record { name description } } } }'
+          : 'mutation Save($input: UpdateApiKeyInput!) { updateApiKey(input: $input) { ... on UpdateApiKeySuccessResponse { record { name description } } } }';
+
+      async function save(name: string, description?: string | null) {
+        const { ctx } = makeCtx([UserPermission.MANAGE_ORG]);
+        const record = {
+          id: 'key-1',
+          name,
+          description,
+          isActive: true,
+          createdAt: new Date(),
+          lastUsedAt: null,
+          createdBy: 'user-1',
+        };
+        const service = vi.fn(async () =>
+          operation === 'createApiKey' ? { apiKey: 'secret', record } : record,
+        );
+        const result = await graphql({
+          schema,
+          source,
+          variableValues: {
+            input: {
+              ...(operation === 'updateApiKey' ? { id: 'key-1' } : {}),
+              name,
+              description,
+            },
+          },
+          contextValue: {
+            ...ctx,
+            services: { ApiKeyService: { [operation]: service } },
+          },
+        });
+        return { result, service };
+      }
+
+      it.each([
+        ['', null, 'API key name must not be empty'],
+        [' \t\n ', null, 'API key name must not be empty'],
+        ['n'.repeat(256), null, 'API key name must be at most 255 characters'],
+        [
+          'Reports',
+          'd'.repeat(2001),
+          'API key description must be at most 2000 characters',
+        ],
+      ] as const)(
+        'rejects invalid metadata (%#)',
+        async (name, description, message) => {
+          const { result, service } = await save(name, description);
+          expect(result.errors?.[0]).toMatchObject({
+            message,
+            extensions: { code: 'BAD_USER_INPUT' },
+          });
+          expect(service).not.toHaveBeenCalled();
+        },
+      );
+
+      it.each([
+        [' Reports ', ' Ingestion ', 'Reports', 'Ingestion'],
+        ['Reports', ' \t ', 'Reports', null],
+        ['Reports', null, 'Reports', null],
+        ['Reports', undefined, 'Reports', null],
+        [
+          ` ${'n'.repeat(255)} `,
+          ` ${'d'.repeat(2000)} `,
+          'n'.repeat(255),
+          'd'.repeat(2000),
+        ],
+      ] as const)(
+        'normalizes valid metadata (%#)',
+        async (name, description, expectedName, expectedDescription) => {
+          const { result, service } = await save(name, description);
+          expect(result.errors).toBeUndefined();
+          expect(service).toHaveBeenCalledWith(
+            ...(operation === 'createApiKey'
+              ? ['org-1', expectedName, expectedDescription, 'user-1']
+              : ['key-1', 'org-1', expectedName, expectedDescription]),
+          );
+        },
+      );
+    },
+  );
+
+  describe('mutation responses', () => {
+    const record = {
+      id: 'key-1',
+      name: 'Reports',
+      description: null,
+      isActive: true,
+      createdAt: new Date(),
+      lastUsedAt: null,
+      createdBy: 'user-1',
+    };
+
+    it.each([
+      ['createApiKey', '(input: { name: "Reports" })'],
+      ['updateApiKey', '(input: { id: "key-1", name: "Reports" })'],
+      ['deleteApiKey', '(id: "key-1")'],
+      ['rotateApiKey', '(input: { id: "key-1" })'],
+    ] as const)(
+      'returns a sanitized error payload when %s fails',
+      async (operation, args) => {
+        const { ctx } = makeCtx([UserPermission.MANAGE_ORG]);
+        const restoreLogging = disableConsoleLogging();
+        try {
+          const result = await graphql({
+            schema,
+            source: `mutation { ${operation}${args} { ... on Error { status detail } } }`,
+            contextValue: {
+              ...ctx,
+              services: {
+                ApiKeyService: {
+                  [operation]: vi.fn(async () => {
+                    throw new Error('private database details');
+                  }),
+                },
+              },
+            },
+          });
+          expect(result.errors).toBeUndefined();
+          expect(result.data?.[operation]).toEqual({
+            status: 500,
+            detail:
+              operation === 'rotateApiKey'
+                ? 'An error occurred while rotating the API key'
+                : 'An error occurred while managing the API key',
+          });
+        } finally {
+          restoreLogging();
+        }
+      },
+    );
+
+    it.each([
+      [
+        'createApiKey',
+        '(input: { name: "Reports" })',
+        'CreateApiKeySuccessResponse',
+        { apiKey: 'secret', record },
+      ],
+      [
+        'updateApiKey',
+        '(input: { id: "key-1", name: "Reports" })',
+        'UpdateApiKeySuccessResponse',
+        record,
+      ],
+      ['deleteApiKey', '(id: "key-1")', 'DeleteApiKeySuccessResponse', true],
+      [
+        'rotateApiKey',
+        '(input: { id: "key-1" })',
+        'RotateApiKeySuccessResponse',
+        { apiKey: 'secret', record },
+      ],
+    ] as const)(
+      'returns a success payload for %s',
+      async (operation, args, successType, value) => {
+        const { ctx } = makeCtx([UserPermission.MANAGE_ORG]);
+        const result = await graphql({
+          schema,
+          source: `mutation { ${operation}${args} { __typename ... on ${successType} { ${operation === 'deleteApiKey' ? 'id' : 'record { id }'} } } }`,
+          contextValue: {
+            ...ctx,
+            services: {
+              ApiKeyService: { [operation]: vi.fn(async () => value) },
+            },
+          },
+        });
+        expect(result.errors).toBeUndefined();
+        expect(result.data?.[operation]).toEqual({
+          __typename: successType,
+          ...(operation === 'deleteApiKey'
+            ? { id: 'key-1' }
+            : { record: { id: 'key-1' } }),
+        });
+      },
+    );
+
+    it.each([
+      ['updateApiKey', '(input: { id: "key-1", name: "Reports" })', null],
+      ['deleteApiKey', '(id: "key-1")', false],
+      ['rotateApiKey', '(input: { id: "key-1" })', null],
+    ] as const)(
+      'returns a not-found error payload for %s',
+      async (operation, args, value) => {
+        const { ctx } = makeCtx([UserPermission.MANAGE_ORG]);
+        const result = await graphql({
+          schema,
+          source: `mutation { ${operation}${args} { __typename ... on Error { status type detail } } }`,
+          contextValue: {
+            ...ctx,
+            services: {
+              ApiKeyService: { [operation]: vi.fn(async () => value) },
+            },
+          },
+        });
+        expect(result.errors).toBeUndefined();
+        expect(result.data?.[operation]).toEqual({
+          __typename:
+            operation === 'rotateApiKey'
+              ? 'RotateApiKeyError'
+              : 'ApiKeyMutationError',
+          status: 404,
+          type: ['/errors/not-found'],
+          detail: 'API key not found',
+        });
+      },
+    );
+  });
+
+  describe('multiple-key management', () => {
+    const testWithOrg = makeTransactionalTestWithFixture(async ({ deps }) => {
+      const { org, apiKey } = await createOrg(deps);
+      const { user } = await createUser(deps.KyselyPg, org.id);
+      const execute = async (
+        source: string,
+        variableValues?: Record<string, unknown>,
+      ) =>
+        graphql({
+          schema,
+          source,
+          variableValues,
+          contextValue: { getUser: () => user, services: deps },
+        });
+      const { org: otherOrg } = await createOrg(deps);
+      const foreignKey = await deps.ApiKeyService.createApiKey(
+        otherOrg.id,
+        'Foreign key',
+        null,
+        null,
+      );
+      return { org, apiKey, user, foreignKey, execute };
+    });
+
+    const operations = [
+      '{ apiKeys { id name } }',
+      'mutation { createApiKey(input: { name: "Reports" }) { __typename } }',
+      'mutation { deleteApiKey(id: "key-2") { __typename } }',
+      'mutation { updateApiKey(input: { id: "key-2", name: "Renamed" }) { __typename } }',
+    ];
+
+    it.each(operations)('requires an administrator for %s', async (source) => {
+      const { ctx } = makeCtx([UserPermission.VIEW_MRT]);
+      const forbidden = await graphql({ schema, source, contextValue: ctx });
+      expect(forbidden.errors?.[0].message).toBe(
+        'User does not have permission to manage API keys',
+      );
+      const unauthenticated = await graphql({
+        schema,
+        source,
+        contextValue: { ...ctx, getUser: () => null },
+      });
+      expect(unauthenticated.errors?.[0].message).toBe(
+        'Authenticated user required',
+      );
+    });
+
+    testWithOrg(
+      'creates, edits, and deletes only keys in the authenticated organization',
+      async ({ deps, execute, org, apiKey, user, foreignKey }) => {
+        const created = await execute(`mutation {
+            createApiKey(input: { name: "Reports", description: "Report ingestion" }) {
+              ... on CreateApiKeySuccessResponse {
+                apiKey
+                record { id name description isActive createdAt lastUsedAt createdBy }
+              }
+            }
+          }`);
+        expect(created.errors).toBeUndefined();
+        const { apiKey: secret, record } = created.data!
+          .createApiKey as GQLCreateApiKeySuccessResponse;
+        expect(record).toEqual({
+          id: expect.any(String),
+          name: 'Reports',
+          description: 'Report ingestion',
+          isActive: true,
+          createdAt: expect.any(String),
+          lastUsedAt: null,
+          createdBy: user.id,
+        });
+        expect(await deps.ApiKeyService.validateApiKey(secret)).toBe(org.id);
+
+        const listed = await execute(
+          '{ apiKeys { id name description isActive createdAt lastUsedAt createdBy } }',
+        );
+        expect(listed.errors).toBeUndefined();
+        expect(listed.data!.apiKeys).toHaveLength(2);
+        expect(listed.data!.apiKeys).toEqual(
+          expect.arrayContaining([
+            { ...record, lastUsedAt: expect.any(String) },
+          ]),
+        );
+        expect(listed.data!.apiKeys).not.toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ id: foreignKey.record.id }),
+          ]),
+        );
+
+        const update = `mutation Update($id: ID!) {
+          updateApiKey(input: { id: $id, name: "Renamed reports", description: null }) {
+            ... on UpdateApiKeySuccessResponse {
+              record { id name description isActive createdAt lastUsedAt createdBy }
+            }
+            ... on ApiKeyMutationError { __typename status }
+          }
+        }`;
+        const edited = await execute(update, { id: record.id });
+        expect(edited.errors).toBeUndefined();
+        expect(edited.data!.updateApiKey).toEqual({
+          record: {
+            ...record,
+            name: 'Renamed reports',
+            description: null,
+            lastUsedAt: expect.any(String),
+          },
+        });
+        expect(await deps.ApiKeyService.getOrgIdFromActivatedKey(secret)).toBe(
+          org.id,
+        );
+        const foreignEdit = await execute(update, { id: foreignKey.record.id });
+        expect(foreignEdit.errors).toBeUndefined();
+        expect(foreignEdit.data!.updateApiKey).toEqual({
+          __typename: 'ApiKeyMutationError',
+          status: 404,
+        });
+
+        const foreignDeletion = await execute(
+          'mutation Delete($id: ID!) { deleteApiKey(id: $id) { __typename ... on DeleteApiKeySuccessResponse { id } ... on ApiKeyMutationError { status } } }',
+          { id: foreignKey.record.id },
+        );
+        expect(foreignDeletion.errors).toBeUndefined();
+        expect(foreignDeletion.data!.deleteApiKey).toEqual({
+          __typename: 'ApiKeyMutationError',
+          status: 404,
+        });
+        expect(await deps.ApiKeyService.validateApiKey(foreignKey.apiKey)).toBe(
+          foreignKey.record.orgId,
+        );
+
+        const deleted = await execute(
+          'mutation Delete($id: ID!) { deleteApiKey(id: $id) { __typename ... on DeleteApiKeySuccessResponse { id } ... on ApiKeyMutationError { status } } }',
+          { id: record.id },
+        );
+        expect(deleted.errors).toBeUndefined();
+        expect(deleted.data!.deleteApiKey).toEqual({
+          __typename: 'DeleteApiKeySuccessResponse',
+          id: record.id,
+        });
+        expect(await deps.ApiKeyService.validateApiKey(secret)).toBeNull();
+        expect(await deps.ApiKeyService.validateApiKey(apiKey)).toBe(org.id);
+
+        const stored = await deps.KyselyPg.selectFrom('public.api_keys')
+          .select('id')
+          .where('id', '=', record.id)
+          .executeTakeFirst();
+        expect(stored).toBeUndefined();
+        const deletedAgain = await execute(
+          'mutation Delete($id: ID!) { deleteApiKey(id: $id) { __typename ... on DeleteApiKeySuccessResponse { id } ... on ApiKeyMutationError { status } } }',
+          { id: record.id },
+        );
+        expect(deletedAgain.errors).toBeUndefined();
+        expect(deletedAgain.data!.deleteApiKey).toEqual({
+          __typename: 'ApiKeyMutationError',
+          status: 404,
+        });
+        const hiddenHash = await execute('{ apiKeys { keyHash } }');
+        expect(hiddenHash.errors?.[0].message).toContain(
+          'Cannot query field "keyHash"',
+        );
+      },
+    );
+
+    testWithOrg(
+      'excludes inactive database keys from management and authentication',
+      async ({ deps, org, execute }) => {
+        const { apiKey, record } = await deps.ApiKeyService.createApiKey(
+          org.id,
+          'Inactive key',
+          null,
+          null,
+        );
+        await deps.KyselyPg.updateTable('public.api_keys')
+          .set({ is_active: false })
+          .where('id', '=', record.id)
+          .execute();
+
+        const listed = await execute('{ apiKeys { id } }');
+        expect(listed.errors).toBeUndefined();
+        expect(listed.data!.apiKeys).not.toContainEqual({ id: record.id });
+        const edited = await execute(
+          'mutation Edit($id: ID!) { updateApiKey(input: { id: $id, name: "Renamed" }) { ... on ApiKeyMutationError { __typename status } } }',
+          { id: record.id },
+        );
+        expect(edited.errors).toBeUndefined();
+        expect(edited.data!.updateApiKey).toEqual({
+          __typename: 'ApiKeyMutationError',
+          status: 404,
+        });
+        expect(await deps.ApiKeyService.validateApiKey(apiKey)).toBeNull();
+      },
+    );
+  });
 
   describe('Query.apiKey', () => {
     it('throws unauthenticatedError when caller is not authenticated', async () => {
@@ -89,7 +512,7 @@ describe('apiKey resolvers', () => {
       await expect(
         Mutation.rotateApiKey(
           {},
-          { input: { name: 'k', description: null } },
+          { input: { id: 'key-2' } },
           unauthenticatedCtx,
         ),
       ).rejects.toThrow('Authenticated user required');
@@ -99,11 +522,7 @@ describe('apiKey resolvers', () => {
     it('throws forbiddenError when caller lacks MANAGE_ORG', async () => {
       const { ctx, rotateApiKey } = makeCtx([UserPermission.VIEW_MRT]);
       await expect(
-        Mutation.rotateApiKey(
-          {},
-          { input: { name: 'k', description: null } },
-          ctx,
-        ),
+        Mutation.rotateApiKey({}, { input: { id: 'key-2' } }, ctx),
       ).rejects.toThrow('User does not have permission to rotate the API key');
       expect(rotateApiKey).not.toHaveBeenCalled();
     });
