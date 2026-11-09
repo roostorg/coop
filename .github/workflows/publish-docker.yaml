@@ -194,7 +194,7 @@ jobs:
         # Trivy doesn't list the Node.js runtime, so add it from the node base
         # image's NODE_VERSION.
         run: |
-          trivy image --quiet --platform linux/amd64 --format cyclonedx --output sbom.json "$IMAGE"
+          "$RUNNER_TEMP/trivy-bin/trivy" image --quiet --platform linux/amd64 --format cyclonedx --output sbom.json "$IMAGE"
           NODE_VERSION=$(docker buildx imagetools inspect "$IMAGE" --format '{{json .Image}}' | jq -r '.["linux/amd64"].config.Env[] | select(startswith("NODE_VERSION=")) | ltrimstr("NODE_VERSION=")')
           test -n "$NODE_VERSION"
           jq --arg v "$NODE_VERSION" '.components += [{"bom-ref": "pkg:generic/node@\($v)", type: "application", name: "node", version: $v, purl: "pkg:generic/node@\($v)", cpe: "cpe:2.3:a:nodejs:node.js:\($v):*:*:*:*:*:*:*"}]' sbom.json > "$SBOM"
@@ -264,7 +264,7 @@ jobs:
         env:
           IMAGE: ${{ env.REGISTRY }}/${{ github.repository_owner }}/coop-client@${{ steps.build.outputs.digest }}
           SBOM: coop-client-${{ github.event.release.tag_name }}.cdx.json
-        run: trivy image --quiet --platform linux/amd64 --format cyclonedx --output "$SBOM" "$IMAGE"
+        run: '"$RUNNER_TEMP/trivy-bin/trivy" image --quiet --platform linux/amd64 --format cyclonedx --output "$SBOM" "$IMAGE"'
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: github.event_name == 'release'
@@ -335,7 +335,7 @@ jobs:
         # Trivy doesn't list the Node.js runtime, so add it from the node base
         # image's NODE_VERSION.
         run: |
-          trivy image --quiet --platform linux/amd64 --format cyclonedx --output sbom.json "$IMAGE"
+          "$RUNNER_TEMP/trivy-bin/trivy" image --quiet --platform linux/amd64 --format cyclonedx --output sbom.json "$IMAGE"
           NODE_VERSION=$(docker buildx imagetools inspect "$IMAGE" --format '{{json .Image}}' | jq -r '.["linux/amd64"].config.Env[] | select(startswith("NODE_VERSION=")) | ltrimstr("NODE_VERSION=")')
           test -n "$NODE_VERSION"
           jq --arg v "$NODE_VERSION" '.components += [{"bom-ref": "pkg:generic/node@\($v)", type: "application", name: "node", version: $v, purl: "pkg:generic/node@\($v)", cpe: "cpe:2.3:a:nodejs:node.js:\($v):*:*:*:*:*:*:*"}]' sbom.json > "$SBOM"
