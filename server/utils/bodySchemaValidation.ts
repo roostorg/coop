@@ -265,8 +265,10 @@ function formatIssue(issue: GenericIssue, schema: ErrorSchema): string {
     case 'literal':
       return 'must be equal to one of the allowed values';
     case 'min_length':
-    case 'max_length': {
-      const comparison = issue.type === 'min_length' ? 'fewer' : 'more';
+    case 'max_length':
+    case 'min_code_points':
+    case 'max_code_points': {
+      const comparison = issue.type.startsWith('min_') ? 'fewer' : 'more';
       const unit = Array.isArray(issue.input) ? 'items' : 'characters';
       return `must NOT have ${comparison} than ${String(issue.requirement)} ${unit}`;
     }

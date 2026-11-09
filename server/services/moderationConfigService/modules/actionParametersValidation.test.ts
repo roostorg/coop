@@ -25,6 +25,37 @@ describe('validateActionParameters', () => {
     expect(params[0]?.type).toBe('STRING');
   });
 
+  it.each([
+    ['value', 200],
+    ['label', 200],
+    ['displayName', 200],
+    ['description', 2000],
+  ] as const)('counts code points for %s limits', (field, limit) => {
+    const parameter = {
+      name: 'reason',
+      displayName: 'Reason',
+      type: 'SELECT',
+      required: false,
+      options: [{ value: 'spam', label: 'Spam' }],
+    };
+    const withText = (text: string) => [
+      field === 'value' || field === 'label'
+        ? {
+            ...parameter,
+            options: [{ ...parameter.options[0], [field]: text }],
+          }
+        : { ...parameter, [field]: text },
+    ];
+    const atLimit = withText(`${'a'.repeat(limit - 3)}😀e\u0301`);
+
+    expect(validateActionParameters(atLimit)).toEqual(atLimit);
+    expect(() =>
+      validateActionParameters(
+        withText(`${'a'.repeat(limit - 3)}😀e\u0301\u0301`),
+      ),
+    ).toThrow(`must NOT have more than ${limit} characters`);
+  });
+
   it('accepts NUMBER with min/max and default in range', () => {
     expect(() =>
       validateActionParameters([

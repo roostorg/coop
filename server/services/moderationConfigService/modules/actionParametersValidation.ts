@@ -47,8 +47,8 @@ export type RawActionParameterInput = Readonly<Record<string, unknown>>;
 const PARAMETER_NAME_PATTERN = /^[a-zA-Z0-9_.\-]+$/;
 
 const optionSchema = v.strictObject({
-  value: v.pipe(v.string(), v.minLength(1), v.maxLength(200)),
-  label: v.pipe(v.string(), v.minLength(1), v.maxLength(200)),
+  value: v.pipe(v.string(), v.minCodePoints(1), v.maxCodePoints(200)),
+  label: v.pipe(v.string(), v.minCodePoints(1), v.maxCodePoints(200)),
 });
 
 // Structural shape only. Per-type rules (options required for SELECT, default
@@ -61,8 +61,8 @@ const parameterSchema = v.strictObject({
     v.maxLength(64),
     v.regex(PARAMETER_NAME_PATTERN),
   ),
-  displayName: v.pipe(v.string(), v.minLength(1), v.maxLength(200)),
-  description: v.optional(v.pipe(v.string(), v.maxLength(2000))),
+  displayName: v.pipe(v.string(), v.minCodePoints(1), v.maxCodePoints(200)),
+  description: v.optional(v.pipe(v.string(), v.maxCodePoints(2000))),
   type: v.picklist(ACTION_PARAMETER_TYPES),
   required: v.boolean(),
   options: v.optional(
