@@ -201,6 +201,61 @@ describe('SignalContextLoader', () => {
     expect(context.thread?.messages[0].itemId).toBe('message-1');
   });
 
+  test('loads the latest messages for a THREAD item, which is older than its messages', async () => {
+    const threadCreatedAt = new Date(Date.now() - 1000 * 60 * 60);
+    const thread = submission(
+      'thread-1',
+      'THREAD',
+      [field('createdAt', ScalarTypes.DATETIME)],
+      { createdAt: threadCreatedAt.toISOString() },
+      { createdAt: 'createdAt' },
+    );
+    const postedAt = (minutes: number) =>
+      new Date(threadCreatedAt.getTime() + minutes * 60_000);
+    const stored = [
+      { item: submission('m1'), createdAt: postedAt(1) },
+      { item: submission('m2'), createdAt: postedAt(2) },
+    ];
+    // Applies the time window the way storage does.
+    const getThread = vi.fn(async function* (opts: {
+      newestReturnedSubmissionDate?: Date;
+      oldestReturnedSubmissionDate?: Date;
+    }) {
+      const newest = opts.newestReturnedSubmissionDate ?? new Date();
+      const oldest = opts.oldestReturnedSubmissionDate ?? new Date(0);
+      for (const { item, createdAt } of [...stored].reverse()) {
+        if (createdAt <= newest && createdAt >= oldest)
+          yield { latestSubmission: item };
+      }
+    });
+    const context = await factory(
+      vi.fn(),
+      getThread,
+    )({
+      orgId,
+      ruleInput: fullInput(thread),
+    }).load({ includeThread: true });
+
+    expect(context.thread?.messages.map((it) => it.itemId)).toEqual([
+      'm1',
+      'm2',
+    ]);
+  });
+
+  test('reports the requested sections when loading context fails', async () => {
+    const valid = submission('thread-1', 'THREAD');
+    const item = {
+      ...valid,
+      itemType: { ...valid.itemType, schemaFieldRoles: undefined },
+    };
+    const context = await factory()({
+      orgId,
+      ruleInput: fullInput(item),
+    }).load({ includeParent: true, includeThread: true });
+
+    expect(context).toEqual({ unavailable: ['item', 'parent', 'thread'] });
+  });
+
   test('loads parent and reports a missing parent', async () => {
     const item = submission(
       'child',

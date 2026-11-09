@@ -175,9 +175,16 @@ export function makeSignalContextLoaderFactory(
         const key = jsonStringify(normalizeNeeds(needs));
         const existing = memoized.get(key);
         if (existing) return existing;
-        const promise = load(needs).catch(() => ({
-          unavailable: ['item'] as const,
-        }));
+        const promise = load(needs).catch(() => {
+          const { includeParent, includeThread } = normalizeNeeds(needs);
+          return {
+            unavailable: [
+              'item' as const,
+              ...(includeParent ? ['parent' as const] : []),
+              ...(includeThread ? ['thread' as const] : []),
+            ],
+          };
+        });
         memoized.set(key, promise);
         return promise;
       },
@@ -250,9 +257,13 @@ async function loadThread(
   }
   if (!threadId) return null;
 
-  // Rules can run long after the item was posted (reports, appeals, routing),
-  // so the thread ends at the item rather than at the time of evaluation.
-  const itemTime = getItemTime(submission);
+  // Rules can run long after a message was posted (reports, appeals, routing),
+  // so a message's thread ends at the message. A THREAD item predates all of
+  // its messages, so its thread ends at the time of evaluation.
+  const threadEnd =
+    submission.itemType.kind === 'THREAD'
+      ? new Date()
+      : getItemTime(submission);
   const messages: SignalContextItem[] = [];
   for await (const result of service.getThreadSubmissionsByTime({
     orgId,
@@ -261,11 +272,11 @@ async function loadThread(
     limit: maxMessages + 2,
     numParentLevels: 0,
     latestSubmissionsOnly: true,
-    ...(itemTime
+    ...(threadEnd
       ? {
-          newestReturnedSubmissionDate: itemTime,
+          newestReturnedSubmissionDate: threadEnd,
           oldestReturnedSubmissionDate: new Date(
-            itemTime.getTime() - THREAD_LOOKBACK_MS,
+            threadEnd.getTime() - THREAD_LOOKBACK_MS,
           ),
         }
       : {}),
