@@ -218,6 +218,51 @@ describe('zentropiUtils', () => {
     });
   });
 
+  describe('model selection', () => {
+    async function requestBodyFor(model: ZentropiLabelerVersion['model']) {
+      const mockFetchHTTP = vi.fn().mockResolvedValue({
+        ok: true,
+        body: { label: 0, confidence: 0.9 },
+      }) as unknown as FetchHTTP;
+
+      await runZentropiLabelerImpl(
+        makeCredentialGetter('test-api-key', [
+          { id: 'lv_abc123', label: 'Saved version', model },
+        ]),
+        makeInput(),
+        async (params) => getZentropiScores(mockFetchHTTP, params),
+      );
+
+      return vi.mocked(mockFetchHTTP).mock.calls[0][0].body;
+    }
+
+    it.each([
+      ['COPE_LATEST', 'cope-latest'],
+      ['COPE_B_A4B', 'cope-b-a4b'],
+      ['COPE_B_S1', 'cope-b-s1'],
+    ] as const)('sends %s as model %j', async (model, apiModelName) => {
+      expect(await requestBodyFor(model)).toBe(
+        jsonStringify({
+          content_text: 'test content',
+          labeler_version_id: 'lv_abc123',
+          model: apiModelName,
+        }),
+      );
+    });
+
+    it.each([undefined, null])(
+      'omits model when the saved version has model %j',
+      async (model) => {
+        expect(await requestBodyFor(model)).toBe(
+          jsonStringify({
+            content_text: 'test content',
+            labeler_version_id: 'lv_abc123',
+          }),
+        );
+      },
+    );
+  });
+
   describe('version-only configurations', () => {
     it.each([undefined, null, '', '   '])(
       'runs the saved version and omits labeler_id when it is %j',
@@ -396,6 +441,27 @@ describe('zentropiUtils', () => {
           isCoopErrorOfType(e, 'SignalPermanentError') &&
           e.detail ===
             'Value error, Exactly one of labeler_id or criteria_text must be provided',
+      );
+    });
+
+    it('returns SignalPermanentError with the API message for 400', async () => {
+      const mockFetchHTTP = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 400,
+        body: { detail: 'Model cope-b-s1 not configured' },
+      }) as unknown as FetchHTTP;
+
+      await expect(
+        getZentropiScores(mockFetchHTTP, {
+          text: 'test',
+          apiKey: 'key',
+          labelerVersionId: 'lv_123',
+          model: 'COPE_B_S1',
+        }),
+      ).rejects.toSatisfy(
+        (e) =>
+          isCoopErrorOfType(e, 'SignalPermanentError') &&
+          e.detail === 'Model cope-b-s1 not configured',
       );
     });
   });

@@ -45,9 +45,17 @@ Your feedback directly shapes our [roadmap](https://roostorg.github.io/community
 
 To contribute code or documentation, see the [development guide](docs/development/README.md) for setup and PR title conventions.
 
-## Quick start
+## How to use
 
-Run Coop with a single command using Docker Compose. See the [Docker guide](docs/development/docker.md) for setup instructions and published image details.
+Ready to deploy images are available for use. See the [Docker guide](docs/development/docker.md) for published image details.
+
+### Quick start
+
+Run Coop with a single command using Docker Compose. See the [Quick Start guide](docs/development/docker.md#quick-start) for local setup instructions.
+
+Or try it in your browser with nothing to install: open Coop in GitHub Codespaces, wait about 10 minutes the first time (a minute or two when you come back to it), and log in to a demo org with sample data. [Step-by-step guide](https://roostorg.github.io/coop/latest/development/codespaces.html).
+
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/roostorg/coop?quickstart=1)
 
 ## Learn more
 
