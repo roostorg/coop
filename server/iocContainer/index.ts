@@ -115,6 +115,10 @@ import makeHmaService, {
   type HashBank,
   type HmaService,
 } from '../services/hmaService/index.js';
+import {
+  makeIntegrationContextSettingsService,
+  type IntegrationContextSettingsService,
+} from '../services/integrationContextSettings/index.js';
 import { ItemInvestigationService } from '../services/itemInvestigationService/index.js';
 import {
   itemSubmissionWithTypeIdentifierToItemSubmission,
@@ -157,6 +161,7 @@ import {
 } from '../services/moderationConfigService/moderationConfigServiceQueries.js';
 import {
   buildSubmitReportParamsFromDecision,
+  isNcmecTestMode,
   makeNcmecService,
   type NcmecService,
 } from '../services/ncmecService/index.js';
@@ -212,6 +217,10 @@ import {
   type SignalAuthService,
 } from '../services/signalAuthService/index.js';
 import {
+  makeSignalContextLoaderFactory,
+  type SignalContextLoaderFactory,
+} from '../services/signalContextService/index.js';
+import {
   makeSignalsService,
   type SignalsService,
 } from '../services/signalsService/index.js';
@@ -260,6 +269,7 @@ import { createPgPool } from './createPgPool.js';
 import { registerGqlDataSources } from './services/gqlDataSources.js';
 import { registerWorkersAndJobs } from './services/workersAndJobs.js';
 import {
+  inject,
   isEnvTrue,
   register,
   safeGetEnvNonNegativeInt,
@@ -385,6 +395,8 @@ export interface Dependencies {
   ManualReviewContentResolver: ManualReviewContentResolver;
   ManualReviewToolService: ManualReviewToolService;
   SignalsService: SignalsService;
+  SignalContextLoaderFactory: SignalContextLoaderFactory;
+  IntegrationContextSettingsService: IntegrationContextSettingsService;
   ItemInvestigationService: ItemInvestigationService;
   ModerationActivityFeed: ModerationActivityFeed;
   DerivedFieldsService: DerivedFieldsService;
@@ -766,6 +778,16 @@ export default async function getBottle(
 
   // Core business logic services
   register(bottle, 'RuleEngine', makeRuleEngine);
+  register(
+    bottle,
+    'SignalContextLoaderFactory',
+    inject(['ItemInvestigationService'], makeSignalContextLoaderFactory),
+  );
+  register(
+    bottle,
+    'IntegrationContextSettingsService',
+    makeIntegrationContextSettingsService,
+  );
   register(bottle, 'RuleEvaluator', makeRuleEvaluator);
   register(bottle, 'RuleActionInsights', makeRuleActionInsights);
   register(bottle, 'ItemHistoryQueries', makeItemHistoryQueries);
@@ -1314,13 +1336,7 @@ export default async function getBottle(
                       getItemTypeEventuallyConsistent:
                         container.getItemTypeEventuallyConsistent,
                     });
-                  // Submissions go to the NCMEC test endpoint
-                  // (exttest.cybertip.org) unless the deployment is explicitly
-                  // configured for production via NCMEC_ENV=production. Operators
-                  // are responsible for matching this to whether the credentials
-                  // configured in Settings → NCMEC are production or test
-                  // credentials issued by NCMEC.
-                  const isTest = process.env.NCMEC_ENV !== 'production';
+                  const isTest = isNcmecTestMode();
                   await container.NcmecService.submitReport(
                     reportParams,
                     isTest,
