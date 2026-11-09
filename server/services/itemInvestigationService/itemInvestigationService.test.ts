@@ -105,7 +105,7 @@ describe('Item Investigation Service', () => {
   });
 
   test.each([true, false])(
-    'isolates generated Scylla histories by org (latestSubmissionOnly=%s)',
+    'isolates Scylla item lookups by org (latestSubmissionOnly=%s)',
     async (latestSubmissionOnly) => {
       const orgA = await createOrg(container);
       const orgB = await createOrg(container);
@@ -131,21 +131,20 @@ describe('Item Investigation Service', () => {
           fc.asyncProperty(
             fc.uniqueArray(
               fc.record({
-                owner: fc.integer({ min: 0, max: 1 }),
+                owner: fc.constantFrom(orgA.org.id, orgB.org.id),
                 time: fc.integer({ min: -100, max: 100 }),
               }),
-              { selector: (row) => row.time, minLength: 1, maxLength: 10 },
+              { selector: (row) => row.time, minLength: 1, size: '-1' },
             ),
             async (history) => {
               // Each case/shrink gets its own global-index key; TTL removes
               // fixtures from Scylla, which is outside the Postgres rollback.
               const itemIdentifier = { id: uid(), typeId: itemType.id };
-              const orgIds = [orgA.org.id, orgB.org.id, orgWithoutItem.org.id];
               for (const { owner, time } of history) {
                 await container.Scylla.insert({
                   into: 'item_submission_by_thread',
                   row: {
-                    org_id: orgIds[owner],
+                    org_id: owner,
                     request_id: null,
                     submission_id: uuidv1() as SubmissionId,
                     item_identifier:
@@ -174,10 +173,9 @@ describe('Item Investigation Service', () => {
                 });
               }
 
-              for (const owner of [0, 2]) {
-                const orgId = orgIds[owner];
+              for (const orgId of [orgA.org.id, orgWithoutItem.org.id]) {
                 const owned = history
-                  .filter((row) => row.owner === owner)
+                  .filter((row) => row.owner === orgId)
                   .sort((a, b) => b.time - a.time);
                 const result =
                   await itemInvestigationService.getItemByIdentifier({
@@ -190,7 +188,7 @@ describe('Item Investigation Service', () => {
                   expect(result).toBeNull();
                 } else {
                   expect(result?.latestSubmission.data).toEqual({
-                    content: `${owner}:${owned[0].time}`,
+                    content: `${orgId}:${owned[0].time}`,
                   });
                   expect(
                     result?.priorSubmissions
@@ -201,7 +199,7 @@ describe('Item Investigation Service', () => {
                       ? undefined
                       : owned
                           .slice(1)
-                          .map((row) => `${owner}:${row.time}`)
+                          .map((row) => `${orgId}:${row.time}`)
                           .sort(),
                   );
                 }
@@ -213,10 +211,10 @@ describe('Item Investigation Service', () => {
             examples: [
               [
                 [
-                  { owner: 1, time: 0 },
-                  { owner: 0, time: -1 },
-                  { owner: 1, time: -3 },
-                  { owner: 0, time: -2 },
+                  { owner: orgB.org.id, time: 0 },
+                  { owner: orgA.org.id, time: -1 },
+                  { owner: orgB.org.id, time: -3 },
+                  { owner: orgA.org.id, time: -2 },
                 ],
               ],
             ],

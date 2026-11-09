@@ -441,7 +441,7 @@ describe('QueueOperations', () => {
     });
 
   testWithTwoOrgs()(
-    'grant and revoke sequences preserve the tenant-scoped access model',
+    'grants and revokes queue access only for users and queues in the caller’s org',
     async ({ attacker, victim, mrtService, deps }) => {
       const tenants = [attacker, victim];
       let queues = [attacker.queue, victim.queue];
@@ -463,7 +463,7 @@ describe('QueueOperations', () => {
         user: fc.integer({ min: 0, max: 2 }),
         queues: fc.array(fc.integer({ min: 0, max: 4 }), {
           minLength: 1,
-          maxLength: 5,
+          size: '-1',
         }),
       });
       const operation = fc.oneof(
@@ -477,7 +477,7 @@ describe('QueueOperations', () => {
 
       await fc.assert(
         fc.asyncProperty(
-          fc.array(operation, { minLength: 1, maxLength: 16 }),
+          fc.array(operation, { minLength: 1, size: '-1' }),
           async (operations) => {
             // The outer fixture rolls back per test, not per generated case.
             await deps.KyselyPg.deleteFrom(
@@ -732,7 +732,7 @@ describe('QueueOperations', () => {
   );
 
   testWithRoleAssignableQueue()(
-    'queue visibility matches tenant, capability, direct and role assignments',
+    'returns reviewable queues within the caller’s org based on permissions and user or role assignments',
     async ({ org, creator, moderator, mrtService, kyselyPg, deps }) => {
       const roleId = await getRoleId(kyselyPg, org.id, UserRole.MODERATOR);
       const queues = [
