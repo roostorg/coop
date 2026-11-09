@@ -62,3 +62,10 @@ Or try it in your browser with nothing to install: open Coop in GitHub Codespace
 See our comprehensive [documentation](https://roostorg.github.io/coop/latest) covering both functional and technical information including a user guide, development guide, API reference, and integration details.
 
 The docs are also available [directly in this repo](docs/) for your convenience.
+
+## Contributing
+
+- [Contributing guide](https://github.com/roostorg/.github/blob/main/CONTRIBUTING.md)
+- [Code of Conduct](https://github.com/roostorg/.github/blob/main/CODE_OF_CONDUCT.md)
+- [Security policy](https://github.com/roostorg/.github/blob/main/SECURITY.md)
+- [Development docs](docs/development/)
