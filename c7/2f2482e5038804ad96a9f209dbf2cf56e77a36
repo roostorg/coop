@@ -1,0 +1,29 @@
+server/rule_engine/RuleEvaluator.ts
+  s_00830e7d6998dc::t_f882c8819683c7 152-153
+server/services/signalContextService/index.ts
+  s_00830e7d6998dc::t_236259133ac80e 16
+  s_00830e7d6998dc::t_f585bf87125648 193,199-200
+docs/integrations/custom.md
+  s_00830e7d6998dc::t_a7f67de66adc74 121-122
+  s_00830e7d6998dc::t_3293fd92216f38 85-93,95-120,123-136
+  s_00830e7d6998dc::t_277a17571a92a2 94
+server/services/signalContextService/index.test.ts
+  s_00830e7d6998dc::t_0bfbca60adb501 150-166
+  s_00830e7d6998dc::t_a1e1a84b77e49d 81,122,144,186,206,228,250,276,292,338,370,393
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c72f2482e5038804ad96a9f209dbf2cf56e77a36",
+  "prompts": {},
+  "sessions": {
+    "s_00830e7d6998dc": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "cfd3d02d-9f8c-491c-a26c-4722e60456eb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
