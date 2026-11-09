@@ -3,7 +3,12 @@ import { describe, expect, it, vi } from 'vitest';
 import PluginSignalAdapter from '../signals/PluginSignalAdapter.js';
 import { findUnavailablePluginSubcategory } from './findUnavailablePluginSubcategory.js';
 
-function makeSignal(run = vi.fn()) {
+const POLICIES = [
+  { id: 'root', label: 'Root', childrenIds: ['child'] },
+  { id: 'child', label: 'Child', childrenIds: [] },
+];
+
+function makeSignal(eligibleSubcategories = POLICIES) {
   return new PluginSignalAdapter({
     id: { type: 'POLICY_SIGNAL' },
     displayName: 'Policy signal',
@@ -15,13 +20,10 @@ function makeSignal(run = vi.fn()) {
     eligibleInputs: ['STRING'],
     outputType: { scalarType: 'NUMBER' },
     getCost: () => 1,
-    run,
+    run: vi.fn(),
     getDisabledInfo: async () => ({ disabled: false }),
     needsMatchingValues: false,
-    eligibleSubcategories: [
-      { id: 'root', label: 'Root', childrenIds: ['child'] },
-      { id: 'child', label: 'Child', childrenIds: [] },
-    ],
+    eligibleSubcategories,
     needsActionPenalties: false,
     integration: 'TEST',
     allowedInAutomatedRules: true,
@@ -39,6 +41,12 @@ describe('findUnavailablePluginSubcategory', () => {
       type: 'ERROR',
       score: { name: 'SignalPermanentError' },
     });
+  });
+
+  it('returns an error when the signal no longer offers any policies', () => {
+    expect(
+      findUnavailablePluginSubcategory(makeSignal([]), 'root'),
+    ).toMatchObject({ type: 'ERROR' });
   });
 
   it.each(['root', 'child', undefined])(

@@ -14,7 +14,7 @@ export function findUnavailablePluginSubcategory(
       ...item.children.map((child) => child.id),
     ]),
   );
-  if (eligibleIds.size === 0 || eligibleIds.has(subcategory)) return undefined;
+  if (eligibleIds.has(subcategory)) return undefined;
 
   return {
     type: 'ERROR',
