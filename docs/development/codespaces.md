@@ -41,13 +41,7 @@ This login only exists inside your codespace.
 
 ## 4. Use it
 
-You're an admin of **Demo Org**, which has:
-
-- two item types, **Post** and **Comment**, and 16 sample posts,
-- three policies: **Spam**, **Harassment** and **Violence**,
-- two actions, **Remove post** and **Warn author**,
-- a rule, **Remove obvious spam**, that has already applied **Remove post** to the spam posts (the demo isn't connected to a real platform, so nothing is actually taken down), and
-- eight user reports waiting in the **Reported posts** review queue.
+You're an admin of **Demo Org**, which has sample posts, policies and actions, a spam rule that has already acted on some posts, and user reports waiting in a review queue. The demo isn't connected to a real platform, so actions don't take anything down.
 
 Things to try:
 
