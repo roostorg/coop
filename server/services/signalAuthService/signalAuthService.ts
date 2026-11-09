@@ -24,12 +24,15 @@ export type Credentials<T extends ConfigurableIntegration> = {
 
 export type GoogleContentSafetyCredential = { apiKey: string };
 export type OpenAICredential = { apiKey: string };
+export type ZentropiModel = 'COPE_LATEST' | 'COPE_B_A4B' | 'COPE_B_S1';
 // `id` is the Zentropi labeler version ID. Its parent `labelerId` is optional;
-// GraphQL clients can explicitly clear it with null.
+// GraphQL clients can explicitly clear it with null. Without a `model`,
+// Zentropi uses its default model.
 export type ZentropiLabelerVersion = {
   id: string;
   label: string;
   labelerId?: string | null;
+  model?: ZentropiModel | null;
 };
 export type ZentropiCredential = {
   apiKey: string;

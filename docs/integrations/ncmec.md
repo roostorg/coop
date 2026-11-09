@@ -148,6 +148,15 @@ Operators are responsible for ensuring `NCMEC_ENV` matches the credentials they 
 
 Reports submitted against the test endpoint are stored in Coop's database with an `is_test` flag and are only visible in the NCMEC Reports dashboard to the reviewer who submitted them. Production reports are visible to anyone in the org with the `VIEW_CHILD_SAFETY_DATA` permission.
 
+#### Switching to production
+
+When you change `NCMEC_ENV` to `production`, the [retry job](#retry-behavior) handles decisions from the past 30 days that were made in test mode like this:
+
+- **Decisions that were submitted to the test endpoint** are not resent. Their test report counts as already submitted.
+- **Decisions whose test submission failed** are still retried, and the retry goes to the production endpoint.
+
+To send a real report for a user whose report only went to the test endpoint, put the user back into NCMEC review and submit a new decision.
+
 ## Webhooks
 
 ### Additional Info endpoint
@@ -289,7 +298,9 @@ Coop only checks for a successful HTTP status code. The response body is ignored
 
 If a CyberTip submission fails (e.g. due to a transient network error or NCMEC API outage), Coop automatically retries the submission. A background job runs periodically and retries any failed NCMEC decisions that:
 
-- Have not already been successfully submitted (no matching report in the database)
+- Have not already been successfully submitted (no production report for the user, and no test report for the user made after the decision)
 - Have fewer than 10 prior retry attempts
 - Are not marked as a permanent error (e.g. all media missing)
 - Were decided within the past 30 days
+
+Reports are matched by reported user, not by decision. If a user already has a production report from the past 30 days, a later failed decision against that same user is not retried automatically. A test report only covers the user's decisions made before it, so a later failed decision is still retried.
