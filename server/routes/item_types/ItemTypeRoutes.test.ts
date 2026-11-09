@@ -1,5 +1,6 @@
 import { vi } from 'vitest';
 
+import { API_KEY_PERMISSIONS } from '../../services/apiKeyService/index.js';
 import { type ItemSchema } from '../../services/moderationConfigService/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
@@ -33,6 +34,41 @@ const testWithTypes = makeTransactionalTestWithFixture(async ({ deps }) => {
 });
 
 describe('GET item types', () => {
+  testWithTypes(
+    'GET /item_types rejects valid keys without config:read',
+    async ({ deps, request, orgId }) => {
+      for (const permissions of [
+        [],
+        API_KEY_PERMISSIONS.filter(
+          (permission) => permission.value !== 'config:read',
+        ).map((permission) => permission.value),
+      ]) {
+        const { apiKey } = await deps.ApiKeyService.createApiKey(
+          orgId,
+          'Restricted',
+          null,
+          null,
+          permissions,
+        );
+        await request
+          .get('/api/v1/item_types')
+          .set('x-api-key', apiKey)
+          .expect(403);
+      }
+      const { apiKey } = await deps.ApiKeyService.createApiKey(
+        orgId,
+        'Allowed',
+        null,
+        null,
+        ['config:read'],
+      );
+      await request
+        .get('/api/v1/item_types')
+        .set('x-api-key', apiKey)
+        .expect(200);
+    },
+  );
+
   testWithTypes(
     'returns only current schemas and roles for the authenticated organization',
     async ({ request, apiKey, content, thread, user }) => {

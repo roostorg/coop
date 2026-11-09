@@ -7,6 +7,7 @@ export type ApiKeyServicePg = {
     key_hash: string;
     name: string;
     description: string | null;
+    permissions: string[];
     is_active: Generated<boolean>;
     created_at: GeneratedAlways<Date>;
     updated_at: Generated<Date>;

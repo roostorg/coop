@@ -68,7 +68,14 @@ export default {
         createApiKeyMiddleware<
           EvaluateContentInputCamelCase,
           EvaluateContentOutput
-        >(deps),
+        >(deps, (req) =>
+          // Returning derived fields also requires read access.
+          new URL(req.originalUrl, 'http://example.com/').searchParams.has(
+            'includeDerivedField',
+          )
+            ? ['items:write', 'items:read']
+            : ['items:write'],
+        ),
         submitContent(deps),
       ],
     ),

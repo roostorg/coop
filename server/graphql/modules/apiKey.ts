@@ -1,4 +1,7 @@
-import { type ApiKeyRecord } from '../../services/apiKeyService/index.js';
+import {
+  API_KEY_PERMISSIONS,
+  type ApiKeyRecord,
+} from '../../services/apiKeyService/index.js';
 import { UserPermission } from '../../services/userManagementService/index.js';
 import { CoopError, ErrorType } from '../../utils/errors.js';
 import { logErrorJson } from '../../utils/logging.js';
@@ -14,10 +17,16 @@ import {
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 
 const typeDefs = /* GraphQL */ `
+  type ApiKeyPermissionDefinition {
+    value: String!
+    description: String!
+  }
+
   type ApiKey {
     id: ID!
     name: String!
     description: String
+    permissions: [String!]!
     isActive: Boolean!
     createdAt: String!
     lastUsedAt: String
@@ -47,12 +56,14 @@ const typeDefs = /* GraphQL */ `
   input CreateApiKeyInput {
     name: String!
     description: String
+    permissions: [String!]!
   }
 
   input UpdateApiKeyInput {
     id: ID!
     name: String!
     description: String
+    permissions: [String!]
   }
 
   type CreateApiKeySuccessResponse {
@@ -101,6 +112,7 @@ const typeDefs = /* GraphQL */ `
   type Query {
     apiKey: String! @deprecated(reason: "Use \`apiKeys\` instead.")
     apiKeys: [ApiKey!]!
+    apiKeyPermissions: [ApiKeyPermissionDefinition!]!
   }
 
   type Mutation {
@@ -149,6 +161,19 @@ async function runApiKeyMutation<T>(operation: () => Promise<T>) {
   try {
     return await operation();
   } catch (error) {
+    if (
+      error instanceof CoopError &&
+      error.status === 400 &&
+      error.type.includes(ErrorType.InvalidUserInput)
+    ) {
+      return gqlErrorResult(
+        new CoopError({
+          ...error,
+          name: 'ApiKeyMutationError',
+          shouldErrorSpan: false,
+        }),
+      );
+    }
     // Resolvers do not receive a request-scoped logger.
     // eslint-disable-next-line no-restricted-syntax -- log unexpected errors without exposing them to clients
     logErrorJson({ message: 'API key operation failed', error });
@@ -170,6 +195,7 @@ function serializeApiKey(record: ApiKeyRecord) {
     id: record.id,
     name: record.name,
     description: record.description,
+    permissions: record.permissions,
     isActive: record.isActive,
     createdAt: record.createdAt.toISOString(),
     lastUsedAt: record.lastUsedAt?.toISOString() ?? null,
@@ -178,6 +204,7 @@ function serializeApiKey(record: ApiKeyRecord) {
 }
 
 const Query: GQLQueryResolvers = {
+  apiKeyPermissions: () => API_KEY_PERMISSIONS,
   async apiKeys(_, __, context) {
     const user = context.getUser();
     if (!user?.orgId) {
@@ -229,6 +256,7 @@ const Mutation: GQLMutationResolvers = {
           name,
           description,
           user.id,
+          input.permissions,
         );
       return gqlSuccessResult(
         {
@@ -254,6 +282,7 @@ const Mutation: GQLMutationResolvers = {
         user.orgId,
         name,
         description,
+        input.permissions ?? undefined,
       );
       return record
         ? gqlSuccessResult(

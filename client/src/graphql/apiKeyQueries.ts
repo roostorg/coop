@@ -2,10 +2,15 @@ import { gql } from '@apollo/client';
 
 export const API_KEYS_QUERY = gql`
   query ApiKeys {
+    apiKeyPermissions {
+      value
+      description
+    }
     apiKeys {
       id
       name
       description
+      permissions
       createdAt
       lastUsedAt
     }
@@ -36,6 +41,7 @@ export const UPDATE_API_KEY_MUTATION = gql`
           id
           name
           description
+          permissions
         }
       }
       ... on ApiKeyMutationError {
@@ -80,6 +86,7 @@ export const ROTATE_API_KEY_MUTATION = gql`
           id
           name
           description
+          permissions
           createdAt
           lastUsedAt
           createdBy

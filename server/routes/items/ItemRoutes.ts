@@ -33,7 +33,9 @@ export default {
         },
       },
       (deps) => [
-        createApiKeyMiddleware<SubmitItemsInput, undefined>(deps),
+        createApiKeyMiddleware<SubmitItemsInput, undefined>(deps, [
+          'items:write',
+        ]),
         submitItems(deps),
       ],
     ),

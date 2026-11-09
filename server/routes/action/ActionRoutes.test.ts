@@ -4,6 +4,7 @@ import supertest from 'supertest';
 import { vi } from 'vitest';
 
 import { type Dependencies } from '../../iocContainer/index.js';
+import { API_KEY_PERMISSIONS } from '../../services/apiKeyService/index.js';
 import {
   BUILT_IN_ACTIONS,
   type ItemSchema,
@@ -93,7 +94,81 @@ const testWithConfig = makeTransactionalTestWithFixture(async ({ deps }) => {
   };
 });
 
-describe('GET actions', () => {
+describe('Actions routes', () => {
+  testWithConfig(
+    'POST /actions rejects valid keys without actions:execute',
+    async ({ deps, request, orgId, user, builtIns }) => {
+      const payload = {
+        itemId: 'user',
+        itemTypeId: user.id,
+        actionId: builtIns[0].id,
+      };
+      for (const permissions of [
+        [],
+        API_KEY_PERMISSIONS.filter(
+          (permission) => permission.value !== 'actions:execute',
+        ).map((permission) => permission.value),
+      ]) {
+        const { apiKey } = await deps.ApiKeyService.createApiKey(
+          orgId,
+          'Restricted',
+          null,
+          null,
+          permissions,
+        );
+        await request
+          .post('/api/v1/actions')
+          .set('x-api-key', apiKey)
+          .send(payload)
+          .expect(403);
+      }
+      const { apiKey } = await deps.ApiKeyService.createApiKey(
+        orgId,
+        'Allowed',
+        null,
+        null,
+        ['actions:execute'],
+      );
+      await request
+        .post('/api/v1/actions')
+        .set('x-api-key', apiKey)
+        .send(payload)
+        .expect(202);
+    },
+  );
+
+  testWithConfig(
+    'GET /actions rejects valid keys without config:read',
+    async ({ deps, request, orgId }) => {
+      for (const permissions of [
+        [],
+        API_KEY_PERMISSIONS.filter(
+          (permission) => permission.value !== 'config:read',
+        ).map((permission) => permission.value),
+      ]) {
+        const { apiKey } = await deps.ApiKeyService.createApiKey(
+          orgId,
+          'Restricted',
+          null,
+          null,
+          permissions,
+        );
+        await request
+          .get('/api/v1/actions')
+          .set('x-api-key', apiKey)
+          .expect(403);
+      }
+      const { apiKey } = await deps.ApiKeyService.createApiKey(
+        orgId,
+        'Allowed',
+        null,
+        null,
+        ['config:read'],
+      );
+      await request.get('/api/v1/actions').set('x-api-key', apiKey).expect(200);
+    },
+  );
+
   testWithConfig(
     'GET actions returns metadata and assignments without webhook credentials',
     async ({
