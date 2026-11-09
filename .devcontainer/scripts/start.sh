@@ -23,8 +23,7 @@ echo
 wait_for_docker || on_failure
 wait_for_disk_space
 
-# Creates the databases, runs migrations and creates the demo login before the
-# server starts. A database that is slow to start on a busy machine fails its
+# Creates the databases and runs migrations before the server starts. A database that is slow to start on a busy machine fails its
 # healthcheck at first and passes a few seconds later, but `up --wait` gives up
 # as soon as a dependency is unhealthy, so retry.
 step "Starting databases, running migrations and starting Coop"
@@ -38,13 +37,18 @@ ok "Services started"
 
 wait_for "the Coop UI" 300 ui_ready || on_failure
 
-step "Adding demo data"
-if seed_demo_data; then
+step "Adding the demo login and data"
+seed_demo_data
+case $? in
+0)
     ok "Demo data ready"
     echo ready >"$DEMO_STATE_FILE"
-else
+    ;;
+2) on_failure ;;
+*)
     fail "Couldn't add the demo data. You can still log in; some pages will be empty."
     echo no-demo-data >"$DEMO_STATE_FILE"
-fi
+    ;;
+esac
 
 print_ready_banner "$(cat "$DEMO_STATE_FILE")"

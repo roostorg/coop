@@ -89,7 +89,7 @@ GitHub's [Codespaces billing page](https://docs.github.com/en/billing/managing-b
 
 **The UI tab never opened.** Check the terminal: until it says **Coop is ready**, the UI isn't up yet. Once it is, open the **Ports** tab and click the globe icon next to **Coop UI (3000)**. If you see a GitHub sign-in page, sign in with the account that created the codespace.
 
-**The login page says the email or password is wrong.** Check the terminal said **Coop is ready**: the demo login is created while Coop starts. If it did, [start over](#start-over).
+**The login page says the email or password is wrong.** Check the terminal said **Coop is ready**: the demo login is created after Coop starts. If it did, [start over](#start-over).
 
 **The review queue or rules are empty.** The terminal says **Couldn't add the demo data** if that step failed. Open a new terminal (**☰** menu → **Terminal** → **New Terminal**) and run `bash .devcontainer/scripts/start.sh` to try again.
 
@@ -109,7 +109,7 @@ GitHub's [Codespaces billing page](https://docs.github.com/en/billing/managing-b
 
 ## For engineers
 
-The configuration lives in [`.devcontainer/`](https://github.com/roostorg/coop/tree/main/.devcontainer): Docker-in-Docker on a 4-core / 16 GB machine, running [`docker-compose.images.yaml`](https://github.com/roostorg/coop/blob/main/docker-compose.images.yaml) with the [`docker-compose.codespaces.yaml`](https://github.com/roostorg/coop/blob/main/.devcontainer/docker-compose.codespaces.yaml) override, which builds the server, client and migrations images from the checkout and creates the demo login. The client's nginx proxies `/api/` to the server, so the browser only talks to the forwarded port 3000. [`seed-demo.mjs`](https://github.com/roostorg/coop/blob/main/.devcontainer/scripts/seed-demo.mjs) adds the demo data through Coop's GraphQL and REST APIs.
+The configuration lives in [`.devcontainer/`](https://github.com/roostorg/coop/tree/main/.devcontainer): Docker-in-Docker on a 4-core / 16 GB machine, running [`docker-compose.images.yaml`](https://github.com/roostorg/coop/blob/main/docker-compose.images.yaml) with the [`docker-compose.codespaces.yaml`](https://github.com/roostorg/coop/blob/main/.devcontainer/docker-compose.codespaces.yaml) override, which builds the server, client and migrations images from the checkout. The client's nginx proxies `/api/` to the server, so the browser only talks to the forwarded port 3000. [`seed-demo.mjs`](https://github.com/roostorg/coop/blob/main/.devcontainer/scripts/seed-demo.mjs) creates the demo login and adds the demo data through Coop's GraphQL and REST APIs.
 
 - `updateContentCommand` (`prepare.sh`) pulls and builds the images; a prebuild runs it ahead of time.
 - `postStartCommand` (`start.sh`) runs on every start or resume: `docker compose up`, then the demo data.

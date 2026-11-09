@@ -1,12 +1,18 @@
-// Fills the demo org with item types, policies, actions, a review queue and a
-// rule, then sends sample posts and user reports, so every page of the UI has
-// something to show. Uses only Coop's public GraphQL and REST APIs.
+// Creates the demo org and its login, fills the org with item types, policies,
+// actions, a review queue and a rule, then sends sample posts and user reports,
+// so every page of the UI has something to show. Apart from the login, it uses
+// only Coop's public GraphQL and REST APIs.
 //
 // Runs inside the `server` container (start.sh pipes it to `node`), against the
 // server on localhost:8080. Safe to run again: it reuses anything an earlier run
 // created, and does nothing once a run has finished.
 
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+
 const BASE_URL = process.env.COOP_URL ?? 'http://localhost:8080';
+// Exit status when there's no demo login, as opposed to no demo data.
+const NO_LOGIN = 2;
 const EMAIL = process.env.COOP_DEMO_EMAIL;
 const PASSWORD = process.env.COOP_DEMO_PASSWORD;
 
@@ -56,8 +62,44 @@ async function login() {
     `,
     { input: { email: EMAIL, password: PASSWORD, remember: false } },
   );
-  if (login.__typename !== 'LoginSuccessResponse') {
-    throw new Error(`Couldn't log in as ${EMAIL}: ${login.__typename}`);
+  return login.__typename === 'LoginSuccessResponse';
+}
+
+// Nothing in the API creates an org without an existing login, so this uses the
+// server's create-org script, which writes to the database directly.
+async function createDemoLogin() {
+  try {
+    await promisify(execFile)('node', [
+      'bin/create-org-and-user.js',
+      '--name',
+      'Demo Org',
+      '--email',
+      EMAIL,
+      '--website',
+      'https://demo.coop.local',
+      '--firstName',
+      'Demo',
+      '--lastName',
+      'Admin',
+      '--password',
+      PASSWORD,
+    ]);
+  } catch (error) {
+    return `${error.stdout ?? ''}${error.stderr ?? ''}`.trim() || error.message;
+  }
+  console.log(`Created the demo login ${EMAIL}.`);
+  return '';
+}
+
+async function loginOrCreate() {
+  if (await login()) {
+    return;
+  }
+  const createOutput = await createDemoLogin();
+  if (!(await login())) {
+    console.error(createOutput);
+    console.error(`Couldn't create the demo login ${EMAIL}.`);
+    process.exit(NO_LOGIN);
   }
 }
 
@@ -284,7 +326,7 @@ async function findOrCreate(existing, name, create) {
 }
 
 async function main() {
-  await login();
+  await loginOrCreate();
   const org = await getOrg();
   // Comment is created last, so it means an earlier run finished. After a run
   // that stopped part-way, the setup below reuses what that run created; the

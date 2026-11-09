@@ -1,7 +1,6 @@
 # Layered over docker-compose.images.yaml; devcontainer.json sets COMPOSE_FILE so
 # plain `docker compose` picks this up. It builds Coop from this checkout instead
-# of pulling the published images, so a codespace on a branch shows that branch,
-# and it creates the demo login from COOP_DEMO_EMAIL and COOP_DEMO_PASSWORD.
+# of pulling the published images, so a codespace on a branch shows that branch.
 
 services:
   migrations:
@@ -10,46 +9,15 @@ services:
       context: .
       dockerfile: db/Dockerfile
 
+  # seed-demo.mjs creates the demo login along with the demo data, so this
+  # replaces the base file's random admin login with nothing.
   seed:
     image: coop-server:codespace
     build:
       context: .
       dockerfile: Dockerfile
       target: build_server
-    environment:
-      COOP_DEMO_EMAIL: ${COOP_DEMO_EMAIL:?}
-      COOP_DEMO_PASSWORD: ${COOP_DEMO_PASSWORD:?}
-    command:
-      - |
-        OUTPUT=$$(node bin/create-org-and-user.js \
-          --name "Demo Org" \
-          --email "$$COOP_DEMO_EMAIL" \
-          --website "https://demo.coop.local" \
-          --firstName "Demo" \
-          --lastName "Admin" \
-          --password "$$COOP_DEMO_PASSWORD" 2>&1) \
-        && { echo "Created the demo login $$COOP_DEMO_EMAIL."; exit 0; }
-        # On a restart the org already exists, so creating it fails. A run that
-        # stopped part-way leaves the org without its user, though, so check
-        # for the user itself.
-        node --input-type=module -e "
-          import pg from 'pg';
-          const db = new pg.Client({
-            host: process.env.DATABASE_HOST,
-            port: process.env.DATABASE_PORT,
-            database: process.env.DATABASE_NAME,
-            user: process.env.DATABASE_USER,
-            password: process.env.DATABASE_PASSWORD,
-          });
-          await db.connect();
-          const { rowCount } = await db.query(
-            'SELECT 1 FROM users WHERE email = \$$1', [process.env.COOP_DEMO_EMAIL]);
-          await db.end();
-          process.exit(rowCount > 0 ? 0 : 1);
-        " && { echo "The demo login already exists."; exit 0; }
-        echo "$$OUTPUT"
-        echo "Couldn't create the demo login $$COOP_DEMO_EMAIL."
-        exit 1
+    command: ['true']
 
   server:
     image: coop-server:codespace

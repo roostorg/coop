@@ -232,7 +232,7 @@ pnpm install
 
 ## Codespaces
 
-`.devcontainer/` is a demo for non-engineers: Docker-in-Docker running `docker-compose.images.yaml` plus `.devcontainer/docker-compose.codespaces.yaml`, which builds the server, client and migrations images from the checkout and creates the demo login (`demo@coop.local` / `coop-demo`); `.devcontainer/scripts/seed-demo.mjs` adds demo data through the GraphQL and REST APIs. Guide: `docs/development/codespaces.md`.
+`.devcontainer/` is a demo for non-engineers: Docker-in-Docker running `docker-compose.images.yaml` plus `.devcontainer/docker-compose.codespaces.yaml`, which builds the server, client and migrations images from the checkout; `.devcontainer/scripts/seed-demo.mjs` creates the demo login (`demo@coop.local` / `coop-demo`) and adds demo data through the GraphQL and REST APIs. Guide: `docs/development/codespaces.md`.
 
 ```bash
 # Same container locally
