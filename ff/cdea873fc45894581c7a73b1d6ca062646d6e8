@@ -1,0 +1,40 @@
+client/src/webpages/dashboard/integrations/IntegrationConfigForm.tsx
+  s_00830e7d6998dc::t_09c76b118369e2 398-399,402-405
+server/services/integrationContextSettings/service.test.ts
+  s_00830e7d6998dc::t_324cdc18a5488c 88-91
+client/src/webpages/dashboard/integrations/IntegrationContextSettingsSection.tsx
+  s_00830e7d6998dc::t_fec5954ad0e6d6 37-38
+  s_00830e7d6998dc::t_d4cf065e5d5bfa 157-161
+  s_00830e7d6998dc::t_c94f0569e6478f 96,98
+  s_00830e7d6998dc::t_d2744455e9cbaf 107-109,114
+  s_00830e7d6998dc::t_4a06ddc2fb5779 142-144,146
+client/src/webpages/dashboard/integrations/IntegrationContextSettingsSection.test.tsx
+  s_00830e7d6998dc::t_3978c4799641aa 84,86,99-103,109-145
+  s_00830e7d6998dc::t_2cf587a701ca1e 104-108
+  s_00830e7d6998dc::t_1cbb06bcdec254 2
+server/services/integrationContextSettings/settings.ts
+  s_00830e7d6998dc::t_e3c65d2f13777b 14
+  s_00830e7d6998dc::t_51d5a126fdb2ea 56
+  s_00830e7d6998dc::t_60656b5c2dac6e 23
+  s_00830e7d6998dc::t_0f841b76531a1e 95,97-101
+  s_00830e7d6998dc::t_f5316cf47b5b66 141,144
+server/services/integrationContextSettings/settings.test.ts
+  s_00830e7d6998dc::t_2f7ef4d1fac828 18,25,30-42
+  s_00830e7d6998dc::t_29182fb294ef70 43-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ffcdea873fc45894581c7a73b1d6ca062646d6e8",
+  "prompts": {},
+  "sessions": {
+    "s_00830e7d6998dc": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "cfd3d02d-9f8c-491c-a26c-4722e60456eb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
