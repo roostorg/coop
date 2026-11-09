@@ -2,8 +2,8 @@ name: Security backports
 
 # Keeps release/x.y, the branch for the next patch of the latest release
 # x.y.z, ready for a security release: creates it when it's missing, opens a
-# backport PR for each `security`-labelled PR merged to main, and keeps a draft
-# release for x.y.(z+1). See docs/development/security-backports.md.
+# backport PR for each `security-update`-labelled PR merged to main, and keeps
+# a draft release for x.y.(z+1). See docs/development/security-backports.md.
 
 on:
   # Runs main's copy of this workflow and scripts; never checks out PR code.
@@ -39,7 +39,7 @@ jobs:
       (github.event_name != 'pull_request_target' ||
        (github.event.pull_request.merged == true &&
         github.event.pull_request.base.ref == 'main' &&
-        (github.event.action == 'closed' || github.event.label.name == 'security')))
+        (github.event.action == 'closed' || github.event.label.name == 'security-update')))
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:

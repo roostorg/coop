@@ -5,10 +5,10 @@ The **Security backports** workflow (`.github/workflows/security-backport.yml`) 
 ## What it does
 
 - **Creates `release/x.y`** at the `x.y.z` tag if it doesn't exist, e.g. after `x.y.0` is released from `main`. After a release from `release/x.y` the branch is already at the tag, so it needs no change. Once `x.(y+1).0` is released, the workflow moves on to `release/x.(y+1)` and leaves `release/x.y` alone. Its open backport PRs and its draft release stay too: release `x.y.(z+1)`, or close the PRs and delete the draft.
-- **Opens a backport PR** to `release/x.y` for each PR merged to `main` with the `security` label, from a `backport/<n>-to-release/x.y` branch. It cherry-picks the PR's merge commit with `git cherry-pick -x`, copies the PR's `## Release notes` section, and labels the backport `security`. A PR qualifies whether the label came from the [labeling workflow](https://github.com/roostorg/coop/pull/1519) or from a person, and whether it was added before or after the merge.
+- **Opens a backport PR** to `release/x.y` for each PR merged to `main` with the `security-update` label, from a `backport/<n>-to-release/x.y` branch. It cherry-picks the PR's merge commit with `git cherry-pick -x`, copies the PR's `## Release notes` section, and labels the backport `security-update`. A PR qualifies whether the label came from the [labeling workflow](https://github.com/roostorg/coop/pull/1519) or from a person, and whether it was added before or after the merge.
 - **Keeps a draft release** for `x.y.(z+1)` targeting `release/x.y`. Release Drafter collects the release notes of the PRs merged into `release/x.y` since `x.y.z`. Draft releases are visible only to people with write access.
 
-It runs when a PR to `main` is merged or labelled `security`, when a PR to `release/**` is merged, when a release is published, daily, and on demand. Every run checks all `security` PRs merged since `release/x.y` diverged from `main`. A run skips a PR that is already on the branch, that has a backport PR (open, merged or closed), or whose backport already failed.
+It runs when a PR to `main` is merged or labelled `security-update`, when a PR to `release/**` is merged, when a release is published, daily, and on demand. Every run checks all `security-update` PRs merged since `release/x.y` diverged from `main`. A run skips a PR that is already on the branch, that has a backport PR (open, merged or closed), or whose backport already failed.
 
 To decline a backport, close its PR without merging; the workflow won't open it again.
 
@@ -37,5 +37,5 @@ If a cherry-pick conflicts or a check fails, the workflow comments on the source
 ## Setup
 
 - A GitHub App installed on this repository with **Contents**, **Pull requests**, **Issues** and **Workflows** read and write permissions. The workflow uses it instead of `GITHUB_TOKEN` so that CI runs on the backport PRs. GitHub requires **Workflows** to create `release/x.y` at a tag whose workflow files differ from `main`'s, and to push a backport that changes `.github/workflows/`. Store its ID in the `BACKPORT_APP_ID` Actions variable and its private key in the `BACKPORT_APP_PRIVATE_KEY` secret.
-- The `security` and `has-release-notes` labels.
+- The `security-update` and `has-release-notes` labels.
 - If a ruleset restricts creating `release/**` branches, add the app as a bypass actor for branch creation only.

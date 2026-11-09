@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Keeps release/x.y, the branch for the next security patch of the latest
-// release x.y.z, supplied with every `security`-labelled PR merged to main.
+// release x.y.z, supplied with every `security-update`-labelled PR merged to
+// main.
 //
 //   node scripts/security-backport.mjs prepare [--pr <n>] [--retry]
 //   node scripts/security-backport.mjs publish
@@ -23,7 +24,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const LABEL = 'security';
+export const LABEL = 'security-update';
 export const failureMarker = (branch) => `<!-- security-backport ${branch} -->`;
 const STABLE_TAG = /^(\d+)\.(\d+)\.(\d+)$/;
 
