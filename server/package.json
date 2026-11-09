@@ -129,7 +129,7 @@
     "eslint-plugin-switch-statement": "^0.0.12",
     "js-yaml": "^5.5.0",
     "jsonpath-plus": "^10.4.0",
-    "knip": "^6.44.0",
+    "knip": "^6.44.1",
     "supertest": "^6.2.2",
     "ts-node": "^10.9.1",
     "tsc-watch": "^4.6.0",
