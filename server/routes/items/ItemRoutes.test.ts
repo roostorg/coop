@@ -196,16 +196,26 @@ test('POST /items/async requires exactly one valid item type selector branch', a
   }) satisfies ErrorRequestHandler);
   const item = { id: 'item-1', data: {} };
 
-  await request(app)
-    .post('/api/v1/items/async')
-    .send({ items: [{ ...item, type: { id: 'post' }, typeId: 123 }] })
-    .expect(204);
-  await request(app)
-    .post('/api/v1/items/async')
-    .send({ items: [{ ...item, typeId: 'post', type: null }] })
-    .expect(204);
-  await request(app)
-    .post('/api/v1/items/async')
-    .send({ items: [{ ...item, typeId: 'post', type: { id: 'post' } }] })
-    .expect(400);
+  for (const [selector, status] of [
+    [{ typeId: 'post' }, 204],
+    [{ type: { id: 'post' } }, 204],
+    [{ type: { id: 'post' }, typeId: 123 }, 204],
+    [{ typeId: 'post', type: null }, 204],
+    [{ typeId: 'post', type: { id: 'post' } }, 400],
+    [{ typeId: 'post', typeVersion: 123, type: { id: 'post' } }, 204],
+    [
+      { typeId: 'post', typeSchemaVariant: 'invalid', type: { id: 'post' } },
+      204,
+    ],
+    [{ typeId: 'post', type: { id: 'post', version: 123 } }, 204],
+    [{ typeId: 'post', type: { id: 'post', schemaVariant: 'invalid' } }, 204],
+    [{ typeId: 'post', typeVersion: 123 }, 400],
+    [{ type: { id: 'post', schemaVariant: 'invalid' } }, 400],
+    [{}, 400],
+  ] as const) {
+    await request(app)
+      .post('/api/v1/items/async')
+      .send({ items: [{ ...item, ...selector }] })
+      .expect(status);
+  }
 });
