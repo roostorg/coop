@@ -1,10 +1,18 @@
 import { GQLIntegration } from '../graphql/generated';
 import {
   createSubcategoryIdToLabelMapping,
+  findSubcategoryLabel,
   rebuildSubcategoryTreeFromGraphQLResponse,
 } from './signalUtils';
 
 describe('Signal Utils Tests', () => {
+  test('finds a subcategory label and falls back when absent', () => {
+    const subcategories = [{ id: 'harassment', label: 'Harassment' }];
+    expect(findSubcategoryLabel(subcategories, 'harassment')).toBe(
+      'Harassment',
+    );
+    expect(findSubcategoryLabel(subcategories, 'missing')).toBeUndefined();
+  });
   describe('Test should recreate subcategory tree from flattened list', () => {
     test('Should recreate subcategories correctly', () => {
       const flattenedSubcategories = [

@@ -9,6 +9,7 @@ import { __throw, assertUnreachable } from '../../utils/misc.js';
 import { type CollapseCases } from '../../utils/typescript-types.js';
 import { getIntegrationRegistry } from '../integrationRegistry/index.js';
 import { isTaggedItemData } from '../moderationConfigService/index.js';
+import { findUnavailablePluginSubcategory } from './helpers/findUnavailablePluginSubcategory.js';
 import { instantiateBuiltInSignals } from './helpers/instantiateBuiltInSignals.js';
 import { loadPluginSignals } from './helpers/loadPluginSignals.js';
 import { makeCachedCredentialGetters } from './helpers/makeCachedCredentialsGetters.js';
@@ -21,6 +22,7 @@ import {
   type SignalType,
 } from './index.js';
 import type UnusedCustomSignal from './signals/CustomSignal.js';
+import PluginSignalAdapter from './signals/PluginSignalAdapter.js';
 import {
   type SignalBase,
   type SignalDisabledInfo,
@@ -260,6 +262,14 @@ export class SignalsService {
 
     if (!signal) {
       throw makeSignalNotFoundError(signalRef);
+    }
+
+    const unavailablePolicy =
+      signal instanceof PluginSignalAdapter
+        ? findUnavailablePluginSubcategory(signal, input.subcategory)
+        : undefined;
+    if (unavailablePolicy) {
+      return unavailablePolicy as Awaited<SignalTypesToRunOutputTypes[T]>;
     }
 
     const { needsActionPenalties, needsMatchingValues } = signal;

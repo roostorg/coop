@@ -1,6 +1,7 @@
 import { Button } from 'antd';
 import { ChevronDown } from 'lucide-react';
 
+import { findSubcategoryLabel } from '../../../../../../utils/signalUtils';
 import { ConditionLocation, RuleFormLeafCondition } from '../../../types';
 
 export default function RuleFormConditionSignalSubcategory(props: {
@@ -39,7 +40,9 @@ export default function RuleFormConditionSignalSubcategory(props: {
         }`}
         onClick={onClick}
       >
-        {signal.subcategory ?? 'Select Subcategory'}{' '}
+        {findSubcategoryLabel(eligibleSubcategories, signal.subcategory) ??
+          signal.subcategory ??
+          'Select Subcategory'}{' '}
         <ChevronDown className="w-3 h-3 !text-[#bfbfbf] !hover:text-[#bfbfbf]" />
       </Button>
       <div className="invisible pb-1 text-xs font-bold">Signal Subcategory</div>

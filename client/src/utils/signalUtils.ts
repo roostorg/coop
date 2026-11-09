@@ -58,3 +58,12 @@ export function createSubcategoryIdToLabelMapping(
     {} as { [key: string]: string },
   );
 }
+
+export function findSubcategoryLabel(
+  subcategories: readonly { id: string; label: string }[],
+  id: string | null | undefined,
+): string | undefined {
+  return id == null
+    ? undefined
+    : subcategories.find((subcategory) => subcategory.id === id)?.label;
+}

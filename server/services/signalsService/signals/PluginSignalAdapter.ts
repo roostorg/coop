@@ -23,6 +23,40 @@ import SignalBase, {
 export type { PluginSignalDescriptor };
 
 /**
+ * Plugins describe subcategories as a flat list with `childrenIds`; the server
+ * works with a tree (one level deep, like third-party label taxonomies).
+ * Entries that aren't referenced as a child are roots.
+ */
+function toSubcategoryTree(
+  flat: ReadonlyDeep<PluginSignalDescriptor['eligibleSubcategories']>,
+): SignalSubcategory[] {
+  const byId = new Map(flat.map((it) => [it.id, it]));
+  const childIds = new Set(flat.flatMap((it) => it.childrenIds));
+  return flat
+    .filter((it) => !childIds.has(it.id))
+    .map((root) => ({
+      id: root.id,
+      label: root.label,
+      ...(root.description != null ? { description: root.description } : {}),
+      children: root.childrenIds.flatMap((childId) => {
+        const child = byId.get(childId);
+        return child
+          ? [
+              {
+                id: child.id,
+                label: child.label,
+                ...(child.description != null
+                  ? { description: child.description }
+                  : {}),
+                children: [],
+              },
+            ]
+          : [];
+      }),
+    }));
+}
+
+/**
  * Wraps a plugin-provided descriptor so it satisfies SignalBase and can be
  * registered in the signals map and used by the rule engine.
  */
@@ -97,11 +131,14 @@ export default class PluginSignalAdapter extends SignalBase<
     return this.descriptor.needsMatchingValues;
   }
 
-  override get eligibleSubcategories() {
-    return this.descriptor.eligibleSubcategories as unknown as ReadonlyDeep<
-      SignalSubcategory[]
-    >;
+  override get eligibleSubcategories(): ReadonlyDeep<SignalSubcategory[]> {
+    this.#subcategoryTree ??= toSubcategoryTree(
+      this.descriptor.eligibleSubcategories,
+    );
+    return this.#subcategoryTree;
   }
+
+  #subcategoryTree: ReadonlyDeep<SignalSubcategory[]> | undefined;
 
   override get needsActionPenalties() {
     return this.descriptor.needsActionPenalties;
