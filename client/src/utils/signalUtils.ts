@@ -20,9 +20,9 @@ export function rebuildSubcategoryTreeFromGraphQLResponse(
   subcategories: readonly Omit<GQLSignalSubcategory, '__typename'>[],
 ): SignalSubcategory[] {
   function rebuildTree(
-    subcategories: readonly Omit<GQLSignalSubcategory, '__typename'>[],
+    nodes: readonly Omit<GQLSignalSubcategory, '__typename'>[],
   ): SignalSubcategory[] {
-    return subcategories.map((subcategory) => ({
+    return nodes.map((subcategory) => ({
       id: subcategory.id,
       label: subcategory.label,
       description: subcategory.description ?? undefined,
@@ -32,8 +32,11 @@ export function rebuildSubcategoryTreeFromGraphQLResponse(
     }));
   }
 
-  return rebuildTree(subcategories).filter(
-    (subcategory) => subcategory.children?.length,
+  // Roots are the entries no other entry lists as a child, including
+  // standalone ones without children.
+  const childIds = new Set(subcategories.flatMap((it) => it.childrenIds));
+  return rebuildTree(
+    subcategories.filter((subcategory) => !childIds.has(subcategory.id)),
   );
 }
 
@@ -57,4 +60,24 @@ export function createSubcategoryIdToLabelMapping(
     },
     {} as { [key: string]: string },
   );
+}
+
+/** Text for a condition's subcategory picker button. */
+export function subcategoryButtonLabel(
+  subcategories: readonly { id: string; label: string }[],
+  id: string | null | undefined,
+): string {
+  if (id == null) return 'Select Subcategory';
+  return (
+    findSubcategoryLabel(subcategories, id) ?? `Unavailable policy (${id})`
+  );
+}
+
+export function findSubcategoryLabel(
+  subcategories: readonly { id: string; label: string }[],
+  id: string | null | undefined,
+): string | undefined {
+  return id == null
+    ? undefined
+    : subcategories.find((subcategory) => subcategory.id === id)?.label;
 }

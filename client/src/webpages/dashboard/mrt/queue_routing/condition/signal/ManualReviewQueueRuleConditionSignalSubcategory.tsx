@@ -1,6 +1,7 @@
 import { Button } from 'antd';
 import { ChevronDown } from 'lucide-react';
 
+import { subcategoryButtonLabel } from '../../../../../../utils/signalUtils';
 import { RuleFormConditionParams } from '../../ManualReviewQueueRuleFormCondition';
 
 export default function ManualReviewQueueRuleConditionSignalSubcategory(props: {
@@ -43,7 +44,7 @@ export default function ManualReviewQueueRuleConditionSignalSubcategory(props: {
         disabled={!editing}
         onClick={onClick}
       >
-        {signal.subcategory ?? 'Select Subcategory'}{' '}
+        {subcategoryButtonLabel(eligibleSubcategories, signal.subcategory)}{' '}
         {editing ? (
           <ChevronDown className="w-3 h-3 !text-[#bfbfbf] !hover:text-[#bfbfbf]" />
         ) : null}

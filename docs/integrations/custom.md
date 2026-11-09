@@ -80,6 +80,30 @@ const manifest: IntegrationManifest = {
 
 Configuration fields require `@roostorg/coop-types >= 3.0.0`.
 
+## Policies (`eligibleSubcategories`)
+
+A signal can offer policies so one signal covers several kinds of content. A
+classifier vendor might offer `HARASSMENT`, `THREATS`, and `SPAM`. Each rule
+picks a policy and sets its own threshold, so an enforcement rule can use a
+high threshold while a routing rule sends lower scores to a review queue.
+
+List policies flat in `eligibleSubcategories`. Use `childrenIds` to nest a
+policy one level under another:
+
+```ts
+eligibleSubcategories: [
+  { id: 'HARASSMENT', label: 'Harassment', childrenIds: ['THREATS'] },
+  { id: 'THREATS', label: 'Threats', childrenIds: [] },
+  { id: 'SPAM', label: 'Spam', childrenIds: [] },
+],
+```
+
+The selected policy ID is passed to `run()` as `input.subcategory`. Policy IDs
+are stored in rules, so keep them stable; labels can change. If a rule uses a
+policy the signal no longer offers, Coop doesn't call the plugin. The condition
+reports an error and the rule doesn't pass. Plugins should still return a
+permanent error for a policy their backend doesn't recognize.
+
 ## Evaluation context (`contextNeeds`)
 
 A signal can ask for more than the value being scored by setting

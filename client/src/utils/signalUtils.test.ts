@@ -1,10 +1,41 @@
 import { GQLIntegration } from '../graphql/generated';
 import {
   createSubcategoryIdToLabelMapping,
+  findSubcategoryLabel,
   rebuildSubcategoryTreeFromGraphQLResponse,
+  subcategoryButtonLabel,
 } from './signalUtils';
 
 describe('Signal Utils Tests', () => {
+  test('finds a subcategory label and falls back when absent', () => {
+    const subcategories = [{ id: 'harassment', label: 'Harassment' }];
+    expect(findSubcategoryLabel(subcategories, 'harassment')).toBe(
+      'Harassment',
+    );
+    expect(findSubcategoryLabel(subcategories, 'missing')).toBeUndefined();
+  });
+  test('labels the picker for selected, missing, and unset policies', () => {
+    const subcategories = [{ id: 'harassment', label: 'Harassment' }];
+    expect(subcategoryButtonLabel(subcategories, 'harassment')).toBe(
+      'Harassment',
+    );
+    expect(subcategoryButtonLabel(subcategories, 'removed')).toBe(
+      'Unavailable policy (removed)',
+    );
+    expect(subcategoryButtonLabel(subcategories, undefined)).toBe(
+      'Select Subcategory',
+    );
+  });
+  test('keeps standalone subcategories as roots', () => {
+    const tree = rebuildSubcategoryTreeFromGraphQLResponse([
+      { id: 'harassment', label: 'Harassment', childrenIds: ['threats'] },
+      { id: 'threats', label: 'Threats', childrenIds: [] },
+      { id: 'spam', label: 'Spam', childrenIds: [] },
+    ]);
+
+    expect(tree.map((it) => it.id)).toEqual(['harassment', 'spam']);
+    expect(tree[0].children?.map((it) => it.id)).toEqual(['threats']);
+  });
   describe('Test should recreate subcategory tree from flattened list', () => {
     test('Should recreate subcategories correctly', () => {
       const flattenedSubcategories = [
