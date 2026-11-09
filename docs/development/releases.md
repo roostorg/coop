@@ -36,7 +36,7 @@ Then:
 Publishing a release triggers automations:
 
 - **Docker images**: builds and pushes version-tagged Docker images for `coop-server`, `coop-worker`, `coop-client`, and `coop-migrations`, each with SBOM and provenance attestations
-- **SBOMs**: attaches a CycloneDX SBOM for each image (`<image>-x.y.z.cdx.json`) to the release
+- **SBOMs**: attaches a linux/amd64 CycloneDX SBOM for each image (`<image>-x.y.z.cdx.json`) to the release
 - **Image scans**: scans each image with Trivy and reports findings to code scanning, which is visible only to maintainers; findings never block publishing. See [Vulnerability scanning](vulnerability-scanning.md)
 - **Docs**: adds a folder for the release to the [index](https://roostorg.github.io/coop/) with a snapshot of the docs
 

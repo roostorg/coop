@@ -27,9 +27,14 @@ ARG VITE_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
 # before we ever deploy. So no need to do it again here.
 ENV DISABLE_ESLINT_PLUGIN=true
 RUN NODE_OPTIONS="--max-old-space-size=5250" VITE_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=$VITE_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT pnpm run build
+# Vite bundles the npm packages into the JS, so image scanners can't see them.
+# List the client's production dependencies in an SBOM that Trivy picks up.
+RUN pnpm --filter client sbom --sbom-format cyclonedx --prod --lockfile-only > /app/client/coop-client.cdx.json
 
 FROM nginx:1.31.8-alpine AS serve
 COPY --from=build /app/client/build /usr/share/nginx/html
+# Outside the nginx root so it isn't served.
+COPY --from=build /app/client/coop-client.cdx.json /usr/share/sbom/
 ENV NGINX_ENTRYPOINT_LOCAL_RESOLVERS=1
 ENV NGINX_ENVSUBST_FILTER=NGINX_
 COPY client/nginx.conf /etc/nginx/templates/default.conf.template
