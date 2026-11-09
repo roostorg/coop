@@ -35,11 +35,11 @@ The steps run in this order: choose the release base (step 2) before merging any
 
 ### Finding a release's security fixes
 
-Security fixes carry the `security` label: Dependabot PRs that fix a published advisory get it automatically, and authors or maintainers add it to manual fixes. To list the fixes merged to `main` since the last release `x.y.z` of the line being patched:
+Security fixes carry the `security-update` label: Dependabot PRs that fix a published advisory get it automatically, and authors or maintainers add it to manual fixes. To list the fixes merged to `main` since the last release `x.y.z` of the line being patched:
 
 ```bash
 LAST=$(gh release view x.y.z --repo roostorg/coop --json publishedAt --jq .publishedAt)
-gh pr list --repo roostorg/coop --state merged --base main --label security --search "merged:>=${LAST%%T*}" --limit 200
+gh pr list --repo roostorg/coop --state merged --base main --label security-update --search "merged:>=${LAST%%T*}" --limit 200
 ```
 
 Without a tag, `gh release view` returns the repository's **Latest** release, which may belong to another line.
@@ -51,10 +51,10 @@ git log origin/release/x.y --grep 'cherry picked from commit' --format='%h %s'
 git diff origin/release/x.y origin/main -- pnpm-lock.yaml
 ```
 
-This depends on the labeling workflow in [#1519](https://github.com/roostorg/coop/pull/1519) and on the `security` label existing ([#1520](https://github.com/roostorg/coop/issues/1520), items 1 and 15). PRs merged before both are in place are not labeled, so also check the unlabeled PRs merged since the last release:
+This depends on the labeling workflow in [#1519](https://github.com/roostorg/coop/pull/1519) and on the `security-update` label existing ([#1520](https://github.com/roostorg/coop/issues/1520), items 1 and 15). PRs merged before both are in place are not labeled, so also check the unlabeled PRs merged since the last release:
 
 ```bash
-gh pr list --repo roostorg/coop --state merged --base main --search "merged:>=${LAST%%T*} -label:security" --limit 200 --json number,title
+gh pr list --repo roostorg/coop --state merged --base main --search "merged:>=${LAST%%T*} -label:security-update" --limit 200 --json number,title
 ```
 
 For each dependency update, read the release notes or advisories of every package version it changes.
@@ -108,7 +108,7 @@ If `main` has unreleased changes, choose one of the options below. **Pending dec
 - Fixes land on `main` first, then are cherry-picked to `release/x.y` with `git cherry-pick -x`. The exception is a private-fork fix, which merges into `release/x.y` directly and is forward-ported to `main` in step 8.
 - Clean `-x` cherry-picks of exact `main` commits were already reviewed on `main`, so batch them into one backport PR per release. Open a separate PR for each backport that does not map exactly to a `main` commit: one update split out of a Dependabot group, a lockfile regenerated with `pnpm update`, or a cherry-pick with conflicts resolved by hand.
 - `release/x.y` has no ruleset or branch protection until [#1520](https://github.com/roostorg/coop/issues/1520) item 12 is decided, so a backport PR is a choice, not a requirement: it runs CI on the release branch and records an approval. Until the ruleset exists, maintainers may push clean cherry-picks directly.
-- The [Security backports](security-backports.md) workflow creates `release/x.y` and opens a backport PR for each `security`-labelled PR merged to `main`, from a `backport/<n>-to-release/x.y` branch. It depends on [#1550](https://github.com/roostorg/coop/pull/1550); without it, cherry-pick by hand as below.
+- The [Security backports](security-backports.md) workflow creates `release/x.y` and opens a backport PR for each `security-update`-labelled PR merged to `main`, from a `backport/<n>-to-release/x.y` branch. It depends on [#1550](https://github.com/roostorg/coop/pull/1550); without it, cherry-pick by hand as below.
 - PR checks run on PRs against `release/x.y`, but `main`'s branch protection rules do not cover it.
 - Open each backport PR with `gh pr create --base release/x.y`; `gh` defaults to `main`. Add a `## Release notes` section with each fix's note to its description, even though the branch's PR template may not have one: the draft release for `release/x.y` and the notes in step 3 are built from it.
 - Merge backport PRs with a merge commit or a rebase, not a squash: squashing can drop the `(cherry picked from commit …)` line that marks a commit as backported.
@@ -159,7 +159,7 @@ The release itself gets notes written from the [release notes template](#release
 - On option A, edit the draft release for `main`.
 - On option B, edit the draft release for `x.y.(z+1)` that the Security backports workflow keeps for `release/x.y`, and publish it in step 4. Without that draft (it depends on [#1548](https://github.com/roostorg/coop/pull/1548) and [#1550](https://github.com/roostorg/coop/pull/1550)), write the notes in a file for step 4, copying the fixes' entries from the draft release for `main`.
 - Release Drafter only collects PRs with a `## Release notes` section. Dependabot PRs have none, so write their entries by hand in the format above.
-- [#1548](https://github.com/roostorg/coop/pull/1548) adds a **Security** category for PRs labelled `security`, and sets `filter-by-commitish: true` so that the draft release for `main` and the draft for `release/x.y` stay separate. Without it, Release Drafter for `main` updates whichever draft it finds first.
+- [#1548](https://github.com/roostorg/coop/pull/1548) adds a **Security** category for PRs labelled `security-update`, and sets `filter-by-commitish: true` so that the draft release for `main` and the draft for `release/x.y` stay separate. Without it, Release Drafter for `main` updates whichever draft it finds first.
 - A fix from a private fork has no PR in this repository, so write its entry in the release notes directly, linking only the advisory:
 
 ```markdown
