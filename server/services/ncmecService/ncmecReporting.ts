@@ -1520,6 +1520,10 @@ export default class NcmecReporting {
   // (user_id, user_item_type_id, org_id) for uniqueness, before an hour before
   // it executes, to allow for concurrent decisions to finish executing. Only
   // meant to be used in the NCMEC retry script.
+  //
+  // A production report covers all of the user's decisions; a test report
+  // covers only decisions made at or before latestTestReportAt. Rows with a
+  // null is_test predate the column and count as production.
   async getUsersWithNcmecDecision(opts: { startDate: Date }) {
     const { startDate } = opts;
     return this.pqQueryReadReplica
@@ -1528,11 +1532,12 @@ export default class NcmecReporting {
         'user_id as userId',
         'user_item_type_id as userItemTypeId',
         'org_id as orgId',
+        sql<boolean>`bool_or(is_test is not true)`.as('hasProductionReport'),
+        sql<Date | null>`max(created_at) filter (where is_test)`.as(
+          'latestTestReportAt',
+        ),
       ])
       .where('created_at', '>=', startDate)
-      .where((eb) =>
-        eb.or([eb('is_test', '=', null), eb('is_test', '=', false)]),
-      )
       .groupBy(['user_id', 'user_item_type_id', 'org_id'])
       .execute();
   }
