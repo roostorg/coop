@@ -1,0 +1,45 @@
+server/services/signalsService/SignalsService.ts
+  s_9fec762e193d5b::t_d450b6d03ffa9f 12
+  s_9fec762e193d5b::t_9947e4af83d8a0 267-270,272
+  s_9fec762e193d5b::t_6ed9e82014f2f9 271
+  s_9fec762e193d5b::t_1620beb8803783 25
+  s_9fec762e193d5b::t_cc47efae024f67 273-274
+client/src/utils/signalUtils.ts
+  s_9fec762e193d5b::t_43e549a00fc8bf 61-69
+client/src/webpages/dashboard/mrt/queue_routing/condition/signal/ManualReviewQueueRuleConditionSignalSubcategory.tsx
+  s_9fec762e193d5b::t_43e549a00fc8bf 4,47-49
+docs/integrations/custom.md
+  s_9fec762e193d5b::t_188eb2155edfed 83-106
+server/services/signalsService/helpers/findUnavailablePluginSubcategory.test.ts
+  s_9fec762e193d5b::t_43e549a00fc8bf 1-52
+client/src/utils/signalUtils.test.ts
+  s_9fec762e193d5b::t_43e549a00fc8bf 4,9-15
+client/src/webpages/dashboard/rules/rule_form/condition/signal/RuleFormConditionSignalSubcategory.tsx
+  s_9fec762e193d5b::t_43e549a00fc8bf 4,43-45
+server/services/signalsService/pluginPolicies.test.ts
+  s_9fec762e193d5b::t_505a4c297c7d1d 2-9,11-32,34-133
+  s_9fec762e193d5b::t_2f52022894b494 1
+  s_9fec762e193d5b::t_18f01e2d61cfa3 10
+  s_9fec762e193d5b::t_46eaf86ffa5666 33
+server/services/signalsService/signals/PluginSignalAdapter.ts
+  s_9fec762e193d5b::t_43e549a00fc8bf 26-58,134-138,141
+  s_9fec762e193d5b::t_424201e23cffae 25,142
+server/services/signalsService/helpers/findUnavailablePluginSubcategory.ts
+  s_9fec762e193d5b::t_43e549a00fc8bf 1-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "30c1af3331767e4692421ca27c25c8b47d062705",
+  "prompts": {},
+  "sessions": {
+    "s_9fec762e193d5b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b0e09479-679d-4cb5-a6e9-495a82f0dd36",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
