@@ -99,7 +99,8 @@ creator, a `creator` with only its `id` and `typeId`. `thread.messages` are
 the messages posted in the 90 days before the item, or before the evaluation
 when the item is a thread, oldest first. The thread has its own `truncated`
 flag for when more messages exist in that window. The context also has an
-optional `unavailable` list containing `item`, `parent`, or `thread`. When the rule input is a full item, `context.item` is
+optional `unavailable` list containing `item`,
+`parent`, or `thread`. When the rule input is a full item, `context.item` is
 always included; `includeFullItem` loads it when the input is only an ID.
 
 Threads default to 20 messages and allow at most 100. Each requested section
