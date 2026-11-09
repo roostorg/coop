@@ -40,7 +40,7 @@
             const path_to_root = "../";
             const default_light_theme = "roost";
             const default_dark_theme = "roost";
-            window.path_to_searchindex_js = "../searchindex-4cbbe3ad.js";
+            window.path_to_searchindex_js = "../searchindex-349692b9.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-6e080ddd.js"></script>
@@ -192,7 +192,7 @@
                     <main>
                         <h1 id="zentropi-cope"><a class="header" href="#zentropi-cope">Zentropi CoPE</a></h1>
 <p><a href="https://zentropi.ai">Zentropi CoPE</a> (Content Policy Enforcement) is a policy-adaptive AI text classifier. Unlike classifiers with fixed taxonomies, CoPE has no predefined categories; instead, you write your own policy text describing what you want to detect, and the model classifies content against those policies. This makes it particularly useful for platforms with nuanced or unusual content policies that off-the-shelf classifiers handle poorly.</p>
-<p>The model powering the integration is <strong>CoPE-A-9B</strong> (version 1.x, released July 2025).</p>
+<p>You choose which Zentropi model evaluates content for each labeler version; see <a href="#configuration">Configuration</a>.</p>
 <h2 id="requirements"><a class="header" href="#requirements">Requirements</a></h2>
 <ul>
 <li>A <a href="https://zentropi.ai">Zentropi</a> account with API access</li>
@@ -201,12 +201,31 @@
 <h2 id="configuration"><a class="header" href="#configuration">Configuration</a></h2>
 <p>In Coop, go to <strong>Settings → Integrations</strong> and add your Zentropi credentials:</p>
 <ul>
-<li><strong>API Key</strong>: your Zentropi API key</li>
-<li><strong>Labeler Versions</strong>: one entry per deployed labeler version you want to use in rules, each with its <strong>Version ID</strong> and a display name. <strong>Labeler ID</strong> is optional when using a specific version ID. You can find both IDs in the Zentropi UI.</li>
+<li>
+<p><strong>API Key</strong>: your Zentropi API key</p>
+</li>
+<li>
+<p><strong>Labeler Versions</strong>: one entry per deployed labeler version you want to use in rules, each with its <strong>Version ID</strong> and a display name. <strong>Labeler ID</strong> is optional when using a specific version ID. You can find both IDs in the Zentropi UI.</p>
+</li>
+<li>
+<p><strong>Model</strong>: the Zentropi model that evaluates content for that labeler version:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Model</th><th>Description</th></tr>
+</thead>
+<tbody>
+<tr><td><code>cope-latest</code></td><td>Default. An alias Zentropi points at its current recommended text model.</td></tr>
+<tr><td><code>cope-b-a4b</code></td><td>CoPE-B-A4B</td></tr>
+<tr><td><code>cope-b-s1</code></td><td>CoPE-B-S1</td></tr>
+</tbody>
+</table>
+</div>
+</li>
 </ul>
 <h2 id="signals"><a class="header" href="#signals">Signals</a></h2>
 <p>Each labeler version configured in the integration settings is available as a subcategory of the Zentropi Labeler signal. When building a rule condition, select the Zentropi signal and pick the labeler version by name in the <strong>subcategory</strong> field.</p>
-<p>Existing version-only configurations continue to work without changes. Coop always sends the selected version ID to Zentropi and includes the labeler ID only when it is nonblank; it does not replace the selected version with the latest version.</p>
+<p>Existing version-only configurations continue to work without changes. Coop always sends the selected version ID to Zentropi and includes the labeler ID only when it is nonblank; it does not replace the selected version with the latest version. Labeler versions saved without a model use <code>cope-latest</code>.</p>
 <p>Coop sends the text field value to the Zentropi API and receives a score between 0 and 1:</p>
 <ul>
 <li><strong>0</strong> = confidently safe (model is confident the content does <em>not</em> violate your policy)</li>
