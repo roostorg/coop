@@ -1,0 +1,43 @@
+client/src/utils/signalUtils.test.ts
+  s_00830e7d6998dc::t_0d124141e06f0d 6
+  s_00830e7d6998dc::t_e087cb7eecf84e 17-28
+  s_00830e7d6998dc::t_4cc98e541b42f3 29-38
+client/src/utils/signalUtils.ts
+  s_00830e7d6998dc::t_fcfc31f8f22171 23,25,35-36
+  s_00830e7d6998dc::t_9caa1df772f830 37-39
+  s_00830e7d6998dc::t_adfc8d8cf70bbb 65-75
+client/src/webpages/dashboard/mrt/queue_routing/condition/signal/ManualReviewQueueRuleConditionSignalSubcategory.tsx
+  s_00830e7d6998dc::t_59124ee04ed784 4,47
+server/services/signalsService/helpers/findUnavailablePluginSubcategory.test.ts
+  s_00830e7d6998dc::t_89a380d7978da5 6-11
+  s_00830e7d6998dc::t_c047a86404b3e2 23,26
+  s_00830e7d6998dc::t_910f14bd9c356f 46-51
+client/src/webpages/dashboard/rules/rule_form/condition/signal/RuleFormConditionSignalSubcategory.tsx
+  s_00830e7d6998dc::t_59124ee04ed784 4,43
+server/services/signalsService/helpers/findUnavailablePluginSubcategory.ts
+  s_00830e7d6998dc::t_a6a71206f0f2f2 17
+server/services/signalsService/signals/PluginSignalAdapter.test.ts
+  s_00830e7d6998dc::t_f3582fb3c3aaed 1-91
+server/services/signalsService/signals/PluginSignalAdapter.ts
+  s_00830e7d6998dc::t_70e8dbeebc45bb 33-36
+  s_00830e7d6998dc::t_b8ed11216be92e 104
+  s_00830e7d6998dc::t_72d8c7a41ea048 44-47
+  s_00830e7d6998dc::t_8795d670b0bee7 26-32,37-43,48-55
+  s_00830e7d6998dc::t_d1e28511dce862 25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a4b53039e022d2a6dab2a2904259aca462da0a9c",
+  "prompts": {},
+  "sessions": {
+    "s_00830e7d6998dc": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "cfd3d02d-9f8c-491c-a26c-4722e60456eb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
