@@ -4,6 +4,7 @@ import { v1 as uuidv1 } from 'uuid';
 import { inject } from '../iocContainer/utils.js';
 import {
   buildSubmitReportParamsFromDecision,
+  isNcmecTestMode,
   LEGACY_FALLBACK_INCIDENT_TYPE,
   summarizeNcmecErrorForReviewer,
 } from '../services/ncmecService/index.js';
@@ -118,7 +119,7 @@ export default inject(
           getItemTypeEventuallyConsistent,
         });
         submitReportInvoked = true;
-        const isTest = process.env.NCMEC_ENV !== 'production';
+        const isTest = isNcmecTestMode();
         const reportResult = await ncmecService.submitReport(
           reportParams,
           isTest,
@@ -228,15 +229,21 @@ export default inject(
         // decisions that don't already have a permanent error or a retry count of
         // 10 or more.
         const decisionsToRetry = ncmecDecisions.filter((it) => {
+          const report = usersWithReports.find(
+            (r) =>
+              r.userId === it.job_payload.payload.item.itemId &&
+              r.userItemTypeId ===
+                it.job_payload.payload.item.itemTypeIdentifier.id &&
+              r.orgId === it.org_id,
+          );
+          // A test report only covers decisions made at or before it.
+          const alreadyReported =
+            report != null &&
+            (report.hasProductionReport ||
+              (report.latestTestReportAt != null &&
+                report.latestTestReportAt >= it.created_at));
           return (
-            !usersWithReports.some(
-              (usersWithReports) =>
-                usersWithReports.userId ===
-                  it.job_payload.payload.item.itemId &&
-                usersWithReports.userItemTypeId ===
-                  it.job_payload.payload.item.itemTypeIdentifier.id &&
-                usersWithReports.orgId === it.org_id,
-            ) &&
+            !alreadyReported &&
             !previousErrors.some(
               (error) =>
                 (error.job_id === it.job_payload.id &&
