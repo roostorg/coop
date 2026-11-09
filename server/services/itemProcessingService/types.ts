@@ -40,6 +40,10 @@ const rawItemSubmissionVariants = [
   }),
 ] as const;
 
+const rawItemSubmissionSelectors = rawItemSubmissionVariants.map((variant) =>
+  v.omit(variant, ['id', 'data']),
+);
+
 export type RawItemSubmission = v.InferInput<
   v.UnionSchema<typeof rawItemSubmissionVariants, undefined>
 >;
@@ -47,9 +51,8 @@ export type RawItemSubmission = v.InferInput<
 export const rawItemSubmissionSchema = v.pipe(
   v.custom<RawItemSubmission>(
     (input) =>
-      rawItemSubmissionVariants.filter(
-        (variant) => v.safeParse(variant, input).success,
-      ).length === 1,
+      rawItemSubmissionSelectors.filter((selector) => v.is(selector, input))
+        .length === 1,
   ),
   v.union(rawItemSubmissionVariants),
 );
