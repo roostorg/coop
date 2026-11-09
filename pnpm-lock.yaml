@@ -16,7 +16,6 @@ overrides:
   uuid@<14.0.0: ^14.0.0
   fast-xml-parser@<5.8.0: ^5.8.0
   axios@<1.20.0: ^1.20.0
-  fast-uri@<3.1.8: ^3.1.8
   protobufjs@<7.6.3: ^7.6.3
   protobufjs@>=8.0.0 <8.6.0: ^8.6.0
   '@grpc/proto-loader>protobufjs': ^8.6.0
@@ -11923,7 +11922,7 @@ snapshots:
       '@opentelemetry/core': 3.0.0(@opentelemetry/api@1.10.0)
       '@opentelemetry/instrumentation': 0.300.0(@opentelemetry/api@1.10.0)(supports-color@10.2.2)
       '@opentelemetry/semantic-conventions': 1.44.0
-      '@opentelemetry/web-common': 0.300.0
+      '@opentelemetry/web-common': 0.300.0(@opentelemetry/api@1.10.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -11941,7 +11940,7 @@ snapshots:
       '@opentelemetry/core': 3.0.0(@opentelemetry/api@1.10.0)
       '@opentelemetry/instrumentation': 0.300.0(@opentelemetry/api@1.10.0)(supports-color@10.2.2)
       '@opentelemetry/semantic-conventions': 1.44.0
-      '@opentelemetry/web-common': 0.300.0
+      '@opentelemetry/web-common': 0.300.0(@opentelemetry/api@1.10.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -12202,7 +12201,7 @@ snapshots:
     dependencies:
       '@opentelemetry/core': 3.0.0(@opentelemetry/api@1.10.0)
       '@opentelemetry/instrumentation': 0.300.0(@opentelemetry/api@1.10.0)(supports-color@10.2.2)
-      '@opentelemetry/web-common': 0.300.0
+      '@opentelemetry/web-common': 0.300.0(@opentelemetry/api@1.10.0)
       zone.js: 0.15.1
     transitivePeerDependencies:
       - supports-color
@@ -12219,7 +12218,7 @@ snapshots:
       '@opentelemetry/core': 3.0.0(@opentelemetry/api@1.10.0)
       '@opentelemetry/instrumentation': 0.300.0(@opentelemetry/api@1.10.0)(supports-color@10.2.2)
       '@opentelemetry/semantic-conventions': 1.44.0
-      '@opentelemetry/web-common': 0.300.0
+      '@opentelemetry/web-common': 0.300.0(@opentelemetry/api@1.10.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -12405,7 +12404,7 @@ snapshots:
       '@opentelemetry/api': 1.10.0
       '@opentelemetry/core': 3.0.0(@opentelemetry/api@1.10.0)
 
-  '@opentelemetry/web-common@0.300.0':
+  '@opentelemetry/web-common@0.300.0(@opentelemetry/api@1.10.0)':
     dependencies:
       '@opentelemetry/core': 3.0.0(@opentelemetry/api@1.10.0)
       '@opentelemetry/sdk-logs': 3.0.0(@opentelemetry/api@1.10.0)
