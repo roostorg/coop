@@ -13,7 +13,7 @@ import {
   getFieldValueOrValues,
   type ItemSubmission,
 } from '../itemProcessingService/index.js';
-import { DEFAULT_MAX_THREAD_MESSAGES, MAX_THREAD_MESSAGES } from './limits.js';
+import { DEFAULT_MAX_THREAD_MESSAGES } from './limits.js';
 
 export type SignalContextLoader = {
   load: (needs: SignalContextNeeds) => Promise<SignalEvaluationContext>;
@@ -190,17 +190,14 @@ function normalizeNeeds(needs: SignalContextNeeds) {
     includeFullItem: needs.includeFullItem === true,
     includeParent: needs.includeParent === true,
     includeThread: needs.includeThread === true,
-    maxThreadMessages: clamp(
+    maxThreadMessages: toMessageCount(
       needs.maxThreadMessages ?? DEFAULT_MAX_THREAD_MESSAGES,
-      MAX_THREAD_MESSAGES,
     ),
   };
 }
 
-function clamp(value: number, max: number) {
-  return Number.isFinite(value) && value >= 0
-    ? Math.min(Math.floor(value), max)
-    : 0;
+function toMessageCount(value: number) {
+  return Number.isFinite(value) && value >= 0 ? Math.floor(value) : 0;
 }
 
 async function withTimeout<T>(

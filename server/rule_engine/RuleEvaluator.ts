@@ -149,8 +149,8 @@ class RuleEvaluator {
           .catch(() => Infinity),
       getSignalContext: async (signalId: SignalId) => {
         if (signalId.type === 'CUSTOM') return undefined;
-        // If the needs can't be resolved (e.g. the org's settings can't be
-        // read), send no context rather than risk overriding an org's "Off".
+        // Resolving needs reads the org's integration config. If that read
+        // fails, run the signal without context instead of failing it.
         const needs = await this.signalsService
           .getSignal({ orgId, signalId })
           .then(async (signal) =>

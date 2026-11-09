@@ -82,36 +82,57 @@ Configuration fields require `@roostorg/coop-types >= 3.0.0`.
 
 ## Evaluation context (`contextNeeds`)
 
-A signal opts into additional data by setting `contextNeeds` on its
-`PluginSignalDescriptor`. The resulting `PluginSignalRunInput.context` is
-optional; tolerate absent sections because an item may have no parent or
-thread, or a section may time out.
+A signal can ask for more than the value being scored by setting
+`contextNeeds` on its `PluginSignalDescriptor`:
 
-| Need              | Context section                                              |
-| ----------------- | ------------------------------------------------------------ |
-| `includeFullItem` | `context.item`, the normalized item data and type metadata   |
-| `includeParent`   | `context.parent`, the item referenced by the `parentId` role |
-| `includeThread`   | `context.thread`, with `id`, `typeId`, and `messages`        |
+```ts
+const signal: PluginSignalDescriptor = {
+  // ...
+  contextNeeds: {
+    includeParent: true,
+    includeThread: true,
+    maxThreadMessages: 50,
+  },
+  async run(input) {
+    const earlier = input.context?.thread?.messages ?? [];
+    const parentText = input.context?.parent?.data.text;
+    // ...
+  },
+};
+```
 
-Each `SignalContextItem` contains `itemId`, `itemTypeId`, optional type
-metadata, normalized `data`, optional `createdAt`, and, when the item has a
-creator, a `creator` with only its `id` and `typeId`. `thread.messages` are
-the messages posted in the 90 days before the item, oldest first, and the
-thread has its own `truncated` flag for when more messages exist in that
-window. The context also has an optional `unavailable` list containing `item`,
-`parent`, or `thread`. When the rule input is a full item, `context.item` is
-always included; `includeFullItem` loads it when the input is only an ID.
+Coop then passes the context to `run()` as `input.context`:
 
-Threads default to 20 messages and allow at most 100. Each requested section
-has a 3-second load timeout. A missing section is absent; a requested section
-that could not load is named in `unavailable`. Plugins are responsible for
-applying their own text and payload limits.
+```ts
+{
+  item: { itemId: 'msg-3', itemTypeId: 'message', data: { text: 'see you there' } },
+  parent: { itemId: 'post-1', itemTypeId: 'post', data: { text: 'Meetup on Friday' } },
+  thread: {
+    id: 'thread-1',
+    typeId: 'thread',
+    // Messages posted before the item, oldest first.
+    messages: [
+      { itemId: 'msg-1', itemTypeId: 'message', data: { text: 'who is going?' }, creator: { id: 'user-7', typeId: 'user' } },
+      { itemId: 'msg-2', itemTypeId: 'message', data: { text: 'me' } },
+    ],
+    // True when there are more messages than maxThreadMessages.
+    truncated: false,
+  },
+  // Set only when a requested section couldn't be loaded in time, for
+  // example unavailable: ['thread'].
+}
+```
 
-Context is loaded at most once per rule evaluation for each distinct set of
-needs, so signals asking for the same context share one load.
-User items are attached only by ID and type, never their data, and creator
-IDs are not expanded into user records. Context isn't loaded for an
-integration with `requiresConfig: true` that the organization hasn't
-configured.
+See `SignalEvaluationContext` in `@roostorg/coop-types` for the full shape.
+
+- Every section is optional. An item may have no parent or thread, and a
+  section that takes longer than 3 seconds is listed in `unavailable`.
+- Threads include up to `maxThreadMessages` messages from the 90 days before
+  the item, 20 by default. Each message is read from storage for every
+  evaluation that runs your signal, so ask for only as many as your model uses.
+- Coop doesn't trim message text. Apply your own size limits before sending
+  context to your backend.
+- User items are passed by ID and type only, never their data.
+- No context is loaded for an integration the organization hasn't configured.
 
 Evaluation context requires `@roostorg/coop-types >= 3.0.0`.

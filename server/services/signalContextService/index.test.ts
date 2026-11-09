@@ -54,10 +54,6 @@ function factory(
   );
 }
 
-function fullInput(item: ReturnType<typeof submission>) {
-  return item;
-}
-
 describe('SignalContextLoader', () => {
   test('loads CONTENT thread oldest-first, excludes current, and keeps recent messages', async () => {
     const current = submission(
@@ -82,7 +78,7 @@ describe('SignalContextLoader', () => {
       getThread,
     )({
       orgId,
-      ruleInput: fullInput(current),
+      ruleInput: current,
     });
 
     const context = await loader.load({
@@ -123,7 +119,7 @@ describe('SignalContextLoader', () => {
       getThread,
     )({
       orgId,
-      ruleInput: fullInput(current),
+      ruleInput: current,
     }).load({ includeThread: true, maxThreadMessages: 5 });
 
     expect(getThread).toHaveBeenCalledWith(
@@ -145,10 +141,27 @@ describe('SignalContextLoader', () => {
       getThread,
     )({
       orgId,
-      ruleInput: fullInput(current),
+      ruleInput: current,
     }).load({ includeThread: true });
 
     expect(context.thread?.messages.map((it) => it.itemId)).toEqual(['m1']);
+  });
+
+  test('fetches as many messages as the signal asks for', async () => {
+    const getThread = vi.fn(async function* () {
+      yield* [];
+    });
+    await factory(
+      vi.fn(),
+      getThread,
+    )({
+      orgId,
+      ruleInput: submission('current', 'THREAD'),
+    }).load({ includeThread: true, maxThreadMessages: 250 });
+
+    expect(getThread).toHaveBeenCalledWith(
+      expect.objectContaining({ limit: 252 }),
+    );
   });
 
   test('detects truncation when the item is in the fetched page', async () => {
@@ -170,7 +183,7 @@ describe('SignalContextLoader', () => {
       getThread,
     )({
       orgId,
-      ruleInput: fullInput(current),
+      ruleInput: current,
     }).load({ includeThread: true, maxThreadMessages: 2 });
 
     expect(context.thread?.messages.map((it) => it.itemId)).toEqual([
@@ -190,7 +203,7 @@ describe('SignalContextLoader', () => {
       getThread,
     )({
       orgId,
-      ruleInput: fullInput(item),
+      ruleInput: item,
     }).load({ includeThread: true });
 
     expect(getThread).toHaveBeenCalledWith(
@@ -212,7 +225,7 @@ describe('SignalContextLoader', () => {
     const getItem = vi.fn(async () => null);
     const context = await factory(getItem)({
       orgId,
-      ruleInput: fullInput(item),
+      ruleInput: item,
     }).load({ includeParent: true });
 
     expect(context.parent).toBeUndefined();
@@ -234,7 +247,7 @@ describe('SignalContextLoader', () => {
     });
     const context = await factory(getItem, vi.fn(), { sectionTimeoutMs: 10 })({
       orgId,
-      ruleInput: fullInput(item),
+      ruleInput: item,
     }).load({ includeParent: true });
 
     expect(context.unavailable).toContain('parent');
@@ -260,7 +273,7 @@ describe('SignalContextLoader', () => {
       getThread,
     )({
       orgId,
-      ruleInput: fullInput(item),
+      ruleInput: item,
     }).load({ includeParent: true, includeThread: true });
 
     expect(context.parent).toBeUndefined();
@@ -276,7 +289,7 @@ describe('SignalContextLoader', () => {
     const factoryInstance = factory(getItem);
     const userContext = await factoryInstance({
       orgId,
-      ruleInput: fullInput(user),
+      ruleInput: user,
     }).load({
       includeFullItem: true,
       includeParent: true,
@@ -322,7 +335,7 @@ describe('SignalContextLoader', () => {
     });
     const loader = factory(vi.fn(), getThread, { sectionTimeoutMs: 10 })({
       orgId,
-      ruleInput: fullInput(item),
+      ruleInput: item,
     });
 
     const result = loader.load({ includeThread: true });
@@ -354,7 +367,7 @@ describe('SignalContextLoader', () => {
       getThread,
     )({
       orgId,
-      ruleInput: fullInput(item),
+      ruleInput: item,
     }).load({ includeThread: true });
 
     expect(context.thread?.messages.map((it) => it.itemId)).toEqual([
@@ -377,7 +390,7 @@ describe('SignalContextLoader', () => {
     const getItem = vi.fn(async () => ({
       latestSubmission: submission('parent'),
     }));
-    const loader = factory(getItem)({ orgId, ruleInput: fullInput(item) });
+    const loader = factory(getItem)({ orgId, ruleInput: item });
 
     await Promise.all([
       loader.load({ includeParent: true }),
