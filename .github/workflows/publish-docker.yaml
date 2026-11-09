@@ -13,6 +13,7 @@ on:
       - 'Dockerfile'
       - 'client/Dockerfile'
       - '.github/workflows/publish-docker.yaml'
+      - '.github/actions/scan-image/**'
   release:
     types: [published]
   workflow_dispatch:
@@ -43,8 +44,9 @@ env:
     type=semver,pattern={{version}}
     type=semver,pattern={{major}}.{{minor}}
     type=raw,value=${{ github.event.inputs.version }},enable=${{ github.event.inputs.version != '' }}
-  # Trivy is installed from its release tarball with a pinned checksum rather
-  # than through aquasecurity/trivy-action or setup-trivy (GHSA-69fq-xp46-6x23).
+  # Used by .github/actions/scan-image, which installs Trivy from its release
+  # tarball with a pinned checksum rather than through aquasecurity/trivy-action
+  # or setup-trivy (GHSA-69fq-xp46-6x23).
   TRIVY_VERSION: 0.76.1
   TRIVY_SHA256: c7cbe3137fb8a48a17574bede3dd6beb16742d1e9772929940fc90082c39d9c0
   TRIVY_DB_REPOSITORY: mirror.gcr.io/aquasec/trivy-db:2,ghcr.io/aquasecurity/trivy-db:2
@@ -177,36 +179,9 @@ jobs:
           sbom: true
           provenance: mode=max
 
-      # Report-only: findings go to code scanning (visible to maintainers, not
-      # the public) and never block a push, so a security release can always
-      # ship. continue-on-error keeps a download, Trivy or DB outage from failing
-      # a job whose images are already published; a checksum mismatch still fails.
-      - name: Download Trivy
-        id: trivy-download
-        continue-on-error: true
-        run: curl -fsSLo "$RUNNER_TEMP/trivy.tar.gz" "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
-
-      - name: Install Trivy
-        if: steps.trivy-download.outcome == 'success'
-        run: |
-          echo "${TRIVY_SHA256}  $RUNNER_TEMP/trivy.tar.gz" | sha256sum -c -
-          mkdir -p "$RUNNER_TEMP/trivy-bin"
-          tar -xzf "$RUNNER_TEMP/trivy.tar.gz" -C "$RUNNER_TEMP/trivy-bin" trivy
-          echo "$RUNNER_TEMP/trivy-bin" >> "$GITHUB_PATH"
-
-      - name: Scan image
-        id: scan
-        if: steps.trivy-download.outcome == 'success'
-        continue-on-error: true
-        env:
-          IMAGE: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}@${{ steps.build.outputs.digest }}
-        run: trivy image --quiet --scanners vuln --platform linux/amd64 --format sarif --output trivy.sarif "$IMAGE"
-
-      - uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
-        if: steps.scan.outcome == 'success'
-        continue-on-error: true
+      - uses: ./.github/actions/scan-image
         with:
-          sarif_file: trivy.sarif
+          image: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}@${{ steps.build.outputs.digest }}
           category: trivy-${{ matrix.image }}-${{ needs.changes.outputs.scan-channel }}
           ref: ${{ needs.changes.outputs.scan-ref }}
           sha: ${{ github.sha }}
@@ -277,36 +252,9 @@ jobs:
           sbom: true
           provenance: mode=max
 
-      # Report-only: findings go to code scanning (visible to maintainers, not
-      # the public) and never block a push, so a security release can always
-      # ship. continue-on-error keeps a download, Trivy or DB outage from failing
-      # a job whose images are already published; a checksum mismatch still fails.
-      - name: Download Trivy
-        id: trivy-download
-        continue-on-error: true
-        run: curl -fsSLo "$RUNNER_TEMP/trivy.tar.gz" "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
-
-      - name: Install Trivy
-        if: steps.trivy-download.outcome == 'success'
-        run: |
-          echo "${TRIVY_SHA256}  $RUNNER_TEMP/trivy.tar.gz" | sha256sum -c -
-          mkdir -p "$RUNNER_TEMP/trivy-bin"
-          tar -xzf "$RUNNER_TEMP/trivy.tar.gz" -C "$RUNNER_TEMP/trivy-bin" trivy
-          echo "$RUNNER_TEMP/trivy-bin" >> "$GITHUB_PATH"
-
-      - name: Scan image
-        id: scan
-        if: steps.trivy-download.outcome == 'success'
-        continue-on-error: true
-        env:
-          IMAGE: ${{ env.REGISTRY }}/${{ github.repository_owner }}/coop-client@${{ steps.build.outputs.digest }}
-        run: trivy image --quiet --scanners vuln --platform linux/amd64 --format sarif --output trivy.sarif "$IMAGE"
-
-      - uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
-        if: steps.scan.outcome == 'success'
-        continue-on-error: true
+      - uses: ./.github/actions/scan-image
         with:
-          sarif_file: trivy.sarif
+          image: ${{ env.REGISTRY }}/${{ github.repository_owner }}/coop-client@${{ steps.build.outputs.digest }}
           category: trivy-coop-client-${{ needs.changes.outputs.scan-channel }}
           ref: ${{ needs.changes.outputs.scan-ref }}
           sha: ${{ github.sha }}
@@ -372,36 +320,9 @@ jobs:
           sbom: true
           provenance: mode=max
 
-      # Report-only: findings go to code scanning (visible to maintainers, not
-      # the public) and never block a push, so a security release can always
-      # ship. continue-on-error keeps a download, Trivy or DB outage from failing
-      # a job whose images are already published; a checksum mismatch still fails.
-      - name: Download Trivy
-        id: trivy-download
-        continue-on-error: true
-        run: curl -fsSLo "$RUNNER_TEMP/trivy.tar.gz" "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
-
-      - name: Install Trivy
-        if: steps.trivy-download.outcome == 'success'
-        run: |
-          echo "${TRIVY_SHA256}  $RUNNER_TEMP/trivy.tar.gz" | sha256sum -c -
-          mkdir -p "$RUNNER_TEMP/trivy-bin"
-          tar -xzf "$RUNNER_TEMP/trivy.tar.gz" -C "$RUNNER_TEMP/trivy-bin" trivy
-          echo "$RUNNER_TEMP/trivy-bin" >> "$GITHUB_PATH"
-
-      - name: Scan image
-        id: scan
-        if: steps.trivy-download.outcome == 'success'
-        continue-on-error: true
-        env:
-          IMAGE: ${{ env.REGISTRY }}/${{ github.repository_owner }}/coop-migrations@${{ steps.build.outputs.digest }}
-        run: trivy image --quiet --scanners vuln --platform linux/amd64 --format sarif --output trivy.sarif "$IMAGE"
-
-      - uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
-        if: steps.scan.outcome == 'success'
-        continue-on-error: true
+      - uses: ./.github/actions/scan-image
         with:
-          sarif_file: trivy.sarif
+          image: ${{ env.REGISTRY }}/${{ github.repository_owner }}/coop-migrations@${{ steps.build.outputs.digest }}
           category: trivy-coop-migrations-${{ needs.changes.outputs.scan-channel }}
           ref: ${{ needs.changes.outputs.scan-ref }}
           sha: ${{ github.sha }}
