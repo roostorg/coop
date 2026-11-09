@@ -1,0 +1,30 @@
+server/services/signalContextService/index.ts
+  s_9fec762e193d5b::t_a21a6e09c0ff7b 48-51,60
+  s_9fec762e193d5b::t_59c07d0ad31037 82-86
+  s_9fec762e193d5b::t_ed8094f7a7b23b 117-120
+docs/integrations/custom.md
+  s_9fec762e193d5b::t_2a4207267a432a 97-101,105-108,110-111
+server/condition_evaluator/leafCondition.ts
+  s_9fec762e193d5b::t_f9b014bb9b255b 160,162-163
+  s_9fec762e193d5b::t_1f431c6e8d3fd7 161
+server/services/signalContextService/index.test.ts
+  s_9fec762e193d5b::t_bfebf25421c837 222-243
+server/condition_evaluator/leafCondition.test.ts
+  s_9fec762e193d5b::t_5fafd27bd98c23 52-96
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cf87968328b8e56c10c21087fb0068a8d54096e2",
+  "prompts": {},
+  "sessions": {
+    "s_9fec762e193d5b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b0e09479-679d-4cb5-a6e9-495a82f0dd36",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
