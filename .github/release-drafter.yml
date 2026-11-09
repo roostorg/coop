@@ -19,7 +19,7 @@ categories:
   - title: Security
     exclusive: true
     when:
-      label: security
+      label: security-update
   - title: Added
     semver-increment: minor
     when:
