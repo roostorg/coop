@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
@@ -80,20 +81,9 @@ describe('IntegrationContextSettingsSection', () => {
     expect(screen.getByLabelText('Max messages')).toBeDisabled();
   });
 
-  it('reports select and count changes', () => {
-    const initial = [option()];
+  it('reports count changes', () => {
     const onChange = vi.fn();
-    renderSection(initial, undefined, onChange);
-
-    fireEvent.mouseDown(screen.getByRole('combobox'));
-    fireEvent.click(screen.getByText('Off'));
-    expect(onChange).toHaveBeenCalledWith([
-      {
-        kind: GQLIntegrationContextKind.Thread,
-        mode: GQLIntegrationContextMode.Off,
-        maxCount: null,
-      },
-    ]);
+    renderSection([option()], undefined, onChange);
 
     fireEvent.change(screen.getByLabelText('Max messages'), {
       target: { value: '25' },
@@ -105,5 +95,52 @@ describe('IntegrationContextSettingsSection', () => {
         maxCount: 25,
       },
     ]);
+  });
+
+  it('disables the count once the org turns the context off', () => {
+    const options = [option()];
+    function Controlled() {
+      const [value, setValue] = useState<IntegrationContextSetting[]>([
+        {
+          kind: GQLIntegrationContextKind.Thread,
+          mode: options[0].mode,
+          maxCount: null,
+        },
+      ]);
+      return (
+        <IntegrationContextSettingsSection
+          options={options}
+          value={value}
+          onChange={setValue}
+          disabled={false}
+        />
+      );
+    }
+    render(<Controlled />);
+    expect(screen.getByLabelText('Max messages')).toBeEnabled();
+
+    fireEvent.mouseDown(screen.getByRole('combobox'));
+    fireEvent.click(screen.getByText('Off'));
+
+    expect(screen.getByLabelText('Max messages')).toBeDisabled();
+  });
+
+  it('omits the limit when the plugin sets none', () => {
+    renderSection([option({ maxCountLimit: null })]);
+
+    expect(screen.queryByText(/Up to/)).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Max messages')).not.toHaveAttribute(
+      'aria-describedby',
+    );
+  });
+
+  it('links the limit to the count input for screen readers', () => {
+    renderSection([option()]);
+
+    const limit = screen.getByText('Up to 50');
+    expect(screen.getByLabelText('Max messages')).toHaveAttribute(
+      'aria-describedby',
+      limit.id,
+    );
   });
 });

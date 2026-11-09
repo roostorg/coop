@@ -34,11 +34,8 @@ const contextLabels: Record<
 
 function isCountedContext(
   option: GQLIntegrationContextOption,
-): option is GQLIntegrationContextOption & {
-  maxCountLimit: number;
-  defaultMaxCount: number;
-} {
-  return option.maxCountLimit != null;
+): option is GQLIntegrationContextOption & { defaultMaxCount: number } {
+  return option.defaultMaxCount != null;
 }
 
 function isOff(
@@ -96,7 +93,9 @@ export default function IntegrationContextSettingsSection({
           const setting = settingFor(option);
           const labels = contextLabels[option.kind];
           const selectId = `integration-context-${option.kind.toLowerCase()}`;
+          const helpId = `${selectId}-help`;
           const countId = `${selectId}-count`;
+          const limitId = `${countId}-limit`;
           const countDisabled = disabled || isOff(option, setting);
 
           return (
@@ -105,11 +104,14 @@ export default function IntegrationContextSettingsSection({
                 {labels.label}
               </label>
               {labels.help && (
-                <div className="text-xs text-zinc-500">{labels.help}</div>
+                <div id={helpId} className="text-xs text-zinc-500">
+                  {labels.help}
+                </div>
               )}
               <Select
                 id={selectId}
                 aria-label={labels.label}
+                aria-describedby={labels.help ? helpId : undefined}
                 value={setting.mode}
                 disabled={disabled}
                 options={[
@@ -137,8 +139,11 @@ export default function IntegrationContextSettingsSection({
                   <InputNumber
                     id={countId}
                     aria-label={labels.countLabel}
+                    aria-describedby={
+                      option.maxCountLimit != null ? limitId : undefined
+                    }
                     min={1}
-                    max={option.maxCountLimit}
+                    max={option.maxCountLimit ?? undefined}
                     placeholder={`Default: ${option.defaultMaxCount}`}
                     value={setting.maxCount ?? undefined}
                     disabled={countDisabled}
@@ -149,9 +154,11 @@ export default function IntegrationContextSettingsSection({
                       })
                     }
                   />
-                  <div className="mt-1 text-xs text-zinc-500">
-                    Up to {option.maxCountLimit}
-                  </div>
+                  {option.maxCountLimit != null && (
+                    <div id={limitId} className="mt-1 text-xs text-zinc-500">
+                      Up to {option.maxCountLimit}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

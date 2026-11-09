@@ -11,10 +11,7 @@ import type {
   SignalContextNeeds,
 } from '@roostorg/coop-types';
 
-import {
-  DEFAULT_MAX_THREAD_MESSAGES,
-  MAX_THREAD_MESSAGES,
-} from '../signalContextService/limits.js';
+import { DEFAULT_MAX_THREAD_MESSAGES } from '../signalContextService/limits.js';
 
 export const CONTEXT_SETTINGS_KEY = '__coopContext';
 
@@ -23,7 +20,7 @@ export type ContextMode = 'default' | 'include' | 'off';
 
 const CONTEXT_KINDS: readonly ContextKind[] = ['thread', 'parent'];
 
-/** Plugin-declared options with numbers resolved against platform limits. */
+/** Plugin-declared options with defaults filled in. */
 export type NormalizedContextOption = Readonly<{
   default: IntegrationContextDefault;
   /** Present for kinds with a count (thread messages). */
@@ -45,7 +42,6 @@ export type OrgContextSettings = Readonly<
 const PLATFORM_COUNTS = {
   thread: {
     defaultMax: DEFAULT_MAX_THREAD_MESSAGES,
-    max: MAX_THREAD_MESSAGES,
     defaultKey: 'defaultMaxMessages',
     limitKey: 'maxMessagesLimit',
   },
@@ -57,7 +53,7 @@ function isPositiveInteger(value: unknown): value is number {
 
 /**
  * Validates manifest.contextOptions. Throws (failing plugin load) when an
- * option is malformed; numbers above the platform maximum are capped.
+ * option is malformed.
  */
 export function validateContextOptions(
   integrationId: string,
@@ -94,12 +90,15 @@ export function validateContextOptions(
     if (rawDefault !== undefined && !isPositiveInteger(rawDefault)) {
       throw invalid();
     }
-    const maxCountLimit = Math.min(rawLimit ?? counts.max, counts.max);
     const defaultMaxCount = Math.min(
       rawDefault ?? counts.defaultMax,
-      maxCountLimit,
+      rawLimit ?? Infinity,
     );
-    result[kind] = { default: o.default, defaultMaxCount, maxCountLimit };
+    result[kind] = {
+      default: o.default,
+      defaultMaxCount,
+      ...(rawLimit !== undefined ? { maxCountLimit: rawLimit } : {}),
+    };
   }
   return Object.keys(result).length > 0 ? result : undefined;
 }
@@ -139,14 +138,10 @@ export function sanitizeContextSettings(
   for (const { kind, mode, maxCount } of input) {
     const option = options[kind];
     if (option == null) continue;
-    if (
-      option.maxCountLimit != null &&
-      maxCount != null &&
-      isPositiveInteger(maxCount)
-    ) {
+    if (option.defaultMaxCount != null && isPositiveInteger(maxCount)) {
       result[kind] = {
         mode,
-        maxCount: Math.min(maxCount, option.maxCountLimit),
+        maxCount: Math.min(maxCount, option.maxCountLimit ?? maxCount),
       };
     } else {
       result[kind] = { mode };

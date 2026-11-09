@@ -85,6 +85,10 @@ describe('IntegrationContextSettingsService', () => {
     await expect(service.getOrgSettings('org-b', 'TEST')).resolves.toEqual({
       thread: { mode: 'include' },
     });
+    expect(getByIntegrationId.mock.calls).toEqual([
+      ['TEST', 'org-a'],
+      ['TEST', 'org-b'],
+    ]);
   });
 
   it('skips the lookup for signals without context needs', async () => {

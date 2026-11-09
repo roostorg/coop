@@ -388,9 +388,6 @@ export default function IntegrationConfigForm() {
         return `${invalidJson.label} must be valid JSON`;
       }
       const invalidCount = contextOptions.find((option) => {
-        if (option.maxCountLimit == null) {
-          return false;
-        }
         const setting = contextSettings.find(
           (candidate) => candidate.kind === option.kind,
         );
@@ -398,11 +395,14 @@ export default function IntegrationConfigForm() {
           setting?.maxCount != null &&
           (!Number.isInteger(setting.maxCount) ||
             setting.maxCount < 1 ||
-            setting.maxCount > option.maxCountLimit)
+            (option.maxCountLimit != null &&
+              setting.maxCount > option.maxCountLimit))
         );
       });
-      if (invalidCount?.maxCountLimit != null) {
-        return `Max messages must be between 1 and ${invalidCount.maxCountLimit}`;
+      if (invalidCount) {
+        return invalidCount.maxCountLimit != null
+          ? `Max messages must be between 1 and ${invalidCount.maxCountLimit}`
+          : 'Max messages must be a whole number of at least 1';
       }
       return undefined;
     }

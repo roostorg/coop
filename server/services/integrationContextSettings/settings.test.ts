@@ -15,16 +15,31 @@ describe('validateContextOptions', () => {
     expect(validateContextOptions('TEST', {})).toBeUndefined();
   });
 
-  it('fills platform defaults and caps limits at the platform maximum', () => {
+  it("fills the platform default count and keeps the plugin's limit", () => {
     expect(
       validateContextOptions('TEST', {
         thread: { default: 'include', maxMessagesLimit: 500 },
         parent: { default: 'off' },
       }),
     ).toEqual({
-      thread: { default: 'include', defaultMaxCount: 20, maxCountLimit: 100 },
+      thread: { default: 'include', defaultMaxCount: 20, maxCountLimit: 500 },
       parent: { default: 'off' },
     });
+  });
+
+  it('leaves the count unlimited when the plugin sets no limit', () => {
+    const options = validateContextOptions('TEST', {
+      thread: { default: 'include' },
+    })!;
+
+    expect(options).toEqual({
+      thread: { default: 'include', defaultMaxCount: 20 },
+    });
+    expect(
+      sanitizeContextSettings(options, [
+        { kind: 'thread', mode: 'include', maxCount: 300 },
+      ]),
+    ).toEqual({ thread: { mode: 'include', maxCount: 300 } });
   });
 
   it('ignores kinds Coop does not support', () => {
