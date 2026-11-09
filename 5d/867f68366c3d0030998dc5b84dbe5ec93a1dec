@@ -1,0 +1,57 @@
+server/condition_evaluator/leafCondition.ts
+  s_9fec762e193d5b::t_c8dee0c8494b18 160-162,203
+server/services/signalsService/signals/SignalBase.ts
+  s_9fec762e193d5b::t_c8dee0c8494b18 4-5,100-102,300-308
+server/services/signalsService/signals/PluginSignalAdapter.ts
+  s_9fec762e193d5b::t_c8dee0c8494b18 6-9,23,117-119
+  s_9fec762e193d5b::t_157d1b918240a9 120
+server/graphql/services.ts
+  s_9fec762e193d5b::t_4f5f84946f09f3 34
+server/iocContainer/index.ts
+  s_9fec762e193d5b::t_c8dee0c8494b18 118-121,219-222,272,398-399,781-790
+server/graphql/modules/integration.ts
+  s_9fec762e193d5b::t_e384b36dbaf843 387-390
+server/services/orgAwareSignalExecutionService/signalExecutionService.ts
+  s_9fec762e193d5b::t_c8dee0c8494b18 2,47,148-149
+server/services/signalsService/contextNeeds.test.ts
+  s_9fec762e193d5b::t_c8dee0c8494b18 1-145
+server/services/signalContextService/index.test.ts
+  s_9fec762e193d5b::t_c8fb0bfc58b6e1 4
+  s_9fec762e193d5b::t_d285debc65415f 54
+  s_9fec762e193d5b::t_c8dee0c8494b18 1-3,5-53,55-368
+server/services/integrationContextSettings/service.ts
+  s_9fec762e193d5b::t_c8dee0c8494b18 1-6,8-9,11,13-33,36-46,49-57,61,63,65-69
+  s_9fec762e193d5b::t_da6e7826fa574f 7,10,12,34-35,47-48,58-60,62,64
+server/services/integrationContextSettings/index.ts
+  s_9fec762e193d5b::t_535c1b4df38eee 1-4
+docs/integrations/custom.md
+  s_9fec762e193d5b::t_50ec6532fa45f6 82-116
+server/services/signalContextService/limits.ts
+  s_9fec762e193d5b::t_c8dee0c8494b18 1-2
+server/condition_evaluator/leafCondition.test.ts
+  s_9fec762e193d5b::t_c8dee0c8494b18 2,20-84,208
+server/rule_engine/RuleEvaluator.ts
+  s_9fec762e193d5b::t_c8dee0c8494b18 1,59-61,84-85,136-139,150-166,218-224
+server/services/signalsService/SignalsService.ts
+  s_9fec762e193d5b::t_c8dee0c8494b18 47,361
+server/services/integrationContextSettings/service.test.ts
+  s_9fec762e193d5b::t_143d27285f96c1 1-84
+server/services/signalContextService/index.ts
+  s_9fec762e193d5b::t_c8dee0c8494b18 1-367
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5d867f68366c3d0030998dc5b84dbe5ec93a1dec",
+  "prompts": {},
+  "sessions": {
+    "s_9fec762e193d5b": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "b0e09479-679d-4cb5-a6e9-495a82f0dd36",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
