@@ -39,8 +39,8 @@ FROM node:24.22.1-trixie-slim AS backend_base
 WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends dumb-init && rm -rf /var/lib/apt/lists/*
 # The server and worker run with plain `node`, so drop the package managers
-# the node image bundles (npm, npx, corepack) along with their dependencies.
-RUN rm -rf /usr/local/lib/node_modules /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack
+# the node image bundles (npm, npx, corepack, Yarn) along with their dependencies.
+RUN rm -rf /usr/local/lib/node_modules /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack /opt/yarn-* /usr/local/bin/yarn /usr/local/bin/yarnpkg
 # pnpm links server/node_modules into the root node_modules/.pnpm store, so both
 # are copied to keep the relative symlinks valid.
 COPY --from=backend_prod_deps /app/package.json ./
