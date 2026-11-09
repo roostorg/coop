@@ -86,8 +86,12 @@ export class NcmecService {
     return this.ncmecReporting.getNcmecReports(opts);
   }
 
-  async getUsersWithNcmecDecision(opts: { startDate: Date }) {
-    return this.ncmecReporting.getUsersWithNcmecDecision(opts);
+  async getNcmecReportCoverage(opts: {
+    jobIds: readonly string[];
+    startDate?: Date;
+    orgId?: string;
+  }) {
+    return this.ncmecReporting.getNcmecReportCoverage(opts);
   }
 
   async getNcmecReportById(opts: { orgId: string; reportId: string }) {
@@ -160,20 +164,9 @@ export class NcmecService {
         'user_type_id',
         'status',
         'last_error',
+        'is_test',
       ])
       .where('job_id', 'in', jobIds)
-      .execute();
-  }
-
-  /** Returns the `(user_id, user_item_type_id)` pairs that already have a
-   * successful NCMEC submission for this org. Used to filter MRT decisions
-   * down to "failed" submissions (those without a matching report row). */
-  async getSuccessfulSubmissionKeysForOrg(orgId: string) {
-    return this.pqQueryReadReplica
-      .selectFrom('ncmec_reporting.ncmec_reports')
-      .select(['user_id as userId', 'user_item_type_id as userItemTypeId'])
-      .where('org_id', '=', orgId)
-      .groupBy(['user_id', 'user_item_type_id'])
       .execute();
   }
 
@@ -183,6 +176,7 @@ export class NcmecService {
     userTypeId: string;
     status: 'RETRYABLE_ERROR' | 'PERMANENT_ERROR';
     error: string;
+    isTest: boolean;
   }) {
     // Atomic increment in `doUpdateSet` avoids the read-modify-write race
     // when two callers (e.g. background retry job + user-clicked Retry)
@@ -196,12 +190,14 @@ export class NcmecService {
         status: opts.status,
         last_error: opts.error,
         retry_count: 1,
+        is_test: opts.isTest,
       })
       .onConflict((oc) =>
         oc.columns(['job_id']).doUpdateSet({
           retry_count: sql`ncmec_reporting.ncmec_reports_errors.retry_count + 1`,
           last_error: opts.error,
           status: opts.status,
+          is_test: opts.isTest,
         }),
       )
       .execute();

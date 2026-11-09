@@ -6,6 +6,7 @@ import {
 } from './buildSubmitReportParamsFromDecision.js';
 import { isNcmecTestMode } from './ncmecEnv.js';
 import type NcmecReporting from './ncmecReporting.js';
+import { canRetryManually } from './ncmecSubmissionFilters.js';
 
 /** Result of a retry attempt. Distinct cases let the GraphQL layer return a
  * uniform error message for cross-org `not_found` (no information disclosure)
@@ -15,7 +16,8 @@ export type RetryNcmecSubmissionResult =
   | { kind: 'success' }
   | { kind: 'not_found' }
   | { kind: 'permanent_error'; error: string }
-  | { kind: 'retryable_error'; error: string };
+  | { kind: 'retryable_error'; error: string }
+  | { kind: 'mode_mismatch'; error: string };
 
 export interface RetryDeps {
   manualReviewToolService: ManualReviewToolService;
@@ -64,6 +66,21 @@ export async function retryNcmecSubmission(
     };
   }
 
+  // A decision attempted against one NCMEC endpoint is never resent to the
+  // other: a test-mode decision must not reach production by a Retry click.
+  const isTest = isNcmecTestMode();
+  const attemptIsTest = await deps.ncmecReporting.getLatestAttemptIsTest(
+    decisionRow.job_payload.id,
+  );
+  if (!canRetryManually(attemptIsTest, isTest)) {
+    return {
+      kind: 'mode_mismatch',
+      error: attemptIsTest
+        ? 'This decision was attempted in NCMEC test mode and can only be retried in test mode. To send a real report, put the user back into NCMEC review.'
+        : 'This decision was attempted in NCMEC production mode and can only be retried in production mode.',
+    };
+  }
+
   // Use the original reviewer when available so the resulting report keeps
   // its provenance; otherwise attribute to the user clicking Retry.
   const reviewerId = decisionRow.reviewer_id ?? requestingReviewerId;
@@ -105,7 +122,6 @@ export async function retryNcmecSubmission(
     return { kind: 'permanent_error', error };
   }
 
-  const isTest = isNcmecTestMode();
   // submitReport owns `ncmec_reports_errors` writes via `jobId` so retries
   // always update retry_count/last_error. Don't double-write here.
   try {

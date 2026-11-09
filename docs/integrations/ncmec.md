@@ -150,10 +150,12 @@ Reports submitted against the test endpoint are stored in Coop's database with a
 
 #### Switching to production
 
-When you change `NCMEC_ENV` to `production`, the [retry job](#retry-behavior) handles decisions from the past 30 days that were made in test mode like this:
+Coop records the mode of every submission attempt, and retries a decision only in the mode it was attempted in. When you change `NCMEC_ENV` to `production`:
 
-- **Decisions that were submitted to the test endpoint** are not resent. Their test report counts as already submitted.
-- **Decisions whose test submission failed** are still retried, and the retry goes to the production endpoint.
+- **Decisions submitted to the test endpoint** are not resent. Their test report counts as submitted.
+- **Decisions whose test submission failed** are not retried. They stay in the NCMEC Reports dashboard with **Test Report** set to `True`, and their **Retry** button is disabled.
+- **Decisions with no recorded mode** are not retried automatically in production. These are failures recorded before Coop stored the attempt mode. Their **Retry** button stays enabled, so a reviewer can send one to production deliberately.
+- **New production decisions** are retried in production. A test report on the same user doesn't stop them.
 
 To send a real report for a user whose report only went to the test endpoint, put the user back into NCMEC review and submit a new decision.
 
@@ -298,9 +300,18 @@ Coop only checks for a successful HTTP status code. The response body is ignored
 
 If a CyberTip submission fails (e.g. due to a transient network error or NCMEC API outage), Coop automatically retries the submission. A background job runs periodically and retries any failed NCMEC decisions that:
 
-- Have not already been successfully submitted (no production report for the user, and no test report for the user made after the decision)
+- Have not already been submitted
+- Were last attempted in the current mode (see [Switching to production](#switching-to-production))
 - Have fewer than 10 prior retry attempts
 - Are not marked as a permanent error (e.g. all media missing)
 - Were decided within the past 30 days
 
-Reports are matched by reported user, not by decision. If a user already has a production report from the past 30 days, a later failed decision against that same user is not retried automatically. A test report only covers the user's decisions made before it, so a later failed decision is still retried.
+A decision counts as submitted when:
+
+- It has a report of its own, test or production.
+- Its user has a production report. Coop sends at most one production report per user, so later decisions on that user are not retried.
+- Its user has a test report from before reports recorded their decision, made at or after the decision.
+
+A test report for one decision doesn't count for a different decision on the same user.
+
+The **Retry** button in the NCMEC Reports dashboard follows the same mode rule: it never sends a decision attempted in test mode to production, or the reverse.

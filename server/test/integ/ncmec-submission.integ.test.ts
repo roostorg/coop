@@ -140,13 +140,34 @@ describe('NCMEC submitReport (integration)', () => {
       const row = await deps.KyselyPg.selectFrom(
         'ncmec_reporting.ncmec_reports',
       )
-        .select(['report_id', 'is_test', 'report_xml'])
+        .select(['report_id', 'is_test', 'report_xml', 'job_id'])
         .where('org_id', '=', orgId)
         .where('report_id', '=', reportId)
         .executeTakeFirst();
       expect(row).toBeDefined();
       expect(row?.is_test).toBe(false);
+      expect(row?.job_id).toBe('job-1');
       expect(String(row?.report_xml)).toContain('jane@example.com');
+
+      // A second production report for the same user is refused, and the
+      // failure is recorded against its decision with the attempt's mode.
+      const secondResult = await ncmecReporting.submitReport(
+        { ...reportParams, jobId: 'job-2' },
+        false,
+      );
+      expect(secondResult).toBe('FAILURE');
+      const errorRow = await deps.KyselyPg.selectFrom(
+        'ncmec_reporting.ncmec_reports_errors',
+      )
+        .select(['status', 'retry_count', 'is_test'])
+        .where('job_id', '=', 'job-2')
+        .executeTakeFirst();
+      expect(errorRow).toEqual({
+        status: 'RETRYABLE_ERROR',
+        retry_count: 1,
+        is_test: false,
+      });
+      expect(await ncmecReporting.getLatestAttemptIsTest('job-2')).toBe(false);
     },
     60_000,
   );

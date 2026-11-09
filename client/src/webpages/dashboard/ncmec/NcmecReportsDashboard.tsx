@@ -110,6 +110,8 @@ gql`
     status
     retryCount
     lastError
+    attemptMode
+    canRetryInCurrentMode
   }
 
   query AllNCMECReports {
@@ -608,7 +610,12 @@ export default function NcmecReportsDashboard() {
               reportedMedia: <span className="text-zinc-400">—</span>,
               additionalFiles: <span className="text-zinc-400">—</span>,
               reportedMessages: <span className="text-zinc-400">—</span>,
-              isTest: <span className="text-zinc-400">—</span>,
+              isTest:
+                failed.attemptMode == null ? (
+                  <span className="text-zinc-400">—</span>
+                ) : (
+                  <div>{failed.attemptMode === 'TEST' ? 'True' : 'False'}</div>
+                ),
               lastError: failed.lastError ? (
                 <Tooltip title={failed.lastError} placement="topLeft">
                   <div className="max-w-xs overflow-hidden text-xs text-ellipsis whitespace-nowrap text-red-700">
@@ -618,7 +625,7 @@ export default function NcmecReportsDashboard() {
               ) : (
                 <span className="text-zinc-400">—</span>
               ),
-              action: (
+              action: failed.canRetryInCurrentMode ? (
                 <Button
                   size="small"
                   type="primary"
@@ -633,6 +640,18 @@ export default function NcmecReportsDashboard() {
                 >
                   Retry
                 </Button>
+              ) : (
+                <Tooltip
+                  title={
+                    failed.attemptMode === 'TEST'
+                      ? 'Attempted in NCMEC test mode, so it is not sent to production. To send a real report, put the user back into NCMEC review.'
+                      : 'Attempted in NCMEC production mode, so it is not sent to the test endpoint.'
+                  }
+                >
+                  <Button size="small" type="primary" disabled>
+                    Retry
+                  </Button>
+                </Tooltip>
               ),
             },
           };

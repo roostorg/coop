@@ -159,6 +159,7 @@ import {
   buildSubmitReportParamsFromDecision,
   isNcmecTestMode,
   makeNcmecService,
+  summarizeNcmecErrorForReviewer,
   type NcmecService,
 } from '../services/ncmecService/index.js';
 import {
@@ -1293,29 +1294,47 @@ export default async function getBottle(
                       'Attempting to submit a NCMEC report for a non-NCMEC job',
                     );
                   }
-                  const itemType =
-                    await container.getItemTypeEventuallyConsistent({
-                      orgId,
-                      typeSelector: itemTypeIdentifier,
-                    });
-                  if (itemType === undefined || itemType.kind !== 'USER') {
-                    throw new Error('Item Type for User does not exist');
-                  }
-                  const reportParams =
-                    await buildSubmitReportParamsFromDecision({
+                  const isTest = isNcmecTestMode();
+                  const { payload } = job;
+                  const reportParams = await (async () => {
+                    const itemType =
+                      await container.getItemTypeEventuallyConsistent({
+                        orgId,
+                        typeSelector: itemTypeIdentifier,
+                      });
+                    if (itemType === undefined || itemType.kind !== 'USER') {
+                      throw new Error('Item Type for User does not exist');
+                    }
+                    return buildSubmitReportParamsFromDecision({
                       orgId,
                       reviewerId,
                       reportedItemId: itemId,
                       reportedItemTypeId: itemTypeIdentifier.id,
                       reportedUserItemType: itemType,
                       reportedUserData: data,
-                      allMediaItems: job.payload.allMediaItems,
+                      allMediaItems: payload.allMediaItems,
                       decisionComponent: decision,
                       jobId: job.id,
                       getItemTypeEventuallyConsistent:
                         container.getItemTypeEventuallyConsistent,
                     });
-                  const isTest = isNcmecTestMode();
+                  })().catch(async (e: unknown) => {
+                    // submitReport records its own failures. Record this one
+                    // too, so the retry job knows which mode the decision was
+                    // attempted in. Best effort: the original error is what
+                    // the caller sees.
+                    await container.NcmecService.insertOrUpdateNcmecReportError(
+                      {
+                        jobId: job.id,
+                        userId: itemId,
+                        userTypeId: itemTypeIdentifier.id,
+                        status: 'RETRYABLE_ERROR',
+                        error: summarizeNcmecErrorForReviewer(e),
+                        isTest,
+                      },
+                    ).catch(() => undefined);
+                    throw e;
+                  });
                   await container.NcmecService.submitReport(
                     reportParams,
                     isTest,
