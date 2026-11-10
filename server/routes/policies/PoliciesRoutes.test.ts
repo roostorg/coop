@@ -1,4 +1,5 @@
 import fc from 'fast-check';
+import { vi } from 'vitest';
 
 import { UserPermission } from '../../services/userManagementService/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
@@ -90,6 +91,19 @@ describe('GET policies', () => {
           ],
         },
       );
+    },
+  );
+
+  testWithOrg(
+    'rejects missing and invalid API keys before reading policies',
+    async ({ request, deps }) => {
+      const read = vi.spyOn(deps.ModerationConfigService, 'getPolicies');
+      await request.get('/api/v1/policies/').expect(401);
+      await request
+        .get('/api/v1/policies/')
+        .set('x-api-key', 'invalid-key')
+        .expect(401);
+      expect(read).not.toHaveBeenCalled();
     },
   );
 

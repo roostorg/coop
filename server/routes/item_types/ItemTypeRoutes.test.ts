@@ -81,6 +81,19 @@ describe('GET item types', () => {
   );
 
   testWithTypes(
+    'rejects missing and invalid API keys before reading item types',
+    async ({ request, deps }) => {
+      const read = vi.spyOn(deps.ModerationConfigService, 'getItemTypes');
+      await request.get('/api/v1/item_types/').expect(401);
+      await request
+        .get('/api/v1/item_types/')
+        .set('x-api-key', 'invalid-key')
+        .expect(401);
+      expect(read).not.toHaveBeenCalled();
+    },
+  );
+
+  testWithTypes(
     'returns an empty collection',
     async ({ request, apiKey, deps }) => {
       vi.spyOn(deps.ModerationConfigService, 'getItemTypes').mockResolvedValue(

@@ -1,77 +1,80 @@
+import express, { type ErrorRequestHandler } from 'express';
 import fc from 'fast-check';
-import { vi } from 'vitest';
+import * as superTest from 'supertest';
 
 import createOrg from '../test/fixtureHelpers/createOrg.js';
 import { makeTransactionalTestWithFixture } from '../test/harness/transactionalTest.js';
 import { makeMockedServer } from '../test/setupMockedServer.js';
+import { createApiKeyMiddleware, hasOrgId } from '../utils/apiKeyMiddleware.js';
+import { sanitizeError } from '../utils/errors.js';
 
-describe.each(['policies', 'actions', 'item_types'])(
-  'GET %s API-key authentication',
-  (resource) => {
-    const testWithKeys = makeTransactionalTestWithFixture(async ({ deps }) => {
-      const { org, apiKey: revokedKey } = await createOrg(deps);
-      const { apiKey } = await deps.ApiKeyService.rotateApiKey(
-        org.id,
-        'active',
-        null,
-        null,
-      );
-      return { apiKey, revokedKey };
-    });
-
-    testWithKeys(
-      'accepts only an active key in the x-api-key header',
-      async ({ request, deps, apiKey, revokedKey }) => {
-        const reads = [
-          vi.spyOn(deps.ModerationConfigService, 'getPolicies'),
-          vi.spyOn(deps.ModerationConfigService, 'getActions'),
-          vi.spyOn(deps.ModerationConfigService, 'getActionItemTypeIds'),
-          vi.spyOn(deps.ModerationConfigService, 'getItemTypes'),
-        ];
-        await fc.assert(
-          fc.asyncProperty(
-            fc.integer({ min: 0, max: apiKey.length - 1 }),
-            async (index) => {
-              const tamperedKey =
-                apiKey.slice(0, index) +
-                (apiKey[index] === 'a' ? 'b' : 'a') +
-                apiKey.slice(index + 1);
-              for (const key of [
-                undefined,
-                '',
-                'invalid-key',
-                tamperedKey,
-                revokedKey,
-              ]) {
-                reads.forEach((read) => read.mockClear());
-                const attempt = request
-                  .get(`/api/v1/${resource}/`)
-                  .query({ apiKey, orgId: 'untrusted-org' })
-                  .set('Authorization', `Bearer ${apiKey}`);
-                if (key !== undefined) attempt.set('x-api-key', key);
-                const response = await attempt.expect(401);
-                expect(response.body).toEqual({
-                  errors: [
-                    expect.objectContaining({
-                      status: 401,
-                      title: 'Invalid API Key',
-                    }),
-                  ],
-                });
-                for (const read of reads) expect(read).not.toHaveBeenCalled();
-              }
-              await request
-                .get(`/api/v1/${resource}/`)
-                .set('x-api-key', apiKey)
-                .expect(200);
-            },
-          ),
-          { numRuns: 20, examples: [[0], [apiKey.length - 1]] },
-        );
-      },
+describe('API-key authentication', () => {
+  const testWithKeys = makeTransactionalTestWithFixture(async ({ deps }) => {
+    const { org, apiKey: revokedKey } = await createOrg(deps);
+    const { apiKey } = await deps.ApiKeyService.rotateApiKey(
+      org.id,
+      'active',
+      null,
+      null,
     );
-  },
-);
+    const app = express();
+    app.get('/protected', createApiKeyMiddleware(deps), (req, res) => {
+      res.json({ orgId: hasOrgId(req) ? req.orgId : null });
+    });
+    app.use(((error: unknown, _req, res, _next) => {
+      const safeError = sanitizeError(error);
+      res.status(safeError.status).json({ errors: [safeError] });
+    }) satisfies ErrorRequestHandler);
+    return { org, apiKey, revokedKey, authRequest: superTest.agent(app) };
+  });
+
+  testWithKeys(
+    'accepts only an active key in the x-api-key header and uses its organization',
+    async ({ authRequest, org, apiKey, revokedKey }) => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.integer({ min: 0, max: apiKey.length - 1 }),
+          async (index) => {
+            const tamperedKey =
+              apiKey.slice(0, index) +
+              (apiKey[index] === 'a' ? 'b' : 'a') +
+              apiKey.slice(index + 1);
+            for (const key of [
+              undefined,
+              '',
+              'invalid-key',
+              tamperedKey,
+              revokedKey,
+            ]) {
+              const attempt = authRequest
+                .get('/protected')
+                .query({ apiKey, orgId: 'untrusted-org' })
+                .set('Authorization', `Bearer ${apiKey}`);
+              if (key !== undefined) attempt.set('x-api-key', key);
+              const response = await attempt.expect(401);
+              expect(response.body).toEqual({
+                errors: [
+                  expect.objectContaining({
+                    status: 401,
+                    title: 'Invalid API Key',
+                  }),
+                ],
+              });
+            }
+            const response = await authRequest
+              .get('/protected')
+              .set('x-api-key', apiKey)
+              .set('x-org-id', 'untrusted-org')
+              .query({ orgId: 'untrusted-org' })
+              .expect(200);
+            expect(response.body).toEqual({ orgId: org.id });
+          },
+        ),
+        { numRuns: 20, examples: [[0], [apiKey.length - 1]] },
+      );
+    },
+  );
+});
 
 describe('404 Handling', () => {
   let request: Awaited<ReturnType<typeof makeMockedServer>>['request'],
