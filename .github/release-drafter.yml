@@ -33,7 +33,7 @@ replacers:
     search: '/<!--[\s\S]*?-->/g'
     replace: ''
   - target: change-body
-    search: '/(?:^|\r?\n)[ \t]*(?:-{3,}|\*{3,}|_{3,})\s*$/'
+    search: '/((?:^|\r?\n)[ \t]*(?:-{3,}|\*{3,}|_{3,})\s*)+$/'
     replace: ''
   - target: change-body
     search: '/^\s+|\s+$/g'
