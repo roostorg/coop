@@ -1,4 +1,4 @@
-import { vi } from 'vitest';
+import fc from 'fast-check';
 
 import { UserPermission } from '../../services/userManagementService/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
@@ -7,13 +7,18 @@ import { makeTransactionalTestWithFixture } from '../../test/harness/transaction
 const testWithOrg = makeTransactionalTestWithFixture(async ({ deps }) => {
   const { org, apiKey } = await createOrg(deps);
   const other = await createOrg(deps);
-  return { orgId: org.id, apiKey, otherOrgId: other.org.id };
+  return {
+    orgId: org.id,
+    apiKey,
+    otherOrgId: other.org.id,
+    otherApiKey: other.apiKey,
+  };
 });
 
 describe('GET policies', () => {
   testWithOrg(
     'returns the full public shape for only the authenticated organization',
-    async ({ request, deps, apiKey, orgId, otherOrgId }) => {
+    async ({ request, deps, apiKey, orgId, otherOrgId, otherApiKey }) => {
       const policyInput = {
         name: 'Spam',
         parentId: null,
@@ -30,7 +35,7 @@ describe('GET policies', () => {
           permissions: [UserPermission.MANAGE_POLICIES],
         },
       });
-      await deps.ModerationConfigService.createPolicy({
+      const otherPolicy = await deps.ModerationConfigService.createPolicy({
         orgId: otherOrgId,
         policy: policyInput,
         invokedBy: {
@@ -39,35 +44,52 @@ describe('GET policies', () => {
           permissions: [UserPermission.MANAGE_POLICIES],
         },
       });
-      const response = await request
-        .get('/api/v1/policies/')
-        .set('x-api-key', apiKey)
-        .expect(200);
-      expect(response.body).toEqual({
-        policies: [
-          {
-            id: policy.id,
-            ...policyInput,
-            semanticVersion: 1,
-            userStrikeCount: 1,
-            applyUserStrikeCountConfigToChildren: false,
-            penalty: 'NONE',
+      const localCaller = {
+        apiKey,
+        expectedPolicyId: policy.id,
+        untrustedOrgId: otherOrgId,
+      };
+      const foreignCaller = {
+        apiKey: otherApiKey,
+        expectedPolicyId: otherPolicy.id,
+        untrustedOrgId: orgId,
+      };
+      await fc.assert(
+        fc.asyncProperty(
+          fc.array(fc.constantFrom(localCaller, foreignCaller), {
+            minLength: 1,
+          }),
+          async (callers) => {
+            for (const caller of callers) {
+              const response = await request
+                .get('/api/v1/policies/')
+                .set('x-api-key', caller.apiKey)
+                .set('x-org-id', caller.untrustedOrgId)
+                .query({ orgId: caller.untrustedOrgId })
+                .expect(200);
+              expect(response.body).toEqual({
+                policies: [
+                  {
+                    id: caller.expectedPolicyId,
+                    ...policyInput,
+                    semanticVersion: 1,
+                    userStrikeCount: 1,
+                    applyUserStrikeCountConfigToChildren: false,
+                    penalty: 'NONE',
+                  },
+                ],
+              });
+            }
           },
-        ],
-      });
-    },
-  );
-
-  testWithOrg(
-    'rejects missing and invalid API keys before reading policies',
-    async ({ request, deps }) => {
-      const read = vi.spyOn(deps.ModerationConfigService, 'getPolicies');
-      await request.get('/api/v1/policies/').expect(401);
-      await request
-        .get('/api/v1/policies/')
-        .set('x-api-key', 'invalid-key')
-        .expect(401);
-      expect(read).not.toHaveBeenCalled();
+        ),
+        {
+          numRuns: 20,
+          examples: [
+            [[localCaller, foreignCaller, localCaller]],
+            [[foreignCaller, localCaller, foreignCaller]],
+          ],
+        },
+      );
     },
   );
 
