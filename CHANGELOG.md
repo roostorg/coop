@@ -19,6 +19,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/2.0.0/),
 - Require HMA 1.2.0 or later ([#1360](https://github.com/roostorg/coop/pull/1360) by [@juanmrad](https://github.com/juanmrad))
 - Switch the package manager from npm to pnpm ([#669](https://github.com/roostorg/coop/pull/669) by [@serendipty01](https://github.com/serendipty01))
 
+### Added
+
+- On-demand per-queue pending counts and reported oldest age in Review Analytics ([#1362](https://github.com/roostorg/coop/pull/1362) by [@sunilatlas](https://github.com/sunilatlas))
+
 ### Fixed
 
 - Image hashing now applies to every Image field in an item or report, not just an array field named `images` ([#1390](https://github.com/roostorg/coop/pull/1390) by [@reitblatt](https://github.com/reitblatt))
