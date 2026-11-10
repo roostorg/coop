@@ -164,6 +164,7 @@ Note: `check_migration_order` runs only in GitHub Actions — it's GitHub-specif
 ## Security
 
 - No secrets in code or committed files. Use environment variables via `.env` (gitignored).
+- Pass `isUntrustedUrl: true` to `fetchHTTP` for downloads of submitted media URLs. URL parsing alone does not validate DNS or redirect destinations. Keep operator-configured internal-service calls separate; services that fetch URLs themselves (such as HMA) need their own egress protection.
 - Do not disable lint or type rules to silence errors. Fix the underlying issue, or use a narrowly-scoped `// eslint-disable-next-line <rule>` / `// @ts-expect-error` with a comment explaining why.
 - Before adding a new dependency, check it for known CVEs and confirm the license is compatible with `LICENSE` (Apache 2.0).
 - Default Docker bindings are `127.0.0.1`; do not change bind addresses without explicit instruction.

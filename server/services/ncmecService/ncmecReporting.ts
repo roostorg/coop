@@ -1287,6 +1287,7 @@ export async function uploadDownloadedMedia<T>(
   try {
     const response = await fetchHTTP({
       url,
+      isUntrustedUrl: true,
       method: 'get',
       handleResponseBody: 'as-readable-stream',
       maxResponseSize: 'unlimited',
@@ -1409,6 +1410,7 @@ export default class NcmecReporting {
 
     const response = await this.fetchHTTP({
       url: additionalInfoEndpoint,
+      isUntrustedUrl: false,
       method: 'post',
       body: jsonStringify({
         users: reportedUsers,
@@ -1588,6 +1590,7 @@ export default class NcmecReporting {
       async () => {
         const response = await this.fetchHTTP({
           url: ncmecPreservationEndpoint,
+          isUntrustedUrl: false,
           method: 'post',
           body: jsonStringify({
             user,
@@ -2396,6 +2399,7 @@ export default class NcmecReporting {
         });
         const response = await this.fetchHTTP({
           url,
+          isUntrustedUrl: false,
           method: 'post',
           headers: {
             ...(includeContentType ? { 'Content-Type': 'text/xml' } : {}),

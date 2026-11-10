@@ -42,6 +42,7 @@ export async function getZentropiScores(
       : undefined;
   const response = await fetchHTTP({
     url: 'https://api.zentropi.ai/v1/label',
+    isUntrustedUrl: false,
     method: 'post',
     headers: {
       Authorization: `Bearer ${params.apiKey}`,
