@@ -83,7 +83,7 @@ docker compose -f docker-compose.images.yaml down -v
 | ----------------- | ------------------- | --------------------- | ------------------------------------ |
 | `coop-server`     | `Dockerfile`        | `build_server`        | node:24.22.1-trixie-slim + dumb-init |
 | `coop-worker`     | `Dockerfile`        | `build_worker_runner` | node:24.22.1-trixie-slim + dumb-init |
-| `coop-client`     | `client/Dockerfile` | `serve`               | nginx:1.29.1-bookworm                |
+| `coop-client`     | `client/Dockerfile` | `serve`               | nginx:1.31.8-alpine                  |
 | `coop-migrations` | `db/Dockerfile`     | _(final stage)_       | node:24.22.1-trixie-slim             |
 
 The client image serves the Vite-built SPA via nginx and proxies `/api/` requests (including `/api/v1/graphql`) to a backend service named `server` on port 8080.
@@ -93,13 +93,12 @@ The client image serves the Vite-built SPA via nginx and proxies `/api/` request
 The `coop-migrations` image bundles the migration scripts under `db/` together
 with the migrator engine, so it can run as a one-shot task (an ECS `RunTask`, a
 Kubernetes `Job`, or the `migrations` service in `docker-compose.images.yaml`).
-It exposes the same `npm run db:*` commands used in local development, so the
-invocation matches what you'd run from the repo root:
+Run the compiled CLI:
 
 ```bash
 # Apply all pending migrations to an existing prod database
 docker run --rm --env-file .env.docker ghcr.io/roostorg/coop-migrations:latest \
-  npm run db:update -- --db api-server-pg --env prod
+  node build/index.js apply --db api-server-pg --env prod
 ```
 
 Supported `--db` values are `api-server-pg`, `scylla`, and `clickhouse`.

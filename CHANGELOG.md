@@ -1,38 +1,8 @@
 # Changelog
 
-All notable changes to Coop will be documented in this file.
+For current release notes, see [GitHub Releases](https://github.com/roostorg/coop/releases). This file contains release notes through 1.2.0.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/2.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
-
-For more information about each release including git tags and artifacts, see [Releases](https://github.com/roostorg/coop/releases).
-
-## [Unreleased]
-
-### Added
-
-- Formatting toolbar for policy definitions and enforcement guidelines ([#1432](https://github.com/roostorg/coop/pull/1432) by [@taobojlen](https://github.com/taobojlen)).
-
-### Changed
-
-- db container image no longer has a writeable home directory ([#1512](https://github.com/roostorg/coop/pull/1512) by [@taobojlen](https://github.com/taobojlen))
-- Improve list editing in the policy editor ([#1400](https://github.com/roostorg/coop/pull/1400) by [@taobojlen](https://github.com/taobojlen))
-- Review console hides "Enqueue to NCMEC" when NCMEC reporting isn't enabled ([#1470](https://github.com/roostorg/coop/pull/1470) by [@serendipty01](https://github.com/serendipty01))
-- Add validation for changes to item types ([#1272](https://github.com/roostorg/coop/pull/1272) by [@taobojlen](https://github.com/taobojlen))
-- Production Node images moved from Debian 12 (bookworm) to Debian 13 (trixie) ([#1496](https://github.com/roostorg/coop/pull/1496) by [@reitblatt](https://github.com/reitblatt))
-
-### Removed
-
-- `isDemoOrg` field from the GraphQL `Org` type ([#1448](https://github.com/roostorg/coop/pull/1448) by [@emma-green](https://github.com/emma-green))
-
-### Fixed
-
-- Fix missing database row for new deployments ([#1486](https://github.com/roostorg/coop/pull/1486) by [@taobojlen](https://github.com/taobojlen)).
-- Opening a review queue with no unskipped jobs no longer leaves reviewers on a loading spinner ([#1392](https://github.com/roostorg/coop/pull/1392) by [@Joseph-Mutua](https://github.com/Joseph-Mutua))
-- Fix the HMA image build, which pulled its base image from the old `ghcr.io/facebook` registry path ([#1498](https://github.com/roostorg/coop/pull/1498) by [@juanmrad](https://github.com/juanmrad))
-
-### Security
-
-- Upgrade body-parser to 2.4.0 for CVE-2026-111181 ([GHSA-c3r3-vg94-mqrx](https://github.com/roostorg/coop/security/advisories/GHSA-c3r3-vg94-mqrx) by [@serendipty01](https://github.com/serendipty01))
 
 ## [1.2.0] - 2026-10-21
 
@@ -57,7 +27,6 @@ For more information about each release including git tags and artifacts, see [R
 - NCMEC review escalations silently succeeding when the item cannot resolve to a user ([#1331](https://github.com/roostorg/coop/pull/1331) by [@Joseph-Mutua](https://github.com/Joseph-Mutua))
 - Rule conditions on multi-value inputs (e.g. Any image, Relevant Policy) now check every value instead of only the first ([#1389](https://github.com/roostorg/coop/pull/1389) by [@reitblatt](https://github.com/reitblatt))
 - Recent Decisions page no longer gets stuck in an infinite loop ([#1422](https://github.com/roostorg/coop/pull/1422) by [@jess-upscrolled](https://github.com/jess-upscrolled))
-- Failed NCMEC and Whisper media downloads are cancelled before retry ([#1427](https://github.com/roostorg/coop/pull/1427) by [@juanmrad](https://github.com/juanmrad))
 
 ### Security
 
@@ -436,7 +405,6 @@ We're developing Coop in the open and want to hear from you. Whether you're test
 
 This release was possible because of the efforts of contributors who worked through complex redesign, partners who believed in the vision of open source safety tools, and the broader trust and safety community who provided feedback and guidance. Thank you especially to @juanmrad, @pawiecz, @kbicevski, Sjoerd Simons, @emanueleaina, @dom-notion, @cassidyjames, @vinaysrao1, @wayjaywang, and @julietshen.
 
-[unreleased]: https://github.com/roostorg/coop/compare/1.2.0...HEAD
 [1.2.0]: https://github.com/roostorg/coop/compare/1.1.1...1.2.0
 [1.1.1]: https://github.com/roostorg/coop/compare/1.1.0...1.1.1
 [1.1.0]: https://github.com/roostorg/coop/compare/1.0.2...1.1.0

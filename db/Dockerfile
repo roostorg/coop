@@ -53,5 +53,5 @@ RUN chown -R coop:coop /app
 USER 1001
 
 # One-shot migrations task; override the command at runtime, e.g.
-#   npm run db:update -- --db api-server-pg --env prod
+#   node build/index.js apply --db api-server-pg --env prod
 CMD ["node", "build/index.js"]

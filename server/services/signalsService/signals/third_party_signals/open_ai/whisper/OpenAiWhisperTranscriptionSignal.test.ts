@@ -10,6 +10,9 @@ import {
 import { getOpenAiTranscription } from './OpenAiWhisperTranscriptionSignal.js';
 
 describe('getOpenAiTranscription', () => {
+  beforeEach(() => vi.stubEnv('ALLOW_USER_INPUT_LOCALHOST_URIS', 'true'));
+  afterEach(() => vi.unstubAllEnvs());
+
   const testWithAudioServer = makeTestWithFixture(async () => {
     let markSocketClosed: () => void = () => {};
     const socketClosed = new Promise<void>((resolve) => {
