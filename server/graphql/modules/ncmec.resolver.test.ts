@@ -1,6 +1,16 @@
+import fc from 'fast-check';
+import { Headers } from 'undici';
 import { vi } from 'vitest';
 
+import * as networking from '../../services/networkingService/index.js';
 import { UserPermission } from '../../services/userManagementService/index.js';
+import createContentItemTypes from '../../test/fixtureHelpers/createContentItemTypes.js';
+import createOrg from '../../test/fixtureHelpers/createOrg.js';
+import createSession from '../../test/fixtureHelpers/createSession.js';
+import createUser from '../../test/fixtureHelpers/createUser.js';
+import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
+import { jsonStringify } from '../../utils/encoding.js';
+import { kyselyUpdateRolePermissions } from '../datasources/rolePersistence.js';
 import { resolvers } from './ncmec.js';
 
 const Mutation = resolvers.Mutation as {
@@ -10,11 +20,6 @@ const Mutation = resolvers.Mutation as {
     ctx: unknown,
   ) => Promise<unknown>;
 };
-
-const Query = resolvers.Query as Record<
-  'ncmecReportById' | 'ncmecThreads',
-  (parent: unknown, args: unknown, ctx: unknown) => Promise<unknown>
->;
 
 const VALID_INPUT = {
   username: 'cyber-user',
@@ -149,82 +154,217 @@ describe('updateNcmecOrgSettings media review policy', () => {
 });
 
 describe('NCMEC read surfaces require VIEW_CHILD_SAFETY_DATA', () => {
-  function makeReadCtx(permissions: readonly UserPermission[] | null) {
-    const getNcmecReportById = vi.fn(async () => null);
-    const ctx = {
-      getUser: () =>
-        permissions === null
-          ? null
-          : {
-              id: 'user-1',
-              orgId: 'org-1',
-              getPermissions: () => permissions,
-            },
-      services: { NcmecService: { getNcmecReportById } },
-    };
-    return { ctx, getNcmecReportById };
-  }
+  const unrelatedPermissions = Object.values(UserPermission).filter(
+    (permission) => permission !== UserPermission.VIEW_CHILD_SAFETY_DATA,
+  );
+  beforeEach(() => {
+    vi.spyOn(networking, 'fetchHTTP').mockRejectedValue(
+      new Error('Unexpected external request'),
+    );
+  });
+  afterEach(() => vi.mocked(networking.fetchHTTP).mockRestore());
 
-  describe('Query.ncmecReportById', () => {
-    it('throws forbiddenError when the caller lacks VIEW_CHILD_SAFETY_DATA', async () => {
-      const { ctx, getNcmecReportById } = makeReadCtx([
-        UserPermission.VIEW_MRT,
-      ]);
-      await expect(
-        Query.ncmecReportById({}, { reportId: 'report-1' }, ctx),
-      ).rejects.toThrow('VIEW_CHILD_SAFETY_DATA permission required');
-      expect(getNcmecReportById).not.toHaveBeenCalled();
-    });
-
-    it('throws unauthenticatedError when there is no user', async () => {
-      const { ctx, getNcmecReportById } = makeReadCtx(null);
-      await expect(
-        Query.ncmecReportById({}, { reportId: 'report-1' }, ctx),
-      ).rejects.toThrow('User required.');
-      expect(getNcmecReportById).not.toHaveBeenCalled();
-    });
-
-    it('reaches the service when the caller has VIEW_CHILD_SAFETY_DATA', async () => {
-      const { ctx, getNcmecReportById } = makeReadCtx([
-        UserPermission.VIEW_CHILD_SAFETY_DATA,
-      ]);
-      await expect(
-        Query.ncmecReportById({}, { reportId: 'report-1' }, ctx),
-      ).resolves.toBeNull();
-      expect(getNcmecReportById).toHaveBeenCalledWith({
-        orgId: 'org-1',
-        reportId: 'report-1',
+  const testWithReports = makeTransactionalTestWithFixture(
+    async ({ deps, server }) => {
+      const local = await createOrg(deps);
+      const foreign = await createOrg(deps);
+      const { user } = await createUser(deps.KyselyPg, local.org.id, {
+        approvedByAdmin: true,
+        loginMethods: ['password'],
+        password: 'Ncmec-test-password',
       });
-    });
-  });
+      const createReport = async (tenant: typeof local, index: number) => {
+        // Non-test reports by another reviewer are visible to authorized org members.
+        const { user: reviewer } = await createUser(
+          deps.KyselyPg,
+          tenant.org.id,
+        );
+        const marker = `synthetic-protected-${index}`;
+        const report = {
+          reportId: `${marker}-report`,
+          userId: `${marker}-user`,
+          reportXml: `${marker}-xml`,
+          reportedMedia: [
+            { id: `${marker}-media`, xml: `${marker}-media-xml` },
+          ],
+          additionalFiles: [
+            {
+              xml: `${marker}-file-xml`,
+              url: `https://example.invalid/${marker}`,
+              ncmecFileId: `${marker}-file`,
+            },
+          ],
+          reportedMessages: [
+            {
+              csv: `${marker}-csv`,
+              ncmecFileId: `${marker}-messages`,
+              fileName: `${marker}.csv`,
+            },
+          ],
+        };
+        await deps.KyselyPg.insertInto('ncmec_reporting.ncmec_reports')
+          .values({
+            org_id: tenant.org.id,
+            report_id: report.reportId,
+            user_id: report.userId,
+            user_item_type_id: tenant.defaultUserItemType.id,
+            reviewer_id: reviewer.id,
+            report_xml: report.reportXml,
+            reported_media: report.reportedMedia,
+            additional_files: report.additionalFiles,
+            reported_messages: report.reportedMessages,
+            is_test: false,
+          })
+          .execute();
+        return report;
+      };
+      const reports = [
+        await createReport(local, 0),
+        await createReport(foreign, 1),
+      ];
+      const {
+        itemTypes: [messageType],
+      } = await createContentItemTypes({
+        moderationConfigService: deps.ModerationConfigService,
+        orgId: local.org.id,
+        extra: {},
+      });
+      vi.mocked(networking.fetchHTTP).mockResolvedValue({
+        ok: true,
+        status: 200,
+        headers: new Headers(),
+        body: {
+          conversations: [
+            {
+              threadId: 'synthetic-protected-thread',
+              typeId: 'thread-type',
+              messages: [
+                {
+                  id: 'synthetic-protected-message',
+                  typeId: messageType.id,
+                  data: { field1: 'synthetic-protected-text' },
+                  ipAddress: { ip: '192.0.2.47', port: 4321 },
+                },
+              ],
+            },
+          ],
+        },
+      });
+      const session = await createSession(
+        server,
+        user.email,
+        'Ncmec-test-password',
+      );
+      return { local, user, session, reports };
+    },
+  );
+  const reportFields = `reportId userId reportXml reportedMedia { id xml }
+    additionalFiles { xml url ncmecFileId } reportedMessages { csv ncmecFileId fileName }`;
+  const threadFields = `threadId threadTypeId messages { message { id data } ipAddress { ip port } }`;
 
-  describe('Query.ncmecThreads', () => {
-    it('throws forbiddenError when the caller lacks VIEW_CHILD_SAFETY_DATA', async () => {
-      const { ctx } = makeReadCtx([UserPermission.VIEW_MRT]);
-      await expect(
-        Query.ncmecThreads({}, { userId: 'user-9' }, ctx),
-      ).rejects.toThrow('VIEW_CHILD_SAFETY_DATA permission required');
-    });
-
-    it('throws unauthenticatedError when there is no user', async () => {
-      const { ctx } = makeReadCtx(null);
-      await expect(
-        Query.ncmecThreads({}, { userId: 'user-9' }, ctx),
-      ).rejects.toThrow('User required.');
-    });
-
-    it('returns no conversations for an authorized caller without accessing services', async () => {
-      const { ctx } = makeReadCtx([UserPermission.VIEW_CHILD_SAFETY_DATA]);
-      await expect(
-        Query.ncmecThreads(
-          {},
-          {
-            userId: { id: 'user-9', typeId: 'user-type' },
-            reportedMessages: [{ id: 'm-1', typeId: 'message-type' }],
-          },
-          { getUser: ctx.getUser },
-        ),
-      ).resolves.toEqual([]);
-    });
-  });
+  for (const surface of [
+    'ncmecReports',
+    'ncmecReportById',
+    'ncmecThreads',
+  ] as const) {
+    for (const fragments of [false, true]) {
+      testWithReports(
+        `${surface} protects the entire ${fragments ? 'aliased fragment' : 'plain'} response`,
+        async ({ deps, local, user, request, session, reports }) => {
+          const fields =
+            surface === 'ncmecThreads' ? threadFields : reportFields;
+          const selection = fragments ? '...ProtectedFields' : fields;
+          const root =
+            surface === 'ncmecReports'
+              ? `myOrg { result: ncmecReports { ${selection} } }`
+              : surface === 'ncmecReportById'
+                ? `result: ncmecReportById(reportId: "${reports[0].reportId}") { ${selection} }`
+                : `result: ncmecThreads(userId: { id: "reported-user", typeId: "${local.defaultUserItemType.id}" }, reportedMessages: []) { ${selection} }`;
+          const query = `{ ${root} } ${fragments ? `fragment ProtectedFields on ${surface === 'ncmecThreads' ? 'ThreadWithMessagesAndIpAddress' : 'NCMECReport'} { ${fields} }` : ''}`;
+          await fc.assert(
+            fc.asyncProperty(
+              fc.subarray(unrelatedPermissions),
+              async (permissions) => {
+                for (const actor of [request, session]) {
+                  await kyselyUpdateRolePermissions(deps.KyselyPg, {
+                    orgId: user.orgId,
+                    roleKey: user.role,
+                    permissions,
+                  });
+                  const denied = await actor
+                    .post('/api/v1/graphql')
+                    .send({ query })
+                    .expect(200);
+                  expect(denied.body.errors).toEqual([
+                    expect.objectContaining({
+                      extensions: expect.objectContaining({
+                        code:
+                          actor === request ? 'UNAUTHENTICATED' : 'FORBIDDEN',
+                      }),
+                    }),
+                  ]);
+                  expect(jsonStringify(denied.body)).not.toContain(
+                    'synthetic-protected',
+                  );
+                  expect(jsonStringify(denied.body)).not.toContain(
+                    '192.0.2.47',
+                  );
+                }
+                await kyselyUpdateRolePermissions(deps.KyselyPg, {
+                  orgId: user.orgId,
+                  roleKey: user.role,
+                  permissions: [
+                    ...permissions,
+                    UserPermission.VIEW_CHILD_SAFETY_DATA,
+                  ],
+                });
+                const allowed = await session
+                  .post('/api/v1/graphql')
+                  .send({ query })
+                  .expect(200);
+                const expected =
+                  surface === 'ncmecReports'
+                    ? { myOrg: { result: [reports[0]] } }
+                    : surface === 'ncmecReportById'
+                      ? { result: reports[0] }
+                      : {
+                          result: [
+                            {
+                              threadId: 'synthetic-protected-thread',
+                              threadTypeId: 'thread-type',
+                              messages: [
+                                {
+                                  message: {
+                                    id: 'synthetic-protected-message',
+                                    data: {
+                                      field1: 'synthetic-protected-text',
+                                    },
+                                  },
+                                  ipAddress: { ip: '192.0.2.47', port: 4321 },
+                                },
+                              ],
+                            },
+                          ],
+                        };
+                expect(allowed.body).toEqual({ data: expected });
+                expect(jsonStringify(allowed.body)).not.toContain(
+                  'synthetic-protected-1',
+                );
+                if (surface === 'ncmecReportById') {
+                  const other = await session.post('/api/v1/graphql').send({
+                    query: query.replace(
+                      reports[0].reportId,
+                      reports[1].reportId,
+                    ),
+                  });
+                  expect(other.body).toEqual({ data: { result: null } });
+                }
+              },
+            ),
+            { numRuns: 10, examples: [[[]], [unrelatedPermissions]] },
+          );
+        },
+      );
+    }
+  }
 });
