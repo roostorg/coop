@@ -1618,7 +1618,7 @@ export default class NcmecReporting {
       .select(['ncmec_preservation_endpoint'])
       .where('org_id', '=', orgId)
       .executeTakeFirst();
-    return rows?.ncmec_preservation_endpoint;
+    return rows?.ncmec_preservation_endpoint ?? undefined;
   }
 
   async ncmecAdditionalInfoEndpoint(
@@ -1629,7 +1629,7 @@ export default class NcmecReporting {
       .select(['ncmec_additional_info_endpoint'])
       .where('org_id', '=', orgId)
       .executeTakeFirst();
-    return rows?.ncmec_additional_info_endpoint;
+    return rows?.ncmec_additional_info_endpoint ?? undefined;
   }
 
   async getUserHasExistingNcmeReport(params: {
