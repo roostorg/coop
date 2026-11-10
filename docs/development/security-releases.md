@@ -72,11 +72,21 @@ gh api --paginate "repos/roostorg/coop/dependabot/alerts?state=fixed&per_page=10
 Use this path for a vulnerability in Coop's own code, or any issue not yet public.
 
 1. Choose the release base (step 2). On option B, create `release/x.y` first if it does not exist.
-2. In the draft advisory, select **Start a temporary private fork**.
-3. Clone the fork and open a PR against it with the fix and a regression test. Target `main` on option A, or `release/x.y` on option B.
-4. GitHub Actions does not run in temporary private forks. Run the [CI checks](https://github.com/roostorg/coop/blob/main/AGENTS.md#ci) locally and record the results in the PR.
-5. Once the PR is reviewed, select **Merge pull request** in the advisory. The fix is public from this point, so publish the release (step 4) straight after.
-6. The merge lands as one squashed commit titled "Merge commit from fork", with the PR's title only in the commit body, so `git log --oneline` does not show it as a security fix. Whoever merges it tells the release owner the commit SHA.
+2. In the draft advisory, select **Start a temporary private fork**. Fine-grained personal access tokens cannot reach the fork, even with it added to the token. Use a short-lived classic token with the `repo` and `workflow` scopes, and revoke it when the release is done.
+3. Bring the fork's target branch up to date. Its branches are a snapshot from when the fork was created, and **Sync fork** does not work on advisory forks, so push the upstream commit to it as a fast-forward, without force:
+
+   ```bash
+   git push https://github.com/roostorg/<fork>.git <upstream sha>:refs/heads/main
+   ```
+
+   Do the same for `release/x.y` on option B. The push is rejected without the `workflow` scope if the new commits change `.github/workflows/`.
+
+4. Clone the fork and open a PR against it with the fix and a regression test. Target `main` on option A, or `release/x.y` on option B.
+5. GitHub Actions does not run in temporary private forks. Run the [CI checks](https://github.com/roostorg/coop/blob/main/AGENTS.md#ci) locally and record the results in the PR. The required checks stay at "Expected — Waiting for status to be reported", so merging needs a branch protection bypass. **Pending decision:** a narrow bypass for security releases, or a private mirror repository where Actions runs.
+6. Before merging, update the fork's target branch again as in step 3, rebase the fix onto it, and rerun the local CI checks. The fork checks mergeability against its own stale branch, so a PR it shows as mergeable can still conflict upstream. Force-pushing the rebase does not dismiss existing approvals, so ask for a new review.
+7. Copy anything you need from the fork PR, such as review comments and CI results, into the draft advisory. GitHub deletes the fork when the PR is merged.
+8. Once the PR is reviewed, select **Merge pull request** in the advisory. The fix is public from this point, so publish the release (step 4) straight after.
+9. The merge lands as one squashed commit titled "Merge commit from fork", with the PR's title only in the commit body, so `git log --oneline` does not show it as a security fix. Whoever merges it tells the release owner the commit SHA.
 
 If a fork fix for option B merged into `main` instead of `release/x.y`, the fix is public from that merge, and the response clock runs from it. Cherry-pick it to `release/x.y` with `git cherry-pick -x` in a public backport PR:
 
