@@ -28,7 +28,7 @@ For specific integration information and detailed requirements, see that integra
 
 [^OAI]: [Per OpenAI](https://help.openai.com/en/articles/4936833-is-the-moderation-endpoint-free-to-use), the API is completely free and does not count towards monthly usage limits.
 
-[^Z]: Zentropi text classifiers are free, and currently use the openly-licensed [CoPE-A-9B model](https://huggingface.co/zentropi-ai/cope-a-9b). The API supports all labelers you create, including free and optionally paid; see [Zentropi pricing details](https://zentropi.ai/subscription).
+[^Z]: Zentropi text classifiers are free, and use the [model you choose](zentropi-cope.md#configuration) for each labeler version. The API supports all labelers you create, including free and optionally paid; see [Zentropi pricing details](https://zentropi.ai/subscription).
 
 ## Model cards
 

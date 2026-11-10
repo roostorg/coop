@@ -79,3 +79,60 @@ const manifest: IntegrationManifest = {
 - Plugins without `configurationFields` keep the generic key/value form.
 
 Configuration fields require `@roostorg/coop-types >= 3.0.0`.
+
+## Evaluation context (`contextNeeds`)
+
+A signal can ask for more than the value being scored by setting
+`contextNeeds` on its `PluginSignalDescriptor`:
+
+```ts
+const signal: PluginSignalDescriptor = {
+  // ...
+  contextNeeds: {
+    includeParent: true,
+    includeThread: true,
+    maxThreadMessages: 50,
+  },
+  async run(input) {
+    const earlier = input.context?.thread?.messages ?? [];
+    const parentText = input.context?.parent?.data.text;
+    // ...
+  },
+};
+```
+
+Coop then passes the context to `run()` as `input.context`:
+
+```ts
+{
+  item: { itemId: 'msg-3', itemTypeId: 'message', data: { text: 'see you there' } },
+  parent: { itemId: 'post-1', itemTypeId: 'post', data: { text: 'Meetup on Friday' } },
+  thread: {
+    id: 'thread-1',
+    typeId: 'thread',
+    // Messages posted before the item, oldest first.
+    messages: [
+      { itemId: 'msg-1', itemTypeId: 'message', data: { text: 'who is going?' }, creator: { id: 'user-7', typeId: 'user' } },
+      { itemId: 'msg-2', itemTypeId: 'message', data: { text: 'me' } },
+    ],
+    // True when there are more messages than maxThreadMessages.
+    truncated: false,
+  },
+  // Set only when a requested section couldn't be loaded in time, for
+  // example unavailable: ['thread'].
+}
+```
+
+See `SignalEvaluationContext` in `@roostorg/coop-types` for the full shape.
+
+- Every section is optional. An item may have no parent or thread, and a
+  section that takes longer than 3 seconds is listed in `unavailable`.
+- Threads include up to `maxThreadMessages` messages from the 90 days before
+  the item, 20 by default. Each message is read from storage for every
+  evaluation that runs your signal, so ask for only as many as your model uses.
+- Coop doesn't trim message text. Apply your own size limits before sending
+  context to your backend.
+- User items are passed by ID and type only, never their data.
+- No context is loaded for an integration the organization hasn't configured.
+
+Evaluation context requires `@roostorg/coop-types >= 3.0.0`.

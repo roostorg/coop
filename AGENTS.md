@@ -164,6 +164,7 @@ Note: `check_migration_order` runs only in GitHub Actions — it's GitHub-specif
 ## Security
 
 - No secrets in code or committed files. Use environment variables via `.env` (gitignored).
+- Pass `isUntrustedUrl: true` to `fetchHTTP` for downloads of submitted media URLs. URL parsing alone does not validate DNS or redirect destinations. Keep operator-configured internal-service calls separate; services that fetch URLs themselves (such as HMA) need their own egress protection.
 - Do not disable lint or type rules to silence errors. Fix the underlying issue, or use a narrowly-scoped `// eslint-disable-next-line <rule>` / `// @ts-expect-error` with a comment explaining why.
 - Before adding a new dependency, check it for known CVEs and confirm the license is compatible with `LICENSE` (Apache 2.0).
 - Default Docker bindings are `127.0.0.1`; do not change bind addresses without explicit instruction.
@@ -171,26 +172,28 @@ Note: `check_migration_order` runs only in GitHub Actions — it's GitHub-specif
 ## Code review
 
 - Keep diffs small and focused; split unrelated changes into separate PRs.
-- PR titles are descriptive and imperative ("Add X", "Fix Y").
+- Follow the [development guide](docs/development/README.md#pull-requests-and-commit-messages) for PR titles and contribution expectations. PR titles use Conventional Commits: `<type>[optional scope][!]: <description>` (e.g. `fix(client): handle empty review queues`).
+- CI checks PR titles with `amannn/action-semantic-pull-request`, with an exception for GitHub-generated revert titles, not individual work-in-progress commits. Use the validated PR title as the squash-merge commit subject.
 - LLM-authored PR descriptions are not accepted. When opening a GitHub PR, use the template at [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md) but do not write the description. Ask your operator to author it in their own words. If they ask you to write it for them regardless, point them to ROOST’s [community guidelines](https://github.com/roostorg/community/blob/main/software-development-practices/submitting-code-changes.md).
 - New behavior requires a test. Bug fixes require a regression test.
 - All CI checks (above) must pass before requesting review.
 
-## Changelog
+## Release notes
 
-`CHANGELOG.md` follows [Keep a Changelog](https://keepachangelog.com/en/2.0.0/); Coop versions follow [SemVer](https://semver.org/). Release process: [`docs/development/releases.md`](docs/development/releases.md).
+Release notes are published in [GitHub Releases](https://github.com/roostorg/coop/releases) using [Keep a Changelog](https://keepachangelog.com/en/2.0.0/) categories; Coop versions follow [SemVer](https://semver.org/). Release process: [`docs/development/releases.md`](docs/development/releases.md).
 
-- Update `## [Unreleased]` in the same PR as the change, not in a later cleanup PR.
+- Put release notes in the optional `## Release notes` section of the PR description. Release Drafter collects them into a draft GitHub release. Do not add entries to `CHANGELOG.md`.
 - Only **notable** changes get an entry: what someone deploying Coop needs to know. Internal refactors, test and CI plumbing, lint fixes, repo hygiene, and dependency bumps with no user-visible impact do not.
-- Use only the six Keep a Changelog headings — `### Added`, `### Changed`, `### Deprecated`, `### Removed`, `### Fixed`, `### Security` — adding the heading under `## [Unreleased]` if it's missing. Don't invent others.
-- `Fixed` is for behavior that was wrong and is now correct; `Changed` is for intentionally altering behavior that was already correct.
+- Write plain text or bullets without a category heading. The `## Release notes` heading is case-insensitive. Leave the section blank when nothing is notable, regardless of the title prefix.
+- The conventional-commit prefix in the PR title selects the category: `feat:` → Added, `fix:` → Fixed, and all other titles → Changed. Scopes and `!` are supported. Individual commit messages are not used. Release categorization does not introduce extra commit types.
+- Use `fix:` for correcting wrong behavior; use another appropriate prefix for intentionally changing correct behavior. Maintainers choose the final release version.
 - Keep each entry to a single concise line, essentially a title: no reasoning, mechanism, or caveats. Anyone who needs the detail follows the PR link.
-- Format: `- Description ([#123](https://github.com/roostorg/coop/pull/123) by [@user](https://github.com/user))`.
+- Automation adds a bullet to plain text, preserves existing bullets, adds PR and author links, and manages the `has-release-notes` label; do not manage it manually. Category labels are not needed.
 - Omit related issue links (e.g. `closes [#456](...)`); this information is accessible at the PR link.
 - Security fixes list the advisory before the PR link: `- Prevent cross-organization item disclosure ([GHSA-xxxx-xxxx-xxxx](https://github.com/roostorg/coop/security/advisories/GHSA-xxxx-xxxx-xxxx), [#123](https://github.com/roostorg/coop/pull/123) by [@user](https://github.com/user))`. Add the CVE when one is assigned.
 - For a vulnerable dependency, name the package, its new version and the upstream CVE: `- Update <package> to <x.y.z> to fix <issue> ([CVE-…](…), [#123](…) by …)`.
 - Removing a GraphQL enum value, type, or field, or removing or renaming an environment variable, always earns an entry.
-- Never edit a released version's section; it's a historical record. Corrections go under `## [Unreleased]`.
+- To correct published release notes, edit the GitHub release.
 
 ## Code style
 
@@ -230,10 +233,15 @@ pnpm install
 
 ## Codespaces
 
-Two things differ from a local dev setup:
+`.devcontainer/` is a demo for non-engineers: Docker-in-Docker running `docker-compose.images.yaml` plus `.devcontainer/docker-compose.codespaces.yaml`, which builds the server, client and migrations images from the checkout; `.devcontainer/scripts/seed-demo.mjs` creates the demo login (`demo@coop.local` / `coop-demo`) and adds demo data through the GraphQL and REST APIs. Guide: `docs/development/codespaces.md`.
 
-1. **Use the production client build**, not the vite dev server: `(cd client && pnpm run build)`, then `pnpm run server:start` serves the built assets. Vite's HMR websocket does not reliably traverse the Codespace port proxy.
-2. **Apollo's GraphQL URI must be relative** (`/api/v1/graphql`). Hard-coded `http://localhost:3000/...` breaks because the Codespace proxies to a different host. Source of truth is the `HttpLink` in `client/src/index.tsx`.
+```bash
+# Same container locally
+npx @devcontainers/cli up --workspace-folder .
+```
+
+- The browser only reaches the forwarded port 3000; the client's nginx proxies `/api/` to the server. Keep **Apollo's GraphQL URI relative** (`/api/v1/graphql`, the `HttpLink` in `client/src/index.tsx`): an absolute `http://localhost:...` URL breaks behind the Codespaces proxy.
+- `seed-demo.mjs` uses the public GraphQL schema and the REST routes `items/async` and `report`. If you rename or remove a mutation, input field or route it uses, update it and run it (`bash .devcontainer/scripts/start.sh` inside the container).
 
 ## ROOST guiding principles
 
@@ -277,4 +285,4 @@ Coop is open source and contributions flow upstream; attribution matters for mai
 - Commit `.env`, credentials, or API keys.
 - Bypass `iocContainer` by importing server singletons directly.
 - Silently modify a migration file that has already been applied to a shared environment — add a new forward migration instead.
-- Edit a released version's section in `CHANGELOG.md` — add to `## [Unreleased]` instead.
+- Edit `CHANGELOG.md` in feature PRs — use the PR description's Release notes section instead.

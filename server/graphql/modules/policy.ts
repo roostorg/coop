@@ -104,10 +104,12 @@ const Query: GQLQueryResolvers = {
       throw unauthenticatedError('Authenticated user required');
     }
 
-    return context.services.ModerationConfigService.getPolicy({
-      policyId: id,
-      orgId: user.orgId,
-    });
+    return (
+      (await context.services.ModerationConfigService.getPolicy({
+        policyId: id,
+        orgId: user.orgId,
+      })) ?? null
+    );
   },
 };
 

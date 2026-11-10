@@ -33,7 +33,7 @@ export default class ZentropiLabelerSignal extends SignalBase<
     return (
       'Policy-steerable content classifier powered by Zentropi. ' +
       'Evaluates text against a custom policy defined by a published labeler. ' +
-      'Returns a composite score: 0 = confidently safe, 0.5 = uncertain, 1 = confidently violating. ' +
+      "Returns a composite score: 0 = confident the content does not match the labeler's policy, 0.5 = uncertain, 1 = confident it matches. " +
       'Select a configured labeler version in the subcategory field.'
     );
   }
