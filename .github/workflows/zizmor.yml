@@ -33,7 +33,7 @@ jobs:
         with:
           # Pinned deliberately: the action SHA is Dependabot-managed, but the
           # zizmor version it installs is not, so this needs a manual bump.
-          version: '1.25.2'
+          version: '1.32.0'
           # only upload to github advanced security on `main`.
           # on PRs from forks (which do not have permission to push SARIF results)
           # we surface findings as PR annotations instead.
