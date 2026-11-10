@@ -40,7 +40,7 @@
             const path_to_root = "../";
             const default_light_theme = "roost";
             const default_dark_theme = "roost";
-            window.path_to_searchindex_js = "../searchindex-4a7ce3fa.js";
+            window.path_to_searchindex_js = "../searchindex-5ea196d0.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-f887e144.js"></script>
@@ -234,6 +234,7 @@
 <li><strong>1</strong> = the model is confident the content matches your policy</li>
 </ul>
 <p>This score can be used with any comparator in a rule condition, for example <code>score &gt; 0.8</code> to trigger only on high-confidence matches.</p>
+<p>Zentropi answers bursts of requests with HTTP 429 and sheds load with HTTP 529. Coop retries such a call up to four times, waiting 250 ms, 500 ms, 1 s and then 2 s, or longer if the API’s <code>Retry-After</code> asks for it (up to five seconds per wait). If the call still fails, the condition is recorded as errored and the rule does not match for that item.</p>
 <h3 id="writing-a-policy"><a class="header" href="#writing-a-policy">Writing a policy</a></h3>
 <p>Zentropi classifiers work best when policy definitions follow a structured format:</p>
 <ol>
