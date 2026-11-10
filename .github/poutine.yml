@@ -3,7 +3,7 @@
 
 skip:
   # Flags every action whose owner isn't a GitHub-verified creator, including
-  # ROOST's own. Every action here is pinned to a commit SHA (enforced by
+  # ROOST's own. Every action here is pinned to a commit SHA (checked by
   # zizmor), and new actions are reviewed in their PRs.
   - rule: github_action_from_unverified_creator_used
 
