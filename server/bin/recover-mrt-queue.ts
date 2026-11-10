@@ -20,8 +20,8 @@
  * matches `ncmec_org_settings.default_ncmec_queue_id`. Pass --mode only to
  * override (rare).
  *
- * Usage:
- *   pnpm run recover-mrt-queue \
+ * Usage in the server image:
+ *   node bin/recover-mrt-queue.js \
  *     --orgId "<orgId>" \
  *     --queueId "<queueId>" \
  *     [--mode default|ncmec] \
