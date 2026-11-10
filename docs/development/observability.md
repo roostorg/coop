@@ -4,7 +4,7 @@ Coop uses [OpenTelemetry](https://opentelemetry.io/docs/concepts/) to record tra
 
 ## Overview
 
-Telemetry is off by default. When you start the server with `npm run start:trace`, it loads the OpenTelemetry SDK and begins sending traces and metrics to an OpenTelemetry Collector. Locally, the collector passes traces on to Jaeger, where you can browse them.
+Telemetry is off by default. When you start the server with `pnpm run start:trace`, it loads the OpenTelemetry SDK and begins sending traces and metrics to an OpenTelemetry Collector. Locally, the collector passes traces on to Jaeger, where you can browse them.
 
 ```
 server (start:trace) ──OTLP gRPC :4317──▶ otel-collector ──▶ Jaeger (UI :16686)
@@ -14,14 +14,14 @@ browser (opt-in)     ──OTLP HTTP :4318──▶ otel-collector
 ## Quick start
 
 ```sh
-cd nodejs-instrumentation && npm ci && npm run build && cd ..
-npm run up
-cd server && npm run start:trace
+pnpm --filter nodejs-instrumentation run build
+pnpm run up
+cd server && pnpm run start:trace
 ```
 
 Once the server is running, open Jaeger at [localhost:16686](http://localhost:16686) and select `COOP_TEST_SERVICE` (the `OTEL_SERVICE_NAME` in `server/.env.example`) to see recent requests.
 
-You'll see a `metrics export failed (... 12 UNIMPLEMENTED ...)` message every 60 seconds, which is expected: the local collector only accepts traces. Workers started with `npm run runWorkerOrJob` don't load the SDK, so they aren't traced.
+You'll see a `metrics export failed (... 12 UNIMPLEMENTED ...)` message every 60 seconds, which is expected: the local collector only accepts traces. Workers started with `pnpm run runWorkerOrJob` don't load the SDK, so they aren't traced.
 
 ## Configuration
 
@@ -33,13 +33,13 @@ You'll see a `metrics export failed (... 12 UNIMPLEMENTED ...)` message every 60
 | `LOG_REQUEST_BODY`                        | Server         | Meant to record request bodies; currently has no effect    |
 | `VITE_OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | Client (build) | Enables frontend tracing                                   |
 
-Keep in mind that spans can contain user content. SQL text and Redis commands are recorded by default, so review what they contain before sending traces to a shared backend.
+Keep in mind that spans can contain user content. SQL text and Redis commands are recorded by default, and frontend tracing records every request body, including login passwords, so review what they contain before sending traces to a shared backend.
 
 ## How it works
 
 ### Loading the SDK
 
-Application code only uses `@opentelemetry/api`, which does nothing on its own. `npm run start:trace` brings it to life by preloading `nodejs-instrumentation` with `node --require`, so the SDK is in place before the app starts and can patch libraries such as `http` and `pg`.
+Application code only uses `@opentelemetry/api`, which does nothing on its own. `pnpm run start:trace` brings it to life by preloading `nodejs-instrumentation` with `node --require`, so the SDK is in place before the app starts and can patch libraries such as `http` and `pg`.
 
 From there, the SDK (`nodejs-instrumentation/src/autoinstrumentation.ts`):
 
@@ -55,7 +55,7 @@ Most spans come from auto-instrumentation, so a typical request already shows it
 
 ### Background jobs
 
-The trail stops at the job queue. Locally, workers started with `npm run runWorkerOrJob` aren't traced at all. When the SDK is loaded into a worker, as in a deployment that injects it, its jobs start a new trace rather than continuing the request that enqueued them, because trace context isn't passed through BullMQ.
+The trail stops at the job queue. Locally, workers started with `pnpm run runWorkerOrJob` aren't traced at all. When the SDK is loaded into a worker, as in a deployment that injects it, its jobs start a new trace rather than continuing the request that enqueued them, because trace context isn't passed through BullMQ.
 
 ### Frontend tracing
 

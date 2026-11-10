@@ -173,6 +173,7 @@ EMAIL_TRANSPORT=console
 ### With distributed tracing
 
 ```sh
+pnpm --filter nodejs-instrumentation run build
 cd server && pnpm run start:trace
 ```
 
