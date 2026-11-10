@@ -1,11 +1,12 @@
 import { ProxyTracerProvider } from '@opentelemetry/api';
+import { vi } from 'vitest';
 
 import type { IDataWarehouse } from '../../../storage/dataWarehouse/IDataWarehouse.js';
 import SafeTracer from '../../../utils/SafeTracer.js';
 import { ClickhouseContentApiRequestsAdapter } from './ClickhouseContentApiRequestsAdapter.js';
 
 function makeWarehouse(rows: ReadonlyArray<Record<string, unknown>>) {
-  const query = jest.fn(
+  const query = vi.fn(
     async (
       _q: string,
       _t: SafeTracer,
@@ -14,10 +15,10 @@ function makeWarehouse(rows: ReadonlyArray<Record<string, unknown>>) {
   );
   const warehouse: IDataWarehouse = {
     query,
-    transaction: jest.fn(),
-    start: jest.fn(),
-    close: jest.fn(),
-    getProvider: jest.fn(),
+    transaction: vi.fn(),
+    start: vi.fn(),
+    close: vi.fn(),
+    getProvider: vi.fn(),
   };
   return { warehouse, query };
 }

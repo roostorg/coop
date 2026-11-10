@@ -1,4 +1,5 @@
 import { v1 as uuidv1 } from 'uuid';
+import { vi } from 'vitest';
 
 import getBottle from '../iocContainer/index.js';
 import makeDummyMrtJobPayload from '../test/fixtureHelpers/makeDummyMrtJobPayload.js';
@@ -24,13 +25,13 @@ function makeJob(orgId = uuidv1()): ManualReviewJob {
 
 describe('manual review content resolver', () => {
   it('accepts a deployment resolver extension', async () => {
-    const resolver = jest.fn();
+    const resolver = vi.fn();
     const bottle = await getBottle({ manualReviewContentResolver: resolver });
     expect(bottle.container.ManualReviewContentResolver).toBe(resolver);
   });
 
   it('accepts a resolver registered before startup', async () => {
-    const resolver = jest.fn();
+    const resolver = vi.fn();
     const unregister = registerManualReviewContentResolver(resolver);
     try {
       const bottle = await getBottle();
@@ -41,7 +42,7 @@ describe('manual review content resolver', () => {
   });
 
   it('requires reviewer identity, organization, and the active lock', async () => {
-    const hasActiveLock = jest.fn(async () => true);
+    const hasActiveLock = vi.fn(async () => true);
     await expect(
       canResolveManualReviewContent({
         jobOrgId: 'org',
@@ -96,7 +97,7 @@ describe('manual review content resolver', () => {
   it('returns validated resolved content', async () => {
     const job = makeJob();
     const resolvedJob = { ...job, policyIds: ['resolved'] };
-    const onResolved = jest.fn();
+    const onResolved = vi.fn();
 
     await expect(
       resolveManualReviewContentSafely(
@@ -116,7 +117,7 @@ describe('manual review content resolver', () => {
   it('keeps stored content when resolution fails', async () => {
     const job = makeJob();
     const error = new Error('resolver unavailable');
-    const onError = jest.fn();
+    const onError = vi.fn();
 
     await expect(
       resolveManualReviewContentSafely(
@@ -135,7 +136,7 @@ describe('manual review content resolver', () => {
 
   it('rejects a result for another job', async () => {
     const job = makeJob();
-    const onError = jest.fn();
+    const onError = vi.fn();
 
     await expect(
       resolveManualReviewContentSafely(

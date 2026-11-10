@@ -1,4 +1,5 @@
 /* eslint-disable max-lines */
+import { type ReadableStream } from 'node:stream/web';
 import type { Exception } from '@opentelemetry/api';
 import { makeEnumLike, type ItemIdentifier } from '@roostorg/coop-types';
 import _Ajv from 'ajv';
@@ -14,18 +15,15 @@ import { type FixKyselyRowCorrelation } from '../../utils/kysely.js';
 import { logErrorJson } from '../../utils/logging.js';
 import { assertUnreachable, withRetries } from '../../utils/misc.js';
 import { type CollapseCases } from '../../utils/typescript-types.js';
-import { rawItemSubmissionToItemSubmission } from '../itemProcessingService/makeItemSubmission.js';
 import { type RawItemData } from '../itemProcessingService/toNormalizedItemDataOrErrors.js';
-import {
-  rawItemSubmissionSchema,
-  type RawItemSubmission,
-} from '../itemProcessingService/types.js';
 import type {
   NCMECReportedContentInThread,
   NCMECThreadReport,
 } from '../manualReviewToolService/modules/JobDecisioning.js';
+import { abandonDownload } from '../networkingService/cancelReadableStream.js';
 import {
   makeFormDataLikeWithStreams,
+  type FetchHTTP,
   type FormDataLikeWithStreams,
 } from '../networkingService/index.js';
 import { type NcmecReportingServicePg } from './dbTypes.js';
@@ -1172,81 +1170,6 @@ const validateIpAddressEvent = {
   },
 } as const;
 
-type NcmecMessageResponse = {
-  conversations: {
-    threadId: string;
-    typeId: string;
-    messages: (RawItemSubmission & {
-      ipAddress: {
-        ip: string;
-        port: number;
-      };
-    })[];
-  }[];
-};
-
-const validateNcmecMessages = ajv.compile<NcmecMessageResponse>({
-  type: 'object',
-  properties: {
-    conversations: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          threadId: { type: 'string' },
-          typeId: { type: 'string' },
-          messages: {
-            type: 'array',
-            items: {
-              type: 'object',
-              oneOf: [
-                {
-                  ...rawItemSubmissionSchema.oneOf[0],
-                  properties: {
-                    ...rawItemSubmissionSchema.oneOf[0].properties,
-                    ipAddress: {
-                      type: 'object',
-                      properties: {
-                        ip: { type: 'string' },
-                        port: { type: 'integer' },
-                      },
-                      required: ['ip', 'port'],
-                    },
-                  },
-                  required: [
-                    ...rawItemSubmissionSchema.oneOf[0].required,
-                    'ipAddress',
-                  ],
-                },
-                {
-                  ...rawItemSubmissionSchema.oneOf[1],
-                  properties: {
-                    ...rawItemSubmissionSchema.oneOf[1].properties,
-                    ipAddress: {
-                      type: 'object',
-                      properties: {
-                        ip: { type: 'string' },
-                        port: { type: 'integer' },
-                      },
-                      required: ['ip', 'port'],
-                    },
-                  },
-                  required: [
-                    ...rawItemSubmissionSchema.oneOf[1].required,
-                    'ipAddress',
-                  ],
-                },
-              ],
-            },
-          },
-        },
-        required: ['threadId', 'typeId', 'messages'],
-      },
-    },
-  },
-  required: ['conversations'],
-} as const satisfies JSONSchemaV4<NcmecMessageResponse>);
-
 const validateNcmecAdditionalInfo = ajv.compile<NcmecAdditionalInfoResponse>({
   type: 'object',
   properties: {
@@ -1349,6 +1272,39 @@ const validateNcmecAdditionalInfo = ajv.compile<NcmecAdditionalInfoResponse>({
   required: ['users'],
 } as const satisfies JSONSchemaV4<NcmecAdditionalInfoResponse>);
 
+/**
+ * Download media and hand the body to `send`. If the download is not usable
+ * or `send` throws, abort the request and cancel the body before the caller
+ * retries, so the failed attempt does not keep its stream open.
+ */
+export async function uploadDownloadedMedia<T>(
+  fetchHTTP: FetchHTTP,
+  url: string,
+  send: (body: ReadableStream) => Promise<T>,
+): Promise<T> {
+  const download = new AbortController();
+  let body: ReadableStream | undefined;
+  try {
+    const response = await fetchHTTP({
+      url,
+      isUntrustedUrl: true,
+      method: 'get',
+      handleResponseBody: 'as-readable-stream',
+      maxResponseSize: 'unlimited',
+      iWillConsumeTheResponseBodyStreamQuicklyToAvoidACrash: true,
+      signal: download.signal,
+    });
+    body = response.body;
+    if (!response.ok || response.body == null) {
+      throw new Error(`Cannot download media from ${url}`);
+    }
+    return await send(response.body);
+  } catch (error) {
+    await abandonDownload(download, body);
+    throw error;
+  }
+}
+
 export type NcmecMediaReport = {
   id: string;
   typeId: string;
@@ -1388,8 +1344,6 @@ export default class NcmecReporting {
     private pqQueryReadReplica: Kysely<NcmecReportingServicePg>,
     private fetchHTTP: Dependencies['fetchHTTP'],
     private signingKeyPairService: Dependencies['SigningKeyPairService'],
-    private moderationConfigService: Dependencies['ModerationConfigService'],
-    private getItemTypeEventuallyConsistent: Dependencies['getItemTypeEventuallyConsistent'],
     private readonly tracer: Dependencies['Tracer'],
   ) {}
   async hasNCMECReportingEnabled(orgId: string) {
@@ -1429,77 +1383,6 @@ export default class NcmecReporting {
       : undefined;
   }
 
-  async getNcmecMessages(
-    orgId: string,
-    userId: ItemIdentifier,
-    reportedMedia: readonly ItemIdentifier[],
-  ) {
-    const fetchWithRetries = withRetries(
-      {
-        maxRetries: 5,
-        initialTimeMsBetweenRetries: 5,
-        maxTimeMsBetweenRetries: 500,
-        jitter: true,
-      },
-      async () => {
-        const response = await this.fetchHTTP({
-          url: 'https://tas-infra-ml.net/data/coop/content/pre-preserve/get',
-          method: 'post',
-          body: jsonStringify({
-            userId: userId.id,
-            typeId: userId.typeId,
-            reported_messages: reportedMedia,
-          }),
-          handleResponseBody: 'as-json',
-          signWith: this.signingKeyPairService.sign.bind(
-            this.signingKeyPairService,
-            orgId,
-          ),
-        });
-        if (!response.ok) {
-          throw new Error();
-        }
-        const responseBody = response.body;
-        if (!validateNcmecMessages(responseBody)) {
-          throw new Error(`NCMEC Messages failed validation`);
-        }
-        return responseBody;
-      },
-    );
-    const body = await fetchWithRetries();
-
-    return Promise.all(
-      body.conversations.map(async (conversation) => {
-        const messages = await Promise.all(
-          conversation.messages.map(async (message) => {
-            const { error, itemSubmission } =
-              await rawItemSubmissionToItemSubmission(
-                await this.moderationConfigService.getItemTypes({
-                  orgId,
-                  directives: { maxAge: 10 },
-                }),
-                orgId,
-                this.getItemTypeEventuallyConsistent,
-                message,
-              );
-            if (error) {
-              throw error;
-            }
-            return {
-              message: itemSubmission,
-              ipAddress: message.ipAddress,
-            };
-          }),
-        );
-        return {
-          messages: messages.slice(-50), // Get the last 50 items
-          threadId: conversation.threadId,
-          threadTypeId: conversation.typeId,
-        };
-      }),
-    );
-  }
-
   async getNCMECAdditionalInfo(
     orgId: string,
     reportedUsers: ItemIdentifier[],
@@ -1527,6 +1410,7 @@ export default class NcmecReporting {
 
     const response = await this.fetchHTTP({
       url: additionalInfoEndpoint,
+      isUntrustedUrl: false,
       method: 'post',
       body: jsonStringify({
         users: reportedUsers,
@@ -1638,6 +1522,10 @@ export default class NcmecReporting {
   // (user_id, user_item_type_id, org_id) for uniqueness, before an hour before
   // it executes, to allow for concurrent decisions to finish executing. Only
   // meant to be used in the NCMEC retry script.
+  //
+  // A production report covers all of the user's decisions; a test report
+  // covers only decisions made at or before latestTestReportAt. Rows with a
+  // null is_test predate the column and count as production.
   async getUsersWithNcmecDecision(opts: { startDate: Date }) {
     const { startDate } = opts;
     return this.pqQueryReadReplica
@@ -1646,11 +1534,12 @@ export default class NcmecReporting {
         'user_id as userId',
         'user_item_type_id as userItemTypeId',
         'org_id as orgId',
+        sql<boolean>`bool_or(is_test is not true)`.as('hasProductionReport'),
+        sql<Date | null>`max(created_at) filter (where is_test)`.as(
+          'latestTestReportAt',
+        ),
       ])
       .where('created_at', '>=', startDate)
-      .where((eb) =>
-        eb.or([eb('is_test', '=', null), eb('is_test', '=', false)]),
-      )
       .groupBy(['user_id', 'user_item_type_id', 'org_id'])
       .execute();
   }
@@ -1701,6 +1590,7 @@ export default class NcmecReporting {
       async () => {
         const response = await this.fetchHTTP({
           url: ncmecPreservationEndpoint,
+          isUntrustedUrl: false,
           method: 'post',
           body: jsonStringify({
             user,
@@ -2118,36 +2008,22 @@ export default class NcmecReporting {
         maxTimeMsBetweenRetries: 500,
         jitter: true,
       },
-      async () => {
-        // TODO: Handle when this fails because of Unidici's memory limit
-        const response = await this.fetchHTTP({
-          url: additionalFileInfo.fileUrl,
-          method: 'get',
-          handleResponseBody: 'as-readable-stream',
-          maxResponseSize: 'unlimited',
-          iWillConsumeTheResponseBodyStreamQuicklyToAvoidACrash: true,
-        });
-
-        if (!response.ok || !response.body) {
-          throw new Error(
-            `Cannot download media from ${additionalFileInfo.fileUrl}`,
-          );
-        }
-
-        return this.#sendCyberTipRequest({
-          cybertipAuthenticationCredentials,
-          body: makeFormDataLikeWithStreams({
-            id: reportId,
-            file: {
-              data: response.body,
-              fileName: additionalFileInfo.fileName,
-            },
+      async () =>
+        this.#uploadDownloadedMedia(additionalFileInfo.fileUrl, async (file) =>
+          this.#sendCyberTipRequest({
+            cybertipAuthenticationCredentials,
+            body: makeFormDataLikeWithStreams({
+              id: reportId,
+              file: {
+                data: file,
+                fileName: additionalFileInfo.fileName,
+              },
+            }),
+            route: '/upload',
+            includeContentType: false, // remove ContentType header
+            isTest,
           }),
-          route: '/upload',
-          includeContentType: false, // remove ContentType header
-          isTest,
-        });
-      },
+        ),
     );
     const response = await downloadWithRetries();
 
@@ -2218,7 +2094,6 @@ export default class NcmecReporting {
     additionalInfo: MediaAdditionalInfo,
     isTest: boolean,
   ) {
-    // TODO: Handle when this fails because of Unidici's memory limit
     const downloadWithRetries = withRetries(
       {
         maxRetries: 5,
@@ -2226,33 +2101,22 @@ export default class NcmecReporting {
         maxTimeMsBetweenRetries: 500,
         jitter: true,
       },
-      async () => {
-        const response = await this.fetchHTTP({
-          url: media.url,
-          method: 'get',
-          handleResponseBody: 'as-readable-stream',
-          maxResponseSize: 'unlimited',
-          iWillConsumeTheResponseBodyStreamQuicklyToAvoidACrash: true,
-        });
-
-        if (!response.ok || !response.body) {
-          throw new Error(`Cannot download media from ${media.url}`);
-        }
-
-        return this.#sendCyberTipRequest({
-          cybertipAuthenticationCredentials,
-          body: makeFormDataLikeWithStreams({
-            id: reportId,
-            file: {
-              data: response.body,
-              fileName: additionalInfo.fileName,
-            },
+      async () =>
+        this.#uploadDownloadedMedia(media.url, async (file) =>
+          this.#sendCyberTipRequest({
+            cybertipAuthenticationCredentials,
+            body: makeFormDataLikeWithStreams({
+              id: reportId,
+              file: {
+                data: file,
+                fileName: additionalInfo.fileName,
+              },
+            }),
+            route: '/upload',
+            includeContentType: false,
+            isTest,
           }),
-          route: '/upload',
-          includeContentType: false,
-          isTest,
-        });
-      },
+        ),
     );
 
     const response = await downloadWithRetries();
@@ -2489,6 +2353,13 @@ export default class NcmecReporting {
     }
   }
 
+  async #uploadDownloadedMedia<T>(
+    url: string,
+    send: (body: ReadableStream) => Promise<T>,
+  ): Promise<T> {
+    return uploadDownloadedMedia(this.fetchHTTP, url, send);
+  }
+
   async #sendCyberTipRequest(input: {
     cybertipAuthenticationCredentials: CyberTipAuth;
     body: string | FormData | FormDataLikeWithStreams;
@@ -2528,6 +2399,7 @@ export default class NcmecReporting {
         });
         const response = await this.fetchHTTP({
           url,
+          isUntrustedUrl: false,
           method: 'post',
           headers: {
             ...(includeContentType ? { 'Content-Type': 'text/xml' } : {}),

@@ -1,4 +1,5 @@
 import { Kysely } from 'kysely';
+import { vi } from 'vitest';
 
 import { type DataWarehousePublicSchema } from '../../storage/dataWarehouse/warehouseSchema.js';
 import {
@@ -12,14 +13,14 @@ import ItemHistoryQueries from './ItemHistoryQueries.js';
 describe('ItemHistoryQueries', () => {
   test('should issue a proper query', async () => {
     // Arrange
-    const warehouseMock = jest.fn<WarehouseExecute>(async (_it) => ({
+    const warehouseMock = vi.fn<WarehouseExecute>(async (_it) => ({
       rows: [],
     }));
     const dialect = makeMockWarehouseDialect(warehouseMock);
     const kysely = new Kysely<DataWarehousePublicSchema>({ dialect });
     const dialectMock = {
       getKyselyInstance: () => kysely,
-      destroy: jest.fn(),
+      destroy: vi.fn(),
     };
     const sut = new ItemHistoryQueries(dialectMock);
 

@@ -1,6 +1,7 @@
 import { type ReadonlyDeep, type Simplify } from 'type-fest';
 
-import { inject, type Dependencies } from '../../iocContainer/index.js';
+import { type Dependencies } from '../../iocContainer/index.js';
+import { inject } from '../../iocContainer/utils.js';
 import { type ConsumerDirectives } from '../../lib/cache/index.js';
 import { jsonStringify } from '../../utils/encoding.js';
 import { CoopError, ErrorType, makeNotFoundError } from '../../utils/errors.js';
@@ -43,6 +44,7 @@ const publicSignalProps = [
   'getCost',
   'integration',
   'allowedInAutomatedRules',
+  'contextNeeds',
 ] as const;
 
 /**
@@ -356,6 +358,7 @@ export class SignalsService {
       getCost: it.getCost,
       integration: it.integration,
       allowedInAutomatedRules: it.allowedInAutomatedRules,
+      contextNeeds: it.contextNeeds,
     } satisfies Signal as Signal;
   }
 }

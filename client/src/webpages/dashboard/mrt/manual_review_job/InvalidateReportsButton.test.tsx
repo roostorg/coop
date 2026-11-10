@@ -1,14 +1,12 @@
-import { MockedProvider } from '@apollo/client/testing';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import React from 'react';
-
-import '@testing-library/jest-dom/extend-expect';
-
 import {
   GQLInvalidateReportsFromReporterDocument,
   type GQLInvalidateReportsFromReporterMutation,
   type GQLInvalidateReportsFromReporterMutationVariables,
 } from '@/graphql/generated';
+import { MockedProvider } from '@apollo/client/testing';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import React from 'react';
+import { vi } from 'vitest';
 
 import InvalidateReportsButton from './InvalidateReportsButton';
 
@@ -181,7 +179,7 @@ describe('InvalidateReportsButton', () => {
     ];
 
     let resolveHandler: (() => void) | undefined;
-    const onInvalidated = jest.fn(
+    const onInvalidated = vi.fn(
       async () =>
         new Promise<void>((resolve) => {
           mutationOrder.push('handler-start');

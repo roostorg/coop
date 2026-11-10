@@ -1,6 +1,7 @@
 [book]
 title = "Coop Documentation"
-authors = ["ROOST"]
+description = "User guide, development guide, API reference, deployment info, and integration details for Coop, the open source review and moderation tool from ROOST."
+authors = ["ROOST Community", "Cassidy James Blaede"]
 language = "en"
 src = "."
 
@@ -8,9 +9,15 @@ src = "."
 build-dir = "./book"
 
 [output.html]
+default-theme = "roost"
+preferred-dark-theme = "roost"
+additional-css = ["theme/css/roost.css", "theme/css/roost-hljs.css", "theme/css/content.css"]
+additional-js = ["theme/js/share.js"]
 site-url = "/coop/latest/"
 edit-url-template = "https://github.com/roostorg/coop/edit/main/docs/{path}"
 git-repository-url = "https://github.com/roostorg/coop"
 
 [output.html.print]
 enable = false
+
+[output.markdown]

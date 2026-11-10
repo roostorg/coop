@@ -1,15 +1,16 @@
 import { type Kysely } from 'kysely';
+import { vi } from 'vitest';
 
 import { deleteSessionsForUser } from './sessionPersistence.js';
 
 // Build a mock Kysely whose `deleteFrom(...)` returns a chainable
 // `{ where, execute }`, so we can assert the issued query shape.
 function makeMockDb() {
-  const execute = jest.fn().mockResolvedValue([]);
-  const where = jest.fn();
+  const execute = vi.fn().mockResolvedValue([]);
+  const where = vi.fn();
   const builder = { where, execute };
   where.mockReturnValue(builder);
-  const deleteFrom = jest.fn().mockReturnValue(builder);
+  const deleteFrom = vi.fn().mockReturnValue(builder);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const db = { deleteFrom } as unknown as Kysely<any>;
   return { db, deleteFrom, where, execute };
@@ -17,7 +18,7 @@ function makeMockDb() {
 
 describe('deleteSessionsForUser', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('deletes session rows matching the user id', async () => {

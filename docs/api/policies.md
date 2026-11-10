@@ -15,26 +15,37 @@ Authentication: `X-API-KEY` header. See [API Keys & Authentication](../developme
 ```json
 {
   "policies": [
-    { "id": "policy-id-1", "name": "Violence", "parentId": null },
     {
-      "id": "policy-id-2",
-      "name": "Graphic Violence",
-      "parentId": "policy-id-1"
-    },
-    { "id": "policy-id-3", "name": "Threats", "parentId": "policy-id-1" },
-    { "id": "policy-id-4", "name": "Spam", "parentId": null }
+      "id": "policy-id-1",
+      "name": "Violence",
+      "parentId": null,
+      "policyText": "Do not post graphic violence.",
+      "enforcementGuidelines": null,
+      "policyType": "VIOLENCE",
+      "semanticVersion": 1,
+      "userStrikeCount": 1,
+      "applyUserStrikeCountConfigToChildren": false,
+      "penalty": "NONE"
+    }
   ]
 }
 ```
 
 ### Response fields
 
-| Field | Type | Description |
-| :-------------------- | :----- | :------------------------------------------- | ---------------------------------------------------------------- |
-| `policies` | Array | All policies for your organization |
-| `policies[].id` | String | Coop's unique, immutable ID for this policy |
-| `policies[].name` | String | The display name you assigned to this policy |
-| `policies[].parentId` | String | null | ID of the parent policy, or `null` if this is a top-level policy |
+| Field                                             | Type           | Description                                             |
+| :------------------------------------------------ | :------------- | :------------------------------------------------------ |
+| `policies`                                        | Array          | All policies for your organization                      |
+| `policies[].id`                                   | String         | Coop's unique, immutable ID for this policy             |
+| `policies[].name`                                 | String         | The display name you assigned to this policy            |
+| `policies[].parentId`                             | String or null | Parent policy ID, or `null` for a top-level policy      |
+| `policies[].policyText`                           | String or null | Policy text                                             |
+| `policies[].enforcementGuidelines`                | String or null | Guidance for enforcement                                |
+| `policies[].policyType`                           | String or null | Policy category, such as `VIOLENCE`                     |
+| `policies[].semanticVersion`                      | Number         | Policy semantic version                                 |
+| `policies[].userStrikeCount`                      | Number         | Configured user strike count                            |
+| `policies[].applyUserStrikeCountConfigToChildren` | Boolean        | Whether child policies inherit the strike configuration |
+| `policies[].penalty`                              | String         | `NONE`, `LOW`, `MEDIUM`, `HIGH`, or `SEVERE`            |
 
 ## Notes
 

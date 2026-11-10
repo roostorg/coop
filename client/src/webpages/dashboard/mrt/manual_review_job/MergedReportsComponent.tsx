@@ -8,7 +8,7 @@ import { getFieldValueForRole } from '@/utils/itemUtils';
 import { parseDatetimeToReadableStringInCurrentTimeZone } from '@/utils/time';
 import { ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
 import { dateSort, stringSort } from '../../components/table/sort';
 import Table from '../../components/table/Table';

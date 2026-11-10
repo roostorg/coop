@@ -18,7 +18,7 @@ There are four ways content can enter the NCMEC review queue:
 
 3. **Inbound report flagged as CSAM**: When your platform sends a user report to Coop flagged as CSAM, Coop routes it directly to the NCMEC queue without evaluating normal routing rules.
 
-4. **Manual escalation**: In any review job, moderators with NCMEC access can select **Enqueue to NCMEC** from the action list. This immediately moves the job to the NCMEC queue.
+4. **Manual escalation**: In a User review job, or a Content review job linked to a User through its `creatorId` role, moderators with NCMEC access can select **Enqueue to NCMEC** from the action list. For Content without a creator value, the action is disabled because NCMEC jobs must be linked to a user. If the creator cannot be resolved to a User ItemType, the decision is rejected and the original review job stays in its queue.
 
 See [Routing Content to NCMEC](../integrations/ncmec.md#routing-content-to-ncmec) for setup.
 

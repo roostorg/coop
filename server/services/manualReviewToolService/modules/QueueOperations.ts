@@ -65,6 +65,12 @@ import {
   type OriginJobInfo,
   type StoredManualReviewJob,
 } from '../manualReviewToolService.js';
+import {
+  userIdentifierFromItem,
+  type JobSortType,
+  type UserIdentifier,
+} from './JobPriority.js';
+import PendingJobIndex from './PendingJobIndex.js';
 
 export type ManualReviewQueue = {
   id: string;
@@ -75,10 +81,24 @@ export type ManualReviewQueue = {
   isDefaultQueue: boolean;
   isAppealsQueue: boolean;
   autoCloseJobs: boolean;
+  jobSortType: JobSortType;
   // Null disposition disables "clear other reports for this user" (issue #650).
   clearReportsDisposition: ClearReportsDisposition | null;
   clearReportsScope: ClearReportsScope;
 };
+
+const OLDEST_JOB_PRIORITIZED_SCAN_LIMIT = 10_000;
+
+const MAX_RECOMPUTE_SNAPSHOT_PASSES = 10;
+
+// Bounds the BullMQ lookups one oldest-job read can spend confirming index
+// entries. Past it the read reports "unknown" rather than an unconfirmed age.
+const OLDEST_JOB_MAX_CANDIDATES = 50;
+const OLDEST_JOB_CANDIDATE_BATCH_SIZE = 10;
+
+const PENDING_JOB_INDEX_BACKFILL_BATCH_SIZE = 1_000;
+
+const PENDING_JOB_STATES = new Set(['waiting', 'prioritized', 'delayed']);
 
 const PgQueueSelection = [
   'id',
@@ -89,6 +109,7 @@ const PgQueueSelection = [
   'created_at as createdAt',
   'is_appeals_queue as isAppealsQueue',
   'auto_close_jobs as autoCloseJobs',
+  'job_sort_type as jobSortType',
   'clear_reports_disposition as clearReportsDisposition',
   'clear_reports_scope as clearReportsScope',
 ] as const;
@@ -163,15 +184,19 @@ export default class QueueOperations {
     Bind1<typeof getBullWorker<ManualReviewAppealJob>>
   >;
   private readonly transactionWithRetry: KyselyTransactionWithRetry<ManualReviewToolServicePg>;
+  private readonly pendingJobIndex: PendingJobIndex;
+  readonly #pendingJobIndexBackfills = new Map<string, Promise<void>>();
 
   constructor(
     private readonly pgQuery: Kysely<ManualReviewToolServicePg>,
     private readonly pgQueryReadReplica: Kysely<ManualReviewToolServicePg>,
     private readonly moderationConfigService: Dependencies['ModerationConfigService'],
-    redis: RedisConnection,
+    private readonly redis: RedisConnection,
     private readonly tracer: Dependencies['Tracer'],
+    private readonly meter?: Dependencies['Meter'],
   ) {
     this.transactionWithRetry = makeKyselyTransactionWithRetry(this.pgQuery);
+    this.pendingJobIndex = new PendingJobIndex(redis);
     // Reassingment here is a hack to work around TS syntax limitations
     // with generic instantiation expressions.
     const getOrCreateBullQueue_ = getOrCreateBullQueue<StoredManualReviewJob>;
@@ -246,10 +271,12 @@ export default class QueueOperations {
     name: string;
     description: string | null;
     userIds: readonly string[];
+    roleIds: readonly string[];
     hiddenActionIds: readonly string[];
     invokedBy: Invoker;
     isAppealsQueue?: boolean;
     autoCloseJobs?: boolean;
+    jobSortType?: JobSortType;
     clearReportsDisposition?: ClearReportsDisposition | null;
     clearReportsScope?: ClearReportsScope;
     clearReportsTriggerActionIds?: readonly string[];
@@ -258,15 +285,21 @@ export default class QueueOperations {
       name,
       description,
       userIds,
+      roleIds,
       hiddenActionIds,
       invokedBy,
       isAppealsQueue,
       autoCloseJobs,
+      jobSortType: requestedJobSortType = 'FIFO',
       clearReportsDisposition,
       clearReportsScope,
       clearReportsTriggerActionIds,
     } = input;
     const { orgId } = invokedBy;
+
+    // Appeal jobs are never enqueued with a priority, so appeals queues are
+    // always FIFO no matter what the caller asks for.
+    const jobSortType = isAppealsQueue ? 'FIFO' : requestedJobSortType;
 
     if (!invokedBy.permissions.includes(UserPermission.EDIT_MRT_QUEUES)) {
       throw makeUnauthorizedError(
@@ -279,9 +312,12 @@ export default class QueueOperations {
     // queue must belong to the caller's org. The queue itself is always
     // created in the caller's org (orgId from the invoker).
     await assertUsersInOrg(this.pgQuery, { orgId, userIds });
+    await assertRolesInOrg(this.pgQuery, { orgId, roleIds });
+    const uniqueRoleIds = [...new Set(roleIds)];
 
+    let createdQueue: ManualReviewQueue;
     try {
-      return await this.transactionWithRetry(async (transaction) => {
+      createdQueue = await this.transactionWithRetry(async (transaction) => {
         // In newer versions of kysely, this is greatly simplified with
         // `transaction.selectNoFrom(eb => eb.exists(...))`, but we're blocked on
         // updating by https://github.com/kysely-org/kysely/issues/577#issuecomment-1804900006
@@ -305,6 +341,7 @@ export default class QueueOperations {
               description: replaceEmptyStringWithNull(description),
               is_appeals_queue: isAppealsQueue ?? false,
               auto_close_jobs: autoCloseJobs ?? false,
+              job_sort_type: jobSortType,
               clear_reports_disposition: clearReportsDisposition ?? null,
               clear_reports_scope: clearReportsScope ?? 'CURRENT_QUEUE',
             },
@@ -320,6 +357,18 @@ export default class QueueOperations {
             })),
           )
           .executeTakeFirstOrThrow();
+
+        if (uniqueRoleIds.length > 0) {
+          await transaction
+            .insertInto('manual_review_tool.roles_and_accessible_queues')
+            .values(
+              uniqueRoleIds.map((roleId) => ({
+                queue_id: queue.id,
+                role_id: roleId,
+              })),
+            )
+            .execute();
+        }
 
         await this.updateHiddenActionsForQueue({
           transaction,
@@ -342,6 +391,15 @@ export default class QueueOperations {
       }
       throw e;
     }
+
+    // A brand-new queue has no jobs, so its index is complete from the start.
+    if (!createdQueue.isAppealsQueue) {
+      await this.pendingJobIndex.markBuilt({
+        orgId,
+        queueId: createdQueue.id,
+      });
+    }
+    return createdQueue;
   }
 
   async updateManualReviewQueue(input: {
@@ -350,9 +408,11 @@ export default class QueueOperations {
     name?: string;
     description?: string | null;
     userIds: readonly string[];
+    roleIds: readonly string[];
     actionIdsToHide: readonly string[];
     actionIdsToUnhide: readonly string[];
     autoCloseJobs?: boolean;
+    jobSortType?: JobSortType;
     clearReportsDisposition?: ClearReportsDisposition | null;
     clearReportsScope?: ClearReportsScope;
     // When provided, replaces the queue's full set of trigger actions.
@@ -364,9 +424,11 @@ export default class QueueOperations {
       name,
       description,
       userIds,
+      roleIds,
       actionIdsToHide,
       actionIdsToUnhide,
       autoCloseJobs,
+      jobSortType,
       clearReportsDisposition,
       clearReportsScope,
       clearReportsTriggerActionIds,
@@ -381,6 +443,7 @@ export default class QueueOperations {
       userIds,
       queueIds: [queueId],
     });
+    await assertRolesInOrg(this.pgQuery, { orgId, roleIds });
 
     return this.transactionWithRetry(async (transaction) => {
       const [updatedQueue, _, __] = await Promise.all([
@@ -391,6 +454,7 @@ export default class QueueOperations {
               name,
               description: replaceEmptyStringWithNull(description),
               auto_close_jobs: autoCloseJobs,
+              job_sort_type: jobSortType,
               // null disables the feature and must survive removeUndefinedKeys.
               clear_reports_disposition: clearReportsDisposition,
               clear_reports_scope: clearReportsScope,
@@ -416,6 +480,29 @@ export default class QueueOperations {
           .where('user_id', 'not in', userIds)
           .executeTakeFirstOrThrow(),
       ]);
+
+      if (roleIds.length > 0) {
+        await transaction
+          .insertInto('manual_review_tool.roles_and_accessible_queues')
+          .values(
+            roleIds.map((roleId) => ({
+              queue_id: queueId,
+              role_id: roleId,
+            })),
+          )
+          .onConflict((oc) => oc.doNothing())
+          .execute();
+        await transaction
+          .deleteFrom('manual_review_tool.roles_and_accessible_queues')
+          .where('queue_id', '=', queueId)
+          .where('role_id', 'not in', roleIds)
+          .execute();
+      } else {
+        await transaction
+          .deleteFrom('manual_review_tool.roles_and_accessible_queues')
+          .where('queue_id', '=', queueId)
+          .execute();
+      }
 
       await this.updateHiddenActionsForQueue({
         transaction,
@@ -520,6 +607,9 @@ export default class QueueOperations {
         // the DB delete itself succeeded.
         this.tracer.logActiveSpanFailedIfAny(e);
       }
+      await this.pendingJobIndex
+        .clear({ orgId, queueId })
+        .catch((e: unknown) => this.tracer.logActiveSpanFailedIfAny(e));
     }
 
     return numDeletedRows === 1n;
@@ -532,6 +622,7 @@ export default class QueueOperations {
     const queue = await this.getOrCreateBullQueue({ orgId, queueId });
 
     await queue.obliterate({ force: true });
+    await this.pendingJobIndex.clear({ orgId, queueId });
 
     // See `deleteManualReviewQueue` for why this is serialized + ownership-
     // checked. Same pattern, just without the default-queue guard.
@@ -596,16 +687,20 @@ export default class QueueOperations {
     return queue.id;
   }
 
-  async getReviewableQueuesForUser(opts: { invoker: Invoker }) {
-    const { invoker } = opts;
+  async getReviewableQueuesForUser(opts: {
+    invoker: Invoker;
+    queueIds?: readonly string[];
+  }) {
+    const { invoker, queueIds } = opts;
     const { userId, permissions, orgId } = invoker;
 
-    const canSeeQueues = permissions.includes(UserPermission.VIEW_MRT);
     const bypassQueuePermissions = permissions.includes(
       UserPermission.EDIT_MRT_QUEUES,
     );
+    const canSeeQueues =
+      permissions.includes(UserPermission.VIEW_MRT) || bypassQueuePermissions;
 
-    if (!canSeeQueues) {
+    if (!canSeeQueues || queueIds?.length === 0) {
       return [];
     }
 
@@ -613,17 +708,40 @@ export default class QueueOperations {
       .selectFrom('manual_review_tool.manual_review_queues')
       .select(PgQueueSelection)
       .where('org_id', '=', orgId)
+      .$if(queueIds != null, (query) => query.where('id', 'in', queueIds ?? []))
       .$if(!bypassQueuePermissions, (query) =>
-        query.where(
-          'id',
-          'in',
-          this.pgQuery
-            .selectFrom('manual_review_tool.users_and_accessible_queues')
-            .select('queue_id')
-            .where('user_id', '=', userId),
+        query.where((eb) =>
+          eb.or([
+            eb('id', 'in', this.individuallyAccessibleQueueIds(userId)),
+            eb('id', 'in', this.roleAccessibleQueueIds(userId, orgId)),
+          ]),
         ),
       )
       .execute();
+  }
+
+  // A queue is accessible when the reviewer is individually assigned to it, or
+  // when their role is assigned to it (see `roleAccessibleQueueIds`).
+  private individuallyAccessibleQueueIds(userId: string) {
+    return this.pgQuery
+      .selectFrom('manual_review_tool.users_and_accessible_queues')
+      .select('queue_id')
+      .where('user_id', '=', userId);
+  }
+
+  private roleAccessibleQueueIds(userId: string, orgId: string) {
+    return this.pgQuery
+      .selectFrom('manual_review_tool.roles_and_accessible_queues')
+      .select('queue_id')
+      .where(
+        'role_id',
+        '=',
+        this.pgQuery
+          .selectFrom('public.users')
+          .select('role_id')
+          .where('id', '=', userId)
+          .where('org_id', '=', orgId),
+      );
   }
 
   async getQueueForOrg(opts: {
@@ -637,13 +755,11 @@ export default class QueueOperations {
       .select(PgQueueSelection)
       .where('org_id', '=', orgId)
       .where('id', '=', queueId)
-      .where(
-        'id',
-        'in',
-        this.pgQuery
-          .selectFrom('manual_review_tool.users_and_accessible_queues')
-          .select('queue_id')
-          .where('user_id', '=', userId),
+      .where((eb) =>
+        eb.or([
+          eb('id', 'in', this.individuallyAccessibleQueueIds(userId)),
+          eb('id', 'in', this.roleAccessibleQueueIds(userId, orgId)),
+        ]),
       )
       .executeTakeFirst();
   }
@@ -668,6 +784,7 @@ export default class QueueOperations {
         'queues.created_at as createdAt',
         'queues.is_appeals_queue as isAppealsQueue',
         'queues.auto_close_jobs as autoCloseJobs',
+        'queues.job_sort_type as jobSortType',
         'queues.clear_reports_disposition as clearReportsDisposition',
         'queues.clear_reports_scope as clearReportsScope',
       ])
@@ -738,6 +855,24 @@ export default class QueueOperations {
           .where('org_id', '=', orgId),
       )
       .execute();
+  }
+
+  async getAssignedRoleIdsForQueue(opts: { orgId: string; queueId: string }) {
+    const { orgId, queueId } = opts;
+    const rows = await this.pgQuery
+      .selectFrom('manual_review_tool.roles_and_accessible_queues')
+      .select(['role_id as roleId'])
+      .where('queue_id', '=', queueId)
+      .where(
+        'queue_id',
+        'in',
+        this.pgQuery
+          .selectFrom('manual_review_tool.manual_review_queues')
+          .select('id')
+          .where('org_id', '=', orgId),
+      )
+      .execute();
+    return rows.map((it) => it.roleId);
   }
 
   async addAccessibleQueuesForUser(opts: {
@@ -841,9 +976,16 @@ export default class QueueOperations {
       payload: ManualReviewJobPayload;
     };
     enqueueSourceInfo: ManualReviewJobEnqueueSourceInfo;
+    priority?: number;
   }) {
-    const { orgId, queueId, jobPayload, reenqueuedFrom, enqueueSourceInfo } =
-      opts;
+    const {
+      orgId,
+      queueId,
+      jobPayload,
+      reenqueuedFrom,
+      enqueueSourceInfo,
+      priority,
+    } = opts;
     const { payload, policyIds } = jobPayload;
 
     const queue = await this.#getBullQueue(orgId, queueId);
@@ -854,6 +996,16 @@ export default class QueueOperations {
     });
     const jobId = bullJobIdtoExternalJobId(bullJobId);
     const createdAt = jobPayload.createdAt ?? new Date();
+
+    const indexable = Number.isFinite(createdAt.getTime());
+    // Indexed before the add so a read never sees the job without an entry.
+    if (indexable) {
+      await this.pendingJobIndex.add({
+        orgId,
+        queueId,
+        entries: [{ jobId, createdAtMs: createdAt.getTime() }],
+      });
+    }
 
     const newJob = await queue.add(
       bullJobId,
@@ -866,8 +1018,43 @@ export default class QueueOperations {
         reenqueuedFrom,
         enqueueSourceInfo,
       },
-      { removeOnComplete: true, jobId: bullJobId },
+      {
+        removeOnComplete: true,
+        jobId: bullJobId,
+        ...(priority != null && { priority }),
+      },
     );
+
+    // A read that ran while the add was in flight found no BullMQ job for
+    // our entry and dropped it, so write it again now that the job exists.
+    // If BullMQ instead ignored the add because the BullJobId was taken, our
+    // entry names a job that was never stored. A failure here mustn't fail
+    // an enqueue that succeeded.
+    if (indexable) {
+      try {
+        const storedJob = await queue.getJob(bullJobId);
+        if (storedJob?.data.id === jobId) {
+          await this.pendingJobIndex.add({
+            orgId,
+            queueId,
+            entries: [{ jobId, createdAtMs: createdAt.getTime() }],
+          });
+        } else {
+          await this.pendingJobIndex.remove({
+            orgId,
+            queueId,
+            jobIds: [jobId],
+          });
+        }
+      } catch (error: unknown) {
+        this.tracer.logActiveSpanFailedIfAny(error);
+      }
+    }
+
+    this.meter?.recordManualReviewEvent('enqueue_call_succeeded', {
+      queue_id: queueId,
+      item_type_id: payload.item.itemTypeIdentifier.id,
+    });
 
     // Again, because new job data comes in in the non-legacy format, it's safe
     // to cast.
@@ -915,6 +1102,11 @@ export default class QueueOperations {
       },
       { removeOnComplete: true, jobId: bullJobId },
     );
+
+    this.meter?.recordManualReviewEvent('appeal_enqueue_call_succeeded', {
+      queue_id: queueId,
+      item_type_id: payload.item.itemTypeIdentifier.id,
+    });
 
     return newJob.data;
   }
@@ -1020,6 +1212,14 @@ export default class QueueOperations {
     if (!job || job.data.id !== jobId) {
       return undefined;
     }
+    const createdAtMs = new Date(data.createdAt).getTime();
+    if (Number.isFinite(createdAtMs)) {
+      await this.pendingJobIndex.add({
+        orgId,
+        queueId,
+        entries: [{ jobId, createdAtMs }],
+      });
+    }
     await job.updateData(data);
 
     // Because the `data` arg above is a ManualReviewJob, we know the stored
@@ -1028,9 +1228,172 @@ export default class QueueOperations {
   }
 
   /**
-   * Yields every undecided job on a queue (waiting, delayed, or active) for
-   * bounded admin sweeps such as reporter invalidation. Includes `active`
-   * jobs so sweeps can update what a reviewer currently has dequeued;
+   * Sets a job's BullMQ priority without touching its data, so it can't
+   * clobber a concurrent payload merge. Returns false if the job is gone.
+   *
+   * Safe in any job state: BullMQ only re-inserts jobs that are in `wait` or
+   * `prioritized`. For active and delayed jobs it just records the priority
+   * on the job, and BullMQ applies it when the job returns to the queue
+   * (e.g. after `releaseJobLock` moves it to delayed).
+   */
+  async setJobPriority(opts: {
+    orgId: string;
+    queueId: string;
+    jobId: JobId;
+    priority: number;
+  }): Promise<boolean> {
+    const { orgId, queueId, jobId, priority } = opts;
+    const queue = await this.#getBullQueue(orgId, queueId);
+    const { bullId } = parseExternalId(jobId);
+    const job = await queue.getJob(bullId);
+    if (!job || job.data.id !== jobId) {
+      return false;
+    }
+    // changePriority re-inserts the job even when the value is unchanged,
+    // which sends it to the back of its priority tier (or of `wait`).
+    if (job.priority === priority) {
+      return true;
+    }
+    await job.changePriority({ priority });
+    return true;
+  }
+
+  /**
+   * Gives every pending job on a queue a fresh priority, e.g. after the
+   * queue's sort mode changes.
+   *
+   * Works in two phases. Changing a job's priority reorders the same list
+   * we'd be paging through, which can skip jobs or process them twice — so
+   * first collect every job's (id, createdAt, itemId) into a snapshot (tiny
+   * tuples, cheap to hold even for huge queues), then walk the snapshot and
+   * update each job by id.
+   *
+   * `getPriorities` receives every pending item id at once and returns a
+   * priority per item id. Resolving priorities in bulk keeps a re-sort to a
+   * single data warehouse query instead of one per job.
+   *
+   * The snapshot is walked oldest-first. Jobs given equal priority dequeue
+   * in the order we updated them, not the order they originally arrived —
+   * so updating oldest-first is what keeps FIFO order intact.
+   *
+   * The update phase re-fetches each job by id. That's a second Redis
+   * round-trip per job, but BullMQ's `changePriority` is a method on `Job`,
+   * so the only way to avoid it is to hold every job's full payload in memory
+   * for the whole sweep — worse for exactly the large queues this batching
+   * protects.
+   *
+   * `shouldContinue` is checked before each write so a caller that has lost
+   * its lock can stop without overwriting a newer sweep's priorities.
+   */
+  async recomputePrioritiesForQueue(opts: {
+    orgId: string;
+    queueId: string;
+    getPriorities: (
+      items: ReadonlyArray<{ itemId: string; user: UserIdentifier }>,
+    ) => Promise<ReadonlyMap<string, number>>;
+    shouldContinue?: () => boolean;
+  }): Promise<{ aborted: boolean; snapshotStable: boolean }> {
+    const { orgId, queueId, getPriorities, shouldContinue = () => true } = opts;
+    const queue = await this.#getBullQueue(orgId, queueId);
+    const batchSize = 200;
+
+    const pending: Array<{
+      bullId: string;
+      enqueuedAtMs: number;
+      dataCreatedAtMs: number;
+      itemId: string;
+      user: UserIdentifier;
+    }> = [];
+    const seen = new Set<string>();
+    // Offset paging while reviewers dequeue can skip jobs, because removing
+    // a job shifts every later job to a lower offset. Repeat full passes
+    // (the seen-set dedupes) until one finds nothing new.
+    let snapshotStable = false;
+    for (let pass = 0; pass < MAX_RECOMPUTE_SNAPSHOT_PASSES; pass++) {
+      if (!shouldContinue()) {
+        return { aborted: true, snapshotStable };
+      }
+      const seenBeforePass = seen.size;
+      let start = 0;
+      while (true) {
+        // Priority-enqueued jobs live in BullMQ's 'prioritized' state, not
+        // 'waiting'.
+        const jobs = await queue.getJobs(
+          ['waiting', 'prioritized', 'delayed', 'active'],
+          start,
+          start + batchSize - 1,
+        );
+        if (jobs.length === 0) break;
+        for (const job of jobs) {
+          if (job.id == null || seen.has(job.id)) continue;
+          const bullId = job.id;
+          seen.add(bullId);
+          const item = (job.data as ManualReviewJob).payload.item;
+          // Legacy jobs use `id` instead of `itemId`.
+          const itemWithLegacyId = item as { itemId?: string; id?: string };
+          const itemId = itemWithLegacyId.itemId ?? itemWithLegacyId.id;
+          if (itemId == null) continue;
+          // Bull-managed arrival order is the FIFO tie-break key. It only has
+          // millisecond resolution, so jobs enqueued in the same millisecond
+          // fall back to the job's own createdAt.
+          const toSortableMs = (ms: number) =>
+            Number.isFinite(ms) ? ms : Number.MAX_SAFE_INTEGER;
+          const dataCreatedAtMs = toSortableMs(
+            new Date(job.data.createdAt).getTime(),
+          );
+          pending.push({
+            bullId,
+            enqueuedAtMs:
+              typeof job.timestamp === 'number'
+                ? toSortableMs(job.timestamp)
+                : dataCreatedAtMs,
+            dataCreatedAtMs,
+            itemId,
+            user: userIdentifierFromItem(item),
+          });
+        }
+        if (jobs.length < batchSize) break;
+        start += batchSize;
+      }
+      if (seen.size === seenBeforePass) {
+        snapshotStable = true;
+        break;
+      }
+    }
+
+    pending.sort(
+      (a, b) =>
+        a.enqueuedAtMs - b.enqueuedAtMs ||
+        a.dataCreatedAtMs - b.dataCreatedAtMs,
+    );
+
+    const priorities = await getPriorities(
+      pending.map(({ itemId, user }) => ({ itemId, user })),
+    );
+
+    for (const { bullId, itemId } of pending) {
+      if (!shouldContinue()) {
+        return { aborted: true, snapshotStable };
+      }
+      const priority = priorities.get(itemId);
+      // No priority resolved for this item — leave the job's current one
+      // alone rather than guessing.
+      if (priority == null) continue;
+      const bullJob = await queue.getJob(bullId);
+      // Dequeued or removed since the snapshot — nothing to re-stamp.
+      if (!bullJob) continue;
+      // Active and delayed jobs are stamped too: BullMQ records the priority
+      // on the job without re-inserting it, and applies it when the job
+      // returns to the queue (e.g. a reviewer skips it).
+      await bullJob.changePriority({ priority });
+    }
+    return { aborted: false, snapshotStable };
+  }
+
+  /**
+   * Yields every undecided job on a queue (waiting, prioritized, delayed, or
+   * active) for bounded admin sweeps such as reporter invalidation. Includes
+   * `active` jobs so sweeps can update what a reviewer currently has dequeued;
    * excludes terminal states (completed/failed). `maxJobs` caps a single
    * sweep so it can't pin Redis indefinitely.
    *
@@ -1058,7 +1421,7 @@ export default class QueueOperations {
     while (snapshotIds.length < maxJobs) {
       const end = start + batchSize - 1;
       const legacyJobs = await queue.getJobs(
-        ['waiting', 'delayed', 'active'],
+        ['waiting', 'prioritized', 'delayed', 'active'],
         start,
         end,
       );
@@ -1069,7 +1432,7 @@ export default class QueueOperations {
         if (snapshotIds.length >= maxJobs) {
           break;
         }
-        const id = legacy?.data?.id;
+        const id = legacy.data?.id;
         if (id != null) {
           snapshotIds.push(id);
         }
@@ -1182,6 +1545,9 @@ export default class QueueOperations {
     // doesn't conflate them with "already gone".
     try {
       const status = await queue.remove(bullJobId);
+      if (status === 1) {
+        await this.pendingJobIndex.remove({ orgId, queueId, jobIds: [jobId] });
+      }
       return status === 1;
     } catch (err: unknown) {
       if (isJobLockedError(err)) {
@@ -1216,6 +1582,7 @@ export default class QueueOperations {
     try {
       const status = await queue.remove(bullJobId);
       if (status === 1) {
+        await this.pendingJobIndex.remove({ orgId, queueId, jobIds: [jobId] });
         return true;
       }
     } catch (err: unknown) {
@@ -1227,6 +1594,7 @@ export default class QueueOperations {
 
     try {
       await job.moveToCompleted(null, invokerUserId, false);
+      await this.pendingJobIndex.remove({ orgId, queueId, jobIds: [jobId] });
       return true;
     } catch {
       // Lock token mismatch (different user) or the job's state moved
@@ -1252,6 +1620,9 @@ export default class QueueOperations {
 
     const queue = await this.#getBullQueue(orgId, queueId);
     await queue.obliterate({ force: true });
+    // Left unbuilt rather than reset to empty: a job enqueued while the queue
+    // was being wiped may have lost its entry, and the backfill picks it up.
+    await this.pendingJobIndex.clear({ orgId, queueId });
   }
 
   async dequeueNextAppealJobWithLock(opts: {
@@ -1267,20 +1638,17 @@ export default class QueueOperations {
     await this.checkQueueExists(orgId, queueId);
     const worker = await this.getBullAppealWorker({ orgId, queueId });
 
-    let hasDecision = true;
-    while (hasDecision) {
-      const job = await worker.getNextJob(lockToken);
+    while (true) {
+      // block: false so a drained queue returns null immediately instead of
+      // long-polling and hanging the reviewer's request.
+      const job = await worker.getNextJob(lockToken, { block: false });
 
       if (!job) {
         return null;
       }
 
-      // There is a race condition due to the locking mechanism where a job can
-      // be decided on but not dequeued, so we check here if the first job in the
-      // queue has a decision, and if so use the lock token to immediately
-      // remove it, then grab a new job and return to the caller. it is very
-      // unlikely that there are multiple jobs like this at the front of the
-      // queue, but not impossible.
+      // Race condition: a job can be decided but not yet dequeued.
+      // If the front job already has a decision, remove it and grab the next.
       const decision = await this.pgQueryReadReplica
         .selectFrom('manual_review_tool.manual_review_decisions')
         .where('created_at', '>=', new Date('2023-10-01'))
@@ -1288,23 +1656,19 @@ export default class QueueOperations {
         .where('id', '=', jobIdToGuid(job.data.id))
         .executeTakeFirst();
 
-      hasDecision = decision !== undefined;
-
-      if (hasDecision) {
-        await this.removeJob({
-          orgId,
-          queueId,
-          lockToken,
-          jobId: job.data.id,
-        }).catch(() => {});
-        // then continue while loop
-      } else {
-        // this is the most likely case, where there is a job
-        // and it has never been decided before
+      if (decision === undefined) {
         return { job: job.data, lockToken };
       }
+
+      await this.removeJob({
+        orgId,
+        queueId,
+        lockToken,
+        jobId: job.data.id,
+      }).catch((error: unknown) => {
+        this.tracer.logActiveSpanFailedIfAny(error);
+      });
     }
-    return null;
   }
 
   async dequeueNextJobWithLock(opts: {
@@ -1320,47 +1684,116 @@ export default class QueueOperations {
     await this.checkQueueExists(orgId, queueId);
     const worker = await this.getBullWorker({ orgId, queueId });
 
-    let hasDecision = true;
-    while (hasDecision) {
-      const job = await worker.getNextJob(lockToken);
+    // Jobs this reviewer skipped within the skip window (the lock token is
+    // the reviewer's userId). The scan steps past them by keeping them locked
+    // until it finishes, then releases them in `finally` so they return to
+    // the shared pool — a skip is per-reviewer, not global.
+    const reviewerSkips = await this.getActiveReviewerSkips({
+      orgId,
+      queueId,
+      reviewerId: lockToken,
+    });
+    const heldAside: Job<StoredManualReviewJob>[] = [];
 
-      if (!job) {
-        return null;
-      }
+    try {
+      while (true) {
+        const job = await worker.getNextJob(lockToken, { block: false });
 
-      const convertedJob = await this.legacyJobToJob(job, orgId);
+        if (!job) {
+          return null;
+        }
+        if (reviewerSkips.has(job.data.id)) {
+          heldAside.push(job);
+          continue;
+        }
 
-      // There is a race condition due to the locking mechanism where a job can
-      // be decided on but not dequeued, so we check here if the first job in the
-      // queue has a decision, and if so use the lock token to immediately
-      // remove it, then grab a new job and return to the caller. it is very
-      // unlikely that there are multiple jobs like this at the front of the
-      // queue, but not impossible.
-      const decision = await this.pgQueryReadReplica
-        .selectFrom('manual_review_tool.manual_review_decisions')
-        .select(['decision_components']) // not really necessary to return anything
-        .where('created_at', '>=', new Date('2023-10-01'))
-        .where('org_id', '=', orgId)
-        .where('id', '=', jobIdToGuid(convertedJob.data.id))
-        .executeTakeFirst();
+        const convertedJob = await this.legacyJobToJob(job, orgId);
 
-      hasDecision = decision !== undefined;
+        // Race condition: a job can be decided but not yet dequeued.
+        // If the front job already has a decision, remove it and grab the next.
+        const decision = await this.pgQueryReadReplica
+          .selectFrom('manual_review_tool.manual_review_decisions')
+          .select(['decision_components'])
+          .where('created_at', '>=', new Date('2023-10-01'))
+          .where('org_id', '=', orgId)
+          .where('id', '=', jobIdToGuid(convertedJob.data.id))
+          .executeTakeFirst();
 
-      if (hasDecision) {
+        if (decision === undefined) {
+          return { job: convertedJob.data, lockToken };
+        }
+
         await this.removeJob({
           orgId,
           queueId,
           lockToken,
           jobId: convertedJob.data.id,
-        }).catch(() => {});
-        // then continue while loop
-      } else {
-        // this is the most likely case, where there is a job
-        // and it has never been decided before
-        return { job: convertedJob.data, lockToken };
+        }).catch((error: unknown) => {
+          this.tracer.logActiveSpanFailedIfAny(error);
+        });
+      }
+    } finally {
+      // Release the held-aside jobs so other reviewers can pick them up
+      // immediately. This reviewer stays excluded via the skip set.
+      for (const held of heldAside) {
+        await this.releaseJobLock({
+          orgId,
+          queueId,
+          jobId: held.data.id,
+          lockToken,
+        });
       }
     }
-    return null;
+  }
+
+  static readonly REVIEWER_SKIP_TTL_MS = 30 * 60 * 1000;
+
+  #reviewerSkipKey(orgId: string, queueId: string, reviewerId: string): string {
+    return `{${orgId}}:mrt-reviewer-skips:${queueId}:${reviewerId}`;
+  }
+
+  /**
+   * Hides a job from one reviewer for the skip window and hands it straight
+   * back to everyone else.
+   *
+   * Releasing the lock is part of skipping, not a separate step callers have to
+   * remember — there is no case for recording a skip while still holding the
+   * job. `releaseJobLock` is a no-op when no lock is held, so this is safe even
+   * when the caller never took one.
+   */
+  async recordReviewerSkip(opts: {
+    orgId: string;
+    queueId: string;
+    reviewerId: string;
+    jobId: string;
+  }): Promise<void> {
+    const { orgId, queueId, reviewerId, jobId } = opts;
+    const key = this.#reviewerSkipKey(orgId, queueId, reviewerId);
+    const expiresAt = Date.now() + QueueOperations.REVIEWER_SKIP_TTL_MS;
+    await this.redis.zadd(key, expiresAt, jobId);
+    // Backstop: the whole set disappears once everything in it has expired.
+    await this.redis.pexpire(key, QueueOperations.REVIEWER_SKIP_TTL_MS);
+
+    // The lock token is the reviewer's own id.
+    await this.releaseJobLock({
+      orgId,
+      queueId,
+      jobId: instantiateOpaqueType<JobId>(jobId),
+      lockToken: reviewerId,
+    });
+  }
+
+  async getActiveReviewerSkips(opts: {
+    orgId: string;
+    queueId: string;
+    reviewerId: string;
+  }): Promise<Set<string>> {
+    const { orgId, queueId, reviewerId } = opts;
+    const key = this.#reviewerSkipKey(orgId, queueId, reviewerId);
+    // Drop expired entries, then read what's still active.
+    await this.redis.zremrangebyscore(key, 0, Date.now());
+    const ids = await this.redis.zrange(key, 0, -1);
+    return new Set(ids);
   }
 
   /**
@@ -1579,12 +2012,12 @@ export default class QueueOperations {
     jobId: JobId;
     lockToken: string;
   }) {
+    const { orgId, queueId, jobId } = opts;
     try {
       await this.#markLockedJobCompleted(opts);
     } catch (error: unknown) {
       // The most common case where this throws if the lock token has expired,
       // so try to remove it manually.
-      const { orgId, queueId, jobId } = opts;
       const queue = await this.getOrCreateBullQueue({ orgId, queueId });
       const bullJobId = parseExternalId(jobId).bullId;
       const removeJobStatus = await queue.remove(bullJobId);
@@ -1592,6 +2025,7 @@ export default class QueueOperations {
         throw new Error('Failed to remove job');
       }
     }
+    await this.pendingJobIndex.remove({ orgId, queueId, jobIds: [jobId] });
   }
 
   /**
@@ -1637,9 +2071,7 @@ export default class QueueOperations {
       // The token parameter ensures only the holder of the lock can release it
       await job.moveToDelayed(Date.now(), lockToken);
     } catch (error: unknown) {
-      // If the lock has already expired or the job is in a different state,
-      // we can safely ignore the error as the job is already released
-      // or will be handled by the stalled job checker
+      this.tracer.logActiveSpanFailedIfAny(error);
     }
   }
 
@@ -1679,35 +2111,221 @@ export default class QueueOperations {
     isAppealsQueue: boolean;
   }): Promise<Date | null> {
     const { orgId, queueId, isAppealsQueue } = opts;
+
+    // Appeal jobs are never prioritized, so the scan below is already O(1)
+    // for them and they aren't indexed.
+    if (!isAppealsQueue) {
+      if (await this.pendingJobIndex.isBuilt({ orgId, queueId })) {
+        return this.#getOldestJobCreatedAtFromIndex({ orgId, queueId });
+      }
+      this.#startPendingJobIndexBackfill({ orgId, queueId });
+    }
+
+    return this.#scanOldestJobCreatedAt({ orgId, queueId, isAppealsQueue });
+  }
+
+  /**
+   * Walks the index oldest-first and returns the first entry BullMQ confirms
+   * is still pending. Entries for jobs that are gone are dropped; dequeued
+   * (active) jobs are skipped but kept, since they come back if the reviewer
+   * skips them or the lock lapses.
+   */
+  async #getOldestJobCreatedAtFromIndex(opts: {
+    orgId: string;
+    queueId: string;
+  }): Promise<Date | null> {
+    const { orgId, queueId } = opts;
+    const queue = await this.#getBullQueue(orgId, queueId);
+
+    let offset = 0;
+    let checked = 0;
+    let prunedAny = false;
+    while (checked < OLDEST_JOB_MAX_CANDIDATES) {
+      const entries = await this.pendingJobIndex.range({
+        orgId,
+        queueId,
+        offset,
+        count: Math.min(
+          OLDEST_JOB_CANDIDATE_BATCH_SIZE,
+          OLDEST_JOB_MAX_CANDIDATES - checked,
+        ),
+      });
+      if (entries.length === 0) {
+        return null;
+      }
+      checked += entries.length;
+
+      const candidates = await Promise.all(
+        entries.map(async (entry) => {
+          const { bullId } = parseExternalId(
+            instantiateOpaqueType<JobId>(entry.jobId),
+          );
+          const job = await queue.getJob(bullId);
+          const isSameJob = job != null && job.data.id === entry.jobId;
+          return {
+            entry,
+            job: isSameJob ? job : undefined,
+            state: isSameJob ? await job.getState() : undefined,
+          };
+        }),
+      );
+
+      const gone: string[] = [];
+      for (const { entry, job, state } of candidates) {
+        if (job === undefined || state === undefined) {
+          gone.push(entry.jobId);
+          continue;
+        }
+        if (state === 'active') {
+          offset++;
+          continue;
+        }
+        if (!PENDING_JOB_STATES.has(state)) {
+          gone.push(entry.jobId);
+          continue;
+        }
+        const createdAt = new Date(job.data.createdAt);
+        if (!Number.isFinite(createdAt.getTime())) {
+          offset++;
+          continue;
+        }
+        if (createdAt.getTime() !== entry.createdAtMs) {
+          // The entry is out of order. Its corrected position may be ahead of
+          // entries already skipped, so walk again from the start.
+          await this.pendingJobIndex.add({
+            orgId,
+            queueId,
+            entries: [{ jobId: entry.jobId, createdAtMs: createdAt.getTime() }],
+          });
+          offset = 0;
+          break;
+        }
+        await this.pendingJobIndex.remove({ orgId, queueId, jobIds: gone });
+        return createdAt;
+      }
+      // Removed entries shift later ones down, so `offset` only counts the
+      // ones we kept.
+      await this.pendingJobIndex.remove({ orgId, queueId, jobIds: gone });
+      prunedAny ||= gone.length > 0;
+    }
+    // Pruning means the next read starts further along. Otherwise every
+    // candidate is a live job reviewers are holding, and the next read would
+    // stall on the same ones, so fall back to the scan.
+    return prunedAny
+      ? null
+      : this.#scanOldestJobCreatedAt({
+          orgId,
+          queueId,
+          isAppealsQueue: false,
+        });
+  }
+
+  /**
+   * Populates the index from BullMQ for a queue that predates it. Jobs
+   * enqueued meanwhile index themselves, so the scan only has to catch the
+   * ones already there. Runs at most once at a time per queue per process;
+   * concurrent runs on other processes are harmless because writes are
+   * idempotent.
+   */
+  #startPendingJobIndexBackfill(opts: { orgId: string; queueId: string }) {
+    const key = `${opts.orgId}:${opts.queueId}`;
+    if (this.#pendingJobIndexBackfills.has(key)) {
+      return;
+    }
+    const backfill = this.backfillPendingJobIndex(opts)
+      .catch((error: unknown) => {
+        this.tracer.logActiveSpanFailedIfAny(error);
+      })
+      .finally(() => {
+        this.#pendingJobIndexBackfills.delete(key);
+      });
+    this.#pendingJobIndexBackfills.set(key, backfill);
+  }
+
+  async awaitPendingJobIndexBackfills() {
+    await Promise.all(this.#pendingJobIndexBackfills.values());
+  }
+
+  async backfillPendingJobIndex(opts: { orgId: string; queueId: string }) {
+    const { orgId, queueId } = opts;
+    const queue = await this.#getBullQueue(orgId, queueId);
+
+    const seen = new Set<string>();
+    // Offset paging while reviewers dequeue can skip jobs, because removing
+    // a job shifts every later job to a lower offset. Repeat full passes
+    // until one finds nothing new; if that never happens, leave the index
+    // unbuilt so a later read retries.
+    for (let pass = 0; pass < MAX_RECOMPUTE_SNAPSHOT_PASSES; pass++) {
+      const seenBeforePass = seen.size;
+      let start = 0;
+      while (true) {
+        const jobs = await queue.getJobs(
+          ['waiting', 'prioritized', 'delayed', 'active'],
+          start,
+          start + PENDING_JOB_INDEX_BACKFILL_BATCH_SIZE - 1,
+        );
+        if (jobs.length === 0) break;
+        const entries = jobs.flatMap((job) => {
+          const jobId = job.data.id;
+          const createdAtMs = new Date(job.data.createdAt).getTime();
+          if (seen.has(jobId)) return [];
+          seen.add(jobId);
+          // A job without a usable createdAt has no age to report.
+          return Number.isFinite(createdAtMs) ? [{ jobId, createdAtMs }] : [];
+        });
+        await this.pendingJobIndex.add({ orgId, queueId, entries });
+        if (jobs.length < PENDING_JOB_INDEX_BACKFILL_BATCH_SIZE) break;
+        start += PENDING_JOB_INDEX_BACKFILL_BATCH_SIZE;
+      }
+      if (seen.size === seenBeforePass) {
+        await this.pendingJobIndex.markBuilt({ orgId, queueId });
+        return;
+      }
+    }
+  }
+
+  async #scanOldestJobCreatedAt(opts: {
+    orgId: string;
+    queueId: string;
+    isAppealsQueue: boolean;
+  }): Promise<Date | null> {
+    const { orgId, queueId, isAppealsQueue } = opts;
     const queue = isAppealsQueue
       ? await this.#getBullAppealQueue(orgId, queueId)
       : await this.#getBullQueue(orgId, queueId);
 
-    // Get the first waiting job and first delayed job. getWaiting/getDelayed
-    // return jobs oldest-first, so we only need to compare the first job from
-    // each state to find the oldest overall. NB: the equivalent
-    // queue.getJobs([state], 0, 0) defaults to descending order and would
-    // return the *newest* job instead.
-    const [waitingJobs, delayedJobs] = await Promise.all([
-      queue.getWaiting(0, 0),
-      queue.getDelayed(0, 0),
-    ]);
-
-    // If no jobs exist in either state, return null
-    if (waitingJobs.length === 0 && delayedJobs.length === 0) {
+    // `prioritized` is ordered by priority, not age, so finding its oldest
+    // job means scanning all of it. Past the cap, report "unknown" rather
+    // than an age computed from a partial scan.
+    if (
+      (await queue.getPrioritizedCount()) > OLDEST_JOB_PRIORITIZED_SCAN_LIMIT
+    ) {
       return null;
     }
 
-    // If only one type exists, return it
-    if (waitingJobs.length === 0) return delayedJobs[0].data.createdAt;
-    if (delayedJobs.length === 0) return waitingJobs[0].data.createdAt;
+    // getWaiting/getDelayed return oldest-first, so their first entry is the
+    // oldest.
+    const [waitingJobs, delayedJobs, prioritizedJobs] = await Promise.all([
+      queue.getWaiting(0, 0),
+      queue.getDelayed(0, 0),
+      queue.getPrioritized(0, OLDEST_JOB_PRIORITIZED_SCAN_LIMIT - 1),
+    ]);
 
-    // Both exist, return the older one
-    const waitingTime = new Date(waitingJobs[0].data.createdAt).getTime();
-    const delayedTime = new Date(delayedJobs[0].data.createdAt).getTime();
-    return waitingTime < delayedTime
-      ? waitingJobs[0].data.createdAt
-      : delayedJobs[0].data.createdAt;
+    const createdAts = [
+      ...waitingJobs.slice(0, 1),
+      ...delayedJobs.slice(0, 1),
+      ...prioritizedJobs,
+    ].map((job) => job.data.createdAt);
+
+    if (createdAts.length === 0) {
+      return null;
+    }
+
+    return createdAts.reduce((oldest, createdAt) =>
+      new Date(createdAt).getTime() < new Date(oldest).getTime()
+        ? createdAt
+        : oldest,
+    );
   }
 
   async close() {
@@ -1723,8 +2341,12 @@ export default class QueueOperations {
     orgId: string;
     itemId: string;
     itemTypeId: string;
+    queueIds: string[];
   }) {
-    const { orgId, itemId, itemTypeId } = opts;
+    const { orgId, itemId, itemTypeId, queueIds } = opts;
+    if (queueIds.length === 0) {
+      return [];
+    }
     // Check postgres for creations within the last 7 days so we don't have to
     // search every bull queue for every item.
     const recentJobCreationQueues = await this.pgQuery
@@ -1734,6 +2356,7 @@ export default class QueueOperations {
       .where('item_id', '=', itemId)
       .where('item_type_id', '=', itemTypeId)
       .where('created_at', '>=', new Date(Date.now() - WEEK_MS))
+      .where('queue_id', 'in', queueIds)
       .execute();
     const jobsWithQueue = await Promise.all(
       recentJobCreationQueues.map(async (rows) => {
@@ -1960,9 +2583,13 @@ export async function getBullWorker<JobData = unknown>(
   await worker.startStalledCheckTimer();
 
   // Cast worker to a version of its original type, but fixed to correctly
-  // indicate that getNextJob() can return undefined
+  // indicate that getNextJob() can return undefined and accepts a `block`
+  // option (false = return immediately instead of long-polling).
   return worker as unknown as Omit<Worker<JobData>, 'getNextJob'> & {
-    getNextJob: (lockToken: string) => Promise<Job<JobData> | undefined>;
+    getNextJob: (
+      lockToken: string,
+      opts?: { block?: boolean },
+    ) => Promise<Job<JobData> | undefined>;
   };
 }
 
@@ -2012,13 +2639,13 @@ const makeQueueDoesNotExistError = (data: ErrorInstanceData) => {
 };
 
 /**
- * Thrown when a target queue or user does not belong to the caller's org.
+ * Thrown when a target queue, user, or role does not belong to the caller's org.
  */
 const makeAccessibleQueueNotInOrgError = (data: ErrorInstanceData) =>
   new CoopError({
     status: 403,
     type: [ErrorType.Unauthorized],
-    title: "Queue or user does not belong to the caller's organization",
+    title: "Queue, user, or role does not belong to the caller's organization",
     name: 'AccessibleQueueNotInOrgError',
     ...data,
   });
@@ -2059,6 +2686,26 @@ async function assertUsersInOrg(
     .where('id', 'in', userIds)
     .execute();
   if (inOrgUsers.length !== new Set(userIds).size) {
+    throw makeAccessibleQueueNotInOrgError({ shouldErrorSpan: true });
+  }
+}
+
+/** Rejects before any write if a target role does not belong to the caller's org. */
+async function assertRolesInOrg(
+  db: Kysely<ManualReviewToolServicePg>,
+  opts: { orgId: string; roleIds: readonly string[] },
+) {
+  const { orgId, roleIds } = opts;
+  if (roleIds.length === 0) {
+    return;
+  }
+  const inOrgRoles = await db
+    .selectFrom('public.roles')
+    .select('id')
+    .where('org_id', '=', orgId)
+    .where('id', 'in', roleIds)
+    .execute();
+  if (inOrgRoles.length !== new Set(roleIds).size) {
     throw makeAccessibleQueueNotInOrgError({ shouldErrorSpan: true });
   }
 }

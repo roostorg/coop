@@ -1,0 +1,19 @@
+# The image builds from the repo root, so Docker reads this file instead of
+# the root .dockerignore. Only what the Dockerfile copies is sent.
+*
+
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!package.json
+!client/src/
+!client/public/
+!client/eslint/
+!client/package.json
+!client/index.html
+!client/vite.config.ts
+!client/vite-env.d.ts
+!client/postcss.config.mjs
+!client/tailwind.config.mjs
+!client/tsconfig.json
+!client/tsconfig.test.json
+!client/nginx.conf

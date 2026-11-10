@@ -22,10 +22,22 @@ export function makeTransactionalTestWithFixture<
 >(makeFixtures: (server: ServerVars) => Promise<T> | T) {
   return makeTestWithFixture<ServerVars & T>(async () => {
     const server = await makeMockedServer();
-    const fixtures = await makeFixtures({
-      deps: server.deps,
-      request: server.request,
-    });
+    let fixtures: T;
+    try {
+      fixtures = await makeFixtures({
+        deps: server.deps,
+        request: server.request,
+      });
+    } catch (e) {
+      // Nothing else cleans up when setup throws, and a transaction left open
+      // hangs every test that runs after this one.
+      try {
+        await server.rollback();
+      } finally {
+        await server.shutdown();
+      }
+      throw e;
+    }
     return {
       deps: server.deps,
       request: server.request,

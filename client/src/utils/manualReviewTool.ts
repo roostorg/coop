@@ -1,4 +1,8 @@
+import type { JsonObject } from 'type-fest';
+
+import type { GQLExecuteBulkActionsInput } from '../graphql/generated';
 import { ManualReviewJobEnqueuedActionData } from '../webpages/dashboard/mrt/manual_review_job/ManualReviewJobReview';
+import { isNonEmptyString } from './string';
 
 type ItemWithTypename = { __typename: string };
 
@@ -30,7 +34,7 @@ export function selectPreferredUserItem<
   return undefined;
 }
 
-const areRelatedActionsEqual = (
+export const areRelatedActionsEqual = (
   a: ManualReviewJobEnqueuedActionData,
   b: ManualReviewJobEnqueuedActionData,
 ) =>
@@ -84,4 +88,34 @@ export function recomputeSelectedRelatedActions(
         ),
     ),
   ];
+}
+
+/**
+ * Maps enqueued related actions into the GraphQL `relatedItemActions` payload.
+ * Only items the reviewer marked with an action are included — additional
+ * content shown on the job with no action selected is omitted.
+ */
+export function relatedActionsToSubmitInput(
+  relatedActions: readonly ManualReviewJobEnqueuedActionData[],
+): GQLExecuteBulkActionsInput[] {
+  return relatedActions
+    .filter(
+      (action) =>
+        isNonEmptyString(action.action.id) &&
+        isNonEmptyString(action.target.identifier.itemId) &&
+        isNonEmptyString(action.target.identifier.itemTypeId),
+    )
+    .map((action) => ({
+      actionIds: [action.action.id],
+      itemIds: [action.target.identifier.itemId],
+      itemTypeId: action.target.identifier.itemTypeId,
+      policyIds: action.policies.map((policy) => policy.id),
+      ...(action.customMrtApiParamDecisionPayload
+        ? {
+            actionIdsToMrtApiParamDecisionPayload: {
+              [action.action.id]: action.customMrtApiParamDecisionPayload,
+            } as JsonObject,
+          }
+        : {}),
+    }));
 }

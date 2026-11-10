@@ -1,8 +1,10 @@
-import { inject, type Dependencies } from '../../iocContainer/index.js';
+import { type Dependencies } from '../../iocContainer/index.js';
+import { inject } from '../../iocContainer/utils.js';
 
 import '../../services/signalAuthService/index.js';
 
 import { getIntegrationRegistry } from '../../services/integrationRegistry/index.js';
+import type { CredentialTypes } from '../../services/signalAuthService/index.js';
 import { Integration } from '../../services/signalsService/index.js';
 import {
   CoopError,
@@ -93,7 +95,7 @@ class IntegrationAPI {
         {
           apiKey: apiCredential.zentropi.apiKey,
           labelerVersions: [...(apiCredential.zentropi.labelerVersions ?? [])],
-        },
+        } satisfies CredentialTypes['ZENTROPI'],
         orgId,
       );
     }

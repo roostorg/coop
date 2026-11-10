@@ -29,9 +29,11 @@ jobs:
           persist-credentials: false
 
       - name: Run zizmor
-        uses: zizmorcore/zizmor-action@5f14fd08f7cf1cb1609c1e344975f152c7ee938d # v0.5.6
+        uses: zizmorcore/zizmor-action@45d7276c9ca790aabd705e31ca99c6185c3e76dd # v0.8.1
         with:
-          version: '1.25.2'
+          # Pinned deliberately: the action SHA is Dependabot-managed, but the
+          # zizmor version it installs is not, so this needs a manual bump.
+          version: '1.32.0'
           # only upload to github advanced security on `main`.
           # on PRs from forks (which do not have permission to push SARIF results)
           # we surface findings as PR annotations instead.
