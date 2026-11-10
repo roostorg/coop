@@ -506,8 +506,8 @@ describe('QueueOperations', () => {
           }),
         );
       const operation = fc.oneof(arbitraryOperation, localOperation);
-      const ownUser = { orgId: attacker.org.id, userId: attacker.user.id };
-      const otherUser = { orgId: victim.org.id, userId: victim.user.id };
+      const attackerUser = { orgId: attacker.org.id, userId: attacker.user.id };
+      const victimUser = { orgId: victim.org.id, userId: victim.user.id };
 
       await fc.assert(
         fc.asyncProperty(
@@ -568,17 +568,17 @@ describe('QueueOperations', () => {
             [
               [
                 {
-                  ...otherUser,
+                  ...victimUser,
                   action: 'grant',
                   queueIds: [victim.queue.id, secondVictimQueue.id],
                 },
                 {
-                  ...ownUser,
+                  ...attackerUser,
                   action: 'grant',
                   queueIds: [attacker.queue.id, victim.queue.id],
                 },
                 {
-                  ...ownUser,
+                  ...attackerUser,
                   action: 'grant',
                   queueIds: [
                     attacker.queue.id,
@@ -587,7 +587,7 @@ describe('QueueOperations', () => {
                   ],
                 },
                 {
-                  ...ownUser,
+                  ...attackerUser,
                   action: 'revoke',
                   queueIds: [attacker.queue.id, victim.queue.id],
                 },
@@ -604,7 +604,7 @@ describe('QueueOperations', () => {
                   queueIds: [attacker.queue.id],
                 },
                 {
-                  ...ownUser,
+                  ...attackerUser,
                   action: 'revoke',
                   queueIds: [
                     secondAttackerQueue.id,
@@ -613,7 +613,7 @@ describe('QueueOperations', () => {
                   ],
                 },
                 {
-                  ...ownUser,
+                  ...attackerUser,
                   action: 'grant',
                   queueIds: [attacker.queue.id, missingQueueId],
                 },
