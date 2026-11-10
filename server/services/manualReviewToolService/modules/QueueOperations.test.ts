@@ -476,7 +476,6 @@ describe('QueueOperations', () => {
         ),
         queueIds: fc.array(fc.constantFrom(...allQueueIds, missingQueueId), {
           minLength: 1,
-          size: '-1',
         }),
       });
       const localOperation = fc
@@ -492,7 +491,7 @@ describe('QueueOperations', () => {
                   .filter((queue) => queue.orgId === org.id)
                   .map((queue) => queue.id),
               ),
-              { minLength: 1, size: '-1' },
+              { minLength: 1 },
             ),
           }),
         );
@@ -502,7 +501,7 @@ describe('QueueOperations', () => {
 
       await fc.assert(
         fc.asyncProperty(
-          fc.array(operation, { minLength: 1, size: '-1' }),
+          fc.array(operation, { minLength: 1 }),
           async (operations) => {
             // The outer fixture rolls back per test, not per generated case.
             await deps.KyselyPg.deleteFrom(

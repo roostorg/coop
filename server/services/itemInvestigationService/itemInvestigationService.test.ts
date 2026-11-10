@@ -135,7 +135,7 @@ describe('Item Investigation Service', () => {
                 owner: fc.constantFrom(orgA.org.id, orgB.org.id),
                 time: fc.integer({ min: -100, max: 100 }),
               }),
-              { selector: (row) => row.time, minLength: 1, size: '-1' },
+              { selector: (row) => row.time, minLength: 1 },
             ),
             async (history) => {
               // Each case/shrink gets its own global-index key; TTL removes
