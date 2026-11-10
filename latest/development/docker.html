@@ -40,7 +40,7 @@
             const path_to_root = "../";
             const default_light_theme = "roost";
             const default_dark_theme = "roost";
-            window.path_to_searchindex_js = "../searchindex-41082ba5.js";
+            window.path_to_searchindex_js = "../searchindex-9156fb62.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-f887e144.js"></script>
@@ -265,11 +265,10 @@ docker compose -f docker-compose.images.yaml down -v
 <p>The <code>coop-migrations</code> image bundles the migration scripts under <code>db/</code> together
 with the migrator engine, so it can run as a one-shot task (an ECS <code>RunTask</code>, a
 Kubernetes <code>Job</code>, or the <code>migrations</code> service in <code>docker-compose.images.yaml</code>).
-It exposes the same <code>npm run db:*</code> commands used in local development, so the
-invocation matches what you’d run from the repo root:</p>
+Run the compiled CLI:</p>
 <pre><code class="language-bash"># Apply all pending migrations to an existing prod database
 docker run --rm --env-file .env.docker ghcr.io/roostorg/coop-migrations:latest \
-  npm run db:update -- --db api-server-pg --env prod
+  node build/index.js apply --db api-server-pg --env prod
 </code></pre>
 <p>Supported <code>--db</code> values are <code>api-server-pg</code>, <code>scylla</code>, and <code>clickhouse</code>.
 Connection settings come from environment variables (see <code>db/.env.example</code>),
