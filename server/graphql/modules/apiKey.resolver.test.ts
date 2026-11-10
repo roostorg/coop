@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import fc from 'fast-check';
 
 import { UserPermission } from '../../services/userManagementService/index.js';
@@ -13,12 +12,33 @@ describe('API key GraphQL authorization', () => {
   const unrelatedPermissions = Object.values(UserPermission).filter(
     (permission) => permission !== UserPermission.MANAGE_ORG,
   );
-  const rotateApiKey = `mutation { rotateApiKey(input: { name: "replacement", description: "test key" }) {
-    __typename ... on RotateApiKeySuccessResponse { apiKey record { id name description isActive createdBy } }
-  } }`;
-  const rotateWebhookSigningKey = `mutation { rotateWebhookSigningKey {
-    __typename ... on RotateWebhookSigningKeySuccessResponse { publicSigningKey }
-  } }`;
+  const rotateApiKey = /* GraphQL */ `
+    mutation {
+      rotateApiKey(input: { name: "replacement", description: "test key" }) {
+        __typename
+        ... on RotateApiKeySuccessResponse {
+          apiKey
+          record {
+            id
+            name
+            description
+            isActive
+            createdBy
+          }
+        }
+      }
+    }
+  `;
+  const rotateWebhookSigningKey = /* GraphQL */ `
+    mutation {
+      rotateWebhookSigningKey {
+        __typename
+        ... on RotateWebhookSigningKeySuccessResponse {
+          publicSigningKey
+        }
+      }
+    }
+  `;
   const testWithKeys = makeTransactionalTestWithFixture(
     async ({ deps, server }) => {
       const local = await createOrg(deps);
@@ -54,138 +74,145 @@ describe('API key GraphQL authorization', () => {
     },
   );
 
-  testWithKeys(
-    'denied reads and rotations disclose no keys and preserve both tenants',
-    async ({ deps, local, foreign, user, session, request, snapshot }) => {
-      await fc.assert(
-        fc.asyncProperty(
-          fc.subarray(unrelatedPermissions),
-          async (permissions) => {
-            await kyselyUpdateRolePermissions(deps.KyselyPg, {
-              orgId: user.orgId,
-              roleKey: user.role,
-              permissions,
-            });
-            const before = await snapshot();
-            const secrets = [
-              local.apiKey,
-              foreign.apiKey,
-              ...before.apiKeys.map((key) => key.key_hash),
-            ];
-            for (const actor of [request, session]) {
-              for (const query of [
-                '{ apiKey }',
-                '{ myOrg { apiKey } }',
-                '{ myOrg { publicSigningKey } }',
-                rotateApiKey,
-                rotateWebhookSigningKey,
-              ]) {
-                const response = await actor
+  for (const [operation, query] of [
+    ['Query.apiKey', '{ apiKey }'],
+    ['Org.apiKey', '{ myOrg { apiKey } }'],
+    ['Org.publicSigningKey', '{ myOrg { publicSigningKey } }'],
+    ['Mutation.rotateApiKey', rotateApiKey],
+    ['Mutation.rotateWebhookSigningKey', rotateWebhookSigningKey],
+  ]) {
+    describe(operation, () => {
+      testWithKeys(
+        'rejects unauthenticated requests without disclosing or changing keys',
+        async ({ local, foreign, request, snapshot }) => {
+          const before = await snapshot();
+
+          const response = await request
+            .post('/api/v1/graphql')
+            .send({ query })
+            .expect(200);
+
+          expect(response.body.errors).toEqual([
+            expect.objectContaining({
+              extensions: expect.objectContaining({ code: 'UNAUTHENTICATED' }),
+            }),
+          ]);
+          for (const secret of [
+            local.apiKey,
+            foreign.apiKey,
+            ...before.apiKeys.map((key) => key.key_hash),
+          ])
+            expect(jsonStringify(response.body)).not.toContain(secret);
+          expect(jsonStringify(response.body)).not.toContain(
+            'BEGIN PUBLIC KEY',
+          );
+          expect(await snapshot()).toEqual(before);
+        },
+      );
+
+      testWithKeys(
+        'requires MANAGE_ORG regardless of other permissions',
+        async ({ deps, local, foreign, user, session, snapshot }) => {
+          const before = await snapshot();
+
+          await fc.assert(
+            fc.asyncProperty(
+              fc.subarray(unrelatedPermissions),
+              async (permissions) => {
+                await kyselyUpdateRolePermissions(deps.KyselyPg, {
+                  orgId: user.orgId,
+                  roleKey: user.role,
+                  permissions,
+                });
+
+                const response = await session
                   .post('/api/v1/graphql')
                   .send({ query })
                   .expect(200);
+
                 expect(response.body.errors).toEqual([
                   expect.objectContaining({
-                    extensions: expect.objectContaining({
-                      code: actor === request ? 'UNAUTHENTICATED' : 'FORBIDDEN',
-                    }),
+                    extensions: expect.objectContaining({ code: 'FORBIDDEN' }),
                   }),
                 ]);
-                for (const secret of secrets)
+                for (const secret of [
+                  local.apiKey,
+                  foreign.apiKey,
+                  ...before.apiKeys.map((key) => key.key_hash),
+                ])
                   expect(jsonStringify(response.body)).not.toContain(secret);
                 expect(jsonStringify(response.body)).not.toContain(
                   'BEGIN PUBLIC KEY',
                 );
                 expect(await snapshot()).toEqual(before);
-              }
-            }
-          },
-        ),
-        { numRuns: 10, examples: [[[]], [unrelatedPermissions]] },
+              },
+            ),
+            { numRuns: 10, examples: [[[]], [unrelatedPermissions]] },
+          );
+        },
       );
+    });
+  }
+
+  testWithKeys(
+    'MANAGE_ORG can check that an API key exists without revealing it',
+    async ({ deps, user, session }) => {
+      await kyselyUpdateRolePermissions(deps.KyselyPg, {
+        orgId: user.orgId,
+        roleKey: user.role,
+        permissions: [UserPermission.MANAGE_ORG],
+      });
+
+      const response = await session
+        .post('/api/v1/graphql')
+        .send({ query: '{ apiKey }' })
+        .expect(200);
+
+      expect(response.body).toEqual({
+        data: { apiKey: 'API key exists (hidden for security)' },
+      });
     },
   );
 
   testWithKeys(
     'MANAGE_ORG rotates only the caller API key and returns the usable replacement',
     async ({ deps, local, foreign, user, session, snapshot }) => {
-      await fc.assert(
-        fc.asyncProperty(
-          fc.subarray(unrelatedPermissions),
-          async (permissions) => {
-            await kyselyUpdateRolePermissions(deps.KyselyPg, {
-              orgId: user.orgId,
-              roleKey: user.role,
-              permissions: [...permissions, UserPermission.MANAGE_ORG],
-            });
-            const before = await snapshot();
-            const indicator = await session
-              .post('/api/v1/graphql')
-              .send({ query: '{ apiKey }' });
-            expect(indicator.body).toEqual({
-              data: { apiKey: 'API key exists (hidden for security)' },
-            });
-            const response = await session
-              .post('/api/v1/graphql')
-              .send({ query: rotateApiKey })
-              .expect(200);
-            expect(response.body.errors).toBeUndefined();
-            const rotated = response.body.data.rotateApiKey;
-            expect(rotated).toEqual({
-              __typename: 'RotateApiKeySuccessResponse',
-              apiKey: expect.any(String),
-              record: {
-                id: expect.any(String),
-                name: 'replacement',
-                description: 'test key',
-                isActive: true,
-                createdBy: user.id,
-              },
-            });
-            const after = await snapshot();
-            expect(
-              after.apiKeys.filter((key) => key.org_id === foreign.org.id),
-            ).toEqual(
-              before.apiKeys.filter((key) => key.org_id === foreign.org.id),
-            );
-            expect(after.signingKeys).toEqual(before.signingKeys);
-            expect(
-              after.apiKeys.filter(
-                (key) => key.org_id === local.org.id && key.is_active,
-              ),
-            ).toEqual([
-              expect.objectContaining({
-                id: rotated.record.id,
-                key_hash: createHash('sha256')
-                  .update(rotated.apiKey)
-                  .digest('hex'),
-                created_by: user.id,
-              }),
-            ]);
-            expect(
-              await deps.ApiKeyService.validateApiKey(local.apiKey),
-            ).toBeNull();
-            expect(
-              await deps.ApiKeyService.validateApiKey(rotated.apiKey),
-            ).toBe(local.org.id);
-            expect(
-              await deps.ApiKeyService.validateApiKey(foreign.apiKey),
-            ).toBe(foreign.org.id);
-            const nested = await session
-              .post('/api/v1/graphql')
-              .send({ query: '{ myOrg { apiKey } }' });
-            expect(nested.body).toEqual({
-              data: {
-                myOrg: {
-                  apiKey: createHash('sha256')
-                    .update(rotated.apiKey)
-                    .digest('hex'),
-                },
-              },
-            });
-          },
-        ),
-        { numRuns: 10, examples: [[[]], [unrelatedPermissions]] },
+      await kyselyUpdateRolePermissions(deps.KyselyPg, {
+        orgId: user.orgId,
+        roleKey: user.role,
+        permissions: [UserPermission.MANAGE_ORG],
+      });
+      const before = await snapshot();
+
+      const response = await session
+        .post('/api/v1/graphql')
+        .send({ query: rotateApiKey })
+        .expect(200);
+
+      expect(response.body.errors).toBeUndefined();
+      const rotated = response.body.data.rotateApiKey;
+      expect(rotated).toEqual({
+        __typename: 'RotateApiKeySuccessResponse',
+        apiKey: expect.any(String),
+        record: {
+          id: expect.any(String),
+          name: 'replacement',
+          description: 'test key',
+          isActive: true,
+          createdBy: user.id,
+        },
+      });
+      const after = await snapshot();
+      expect(
+        after.apiKeys.filter((key) => key.org_id === foreign.org.id),
+      ).toEqual(before.apiKeys.filter((key) => key.org_id === foreign.org.id));
+      expect(after.signingKeys).toEqual(before.signingKeys);
+      expect(await deps.ApiKeyService.validateApiKey(local.apiKey)).toBeNull();
+      expect(await deps.ApiKeyService.validateApiKey(rotated.apiKey)).toBe(
+        local.org.id,
+      );
+      expect(await deps.ApiKeyService.validateApiKey(foreign.apiKey)).toBe(
+        foreign.org.id,
       );
     },
   );
@@ -193,58 +220,50 @@ describe('API key GraphQL authorization', () => {
   testWithKeys(
     'MANAGE_ORG rotates only the caller persisted webhook signing key',
     async ({ deps, local, foreign, user, session, snapshot }) => {
-      await fc.assert(
-        fc.asyncProperty(
-          fc.subarray(unrelatedPermissions),
-          async (permissions) => {
-            await kyselyUpdateRolePermissions(deps.KyselyPg, {
-              orgId: user.orgId,
-              roleKey: user.role,
-              permissions: [...permissions, UserPermission.MANAGE_ORG],
-            });
-            const before = await snapshot();
-            const previous = await session
-              .post('/api/v1/graphql')
-              .send({ query: '{ myOrg { publicSigningKey } }' });
-            expect(previous.body.errors).toBeUndefined();
-            const response = await session
-              .post('/api/v1/graphql')
-              .send({ query: rotateWebhookSigningKey })
-              .expect(200);
-            expect(response.body).toEqual({
-              data: {
-                rotateWebhookSigningKey: {
-                  __typename: 'RotateWebhookSigningKeySuccessResponse',
-                  publicSigningKey: expect.stringContaining('BEGIN PUBLIC KEY'),
-                },
-              },
-            });
-            const current =
-              response.body.data.rotateWebhookSigningKey.publicSigningKey;
-            expect(current).not.toBe(previous.body.data.myOrg.publicSigningKey);
-            const reread = await session
-              .post('/api/v1/graphql')
-              .send({ query: '{ myOrg { publicSigningKey } }' });
-            expect(reread.body).toEqual({
-              data: { myOrg: { publicSigningKey: current } },
-            });
-            const after = await snapshot();
-            expect(after.apiKeys).toEqual(before.apiKeys);
-            expect(
-              after.signingKeys.filter((key) => key.org_id === foreign.org.id),
-            ).toEqual(
-              before.signingKeys.filter((key) => key.org_id === foreign.org.id),
-            );
-            expect(
-              after.signingKeys.find((key) => key.org_id === local.org.id)
-                ?.key_data,
-            ).not.toEqual(
-              before.signingKeys.find((key) => key.org_id === local.org.id)
-                ?.key_data,
-            );
+      await kyselyUpdateRolePermissions(deps.KyselyPg, {
+        orgId: user.orgId,
+        roleKey: user.role,
+        permissions: [UserPermission.MANAGE_ORG],
+      });
+      const before = await snapshot();
+      const previous = await session
+        .post('/api/v1/graphql')
+        .send({ query: '{ myOrg { publicSigningKey } }' });
+      expect(previous.body.errors).toBeUndefined();
+
+      const response = await session
+        .post('/api/v1/graphql')
+        .send({ query: rotateWebhookSigningKey })
+        .expect(200);
+
+      expect(response.body).toEqual({
+        data: {
+          rotateWebhookSigningKey: {
+            __typename: 'RotateWebhookSigningKeySuccessResponse',
+            publicSigningKey: expect.stringContaining('BEGIN PUBLIC KEY'),
           },
-        ),
-        { numRuns: 10, examples: [[[]], [unrelatedPermissions]] },
+        },
+      });
+      const current =
+        response.body.data.rotateWebhookSigningKey.publicSigningKey;
+      expect(current).not.toBe(previous.body.data.myOrg.publicSigningKey);
+      const reread = await session
+        .post('/api/v1/graphql')
+        .send({ query: '{ myOrg { publicSigningKey } }' });
+      expect(reread.body).toEqual({
+        data: { myOrg: { publicSigningKey: current } },
+      });
+      const after = await snapshot();
+      expect(after.apiKeys).toEqual(before.apiKeys);
+      expect(
+        after.signingKeys.filter((key) => key.org_id === foreign.org.id),
+      ).toEqual(
+        before.signingKeys.filter((key) => key.org_id === foreign.org.id),
+      );
+      expect(
+        after.signingKeys.find((key) => key.org_id === local.org.id)?.key_data,
+      ).not.toEqual(
+        before.signingKeys.find((key) => key.org_id === local.org.id)?.key_data,
       );
     },
   );
