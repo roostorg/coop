@@ -1,6 +1,6 @@
 # API Server
 
-## Available Scripts
+## Local development scripts
 
 - `pnpm start` will start the server locally in watch mode. Just make sure that Redis and Postgres are running locally, and your `.env` file has the relevant connection settings to reach them.
 - `pnpm run runWorkerOrJob [workerName] | [jobName]` will run a specific worker or job, which aren't run at all when using `pnpm run start`. The current set of workers and jobs, and therefore legal arguments for this script, are in the `workers_jobs` directory, besides `index.ts` and `dbTypes.ts`.
