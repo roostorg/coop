@@ -6,6 +6,7 @@ import { vi } from 'vitest';
 import {
   GQLIntegrationConfigFieldInputType,
   GQLUserPermission,
+  GQLZentropiModel,
   type GQLIntegrationConfigQuery,
   type GQLPluginIntegrationApiCredential,
   type GQLZentropiLabelerVersion,
@@ -158,6 +159,54 @@ describe('Zentropi integration configuration', () => {
       target: { value: '' },
     });
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+  });
+
+  it('shows cope-latest for a version saved without a model', () => {
+    renderForm([
+      { __typename: 'ZentropiLabelerVersion', id: 'lv_123', label: 'Spam' },
+    ]);
+    expect(screen.getByText('cope-latest (default)')).toBeInTheDocument();
+  });
+
+  it('saves the model chosen for a version', () => {
+    renderForm([
+      {
+        __typename: 'ZentropiLabelerVersion',
+        id: 'lv_123',
+        label: 'Spam',
+        labelerId: null,
+        model: GQLZentropiModel.CopeBA4B,
+      },
+    ]);
+    expect(screen.getByText('cope-b-a4b')).toBeInTheDocument();
+
+    fireEvent.mouseDown(
+      screen.getByRole('combobox', { name: 'Model for Spam' }),
+    );
+    fireEvent.click(screen.getByText('cope-b-s1'));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+
+    expect(setConfig).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({
+        variables: {
+          input: {
+            apiCredential: {
+              zentropi: {
+                apiKey: 'test-api-key',
+                labelerVersions: [
+                  {
+                    id: 'lv_123',
+                    label: 'Spam',
+                    labelerId: null,
+                    model: GQLZentropiModel.CopeBS1,
+                  },
+                ],
+              },
+            },
+          },
+        },
+      }),
+    );
   });
 
   it('still requires an API key', () => {
