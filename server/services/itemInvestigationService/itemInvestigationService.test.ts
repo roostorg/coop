@@ -16,6 +16,7 @@ import {
   type NormalizedItemData,
   type SubmissionId,
 } from '../itemProcessingService/index.js';
+import { type ContentItemType } from '../moderationConfigService/index.js';
 import { type ScyllaItemSubmissionsRow } from './dbTypes.js';
 import { type ItemInvestigationService } from './index.js';
 import { ItemInvestigationService as ItemInvestigationStore } from './itemInvestigationService.js';
@@ -124,7 +125,7 @@ describe('Item Investigation Service', () => {
           ],
           schemaFieldRoles: {},
         });
-      const now = Date.now();
+      const now = new Date('2025-01-01T00:00:00Z').getTime();
 
       try {
         await fc.assert(
@@ -140,38 +141,15 @@ describe('Item Investigation Service', () => {
               // Each case/shrink gets its own global-index key; TTL removes
               // fixtures from Scylla, which is outside the Postgres rollback.
               const itemIdentifier = { id: uid(), typeId: itemType.id };
-              for (const { owner, time } of history) {
-                await container.Scylla.insert({
-                  into: 'item_submission_by_thread',
-                  row: {
-                    org_id: owner,
-                    request_id: null,
-                    submission_id: uuidv1() as SubmissionId,
-                    item_identifier:
-                      itemIdentifierToScyllaItemIdentifier(itemIdentifier),
-                    item_type_name: itemType.name,
-                    item_type_version: itemType.version,
-                    item_creator_identifier: ScyllaNilItemIdentifier,
-                    item_data: jsonStringify(
-                      instantiateOpaqueType<NormalizedItemData>({
-                        content: `${owner}:${time}`,
-                      }),
-                    ),
-                    item_submission_time: new Date(now + time * 1000),
-                    item_synthetic_created_at: new Date(now),
-                    synthetic_thread_id: itemIdentifier.id,
-                    parent_identifier: ScyllaNilItemIdentifier,
-                    thread_identifier: ScyllaNilItemIdentifier,
-                    item_type_schema_field_roles: jsonStringify(
-                      itemType.schemaFieldRoles,
-                    ),
-                    item_type_schema: jsonStringify(itemType.schema),
-                    item_type_schema_variant: 'original',
-                    item_ip_address: null,
-                  } satisfies ScyllaItemSubmissionsRow,
-                  ttlInSeconds: 60,
-                });
-              }
+              await seedGlobalItemHistory(container, {
+                itemIdentifier,
+                itemType,
+                submissions: history.map(({ owner, time }) => ({
+                  orgId: owner,
+                  content: `${owner}:${time}`,
+                  submittedAt: new Date(now + time * 1000),
+                })),
+              });
 
               for (const orgId of [orgA.org.id, orgWithoutItem.org.id]) {
                 const owned = history
@@ -187,8 +165,9 @@ describe('Item Investigation Service', () => {
                   // Real org-scoped fallbacks have no records for this key.
                   expect(result).toBeNull();
                 } else {
+                  const [latest, ...prior] = owned;
                   expect(result?.latestSubmission.data).toEqual({
-                    content: `${orgId}:${owned[0].time}`,
+                    content: `${orgId}:${latest.time}`,
                   });
                   expect(
                     result?.priorSubmissions
@@ -197,10 +176,7 @@ describe('Item Investigation Service', () => {
                   ).toEqual(
                     latestSubmissionOnly
                       ? undefined
-                      : owned
-                          .slice(1)
-                          .map((row) => `${orgId}:${row.time}`)
-                          .sort(),
+                      : prior.map((row) => `${orgId}:${row.time}`).sort(),
                   );
                 }
               }
@@ -474,3 +450,50 @@ describe('Item Investigation Service', () => {
     expect(ancestors[1].latestSubmission.itemId).toEqual(grandparent.id);
   });
 });
+
+// Helpers
+
+async function seedGlobalItemHistory(
+  { Scylla }: Pick<Dependencies, 'Scylla'>,
+  {
+    itemIdentifier,
+    itemType,
+    submissions,
+  }: {
+    itemIdentifier: { id: string; typeId: string };
+    itemType: ContentItemType;
+    submissions: readonly {
+      orgId: string;
+      content: string;
+      submittedAt: Date;
+    }[];
+  },
+) {
+  for (const { orgId, content, submittedAt } of submissions) {
+    await Scylla.insert({
+      into: 'item_submission_by_thread',
+      row: {
+        org_id: orgId,
+        request_id: null,
+        submission_id: uuidv1() as SubmissionId,
+        item_identifier: itemIdentifierToScyllaItemIdentifier(itemIdentifier),
+        item_type_name: itemType.name,
+        item_type_version: itemType.version,
+        item_creator_identifier: ScyllaNilItemIdentifier,
+        item_data: jsonStringify(
+          instantiateOpaqueType<NormalizedItemData>({ content }),
+        ),
+        item_submission_time: submittedAt,
+        item_synthetic_created_at: submittedAt,
+        synthetic_thread_id: itemIdentifier.id,
+        parent_identifier: ScyllaNilItemIdentifier,
+        thread_identifier: ScyllaNilItemIdentifier,
+        item_type_schema_field_roles: jsonStringify(itemType.schemaFieldRoles),
+        item_type_schema: jsonStringify(itemType.schema),
+        item_type_schema_variant: 'original',
+        item_ip_address: null,
+      } satisfies ScyllaItemSubmissionsRow,
+      ttlInSeconds: 60,
+    });
+  }
+}

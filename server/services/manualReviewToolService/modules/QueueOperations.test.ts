@@ -2,6 +2,7 @@ import fc from 'fast-check';
 import { uid } from 'uid';
 import { v1 as uuidv1 } from 'uuid';
 
+import { type Dependencies } from '../../../iocContainer/index.js';
 import createActions from '../../../test/fixtureHelpers/createActions.js';
 import createContentItemTypes from '../../../test/fixtureHelpers/createContentItemTypes.js';
 import createMrtQueue from '../../../test/fixtureHelpers/createMrtQueue.js';
@@ -444,36 +445,60 @@ describe('QueueOperations', () => {
     'grants and revokes queue access only for users and queues in the caller’s org',
     async ({ attacker, victim, mrtService, deps }) => {
       const tenants = [attacker, victim];
-      let queues = [attacker.queue, victim.queue];
-      for (const { org, user } of tenants) {
-        const { queue } = await createMrtQueue({
-          orgId: org.id,
-          userId: user.id,
-          mrtService,
-          name: 'second-queue',
-        });
-        queues = [...queues, queue];
-      }
-      const queueIds = queues.map((queue) => queue.id);
+      const { queue: secondAttackerQueue } = await createMrtQueue({
+        orgId: attacker.org.id,
+        userId: attacker.user.id,
+        mrtService,
+        name: 'second-queue',
+      });
+      const { queue: secondVictimQueue } = await createMrtQueue({
+        orgId: victim.org.id,
+        userId: victim.user.id,
+        mrtService,
+        name: 'second-queue',
+      });
+      const queues = [
+        attacker.queue,
+        victim.queue,
+        secondAttackerQueue,
+        secondVictimQueue,
+      ];
+      const allQueueIds = queues.map((queue) => queue.id);
       const missingQueueId = uuidv1();
       const missingUserId = uid();
       const arbitraryOperation = fc.record({
-        grant: fc.boolean(),
-        actor: fc.integer({ min: 0, max: 1 }),
-        user: fc.integer({ min: 0, max: 2 }),
-        queues: fc.array(fc.integer({ min: 0, max: 4 }), {
+        action: fc.constantFrom('grant', 'revoke'),
+        orgId: fc.constantFrom(attacker.org.id, victim.org.id),
+        userId: fc.constantFrom(
+          attacker.user.id,
+          victim.user.id,
+          missingUserId,
+        ),
+        queueIds: fc.array(fc.constantFrom(...allQueueIds, missingQueueId), {
           minLength: 1,
           size: '-1',
         }),
       });
-      const operation = fc.oneof(
-        arbitraryOperation,
-        arbitraryOperation.map((op) => ({
-          ...op,
-          user: op.actor,
-          queues: op.queues.map((index) => op.actor + 2 * (index % 2)),
-        })),
-      );
+      const localOperation = fc
+        .constantFrom(...tenants)
+        .chain(({ org, user }) =>
+          fc.record({
+            action: fc.constantFrom('grant', 'revoke'),
+            orgId: fc.constant(org.id),
+            userId: fc.constant(user.id),
+            queueIds: fc.array(
+              fc.constantFrom(
+                ...queues
+                  .filter((queue) => queue.orgId === org.id)
+                  .map((queue) => queue.id),
+              ),
+              { minLength: 1, size: '-1' },
+            ),
+          }),
+        );
+      const operation = fc.oneof(arbitraryOperation, localOperation);
+      const ownUser = { orgId: attacker.org.id, userId: attacker.user.id };
+      const otherUser = { orgId: victim.org.id, userId: victim.user.id };
 
       await fc.assert(
         fc.asyncProperty(
@@ -483,30 +508,33 @@ describe('QueueOperations', () => {
             await deps.KyselyPg.deleteFrom(
               'manual_review_tool.users_and_accessible_queues',
             )
-              .where('queue_id', 'in', queueIds)
+              .where('queue_id', 'in', allQueueIds)
               .execute();
             let expected: string[] = [];
 
             for (const op of operations) {
-              const orgId = tenants[op.actor].org.id;
-              const userId = tenants[op.user]?.user.id ?? missingUserId;
-              const requestedQueues = op.queues.map(
-                (index) => queues[index]?.id ?? missingQueueId,
-              );
+              const { action, orgId, userId, queueIds } = op;
+              const tenant = tenants.find((tenant) => tenant.org.id === orgId);
               const permitted =
-                op.user === op.actor &&
-                op.queues.every((index) => index < 4 && index % 2 === op.actor);
-              const input = { orgId, userId, queueIds: requestedQueues };
-              const result = op.grant
-                ? mrtService.addAccessibleQueuesForUser(input)
-                : mrtService.removeAccessibleQueuesForUser(input);
+                tenant?.user.id === userId &&
+                queueIds.every((queueId) =>
+                  queues.some(
+                    (queue) => queue.id === queueId && queue.orgId === orgId,
+                  ),
+                );
+              const input = { orgId, userId, queueIds };
+              const result =
+                action === 'grant'
+                  ? mrtService.addAccessibleQueuesForUser(input)
+                  : mrtService.removeAccessibleQueuesForUser(input);
 
               if (permitted) {
                 await result;
-                const edges = requestedQueues.map((id) => `${userId}:${id}`);
-                expected = op.grant
-                  ? [...new Set([...expected, ...edges])]
-                  : expected.filter((edge) => !edges.includes(edge));
+                const edges = queueIds.map((id) => `${userId}:${id}`);
+                expected =
+                  action === 'grant'
+                    ? [...new Set([...expected, ...edges])]
+                    : expected.filter((edge) => !edges.includes(edge));
               } else {
                 await expect(result).rejects.toMatchObject({
                   name: 'AccessibleQueueNotInOrgError',
@@ -517,7 +545,7 @@ describe('QueueOperations', () => {
                 'manual_review_tool.users_and_accessible_queues',
               )
                 .select(['user_id', 'queue_id'])
-                .where('queue_id', 'in', queueIds)
+                .where('queue_id', 'in', allQueueIds)
                 .execute();
               expect(
                 new Set(stored.map((row) => `${row.user_id}:${row.queue_id}`)),
@@ -530,15 +558,62 @@ describe('QueueOperations', () => {
           examples: [
             [
               [
-                { grant: true, actor: 0, user: 0, queues: [0, 2, 0] },
-                { grant: true, actor: 1, user: 1, queues: [1, 3] },
-                { grant: false, actor: 0, user: 0, queues: [0, 1] },
-                { grant: true, actor: 0, user: 0, queues: [0, 1] },
-                { grant: false, actor: 0, user: 1, queues: [1] },
-                { grant: true, actor: 0, user: 1, queues: [0] },
-                { grant: false, actor: 0, user: 0, queues: [2, 0, 2] },
-                { grant: true, actor: 0, user: 0, queues: [0, 4] },
-                { grant: true, actor: 0, user: 2, queues: [0] },
+                {
+                  ...otherUser,
+                  action: 'grant',
+                  queueIds: [victim.queue.id, secondVictimQueue.id],
+                },
+                {
+                  ...ownUser,
+                  action: 'grant',
+                  queueIds: [attacker.queue.id, victim.queue.id],
+                },
+                {
+                  ...ownUser,
+                  action: 'grant',
+                  queueIds: [
+                    attacker.queue.id,
+                    secondAttackerQueue.id,
+                    attacker.queue.id,
+                  ],
+                },
+                {
+                  ...ownUser,
+                  action: 'revoke',
+                  queueIds: [attacker.queue.id, victim.queue.id],
+                },
+                {
+                  action: 'revoke',
+                  orgId: attacker.org.id,
+                  userId: victim.user.id,
+                  queueIds: [victim.queue.id],
+                },
+                {
+                  action: 'grant',
+                  orgId: attacker.org.id,
+                  userId: victim.user.id,
+                  queueIds: [attacker.queue.id],
+                },
+                {
+                  ...ownUser,
+                  action: 'revoke',
+                  queueIds: [
+                    secondAttackerQueue.id,
+                    attacker.queue.id,
+                    secondAttackerQueue.id,
+                  ],
+                },
+                {
+                  ...ownUser,
+                  action: 'grant',
+                  queueIds: [attacker.queue.id, missingQueueId],
+                },
+                {
+                  action: 'grant',
+                  orgId: attacker.org.id,
+                  userId: missingUserId,
+                  queueIds: [attacker.queue.id],
+                },
               ],
             ],
           ],
@@ -732,95 +807,156 @@ describe('QueueOperations', () => {
   );
 
   testWithRoleAssignableQueue()(
+    'updating queue assignments replaces direct users and roles',
+    async ({ org, creator, moderator, mrtService, kyselyPg }) => {
+      const roleId = await getRoleId(kyselyPg, org.id, UserRole.MODERATOR);
+      const queue = await createQueueWithRoles(mrtService, org, creator, []);
+      const assignment = fc.record({
+        direct: fc.boolean(),
+        role: fc.boolean(),
+      });
+
+      await fc.assert(
+        fc.asyncProperty(assignment, assignment, async (initial, next) => {
+          // Reset inside the property so every generated case and shrink starts
+          // from its own independently seeded assignments.
+          await seedQueueAssignments(kyselyPg, {
+            queueId: queue.id,
+            userIds: initial.direct ? [creator.id, moderator.id] : [creator.id],
+            roleIds: initial.role ? [roleId] : [],
+          });
+
+          await mrtService.updateManualReviewQueue({
+            orgId: org.id,
+            queueId: queue.id,
+            userIds: next.direct ? [creator.id, moderator.id] : [creator.id],
+            roleIds: next.role ? [roleId] : [],
+            actionIdsToHide: [],
+            actionIdsToUnhide: [],
+          });
+
+          const users = await mrtService.getUsersWhoCanSeeQueue({
+            orgId: org.id,
+            queueId: queue.id,
+            userId: creator.id,
+          });
+          expect(users.map((user) => user.userId).sort()).toEqual(
+            (next.direct ? [creator.id, moderator.id] : [creator.id])
+              .slice()
+              .sort(),
+          );
+          expect(
+            await mrtService.getAssignedRoleIdsForQueue({
+              orgId: org.id,
+              queueId: queue.id,
+            }),
+          ).toEqual(next.role ? [roleId] : []);
+        }),
+        {
+          numRuns: 30,
+          examples: [
+            [
+              { direct: false, role: false },
+              { direct: true, role: true },
+            ],
+            [
+              { direct: true, role: true },
+              { direct: false, role: false },
+            ],
+            [
+              { direct: true, role: false },
+              { direct: false, role: true },
+            ],
+            [
+              { direct: false, role: true },
+              { direct: true, role: false },
+            ],
+          ],
+        },
+      );
+    },
+    20_000,
+  );
+
+  testWithRoleAssignableQueue()(
     'returns reviewable queues within the caller’s org based on permissions and user or role assignments',
     async ({ org, creator, moderator, mrtService, kyselyPg, deps }) => {
       const roleId = await getRoleId(kyselyPg, org.id, UserRole.MODERATOR);
-      const queues = [
-        await createQueueWithRoles(mrtService, org, creator, []),
-        await createQueueWithRoles(mrtService, org, creator, []),
-        await createQueueWithRoles(mrtService, org, creator, []),
-      ];
+      const directQueue = await createQueueWithRoles(
+        mrtService,
+        org,
+        creator,
+        [],
+      );
+      const roleQueue = await createQueueWithRoles(mrtService, org, creator, [
+        roleId,
+      ]);
+      const bothQueue = await createQueueWithRoles(mrtService, org, creator, [
+        roleId,
+      ]);
+      const unassignedQueue = await createQueueWithRoles(
+        mrtService,
+        org,
+        creator,
+        [],
+      );
+      for (const queue of [directQueue, bothQueue]) {
+        await seedQueueAssignments(kyselyPg, {
+          queueId: queue.id,
+          userIds: [creator.id, moderator.id],
+          roleIds: queue.id === bothQueue.id ? [roleId] : [],
+        });
+      }
       const { org: otherOrg } = await createOrg(deps);
       const { user: otherUser } = await createUser(kyselyPg, otherOrg.id);
-      const otherQueue = await createQueueWithRoles(
+      const foreignQueue = await createQueueWithRoles(
         mrtService,
         otherOrg,
         otherUser,
         [],
       );
-      const allQueueIds = [...queues.map((queue) => queue.id), otherQueue.id];
-      const assignments = fc.array(
-        fc.record({ direct: fc.boolean(), role: fc.boolean() }),
-        { minLength: 3, maxLength: 3 },
-      );
+      const reviewerQueueIds = [directQueue.id, roleQueue.id, bothQueue.id];
+      const localQueueIds = [...reviewerQueueIds, unassignedQueue.id];
+      const allQueueIds = [...localQueueIds, foreignQueue.id];
+      const permissionCases = [
+        { permissions: [], visibleQueueIds: [] },
+        {
+          permissions: [UserPermission.VIEW_CHILD_SAFETY_DATA],
+          visibleQueueIds: [],
+        },
+        {
+          permissions: [UserPermission.VIEW_MRT],
+          visibleQueueIds: reviewerQueueIds,
+        },
+        {
+          permissions: [UserPermission.EDIT_MRT_QUEUES],
+          visibleQueueIds: localQueueIds,
+        },
+        {
+          permissions: [
+            UserPermission.VIEW_MRT,
+            UserPermission.EDIT_MRT_QUEUES,
+          ],
+          visibleQueueIds: localQueueIds,
+        },
+      ];
 
       await fc.assert(
         fc.asyncProperty(
-          assignments,
-          fc.option(fc.subarray([0, 1, 2, 3]), { nil: undefined }),
-          async (access, requested) => {
-            // Seed a known mix of assigned and unassigned queues independently
-            // of the update under test, including on every shrink attempt.
-            const localIds = queues.map((queue) => queue.id);
-            await kyselyPg
-              .deleteFrom('manual_review_tool.users_and_accessible_queues')
-              .where('queue_id', 'in', localIds)
-              .execute();
-            await kyselyPg
-              .deleteFrom('manual_review_tool.roles_and_accessible_queues')
-              .where('queue_id', 'in', localIds)
-              .execute();
-            await kyselyPg
-              .insertInto('manual_review_tool.users_and_accessible_queues')
-              .values(
-                [queues[0], queues[2]].map((queue) => ({
-                  queue_id: queue.id,
-                  user_id: moderator.id,
-                })),
-              )
-              .execute();
-            await kyselyPg
-              .insertInto('manual_review_tool.roles_and_accessible_queues')
-              .values(
-                [queues[0], queues[2]].map((queue) => ({
-                  queue_id: queue.id,
-                  role_id: roleId,
-                })),
-              )
-              .execute();
-            for (const [index, queue] of queues.entries()) {
-              await mrtService.updateManualReviewQueue({
-                orgId: org.id,
-                queueId: queue.id,
-                autoCloseJobs: false,
-                userIds: access[index].direct
-                  ? [creator.id, moderator.id]
-                  : [creator.id],
-                roleIds: access[index].role ? [roleId] : [],
-                actionIdsToHide: [],
-                actionIdsToUnhide: [],
-              });
-            }
-            for (const permissions of [
-              [],
-              [UserPermission.VIEW_CHILD_SAFETY_DATA],
-              [UserPermission.VIEW_MRT],
-              [UserPermission.EDIT_MRT_QUEUES],
-              [UserPermission.VIEW_MRT, UserPermission.EDIT_MRT_QUEUES],
-            ]) {
-              const expected = queues.filter(
-                (_, index) =>
-                  (requested === undefined || requested.includes(index)) &&
-                  (permissions.includes(UserPermission.EDIT_MRT_QUEUES) ||
-                    (permissions.includes(UserPermission.VIEW_MRT) &&
-                      (access[index].direct || access[index].role))),
+          fc.option(fc.subarray(allQueueIds), { nil: undefined }),
+          async (requestedQueueIds) => {
+            for (const { permissions, visibleQueueIds } of permissionCases) {
+              const expectedQueueIds = visibleQueueIds.filter(
+                (id) =>
+                  requestedQueueIds === undefined ||
+                  requestedQueueIds.includes(id),
               );
               const actual = await mrtService.getReviewableQueuesForUser({
                 invoker: { orgId: org.id, userId: moderator.id, permissions },
-                queueIds: requested?.map((index) => allQueueIds[index]),
+                queueIds: requestedQueueIds,
               });
               expect(actual.map((queue) => queue.id).sort()).toEqual(
-                expected.map((queue) => queue.id).sort(),
+                expectedQueueIds.slice().sort(),
               );
             }
           },
@@ -828,22 +964,12 @@ describe('QueueOperations', () => {
         {
           numRuns: 30,
           examples: [
-            [
-              [
-                { direct: true, role: false },
-                { direct: false, role: true },
-                { direct: false, role: false },
-              ],
-              undefined,
-            ],
-            [
-              [
-                { direct: false, role: true },
-                { direct: true, role: false },
-                { direct: true, role: true },
-              ],
-              [],
-            ],
+            [undefined],
+            [[]],
+            [[foreignQueue.id]],
+            [[directQueue.id, foreignQueue.id]],
+            [[roleQueue.id, bothQueue.id]],
+            [[unassignedQueue.id]],
           ],
         },
       );
@@ -982,3 +1108,39 @@ describe('QueueOperations', () => {
       ),
   );
 });
+
+// Helpers
+
+async function seedQueueAssignments(
+  db: Dependencies['KyselyPg'],
+  {
+    queueId,
+    userIds,
+    roleIds,
+  }: {
+    queueId: string;
+    userIds: readonly string[];
+    roleIds: readonly string[];
+  },
+) {
+  await db
+    .deleteFrom('manual_review_tool.users_and_accessible_queues')
+    .where('queue_id', '=', queueId)
+    .execute();
+  await db
+    .deleteFrom('manual_review_tool.roles_and_accessible_queues')
+    .where('queue_id', '=', queueId)
+    .execute();
+  if (userIds.length > 0) {
+    await db
+      .insertInto('manual_review_tool.users_and_accessible_queues')
+      .values(userIds.map((userId) => ({ queue_id: queueId, user_id: userId })))
+      .execute();
+  }
+  if (roleIds.length > 0) {
+    await db
+      .insertInto('manual_review_tool.roles_and_accessible_queues')
+      .values(roleIds.map((roleId) => ({ queue_id: queueId, role_id: roleId })))
+      .execute();
+  }
+}
