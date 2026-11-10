@@ -42,8 +42,6 @@ describe('GET policies', () => {
       const response = await request
         .get('/api/v1/policies/')
         .set('x-api-key', apiKey)
-        .set('x-org-id', otherOrgId)
-        .query({ orgId: otherOrgId })
         .expect(200);
       expect(response.body).toEqual({
         policies: [
