@@ -444,7 +444,18 @@ describe('QueueOperations', () => {
   testWithTwoOrgs()(
     'grants and revokes queue access only for users and queues in the caller’s org',
     async ({ attacker, victim, mrtService, deps }) => {
-      const tenants = [attacker, victim];
+      const { user: attackerMember } = await createUser(
+        deps.KyselyPg,
+        attacker.org.id,
+      );
+      const { user: victimMember } = await createUser(
+        deps.KyselyPg,
+        victim.org.id,
+      );
+      const tenants = [
+        { org: attacker.org, userIds: [attacker.user.id, attackerMember.id] },
+        { org: victim.org, userIds: [victim.user.id, victimMember.id] },
+      ];
       const { queue: secondAttackerQueue } = await createMrtQueue({
         orgId: attacker.org.id,
         userId: attacker.user.id,
@@ -470,8 +481,7 @@ describe('QueueOperations', () => {
         action: fc.constantFrom('grant', 'revoke'),
         orgId: fc.constantFrom(attacker.org.id, victim.org.id),
         userId: fc.constantFrom(
-          attacker.user.id,
-          victim.user.id,
+          ...tenants.flatMap((tenant) => tenant.userIds),
           missingUserId,
         ),
         queueIds: fc.array(fc.constantFrom(...allQueueIds, missingQueueId), {
@@ -480,11 +490,11 @@ describe('QueueOperations', () => {
       });
       const localOperation = fc
         .constantFrom(...tenants)
-        .chain(({ org, user }) =>
+        .chain(({ org, userIds }) =>
           fc.record({
             action: fc.constantFrom('grant', 'revoke'),
             orgId: fc.constant(org.id),
-            userId: fc.constant(user.id),
+            userId: fc.constantFrom(...userIds),
             queueIds: fc.array(
               fc.constantFrom(
                 ...queues
@@ -515,7 +525,7 @@ describe('QueueOperations', () => {
               const { action, orgId, userId, queueIds } = op;
               const tenant = tenants.find((tenant) => tenant.org.id === orgId);
               const permitted =
-                tenant?.user.id === userId &&
+                tenant?.userIds.includes(userId) &&
                 queueIds.every((queueId) =>
                   queues.some(
                     (queue) => queue.id === queueId && queue.orgId === orgId,
@@ -612,6 +622,46 @@ describe('QueueOperations', () => {
                   orgId: attacker.org.id,
                   userId: missingUserId,
                   queueIds: [attacker.queue.id],
+                },
+              ],
+            ],
+            [
+              [
+                {
+                  action: 'grant',
+                  orgId: attacker.org.id,
+                  userId: attackerMember.id,
+                  queueIds: [attacker.queue.id, secondAttackerQueue.id],
+                },
+                {
+                  action: 'grant',
+                  orgId: victim.org.id,
+                  userId: victimMember.id,
+                  queueIds: [victim.queue.id, secondVictimQueue.id],
+                },
+                {
+                  action: 'revoke',
+                  orgId: attacker.org.id,
+                  userId: victimMember.id,
+                  queueIds: [victim.queue.id],
+                },
+                {
+                  action: 'grant',
+                  orgId: victim.org.id,
+                  userId: attackerMember.id,
+                  queueIds: [victim.queue.id],
+                },
+                {
+                  action: 'revoke',
+                  orgId: attacker.org.id,
+                  userId: attackerMember.id,
+                  queueIds: [attacker.queue.id, secondAttackerQueue.id],
+                },
+                {
+                  action: 'revoke',
+                  orgId: victim.org.id,
+                  userId: victimMember.id,
+                  queueIds: [victim.queue.id, secondVictimQueue.id],
                 },
               ],
             ],
@@ -828,6 +878,7 @@ describe('QueueOperations', () => {
           await mrtService.updateManualReviewQueue({
             orgId: org.id,
             queueId: queue.id,
+            autoCloseJobs: queue.autoCloseJobs,
             userIds: next.direct ? [creator.id, moderator.id] : [creator.id],
             roleIds: next.role ? [roleId] : [],
             actionIdsToHide: [],
