@@ -1,0 +1,61 @@
+server/services/signalsService/helpers/pluginCatalogRepository.db.test.ts
+  s_00830e7d6998dc::t_2635d4f65325b7 1-78
+server/graphql/datasources/IntegrationApi.ts
+  s_00830e7d6998dc::t_9d4ba76810fa65 197
+server/services/signalsService/helpers/loadPluginSignals.ts
+  s_00830e7d6998dc::t_b60f6ded3dc85a 6,23-25,33-34,37-39,45,49
+docs/integrations/custom.md
+  s_00830e7d6998dc::t_7b340f48b3a11e 145
+  s_00830e7d6998dc::t_814f32baf214a1 107-144,146-151,153-176
+  s_00830e7d6998dc::t_7dc786dd0fb623 152
+server/services/signalsService/helpers/validatePluginCatalog.ts
+  s_00830e7d6998dc::t_2635d4f65325b7 1-8,10-51,60,62-221
+  s_00830e7d6998dc::t_1867e009f9d8c0 52-59,61
+  s_00830e7d6998dc::t_5c7c2abde51d73 9
+server/services/signalsService/SignalsService.ts
+  s_00830e7d6998dc::t_b60f6ded3dc85a 18-21,34,130,142,174-180,207-212,214-220,246-257,261-314,351
+  s_00830e7d6998dc::t_1085a12734fb10 17
+  s_00830e7d6998dc::t_00887974a509ff 364,479
+server/services/signalsService/pluginPolicySubcategories.test.ts
+  s_00830e7d6998dc::t_2635d4f65325b7 1-212
+server/services/signalsService/SignalsService.catalog.test.ts
+  s_00830e7d6998dc::t_2635d4f65325b7 1-116
+server/iocContainer/index.ts
+  s_00830e7d6998dc::t_b60f6ded3dc85a 224,226,400,1748-1750
+server/services/signalsService/helpers/pluginCatalogStore.ts
+  s_00830e7d6998dc::t_2635d4f65325b7 1-453
+server/services/signalsService/helpers/pluginCatalogStore.test.ts
+  s_00830e7d6998dc::t_7d1e51531365f6 185-186
+  s_00830e7d6998dc::t_43b20a65c53097 170-184,187-189
+  s_00830e7d6998dc::t_2635d4f65325b7 1-169,190-451
+server/services/integrationRegistry/loadPlugins.ts
+  s_00830e7d6998dc::t_b60f6ded3dc85a 13,30,240-247,345
+server/services/signalsService/index.ts
+  s_00830e7d6998dc::t_b60f6ded3dc85a 48-51
+db/src/scripts/api-server-pg/2026.11.09T03.57.15.add_integration_signal_catalogs.sql
+  s_00830e7d6998dc::t_2635d4f65325b7 1-34
+server/services/signalsService/signals/PluginSignalAdapter.ts
+  s_00830e7d6998dc::t_2bf81a29a9ae65 29
+server/services/signalsService/helpers/pluginCatalogRepository.ts
+  s_00830e7d6998dc::t_2635d4f65325b7 1-151
+server/services/signalsService/helpers/pluginCatalogStore.storage.test.ts
+  s_00830e7d6998dc::t_2635d4f65325b7 1-342
+server/services/signalsService/helpers/hydratePluginCatalog.ts
+  s_00830e7d6998dc::t_2635d4f65325b7 1-110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2035a782509705f8b275b5a6222745928782ad69",
+  "prompts": {},
+  "sessions": {
+    "s_00830e7d6998dc": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "cfd3d02d-9f8c-491c-a26c-4722e60456eb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
