@@ -7,6 +7,8 @@ on:
   # Safe as long as no code from the pull request is checked out or executed.
   pull_request_target: # zizmor: ignore[dangerous-triggers]
     types: [opened, ready_for_review]
+  discussion:
+    types: [created]
   release:
     types: [published]
 
@@ -16,6 +18,6 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - uses: roostorg/discord-bot@65c8f236e26ac5ae1bbf613c082d37aaf508a9f8
+      - uses: roostorg/discord-bot@f9055284bc6c721627dae45f66229382ad17abeb
         with:
           webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
