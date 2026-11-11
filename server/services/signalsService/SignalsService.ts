@@ -15,6 +15,11 @@ import { loadPluginSignals } from './helpers/loadPluginSignals.js';
 import { makeCachedCredentialGetters } from './helpers/makeCachedCredentialsGetters.js';
 import { makeCachedFetchers } from './helpers/makeCachedFetchers.js';
 import {
+  PluginCatalogStore,
+  type PluginCatalogRefreshListener,
+  type PluginCatalogRefreshResult,
+} from './helpers/pluginCatalogStore.js';
+import {
   signalIsExternal,
   type SignalId,
   type SignalInputType,
@@ -26,6 +31,7 @@ import PluginSignalAdapter from './signals/PluginSignalAdapter.js';
 import {
   type SignalBase,
   type SignalDisabledInfo,
+  type SignalErrorResult,
 } from './signals/SignalBase.js';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars -- used only via typeof for type derivation
@@ -121,6 +127,7 @@ export class SignalsService {
 
   private readonly builtInSignalsByType: BuiltInSignalsByType;
   private readonly signalsByType: SignalsByType;
+  private readonly pluginCatalogStore: PluginCatalogStore;
 
   constructor(
     private readonly tracer: Dependencies['Tracer'],
@@ -132,6 +139,7 @@ export class SignalsService {
     signalAuthService: Dependencies['SignalAuthService'],
     getUserScoreEventuallyConsistent: Dependencies['getUserScoreEventuallyConsistent'],
     fetchHTTP: Dependencies['fetchHTTP'],
+    pluginCatalogRepository: Dependencies['PluginCatalogRepository'],
   ) {
     const cachedCredentialGetters =
       makeCachedCredentialGetters(signalAuthService);
@@ -163,6 +171,13 @@ export class SignalsService {
       ...this.builtInSignalsByType,
       ...pluginSignals,
     };
+    this.pluginCatalogStore = new PluginCatalogStore(
+      pluginEntries,
+      builtInIds,
+      this.signalsByType,
+      signalAuthService,
+      { repository: pluginCatalogRepository },
+    );
 
     this.close = async function () {
       await cachedCredentialGetters.close();
@@ -189,9 +204,20 @@ export class SignalsService {
   }): Promise<Signal[]> {
     const { orgId, externalOnly = true } = opts;
 
-    const allSignals = Object.values(this.signalsByType).filter((signal) =>
-      isSignalEnabledForOrg(signal.id, orgId),
+    const catalogs = await this.#loadOrgCatalogs(orgId);
+    const overridden = new Set(
+      catalogs.flatMap((catalog) => Object.keys(catalog.signals)),
     );
+    const tombstones = catalogs.flatMap((catalog) =>
+      Object.values(catalog.tombstones),
+    );
+    const allSignals = [
+      ...Object.entries(this.signalsByType)
+        .filter(([id]) => !overridden.has(id))
+        .map(([, signal]) => signal),
+      ...catalogs.flatMap((catalog) => Object.values(catalog.signals)),
+      ...tombstones,
+    ].filter((signal) => isSignalEnabledForOrg(signal.id, orgId));
 
     const finalSignals = externalOnly
       ? allSignals.filter((it) => signalIsExternal(it.id))
@@ -217,7 +243,73 @@ export class SignalsService {
       throw new Error('not implemented');
     }
 
+    // Built-in signal ids can never come from a catalog, so rule execution
+    // doesn't wait on catalog loading for them.
+    if (signalId.type in this.builtInSignalsByType) {
+      return this.signalsByType[signalId.type];
+    }
+
+    for (const catalog of await this.#loadOrgCatalogs(ref.orgId)) {
+      if (Object.hasOwn(catalog.signals, signalId.type))
+        return catalog.signals[signalId.type];
+      if (Object.hasOwn(catalog.tombstones, signalId.type))
+        return catalog.tombstones[signalId.type];
+    }
     return this.signalsByType[signalId.type];
+  }
+
+  async #loadOrgCatalogs(orgId: string) {
+    const integrationIds = this.pluginCatalogStore.refreshableIntegrationIds;
+    if (integrationIds.length === 0) return [];
+    await Promise.all(
+      integrationIds.map(async (integrationId) =>
+        this.pluginCatalogStore
+          .ensureLoaded(orgId, integrationId)
+          .catch(() => undefined),
+      ),
+    );
+    return integrationIds.flatMap((integrationId) => {
+      const catalog = this.pluginCatalogStore.get(orgId, integrationId);
+      return catalog ? [catalog] : [];
+    });
+  }
+
+  public supportsCatalogRefresh(integrationId: string): boolean {
+    return this.pluginCatalogStore.supportsCatalogRefresh(integrationId);
+  }
+
+  /** True if a refresh removed this signal from the org's catalog. */
+  public isRemovedCatalogSignal(opts: {
+    orgId: string;
+    integrationId: string;
+    signalTypeId: string;
+  }): boolean {
+    const catalog = this.pluginCatalogStore.get(opts.orgId, opts.integrationId);
+    return (
+      catalog != null &&
+      Object.hasOwn(catalog.tombstones, opts.signalTypeId) &&
+      !Object.hasOwn(catalog.signals, opts.signalTypeId)
+    );
+  }
+
+  public onPluginCatalogRefreshed(
+    listener: PluginCatalogRefreshListener,
+  ): () => void {
+    return this.pluginCatalogStore.onPluginCatalogRefreshed(listener);
+  }
+
+  public async refreshPluginCatalog(opts: {
+    orgId: string;
+    integrationId: string;
+  }): Promise<PluginCatalogRefreshResult> {
+    return this.pluginCatalogStore.refreshPluginCatalog(opts);
+  }
+
+  public async getPluginCatalogStatus(opts: {
+    orgId: string;
+    integrationId: string;
+  }) {
+    return this.pluginCatalogStore.loadStatus(opts.orgId, opts.integrationId);
   }
 
   public async getSignal<T extends SignalType>(ref: SignalReference<T>) {
@@ -256,7 +348,7 @@ export class SignalsService {
         input: SignalTypesToRunInputTypes[Type];
       };
     }[T],
-  ): Promise<Awaited<SignalTypesToRunOutputTypes[T]>> {
+  ): Promise<Awaited<SignalTypesToRunOutputTypes[T]> | SignalErrorResult> {
     const { signal: signalRef, input } = opts;
     const signal = await this.#getSignalInstance(signalRef);
 
@@ -269,7 +361,7 @@ export class SignalsService {
         ? findUnavailablePluginSubcategory(signal, input.subcategory)
         : undefined;
     if (unavailablePolicy) {
-      return unavailablePolicy as Awaited<SignalTypesToRunOutputTypes[T]>;
+      return unavailablePolicy;
     }
 
     const { needsActionPenalties, needsMatchingValues } = signal;
@@ -384,13 +476,12 @@ export default inject(
     'SignalAuthService',
     'getUserScoreEventuallyConsistent',
     'fetchHTTP',
+    'PluginCatalogRepository',
   ],
   SignalsService,
 );
 
 function makeSignalNotFoundError(it: SignalReference) {
-  // NB: this isn't a permanent error, as the signal may just not have been
-  // picked up yet by the various eventually consistent parts of the system.
   return makeNotFoundError('Signal not found', {
     detail: `Signal requested was ${jsonStringify(it)}.`,
     shouldErrorSpan: true,
@@ -404,6 +495,5 @@ function isSignalEnabledForOrg(signalId: SignalId, orgId: string) {
       '53d45130ba1' /* Prod ML Test */,
     ].includes(orgId);
   }
-
   return true;
 }

@@ -104,6 +104,76 @@ policy the signal no longer offers, Coop doesn't call the plugin. The condition
 reports an error and the rule doesn't pass. Plugins should still return a
 permanent error for a policy their backend doesn't recognize.
 
+## Org-specific signal catalogs (`refreshCatalog`)
+
+Use `refreshCatalog` when the signals or policies an organization can use come
+from your backend, for example the policies an org has set up in your product.
+Return the catalog as data, and rebuild runnable signals from it with
+`createCatalogSignal`. Implement both or neither.
+
+```ts
+const plugin: CoopIntegrationPlugin = {
+  manifest,
+  async refreshCatalog({ getCredential, abortSignal }) {
+    const { apiKey } = await getCredential();
+    const policies = await fetchPolicies(apiKey, { signal: abortSignal });
+    return {
+      version: policies.version,
+      signals: [
+        {
+          signalTypeId: 'ACME_CLASSIFY',
+          displayName: 'Acme classification',
+          description: 'Scores text against an org policy.',
+          docsUrl: null,
+          recommendedThresholds: null,
+          supportedLanguages: 'ALL',
+          pricingStructure: { type: 'SUBSCRIPTION' },
+          eligibleInputs: ['STRING'],
+          outputType: { scalarType: 'NUMBER' },
+          eligibleSubcategories: policies.items.map((policy) => ({
+            id: policy.id,
+            label: policy.name,
+            childrenIds: [],
+          })),
+          needsMatchingValues: false,
+          needsActionPenalties: false,
+          allowedInAutomatedRules: true,
+        },
+      ],
+    };
+  },
+  createCatalogSignal(entry) {
+    return {
+      ...entry,
+      id: { type: entry.signalTypeId },
+      integration: manifest.id,
+      getCost: () => 1,
+      run,
+      getDisabledInfo,
+    };
+  },
+};
+```
+
+- `getCredential()` returns this org's saved config. Use it only for this
+  org's request, and pass `abortSignal` to `fetch` so a refresh that takes
+  longer than 10 seconds stops.
+- Keep `signalTypeId` and policy IDs stable across refreshes. Rules store
+  them, so don't derive them from names that can change.
+- Coop stores each org's catalog and rebuilds signals from it with
+  `createCatalogSignal`, so your backend is only called to refresh. Coop
+  refreshes the first time an org uses the integration and again once the
+  stored catalog is more than 15 minutes old.
+- A refresh that fails or returns an invalid catalog keeps the last good one.
+  The whole refresh is rejected if any entry is invalid, if its ID collides
+  with another integration's signal, or if a policy list can't be read as a
+  tree.
+- If a signal or policy disappears from a refresh, rules that use it stop
+  passing instead of calling your plugin with an ID it no longer knows.
+- Treat config and catalog data as untrusted. If orgs can set a backend URL,
+  validate its scheme and host before fetching, and never log credentials or
+  full responses.
+
 ## Evaluation context (`contextNeeds`)
 
 A signal can ask for more than the value being scored by setting
