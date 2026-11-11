@@ -3,9 +3,7 @@
  * PluginSignalAdapter so they can be registered and used in rules.
  */
 
-import { createRequire } from 'module';
-import path from 'path';
-import { isCoopIntegrationPlugin } from '@roostorg/coop-types';
+import type { PluginSignalContext } from '@roostorg/coop-types';
 
 import { withoutContextSettings } from '../../integrationContextSettings/index.js';
 import type { PluginEntry } from '../../integrationRegistry/loadPlugins.js';
@@ -22,46 +20,33 @@ export type PluginSignalsByType = Record<
 >;
 
 /**
- * For each plugin entry, requires the package, calls createSignals(context) if
- * present, wraps each returned descriptor in PluginSignalAdapter, and returns
- * a map of signalTypeId -> adapter. Uses getByIntegrationId for credential lookup.
+ * For each plugin entry, calls createSignals(context) if present, wraps each
+ * returned descriptor in PluginSignalAdapter, and returns a map of
+ * signalTypeId -> adapter. Uses getByIntegrationId for credential lookup.
  */
 export function loadPluginSignals(
   pluginEntries: readonly PluginEntry[],
   signalAuthService: SignalAuthService,
 ): PluginSignalsByType {
-  const require = createRequire(path.join(process.cwd(), 'package.json'));
   const byType: PluginSignalsByType = {};
 
-  for (const { packageSpec, integrationId } of pluginEntries) {
-    let plugin: unknown;
-    try {
-      // eslint-disable-next-line security/detect-non-literal-require -- package spec from integrations config (deployment-controlled), not user input
-      plugin = require(packageSpec);
-    } catch (err: unknown) {
-      throw new Error(
-        `Failed to load integration package "${packageSpec}" for signals: ${err instanceof Error ? err.message : String(err)}`,
-      );
-    }
-    const resolved: unknown =
-      (plugin as { default?: unknown }).default ?? plugin;
-    if (!isCoopIntegrationPlugin(resolved)) continue;
-    const createSignals = (
-      resolved as { createSignals?: (ctx: unknown) => unknown[] }
-    ).createSignals;
+  for (const { packageSpec, integrationId, plugin } of pluginEntries) {
+    const createSignals = plugin.createSignals;
     if (typeof createSignals !== 'function') continue;
 
-    const getCredential = async (orgId: string) => {
+    // Unconfigured orgs have always resolved to undefined here, and existing
+    // plugins check for it in getDisabledInfo.
+    const getCredential = (async (orgId: string) => {
       const config = await signalAuthService.getByIntegrationId(
         integrationId,
         orgId,
       );
       return config && withoutContextSettings(config);
-    };
+    }) as PluginSignalContext['getCredential'];
     const context = { integrationId, getCredential };
     let signals: unknown[];
     try {
-      const raw = createSignals(context);
+      const raw: unknown = createSignals(context);
       signals = Array.isArray(raw) ? raw : [];
     } catch (err: unknown) {
       throw new Error(

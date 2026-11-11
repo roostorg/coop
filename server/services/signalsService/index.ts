@@ -45,3 +45,7 @@ export {
 
 // This is the signal service factory function for bottle.
 export { default as makeSignalsService } from './SignalsService.js';
+export {
+  makePostgresPluginCatalogRepository,
+  type PluginCatalogRepository,
+} from './helpers/pluginCatalogRepository.js';

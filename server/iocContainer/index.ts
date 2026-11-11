@@ -221,7 +221,9 @@ import {
   type SignalContextLoaderFactory,
 } from '../services/signalContextService/index.js';
 import {
+  makePostgresPluginCatalogRepository,
   makeSignalsService,
+  type PluginCatalogRepository,
   type SignalsService,
 } from '../services/signalsService/index.js';
 import {
@@ -395,6 +397,7 @@ export interface Dependencies {
   ManualReviewContentResolver: ManualReviewContentResolver;
   ManualReviewToolService: ManualReviewToolService;
   SignalsService: SignalsService;
+  PluginCatalogRepository: PluginCatalogRepository;
   SignalContextLoaderFactory: SignalContextLoaderFactory;
   IntegrationContextSettingsService: IntegrationContextSettingsService;
   ItemInvestigationService: ItemInvestigationService;
@@ -1742,6 +1745,9 @@ export default async function getBottle(
 
   register(bottle, 'UserStatisticsService', makeUserStatisticsService);
 
+  bottle.factory('PluginCatalogRepository', (container) =>
+    makePostgresPluginCatalogRepository(container.KyselyPg),
+  );
   register(bottle, 'SignalsService', makeSignalsService);
   register(bottle, 'DerivedFieldsService', makeDerivedFieldsService);
 
