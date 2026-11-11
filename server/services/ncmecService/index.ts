@@ -12,7 +12,13 @@ export {
 } from './ncmecReporting.js';
 export { isNcmecTestMode } from './ncmecEnv.js';
 export { summarizeNcmecErrorForReviewer } from './ncmecReviewerErrors.js';
-export { filterDecisionsToFailedSubmissions } from './ncmecSubmissionFilters.js';
+export {
+  canRetryAutomatically,
+  canRetryManually,
+  filterDecisionsToUnreported,
+  matchAttemptMode,
+  type NcmecReportCoverage,
+} from './ncmecSubmissionFilters.js';
 export {
   buildSubmitReportParamsFromDecision,
   LEGACY_FALLBACK_INCIDENT_TYPE,

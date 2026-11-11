@@ -128,6 +128,11 @@ const typeDefs = /* GraphQL */ `
   successful reports. The userId + userItemTypeId pair uniquely identifies
   the reported user; decisionId is the stable handle for retrying.
   """
+  enum NcmecSubmissionMode {
+    TEST
+    PRODUCTION
+  }
+
   type NcmecFailedSubmission {
     decisionId: ID!
     ts: DateTime!
@@ -137,6 +142,16 @@ const typeDefs = /* GraphQL */ `
     status: NcmecFailedSubmissionStatus!
     retryCount: Int!
     lastError: String
+    """
+    The NCMEC endpoint the latest failed attempt was sent to. Null when no
+    attempt mode is recorded.
+    """
+    attemptMode: NcmecSubmissionMode
+    """
+    False when the latest attempt was sent to the other NCMEC endpoint than
+    the one this deployment uses now. Retry refuses such decisions.
+    """
+    canRetryInCurrentMode: Boolean!
   }
 
   type NCMECReportedMedia {

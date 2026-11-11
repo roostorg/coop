@@ -417,4 +417,94 @@ describe('Org resolvers', () => {
       });
     });
   });
+
+  describe('failedNcmecSubmissions', () => {
+    const Org = resolvers.Org as Record<
+      'failedNcmecSubmissions',
+      (parent: unknown, args: unknown, ctx: unknown) => Promise<unknown>
+    >;
+
+    let originalNcmecEnv: string | undefined;
+    beforeEach(() => {
+      originalNcmecEnv = process.env.NCMEC_ENV;
+    });
+    afterEach(() => {
+      if (originalNcmecEnv === undefined) {
+        delete process.env.NCMEC_ENV;
+      } else {
+        process.env.NCMEC_ENV = originalNcmecEnv;
+      }
+    });
+
+    const decision = (id: string, jobId: string) => ({
+      id,
+      org_id: 'org-1',
+      reviewer_id: 'reviewer-1',
+      created_at: new Date('2026-11-01T12:00:00Z'),
+      job_payload: {
+        id: jobId,
+        payload: {
+          item: { itemId: 'user-1', itemTypeIdentifier: { id: 'type-1' } },
+        },
+      },
+    });
+
+    it("lists a decision that another decision's test report doesn't cover, with its attempt mode", async () => {
+      process.env.NCMEC_ENV = 'production';
+      const ctx = {
+        getUser: () => ({
+          id: 'viewer-1',
+          orgId: 'org-1',
+          getPermissions: () => [UserPermission.VIEW_CHILD_SAFETY_DATA],
+        }),
+        services: {
+          ManualReviewToolService: {
+            getNcmecDecisionsForOrg: vi.fn(async () => [
+              decision('reported', 'job-reported'),
+              decision('failed', 'job-failed'),
+            ]),
+          },
+          NcmecService: {
+            getNcmecReportCoverage: vi.fn(async () => ({
+              reportedJobIds: new Set(['job-reported']),
+              users: [
+                {
+                  orgId: 'org-1',
+                  userId: 'user-1',
+                  userItemTypeId: 'type-1',
+                  hasProductionReport: false,
+                  latestUnlinkedTestReportAt: null,
+                },
+              ],
+            })),
+            getNcmecErrorsForJobIds: vi.fn(async () => [
+              {
+                job_id: 'job-failed',
+                status: 'RETRYABLE_ERROR',
+                retry_count: 2,
+                last_error: 'boom',
+                is_test: true,
+              },
+            ]),
+          },
+          ModerationConfigService: {
+            getItemTypes: vi.fn(async () => [
+              { id: 'type-1', kind: 'USER', name: 'User' },
+            ]),
+          },
+        },
+      };
+
+      const result = await Org.failedNcmecSubmissions({ id: 'org-1' }, {}, ctx);
+
+      expect(result).toEqual([
+        expect.objectContaining({
+          decisionId: 'failed',
+          status: 'RETRYABLE_ERROR',
+          attemptMode: 'TEST',
+          canRetryInCurrentMode: false,
+        }),
+      ]);
+    });
+  });
 });

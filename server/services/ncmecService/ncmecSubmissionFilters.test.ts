@@ -1,66 +1,117 @@
-import { filterDecisionsToFailedSubmissions } from './ncmecSubmissionFilters.js';
+import {
+  canRetryAutomatically,
+  canRetryManually,
+  filterDecisionsToUnreported,
+  type NcmecReportCoverage,
+  type NcmecUserReportSummary,
+} from './ncmecSubmissionFilters.js';
 
-describe('filterDecisionsToFailedSubmissions', () => {
-  it('returns all decisions when no submissions are successful', () => {
-    const decisions = [
-      { userId: 'u1', userItemTypeId: 't1', payload: 'a' },
-      { userId: 'u2', userItemTypeId: 't1', payload: 'b' },
-    ];
-    expect(filterDecisionsToFailedSubmissions(decisions, [])).toEqual(
-      decisions,
+const DECIDED_AT = new Date('2026-11-01T12:00:00Z');
+
+const decision = (
+  overrides: Partial<{ jobId: string; userId: string }> = {},
+) => ({
+  jobId: 'job-1',
+  orgId: 'org-1',
+  userId: 'user-1',
+  userItemTypeId: 'type-1',
+  decidedAt: DECIDED_AT,
+  ...overrides,
+});
+
+const userSummary = (
+  overrides: Partial<NcmecUserReportSummary> = {},
+): NcmecUserReportSummary => ({
+  orgId: 'org-1',
+  userId: 'user-1',
+  userItemTypeId: 'type-1',
+  hasProductionReport: false,
+  latestUnlinkedTestReportAt: null,
+  ...overrides,
+});
+
+const coverage = (
+  overrides: Partial<NcmecReportCoverage> = {},
+): NcmecReportCoverage => ({
+  reportedJobIds: new Set(),
+  users: [],
+  ...overrides,
+});
+
+const minutes = (n: number) => new Date(DECIDED_AT.getTime() + n * 60_000);
+
+describe('filterDecisionsToUnreported', () => {
+  it.each([
+    ['no report at all', coverage(), true],
+    ['its own report', coverage({ reportedJobIds: new Set(['job-1']) }), false],
+    [
+      "another decision's report on the same user",
+      coverage({ reportedJobIds: new Set(['job-2']) }),
+      true,
+    ],
+    [
+      'a production report on the user',
+      coverage({ users: [userSummary({ hasProductionReport: true })] }),
+      false,
+    ],
+    [
+      'an unlinked test report made after the decision',
+      coverage({
+        users: [userSummary({ latestUnlinkedTestReportAt: minutes(1) })],
+      }),
+      false,
+    ],
+    [
+      'an unlinked test report made before the decision',
+      coverage({
+        users: [userSummary({ latestUnlinkedTestReportAt: minutes(-1) })],
+      }),
+      true,
+    ],
+    [
+      'a production report on a different item type with the same user id',
+      coverage({
+        users: [
+          userSummary({ userItemTypeId: 'type-2', hasProductionReport: true }),
+        ],
+      }),
+      true,
+    ],
+    [
+      'a production report on the same user id in another org',
+      coverage({
+        users: [userSummary({ orgId: 'org-2', hasProductionReport: true })],
+      }),
+      true,
+    ],
+  ])('a decision with %s is unreported: %s', (_, cov, unreported) => {
+    expect(filterDecisionsToUnreported([decision()], cov)).toHaveLength(
+      unreported ? 1 : 0,
     );
   });
 
-  it('removes decisions that match a successful (userId, userItemTypeId) pair', () => {
-    const decisions = [
-      { userId: 'u1', userItemTypeId: 't1', payload: 'a' },
-      { userId: 'u2', userItemTypeId: 't1', payload: 'b' },
-      { userId: 'u3', userItemTypeId: 't2', payload: 'c' },
-    ];
-    const successful = [{ userId: 'u2', userItemTypeId: 't1' }];
-    expect(filterDecisionsToFailedSubmissions(decisions, successful)).toEqual([
-      { userId: 'u1', userItemTypeId: 't1', payload: 'a' },
-      { userId: 'u3', userItemTypeId: 't2', payload: 'c' },
-    ]);
+  it('keeps the extra fields of each decision', () => {
+    const d = { ...decision(), row: { id: 'd1' } };
+    expect(filterDecisionsToUnreported([d], coverage())).toEqual([d]);
   });
+});
 
-  it('does NOT match across different userItemTypeIds when userId is the same', () => {
-    // Same user id under a different type identifier counts as a different
-    // submission and should remain in the failed list.
-    const decisions = [
-      { userId: 'u1', userItemTypeId: 't1', payload: 'a' },
-      { userId: 'u1', userItemTypeId: 't2', payload: 'b' },
-    ];
-    const successful = [{ userId: 'u1', userItemTypeId: 't1' }];
-    expect(filterDecisionsToFailedSubmissions(decisions, successful)).toEqual([
-      { userId: 'u1', userItemTypeId: 't2', payload: 'b' },
-    ]);
-  });
-
-  it('returns empty when every decision has a corresponding successful submission', () => {
-    const decisions = [
-      { userId: 'u1', userItemTypeId: 't1' },
-      { userId: 'u2', userItemTypeId: 't1' },
-    ];
-    const successful = [
-      { userId: 'u1', userItemTypeId: 't1' },
-      { userId: 'u2', userItemTypeId: 't1' },
-    ];
-    expect(filterDecisionsToFailedSubmissions(decisions, successful)).toEqual(
-      [],
-    );
-  });
-
-  it('does not collide when userId+userItemTypeId concatenation is ambiguous', () => {
-    // Without a delimiter, ('a', 'bc') and ('ab', 'c') would collide. The
-    // helper uses NUL as a delimiter, so these stay distinct.
-    const decisions = [
-      { userId: 'a', userItemTypeId: 'bc', payload: '1' },
-      { userId: 'ab', userItemTypeId: 'c', payload: '2' },
-    ];
-    const successful = [{ userId: 'a', userItemTypeId: 'bc' }];
-    expect(filterDecisionsToFailedSubmissions(decisions, successful)).toEqual([
-      { userId: 'ab', userItemTypeId: 'c', payload: '2' },
-    ]);
-  });
+describe('attempt mode checks', () => {
+  // [attempt mode, current mode is test, automatic retry, manual retry]
+  it.each([
+    [true, true, true, true],
+    [false, false, true, true],
+    [true, false, false, false],
+    [false, true, false, false],
+    [null, true, true, true],
+    [null, false, false, true],
+  ])(
+    'attempt is_test=%s, current test mode=%s: automatic=%s manual=%s',
+    (attemptIsTest, currentIsTest, automatic, manual) => {
+      expect(canRetryAutomatically(attemptIsTest, currentIsTest)).toBe(
+        automatic,
+      );
+      expect(canRetryManually(attemptIsTest, currentIsTest)).toBe(manual);
+    },
+  );
 });

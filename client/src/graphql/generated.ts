@@ -3231,15 +3231,18 @@ export type GQLNcmecEscalationUnavailableError = GQLError & {
   readonly type: ReadonlyArray<Scalars['String']['output']>;
 };
 
-/**
- * An NCMEC submission that was decisioned in the MRT but never produced a
- * successful CyberTip report. Reused on the NCMEC Reports dashboard so that
- * reviewers can see and retry failed submissions in the same place as
- * successful reports. The userId + userItemTypeId pair uniquely identifies
- * the reported user; decisionId is the stable handle for retrying.
- */
 export type GQLNcmecFailedSubmission = {
   readonly __typename: 'NcmecFailedSubmission';
+  /**
+   * The NCMEC endpoint the latest failed attempt was sent to. Null when no
+   * attempt mode is recorded.
+   */
+  readonly attemptMode?: Maybe<GQLNcmecSubmissionMode>;
+  /**
+   * False when the latest attempt was sent to the other NCMEC endpoint than
+   * the one this deployment uses now. Retry refuses such decisions.
+   */
+  readonly canRetryInCurrentMode: Scalars['Boolean']['output'];
   readonly decisionId: Scalars['ID']['output'];
   readonly lastError?: Maybe<Scalars['String']['output']>;
   readonly retryCount: Scalars['Int']['output'];
@@ -3375,6 +3378,20 @@ export type GQLNcmecReportedMediaDetails = {
   readonly url: Scalars['String']['output'];
 };
 
+/**
+ * An NCMEC submission that was decisioned in the MRT but never produced a
+ * successful CyberTip report. Reused on the NCMEC Reports dashboard so that
+ * reviewers can see and retry failed submissions in the same place as
+ * successful reports. The userId + userItemTypeId pair uniquely identifies
+ * the reported user; decisionId is the stable handle for retrying.
+ */
+export const GQLNcmecSubmissionMode = {
+  Production: 'PRODUCTION',
+  Test: 'TEST',
+} as const;
+
+export type GQLNcmecSubmissionMode =
+  (typeof GQLNcmecSubmissionMode)[keyof typeof GQLNcmecSubmissionMode];
 export type GQLNcmecThreadInput = {
   readonly reportedContent: ReadonlyArray<GQLNcmecContentInThreadReport>;
   readonly threadId: Scalars['ID']['input'];
@@ -19545,6 +19562,8 @@ export type GQLNcmecFailedSubmissionValuesFragment = {
   readonly status: GQLNcmecFailedSubmissionStatus;
   readonly retryCount: number;
   readonly lastError?: string | null;
+  readonly attemptMode?: GQLNcmecSubmissionMode | null;
+  readonly canRetryInCurrentMode: boolean;
   readonly userItemType: {
     readonly __typename: 'UserItemType';
     readonly name: string;
@@ -19597,6 +19616,8 @@ export type GQLAllNcmecReportsQuery = {
       readonly status: GQLNcmecFailedSubmissionStatus;
       readonly retryCount: number;
       readonly lastError?: string | null;
+      readonly attemptMode?: GQLNcmecSubmissionMode | null;
+      readonly canRetryInCurrentMode: boolean;
       readonly userItemType: {
         readonly __typename: 'UserItemType';
         readonly name: string;
@@ -26469,6 +26490,8 @@ export const GQLNcmecFailedSubmissionValuesFragmentDoc = gql`
     status
     retryCount
     lastError
+    attemptMode
+    canRetryInCurrentMode
   }
 `;
 export const GQLPolicyFieldsFragmentDoc = gql`
