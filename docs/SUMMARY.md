@@ -30,6 +30,7 @@
     - [Vulnerability Scanning](development/vulnerability-scanning.md)
   - [Deployment](development/deployment.md)
   - [Email](development/email.md)
+  - [Nightly Vulnerability Scan](development/nightly-vulnerability-scan.md)
 
 ---
 
