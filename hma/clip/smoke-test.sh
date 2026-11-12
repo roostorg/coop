@@ -14,6 +14,8 @@
 #
 # Usage: hma/clip/smoke-test.sh
 #   HMA_URL   default http://localhost:9876
+# The first run downloads the CLIP model (the revision is not pinned), so it needs
+# network access and scores can differ slightly between fresh builds.
 set -euo pipefail
 
 BASE="${HMA_URL:-http://localhost:9876}"
@@ -21,7 +23,7 @@ FIXTURES="$(cd "$(dirname "$0")" && pwd)/fixtures"
 BANK="CLIP_SMOKE_TEST_$$"
 JSON='Content-Type: application/json'
 # name:expectation, where a match must score at least the number given.
-PROBES="scene-resized.jpg:match:0.95 scene-desaturated.jpg:match:0.93 scene-blurred.jpg:match:0.90 other-building.jpg:none other.jpg:none"
+PROBES="scene-resized.jpg:match:0.95 scene-desaturated.jpg:match:0.93 scene-blurred.jpg:match:0.92 other-building.jpg:none other.jpg:none"
 
 run() { echo "+ $*" >&2; "$@"; }
 hash_of() { curl -fsS --max-time 900 -F "photo=@$1" "$BASE/h/hash" | python3 -c "import json,sys; print(json.load(sys.stdin)['clip_float'])"; }

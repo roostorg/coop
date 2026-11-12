@@ -28,7 +28,7 @@ Because every photo is hashed with CLIP too, hashing is slower for every image y
 
 ## Build and run
 
-Build the image from the `hma/` directory. It is the stock HMA image (the same digest-pinned release as `hma/Dockerfile`) with PyTorch and the CLIP signal added:
+Build the image from the repository root. It is the stock HMA image (the same digest-pinned release as `hma/Dockerfile`) with PyTorch and the CLIP signal added:
 
 ```bash
 docker build -f hma/clip/Dockerfile -t hma-clip hma

@@ -43,12 +43,12 @@ Bank "CLIP UI test" (COOP_..._CLIP_UI_TEST)
 
 The script reaches HMA through `HMA_SERVICE_URL` in `server/.env`, which must point at your HMA (`http://localhost:9876` in a local setup). If a run fails with `fetch failed`, that URL is wrong; you can set it for one run by putting `HMA_SERVICE_URL=http://localhost:9876` in front of the `node` command. If you prefer `pnpm run seed-clip-bank` with the same arguments, that works where ts-node starts.
 
-HMA builds its search index on a timer, so matching starts working within about 3 minutes. To wait until the bank is searchable, run this from the repository root, with the HMA bank name that the seed script printed in parentheses. It prints a dot every 10 seconds and then `indexed`:
+HMA builds its search index on a timer, so matching starts working within about 3 minutes. To wait until the bank is searchable, run this from the repository root (it stops with a message after about 5 minutes), with the HMA bank name that the seed script printed in parentheses. It prints a dot every 10 seconds and then `indexed`:
 
 ```bash
 BANK=COOP_..._CLIP_UI_TEST
 HASH=$(curl -s -F "photo=@hma/clip/fixtures/probe/scene-resized.jpg" http://localhost:9876/h/hash | python3 -c "import json,sys; print(json.load(sys.stdin)['clip_float'])")
-until curl -s -G http://localhost:9876/m/lookup --data-urlencode signal_type=clip_float --data-urlencode "signal=$HASH" --data-urlencode "banks=$BANK" | grep -q "$BANK"; do printf .; sleep 10; done; echo indexed
+for i in $(seq 30); do curl -s -G http://localhost:9876/m/lookup --data-urlencode signal_type=clip_float --data-urlencode "signal=$HASH" --data-urlencode "banks=$BANK" | grep -q "$BANK" && { echo indexed; break; }; printf .; sleep 10; [ "$i" = 30 ] && echo " not indexed, check HMA's logs"; done
 ```
 
 ## 4. Create an item type with an image field
@@ -66,11 +66,11 @@ until curl -s -G http://localhost:9876/m/lookup --data-urlencode signal_type=cli
 
 ## 6. Make sure a review queue exists
 
-The rule's action sends items to the organization's default review queue, and the item is dropped if there is none. Open **Review Console, Queues**. If there is no queue, create one (the first queue is the default). Admins already see every queue, so nothing more is needed. If you review as a non-admin user, make sure that user is a reviewer on the queue (under Manage Access).
+The rule's action sends items to the queue chosen by a matching routing rule, or to the organization's default review queue when no routing rule matches, and the item is dropped if there is no queue. This guide assumes no routing rules, so the items land in the default queue; if you have routing rules, look in the queue they route to. Open **Review Console, Queues**. If there is no queue, create one (the first queue is the default). Admins already see every queue, so nothing more is needed. If you review as a non-admin user, make sure that user is a reviewer on the queue (under Manage Access).
 
 ## 7. Submit the images
 
-Create an API key under **Settings, API Keys** if you do not have one. Serve the probe images from this machine. This command works from any directory:
+Create an API key under **Settings, API Keys** if you do not have one. Serve the probe images from this machine. Run it from inside this checkout:
 
 ```bash
 python3 -m http.server 8765 --bind 0.0.0.0 --directory "$(git rev-parse --show-toplevel)/hma/clip/fixtures/probe"
@@ -96,7 +96,7 @@ done
 
 ## 8. Check the result
 
-Sign in as a user of the same organization that owns the API key, then open **Review Console, Queues**. A queue cannot be opened from the Queues table. The **Pending Jobs** column shows how many items are waiting, and **Start Reviewing** opens them one at a time. To see the whole list without reviewing, turn on **Enable Preview Jobs View** under Settings, Settings, Review Console, and then use **Preview Jobs** on the queue. (If your instance has several organizations, a different one may have old jobs of its own.) After a few seconds you should see exactly two items: `clip-ui-scene-resized-1` and `clip-ui-scene-desaturated-1` (with `RUN=1`). Open an item to see its image. The queue does not show scores. The expected scores are about 0.985 and 0.959, measured on a CPU instance; scores can differ by a few thousandths on other hardware, so the desaturated copy (0.959 against the 0.95 threshold) is the closest call. The table printed by `hma/clip/smoke-test.sh` shows the scores on your machine.
+Sign in as a user of the same organization that owns the API key, then open **Review Console, Queues**. A queue cannot be opened from the Queues table. The **Pending Jobs** column shows how many items are waiting, and **Start Reviewing** opens them one at a time. To see the whole list without reviewing, turn on **Enable Preview Jobs View** under Settings, Settings, Review Console, and then use **Preview Jobs** on the queue. (If your instance has several organizations, a different one may have old jobs of its own.) After a few seconds you should see these two new items (any older jobs already in the queue are not part of this test): `clip-ui-scene-resized-1` and `clip-ui-scene-desaturated-1` (with `RUN=1`). Open an item to see its image. The queue does not show scores. The expected scores are about 0.985 and 0.959, measured on a CPU instance; scores can differ by a few thousandths on other hardware, so the desaturated copy (0.959 against the 0.95 threshold) is the closest call. The table printed by `hma/clip/smoke-test.sh` shows the scores on your machine.
 
 Three images should not be there:
 
