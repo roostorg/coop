@@ -2,7 +2,7 @@
 
 import { SpanStatusCode } from '@opentelemetry/api';
 import { type ItemIdentifier } from '@roostorg/coop-types';
-import { type Kysely } from 'kysely';
+import { type Kysely, type Transaction } from 'kysely';
 import _ from 'lodash';
 import { type Opaque } from 'type-fest';
 
@@ -11,17 +11,27 @@ import { type ConsumerDirectives } from '../../lib/cache/index.js';
 import { jsonStringify } from '../../utils/encoding.js';
 import {
   isCoopErrorOfType,
+  makeBadRequestError,
   makeUnauthorizedError,
 } from '../../utils/errors.js';
 import { isUniqueViolationError } from '../../utils/kysely.js';
 import type { OmitEach, ReplaceDeep } from '../../utils/typescript-types.js';
+import { type CombinedPg } from '../combinedDbTypes.js';
 import {
   getFieldValueForRole,
   getFieldValueOrValues,
   type NormalizedItemData,
 } from '../itemProcessingService/index.js';
 import { type ItemSubmissionWithTypeIdentifier } from '../itemProcessingService/makeItemSubmissionWithTypeIdentifier.js';
-import { type ModerationConfigService } from '../moderationConfigService/index.js';
+import {
+  canResolveManualReviewContent,
+  resolveManualReviewContentSafely,
+  type ManualReviewContentResolver,
+} from '../manualReviewContentResolver.js';
+import {
+  type ModerationConfigService,
+  type ModerationConfigServicePg,
+} from '../moderationConfigService/index.js';
 import { type PartialItemsService } from '../partialItemsService/index.js';
 import {
   UserPermission,
@@ -40,6 +50,7 @@ import AppealsJobRouting from './modules/AppealsJobRouting.js';
 import ClaimOperations from './modules/ClaimOperations.js';
 import CommentOperations from './modules/CommentOperations.js';
 import DecisionAnalytics, {
+  type ActivityFeedDecisionCursor,
   type DecisionCountsInput,
   type DecisionCountsTableInput,
   type HandleTimeInput,
@@ -57,6 +68,14 @@ import JobEnrichment, {
   type ManualReviewAppealJobInput,
   type ManualReviewJobInput,
 } from './modules/JobEnrichment.js';
+import {
+  getJobPrioritiesForItems,
+  getJobPriorityForItem,
+  JobSortType,
+  MAX_JOB_PRIORITY_WEIGHT,
+  type JobPropertyKey,
+} from './modules/JobPriority.js';
+import JobPriorityWeights from './modules/JobPriorityWeights.js';
 import JobRendering from './modules/JobRendering.js';
 import JobRouting, {
   type CreateRoutingRuleInput,
@@ -65,6 +84,9 @@ import JobRouting, {
   type UpdateRoutingRuleInput,
 } from './modules/JobRouting.js';
 import ManualReviewToolSettings from './modules/ManualReviewToolSettings.js';
+import PriorityRecomputeLock, {
+  RECOMPUTE_LOCK_TTL_MS,
+} from './modules/PriorityRecomputeLock.js';
 import QueueOperations, {
   type ManualReviewQueue,
 } from './modules/QueueOperations.js';
@@ -78,6 +100,12 @@ import SkipOperations, {
 import UserReportSweep, {
   type ClearOtherReportsResult,
 } from './modules/UserReportSweep.js';
+
+const MAX_PRIORITY_RECOMPUTE_ATTEMPTS = 3;
+const PRIORITY_RECOMPUTE_RETRY_BASE_DELAY_MS = 30_000;
+// Bounds how many times one lock holder re-sweeps because the sort mode
+// changed again while it was sweeping.
+const MAX_PRIORITY_RECOMPUTE_ROUNDS = 5;
 
 // An id that's unique across all jobs ever added to any queue (pending or not).
 // This is the id that's passed into the MRT Service by callers to identify a
@@ -297,6 +325,7 @@ export type ManualReviewJobKind = ManualReviewJobPayload['kind'];
 export class ManualReviewToolService {
   private readonly queueOps: QueueOperations;
   private readonly jobRendering: JobRendering;
+  private readonly jobPriorityWeights: JobPriorityWeights;
   private readonly jobRouting: JobRouting;
   private readonly appealsJobRouting: AppealsJobRouting;
   private readonly jobEnrichment: JobEnrichment;
@@ -308,8 +337,15 @@ export class ManualReviewToolService {
   private readonly claimOps: ClaimOperations;
   private readonly reporterInvalidation: ReporterInvalidation;
   private readonly userReportSweep: UserReportSweep;
+  private readonly priorityRecomputeLock: PriorityRecomputeLock;
 
   constructor(
+    // Lazy getter: breaks a circular dependency (ManualReviewToolService ->
+    // ReportingService -> ActionPublisher -> ManualReviewToolService). Call
+    // the outer function at use time to resolve the real dependency:
+    // this.getNumTimesReported()({ orgId, itemId }).
+    private readonly getNumTimesReported: () => Dependencies['ReportingService']['getNumTimesReported'],
+    private readonly getNumTimesReportedForItems: () => Dependencies['ReportingService']['getNumTimesReportedForItems'],
     readonly redis: Dependencies['IORedis'],
     readonly ruleEvaluator: Dependencies['RuleEvaluator'],
     readonly routingRuleExecutionLogger: Dependencies['RoutingRuleExecutionLogger'],
@@ -330,13 +366,17 @@ export class ManualReviewToolService {
       userId: string;
       userItemTypeId: string;
     }) => Promise<boolean>,
+    private readonly resolveManualReviewContent: ManualReviewContentResolver,
+    private readonly meter?: Dependencies['Meter'],
   ) {
+    this.priorityRecomputeLock = new PriorityRecomputeLock(this.redis);
     this.queueOps = new QueueOperations(
       pgQuery,
       pgQueryReadReplica,
       moderationConfigService,
       redis,
       tracer,
+      meter,
     );
     this.jobEnrichment = new JobEnrichment(
       partialItemsService,
@@ -368,11 +408,15 @@ export class ManualReviewToolService {
       this.manualReviewToolSettings,
       this.claimOps,
       getUserHasExistingNcmecReport,
+      meter,
     );
-    this.jobRendering = new JobRendering(pgQuery);
+    this.jobRendering = new JobRendering(
+      pgQuery.$extendTables<ModerationConfigServicePg>(),
+    );
+    this.jobPriorityWeights = new JobPriorityWeights(pgQuery);
     this.decisionAnalytics = new DecisionAnalytics(pgQueryReadReplica);
     this.commentOps = new CommentOperations(pgQuery);
-    this.skipOps = new SkipOperations(pgQuery);
+    this.skipOps = new SkipOperations(pgQuery, this.queueOps, meter);
     this.reporterInvalidation = new ReporterInvalidation(
       this.queueOps,
       this.tracer,
@@ -382,6 +426,21 @@ export class ManualReviewToolService {
       this.jobDecisioning,
       moderationConfigService,
       this.tracer,
+    );
+  }
+
+  forTransaction(
+    trx: Transaction<CombinedPg>,
+  ): Pick<
+    ManualReviewToolService,
+    'getHiddenFieldsForItemType' | 'setHiddenFieldsForItemType'
+  > {
+    return new JobRendering(
+      trx
+        .$extendTables<ManualReviewToolServicePg>()
+        .$pickTables<
+          keyof (ManualReviewToolServicePg & ModerationConfigServicePg)
+        >(),
     );
   }
 
@@ -486,6 +545,19 @@ export class ManualReviewToolService {
                 )
               : enrichedJobPayload;
 
+            const targetQueue =
+              await this.queueOps.getQueueForOrgAndDangerouslyBypassPermissioning(
+                { orgId: input.orgId, queueId: targetQueueForNewJob },
+              );
+            const sortType = targetQueue?.jobSortType ?? JobSortType.FIFO;
+            const priority = await getJobPriorityForItem({
+              orgId: input.orgId,
+              item: input.payload.item,
+              sortType,
+              deps: this.#jobPriorityDeps(),
+              weights: await this.#weightsForSort(input.orgId, sortType),
+            });
+
             const job = existingJobInSameQueue
               ? await this.queueOps.updateJobForQueue({
                   orgId: input.orgId,
@@ -504,6 +576,7 @@ export class ManualReviewToolService {
                     ...input,
                     payload: finalJobPayload,
                   },
+                  priority,
                 });
 
             if (!job) {
@@ -511,6 +584,51 @@ export class ManualReviewToolService {
               // between when we looked up the existing job and did the update.
               // Just do nothing
               return;
+            }
+
+            // A merged job keeps its old priority unless restamped with the
+            // new report count. FIFO restamps with 0 so a job still
+            // prioritized from an earlier sort mode is demoted too.
+            if (existingJobInSameQueue) {
+              await this.#setJobPriorityOrScheduleRecompute({
+                orgId: input.orgId,
+                queueId: targetQueueForNewJob,
+                jobId: job.id,
+                priority: priority ?? 0,
+              });
+            }
+
+            // The queue can change sort mode between the initial read and the
+            // BullMQ write. Re-read once after the write and restamp this job
+            // if that happened; otherwise this enqueue could miss the sweep's
+            // snapshot and retain the old mode indefinitely.
+            const queueAfterEnqueue =
+              await this.queueOps.getQueueForOrgAndDangerouslyBypassPermissioning(
+                { orgId: input.orgId, queueId: targetQueueForNewJob },
+              );
+            if (
+              queueAfterEnqueue !== undefined &&
+              queueAfterEnqueue.jobSortType !== sortType
+            ) {
+              const priorityAfterSortChange = await getJobPriorityForItem({
+                orgId: input.orgId,
+                item: input.payload.item,
+                sortType: queueAfterEnqueue.jobSortType,
+                deps: this.#jobPriorityDeps(),
+                weights: await this.#weightsForSort(
+                  input.orgId,
+                  queueAfterEnqueue.jobSortType,
+                ),
+              });
+              // Enqueue uses `undefined` for FIFO so new jobs stay on `wait`.
+              // A job that was already stamped needs an explicit 0 to leave
+              // `prioritized`; otherwise the restamp would be a no-op.
+              await this.#setJobPriorityOrScheduleRecompute({
+                orgId: input.orgId,
+                queueId: targetQueueForNewJob,
+                jobId: job.id,
+                priority: priorityAfterSortChange ?? 0,
+              });
             }
 
             // log job creation/enqueue to postgres
@@ -898,10 +1016,12 @@ export class ManualReviewToolService {
     name: string;
     description: string | null;
     userIds: readonly string[];
+    roleIds: readonly string[];
     hiddenActionIds: readonly string[];
     invokedBy: Invoker;
     isAppealsQueue: boolean;
     autoCloseJobs?: boolean;
+    jobSortType?: JobSortType;
     clearReportsDisposition?: ClearReportsDisposition | null;
     clearReportsScope?: ClearReportsScope;
     clearReportsTriggerActionIds?: readonly string[];
@@ -915,15 +1035,348 @@ export class ManualReviewToolService {
     name?: string;
     description?: string | null;
     userIds: readonly string[];
+    roleIds: readonly string[];
     actionIdsToHide: readonly string[];
     actionIdsToUnhide: readonly string[];
     autoCloseJobs?: boolean;
     isAppealsQueue?: boolean;
+    jobSortType?: JobSortType;
     clearReportsDisposition?: ClearReportsDisposition | null;
     clearReportsScope?: ClearReportsScope;
     clearReportsTriggerActionIds?: readonly string[];
   }): Promise<ManualReviewQueue> {
-    return this.queueOps.updateManualReviewQueue(input);
+    const previous =
+      await this.queueOps.getQueueForOrgAndDangerouslyBypassPermissioning({
+        orgId: input.orgId,
+        queueId: input.queueId,
+      });
+
+    // Appeal jobs are never enqueued with a priority, so a sort mode on an
+    // appeals queue would be a stored setting that does nothing. Pin appeals
+    // queues to FIFO rather than saving something we won't honor.
+    const updated = await this.queueOps.updateManualReviewQueue(
+      previous?.isAppealsQueue ? { ...input, jobSortType: 'FIFO' } : input,
+    );
+
+    // Changing the sort mode has to re-sort the jobs already sitting in the
+    // queue, not just affect future enqueues — otherwise the queue keeps its
+    // old ordering until every job churns out.
+    if (
+      previous !== undefined &&
+      !updated.isAppealsQueue &&
+      previous.jobSortType !== updated.jobSortType
+    ) {
+      this.#scheduleQueuePriorityRecompute({
+        orgId: input.orgId,
+        queueId: input.queueId,
+      });
+    }
+
+    return updated;
+  }
+
+  async getJobPriorityWeights(opts: { orgId: string }) {
+    return this.jobPriorityWeights.loadForOrg(opts.orgId);
+  }
+
+  async setJobPriorityWeights(opts: {
+    orgId: string;
+    weights: ReadonlyArray<{ property: JobPropertyKey; weight: number }>;
+  }) {
+    const seen = new Set<JobPropertyKey>();
+    for (const { property, weight } of opts.weights) {
+      if (
+        !Number.isInteger(weight) ||
+        weight < 0 ||
+        weight > MAX_JOB_PRIORITY_WEIGHT
+      ) {
+        throw makeBadRequestError(
+          `Invalid job priority weight for "${property}": must be a whole number from 0 to ${MAX_JOB_PRIORITY_WEIGHT}.`,
+          { shouldErrorSpan: true },
+        );
+      }
+      if (seen.has(property)) {
+        throw makeBadRequestError(
+          `Duplicate job priority weight for "${property}".`,
+          { shouldErrorSpan: true },
+        );
+      }
+      seen.add(property);
+    }
+
+    await this.jobPriorityWeights.upsertForOrg(opts.orgId, opts.weights);
+
+    // New weights change the score of every job already sitting in a
+    // WEIGHTED queue, so re-sort those queues in the background.
+    const queues =
+      await this.queueOps.getAllQueuesForOrgAndDangerouslyBypassPermissioning(
+        opts.orgId,
+      );
+    for (const queue of queues) {
+      if (queue.jobSortType !== JobSortType.WEIGHTED) {
+        continue;
+      }
+      this.#scheduleQueuePriorityRecompute({
+        orgId: opts.orgId,
+        queueId: queue.id,
+      });
+    }
+  }
+
+  #jobPriorityDeps() {
+    return {
+      getNumTimesReported: this.getNumTimesReported(),
+      getUserScore: this.userStatisticsService.getUserScore.bind(
+        this.userStatisticsService,
+      ),
+    };
+  }
+
+  // Weights only matter for WEIGHTED queues; skip the read otherwise.
+  async #weightsForSort(
+    orgId: string,
+    sortType: JobSortType,
+  ): Promise<ReadonlyMap<JobPropertyKey, number>> {
+    return sortType === JobSortType.WEIGHTED
+      ? this.jobPriorityWeights.loadForOrg(orgId)
+      : new Map();
+  }
+
+  // In-flight sweeps, tracked only so tests can await them. Coordination
+  // between instances is the Redis lock's job, not this set's.
+  readonly #priorityRecomputes = new Set<Promise<void>>();
+
+  // Re-stamps every pending job's priority in the background. Deliberately
+  // not awaited by callers: a sweep is O(pending jobs) Redis round-trips,
+  // which would time out the mutation on a large queue.
+  #scheduleQueuePriorityRecompute(
+    opts: { orgId: string; queueId: string },
+    attempt = 1,
+  ): void {
+    const running = this.tracer
+      .addActiveSpan(
+        {
+          resource: 'mrtService',
+          operation: 'recomputeQueuePriorities',
+          attributes: {
+            'mrtQueue.orgId': opts.orgId,
+            'mrtQueue.queueId': opts.queueId,
+            'mrtQueue.recomputeAttempt': attempt,
+          },
+        },
+        async () => this.#recomputeQueuePrioritiesUnderLock(opts),
+      )
+      .catch(() => {
+        // The failure is recorded on the span by addActiveSpan. Nothing else
+        // re-sorts the whole queue, so retry with backoff.
+        if (attempt < MAX_PRIORITY_RECOMPUTE_ATTEMPTS) {
+          setTimeout(
+            () => this.#scheduleQueuePriorityRecompute(opts, attempt + 1),
+            PRIORITY_RECOMPUTE_RETRY_BASE_DELAY_MS * 2 ** (attempt - 1),
+          ).unref();
+        }
+      })
+      .finally(() => {
+        this.#priorityRecomputes.delete(running);
+      });
+    this.#priorityRecomputes.add(running);
+  }
+
+  #logPrioritySpanFailure(
+    operation: string,
+    attributes: { orgId: string; queueId: string },
+    error: unknown,
+  ) {
+    this.tracer.addSpan(
+      {
+        resource: 'mrtService',
+        operation,
+        attributes: {
+          'mrtQueue.orgId': attributes.orgId,
+          'mrtQueue.queueId': attributes.queueId,
+        },
+      },
+      (span) => {
+        this.tracer.logSpanFailed(span, error);
+      },
+    );
+  }
+
+  // Priority-only write for a job that was just enqueued or merged. A failure
+  // here would leave just this job misordered, so fall back to re-sorting the
+  // queue instead of failing an enqueue whose data is already saved.
+  async #setJobPriorityOrScheduleRecompute(opts: {
+    orgId: string;
+    queueId: string;
+    jobId: JobId;
+    priority: number;
+  }) {
+    try {
+      await this.queueOps.setJobPriority(opts);
+    } catch (error) {
+      this.#logPrioritySpanFailure('setJobPriorityFailed', opts, error);
+      this.#scheduleQueuePriorityRecompute({
+        orgId: opts.orgId,
+        queueId: opts.queueId,
+      });
+    }
+  }
+
+  /**
+   * Sweeps a queue's priorities while holding the cross-instance lock.
+   *
+   * Waits for a sweep already in progress rather than giving up. After each
+   * sweep the holder re-reads the sort mode and sweeps again if it changed,
+   * so a waiter that times out behind a long sweep doesn't lose its change:
+   * the holder's re-read happens after that change was saved.
+   */
+  async #recomputeQueuePrioritiesUnderLock(opts: {
+    orgId: string;
+    queueId: string;
+  }): Promise<void> {
+    const { orgId, queueId } = opts;
+    const token = await this.priorityRecomputeLock.acquireWaiting({
+      orgId,
+      queueId,
+    });
+    // The rule below matches on the identifier name `token`. This is a null
+    // check on a lock handle we just generated, not a secret compared against
+    // attacker-supplied input, so there's no timing channel to protect.
+    // eslint-disable-next-line security/detect-possible-timing-attacks
+    if (token == null) {
+      this.#logPrioritySpanFailure(
+        'recomputeLockTimeout',
+        opts,
+        new Error(
+          `Priority recompute lock timed out for queue ${queueId}; the current lock holder applies the latest sort mode when it finishes.`,
+        ),
+      );
+      return;
+    }
+
+    let lostLease = false;
+    try {
+      const lease = { renewFailed: false, stopped: false };
+      const waiter: { wake?: () => void } = {};
+      const heartbeat = (async () => {
+        while (!lease.renewFailed && !lease.stopped) {
+          await new Promise<void>((resolve) => {
+            const timeout = setTimeout(
+              resolve,
+              Math.floor(RECOMPUTE_LOCK_TTL_MS / 2),
+            );
+            waiter.wake = () => {
+              clearTimeout(timeout);
+              resolve();
+            };
+          });
+          waiter.wake = undefined;
+          // The sweep's finally sets these while this heartbeat is sleeping.
+          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+          if (lease.renewFailed || lease.stopped) {
+            return;
+          }
+          try {
+            const renewed = await this.priorityRecomputeLock.renew({
+              orgId,
+              queueId,
+              token,
+            });
+            if (!renewed) {
+              lease.renewFailed = true;
+            }
+          } catch {
+            lease.renewFailed = true;
+          }
+        }
+      })();
+      try {
+        let appliedSortKey: string | undefined;
+        let settled = false;
+        for (let round = 0; round < MAX_PRIORITY_RECOMPUTE_ROUNDS; round++) {
+          const queue =
+            await this.queueOps.getQueueForOrgAndDangerouslyBypassPermissioning(
+              { orgId, queueId },
+            );
+          // Deleted while we waited for the lock.
+          if (queue === undefined) {
+            settled = true;
+            break;
+          }
+          const sortType = queue.jobSortType;
+          const weights = await this.#weightsForSort(orgId, sortType);
+          const sortKey = jsonStringify([sortType, [...weights].sort()]);
+          // Already up to date.
+          if (sortKey === appliedSortKey) {
+            settled = true;
+            break;
+          }
+
+          const result = await this.queueOps.recomputePrioritiesForQueue({
+            orgId,
+            queueId,
+            getPriorities: async (items) =>
+              getJobPrioritiesForItems({
+                orgId,
+                items,
+                sortType,
+                deps: {
+                  getNumTimesReportedForItems:
+                    this.getNumTimesReportedForItems(),
+                  getUserScoresForUsers:
+                    this.userStatisticsService.getUserScoresForUsers.bind(
+                      this.userStatisticsService,
+                    ),
+                },
+                weights,
+              }),
+            shouldContinue: () => !lease.renewFailed,
+          });
+          if (result.aborted) {
+            settled = true;
+            break;
+          }
+          if (!result.snapshotStable) {
+            // Jobs added or shifted by concurrent dequeues on the last pass
+            // may have been missed; they keep their previous priority.
+            this.#logPrioritySpanFailure(
+              'recomputeSnapshotUnstable',
+              opts,
+              new Error(
+                `Priority recompute for queue ${queueId} hit its snapshot pass limit; some jobs may keep their previous priority.`,
+              ),
+            );
+          }
+          appliedSortKey = sortKey;
+        }
+        if (!settled) {
+          // The sort mode kept changing; rejecting hands the latest mode to
+          // the scheduler's retry.
+          throw new Error(
+            `Priority recompute for queue ${queueId} ran out of rounds before the sort mode settled`,
+          );
+        }
+      } finally {
+        lease.stopped = true;
+        waiter.wake?.();
+        await heartbeat;
+      }
+      if (lease.renewFailed) {
+        lostLease = true;
+      }
+    } finally {
+      await this.priorityRecomputeLock.release({ orgId, queueId, token });
+    }
+    if (lostLease) {
+      // Rejecting hands this to the scheduler's retry.
+      throw new Error('Lost priority recompute lease');
+    }
+  }
+
+  // Test hook: resolves once currently-scheduled background priority
+  // recomputes have settled.
+  async awaitPendingPriorityRecomputes(): Promise<void> {
+    await Promise.all([...this.#priorityRecomputes]);
   }
 
   async getClearReportsTriggerActionsForQueue(opts: {
@@ -1026,6 +1479,7 @@ export class ManualReviewToolService {
    */
   async getReviewableQueuesForUser(opts: {
     invoker: Invoker;
+    queueIds?: readonly string[];
   }): Promise<ManualReviewQueue[]> {
     return this.queueOps.getReviewableQueuesForUser(opts);
   }
@@ -1093,6 +1547,82 @@ export class ManualReviewToolService {
     );
   }
 
+  async resolveContentForReview(opts: {
+    queueId: string;
+    reviewerId: string;
+    reviewerOrgId: string;
+    lockToken: string;
+    isAppealsQueue: boolean;
+    job: ManualReviewJobOrAppeal;
+  }) {
+    return this.tracer.addActiveSpan(
+      {
+        resource: 'mrtService',
+        operation: 'resolveContentForReview',
+        attributes: {
+          'job.id': opts.job.id,
+          'org.id': opts.job.orgId,
+          'queue.id': opts.queueId,
+          'reviewer.id': opts.reviewerId,
+        },
+      },
+      async (span) => {
+        const canResolve = await canResolveManualReviewContent({
+          jobOrgId: opts.job.orgId,
+          reviewerOrgId: opts.reviewerOrgId,
+          reviewerId: opts.reviewerId,
+          lockToken: opts.lockToken,
+          hasActiveLock: async () =>
+            this.queueOps.extendJobLock({
+              orgId: opts.job.orgId,
+              queueId: opts.queueId,
+              jobId: opts.job.id,
+              lockToken: opts.lockToken,
+              isAppealsQueue: opts.isAppealsQueue,
+            }),
+        });
+        span.setAttribute('content.resolution_authorized', canResolve);
+        const attributes = {
+          queue_id: opts.queueId,
+          item_type_id: opts.job.payload.item.itemTypeIdentifier.id,
+        };
+        if (!canResolve) {
+          this.meter?.recordManualReviewEvent(
+            'content_resolution_not_authorized',
+            attributes,
+          );
+          return opts.job;
+        }
+
+        return resolveManualReviewContentSafely(
+          {
+            orgId: opts.job.orgId,
+            queueId: opts.queueId,
+            reviewerId: opts.reviewerId,
+            job: opts.job,
+          },
+          this.resolveManualReviewContent,
+          {
+            onResolved: (count) => {
+              span.setAttribute('content.resolved_count', count);
+              this.meter?.recordManualReviewEvent(
+                count > 0 ? 'content_resolved' : 'content_resolution_unchanged',
+                attributes,
+              );
+            },
+            onError: (error) => {
+              this.tracer.logSpanFailed(span, error);
+              this.meter?.recordManualReviewEvent(
+                'content_resolution_failed',
+                attributes,
+              );
+            },
+          },
+        );
+      },
+    );
+  }
+
   async getJobsForQueue(opts: {
     orgId: string;
     queueId: string;
@@ -1112,7 +1642,6 @@ export class ManualReviewToolService {
           jobIds: jobIds satisfies readonly string[] as readonly JobId[],
         });
   }
-
   async getAllJobsForQueue(opts: {
     orgId: string;
     queueId: string;
@@ -1137,23 +1666,20 @@ export class ManualReviewToolService {
     return this.queueOps.getOldestJobCreatedAt(opts);
   }
 
-  async getHiddenFieldsForItemType(opts: {
-    orgId: string;
-    itemTypeId: string;
-  }) {
-    return this.jobRendering.getHiddenFieldsForItemType(opts);
+  async getHiddenFieldsForItemType(
+    ...args: Parameters<JobRendering['getHiddenFieldsForItemType']>
+  ) {
+    return this.jobRendering.getHiddenFieldsForItemType(...args);
   }
 
   async getIgnoreCallbackForOrg(orgId: string) {
     return this.jobDecisioning.getIgnoreCallbackForOrg(orgId);
   }
 
-  async setHiddenFieldsForItemType(opts: {
-    orgId: string;
-    itemTypeId: string;
-    hiddenFields: readonly string[];
-  }) {
-    return this.jobRendering.setHiddenFieldsForItemType(opts);
+  async setHiddenFieldsForItemType(
+    ...args: Parameters<JobRendering['setHiddenFieldsForItemType']>
+  ) {
+    return this.jobRendering.setHiddenFieldsForItemType(...args);
   }
 
   async getUsersWhoCanSeeQueue(opts: {
@@ -1164,6 +1690,13 @@ export class ManualReviewToolService {
     const { orgId, queueId } = opts;
 
     return this.queueOps.getUsersWhoCanSeeQueue({ orgId, queueId });
+  }
+
+  async getAssignedRoleIdsForQueue(opts: {
+    orgId: string;
+    queueId: string;
+  }): Promise<string[]> {
+    return this.queueOps.getAssignedRoleIdsForQueue(opts);
   }
 
   async getDecisionTimeToAction(input: TimeToActionInput) {
@@ -1202,6 +1735,16 @@ export class ManualReviewToolService {
     return this.decisionAnalytics.getRecentDecisions(opts);
   }
 
+  async getDecisionsForActivityFeed(opts: {
+    userPermissions: UserPermission[];
+    orgId: string;
+    input: Omit<RecentDecisionsFilterInput, 'page'>;
+    cursor?: ActivityFeedDecisionCursor;
+    limit: number;
+  }) {
+    return this.decisionAnalytics.getDecisionsForActivityFeed(opts);
+  }
+
   async getSkippedJobsForRecentDecisions(opts: {
     orgId: string;
     input: Omit<RecentDecisionsFilterInput, 'page' | 'startTime' | 'endTime'>;
@@ -1213,6 +1756,7 @@ export class ManualReviewToolService {
     orgId: string;
     itemId: string;
     itemTypeId: string;
+    queueIds: string[];
   }) {
     return this.queueOps.getExistingJobsForItem(opts);
   }
@@ -1254,6 +1798,7 @@ export class ManualReviewToolService {
           queueId,
           userId,
           jobId: job.job.id,
+          itemTypeId: job.job.payload.item.itemTypeIdentifier.id,
         });
       }
       return job;
@@ -1277,6 +1822,7 @@ export class ManualReviewToolService {
           queueId,
           userId,
           jobId: job.job.id,
+          itemTypeId: job.job.payload.item.itemTypeIdentifier.id,
         });
         return job;
       }
@@ -1309,6 +1855,7 @@ export class ManualReviewToolService {
           queueId,
           userId,
           jobId: job.job.id,
+          itemTypeId: job.job.payload.item.itemTypeIdentifier.id,
         });
         return job;
       } else {
@@ -1348,8 +1895,13 @@ export class ManualReviewToolService {
     queueId: string;
     userId: string;
     jobId: JobId;
+    itemTypeId: string;
   }) {
-    const { orgId, queueId, userId, jobId } = opts;
+    const { orgId, queueId, userId, jobId, itemTypeId } = opts;
+    this.meter?.recordManualReviewEvent('claim_acquired', {
+      queue_id: queueId,
+      item_type_id: itemTypeId,
+    });
     try {
       await this.claimOps.logClaim({
         orgId,

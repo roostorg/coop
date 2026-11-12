@@ -1,3 +1,5 @@
+import { vi } from 'vitest';
+
 import { type UserItemType } from '../moderationConfigService/index.js';
 import { synthesizeUserItemFromCreatorReferences } from './synthesizeUserItemFromCreatorReferences.js';
 
@@ -25,16 +27,16 @@ function makeDeps(overrides: Partial<Deps> = {}): Deps {
   return {
     orgId: 'org-1',
     itemId: 'user-id-xyz',
-    scyllaCreatorRefExists: jest.fn().mockResolvedValue(false),
+    scyllaCreatorRefExists: vi.fn().mockResolvedValue(false),
     actionExecutionsAdapter: {
-      findInferredUserIdentity: jest.fn().mockResolvedValue(null),
+      findInferredUserIdentity: vi.fn().mockResolvedValue(null),
     },
     contentApiRequestsAdapter: {
-      findInferredUserIdentityFromCreators: jest.fn().mockResolvedValue(null),
+      findInferredUserIdentityFromCreators: vi.fn().mockResolvedValue(null),
     },
     moderationConfigService: {
-      getItemType: jest.fn(),
-      getItemTypes: jest.fn().mockResolvedValue([]),
+      getItemType: vi.fn(),
+      getItemTypes: vi.fn().mockResolvedValue([]),
     },
     ...overrides,
   };
@@ -49,16 +51,16 @@ describe('synthesizeUserItemFromCreatorReferences', () => {
   describe('with a pinned knownUserTypeId (URL-driven typed path)', () => {
     it('synthesizes when Scylla shows the id is referenced as a creator', async () => {
       const userType = makeUserType();
-      const scyllaCreatorRefExists = jest.fn().mockResolvedValue(true);
-      const findInferredUserIdentity = jest.fn();
+      const scyllaCreatorRefExists = vi.fn().mockResolvedValue(true);
+      const findInferredUserIdentity = vi.fn();
 
       const result = await synthesizeUserItemFromCreatorReferences(
         makeDeps({
           knownUserTypeId: userType.id,
           scyllaCreatorRefExists,
           moderationConfigService: {
-            getItemType: jest.fn().mockResolvedValue(userType),
-            getItemTypes: jest.fn(),
+            getItemType: vi.fn().mockResolvedValue(userType),
+            getItemTypes: vi.fn(),
           },
           actionExecutionsAdapter: { findInferredUserIdentity },
         }),
@@ -80,13 +82,13 @@ describe('synthesizeUserItemFromCreatorReferences', () => {
       const result = await synthesizeUserItemFromCreatorReferences(
         makeDeps({
           knownUserTypeId: 'content-type-1',
-          scyllaCreatorRefExists: jest.fn().mockResolvedValue(true),
+          scyllaCreatorRefExists: vi.fn().mockResolvedValue(true),
           moderationConfigService: {
-            getItemType: jest.fn().mockResolvedValue({
+            getItemType: vi.fn().mockResolvedValue({
               id: 'content-type-1',
               kind: 'CONTENT',
             }),
-            getItemTypes: jest.fn().mockResolvedValue([]),
+            getItemTypes: vi.fn().mockResolvedValue([]),
           },
         }),
       );
@@ -100,18 +102,18 @@ describe('synthesizeUserItemFromCreatorReferences', () => {
       const userType = makeUserType();
       // Pinned type returns null from Scylla; we should keep looking via the
       // inference path. Action-executions confirms.
-      const scyllaCreatorRefExists = jest.fn().mockResolvedValue(false);
+      const scyllaCreatorRefExists = vi.fn().mockResolvedValue(false);
 
       const result = await synthesizeUserItemFromCreatorReferences(
         makeDeps({
           knownUserTypeId: userType.id,
           scyllaCreatorRefExists,
           moderationConfigService: {
-            getItemType: jest.fn().mockResolvedValue(userType),
-            getItemTypes: jest.fn().mockResolvedValue([userType]),
+            getItemType: vi.fn().mockResolvedValue(userType),
+            getItemTypes: vi.fn().mockResolvedValue([userType]),
           },
           actionExecutionsAdapter: {
-            findInferredUserIdentity: jest.fn().mockResolvedValue({
+            findInferredUserIdentity: vi.fn().mockResolvedValue({
               itemTypeId: userType.id,
               lastSeenAt: new Date(),
             }),
@@ -128,10 +130,10 @@ describe('synthesizeUserItemFromCreatorReferences', () => {
     const result = await synthesizeUserItemFromCreatorReferences(
       makeDeps({
         itemId: 'user-id-xyz',
-        scyllaCreatorRefExists: jest.fn().mockResolvedValue(true),
+        scyllaCreatorRefExists: vi.fn().mockResolvedValue(true),
         moderationConfigService: {
-          getItemType: jest.fn().mockResolvedValue(userType),
-          getItemTypes: jest.fn().mockResolvedValue([userType]),
+          getItemType: vi.fn().mockResolvedValue(userType),
+          getItemTypes: vi.fn().mockResolvedValue([userType]),
         },
       }),
     );
@@ -140,15 +142,15 @@ describe('synthesizeUserItemFromCreatorReferences', () => {
   });
 
   it('short-circuits when the org has no USER item types (no Scylla calls)', async () => {
-    const scyllaCreatorRefExists = jest.fn();
-    const findInferredUserIdentity = jest.fn();
+    const scyllaCreatorRefExists = vi.fn();
+    const findInferredUserIdentity = vi.fn();
 
     const result = await synthesizeUserItemFromCreatorReferences(
       makeDeps({
         scyllaCreatorRefExists,
         moderationConfigService: {
-          getItemType: jest.fn(),
-          getItemTypes: jest.fn().mockResolvedValue([
+          getItemType: vi.fn(),
+          getItemTypes: vi.fn().mockResolvedValue([
             // org has only non-USER types
             { id: 'content-1', kind: 'CONTENT' },
             { id: 'thread-1', kind: 'THREAD' },
@@ -168,15 +170,15 @@ describe('synthesizeUserItemFromCreatorReferences', () => {
   it('does NOT re-check the already-checked pinned type in the broad sweep', async () => {
     const pinned = makeUserType({ id: 'utype-pinned' });
     const other = makeUserType({ id: 'utype-other' });
-    const scyllaCreatorRefExists = jest.fn().mockResolvedValue(false);
+    const scyllaCreatorRefExists = vi.fn().mockResolvedValue(false);
 
     await synthesizeUserItemFromCreatorReferences(
       makeDeps({
         knownUserTypeId: pinned.id,
         scyllaCreatorRefExists,
         moderationConfigService: {
-          getItemType: jest.fn().mockResolvedValue(pinned),
-          getItemTypes: jest.fn().mockResolvedValue([pinned, other]),
+          getItemType: vi.fn().mockResolvedValue(pinned),
+          getItemTypes: vi.fn().mockResolvedValue([pinned, other]),
         },
       }),
     );
@@ -191,20 +193,20 @@ describe('synthesizeUserItemFromCreatorReferences', () => {
   describe('inference path (no pinned typeId)', () => {
     it('synthesizes from a Scylla creator-by-id match on the first user type tried', async () => {
       const userType = makeUserType({ id: 'utype-A' });
-      const scyllaCreatorRefExists = jest
+      const scyllaCreatorRefExists = vi
         .fn()
         .mockImplementation(
           async ({ creatorIdentifier }) =>
             creatorIdentifier.typeId === userType.id,
         );
-      const findInferredUserIdentity = jest.fn();
+      const findInferredUserIdentity = vi.fn();
 
       const result = await synthesizeUserItemFromCreatorReferences(
         makeDeps({
           scyllaCreatorRefExists,
           moderationConfigService: {
-            getItemType: jest.fn(),
-            getItemTypes: jest.fn().mockResolvedValue([userType]),
+            getItemType: vi.fn(),
+            getItemTypes: vi.fn().mockResolvedValue([userType]),
           },
           actionExecutionsAdapter: { findInferredUserIdentity },
         }),
@@ -217,17 +219,17 @@ describe('synthesizeUserItemFromCreatorReferences', () => {
 
     it('falls back to action executions when Scylla creator refs are empty', async () => {
       const userType = makeUserType({ id: 'utype-from-actions' });
-      const findInferredUserIdentity = jest.fn().mockResolvedValue({
+      const findInferredUserIdentity = vi.fn().mockResolvedValue({
         itemTypeId: userType.id,
         lastSeenAt: new Date(),
       });
-      const fromCreators = jest.fn();
+      const fromCreators = vi.fn();
 
       const result = await synthesizeUserItemFromCreatorReferences(
         makeDeps({
           moderationConfigService: {
-            getItemType: jest.fn().mockResolvedValue(userType),
-            getItemTypes: jest.fn().mockResolvedValue([userType]),
+            getItemType: vi.fn().mockResolvedValue(userType),
+            getItemTypes: vi.fn().mockResolvedValue([userType]),
           },
           actionExecutionsAdapter: { findInferredUserIdentity },
           contentApiRequestsAdapter: {
@@ -242,8 +244,8 @@ describe('synthesizeUserItemFromCreatorReferences', () => {
 
     it('only consults content-API creators when action executions return null', async () => {
       const userType = makeUserType({ id: 'utype-from-content-api' });
-      const findInferredUserIdentity = jest.fn().mockResolvedValue(null);
-      const findInferredUserIdentityFromCreators = jest.fn().mockResolvedValue({
+      const findInferredUserIdentity = vi.fn().mockResolvedValue(null);
+      const findInferredUserIdentityFromCreators = vi.fn().mockResolvedValue({
         itemTypeId: userType.id,
         lastSeenAt: new Date(),
       });
@@ -251,8 +253,8 @@ describe('synthesizeUserItemFromCreatorReferences', () => {
       const result = await synthesizeUserItemFromCreatorReferences(
         makeDeps({
           moderationConfigService: {
-            getItemType: jest.fn().mockResolvedValue(userType),
-            getItemTypes: jest.fn().mockResolvedValue([userType]),
+            getItemType: vi.fn().mockResolvedValue(userType),
+            getItemTypes: vi.fn().mockResolvedValue([userType]),
           },
           actionExecutionsAdapter: { findInferredUserIdentity },
           contentApiRequestsAdapter: { findInferredUserIdentityFromCreators },
@@ -268,14 +270,14 @@ describe('synthesizeUserItemFromCreatorReferences', () => {
       const result = await synthesizeUserItemFromCreatorReferences(
         makeDeps({
           actionExecutionsAdapter: {
-            findInferredUserIdentity: jest.fn().mockResolvedValue({
+            findInferredUserIdentity: vi.fn().mockResolvedValue({
               itemTypeId: 'deleted-type',
               lastSeenAt: new Date(),
             }),
           },
           moderationConfigService: {
-            getItemType: jest.fn().mockResolvedValue(undefined),
-            getItemTypes: jest.fn().mockResolvedValue([]),
+            getItemType: vi.fn().mockResolvedValue(undefined),
+            getItemTypes: vi.fn().mockResolvedValue([]),
           },
         }),
       );
@@ -289,17 +291,17 @@ describe('synthesizeUserItemFromCreatorReferences', () => {
       const result = await synthesizeUserItemFromCreatorReferences(
         makeDeps({
           actionExecutionsAdapter: {
-            findInferredUserIdentity: jest.fn().mockResolvedValue({
+            findInferredUserIdentity: vi.fn().mockResolvedValue({
               itemTypeId: 'content-type-1',
               lastSeenAt: new Date(),
             }),
           },
           moderationConfigService: {
-            getItemType: jest.fn().mockResolvedValue({
+            getItemType: vi.fn().mockResolvedValue({
               id: 'content-type-1',
               kind: 'CONTENT',
             }),
-            getItemTypes: jest.fn().mockResolvedValue([]),
+            getItemTypes: vi.fn().mockResolvedValue([]),
           },
         }),
       );

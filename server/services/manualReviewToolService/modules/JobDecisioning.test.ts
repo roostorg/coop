@@ -1,4 +1,9 @@
-import { parseItemCreatedAt } from './JobDecisioning.js';
+import {
+  actionableRelatedActions,
+  parseItemCreatedAt,
+  relatedActionPublishPayloads,
+  validateRelatedActionParameterPayloads,
+} from './JobDecisioning.js';
 
 describe('parseItemCreatedAt', () => {
   test('parses a valid ISO string', () => {
@@ -21,7 +26,7 @@ describe('parseItemCreatedAt', () => {
   });
 
   test.each([null, undefined, ''])(
-    'returns null for empty value %p',
+    'returns null for empty value %j',
     (value) => {
       expect(parseItemCreatedAt(value)).toBeNull();
     },
@@ -32,9 +37,201 @@ describe('parseItemCreatedAt', () => {
   // serialization and failed the entire decision insert, surfacing as
   // "Job submission failed" in the reviewer UI.
   test.each(['   ', 'not-a-date', 'garbage', '2026-99-99T99:99:99Z'])(
-    'returns null for unparseable value %p instead of an Invalid Date',
+    'returns null for unparseable value %j instead of an Invalid Date',
     (value) => {
       expect(parseItemCreatedAt(value)).toBeNull();
     },
   );
+});
+
+describe('relatedActionPublishPayloads', () => {
+  test('attaches saved parameter values to each related action', () => {
+    expect(
+      relatedActionPublishPayloads({
+        actionIds: ['enqueue_human'],
+        itemIds: ['post_2'],
+        itemTypeId: 'content',
+        policyIds: ['policy_abuse'],
+        actionIdsToMrtApiParamDecisionPayload: {
+          enqueue_human: { queue: 'priority' },
+        },
+      }),
+    ).toEqual([
+      {
+        actionId: 'enqueue_human',
+        customMrtApiParamDecisionPayload: { queue: 'priority' },
+      },
+    ]);
+  });
+
+  test('omits parameter payload when none were provided', () => {
+    expect(
+      relatedActionPublishPayloads({
+        actionIds: ['hide_content'],
+        itemIds: ['post_1'],
+        itemTypeId: 'content',
+        policyIds: ['policy_spam'],
+      }),
+    ).toEqual([{ actionId: 'hide_content' }]);
+  });
+});
+
+describe('actionableRelatedActions', () => {
+  test('keeps only related items that have an action and a target', () => {
+    expect(
+      actionableRelatedActions([
+        {
+          actionIds: [],
+          itemIds: ['post_unmarked'],
+          itemTypeId: 'content',
+          policyIds: [],
+        },
+        {
+          actionIds: ['hide_content'],
+          itemIds: [],
+          itemTypeId: 'content',
+          policyIds: ['policy_spam'],
+        },
+        {
+          actionIds: ['hide_content'],
+          itemIds: ['post_1'],
+          itemTypeId: 'content',
+          policyIds: ['policy_spam'],
+        },
+      ]),
+    ).toEqual([
+      {
+        actionIds: ['hide_content'],
+        itemIds: ['post_1'],
+        itemTypeId: 'content',
+        policyIds: ['policy_spam'],
+      },
+    ]);
+  });
+});
+
+describe('validateRelatedActionParameterPayloads', () => {
+  const parameterizedAction = {
+    id: 'enqueue_human',
+    actionType: 'CUSTOM_ACTION',
+    customMrtApiParams: [
+      {
+        name: 'queue',
+        displayName: 'Queue',
+        type: 'SELECT',
+        required: true,
+        options: [
+          { value: 'priority', label: 'Priority' },
+          { value: 'default', label: 'Default' },
+        ],
+      },
+    ],
+  };
+
+  const relatedAction = {
+    actionIds: ['enqueue_human'],
+    itemIds: ['post_2'],
+    itemTypeId: 'content',
+    policyIds: ['policy_abuse'],
+    actionIdsToMrtApiParamDecisionPayload: {
+      enqueue_human: { queue: 'priority' },
+    },
+  };
+
+  test('keeps values that match the action parameter spec', () => {
+    expect(
+      validateRelatedActionParameterPayloads(
+        [relatedAction],
+        [parameterizedAction],
+      ),
+    ).toEqual([relatedAction]);
+  });
+
+  test('rejects unknown parameter keys', () => {
+    expect(() =>
+      validateRelatedActionParameterPayloads(
+        [
+          {
+            ...relatedAction,
+            actionIdsToMrtApiParamDecisionPayload: {
+              enqueue_human: { queue: 'priority', extra: true },
+            },
+          },
+        ],
+        [parameterizedAction],
+      ),
+    ).toThrow(/Unknown parameter/i);
+  });
+
+  test('rejects invalid option values', () => {
+    expect(() =>
+      validateRelatedActionParameterPayloads(
+        [
+          {
+            ...relatedAction,
+            actionIdsToMrtApiParamDecisionPayload: {
+              enqueue_human: { queue: 'not-an-option' },
+            },
+          },
+        ],
+        [parameterizedAction],
+      ),
+    ).toThrow(/not one of the allowed option values/i);
+  });
+
+  test('drops payloads for missing or non-custom actions', () => {
+    expect(
+      validateRelatedActionParameterPayloads(
+        [
+          {
+            ...relatedAction,
+            actionIds: ['missing_action'],
+            actionIdsToMrtApiParamDecisionPayload: {
+              missing_action: { queue: 'priority' },
+            },
+          },
+        ],
+        [parameterizedAction],
+      ),
+    ).toEqual([
+      {
+        actionIds: ['missing_action'],
+        itemIds: ['post_2'],
+        itemTypeId: 'content',
+        policyIds: ['policy_abuse'],
+      },
+    ]);
+  });
+
+  test('drops empty payloads when the action has no parameters', () => {
+    expect(
+      validateRelatedActionParameterPayloads(
+        [
+          {
+            actionIds: ['hide_content'],
+            itemIds: ['post_1'],
+            itemTypeId: 'content',
+            policyIds: ['policy_spam'],
+            actionIdsToMrtApiParamDecisionPayload: {
+              hide_content: {},
+            },
+          },
+        ],
+        [
+          {
+            id: 'hide_content',
+            actionType: 'CUSTOM_ACTION',
+            customMrtApiParams: null,
+          },
+        ],
+      ),
+    ).toEqual([
+      {
+        actionIds: ['hide_content'],
+        itemIds: ['post_1'],
+        itemTypeId: 'content',
+        policyIds: ['policy_spam'],
+      },
+    ]);
+  });
 });

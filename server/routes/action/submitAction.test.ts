@@ -1,4 +1,5 @@
 import { type Request, type Response } from 'express';
+import { vi } from 'vitest';
 
 import submitAction from './submitAction.js';
 
@@ -27,15 +28,15 @@ function makeDeps(
     ],
   };
 
-  const publishActions = jest.fn().mockResolvedValue([]);
-  const getActions = jest.fn().mockResolvedValue([action]);
-  const getPolicies = jest.fn().mockResolvedValue([]);
-  const getItemTypeEventuallyConsistent = jest.fn().mockResolvedValue({
+  const publishActions = vi.fn().mockResolvedValue([]);
+  const getActions = vi.fn().mockResolvedValue([action]);
+  const getPolicies = vi.fn().mockResolvedValue([]);
+  const getItemTypeEventuallyConsistent = vi.fn().mockResolvedValue({
     id: 'type-1',
     kind: 'CONTENT',
     name: 'Social Post',
   });
-  const getGraphQLUserFromId = jest
+  const getGraphQLUserFromId = vi
     .fn()
     .mockResolvedValue(
       overrides?.user ?? { id: 'user-1', email: 'mod@example.com' },
@@ -60,8 +61,8 @@ function makeReq(body: Record<string, unknown>): Request {
 
 function makeRes(): Response {
   const res = {
-    status: jest.fn().mockReturnThis(),
-    end: jest.fn(),
+    status: vi.fn().mockReturnThis(),
+    end: vi.fn(),
   };
   return res as unknown as Response;
 }
@@ -78,7 +79,7 @@ describe('submitAction (REST handler)', () => {
   it('forwards validated parameters and the moderator note to the publisher and 202s', async () => {
     const { handler, publishActions } = makeDeps();
     const res = makeRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await handler(makeReq(validBody), res, next);
 
@@ -96,7 +97,7 @@ describe('submitAction (REST handler)', () => {
   it('rejects (next() with a 400) when a required parameter is missing, and never publishes', async () => {
     const { handler, publishActions } = makeDeps();
     const res = makeRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await handler(makeReq({ ...validBody, parameters: {} }), res, next);
 
@@ -109,7 +110,7 @@ describe('submitAction (REST handler)', () => {
   it('rejects unknown parameter keys with a 400', async () => {
     const { handler, publishActions } = makeDeps();
     const res = makeRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await handler(
       makeReq({
@@ -128,7 +129,7 @@ describe('submitAction (REST handler)', () => {
   it('rejects type-mismatched parameter values with a 400', async () => {
     const { handler, publishActions } = makeDeps();
     const res = makeRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await handler(
       makeReq({
@@ -159,7 +160,7 @@ describe('submitAction (REST handler)', () => {
       },
     });
     const res = makeRes();
-    const next = jest.fn();
+    const next = vi.fn();
 
     await handler(
       makeReq({

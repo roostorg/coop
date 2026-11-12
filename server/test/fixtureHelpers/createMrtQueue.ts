@@ -5,13 +5,15 @@ export default async function (opts: {
   orgId: string;
   mrtService: Dependencies['ManualReviewToolService'];
   userId: string;
+  name?: string;
 }) {
-  const { orgId, mrtService, userId } = opts;
+  const { orgId, mrtService, userId, name = 'test-queue' } = opts;
 
   const queue = await mrtService.createManualReviewQueue({
-    name: 'test-queue',
+    name,
     description: null,
     userIds: [userId],
+    roleIds: [],
     hiddenActionIds: [],
     isAppealsQueue: false,
     invokedBy: {

@@ -20,6 +20,8 @@ export function logErrorJson(m: { error: unknown; message?: string }) {
   console.error(jsonStringify(serialized));
 }
 
-export function logJson(message: string) {
-  console.log(jsonStringify({ message }));
+export function logJson(message: string | Record<string, unknown>) {
+  console.log(
+    jsonStringify(typeof message === 'string' ? { message } : message),
+  );
 }

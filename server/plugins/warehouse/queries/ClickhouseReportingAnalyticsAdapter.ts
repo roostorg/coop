@@ -190,6 +190,46 @@ export class ClickhouseReportingAnalyticsAdapter implements IReportingAnalyticsA
     return typeof value === 'number' ? value : Number(value);
   }
 
+  async getNumTimesReportedForItems(
+    orgId: string,
+    itemIds: readonly string[],
+  ): Promise<ReadonlyMap<string, number>> {
+    const counts = new Map<string, number>();
+    if (itemIds.length === 0) {
+      return counts;
+    }
+
+    // Chunked so a queue with tens of thousands of pending jobs doesn't build
+    // a single query with that many bound parameters.
+    const chunkSize = 1_000;
+    const uniqueItemIds = [...new Set(itemIds)];
+
+    for (let i = 0; i < uniqueItemIds.length; i += chunkSize) {
+      const chunk = uniqueItemIds.slice(i, i + chunkSize);
+      const rows = await this.query<{
+        reported_item_id: string;
+        count: number;
+      }>(
+        `
+        SELECT
+          reported_item_id,
+          count() AS count
+        FROM REPORTING_SERVICE.REPORTS
+        WHERE org_id = ?
+          AND reported_item_id IN (${chunk.map(() => '?').join(', ')})
+        GROUP BY reported_item_id
+      `,
+        [orgId, ...chunk],
+      );
+
+      for (const row of rows) {
+        counts.set(row.reported_item_id, Number(row.count));
+      }
+    }
+
+    return counts;
+  }
+
   private async query<T extends Record<string, unknown>>(
     sql: string,
     params: readonly unknown[] = [],

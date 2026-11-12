@@ -3,7 +3,10 @@ import {
   type NormalizedItemData,
   type SubmissionId,
 } from '../services/itemProcessingService/index.js';
+import { type ManualReviewJobOrAppeal } from '../services/manualReviewToolService/index.js';
 import { type ItemType } from '../services/moderationConfigService/index.js';
+
+export type ManualReviewJobPayloadForGQL = ManualReviewJobOrAppeal['payload'];
 
 export { type ItemIdentifier } from '@roostorg/coop-types';
 

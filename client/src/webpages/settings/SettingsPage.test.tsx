@@ -1,19 +1,4 @@
 import { TooltipProvider } from '@/coop-ui/Tooltip';
-import { MockedProvider, MockedResponse } from '@apollo/client/testing';
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { HelmetProvider } from 'react-helmet-async';
-import { MemoryRouter, useLocation, useNavigationType } from 'react-router-dom';
-import { vi } from 'vitest';
-
-import '@testing-library/jest-dom/extend-expect';
-
 import {
   GQLDeploymentSettingsDocument,
   GQLOrgDefaultSafetySettingsDocument,
@@ -28,6 +13,18 @@ import {
   GQLUpdateRequiresPolicyForDecisionsDocument,
   GQLUpdateSsoCredentialsDocument,
 } from '@/graphql/generated';
+import { MockedProvider, MockedResponse } from '@apollo/client/testing';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { HelmetProvider } from 'react-helmet-async';
+import { MemoryRouter, useLocation, useNavigationType } from 'react-router';
+import { vi } from 'vitest';
 
 import SettingsPage from './SettingsPage';
 
@@ -102,6 +99,7 @@ const deploymentSettingsMock: MockedResponse = {
         userStrikeTTL: 90,
         partialItemsEndpoint: null,
         partialItemsRequestHeaders: null,
+        jobPriorityWeights: [],
       },
       appealSettings: {
         appealsCallbackUrl: null,
@@ -512,11 +510,31 @@ describe('SettingsPage', () => {
       await waitFor(() => {
         expect(screen.getByText('Moderator Requirements')).toBeInTheDocument();
         expect(screen.getByText('Queue Management')).toBeInTheDocument();
+        expect(screen.getByText('Job Priority Weights')).toBeInTheDocument();
         expect(screen.getByText('Webhooks')).toBeInTheDocument();
         expect(
           screen.getByText('Multiple Policies Per Action'),
         ).toBeInTheDocument();
       });
+    });
+
+    it('reflects initial job priority weights from server data', async () => {
+      const mock = makeDeploymentMock({
+        jobPriorityWeights: [
+          { property: 'numReports', weight: 7 },
+          { property: 'userScore', weight: 3 },
+        ],
+      });
+      renderWithProviders([mock], 'review-console');
+      await waitFor(() => {
+        expect(screen.getByText('Job Priority Weights')).toBeInTheDocument();
+      });
+      expect(screen.getByText('# of User Reports')).toBeInTheDocument();
+      expect(screen.getByText('User Score')).toBeInTheDocument();
+      // Each slider's value reflects the persisted weight for its property.
+      const sliders = screen.getAllByRole('slider');
+      expect(sliders[0]).toHaveAttribute('aria-valuenow', '7');
+      expect(sliders[1]).toHaveAttribute('aria-valuenow', '3');
     });
 
     it('reflects initial toggle states from server data', async () => {

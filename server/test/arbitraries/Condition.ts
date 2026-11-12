@@ -12,8 +12,8 @@ import {
 } from '../../services/moderationConfigService/index.js';
 import { ExternalSignalIdArbitrary } from '../../services/signalsService/index.js';
 import { jsonStringify } from '../../utils/encoding.js';
+import { enumToArbitrary } from '../../utils/enum.js';
 import { type NonEmptyArray } from '../../utils/typescript-types.js';
-import { enumToArbitrary } from '../propertyTestingHelpers.js';
 import { LocationAreaArbitrary } from './ContentType.js';
 import { CoopInputArbitrary } from './Shared.js';
 

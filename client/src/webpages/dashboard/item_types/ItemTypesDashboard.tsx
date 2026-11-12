@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { MouseEvent, useEffect, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router';
 
 import CopyTextComponent from '../../../components/common/CopyTextComponent';
 import FullScreenLoading from '../../../components/common/FullScreenLoading';

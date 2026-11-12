@@ -1,7 +1,5 @@
 import { type Generated, type GeneratedAlways } from 'kysely';
 
-import { type UserRole } from './userManagementService/index.js';
-
 /** Postgres enum for backtests.status (generated column — read-only in app). */
 export type BacktestStatusDb = 'RUNNING' | 'COMPLETE' | 'CANCELED';
 
@@ -30,8 +28,7 @@ export type CoreAppTablesPg = {
     password: string | null;
     first_name: string;
     last_name: string;
-    role: UserRole;
-    role_id: string | null;
+    role_id: string;
     approved_by_admin: boolean;
     rejected_by_admin: boolean;
     created_at: Date;

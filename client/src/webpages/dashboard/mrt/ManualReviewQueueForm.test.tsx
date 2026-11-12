@@ -2,13 +2,12 @@ import { TooltipProvider } from '@/coop-ui/Tooltip';
 import { MockedProvider, type MockedResponse } from '@apollo/client/testing';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { HelmetProvider } from 'react-helmet-async';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
-
-import '@testing-library/jest-dom/extend-expect';
+import { MemoryRouter, Route, Routes } from 'react-router';
 
 import {
   GQLManualReviewQueueDocument,
   GQLQueueFormDataDocument,
+  GQLUserPermission,
   GQLUpdateManualReviewQueueDocument,
   type GQLUpdateManualReviewQueueMutationVariables,
 } from '@/graphql/generated';
@@ -189,4 +188,56 @@ describe('ManualReviewQueueForm (edit)', () => {
 
     expect(await screen.findByText(title)).toBeInTheDocument();
   });
+});
+
+it('prevents assigning roles with automatic queue access without disabling other roles', async () => {
+  render(
+    <HelmetProvider>
+      <TooltipProvider>
+        <MockedProvider
+          mocks={[
+            {
+              request: { query: GQLQueueFormDataDocument },
+              result: {
+                data: {
+                  rolesForOrg: [
+                    {
+                      id: 'manager-role',
+                      displayName: 'Renamed queue manager',
+                      permissions: [GQLUserPermission.EditMrtQueues],
+                    },
+                    {
+                      id: 'reviewer-role',
+                      displayName: 'Admin',
+                      permissions: [GQLUserPermission.ViewMrt],
+                    },
+                  ],
+                  myOrg: {
+                    hasAppealsEnabled: false,
+                    hasPartialItemsEndpoint: false,
+                    users: [],
+                    actions: [],
+                    usersWhoCanReviewEveryQueue: [],
+                  },
+                },
+              },
+            },
+          ]}
+        >
+          <MemoryRouter>
+            <ManualReviewQueueForm />
+          </MemoryRouter>
+        </MockedProvider>
+      </TooltipProvider>
+    </HelmetProvider>,
+  );
+
+  await screen.findByText('Manage Access');
+  fireEvent.mouseDown(screen.getAllByRole('combobox')[0]);
+
+  fireEvent.click(await screen.findByText('Renamed queue manager'));
+  expect(screen.getAllByText('Renamed queue manager')).toHaveLength(1);
+
+  fireEvent.click(screen.getByText('Admin'));
+  expect(screen.getAllByText('Admin')).toHaveLength(2);
 });

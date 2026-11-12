@@ -1,6 +1,10 @@
 import { makeEnumLike } from '@roostorg/coop-types';
 
+import { type Invoker } from '../../userManagementService/index.js';
 import { type UserPenaltySeverity } from './shared.js';
+
+export type PolicyMutationInvoker =
+  Invoker | { type: 'organizationApiKey'; orgId: string };
 
 export const PolicyType = makeEnumLike([
   'HATE',
@@ -28,6 +32,7 @@ export type Policy = {
   createdAt: Date;
   updatedAt: Date;
   policyText: string | null;
+  enforcementGuidelines: string | null;
   policyType: PolicyType | null;
   semanticVersion: number;
   userStrikeCount: number;

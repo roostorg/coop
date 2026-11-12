@@ -6,8 +6,8 @@
  *
  * Asserts that all types of media are correctly submitted to Cybertips.
  *
- * Run with: npm run test:integration
- * Requires: `npm run up && npm run db:update`
+ * Run with: pnpm run test:integ
+ * Requires: `pnpm run up && pnpm run db:update`
  */
 import { ScalarTypes } from '@roostorg/coop-types';
 import { uid } from 'uid';

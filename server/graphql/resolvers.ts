@@ -1,7 +1,6 @@
 import { mergeResolvers } from '@graphql-tools/merge';
 import { type GraphQLFieldResolver } from 'graphql';
 
-import { type GQLServices } from '../api.js';
 import { type DataSources } from '../iocContainer/index.js';
 import {
   MIN_PASSWORD_LENGTH,
@@ -28,6 +27,7 @@ import { resolvers as investigationResolvers } from './modules/investigation.js'
 import { resolvers as itemTypeResolvers } from './modules/itemType.js';
 import { resolvers as locationBankResolvers } from './modules/locationBank.js';
 import { resolvers as manualReviewToolResolvers } from './modules/manualReviewTool.js';
+import { resolvers as moderationActivityResolvers } from './modules/moderationActivity.js';
 import { resolvers as ncmecResolvers } from './modules/ncmec.js';
 import { resolvers as orgResolvers } from './modules/org.js';
 import { resolvers as policyResolvers } from './modules/policy.js';
@@ -41,6 +41,7 @@ import { resolvers as signalResolvers } from './modules/signal.js';
 import { resolvers as spotTestResolvers } from './modules/spotTest.js';
 import { resolvers as textBankResolvers } from './modules/textBank.js';
 import { resolvers as userResolvers } from './modules/user.js';
+import { type GQLServices } from './services.js';
 import { forbiddenError, unauthenticatedError } from './utils/errors.js';
 import { gqlErrorResult, gqlSuccessResult } from './utils/gqlResult.js';
 import { type PassportGqlContext } from './utils/passportContext.js';
@@ -285,6 +286,7 @@ export default mergeResolvers([
   locationBankResolvers,
   manualReviewToolResolvers,
   hashBankResolvers,
+  moderationActivityResolvers,
   ncmecResolvers,
   orgResolvers,
   policyResolvers,

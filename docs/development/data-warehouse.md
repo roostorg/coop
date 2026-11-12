@@ -321,7 +321,7 @@ export WAREHOUSE_ADAPTER=your-warehouse
 export YOUR_WAREHOUSE_HOST=localhost
 # ... other config vars
 
-npm start
+pnpm start
 ```
 
 ## How services consume analytics data

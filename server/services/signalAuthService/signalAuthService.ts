@@ -1,15 +1,15 @@
 import { type Kysely } from 'kysely';
+import { type ReadonlyDeep } from 'type-fest';
 
 import { inject } from '../../iocContainer/utils.js';
-import { type Cached } from '../../utils/caching.js';
 import { jsonParse, jsonStringify, type JsonOf } from '../../utils/encoding.js';
 import { type NonEmptyString } from '../../utils/typescript-types.js';
 import { Integration } from '../signalsService/index.js';
 import { type SignalAuthServicePg } from './dbTypes.js';
 
-export type CachedGetCredentials<T extends ConfigurableIntegration> = Cached<
-  Credentials<T>['get']
->;
+export type GetCredentials<T extends ConfigurableIntegration> = (
+  orgId: string,
+) => Promise<ReadonlyDeep<CredentialTypes[T]> | undefined>;
 
 // Shared “interface” allowing CRUD functionality for 3rd party API credentials.
 // For now, these CRUD operations accept orgId as an argument, rather than the
@@ -24,7 +24,16 @@ export type Credentials<T extends ConfigurableIntegration> = {
 
 export type GoogleContentSafetyCredential = { apiKey: string };
 export type OpenAICredential = { apiKey: string };
-export type ZentropiLabelerVersion = { id: string; label: string };
+export type ZentropiModel = 'COPE_LATEST' | 'COPE_B_A4B' | 'COPE_B_S1';
+// `id` is the Zentropi labeler version ID. Its parent `labelerId` is optional;
+// GraphQL clients can explicitly clear it with null. Without a `model`,
+// Zentropi uses its default model.
+export type ZentropiLabelerVersion = {
+  id: string;
+  label: string;
+  labelerId?: string | null;
+  model?: ZentropiModel | null;
+};
 export type ZentropiCredential = {
   apiKey: string;
   labelerVersions?: ZentropiLabelerVersion[];

@@ -45,7 +45,7 @@ jobs:
     steps:
       # inputs.ref is only set for manual backfills; push-to-main and tag-push events
       # default to the triggering ref automatically
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.ref }}
           persist-credentials: false
@@ -111,7 +111,11 @@ jobs:
 
           # Deploy the versioned docs
           rm -rf "_gh-pages/${DEPLOY_PATH}"
-          cp -r docs/book "_gh-pages/${DEPLOY_PATH}"
+          # Fail loudly instead of silently deploying a markdown-only site
+          test -d docs/book/html || { echo "HTML output missing: docs/book/html" >&2; exit 1; }
+          test -d docs/book/markdown || { echo "Markdown output missing: docs/book/markdown" >&2; exit 1; }
+          cp -r docs/book/markdown/. docs/book/html/
+          cp -r docs/book/html "_gh-pages/${DEPLOY_PATH}"
 
           # Regenerate the root version index
           (cd _gh-pages && tree -d -L 1 -H . -T "Coop Documentation" -o index.html --noreport)

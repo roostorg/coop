@@ -1,6 +1,6 @@
 import { RouteHandle } from '@/webpages/dashboard/Dashboard';
 import React from 'react';
-import { Outlet, useLocation, useMatches } from 'react-router-dom';
+import { Outlet, useLocation, useMatches } from 'react-router';
 
 import ErrorBoundary from '@/components/ErrorBoundary';
 

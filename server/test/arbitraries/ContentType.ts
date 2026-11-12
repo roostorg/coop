@@ -12,8 +12,8 @@ import _ from 'lodash';
 
 import { derivedFieldTypes } from '../../services/derivedFieldsService/index.js';
 import { type NormalizedItemData } from '../../services/itemProcessingService/index.js';
+import { enumToArbitrary } from '../../utils/enum.js';
 import { instantiateOpaqueType } from '../../utils/typescript-types.js';
-import { enumToArbitrary } from '../propertyTestingHelpers.js';
 import { CoopInputArbitrary } from './Shared.js';
 
 export const ScalarTypeArbitrary = enumToArbitrary(ScalarTypes);

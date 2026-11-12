@@ -6,7 +6,8 @@ import { type ItemIdentifier } from '@roostorg/coop-types';
 import { sql, type Kysely } from 'kysely';
 import { type ReadonlyDeep } from 'type-fest';
 
-import { inject, type Dependencies } from '../../iocContainer/index.js';
+import { type Dependencies } from '../../iocContainer/index.js';
+import { inject } from '../../iocContainer/utils.js';
 import { type PolicyActionPenalties } from '../policyActionPenalties.js';
 import { initialUserScore, type UserScore } from './computeUserScore.js';
 import {
@@ -76,6 +77,42 @@ export function internalMakeUserStatisticsService(
         .executeTakeFirst()) ?? { score: initialUserScore };
 
       return score as UserScore;
+    },
+
+    /**
+     * Scores for many users in one query, keyed by `"${typeId}\x00${id}"`.
+     * Users with no cached score are absent from the map (callers treat them
+     * as `initialUserScore`).
+     */
+    async getUserScoresForUsers(opts: {
+      orgId: string;
+      users: readonly ItemIdentifier[];
+    }): Promise<ReadonlyMap<string, UserScore>> {
+      const result = new Map<string, UserScore>();
+      const CHUNK = 500;
+      for (let i = 0; i < opts.users.length; i += CHUNK) {
+        const chunk = opts.users.slice(i, i + CHUNK);
+        if (chunk.length === 0) continue;
+        const rows = await pgQueryReplica
+          .selectFrom('user_statistics_service.user_scores')
+          .select(['user_type_id', 'user_id', 'score'])
+          .where('org_id', '=', opts.orgId)
+          .where((eb) =>
+            eb(
+              eb.refTuple('user_type_id', 'user_id'),
+              'in',
+              chunk.map((user) => eb.tuple(user.typeId, user.id)),
+            ),
+          )
+          .execute();
+        for (const row of rows) {
+          result.set(
+            `${row.user_type_id}\x00${row.user_id}`,
+            row.score as UserScore,
+          );
+        }
+      }
+      return result;
     },
 
     async handleUsersWithChangedScores(
