@@ -179,7 +179,7 @@ jobs:
           sbom: true
           provenance: mode=max
 
-      - uses: ./.github/actions/scan-image
+      - uses: $/.github/actions/scan-image
         with:
           image: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}@${{ steps.build.outputs.digest }}
           category: trivy-${{ matrix.image }}-${{ needs.changes.outputs.scan-channel }}
@@ -252,7 +252,7 @@ jobs:
           sbom: true
           provenance: mode=max
 
-      - uses: ./.github/actions/scan-image
+      - uses: $/.github/actions/scan-image
         with:
           image: ${{ env.REGISTRY }}/${{ github.repository_owner }}/coop-client@${{ steps.build.outputs.digest }}
           category: trivy-coop-client-${{ needs.changes.outputs.scan-channel }}
@@ -320,7 +320,7 @@ jobs:
           sbom: true
           provenance: mode=max
 
-      - uses: ./.github/actions/scan-image
+      - uses: $/.github/actions/scan-image
         with:
           image: ${{ env.REGISTRY }}/${{ github.repository_owner }}/coop-migrations@${{ steps.build.outputs.digest }}
           category: trivy-coop-migrations-${{ needs.changes.outputs.scan-channel }}
