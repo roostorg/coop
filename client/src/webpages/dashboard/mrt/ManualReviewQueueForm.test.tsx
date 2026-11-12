@@ -1,16 +1,15 @@
 import { TooltipProvider } from '@/coop-ui/Tooltip';
+import {
+  GQLManualReviewQueueDocument,
+  GQLQueueFormDataDocument,
+  GQLUpdateManualReviewQueueDocument,
+  GQLUserPermission,
+  type GQLUpdateManualReviewQueueMutationVariables,
+} from '@/graphql/generated';
 import { MockedProvider, type MockedResponse } from '@apollo/client/testing';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { HelmetProvider } from 'react-helmet-async';
 import { MemoryRouter, Route, Routes } from 'react-router';
-
-import {
-  GQLManualReviewQueueDocument,
-  GQLQueueFormDataDocument,
-  GQLUserPermission,
-  GQLUpdateManualReviewQueueDocument,
-  type GQLUpdateManualReviewQueueMutationVariables,
-} from '@/graphql/generated';
 
 import ManualReviewQueueForm from './ManualReviewQueueForm';
 
@@ -22,6 +21,7 @@ function queueFormDataMock(hasAppealsEnabled: boolean): MockedResponse {
     maxUsageCount: Infinity,
     result: {
       data: {
+        rolesForOrg: [],
         myOrg: {
           __typename: 'Org',
           hasAppealsEnabled,
@@ -50,9 +50,11 @@ function manualReviewQueueMock(isAppealsQueue: boolean): MockedResponse {
           name: 'Existing Queue',
           description: null,
           explicitlyAssignedReviewers: [],
+          assignedRoleIds: [],
           hiddenActionIds: [],
           isAppealsQueue,
           autoCloseJobs: false,
+          jobSortType: 'FIFO',
           clearReportsDisposition: null,
           clearReportsScope: 'CURRENT_QUEUE',
           clearReportsTriggerActionIds: [],

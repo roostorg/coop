@@ -1085,7 +1085,6 @@ describe('QueueOperations', () => {
     },
   );
 
-  // Regression: RESTRICT FK must block queue deletion when routing rules reference it.
   type QueueFixture = Parameters<
     Parameters<ReturnType<typeof testWithQueueAndActions>>[1]
   >[0];
@@ -1105,6 +1104,7 @@ describe('QueueOperations', () => {
         name: `convert-test-queue-${uid()}`,
         description: null,
         userIds: [user.id],
+        roleIds: [],
         hiddenActionIds: [],
         isAppealsQueue: opts.isAppealsQueue,
         invokedBy: {
@@ -1123,6 +1123,7 @@ describe('QueueOperations', () => {
         orgId: org.id,
         queueId,
         userIds: [user.id],
+        roleIds: [],
         actionIdsToHide: [],
         actionIdsToUnhide: [],
         // Always sent by the GraphQL resolver; without at least one column to
@@ -1167,6 +1168,58 @@ describe('QueueOperations', () => {
             fixture.org.id,
           ),
         ).resolves.toBe(queue.id);
+      },
+    );
+
+    testWithQueueAndActions()(
+      'a queue converted to an appeals queue is FIFO',
+      async (fixture) => {
+        const { org, user, mrtService } = fixture;
+        const queue = await mrtService.createManualReviewQueue({
+          name: `convert-test-queue-${uid()}`,
+          description: null,
+          userIds: [user.id],
+          roleIds: [],
+          hiddenActionIds: [],
+          isAppealsQueue: false,
+          jobSortType: 'NUM_REPORTS',
+          invokedBy: {
+            userId: user.id,
+            permissions: [UserPermission.EDIT_MRT_QUEUES],
+            orgId: org.id,
+          },
+        });
+
+        const converted = await mrtService.updateManualReviewQueue({
+          orgId: org.id,
+          queueId: queue.id,
+          userIds: [user.id],
+          roleIds: [],
+          actionIdsToHide: [],
+          actionIdsToUnhide: [],
+          isAppealsQueue: true,
+          jobSortType: 'WEIGHTED',
+        });
+        expect(converted.jobSortType).toBe('FIFO');
+      },
+    );
+
+    testWithQueueAndActions()(
+      'a queue converted from an appeals queue has a complete pending-job index',
+      async (fixture) => {
+        // The first appeals queue becomes the default, which can't convert.
+        await createNonDefaultQueue(fixture, { isAppealsQueue: true });
+        const queue = await createNonDefaultQueue(fixture, {
+          isAppealsQueue: true,
+        });
+        await convert(fixture, queue.id, false);
+
+        await expect(
+          fixture.mrtService['queueOps']['pendingJobIndex'].isBuilt({
+            orgId: fixture.org.id,
+            queueId: queue.id,
+          }),
+        ).resolves.toBe(true);
       },
     );
 
@@ -1258,6 +1311,7 @@ describe('QueueOperations', () => {
     );
   });
 
+  // Regression: RESTRICT FK must block queue deletion when routing rules reference it.
   const expectDeletionBlockedByRoutingRule = async (
     { org, user, mrtService, kyselyPg }: QueueFixture,
     table: RuleTable,

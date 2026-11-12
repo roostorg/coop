@@ -445,106 +445,122 @@ export default class QueueOperations {
     });
     await assertRolesInOrg(this.pgQuery, { orgId, roleIds });
 
-    const queueTypeChange =
-      isAppealsQueue === undefined
-        ? undefined
-        : await this.#assertQueueTypeCanChange({
-            orgId,
-            queueId,
-            isAppealsQueue,
-          });
+    let queueTypeChange: { isAppealsQueue: boolean } | undefined;
+    const updatedQueue = await this.transactionWithRetry(
+      async (transaction) => {
+        queueTypeChange =
+          isAppealsQueue === undefined
+            ? undefined
+            : await this.#assertQueueTypeCanChange(transaction, {
+                orgId,
+                queueId,
+                isAppealsQueue,
+              });
 
-    return this.transactionWithRetry(async (transaction) => {
-      // A converted queue becomes the default queue of its new type if the
-      // org has none yet, mirroring createManualReviewQueue. The partial
-      // unique index manual_review_queue_is_default guarantees at most one
-      // default per (org, type), so a concurrent conversion fails loudly
-      // rather than leaving two defaults.
-      const isDefaultQueue =
-        queueTypeChange === undefined
-          ? undefined
-          : !(await this.#orgHasQueuesOfType(transaction, {
-              orgId,
-              isAppealsQueue: queueTypeChange.isAppealsQueue,
-            }));
+        // A converted queue becomes the default queue of its new type if the
+        // org has none yet, mirroring createManualReviewQueue. The partial
+        // unique index manual_review_queue_is_default guarantees at most one
+        // default per (org, type), so a concurrent conversion fails loudly
+        // rather than leaving two defaults.
+        const isDefaultQueue =
+          queueTypeChange === undefined
+            ? undefined
+            : !(await this.#orgHasQueuesOfType(transaction, {
+                orgId,
+                isAppealsQueue: queueTypeChange.isAppealsQueue,
+              }));
 
-      const [updatedQueue, _, __] = await Promise.all([
-        transaction
-          .updateTable('manual_review_tool.manual_review_queues')
-          .set(
-            removeUndefinedKeys({
-              name,
-              description: replaceEmptyStringWithNull(description),
-              auto_close_jobs: autoCloseJobs,
-              is_appeals_queue: queueTypeChange?.isAppealsQueue,
-              is_default_queue: isDefaultQueue,
-              job_sort_type: jobSortType,
-              // null disables the feature and must survive removeUndefinedKeys.
-              clear_reports_disposition: clearReportsDisposition,
-              clear_reports_scope: clearReportsScope,
-            }),
-          )
-          .where('id', '=', queueId)
-          .where('org_id', '=', orgId)
-          .returning(PgQueueSelection)
-          .executeTakeFirstOrThrow(),
-        transaction
-          .insertInto('manual_review_tool.users_and_accessible_queues')
-          .values(
-            userIds.map((userId) => ({
-              queue_id: queueId,
-              user_id: userId,
-            })),
-          )
-          .onConflict((oc) => oc.doNothing())
-          .executeTakeFirstOrThrow(),
-        transaction
-          .deleteFrom('manual_review_tool.users_and_accessible_queues')
-          .where('queue_id', '=', queueId)
-          .where('user_id', 'not in', userIds)
-          .executeTakeFirstOrThrow(),
-      ]);
+        const [updatedQueue, _, __] = await Promise.all([
+          transaction
+            .updateTable('manual_review_tool.manual_review_queues')
+            .set(
+              removeUndefinedKeys({
+                name,
+                description: replaceEmptyStringWithNull(description),
+                auto_close_jobs: autoCloseJobs,
+                is_appeals_queue: queueTypeChange?.isAppealsQueue,
+                is_default_queue: isDefaultQueue,
+                // Appeals queues are always FIFO; see createManualReviewQueue.
+                job_sort_type: queueTypeChange?.isAppealsQueue
+                  ? 'FIFO'
+                  : jobSortType,
+                // null disables the feature and must survive removeUndefinedKeys.
+                clear_reports_disposition: clearReportsDisposition,
+                clear_reports_scope: clearReportsScope,
+              }),
+            )
+            .where('id', '=', queueId)
+            .where('org_id', '=', orgId)
+            .returning(PgQueueSelection)
+            .executeTakeFirstOrThrow(),
+          transaction
+            .insertInto('manual_review_tool.users_and_accessible_queues')
+            .values(
+              userIds.map((userId) => ({
+                queue_id: queueId,
+                user_id: userId,
+              })),
+            )
+            .onConflict((oc) => oc.doNothing())
+            .executeTakeFirstOrThrow(),
+          transaction
+            .deleteFrom('manual_review_tool.users_and_accessible_queues')
+            .where('queue_id', '=', queueId)
+            .where('user_id', 'not in', userIds)
+            .executeTakeFirstOrThrow(),
+        ]);
 
-      if (roleIds.length > 0) {
-        await transaction
-          .insertInto('manual_review_tool.roles_and_accessible_queues')
-          .values(
-            roleIds.map((roleId) => ({
-              queue_id: queueId,
-              role_id: roleId,
-            })),
-          )
-          .onConflict((oc) => oc.doNothing())
-          .execute();
-        await transaction
-          .deleteFrom('manual_review_tool.roles_and_accessible_queues')
-          .where('queue_id', '=', queueId)
-          .where('role_id', 'not in', roleIds)
-          .execute();
-      } else {
-        await transaction
-          .deleteFrom('manual_review_tool.roles_and_accessible_queues')
-          .where('queue_id', '=', queueId)
-          .execute();
-      }
+        if (roleIds.length > 0) {
+          await transaction
+            .insertInto('manual_review_tool.roles_and_accessible_queues')
+            .values(
+              roleIds.map((roleId) => ({
+                queue_id: queueId,
+                role_id: roleId,
+              })),
+            )
+            .onConflict((oc) => oc.doNothing())
+            .execute();
+          await transaction
+            .deleteFrom('manual_review_tool.roles_and_accessible_queues')
+            .where('queue_id', '=', queueId)
+            .where('role_id', 'not in', roleIds)
+            .execute();
+        } else {
+          await transaction
+            .deleteFrom('manual_review_tool.roles_and_accessible_queues')
+            .where('queue_id', '=', queueId)
+            .execute();
+        }
 
-      await this.updateHiddenActionsForQueue({
-        transaction,
-        queueId,
-        orgId,
-        actionIdsToHide,
-        actionIdsToUnhide,
-      });
-      if (clearReportsTriggerActionIds !== undefined) {
-        await this.setClearReportsTriggerActionsForQueue({
+        await this.updateHiddenActionsForQueue({
           transaction,
           queueId,
           orgId,
-          actionIds: clearReportsTriggerActionIds,
+          actionIdsToHide,
+          actionIdsToUnhide,
         });
-      }
-      return updatedQueue;
-    });
+        if (clearReportsTriggerActionIds !== undefined) {
+          await this.setClearReportsTriggerActionsForQueue({
+            transaction,
+            queueId,
+            orgId,
+            actionIds: clearReportsTriggerActionIds,
+          });
+        }
+        return updatedQueue;
+      },
+    );
+
+    // The conversion required an empty queue, so, as for a new queue, the
+    // pending-job index of a queue that is now regular is complete, and an
+    // appeals queue has none.
+    if (queueTypeChange?.isAppealsQueue === false) {
+      await this.pendingJobIndex.markBuilt({ orgId, queueId });
+    } else if (queueTypeChange?.isAppealsQueue === true) {
+      await this.pendingJobIndex.clear({ orgId, queueId });
+    }
+    return updatedQueue;
   }
 
   async #orgHasQueuesOfType(
@@ -576,20 +592,26 @@ export default class QueueOperations {
    * we refuse the change until the operator has emptied the queue and
    * repointed the rules.
    *
+   * Must run inside the transaction that performs the conversion. It locks
+   * the queue row, which also blocks concurrent routing-rule inserts (their
+   * foreign-key check takes a KEY SHARE lock on it) until the conversion
+   * commits, and makes concurrent conversions of the same queue run one at
+   * a time.
+   *
    * @returns undefined when no change is needed (the queue is already of the
    * requested type), otherwise the type to convert to.
    */
-  async #assertQueueTypeCanChange(opts: {
-    orgId: string;
-    queueId: string;
-    isAppealsQueue: boolean;
-  }): Promise<{ isAppealsQueue: boolean } | undefined> {
+  async #assertQueueTypeCanChange(
+    transaction: Transaction<ManualReviewToolServicePg>,
+    opts: { orgId: string; queueId: string; isAppealsQueue: boolean },
+  ): Promise<{ isAppealsQueue: boolean } | undefined> {
     const { orgId, queueId, isAppealsQueue } = opts;
-    const queue = await this.pgQuery
+    const queue = await transaction
       .selectFrom('manual_review_tool.manual_review_queues')
       .select(['is_appeals_queue', 'is_default_queue'])
       .where('id', '=', queueId)
       .where('org_id', '=', orgId)
+      .forUpdate()
       .executeTakeFirst();
     if (queue === undefined) {
       throw makeQueueDoesNotExistError({ shouldErrorSpan: true });
@@ -610,13 +632,13 @@ export default class QueueOperations {
     }
 
     const [routingRules, appealsRoutingRules] = await Promise.all([
-      this.pgQuery
+      transaction
         .selectFrom('manual_review_tool.routing_rules')
         .select(['name'])
         .where('destination_queue_id', '=', queueId)
         .where('org_id', '=', orgId)
         .execute(),
-      this.pgQuery
+      transaction
         .selectFrom('manual_review_tool.appeals_routing_rules')
         .select(['name'])
         .where('destination_queue_id', '=', queueId)
