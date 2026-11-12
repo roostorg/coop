@@ -177,7 +177,7 @@ jobs:
           cache-to: type=gha,scope=${{ matrix.image }},mode=max
           platforms: linux/amd64,linux/arm64
 
-      - uses: ./.github/actions/scan-image
+      - uses: $/.github/actions/scan-image
         with:
           image: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}@${{ steps.build.outputs.digest }}
           category: trivy-${{ matrix.image }}-${{ needs.changes.outputs.scan-channel }}
@@ -228,7 +228,7 @@ jobs:
           cache-to: type=gha,scope=coop-client,mode=max
           platforms: linux/amd64,linux/arm64
 
-      - uses: ./.github/actions/scan-image
+      - uses: $/.github/actions/scan-image
         with:
           image: ${{ env.REGISTRY }}/${{ github.repository_owner }}/coop-client@${{ steps.build.outputs.digest }}
           category: trivy-coop-client-${{ needs.changes.outputs.scan-channel }}
@@ -280,7 +280,7 @@ jobs:
           cache-to: type=gha,scope=coop-migrations,mode=max
           platforms: linux/amd64,linux/arm64
 
-      - uses: ./.github/actions/scan-image
+      - uses: $/.github/actions/scan-image
         with:
           image: ${{ env.REGISTRY }}/${{ github.repository_owner }}/coop-migrations@${{ steps.build.outputs.digest }}
           category: trivy-coop-migrations-${{ needs.changes.outputs.scan-channel }}
