@@ -1158,8 +1158,8 @@ describe('QueueOperations', () => {
       ),
   );
 
-  // Issue #1113: deleting a queue used to obliterate its pending jobs
-  // without warning. It now moves them into the org's default queue first.
+  // Issue #1113: deleting a queue moves its pending jobs into the org's
+  // default queue rather than obliterating them.
   testWithQueueAndActions()(
     'deleteManualReviewQueue moves pending jobs into the default queue',
     async ({ org, user, queue, mrtService }) => {
@@ -1167,6 +1167,7 @@ describe('QueueOperations', () => {
         name: `delete-test-queue-${uid()}`,
         description: null,
         userIds: [user.id],
+        roleIds: [],
         hiddenActionIds: [],
         isAppealsQueue: false,
         invokedBy: {

@@ -678,7 +678,7 @@ export default class QueueOperations {
             queueId: destinationQueueId,
             reenqueuedFrom: { jobId: data.id },
             jobPayload: {
-              createdAt: data.createdAt,
+              createdAt: new Date(data.createdAt),
               policyIds: data.policyIds,
               payload: data.payload,
             },
@@ -694,7 +694,7 @@ export default class QueueOperations {
             queueId: destinationQueueId,
             reenqueuedFrom: { jobId: data.id },
             jobPayload: {
-              createdAt: data.createdAt,
+              createdAt: new Date(data.createdAt),
               policyIds: data.policyIds,
               payload: data.payload,
             },
