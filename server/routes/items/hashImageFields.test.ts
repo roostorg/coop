@@ -348,6 +348,14 @@ describe('addHashesToImageFields', () => {
       expect(data.cover).toMatchObject({ matchedBanks: ['Bank'] });
     });
 
+    it('keeps the matches the other lookups found when the CLIP lookup fails', async () => {
+      HMAHashBankService.findClosestClipMatch.mockRejectedValue(
+        new Error('HMA down'),
+      );
+      const data = await run({ cover: { url: 'https://x.test/c.png' } });
+      expect(data.cover).toMatchObject({ matchedBanks: ['Bank'] });
+    });
+
     it('looks nothing up for an org without banks, but still stores the embedding', async () => {
       HMAHashBankService.listBanks.mockResolvedValue([]);
       const data = await run({ cover: { url: 'https://x.test/c.png' } });

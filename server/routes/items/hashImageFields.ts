@@ -119,12 +119,13 @@ export async function addHashesToImageFields({
           );
           if (embeddings) {
             // Held to the same 0.10 cutoff as the CLIP signal, so matchedBanks
-            // never lists a bank that the signal scores 0.
+            // never lists a bank that the signal scores 0. Optional, so a
+            // failure here must not hide matches the other lookups found.
             lookups.push(
               HMAHashBankService.findClosestClipMatch(
                 allBankNames,
                 embeddings.clip_float,
-              ),
+              ).catch(() => ({ matchedBanks: [] })),
             );
           }
         }
