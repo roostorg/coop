@@ -1,16 +1,33 @@
 #!/usr/bin/env node
 import _ from 'lodash';
 
-import getBottle, { type Dependencies } from '../iocContainer/index.js';
+import getBottle from '../iocContainer/index.js';
+import {
+  isWorkerOrJobName,
+  WORKER_AND_JOB_NAMES,
+} from '../iocContainer/services/workersAndJobs.js';
 import { logErrorJson } from '../utils/logging.js';
-import { type WorkerOrJob } from '../workers_jobs/index.js';
+
+// Validate before building the container, so a mistyped name exits without
+// opening Postgres, Redis and Scylla connections just to reject the argument.
+const workerOrJobName = process.argv[2];
+if (!workerOrJobName) {
+  // eslint-disable-next-line no-console
+  console.error('Missing worker or job name argument.');
+  process.exit(1);
+}
+
+if (!isWorkerOrJobName(workerOrJobName)) {
+  // eslint-disable-next-line no-console
+  console.error(
+    `Invalid worker or job name argument, available options: ${WORKER_AND_JOB_NAMES.join(', ')}.`,
+  );
+  process.exit(1);
+}
 
 const { container } = await getBottle();
 
-const workerOrJobName = process.argv[2];
-const workerOrJob = container[
-  workerOrJobName as keyof Dependencies
-] as WorkerOrJob;
+const workerOrJob = container[workerOrJobName];
 const controller = new AbortController();
 
 // When the worker/job finishes naturally (which only applies to jobs, as

@@ -1,4 +1,4 @@
-import { type ItemIdentifier } from '@roostorg/types';
+import { type ItemIdentifier } from '@roostorg/coop-types';
 import { uid } from 'uid';
 import { v1 as uuidv1 } from 'uuid';
 
@@ -85,6 +85,7 @@ const testWithQueue = () =>
         orgId: org.id,
         queueId: opts.queueId ?? queue.id,
         userIds: [user.id],
+        roleIds: [],
         actionIdsToHide: [],
         actionIdsToUnhide: [],
         clearReportsDisposition: opts.disposition,

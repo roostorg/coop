@@ -8,7 +8,7 @@ import uniqBy from 'lodash/uniqBy';
 import uniqWith from 'lodash/uniqWith';
 import { Lightbulb } from 'lucide-react';
 import { useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 
 import CopyTextComponent from '../../../../../../components/common/CopyTextComponent';
 import CoopModal from '../../../../components/CoopModal';

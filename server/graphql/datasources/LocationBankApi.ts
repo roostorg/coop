@@ -3,7 +3,8 @@ import { type Kysely } from 'kysely';
 import { uid } from 'uid';
 import { v1 as uuidV1 } from 'uuid';
 
-import { inject, type Dependencies } from '../../iocContainer/index.js';
+import { type Dependencies } from '../../iocContainer/index.js';
+import { inject } from '../../iocContainer/utils.js';
 import { type CombinedPg } from '../../services/combinedDbTypes.js';
 import {
   makeLocationBankNameExistsError,

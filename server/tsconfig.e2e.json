@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "types": ["node", "vitest/globals", "express-session", "passport"]
+  },
+  "files": ["decs.d.ts", "globals.ts", "ts-reset.ts"],
+  "include": [
+    "test/fixtureHelpers/createOrg.ts",
+    "test/fixtureHelpers/createRule.ts",
+    "test/fixtureHelpers/createMrtQueue.ts"
+  ]
+}

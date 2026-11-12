@@ -41,7 +41,7 @@ export const INTEGRATION_CONFIGS: IntegrationConfig[] = [
     title: 'Zentropi',
     logo: ZentropiLogo,
     logoWithBackground: ZentropiLogo,
-    url: 'https://docs.zentropi.ai',
+    url: 'https://zentropi.ai/api',
     requiresInfo: true,
   },
 ];

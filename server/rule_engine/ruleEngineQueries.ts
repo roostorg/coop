@@ -9,7 +9,7 @@
  */
 import { sql, type Kysely } from 'kysely';
 
-import { inject } from '../iocContainer/index.js';
+import { inject } from '../iocContainer/utils.js';
 import { type CombinedPg } from '../services/combinedDbTypes.js';
 import { type LocationArea } from '../services/moderationConfigService/index.js';
 import { cached } from '../utils/caching.js';

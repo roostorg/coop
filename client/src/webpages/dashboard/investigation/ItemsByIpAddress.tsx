@@ -1,6 +1,6 @@
 import { gql } from '@apollo/client';
 import { Empty } from 'antd';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
 import ComponentLoading from '../../../components/common/ComponentLoading';
 import FormSectionHeader from '../components/FormSectionHeader';

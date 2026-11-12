@@ -11,6 +11,8 @@ import {
   assertModelCardHasRequiredSections,
   isCoopIntegrationPlugin,
   type CoopIntegrationsConfig,
+  type IntegrationConfigField,
+  type IntegrationConfigFieldOption,
 } from '@roostorg/coop-types';
 
 import type {
@@ -35,6 +37,138 @@ export type LoadPluginsResult = Readonly<{
 }>;
 
 const INTEGRATION_LOGOS_PATH_PREFIX = '/api/v1/integration-logos';
+
+const CONFIG_FIELD_KEY = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
+// `name` is metadata the client strips from saved config, and inherited
+// property names (e.g. `constructor`) read as set on an empty config object.
+const RESERVED_CONFIG_FIELD_KEYS = new Set([
+  'name',
+  ...Object.getOwnPropertyNames(Object.prototype),
+]);
+const CONFIG_FIELD_INPUT_TYPES = new Set([
+  'text',
+  'password',
+  'json',
+  'array',
+  'select',
+]);
+const MAX_CONFIG_FIELDS = 50;
+const MAX_SELECT_OPTIONS = 100;
+
+function validateSelectOptions(
+  value: unknown,
+):
+  | readonly [IntegrationConfigFieldOption, ...IntegrationConfigFieldOption[]]
+  | undefined {
+  if (
+    !Array.isArray(value) ||
+    value.length === 0 ||
+    value.length > MAX_SELECT_OPTIONS
+  ) {
+    return undefined;
+  }
+  const values = new Set<string>();
+  const options: IntegrationConfigFieldOption[] = [];
+  for (const raw of value) {
+    const { value: optionValue, label } = (raw ?? {}) as Record<
+      string,
+      unknown
+    >;
+    if (
+      typeof optionValue !== 'string' ||
+      optionValue.length === 0 ||
+      optionValue.length > 200 ||
+      values.has(optionValue) ||
+      typeof label !== 'string' ||
+      label.length === 0 ||
+      label.length > 200
+    ) {
+      return undefined;
+    }
+    values.add(optionValue);
+    options.push({ value: optionValue, label });
+  }
+  const first = options.at(0);
+  return first === undefined ? undefined : [first, ...options.slice(1)];
+}
+
+function isAvailableKey(key: unknown, seen: Set<string>): key is string {
+  return (
+    typeof key === 'string' &&
+    CONFIG_FIELD_KEY.test(key) &&
+    !RESERVED_CONFIG_FIELD_KEYS.has(key) &&
+    !seen.has(key)
+  );
+}
+
+function isOptionalText(
+  value: unknown,
+  maxLength: number,
+): value is string | undefined {
+  return (
+    value === undefined ||
+    (typeof value === 'string' && value.length <= maxLength)
+  );
+}
+
+/**
+ * Validates manifest.configurationFields so the Integrations UI can render a
+ * form from them. Throws (failing plugin load) on malformed fields.
+ */
+export function validateConfigurationFields(
+  integrationId: string,
+  value: unknown,
+): IntegrationConfigField[] {
+  if (value === undefined) return [];
+  if (!Array.isArray(value) || value.length > MAX_CONFIG_FIELDS) {
+    throw new Error(
+      `Integration "${integrationId}" configurationFields must be an array of at most ${MAX_CONFIG_FIELDS} fields.`,
+    );
+  }
+  const seen = new Set<string>();
+  // Array.from visits holes in sparse arrays, which .map() would skip.
+  return Array.from(value, (raw: unknown, index) => {
+    const field = (raw ?? {}) as Record<string, unknown>;
+    const { key, label, required, inputType, placeholder, description } = field;
+    const options =
+      inputType === 'select' ? validateSelectOptions(field.options) : undefined;
+    const valid =
+      isAvailableKey(key, seen) &&
+      typeof label === 'string' &&
+      label.length > 0 &&
+      label.length <= 200 &&
+      typeof required === 'boolean' &&
+      typeof inputType === 'string' &&
+      CONFIG_FIELD_INPUT_TYPES.has(inputType) &&
+      (inputType !== 'select' || options !== undefined) &&
+      isOptionalText(placeholder, 500) &&
+      isOptionalText(description, 2000);
+    if (!valid) {
+      throw new Error(
+        `Integration "${integrationId}" has an invalid configurationFields entry at index ${index}.`,
+      );
+    }
+    seen.add(key);
+    const base = {
+      key,
+      label,
+      required,
+      ...(placeholder !== undefined ? { placeholder } : {}),
+      ...(description !== undefined ? { description } : {}),
+    };
+    const result: IntegrationConfigField =
+      options !== undefined
+        ? { ...base, inputType: 'select', options }
+        : {
+            ...base,
+            inputType: inputType as Exclude<
+              IntegrationConfigField['inputType'],
+              'select'
+            >,
+          };
+    return result;
+  });
+}
 
 function findPackageRoot(startDir: string): string {
   let dir = path.resolve(startDir);
@@ -185,6 +319,10 @@ export function loadPlugins(
         .modelCardLearnMoreUrl,
       logoUrl,
       logoWithBackgroundUrl,
+      configurationFields: validateConfigurationFields(
+        id,
+        manifest.configurationFields,
+      ),
     };
     if ((serverEntry as { modelCard?: ModelCard }).modelCard == null) {
       throw new Error(

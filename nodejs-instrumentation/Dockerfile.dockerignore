@@ -1,0 +1,10 @@
+# The image builds from the repo root, so Docker reads this file instead of
+# the root .dockerignore. Only what the Dockerfile copies is sent.
+*
+
+!pnpm-lock.yaml
+!pnpm-workspace.yaml
+!package.json
+!nodejs-instrumentation/src/
+!nodejs-instrumentation/package.json
+!nodejs-instrumentation/tsconfig.json

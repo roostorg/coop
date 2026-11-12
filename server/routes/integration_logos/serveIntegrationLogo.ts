@@ -1,3 +1,5 @@
+import path from 'node:path';
+
 import { type Dependencies } from '../../iocContainer/index.js';
 import { getIntegrationRegistry } from '../../services/integrationRegistry/index.js';
 import { makeNotFoundError } from '../../utils/errors.js';
@@ -35,7 +37,10 @@ export default function serveIntegrationLogo(
     // so the SPA can load it via <img src> when deployed on a different origin
     // than the API.
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-    res.sendFile(filePath, (err?: Error) => {
+    // Sending relative to `root` limits send's dotfile check to the file name;
+    // otherwise pnpm's node_modules/.pnpm path is rejected as a dotfile.
+    const options = { root: path.dirname(filePath) };
+    res.sendFile(path.basename(filePath), options, (err?: Error) => {
       if (err && !res.headersSent) {
         next(err);
       }

@@ -11,12 +11,14 @@ Content-Type: application/json
 
 You can find or rotate your API key under **Settings** → **API Keys** in the Coop UI. For details on verifying the signatures Coop adds to outgoing webhook requests, see [API Keys & Authentication](../development/api-auth.md).
 
-| Endpoint                     | Description                                             |
-| :--------------------------- | :------------------------------------------------------ |
-| `POST /api/v1/items/async/`  | [Items](items.md): send content for rule evaluation     |
-| `POST /api/v1/report`        | [Report](report.md): submit a user report               |
-| `POST /api/v1/report/appeal` | [Appeal](appeal.md): submit a user appeal               |
-| `GET /api/v1/policies/`      | [Policies](policies.md): fetch your configured policies |
+| Endpoint                     | Description                                                                         |
+| :--------------------------- | :---------------------------------------------------------------------------------- |
+| `POST /api/v1/items/async/`  | [Items](items.md): send content for rule evaluation                                 |
+| `POST /api/v1/report`        | [Report](report.md): submit a user report                                           |
+| `POST /api/v1/report/appeal` | [Appeal](appeal.md): submit a user appeal                                           |
+| `GET /api/v1/policies/`      | [Policies](policies.md): fetch your configured policies                             |
+| `GET /api/v1/actions/`       | [Actions](actions.md#list-actions): fetch action metadata and item-type assignments |
+| `GET /api/v1/item_types/`    | [Item Types](item-types.md): fetch current schemas and field roles                  |
 
 See also:
 

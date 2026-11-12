@@ -285,6 +285,7 @@ const correctnessRules = {
         '**/test/**',
         '**/e2e/**',
         '**/*.{spec,test}.{ts,tsx,js}',
+        '**/vitest*.config.ts',
         '.storybook/**',
         '**/*.stories.tsx',
         '**/bin/**',
@@ -384,6 +385,9 @@ module.exports = {
   extends: ['plugin:security/recommended'],
   parser: '@typescript-eslint/parser',
   parserOptions: {
+    // tsconfig.json alone: it owns every file, so nothing falls outside a
+    // project. Adding tsconfig.build.json would only duplicate production files
+    // across two programs.
     project: './tsconfig.json',
     sourceType: 'module',
     tsconfigRootDir: __dirname,
@@ -699,6 +703,48 @@ module.exports = {
         '@typescript-eslint/consistent-type-imports': [
           'error',
           { prefer: 'type-imports', disallowTypeAnnotations: false },
+        ],
+      },
+    },
+    {
+      // Production code must not import test-only code.
+      //
+      // tsconfig.build.json's `exclude` cannot enforce this by itself:
+      // excluding a path only stops it being a compilation *root*, never stops
+      // it being pulled into the program through an import edge.
+      //
+      // `excludedFiles` mirrors the test patterns in tsconfig.build.json's
+      // `exclude`. Keep the two in step.
+      files: ['./**/*.ts'],
+      excludedFiles: [
+        '**/*.test.ts',
+        '**/*.spec.ts',
+        '**/__tests__/**/*.ts',
+        'test/**/*.ts',
+        'e2e/**/*.ts',
+      ],
+      rules: {
+        '@typescript-eslint/no-restricted-imports': [
+          'error',
+          {
+            patterns: [
+              {
+                group: [
+                  '**/test/**',
+                  '**/e2e/**',
+                  '**/__tests__/**',
+                  '**/*.test.*',
+                  '**/*.spec.*',
+                ],
+                message:
+                  'Production code must not import test-only code. A test ' +
+                  'helper imported here is compiled into transpiled/ and ships ' +
+                  'in the server image, and drags its dev-only dependencies ' +
+                  'with it. Move the helper to the module it belongs to ' +
+                  '(e.g. utils/) and import it from there.',
+              },
+            ],
+          },
         ],
       },
     },

@@ -1,5 +1,6 @@
 import { uid } from 'uid';
 import { v1 as uuidv1 } from 'uuid';
+import { vi } from 'vitest';
 
 import { TestDateProvider } from '../../../../test/dateProvider.js';
 import createActions from '../../../../test/fixtureHelpers/createActions.js';
@@ -49,17 +50,17 @@ describe('AggregationSignal', () => {
     // Spy on aggregation service functions.
     const aggregationsServiceSpy = AggregationsService;
     // eslint-disable-next-line functional/immutable-data
-    aggregationsServiceSpy.updateAggregation = jest.fn(
+    aggregationsServiceSpy.updateAggregation = vi.fn(
       aggregationsServiceSpy.updateAggregation.bind(aggregationsServiceSpy),
     );
     // eslint-disable-next-line functional/immutable-data
-    aggregationsServiceSpy.evaluateAggregation = jest.fn(
+    aggregationsServiceSpy.evaluateAggregation = vi.fn(
       aggregationsServiceSpy.evaluateAggregation.bind(aggregationsServiceSpy),
     );
 
     const dateProvider = new TestDateProvider();
     // eslint-disable-next-line functional/immutable-data
-    deps['ActionPublisher'].publishAction = jest.fn().mockReturnValue(true);
+    deps['ActionPublisher'].publishAction = vi.fn().mockReturnValue(true);
 
     const rule = await RuleAPIDataSource.createContentRule(
       {
@@ -189,8 +190,10 @@ describe('AggregationSignal', () => {
       const actionsTriggered = await ruleResults.actionsTriggered;
       expect(actionsTriggered).toHaveLength(0);
 
-      expect(deps.AggregationsService.updateAggregation).toBeCalledTimes(1);
-      expect(deps.AggregationsService.updateAggregation).toBeCalledWith(
+      expect(deps.AggregationsService.updateAggregation).toHaveBeenCalledTimes(
+        1,
+      );
+      expect(deps.AggregationsService.updateAggregation).toHaveBeenCalledWith(
         expect.objectContaining({
           id: expect.any(String),
           aggregation: { type: 'COUNT' },
@@ -202,8 +205,10 @@ describe('AggregationSignal', () => {
         expect.any(SafeTracer),
       );
 
-      expect(deps.AggregationsService.evaluateAggregation).toBeCalledTimes(1);
-      expect(deps.AggregationsService.evaluateAggregation).toBeCalledWith(
+      expect(
+        deps.AggregationsService.evaluateAggregation,
+      ).toHaveBeenCalledTimes(1);
+      expect(deps.AggregationsService.evaluateAggregation).toHaveBeenCalledWith(
         expect.objectContaining({
           id: expect.any(String),
           aggregation: { type: 'COUNT' },

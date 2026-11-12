@@ -14,7 +14,7 @@ import {
   useLocation,
   useMatches,
   useNavigate,
-} from 'react-router-dom';
+} from 'react-router';
 
 import FullScreenLoading from '../../components/common/FullScreenLoading';
 
@@ -42,7 +42,6 @@ gql`
       hasReportingRulesEnabled
       hasNCMECReportingEnabled
       hasAppealsEnabled
-      isDemoOrg
     }
     me {
       id
@@ -471,6 +470,12 @@ export function DashboardRoutes() {
           <Navigate replace to="/dashboard/settings?tab=partial-items" />
         ),
       },
+      {
+        path: 'settings/job_priorities',
+        element: (
+          <Navigate replace to="/dashboard/settings?tab=review-console" />
+        ),
+      },
       // Account
       {
         path: 'account',
@@ -501,7 +506,7 @@ export default function Dashboard() {
   const [logout, { client }] = useGQLLogoutMutation({
     onError: () => {},
     onCompleted: (_data) => {
-      client.clearStore().then(() => navigate('/'));
+      client.clearStore().then(async () => navigate('/'));
     },
     refetchQueries: [namedOperations.Query.PermissionGatedRouteLoggedInUser],
   });
@@ -516,7 +521,6 @@ export default function Dashboard() {
   const isCSSLoaded = useDynamicLegacyCSS(isUsingLegacyCSS);
 
   const permissions = data?.me?.permissions;
-  const isDemoOrg = data?.myOrg?.isDemoOrg ?? false;
 
   const investigationAndBATItems = [
     {
@@ -534,14 +538,14 @@ export default function Dashboard() {
   /**
    * All left sidebar menu items are listed here
    */
-  const menuItems = compact([
-    !isDemoOrg && {
+  const menuItems = [
+    {
       title: 'Overview' as const,
       urlPath: 'overview',
       icon: GraphAlt1Filled,
       requiredPermissions: [GQLUserPermission.ViewMrtData],
     },
-    !isDemoOrg && {
+    {
       title: 'Automated Enforcement' as const,
       urlPath: 'rules',
       icon: FlowChartAltFilled,
@@ -577,7 +581,7 @@ export default function Dashboard() {
       icon: SparklesFilled,
       requiredPermissions: [GQLUserPermission.ManagePolicies],
     },
-    !isDemoOrg && {
+    {
       title: 'Review Console' as const,
       urlPath: 'manual_review',
       icon: FriendsFilled,
@@ -613,7 +617,7 @@ export default function Dashboard() {
           : null,
       ]),
     },
-  ]) satisfies MenuItem[];
+  ] satisfies MenuItem[];
 
   const settingsMenuItems = [
     {
@@ -716,7 +720,6 @@ export default function Dashboard() {
         setSelectedMenuItem={setSelectedMenuItem}
         permissions={permissions}
         logout={async () => logout()}
-        isDemoOrg={isDemoOrg}
       />
       {isUsingLegacyCSS ? (
         <>

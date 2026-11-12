@@ -3,8 +3,8 @@
 /**
  * Script to get invite token for a user
  *
- * Usage:
- *   npm run get-invite -- --email "user@example.com"
+ * Usage in the server image:
+ *   node bin/get-invite-token.js --email "user@example.com"
  */
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';

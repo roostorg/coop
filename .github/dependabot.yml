@@ -3,13 +3,25 @@
 # Please see the documentation for all configuration options:
 # https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
 #
-# Major version updates are disabled for now across every ecosystem/directory.
+# Major version updates are disabled for now across every ecosystem/directory,
+# except `github-actions` (see the note on that block below).
 # Security updates are unaffected (Dependabot ignores `ignore` rules for
 # security advisories), so majors still land when they fix a vulnerability.
 
 version: 2
+
+# Group Dockerfile and docker-compose node updates into the same PR to keep
+# node versions in sync; .nvmrc still needs to be bumped separately to match.
+multi-ecosystem-groups:
+  docker-images:
+    schedule:
+      interval: 'weekly'
+    labels:
+      - 'dependencies'
+      - 'dependabot'
+
 updates:
-  # Enable version updates for Docker
+  # Dockerfiles
   - package-ecosystem: 'docker'
     directories:
       - '/'
@@ -17,8 +29,9 @@ updates:
       - '/db'
       - '/hma'
       - '/nodejs-instrumentation'
-    schedule:
-      interval: 'weekly'
+    patterns:
+      - '*'
+    multi-ecosystem-group: 'docker-images'
     cooldown:
       default-days: 7
     labels:
@@ -28,17 +41,104 @@ updates:
       - dependency-name: '*'
         update-types: ['version-update:semver-major']
     groups:
-      docker-images:
-        applies-to: 'version-updates'
-        patterns:
-          - '*'
       docker-images-security:
         applies-to: 'security-updates'
         patterns:
           - '*'
 
-  # Enable version updates for npm
+  # Node images in Docker Compose
+  - package-ecosystem: 'docker-compose'
+    directory: '/'
+    patterns:
+      - 'node'
+    multi-ecosystem-group: 'docker-images'
+    cooldown:
+      default-days: 7
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
+
+  # One entry for the whole pnpm workspace. Dependabot reads
+  # pnpm-workspace.yaml from the root and updates every package's
+  # package.json together with the single root pnpm-lock.yaml. Per-package
+  # entries don't work: a package directory has no lockfile of its own, so
+  # their PRs change package.json alone and fail `--frozen-lockfile`.
   - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    # Longer than pnpm-workspace.yaml's 3-day minimumReleaseAge (4320 minutes),
+    # so a proposed version is always old enough for `pnpm install` to accept.
+    # Cooldown applies to version updates only; security updates are proposed
+    # as soon as a patch exists, but still need to pass minimumReleaseAge.
+    cooldown:
+      default-days: 8
+    labels:
+      - 'dependencies'
+      - 'dependabot'
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']
+      # Held back for the server; with one workspace entry these now apply to
+      # every package.
+      - dependency-name: 'type-fest'
+        versions: ['>4.3.2 <5.0.0']
+      - dependency-name: 'typescript'
+        versions: ['>=5.0.0 <6.0.0']
+    groups:
+      npm-prod-security:
+        dependency-type: 'production'
+        applies-to: 'security-updates'
+        patterns:
+          - '*'
+      # Dev-only tooling (lint, test, Storybook, codegen) security fixes land
+      # together instead of as one PR per advisory.
+      npm-dev-security:
+        dependency-type: 'development'
+        applies-to: 'security-updates'
+        patterns:
+          - '*'
+      # A patched version can reach these groups before its advisory is
+      # published; no setting here prevents that. To backport such a fix, split
+      # that package's bump out of the group PR and backport it alone.
+      npm-prod:
+        dependency-type: 'production'
+        applies-to: 'version-updates'
+        patterns:
+          - '*'
+      npm-dev:
+        dependency-type: 'development'
+        applies-to: 'version-updates'
+        patterns:
+          - '*'
+
+  # Devcontainer features in .devcontainer/devcontainer.json. Features are
+  # pinned to a major version tag (e.g. `docker-in-docker:2`), so the only
+  # updates Dependabot can propose are majors; don't ignore them here.
+  - package-ecosystem: 'devcontainers'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+    commit-message:
+      prefix: 'chore(deps)'
+    cooldown:
+      default-days: 7
+    labels:
+      - 'dependencies'
+      - 'dependabot'
+
+  # Enable version updates for GitHub Actions
+  #
+  # Deliberately *not* ignoring `version-update:semver-major` here, unlike the
+  # ecosystems above. Actions majors are mostly runner-runtime bumps (e.g.
+  # node20 -> node24) that GitHub eventually forces anyway; blocking them means
+  # the pins rot until someone does a manual pass. Actions are also SHA-pinned
+  # and reviewed here, so a bad major cannot land silently.
+  #
+  # Note: Dependabot bumps the action SHA only. Tool versions passed *into* an
+  # action (e.g. the `version:` input of zizmorcore/zizmor-action, or the image
+  # digest inside boostsecurityio/poutine-action) still need a manual bump.
+  - package-ecosystem: 'github-actions'
     directory: '/'
     schedule:
       interval: 'weekly'
@@ -47,173 +147,7 @@ updates:
     labels:
       - 'dependencies'
       - 'dependabot'
-    ignore:
-      - dependency-name: '*'
-        update-types: ['version-update:semver-major']
     groups:
-      root-prod-security:
-        dependency-type: 'production'
-        applies-to: 'security-updates'
-        patterns:
-          - '*'
-      root-prod:
-        dependency-type: 'production'
-        applies-to: 'version-updates'
-        patterns:
-          - '*'
-      root-dev:
-        dependency-type: 'development'
-        applies-to: 'version-updates'
-        patterns:
-          - '*'
-
-  - package-ecosystem: 'npm'
-    directory: '/db'
-    schedule:
-      interval: 'weekly'
-    cooldown:
-      default-days: 7
-    labels:
-      - 'dependencies'
-      - 'dependabot'
-    ignore:
-      - dependency-name: '*'
-        update-types: ['version-update:semver-major']
-    groups:
-      db-prod-security:
-        dependency-type: 'production'
-        applies-to: 'security-updates'
-        patterns:
-          - '*'
-      db-prod:
-        dependency-type: 'production'
-        applies-to: 'version-updates'
-        patterns:
-          - '*'
-      db-dev:
-        dependency-type: 'development'
-        applies-to: 'version-updates'
-        patterns:
-          - '*'
-
-  - package-ecosystem: 'npm'
-    directory: '/migrator'
-    schedule:
-      interval: 'weekly'
-    cooldown:
-      default-days: 7
-    labels:
-      - 'dependencies'
-      - 'dependabot'
-    ignore:
-      - dependency-name: '*'
-        update-types: ['version-update:semver-major']
-    groups:
-      migrator-prod-security:
-        dependency-type: 'production'
-        applies-to: 'security-updates'
-        patterns:
-          - '*'
-      migrator-prod:
-        dependency-type: 'production'
-        applies-to: 'version-updates'
-        patterns:
-          - '*'
-      migrator-dev:
-        dependency-type: 'development'
-        applies-to: 'version-updates'
-        patterns:
-          - '*'
-
-  - package-ecosystem: 'npm'
-    directory: '/server'
-    schedule:
-      interval: 'weekly'
-    cooldown:
-      default-days: 7
-    labels:
-      - 'dependencies'
-      - 'dependabot'
-    ignore:
-      - dependency-name: '*'
-        update-types: ['version-update:semver-major']
-      - dependency-name: 'jest-light-runner'
-        versions: ['>=0.6.0 <1.0.0']
-      - dependency-name: 'type-fest'
-        versions: ['>4.3.2 <5.0.0']
-      - dependency-name: 'typescript'
-        versions: ['>=5.0.0 <6.0.0']
-    groups:
-      server-prod-security:
-        dependency-type: 'production'
-        applies-to: 'security-updates'
-        patterns:
-          - '*'
-      server-prod:
-        dependency-type: 'production'
-        applies-to: 'version-updates'
-        patterns:
-          - '*'
-      server-dev:
-        dependency-type: 'development'
-        applies-to: 'version-updates'
-        patterns:
-          - '*'
-
-  - package-ecosystem: 'npm'
-    directory: '/client'
-    schedule:
-      interval: 'weekly'
-    cooldown:
-      default-days: 7
-    labels:
-      - 'dependencies'
-      - 'dependabot'
-    ignore:
-      - dependency-name: '*'
-        update-types: ['version-update:semver-major']
-    groups:
-      client-prod-security:
-        dependency-type: 'production'
-        applies-to: 'security-updates'
-        patterns:
-          - '*'
-      client-prod:
-        dependency-type: 'production'
-        applies-to: 'version-updates'
-        patterns:
-          - '*'
-      client-dev:
-        dependency-type: 'development'
-        applies-to: 'version-updates'
-        patterns:
-          - '*'
-
-  - package-ecosystem: 'npm'
-    directory: '/nodejs-instrumentation'
-    schedule:
-      interval: 'weekly'
-    cooldown:
-      default-days: 7
-    labels:
-      - 'dependencies'
-      - 'dependabot'
-    ignore:
-      - dependency-name: '*'
-        update-types: ['version-update:semver-major']
-    groups:
-      nodejs-instrumentation-prod-security:
-        dependency-type: 'production'
-        applies-to: 'security-updates'
-        patterns:
-          - '*'
-      nodejs-instrumentation-prod:
-        dependency-type: 'production'
-        applies-to: 'version-updates'
-        patterns:
-          - '*'
-      nodejs-instrumentation-dev:
-        dependency-type: 'development'
-        applies-to: 'version-updates'
+      github-actions:
         patterns:
           - '*'

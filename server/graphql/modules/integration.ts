@@ -1,3 +1,5 @@
+import type { IntegrationConfigField } from '@roostorg/coop-types';
+
 import { getIntegrationRegistry } from '../../services/integrationRegistry/index.js';
 import { Integration } from '../../services/signalsService/index.js';
 import { UserPermission } from '../../services/userManagementService/index.js';
@@ -7,9 +9,13 @@ import {
   type TIntegrationConfigWithMetadata,
 } from '../datasources/IntegrationApi.js';
 import {
+  GQLZentropiModel,
   type GQLIntegrationConfig,
+  type GQLIntegrationConfigFieldInputType,
+  type GQLIntegrationConfigResolvers,
   type GQLMutationResolvers,
   type GQLQueryResolvers,
+  type GQLZentropiLabelerVersionResolvers,
 } from '../generated.js';
 import { type ResolverMap } from '../resolvers.js';
 import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
@@ -30,9 +36,17 @@ const typeDefs = /* GraphQL */ `
     apiKey: String!
   }
 
+  enum ZentropiModel {
+    COPE_LATEST
+    COPE_B_A4B
+    COPE_B_S1
+  }
+
   type ZentropiLabelerVersion {
     id: String!
     label: String!
+    labelerId: String
+    model: ZentropiModel
   }
 
   type ZentropiIntegrationApiCredential {
@@ -93,6 +107,35 @@ const typeDefs = /* GraphQL */ `
     requiresConfig: Boolean!
     logoUrl: String
     logoWithBackgroundUrl: String
+    """
+    Form fields declared by a plugin manifest. Empty for built-in integrations,
+    which have custom forms.
+    """
+    configurationFields: [IntegrationConfigField!]!
+  }
+
+  enum IntegrationConfigFieldInputType {
+    TEXT
+    PASSWORD
+    JSON
+    ARRAY
+    SELECT
+  }
+
+  type IntegrationConfigFieldOption {
+    value: String!
+    label: String!
+  }
+
+  type IntegrationConfigField {
+    key: String!
+    label: String!
+    required: Boolean!
+    inputType: IntegrationConfigFieldInputType!
+    "Choices for SELECT fields; null otherwise."
+    options: [IntegrationConfigFieldOption!]
+    placeholder: String
+    description: String
   }
 
   input GoogleContentSafetyApiIntegrationApiCredentialInput {
@@ -106,6 +149,8 @@ const typeDefs = /* GraphQL */ `
   input ZentropiLabelerVersionInput {
     id: String!
     label: String!
+    labelerId: String
+    model: ZentropiModel
   }
 
   input ZentropiIntegrationApiCredentialInput {
@@ -263,9 +308,37 @@ const Query: GQLQueryResolvers = {
   },
 };
 
+const fieldInputTypeToGql = {
+  text: 'TEXT',
+  password: 'PASSWORD',
+  json: 'JSON',
+  array: 'ARRAY',
+  select: 'SELECT',
+} as const satisfies Record<
+  IntegrationConfigField['inputType'],
+  GQLIntegrationConfigFieldInputType
+>;
+
 const PluginIntegrationApiCredential = {
   credential(it: TIntegrationConfigWithMetadata['apiCredential']) {
     return it;
+  },
+};
+
+const IntegrationConfig: GQLIntegrationConfigResolvers = {
+  configurationFields(it) {
+    const fields =
+      getIntegrationRegistry().getManifest(it.name)?.configurationFields ?? [];
+    return fields.map((field) => ({
+      key: field.key,
+      label: field.label,
+      required: field.required,
+      inputType: fieldInputTypeToGql[field.inputType],
+      options:
+        field.options?.map(({ value, label }) => ({ value, label })) ?? null,
+      placeholder: field.placeholder ?? null,
+      description: field.description ?? null,
+    }));
   },
 };
 
@@ -321,6 +394,10 @@ const Mutation: GQLMutationResolvers = {
           params.input.credential,
           user.orgId,
         );
+      context.services.IntegrationContextSettingsService.invalidate(
+        user.orgId,
+        params.input.integrationId,
+      );
 
       return gqlSuccessResult(
         { config: newConfig as GQLIntegrationConfig },
@@ -342,9 +419,23 @@ const Mutation: GQLMutationResolvers = {
   },
 };
 
+const zentropiModels: ReadonlySet<string> = new Set(
+  Object.values(GQLZentropiModel),
+);
+
+const ZentropiLabelerVersion: GQLZentropiLabelerVersionResolvers = {
+  // A stored model that this build does not offer (e.g. one saved by a newer
+  // release) is reported as unset, so the integration settings stay loadable.
+  model(it) {
+    return it.model != null && zentropiModels.has(it.model) ? it.model : null;
+  },
+};
+
 const resolvers = {
   IntegrationApiCredential,
   PluginIntegrationApiCredential,
+  IntegrationConfig,
+  ZentropiLabelerVersion,
   Query,
   Mutation,
 };

@@ -24,10 +24,10 @@ jobs:
       db: ${{ steps.filter.outputs.db }}
       migrator: ${{ steps.filter.outputs.migrator }}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
         with:
           filters: |
@@ -40,40 +40,48 @@ jobs:
               - '.env.githubci'
               - '.github/workflows/apply_pr_checks.yaml'
               - '.github/actions/prepare-docker-images/**'
+            # Each package's dependencies are locked in the root pnpm-lock.yaml,
+            # so a change here can affect any of them.
+            deps: &deps
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - '.nvmrc'
             server:
               - 'server/**'
               - *docker
+              - *deps
             client:
               - 'client/**'
               - *docker
+              - *deps
             db:
               - 'db/**'
+              - *deps
             migrator:
               - 'migrator/**'
+              - *deps
 
   check_formatting:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Checkout code
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Setup Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+      - name: Setup pnpm and Node.js, install dependencies
+        uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
         with:
-          node-version-file: '.nvmrc'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
+          cache: true
+          require-lockfile: true
 
       - name: Check formatting
-        run: npm run prettier
+        run: pnpm run prettier
 
       - name: Check Node version parity
-        run: npm run check:node-version
+        run: pnpm run check:node-version
 
   check_generated_graphql:
     timeout-minutes: 5
@@ -81,24 +89,21 @@ jobs:
     if: needs.changes.outputs.server == 'true' || needs.changes.outputs.client == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Setup Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+      - name: Setup pnpm and Node.js, install dependencies
+        uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
         with:
-          node-version-file: '.nvmrc'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
+          cache: true
+          require-lockfile: true
 
       - name: Check generated GraphQL is up to date
         run: |
-          npm run generate
+          pnpm run generate
           if [[ -n "$(git status --porcelain)" ]]; then
-            echo "Generated GraphQL files are out of date. Run npm run generate and commit the result."
+            echo "Generated GraphQL files are out of date. Run pnpm run generate and commit the result."
             git status
             git diff
             exit 1
@@ -107,14 +112,14 @@ jobs:
   check_migration_order:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # this is needed to fetch the main branch
           ref: ${{ github.base_ref || 'main' }}
           fetch-depth: 1
           sparse-checkout: 'db/src/scripts'
           persist-credentials: false
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # this is needed to fetch the main branch
           fetch-depth: 1
@@ -174,6 +179,12 @@ jobs:
               for file in "${CHANGED_FILES[@]}"
               do
                 if [[ "${file}" == ${subdir}* ]]; then
+                  if [[ "$file" == *.seed.staging.sql ]] &&
+                     [[ "$(git diff --name-only --diff-filter=M "$BASE_REF" "$GITHUB_SHA" -- "$file")" == "$file" ]]; then
+                    echo "Allowing staging seed update: $file"
+                    continue
+                  fi
+
                   validate_migration "${file}" "${most_recent_migration_datestamp}"
                 else
                   echo -e "Skipping ${file} because it is not in the ${subdir} directory."
@@ -199,25 +210,28 @@ jobs:
       checks: write # for dorny/test-reporter to create a check run
     steps:
       - name: Checkout code
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - name: Prepare Docker images
-        uses: ./.github/actions/prepare-docker-images
+        uses: $/.github/actions/prepare-docker-images
         with:
           pull: postgres scylla clickhouse redis
           build: backend test
 
       - name: Lint
-        run: docker compose run --rm --quiet-pull backend npm run lint
+        run: docker compose run --rm --quiet-pull backend pnpm run lint
+
+      - name: Typecheck server
+        run: docker compose run --rm --quiet-pull backend pnpm run typecheck
 
       - name: Build server
-        run: docker compose run --rm --quiet-pull backend npm run build
+        run: docker compose run --rm --quiet-pull backend pnpm run build
 
       - name: Migrate CI DBs and Test
         run: |
-          docker compose run --rm --quiet-pull test
+          docker compose run --rm --quiet-pull test pnpm run test:ci --coverage
           echo "ATTENTION: If this step fails, look in the next step for the migration logs."
 
       - # Only output the migration logs if the prior step failed, as they
@@ -228,12 +242,41 @@ jobs:
 
       - name: Test Report
         if: always() # run this step even if previous step failed
-        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        uses: dorny/test-reporter@d1b5dff021aa968b288b02285a8bf47471c5928a # v3.2.0
         continue-on-error: true
         with:
           name: JEST Tests # Name of the check run which will be created
           path: server/reports/jest-*.xml # Path to test results
           reporter: jest-junit # Format of test results
+
+      - name: Coverage summary
+        if: ${{ !cancelled() && hashFiles('server/reports/coverage-unit/coverage-summary.json') != '' }}
+        run: |
+          jq -r '.total | "### server-unit coverage\n\n| Lines | Branches | Functions | Statements |\n| --- | --- | --- | --- |\n| \(.lines.pct)% | \(.branches.pct)% | \(.functions.pct)% | \(.statements.pct)% |"' \
+            server/reports/coverage-unit/coverage-summary.json >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload coverage
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: server/reports/coverage-unit/lcov.info
+          disable_search: true
+          flags: server-unit
+          name: server-unit
+          fail_ci_if_error: false
+
+      - name: Upload test results
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          report_type: test_results
+          files: server/reports/jest-junit.xml
+          disable_search: true
+          flags: server-unit
+          name: server-unit
+          fail_ci_if_error: false
 
   # Integration tests (`*.integ.test.ts`) run as a separate job so they execute
   # in parallel with the unit tests / lint / build above and report failures
@@ -250,13 +293,13 @@ jobs:
       checks: write # for dorny/test-reporter to create a check run
     steps:
       - name: Checkout code
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - name: Migrate CI DBs and run integration tests
         run: |
-          docker compose run --rm --quiet-pull test npm run test:integ
+          docker compose run --rm --quiet-pull test pnpm run test:integ --coverage
           echo "ATTENTION: If this step fails, look in the next step for the migration logs."
 
       - # Only output the migration logs if the prior step failed, as they
@@ -267,12 +310,41 @@ jobs:
 
       - name: Test Report
         if: always() # run this step even if previous step failed
-        uses: dorny/test-reporter@a43b3a5f7366b97d083190328d2c652e1a8b6aa2 # v3.0.0
+        uses: dorny/test-reporter@d1b5dff021aa968b288b02285a8bf47471c5928a # v3.2.0
         continue-on-error: true
         with:
           name: JEST Integration Tests # Name of the check run which will be created
           path: server/reports/jest-*.xml # Path to test results
           reporter: jest-junit # Format of test results
+
+      - name: Coverage summary
+        if: ${{ !cancelled() && hashFiles('server/reports/coverage-integ/coverage-summary.json') != '' }}
+        run: |
+          jq -r '.total | "### server-integ coverage\n\n| Lines | Branches | Functions | Statements |\n| --- | --- | --- | --- |\n| \(.lines.pct)% | \(.branches.pct)% | \(.functions.pct)% | \(.statements.pct)% |"' \
+            server/reports/coverage-integ/coverage-summary.json >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload coverage
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: server/reports/coverage-integ/lcov.info
+          disable_search: true
+          flags: server-integ
+          name: server-integ
+          fail_ci_if_error: false
+
+      - name: Upload test results
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          report_type: test_results
+          files: server/reports/jest-junit.xml
+          disable_search: true
+          flags: server-integ
+          name: server-integ
+          fail_ci_if_error: false
 
   run_frontend_checks_if_changed:
     needs: changes
@@ -281,23 +353,40 @@ jobs:
     timeout-minutes: 25
     steps:
       - name: Checkout
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
       - name: Prepare Docker images
-        uses: ./.github/actions/prepare-docker-images
+        uses: $/.github/actions/prepare-docker-images
         with:
           build: client
 
       - name: Lint client
-        run: docker compose run --rm --quiet-pull client npm run lint
+        run: docker compose run --rm --quiet-pull client pnpm run lint
 
       - name: Test client
-        run: docker compose run --rm --quiet-pull client npm run test:prepush
+        run: docker compose run --rm --quiet-pull -v ./client/reports:/app/client/reports client pnpm run test:prepush --coverage
+
+      - name: Coverage summary
+        if: ${{ !cancelled() && hashFiles('client/reports/coverage-unit/coverage-summary.json') != '' }}
+        run: |
+          jq -r '.total | "### client-unit coverage\n\n| Lines | Branches | Functions | Statements |\n| --- | --- | --- | --- |\n| \(.lines.pct)% | \(.branches.pct)% | \(.functions.pct)% | \(.statements.pct)% |"' \
+            client/reports/coverage-unit/coverage-summary.json >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload coverage
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: client/reports/coverage-unit/lcov.info
+          disable_search: true
+          flags: client-unit
+          name: client-unit
+          fail_ci_if_error: false
 
       - name: Build client
-        run: docker compose run --rm --quiet-pull client npm run build
+        run: docker compose run --rm --quiet-pull client pnpm run build
 
   # db and migrator have no ESLint setup, so CI only typechecks them.
   typecheck_db:
@@ -307,22 +396,18 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout code
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Setup Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+      - name: Setup pnpm and Node.js, install dependencies
+        uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
         with:
-          node-version-file: '.nvmrc'
-          cache: 'npm'
-          cache-dependency-path: 'db/package-lock.json'
+          cache: true
+          require-lockfile: true
 
       - name: Typecheck db
-        run: |
-          cd db
-          npm ci
-          npm run typecheck
+        run: cd db && pnpm run typecheck
 
   typecheck_migrator:
     needs: changes
@@ -331,19 +416,15 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout code
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      - name: Setup Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+      - name: Setup pnpm and Node.js, install dependencies
+        uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
         with:
-          node-version-file: '.nvmrc'
-          cache: 'npm'
-          cache-dependency-path: 'migrator/package-lock.json'
+          cache: true
+          require-lockfile: true
 
       - name: Typecheck migrator
-        run: |
-          cd migrator
-          npm ci
-          npm run typecheck
+        run: cd migrator && pnpm run typecheck

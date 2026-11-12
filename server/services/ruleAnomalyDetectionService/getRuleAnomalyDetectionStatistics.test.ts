@@ -1,5 +1,6 @@
+import { vi, type Mock } from 'vitest';
+
 import { type Dependencies } from '../../iocContainer/index.js';
-import { type MockedFn } from '../../test/mockHelpers/jestMocks.js';
 import makeGetRuleAnomalyDetectionStatistics from './getRuleAnomalyDetectionStatistics.js';
 
 /**
@@ -10,7 +11,7 @@ import makeGetRuleAnomalyDetectionStatistics from './getRuleAnomalyDetectionStat
  * least makes sure we can't change inadvertently change the generated queries.
  */
 describe('getRuleAnomalyDetectionStatistics', () => {
-  let queryMock: MockedFn<
+  let queryMock: Mock<
     (
       query: string,
       tracer: unknown,
@@ -34,16 +35,13 @@ describe('getRuleAnomalyDetectionStatistics', () => {
     ];
 
     // Scope of this is just the test suite, so mutation should be ok.
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- jest.fn() defaults to a generic call signature; cast lets us use the typed "queryMock" declared above.
-    queryMock = jest.fn() as any;
-    queryMock.mockResolvedValue(queryResult);
+    queryMock = vi.fn().mockResolvedValue(queryResult);
 
     const dataWarehouseMock = {
       query: queryMock,
-      transaction: jest.fn(),
-      start: jest.fn(),
-      close: jest.fn(),
+      transaction: vi.fn(),
+      start: vi.fn(),
+      close: vi.fn(),
       getProvider: () => 'clickhouse' as const,
     };
 

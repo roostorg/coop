@@ -36,10 +36,19 @@ export function integerSort<TData extends RowWithValues>(
   rowB: Row<TData>,
   columnId: string,
 ) {
-  // the values come formatted with commas, so we remove all
-  // comma characters before doing any parsing or comparison
-  const s1 = parseInt(rowA.original.values[columnId].replaceAll(',', ''));
-  const s2 = parseInt(rowB.original.values[columnId].replaceAll(',', ''));
+  const parseInteger = (value: unknown) => {
+    if (typeof value === 'number') {
+      return Number.isNaN(value) ? 0 : value;
+    }
+    if (typeof value === 'string') {
+      const parsed = Number(value.replaceAll(',', ''));
+      return Number.isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
+  };
+
+  const s1 = parseInteger(rowA.original.values[columnId]);
+  const s2 = parseInteger(rowB.original.values[columnId]);
   return s1 > s2 ? 1 : s2 > s1 ? -1 : 0;
 }
 

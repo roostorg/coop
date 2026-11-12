@@ -32,6 +32,7 @@ describe('CommentOperations', () => {
         name: 'Test Queue',
         description: null,
         userIds: [user.id],
+        roleIds: [],
         hiddenActionIds: [],
         isAppealsQueue: false,
         invokedBy: {

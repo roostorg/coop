@@ -1,4 +1,5 @@
 import { faker } from '@faker-js/faker';
+import { uid } from 'uid';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 
@@ -13,7 +14,8 @@ export default async function (opts: {
     Array.from({ length: numActions }).map(async () =>
       actionAPI.createAction(
         {
-          name: faker.word.verb(),
+          // Action names are unique per org, and random verbs collide.
+          name: `${faker.word.verb()}-${uid()}`,
           description: faker.lorem.sentence(),
           callbackUrl: faker.internet.url(),
           itemTypeIds,

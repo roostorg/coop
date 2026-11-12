@@ -1,8 +1,8 @@
 /**
  * Like `makeTestWithFixture`, but each test gets a fresh `makeMockedServer`
  * (real Postgres in a transaction) that's rolled back afterward, so fixtures
- * need no cleanup. The setup callback receives `{ deps, request }` and returns
- * its fixtures; the test gets those plus `deps` and `request`.
+ * need no cleanup. Setup and tests receive `deps`, `request`, and the Express
+ * `server`, which supports independent cookie jars via `superTest.agent(server)`.
  *
  * ```ts
  * const testWithOrg = makeTransactionalTestWithFixture(async ({ deps }) => {
@@ -15,20 +15,34 @@
 import { makeMockedServer, type MockedServer } from '../setupMockedServer.js';
 import { makeTestWithFixture } from '../utils.js';
 
-type ServerVars = Pick<MockedServer, 'deps' | 'request'>;
+type ServerVars = Pick<MockedServer, 'deps' | 'request' | 'server'>;
 
 export function makeTransactionalTestWithFixture<
   T extends Record<string, unknown>,
 >(makeFixtures: (server: ServerVars) => Promise<T> | T) {
   return makeTestWithFixture<ServerVars & T>(async () => {
     const server = await makeMockedServer();
-    const fixtures = await makeFixtures({
-      deps: server.deps,
-      request: server.request,
-    });
+    let fixtures: T;
+    try {
+      fixtures = await makeFixtures({
+        deps: server.deps,
+        request: server.request,
+        server: server.server,
+      });
+    } catch (e) {
+      // Nothing else cleans up when setup throws, and a transaction left open
+      // hangs every test that runs after this one.
+      try {
+        await server.rollback();
+      } finally {
+        await server.shutdown();
+      }
+      throw e;
+    }
     return {
       deps: server.deps,
       request: server.request,
+      server: server.server,
       ...fixtures,
       async cleanup() {
         await server.rollback();

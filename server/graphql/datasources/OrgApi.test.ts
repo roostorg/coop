@@ -6,6 +6,7 @@ import createContentItemTypes from '../../test/fixtureHelpers/createContentItemT
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
 import { CoopError } from '../../utils/errors.js';
+import { seedSystemRolesForOrg } from './rolePersistence.js';
 import { kyselyUserInsert } from './userKyselyPersistence.js';
 
 describe('OrgAPI', () => {
@@ -18,6 +19,7 @@ describe('OrgAPI', () => {
       },
       uid(),
     );
+    await seedSystemRolesForOrg(deps.KyselyPg, org.id);
     return { org };
   });
 
@@ -243,6 +245,7 @@ describe('OrgAPI', () => {
           },
           uid(),
         );
+        await seedSystemRolesForOrg(deps.KyselyPg, otherOrg.id);
         const otherUserId = uid();
         await kyselyUserInsert({
           db: deps.KyselyPg,

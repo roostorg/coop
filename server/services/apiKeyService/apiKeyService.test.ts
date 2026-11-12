@@ -1,165 +1,133 @@
-import type { Kysely } from 'kysely';
+import crypto from 'node:crypto';
+import { vi } from 'vitest';
 
-import { makeTestWithFixture } from '../../test/utils.js';
-import { type CombinedPg } from '../combinedDbTypes.js';
-import ApiKeyService from './apiKeyService.js';
-
-// Mock Kysely database
-const mockDb = {
-  insertInto: jest.fn(),
-  selectFrom: jest.fn(),
-  updateTable: jest.fn(),
-  deleteFrom: jest.fn(),
-} as unknown as Kysely<CombinedPg>;
+import createOrg from '../../test/fixtureHelpers/createOrg.js';
+import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
 
 describe('ApiKeyService', () => {
-  const fakeOrg = { id: '1234', name: 'Random Org' };
-
-  const testWithFixtures = makeTestWithFixture(() => {
-    const sut = new ApiKeyService(mockDb);
-    return { sut };
+  const testWithOrgs = makeTransactionalTestWithFixture(async ({ deps }) => {
+    const orgA = await createOrg(deps);
+    const orgB = await createOrg(deps);
+    return { orgA, orgB };
   });
 
-  beforeEach(() => {
-    jest.clearAllMocks();
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
-  describe('#createApiKey', () => {
-    testWithFixtures(
-      'should generate a key, store it, return it + the generated key id',
-      async ({ sut }) => {
-        // Mock the database operations
-        const mockInsert = {
-          values: jest.fn().mockReturnThis(),
-          returningAll: jest.fn().mockReturnThis(),
-          executeTakeFirstOrThrow: jest.fn().mockResolvedValue({
-            id: 'key-123',
-            org_id: fakeOrg.id,
-            key_hash: 'hashed-key',
-            name: 'Test Key',
-            description: 'Test Description',
-            is_active: true,
-            created_at: new Date(),
-            updated_at: new Date(),
-            last_used_at: null,
-            created_by: null,
-          }),
-        };
+  testWithOrgs(
+    'deactivates old keys and stores a hashed new key',
+    async ({ deps, orgA, orgB }) => {
+      expect(await deps.ApiKeyService.validateApiKey(orgA.apiKey)).toBe(
+        orgA.org.id,
+      );
 
-        const mockUpdate = {
-          set: jest.fn().mockReturnThis(),
-          where: jest.fn().mockReturnThis(),
-          execute: jest.fn().mockResolvedValue([]),
-        };
+      const result = await deps.ApiKeyService.createApiKey(
+        orgA.org.id,
+        'Test Key',
+        'Test Description',
+        null,
+      );
+      const hash = crypto
+        .createHash('sha256')
+        .update(result.apiKey)
+        .digest('hex');
 
-        (mockDb.insertInto as jest.Mock).mockReturnValue(mockInsert);
-        (mockDb.updateTable as jest.Mock).mockReturnValue(mockUpdate);
+      expect(result.apiKey).toMatch(/^[a-f0-9]{64}$/);
+      expect(result.record).toMatchObject({
+        orgId: orgA.org.id,
+        keyHash: hash,
+        name: 'Test Key',
+        description: 'Test Description',
+        isActive: true,
+        createdBy: null,
+      });
+      expect(
+        await deps.ApiKeyService.getActiveApiKeyForOrg(orgA.org.id),
+      ).toEqual(result.record);
+      expect(await deps.ApiKeyService.validateApiKey(orgA.apiKey)).toBeNull();
+      expect(await deps.ApiKeyService.validateApiKey(result.apiKey)).toBe(
+        orgA.org.id,
+      );
+      expect(await deps.ApiKeyService.validateApiKey(orgB.apiKey)).toBe(
+        orgB.org.id,
+      );
+    },
+  );
 
-        const res = await sut.createApiKey(
-          fakeOrg.id,
-          'Test Key',
-          'Test Description',
-          null,
-        );
+  testWithOrgs(
+    'returns the active key for the requested organization',
+    async ({ deps, orgA, orgB }) => {
+      expect(
+        await deps.ApiKeyService.getActiveApiKeyForOrg(orgA.org.id),
+      ).toMatchObject({
+        orgId: orgA.org.id,
+        keyHash: crypto.createHash('sha256').update(orgA.apiKey).digest('hex'),
+        isActive: true,
+      });
+      expect(
+        await deps.ApiKeyService.getActiveApiKeyForOrg(orgB.org.id),
+      ).toMatchObject({
+        orgId: orgB.org.id,
+        keyHash: crypto.createHash('sha256').update(orgB.apiKey).digest('hex'),
+        isActive: true,
+      });
+    },
+  );
 
-        // Verify the key was generated and stored
-        expect(res.apiKey).toBeDefined();
-        expect(typeof res.apiKey).toBe('string');
-        expect(res.record.id).toBe('key-123');
-        expect(res.record.orgId).toBe(fakeOrg.id);
-      },
-    );
-  });
+  testWithOrgs(
+    'returns null when there is no active key',
+    async ({ deps, orgA, orgB }) => {
+      await deps.ApiKeyService.deactivateAllKeysForOrg(orgA.org.id);
 
-  describe('#getActiveApiKeyForOrg', () => {
-    testWithFixtures(
-      'should retrieve the active key for an org',
-      async ({ sut }) => {
-        const mockSelect = {
-          selectAll: jest.fn().mockReturnThis(),
-          where: jest.fn().mockReturnThis(),
-          executeTakeFirst: jest.fn().mockResolvedValue({
-            id: 'key-123',
-            org_id: fakeOrg.id,
-            key_hash: 'hashed-key',
-            name: 'Test Key',
-            description: 'Test Description',
-            is_active: true,
-            created_at: new Date(),
-            updated_at: new Date(),
-            last_used_at: null,
-            created_by: null,
-          }),
-        };
+      expect(
+        await deps.ApiKeyService.getActiveApiKeyForOrg(orgA.org.id),
+      ).toBeNull();
+      expect(
+        await deps.ApiKeyService.getActiveApiKeyForOrg(orgB.org.id),
+      ).toMatchObject({
+        orgId: orgB.org.id,
+        isActive: true,
+      });
+    },
+  );
 
-        (mockDb.selectFrom as jest.Mock).mockReturnValue(mockSelect);
+  testWithOrgs(
+    'validates a key by its hash and updates last-used time',
+    async ({ deps, orgA, orgB }) => {
+      const validationTime = new Date('2026-01-02T03:04:05.000Z');
+      vi.setSystemTime(validationTime);
 
-        const result = await sut.getActiveApiKeyForOrg(fakeOrg.id);
+      expect(await deps.ApiKeyService.validateApiKey(orgA.apiKey)).toBe(
+        orgA.org.id,
+      );
+      expect(
+        await deps.ApiKeyService.getActiveApiKeyForOrg(orgA.org.id),
+      ).toMatchObject({
+        lastUsedAt: validationTime,
+      });
+      expect(
+        await deps.ApiKeyService.getActiveApiKeyForOrg(orgB.org.id),
+      ).toMatchObject({
+        lastUsedAt: null,
+      });
+    },
+  );
 
-        expect(result).toBeDefined();
-        expect(result?.id).toBe('key-123');
-        expect(result?.orgId).toBe(fakeOrg.id);
-      },
-    );
-
-    testWithFixtures(
-      'should return null if no active key exists',
-      async ({ sut }) => {
-        const mockSelect = {
-          selectAll: jest.fn().mockReturnThis(),
-          where: jest.fn().mockReturnThis(),
-          executeTakeFirst: jest.fn().mockResolvedValue(undefined),
-        };
-
-        (mockDb.selectFrom as jest.Mock).mockReturnValue(mockSelect);
-
-        const result = await sut.getActiveApiKeyForOrg(fakeOrg.id);
-
-        expect(result).toBeNull();
-      },
-    );
-  });
-
-  describe('#validateApiKey', () => {
-    testWithFixtures(
-      'should validate a key and return org ID',
-      async ({ sut }) => {
-        const mockSelect = {
-          select: jest.fn().mockReturnThis(),
-          where: jest.fn().mockReturnThis(),
-          executeTakeFirst: jest.fn().mockResolvedValue({
-            org_id: fakeOrg.id,
-            last_used_at: new Date(),
-          }),
-        };
-
-        const mockUpdate = {
-          set: jest.fn().mockReturnThis(),
-          where: jest.fn().mockReturnThis(),
-          execute: jest.fn().mockResolvedValue([]),
-        };
-
-        (mockDb.selectFrom as jest.Mock).mockReturnValue(mockSelect);
-        (mockDb.updateTable as jest.Mock).mockReturnValue(mockUpdate);
-
-        const result = await sut.validateApiKey('test-key');
-
-        expect(result).toBe(fakeOrg.id);
-      },
-    );
-
-    testWithFixtures('should return null for invalid key', async ({ sut }) => {
-      const mockSelect = {
-        select: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        executeTakeFirst: jest.fn().mockResolvedValue(undefined),
-      };
-
-      (mockDb.selectFrom as jest.Mock).mockReturnValue(mockSelect);
-
-      const result = await sut.validateApiKey('invalid-key');
-
-      expect(result).toBeNull();
-    });
-  });
+  testWithOrgs(
+    'does not update last-used time for an invalid key',
+    async ({ deps, orgA, orgB }) => {
+      expect(await deps.ApiKeyService.validateApiKey('invalid-key')).toBeNull();
+      expect(
+        await deps.ApiKeyService.getActiveApiKeyForOrg(orgA.org.id),
+      ).toMatchObject({
+        lastUsedAt: null,
+      });
+      expect(
+        await deps.ApiKeyService.getActiveApiKeyForOrg(orgB.org.id),
+      ).toMatchObject({
+        lastUsedAt: null,
+      });
+    },
+  );
 });

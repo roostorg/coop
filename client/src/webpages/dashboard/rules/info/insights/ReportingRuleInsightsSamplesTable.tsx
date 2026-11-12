@@ -6,7 +6,7 @@ import uniq from 'lodash/uniq';
 import { Database, Download, Link as LucideLink } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { CSVLink } from 'react-csv';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
 import ComponentLoading from '../../../../../components/common/ComponentLoading';
 import CopyTextComponent from '../../../../../components/common/CopyTextComponent';

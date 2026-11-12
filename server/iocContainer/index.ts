@@ -10,7 +10,7 @@ import {
 import IORedis, { type Cluster } from 'ioredis';
 import { Kysely, PostgresDialect } from 'kysely';
 import _ from 'lodash';
-import { DynamicPool } from 'node-worker-threads-pool';
+import pLimit from 'p-limit';
 import pg from 'pg';
 import Cursor from 'pg-cursor';
 import { type JsonObject, type ReadonlyDeep } from 'type-fest';
@@ -102,13 +102,23 @@ import {
 } from '../services/apiKeyService/index.js';
 import { type CombinedPg } from '../services/combinedDbTypes.js';
 import {
+  makeContentAccessService,
+  type ContentAccessExtension,
+  type default as ContentAccessService,
+} from '../services/contentAccessService.js';
+import {
   makeDerivedFieldsService,
   type DerivedFieldsService,
 } from '../services/derivedFieldsService/index.js';
 import makeHmaService, {
   HashBankService,
   type HashBank,
+  type HmaService,
 } from '../services/hmaService/index.js';
+import {
+  makeIntegrationContextSettingsService,
+  type IntegrationContextSettingsService,
+} from '../services/integrationContextSettings/index.js';
 import { ItemInvestigationService } from '../services/itemInvestigationService/index.js';
 import {
   itemSubmissionWithTypeIdentifierToItemSubmission,
@@ -116,8 +126,14 @@ import {
   type NormalizedItemData,
 } from '../services/itemProcessingService/index.js';
 import {
+  getRegisteredManualReviewContentResolver,
+  type ManualReviewContentResolver,
+} from '../services/manualReviewContentResolver.js';
+import {
+  actionableRelatedActions,
   isReportJob,
   ManualReviewToolService,
+  relatedActionPublishPayloads,
   type ManualReviewAppealJobInput,
   type ManualReviewJobInput,
 } from '../services/manualReviewToolService/index.js';
@@ -131,6 +147,7 @@ import {
   // owned by the MRT service)
   // eslint-disable-next-line import/no-restricted-paths
 } from '../services/manualReviewToolService/manualReviewToolQueries.js';
+import { ModerationActivityFeed } from '../services/moderationActivityFeed/index.js';
 import {
   ModerationConfigService,
   type Action,
@@ -144,6 +161,7 @@ import {
 } from '../services/moderationConfigService/moderationConfigServiceQueries.js';
 import {
   buildSubmitReportParamsFromDecision,
+  isNcmecTestMode,
   makeNcmecService,
   type NcmecService,
 } from '../services/ncmecService/index.js';
@@ -199,6 +217,10 @@ import {
   type SignalAuthService,
 } from '../services/signalAuthService/index.js';
 import {
+  makeSignalContextLoaderFactory,
+  type SignalContextLoaderFactory,
+} from '../services/signalContextService/index.js';
+import {
   makeSignalsService,
   type SignalsService,
 } from '../services/signalsService/index.js';
@@ -233,7 +255,6 @@ import {
   toCorrelationId,
   type CorrelationId,
 } from '../utils/correlationIds.js';
-import { getUsableCoreCount } from '../utils/cpu-helpers.js';
 import { jsonStringify, type JsonOf } from '../utils/encoding.js';
 import { logErrorJson, logJson } from '../utils/logging.js';
 import { __throw, assertUnreachable } from '../utils/misc.js';
@@ -248,6 +269,7 @@ import { createPgPool } from './createPgPool.js';
 import { registerGqlDataSources } from './services/gqlDataSources.js';
 import { registerWorkersAndJobs } from './services/workersAndJobs.js';
 import {
+  inject,
   isEnvTrue,
   register,
   safeGetEnvNonNegativeInt,
@@ -359,6 +381,7 @@ export interface Dependencies {
   ReportingRuleExecutionLogger: ReportingRuleExecutionLogger;
 
   // Core business logic services
+  HMAHashBankService: HmaService;
   ActionPublisher: ActionPublisher;
   RuleEngine: RuleEngine;
   RuleEvaluator: RuleEvaluator;
@@ -368,9 +391,14 @@ export interface Dependencies {
   NotificationsService: PublicInterface<NotificationsService>;
   PlacesApiService: PlacesApiService;
   ReportingService: ReportingService;
+  ContentAccessService: ContentAccessService;
+  ManualReviewContentResolver: ManualReviewContentResolver;
   ManualReviewToolService: ManualReviewToolService;
   SignalsService: SignalsService;
+  SignalContextLoaderFactory: SignalContextLoaderFactory;
+  IntegrationContextSettingsService: IntegrationContextSettingsService;
   ItemInvestigationService: ItemInvestigationService;
+  ModerationActivityFeed: ModerationActivityFeed;
   DerivedFieldsService: DerivedFieldsService;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   UserStatisticsService: any; // TODO: Fix circular reference with Dependencies
@@ -432,7 +460,6 @@ export interface Dependencies {
   S3StoreObjectFactory: S3StoreObjectFactory;
   sendEmail: SendEmail;
   closeSharedResourcesForShutdown: () => Promise<void>;
-  GlobalWorkerPool: DynamicPool;
   Tracer: SafeTracer;
   Meter: CoopMeter;
   KeyValueStore: StringNumberKeyValueStore;
@@ -462,7 +489,12 @@ export function getPgConnectionParams(): pg.ClientConfig {
  * This export is a function, not a container object, so that you can create
  * copies of the container as needed for selective rebinding.
  */
-export default async function getBottle() {
+export default async function getBottle(
+  extensions: {
+    manualReviewContentResolver?: ManualReviewContentResolver;
+    contentAccess?: ContentAccessExtension;
+  } = {},
+) {
   // Pool / client tuning shared by both Kysely pools. Defaults preserve our
   // pre-Kysely behavior; env var names are generic.
   const getPgPoolTuning = () => {
@@ -746,6 +778,16 @@ export default async function getBottle() {
 
   // Core business logic services
   register(bottle, 'RuleEngine', makeRuleEngine);
+  register(
+    bottle,
+    'SignalContextLoaderFactory',
+    inject(['ItemInvestigationService'], makeSignalContextLoaderFactory),
+  );
+  register(
+    bottle,
+    'IntegrationContextSettingsService',
+    makeIntegrationContextSettingsService,
+  );
   register(bottle, 'RuleEvaluator', makeRuleEvaluator);
   register(bottle, 'RuleActionInsights', makeRuleActionInsights);
   register(bottle, 'ItemHistoryQueries', makeItemHistoryQueries);
@@ -777,9 +819,7 @@ export default async function getBottle() {
             executionContext,
           );
         },
-        itemInvestigationAndStrikesEnabled(
-          process.env.ITEM_INVESTIGATION_AND_STRIKES_ENABLED,
-        ),
+        itemInvestigationAndStrikesEnabled(process.env.SCYLLA_ENABLED),
       ),
   );
 
@@ -793,18 +833,12 @@ export default async function getBottle() {
   bottle.factory('Scylla', () => {
     // Scylla backs the item-investigation and user-strike features. Operators
     // who don't need those (and don't want to run a Scylla cluster) can set
-    // `ITEM_INVESTIGATION_AND_STRIKES_ENABLED=false` to swap in a no-op that
+    // `SCYLLA_ENABLED=false` to swap in a no-op that
     // drops writes and returns empty reads, so no `SCYLLA_*` connection env
     // vars are required. Defaults to enabled to preserve existing behaviour.
-    if (
-      !itemInvestigationAndStrikesEnabled(
-        process.env.ITEM_INVESTIGATION_AND_STRIKES_ENABLED,
-      )
-    ) {
+    if (!itemInvestigationAndStrikesEnabled(process.env.SCYLLA_ENABLED)) {
       // eslint-disable-next-line no-restricted-syntax
-      logJson(
-        'scylla.disabled ITEM_INVESTIGATION_AND_STRIKES_ENABLED=false; using no-op Scylla',
-      );
+      logJson('scylla.disabled SCYLLA_ENABLED=false; using no-op Scylla');
       return new NoOpScylla();
     }
 
@@ -935,8 +969,24 @@ export default async function getBottle() {
       ),
   );
 
+  bottle.factory('ContentAccessService', (container) =>
+    makeContentAccessService(extensions.contentAccess, container.Tracer),
+  );
+
+  bottle.factory(
+    'ManualReviewContentResolver',
+    () =>
+      extensions.manualReviewContentResolver ??
+      getRegisteredManualReviewContentResolver(),
+  );
+
   bottle.factory('ManualReviewToolService', (container) => {
     return new ManualReviewToolService(
+      // Lazy getter to break a circular dependency:
+      // ManualReviewToolService -> ReportingService -> ActionPublisher ->
+      // ManualReviewToolService. Resolved at call time, not construction time.
+      () => container.ReportingService.getNumTimesReported,
+      () => container.ReportingService.getNumTimesReportedForItems,
       container.IORedis,
       container.RuleEvaluator,
       container.RoutingRuleExecutionLogger,
@@ -961,6 +1011,7 @@ export default async function getBottle() {
         reviewerEmail,
         decisionReason,
         suppressUserReportSweep,
+        validatedNcmecTarget,
       }) {
         const { orgId } = job;
         const { itemId, itemTypeIdentifier, data } = job.payload.item;
@@ -1032,7 +1083,7 @@ export default async function getBottle() {
             'submissionId' in item && !('itemType' in item)
               ? itemSubmissionWithTypeIdentifierToItemSubmission(item, itemType)
               : item;
-          actionPublisher
+          return actionPublisher
             .publishActions(
               nonNullActionsWithCustomMrtParams.map((action) => ({
                 // we can cast to non-undefined (!) because we know that
@@ -1109,6 +1160,7 @@ export default async function getBottle() {
 
                   await container.fetchHTTP({
                     url: ignoreCallback,
+                    isUntrustedUrl: false,
                     method: 'post',
                     body: jsonStringify(ignoreCallbackBody),
                     logRequestAndResponseBody: 'ON_FAILURE',
@@ -1172,6 +1224,7 @@ export default async function getBottle() {
 
                   const appealResponse = await container.fetchHTTP({
                     url: orgAppealSettings.appealCallbackUrl,
+                    isUntrustedUrl: false,
                     method: 'post',
                     body: jsonStringify(appealCallbackBody),
                     logRequestAndResponseBody: 'ON_FAILURE',
@@ -1285,13 +1338,7 @@ export default async function getBottle() {
                       getItemTypeEventuallyConsistent:
                         container.getItemTypeEventuallyConsistent,
                     });
-                  // Submissions go to the NCMEC test endpoint
-                  // (exttest.cybertip.org) unless the deployment is explicitly
-                  // configured for production via NCMEC_ENV=production. Operators
-                  // are responsible for matching this to whether the credentials
-                  // configured in Settings → NCMEC are production or test
-                  // credentials issued by NCMEC.
-                  const isTest = process.env.NCMEC_ENV !== 'production';
+                  const isTest = isNcmecTestMode();
                   await container.NcmecService.submitReport(
                     reportParams,
                     isTest,
@@ -1386,6 +1433,7 @@ export default async function getBottle() {
                           correlationId,
                           item: job.payload.item,
                           reenqueuedFrom: { jobId: job.id },
+                          validatedNcmecTarget,
                         },
                       );
                       break;
@@ -1401,43 +1449,91 @@ export default async function getBottle() {
             }),
           );
 
-          // Publish any related actions
+          // Publish only related items the reviewer marked with an action.
+          // Lookup the latest submission so webhooks get full item data,
+          // falling back to the identifier if the item is not in investigation.
           const flattenedRelatedActions = relatedActions.flatMap((it) => {
-            return it.itemIds.map((itemId) => ({
-              ..._.omit(it, 'itemIds'),
-              itemId,
-            }));
-          });
-          await Promise.all(
-            flattenedRelatedActions.map(async (it) => {
-              const { actionIds, policyIds, itemId, itemTypeId } = it;
-              if (!isNonEmptyArray(actionIds)) {
-                return;
-              }
-
-              const itemType = await container.getItemTypeEventuallyConsistent({
-                orgId,
-                typeSelector: { id: itemTypeId },
-              });
-
-              if (!itemType) {
-                return;
-              }
-              const decisionActions = actionIds.map((actionId) => ({
-                actionId,
+            if (!isNonEmptyArray(it.actionIds)) {
+              return [];
+            }
+            return it.itemIds
+              .filter((itemId) => itemId.length > 0)
+              .map((itemId) => ({
+                ..._.omit(it, 'itemIds'),
+                itemId,
               }));
+          });
+          const relatedActionLimit = pLimit(10);
+          await Promise.all(
+            flattenedRelatedActions.map(async (it) =>
+              relatedActionLimit(async () => {
+                const { actionIds, policyIds, itemId, itemTypeId } = it;
+                if (!isNonEmptyArray(actionIds) || itemId.length === 0) {
+                  return;
+                }
 
-              if (isNonEmptyArray(decisionActions)) {
+                const itemType =
+                  await container.getItemTypeEventuallyConsistent({
+                    orgId,
+                    typeSelector: { id: itemTypeId },
+                  });
+
+                if (!itemType) {
+                  return;
+                }
+                const decisionActions = relatedActionPublishPayloads({
+                  actionIds,
+                  itemIds: [itemId],
+                  itemTypeId,
+                  policyIds,
+                  actionIdsToMrtApiParamDecisionPayload:
+                    it.actionIdsToMrtApiParamDecisionPayload,
+                });
+
+                if (!isNonEmptyArray(decisionActions)) {
+                  return;
+                }
+
+                const itemSubmission =
+                  await container.ItemInvestigationService.getItemByIdentifier({
+                    orgId,
+                    itemIdentifier: { id: itemId, typeId: itemTypeId },
+                    latestSubmissionOnly: true,
+                  })
+                    .then((result) => result?.latestSubmission)
+                    .catch((error: unknown) => {
+                      container.Tracer.addSpan(
+                        {
+                          resource: 'mrtService',
+                          operation: 'relatedAction.getItemByIdentifier',
+                        },
+                        (span) => {
+                          span.setAttribute('org.id', orgId);
+                          span.setAttribute('item.id', itemId);
+                          container.Tracer.logSpanFailed(span, error);
+                          return null;
+                        },
+                      );
+                      return undefined;
+                    });
+
                 await publishActions({
                   decisionActions,
                   policyIds,
                   orgId,
-                  item: { itemId, itemType },
+                  item: itemSubmission ?? {
+                    itemId,
+                    itemType: {
+                      id: itemType.id,
+                      kind: itemType.kind,
+                      name: itemType.name,
+                    },
+                  },
                   actorId: reviewerId,
                   actorEmail: reviewerEmail,
                 });
-              }
-            }),
+              }),
+            ),
           );
         } finally {
           if (!suppressUserReportSweep && isReportJob(job)) {
@@ -1446,15 +1542,15 @@ export default async function getBottle() {
               ...decisionComponents.flatMap((decision) =>
                 decision.type === 'CUSTOM_ACTION' ? [decision] : [],
               ),
-              ...relatedActions
-                .filter((ra) => ra.actionIds.length > 0)
-                .map((ra) => ({
-                  type: 'CUSTOM_ACTION' as const,
-                  actions: ra.actionIds.map((id) => ({ id })),
-                  policies: ra.policyIds.map((id) => ({ id })),
-                  itemIds: [...ra.itemIds],
-                  itemTypeId: ra.itemTypeId,
-                })),
+              ...actionableRelatedActions(relatedActions).map((ra) => ({
+                type: 'CUSTOM_ACTION' as const,
+                actions: ra.actionIds.map((id) => ({ id })),
+                policies: ra.policyIds.map((id) => ({ id })),
+                itemIds: [...ra.itemIds],
+                itemTypeId: ra.itemTypeId,
+                actionIdsToMrtApiParamDecisionPayload:
+                  ra.actionIdsToMrtApiParamDecisionPayload,
+              })),
             ];
             if (customActions.length > 0) {
               container.ManualReviewToolService.maybeClearOtherReportsForUser({
@@ -1491,6 +1587,15 @@ export default async function getBottle() {
       // on ManualReviewToolService.
       async (params) =>
         container.NcmecService.getUserHasExistingNcmecReport(params),
+      container.ManualReviewContentResolver,
+      container.Meter,
+    );
+  });
+
+  bottle.factory('ModerationActivityFeed', (container) => {
+    return new ModerationActivityFeed(
+      container.ManualReviewToolService,
+      container.ItemInvestigationService,
     );
   });
 
@@ -1654,17 +1759,6 @@ export default async function getBottle() {
   bottle.factory('sendEmail', makeSendEmail);
   register(bottle, 'KeyValueStore', makeKeyValueStore);
 
-  // Here, we make sure that our thread pool has at least one core. We also
-  // set the maximum number of to be the number of usable cores minus one
-  // so that we don't accidentally contend for resources with the main
-  // thread. It's possible we'll need to increase this to use all cores
-  // in an instance where the main thread is empty, but that should be
-  // pretty rare, and we can monitor to see if it's necessary
-  bottle.factory(
-    'GlobalWorkerPool',
-    () => new DynamicPool(Math.max(1, Math.floor(getUsableCoreCount()) - 1)),
-  );
-
   // NB: for now, we only expose the SafeTracer instance through bottle,
   // because we want all tracing to go through its helper functions.
   bottle.factory('Tracer', () => {
@@ -1757,7 +1851,6 @@ export default async function getBottle() {
             'getUserStrikeTTLInDaysEventuallyConsistent',
             'ManualReviewToolService',
             'SigningKeyPairService',
-            'GlobalWorkerPool',
             'SignalsService',
             'ModerationConfigService',
             'OrgSettingsService',

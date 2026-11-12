@@ -3,10 +3,9 @@ import {
   type PostgresCursor,
   type PostgresQueryResult,
 } from 'kysely';
+import { type Mock } from 'vitest';
 
-import { type MockedFn } from '../mockHelpers/jestMocks.js';
-
-export type MockPgExecute = MockedFn<
+export type MockPgExecute = Mock<
   (it: {
     sql: string;
     parameters: ReadonlyArray<unknown>;
