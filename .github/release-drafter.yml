@@ -4,6 +4,9 @@ category-template: '### $TITLE'
 change-template: '$BODY ([#$NUMBER]($URL) by [@$AUTHOR]($AUTHOR_URL))'
 no-changes-template: ''
 sync-labels: true
+# Security releases are cut from release/x.y branches; only main's releases
+# set the base version and changes for main's draft.
+filter-by-commitish: true
 # Ignore instructions, empty bullets, and subsequent sections.
 autolabeler:
   - labels: [has-release-notes]
@@ -13,7 +16,12 @@ categories:
   - type: pre-include
     when:
       label: has-release-notes
+  - title: Security
+    exclusive: true
+    when:
+      label: security-update
   - title: Added
+    semver-increment: minor
     when:
       conventional:
         type: feat
@@ -31,6 +39,10 @@ replacers:
     not-found: empty
   - target: change-body
     search: '/<!--[\s\S]*?-->/g'
+    replace: ''
+  # Bots append summaries after a thematic break, which doesn't end the section.
+  - target: change-body
+    search: '/^ {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*\r?$[\s\S]*/m'
     replace: ''
   - target: change-body
     search: '/((?:^|\r?\n)[ \t]*(?:-{3,}|\*{3,}|_{3,})\s*)+$/'
