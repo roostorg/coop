@@ -40,7 +40,7 @@
             const path_to_root = "../";
             const default_light_theme = "roost";
             const default_dark_theme = "roost";
-            window.path_to_searchindex_js = "../searchindex-fb951f0c.js";
+            window.path_to_searchindex_js = "../searchindex-3d92dcce.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="../toc-76cecac5.js"></script>
@@ -219,11 +219,12 @@
 <li>Set the tag to <code>x.y.z</code> (no <code>v</code> prefix), confirm the target commit on <code>main</code>, and title the release <code>Coop x.y.z</code>.</li>
 <li>Check <strong>Create a discussion for this release</strong> for at least major and minor releases.</li>
 <li><strong>Publish</strong> the release.</li>
-<li>Confirm the <strong>Publish Docker images</strong> workflow succeeds and the version-tagged images exist.</li>
+<li>Confirm the <strong>Publish Docker images</strong> workflow succeeds, the version-tagged images exist, and the release has an SBOM attached for each image.</li>
 </ol>
 <p>Publishing a release triggers automations:</p>
 <ul>
-<li><strong>Docker images</strong>: builds and pushes version-tagged Docker images for <code>coop-server</code>, <code>coop-worker</code>, <code>coop-client</code>, and <code>coop-migrations</code></li>
+<li><strong>Docker images</strong>: builds and pushes version-tagged Docker images for <code>coop-server</code>, <code>coop-worker</code>, <code>coop-client</code>, and <code>coop-migrations</code>, each with SBOM and provenance attestations</li>
+<li><strong>SBOMs</strong>: attaches a linux/amd64 CycloneDX SBOM for each image (<code>&lt;image&gt;-x.y.z.cdx.json</code>) to the release</li>
 <li><strong>Image scans</strong>: scans each image with Trivy and reports findings to code scanning, which is visible only to maintainers; findings never block publishing. See <a href="vulnerability-scanning.html">Vulnerability scanning</a></li>
 <li><strong>Docs</strong>: adds a folder for the release to the <a href="https://roostorg.github.io/coop/">index</a> with a snapshot of the docs</li>
 </ul>
