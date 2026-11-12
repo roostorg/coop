@@ -2,7 +2,11 @@ name: nocommit
 
 # Blocks merging while a PR carries a do-not-merge marker: an added line, the
 # title or the description matching MARKER, or the do-not-merge label.
-# Convention: docs/development/README.md#blocking-a-merge
+# Convention: docs/development/blocking-merges.md
+#
+# The code scan skips two files that have to contain the marker: this workflow
+# and docs/development/blocking-merges.md, the page that documents the
+# convention.
 
 on:
   pull_request:
@@ -51,12 +55,11 @@ jobs:
             failed=1
           fi
 
-          # Only added lines count. The workflow and the docs describing the
-          # convention contain the marker themselves.
+          # Only added lines count.
           hits=$(
             git -c core.quotePath=false diff --no-color --no-ext-diff -U0 "origin/${BASE_REF}...HEAD" -- . \
-              ':(exclude).github/workflows/nocommit.yml' \
-              ':(exclude)docs/development/README.md' |
+              ':(exclude,top).github/workflows/nocommit.yml' \
+              ':(exclude,top)docs/development/blocking-merges.md' |
               awk -v re="$MARKER" '
                 /^diff --git / { in_header = 1; next }
                 in_header && /^\+\+\+ / { file = substr($0, 7); next }
