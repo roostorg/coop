@@ -1,6 +1,7 @@
 import { vi } from 'vitest';
 
 import { IntegrationContextSettingsService } from './service.js';
+import { CONTEXT_SETTINGS_KEY } from './settings.js';
 
 const signal = {
   integration: 'UNREGISTERED_TEST_INTEGRATION',
@@ -67,6 +68,27 @@ describe('IntegrationContextSettingsService', () => {
     await expect(
       service.getEffectiveContextNeeds({ orgId: 'org-a', signal }),
     ).resolves.toEqual({ includeThread: true });
+  });
+
+  it("reads each org's saved context settings", async () => {
+    const getByIntegrationId = vi.fn(async (_id: string, orgId: string) => ({
+      apiKey: 'test-key',
+      [CONTEXT_SETTINGS_KEY]: {
+        thread: { mode: orgId === 'org-a' ? 'off' : 'include' },
+      },
+    }));
+    const service = makeService(getByIntegrationId);
+
+    await expect(service.getOrgSettings('org-a', 'TEST')).resolves.toEqual({
+      thread: { mode: 'off' },
+    });
+    await expect(service.getOrgSettings('org-b', 'TEST')).resolves.toEqual({
+      thread: { mode: 'include' },
+    });
+    expect(getByIntegrationId.mock.calls).toEqual([
+      ['TEST', 'org-a'],
+      ['TEST', 'org-b'],
+    ]);
   });
 
   it('skips the lookup for signals without context needs', async () => {

@@ -27,6 +27,9 @@ import {
 } from '../../../graphql/inputHelpers';
 import { userHasPermissions } from '../../../routing/permissions';
 import IntegrationConfigApiCredentialsSection from './IntegrationConfigApiCredentialsSection';
+import IntegrationContextSettingsSection, {
+  type IntegrationContextSetting,
+} from './IntegrationContextSettingsSection';
 import { INTEGRATION_LOGO_FALLBACKS } from './integrationLogos';
 import ModelCardView from './ModelCardView';
 
@@ -90,6 +93,15 @@ gql`
             }
             placeholder
             description
+          }
+          contextOptions {
+            kind
+            defaultMode
+            mode
+            included
+            maxCount
+            defaultMaxCount
+            maxCountLimit
           }
           logoUrl
           logoWithBackgroundUrl
@@ -216,6 +228,9 @@ export default function IntegrationConfigForm() {
   const [apiCredential, setApiCredential] = useState(
     getNewEmptyApiKey(integrationName),
   );
+  const [contextSettings, setContextSettings] = useState<
+    IntegrationContextSetting[]
+  >([]);
 
   const showModal = () => setModalVisible(true);
   const hideModal = () => setModalVisible(false);
@@ -297,6 +312,13 @@ export default function IntegrationConfigForm() {
       } else {
         setApiCredential(cred);
       }
+      setContextSettings(
+        response.config.contextOptions.map((option) => ({
+          kind: option.kind,
+          mode: option.mode,
+          maxCount: option.maxCount ?? null,
+        })),
+      );
     }
   }, [response]);
 
@@ -342,6 +364,7 @@ export default function IntegrationConfigForm() {
       )
       .map((field) => field.key),
   );
+  const contextOptions = apiConfig?.contextOptions ?? [];
   const pluginCredential =
     apiCredential.__typename === 'PluginIntegrationApiCredential'
       ? (apiCredential.credential ?? {})
@@ -363,6 +386,23 @@ export default function IntegrationConfigForm() {
       );
       if (invalidJson) {
         return `${invalidJson.label} must be valid JSON`;
+      }
+      const invalidCount = contextOptions.find((option) => {
+        const setting = contextSettings.find(
+          (candidate) => candidate.kind === option.kind,
+        );
+        return (
+          setting?.maxCount != null &&
+          (!Number.isInteger(setting.maxCount) ||
+            setting.maxCount < 1 ||
+            (option.maxCountLimit != null &&
+              setting.maxCount > option.maxCountLimit))
+        );
+      });
+      if (invalidCount) {
+        return invalidCount.maxCountLimit != null
+          ? `Max messages must be between 1 and ${invalidCount.maxCountLimit}`
+          : 'Max messages must be a whole number of at least 1';
       }
       return undefined;
     }
@@ -440,7 +480,21 @@ export default function IntegrationConfigForm() {
           );
           await setPluginConfig({
             variables: {
-              input: { integrationId: integrationName, credential: cred },
+              input: {
+                integrationId: integrationName,
+                credential: cred,
+                ...(contextOptions.length > 0
+                  ? {
+                      contextSettings: contextSettings.map(
+                        ({ kind, mode, maxCount }) => ({
+                          kind,
+                          mode,
+                          maxCount,
+                        }),
+                      ),
+                    }
+                  : {}),
+              },
             },
             refetchQueries,
           });
@@ -586,6 +640,14 @@ export default function IntegrationConfigForm() {
               configurationFields={configurationFields}
               compact
             />
+            {isPluginIntegration && (
+              <IntegrationContextSettingsSection
+                options={contextOptions}
+                value={contextSettings}
+                onChange={setContextSettings}
+                disabled={!canEditConfig}
+              />
+            )}
             {saveButton}
           </div>
         </div>
@@ -599,6 +661,14 @@ export default function IntegrationConfigForm() {
             }
             configurationFields={configurationFields}
           />
+          {isPluginIntegration && (
+            <IntegrationContextSettingsSection
+              options={contextOptions}
+              value={contextSettings}
+              onChange={setContextSettings}
+              disabled={!canEditConfig}
+            />
+          )}
           {saveButton}
         </>
       )}

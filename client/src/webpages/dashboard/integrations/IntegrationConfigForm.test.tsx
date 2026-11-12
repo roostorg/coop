@@ -48,6 +48,7 @@ function renderForm(labelerVersions: GQLZentropiLabelerVersion[]) {
         docsUrl: 'https://zentropi.ai/api',
         requiresConfig: true,
         configurationFields: [],
+        contextOptions: [],
         logoUrl: null,
         logoWithBackgroundUrl: null,
         modelCard: {
@@ -239,6 +240,7 @@ function renderPluginForm(
         title: 'Pigeon',
         docsUrl: 'https://example.com/docs',
         requiresConfig: true,
+        contextOptions: [],
         configurationFields: [
           {
             __typename: 'IntegrationConfigField',

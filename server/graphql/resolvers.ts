@@ -23,6 +23,7 @@ import { resolvers as genericResolvers } from './modules/generic.js';
 import { resolvers as hashBankResolvers } from './modules/hashBanks/resolvers.js';
 import { resolvers as insightsResolvers } from './modules/insights.js';
 import { resolvers as integrationResolvers } from './modules/integration.js';
+import { resolvers as integrationContextResolvers } from './modules/integrationContext.js';
 import { resolvers as investigationResolvers } from './modules/investigation.js';
 import { resolvers as itemTypeResolvers } from './modules/itemType.js';
 import { resolvers as locationBankResolvers } from './modules/locationBank.js';
@@ -281,6 +282,7 @@ export default mergeResolvers([
   genericResolvers,
   insightsResolvers,
   integrationResolvers,
+  integrationContextResolvers,
   investigationResolvers,
   itemTypeResolvers,
   locationBankResolvers,

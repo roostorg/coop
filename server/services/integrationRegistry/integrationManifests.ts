@@ -13,6 +13,8 @@ import {
   type ModelCardSubsection,
 } from '@roostorg/coop-types';
 
+import type { NormalizedContextOptions } from '../integrationContextSettings/settings.js';
+
 export type {
   ModelCard,
   ModelCardField,
@@ -35,6 +37,8 @@ export type IntegrationManifestEntry = Readonly<{
   logoWithBackgroundUrl?: string;
   /** Config form fields declared by plugin manifests; built-ins have custom forms. */
   configurationFields?: readonly IntegrationConfigField[];
+  /** Evaluation context options declared by plugin manifests. */
+  contextOptions?: NormalizedContextOptions;
 }>;
 
 const GOOGLE_CONTENT_SAFETY: IntegrationManifestEntry = {

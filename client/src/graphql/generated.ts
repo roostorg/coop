@@ -1461,6 +1461,7 @@ export type GQLIntegrationConfig = {
    * which have custom forms.
    */
   readonly configurationFields: ReadonlyArray<GQLIntegrationConfigField>;
+  readonly contextOptions: ReadonlyArray<GQLIntegrationContextOption>;
   readonly docsUrl: Scalars['String']['output'];
   readonly logoUrl?: Maybe<Scalars['String']['output']>;
   readonly logoWithBackgroundUrl?: Maybe<Scalars['String']['output']>;
@@ -1526,6 +1527,47 @@ export type GQLIntegrationConfigUnsupportedIntegrationError = GQLError & {
   readonly status: Scalars['Int']['output'];
   readonly title: Scalars['String']['output'];
   readonly type: ReadonlyArray<Scalars['String']['output']>;
+};
+
+export const GQLIntegrationContextKind = {
+  Parent: 'PARENT',
+  Thread: 'THREAD',
+} as const;
+
+export type GQLIntegrationContextKind =
+  (typeof GQLIntegrationContextKind)[keyof typeof GQLIntegrationContextKind];
+export const GQLIntegrationContextMode = {
+  Default: 'DEFAULT',
+  Include: 'INCLUDE',
+  Off: 'OFF',
+} as const;
+
+export type GQLIntegrationContextMode =
+  (typeof GQLIntegrationContextMode)[keyof typeof GQLIntegrationContextMode];
+/**
+ * Evaluation context a plugin integration can use, with the org's choice.
+ * Coop loads the included context (conversation thread, parent item) and
+ * passes it to the plugin's signals.
+ */
+export type GQLIntegrationContextOption = {
+  readonly __typename: 'IntegrationContextOption';
+  readonly defaultMaxCount?: Maybe<Scalars['Int']['output']>;
+  /** The plugin's default: INCLUDE or OFF. */
+  readonly defaultMode: GQLIntegrationContextMode;
+  /** Whether the context is loaded, after applying the default. */
+  readonly included: Scalars['Boolean']['output'];
+  readonly kind: GQLIntegrationContextKind;
+  /** The org's max messages; null means the plugin default. */
+  readonly maxCount?: Maybe<Scalars['Int']['output']>;
+  readonly maxCountLimit?: Maybe<Scalars['Int']['output']>;
+  /** The org's choice; DEFAULT means use the plugin's default. */
+  readonly mode: GQLIntegrationContextMode;
+};
+
+export type GQLIntegrationContextSettingInput = {
+  readonly kind: GQLIntegrationContextKind;
+  readonly maxCount?: InputMaybe<Scalars['Int']['input']>;
+  readonly mode: GQLIntegrationContextMode;
 };
 
 export type GQLIntegrationEmptyInputCredentialsError = GQLError & {
@@ -4592,6 +4634,10 @@ export type GQLSetMrtChartConfigurationSettingsSuccessResponse = {
 };
 
 export type GQLSetPluginIntegrationConfigInput = {
+  /** Omit to keep the current settings. */
+  readonly contextSettings?: InputMaybe<
+    ReadonlyArray<GQLIntegrationContextSettingInput>
+  >;
   readonly credential: Scalars['JSONObject']['input'];
   readonly integrationId: Scalars['String']['input'];
 };
@@ -6843,6 +6889,16 @@ export type GQLIntegrationConfigQuery = {
               readonly value: string;
               readonly label: string;
             }> | null;
+          }>;
+          readonly contextOptions: ReadonlyArray<{
+            readonly __typename: 'IntegrationContextOption';
+            readonly kind: GQLIntegrationContextKind;
+            readonly defaultMode: GQLIntegrationContextMode;
+            readonly mode: GQLIntegrationContextMode;
+            readonly included: boolean;
+            readonly maxCount?: number | null;
+            readonly defaultMaxCount?: number | null;
+            readonly maxCountLimit?: number | null;
           }>;
           readonly modelCard: {
             readonly __typename: 'ModelCard';
@@ -30942,6 +30998,15 @@ export const GQLIntegrationConfigDocument = gql`
             }
             placeholder
             description
+          }
+          contextOptions {
+            kind
+            defaultMode
+            mode
+            included
+            maxCount
+            defaultMaxCount
+            maxCountLimit
           }
           logoUrl
           logoWithBackgroundUrl
