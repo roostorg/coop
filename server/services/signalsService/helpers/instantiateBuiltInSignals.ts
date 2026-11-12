@@ -20,6 +20,7 @@ import TextMatchingContainsTextSignal from '../signals/text_matching/TextMatchin
 import TextMatchingNotContainsRegexSignal from '../signals/text_matching/TextMatchingNotContainsRegexSignal.js';
 import TextMatchingNotContainsTextSignal from '../signals/text_matching/TextMatchingNotContainsTextSignal.js';
 import GoogleContentSafetyImageSignal from '../signals/third_party_signals/google/content_safety/GoogleContentSafetyImageSignal.js';
+import GoogleContentSafetyVideoSignal from '../signals/third_party_signals/google/content_safety/GoogleContentSafetyVideoSignal.js';
 import OpenAiGraphicViolenceImageSignal from '../signals/third_party_signals/open_ai/moderation/OpenAiGraphicViolenceImageSignal.js';
 import OpenAiGraphicViolenceTextSignal from '../signals/third_party_signals/open_ai/moderation/OpenAiGraphicViolenceTextSignal.js';
 import OpenAiHateTextSignal from '../signals/third_party_signals/open_ai/moderation/OpenAiHateTextSignal.js';
@@ -81,6 +82,11 @@ export function instantiateBuiltInSignals(
     ),
     [SignalType.GOOGLE_CONTENT_SAFETY_API_IMAGE]:
       new GoogleContentSafetyImageSignal(
+        credentialGetters.GOOGLE_CONTENT_SAFETY_API,
+        getGoogleContentSafetyScores,
+      ),
+    [SignalType.GOOGLE_CONTENT_SAFETY_API_VIDEO]:
+      new GoogleContentSafetyVideoSignal(
         credentialGetters.GOOGLE_CONTENT_SAFETY_API,
         getGoogleContentSafetyScores,
       ),

@@ -9,7 +9,8 @@ import { type Bind2 } from '../../../../../../utils/typescript-types.js';
 import { type FetchHTTP } from '../../../../../networkingService/index.js';
 import { type GetCredentials } from '../../../../../signalAuthService/signalAuthService.js';
 import { type SignalInput } from '../../../SignalBase.js';
-import { fetchImage, fetchWithTimeout } from './fetchUtils.js';
+import { fetchMedia, fetchWithTimeout } from './fetchUtils.js';
+import { reencodeVideoForContentSafety } from './reencodeVideo.js';
 
 export const GOOGLE_CONTENT_SAFETY_PRIORITIES = [
   'VERY_LOW',
@@ -38,8 +39,7 @@ export class GoogleContentSafetyClient {
   private readonly apiKey: string;
   private readonly timeoutMs: number;
   private readonly fetchHTTP: FetchHTTP;
-  private readonly baseUrl =
-    'https://contentsafety.googleapis.com/v1beta1/images:classify';
+  private readonly baseUrl = 'https://contentsafety.googleapis.com/v1beta1';
 
   constructor(options: GoogleContentSafetyOptions) {
     if (!options.apiKey) {
@@ -71,14 +71,31 @@ export class GoogleContentSafetyClient {
   public async classifyImages(
     images: (Buffer | Uint8Array)[],
   ): Promise<ReadonlyDeep<GoogleContentSafetyPriority[]>> {
-    const url = `${this.baseUrl}?key=${this.apiKey}`;
+    return this.classify('images', images);
+  }
+
+  /**
+   * Classifies a single video, re-encoded with `reencodeVideoForContentSafety`.
+   */
+  public async classifyVideo(
+    video: Buffer | Uint8Array,
+  ): Promise<GoogleContentSafetyPriority | undefined> {
+    const priorities = await this.classify('videos', [video]);
+    return priorities[0];
+  }
+
+  private async classify(
+    resource: 'images' | 'videos',
+    media: (Buffer | Uint8Array)[],
+  ): Promise<ReadonlyDeep<GoogleContentSafetyPriority[]>> {
+    const url = `${this.baseUrl}/${resource}:classify?key=${this.apiKey}`;
 
     const reqBody = {
-      images: images.map((image) => {
-        if (Buffer.isBuffer(image)) {
-          return image.toString('base64');
+      [resource]: media.map((item) => {
+        if (Buffer.isBuffer(item)) {
+          return item.toString('base64');
         }
-        return Buffer.from(image).toString('base64');
+        return Buffer.from(item).toString('base64');
       }),
     };
 
@@ -122,9 +139,9 @@ export class GoogleContentSafetyClient {
   }
 }
 
-export async function runGoogleContentSafetyImageImpl(
+export async function runGoogleContentSafetyImpl(
   getGoogleContentSafetyCredentials: GetCredentials<'GOOGLE_CONTENT_SAFETY_API'>,
-  input: SignalInput<ScalarTypes['IMAGE']>,
+  input: SignalInput<ScalarTypes['IMAGE'] | ScalarTypes['VIDEO']>,
   getGoogleContentSafetyScores: FetchGoogleContentSafetyScores,
 ) {
   const { value, orgId } = input;
@@ -135,7 +152,8 @@ export async function runGoogleContentSafetyImageImpl(
   }
 
   const response = await getGoogleContentSafetyScores({
-    imageUrl: value.value.url,
+    mediaUrl: value.value.url,
+    mediaType: value.type,
     apiKey: credential.apiKey,
   });
 
@@ -161,19 +179,29 @@ export type FetchGoogleContentSafetyScores = Bind2<
   SafeTracer
 >;
 
-const IMAGE_FETCH_TIMEOUT_MS = 10_000;
+const MEDIA_FETCH_TIMEOUT_MS = 10_000;
 const CONTENT_SAFETY_API_TIMEOUT_MS = 10_000;
 
 export async function getGoogleContentSafetyScores(
   fetchHTTP: FetchHTTP,
   tracer: SafeTracer,
-  req: { apiKey: string; imageUrl: string },
+  req: {
+    apiKey: string;
+    mediaUrl: string;
+    mediaType: ScalarTypes['IMAGE'] | ScalarTypes['VIDEO'];
+  },
 ): Promise<ReadonlyDeep<GoogleContentSafetyPriority[]>> {
-  const { apiKey, imageUrl } = req;
+  const { apiKey, mediaUrl, mediaType } = req;
+  const isVideo = mediaType === ScalarTypes.VIDEO;
 
-  let imageBuffer: Buffer;
+  let mediaBuffer: Buffer;
   try {
-    imageBuffer = await fetchImage(fetchHTTP, imageUrl, IMAGE_FETCH_TIMEOUT_MS);
+    mediaBuffer = await fetchMedia(
+      fetchHTTP,
+      mediaUrl,
+      MEDIA_FETCH_TIMEOUT_MS,
+      isVideo ? '25mb' : undefined,
+    );
   } catch (e) {
     if (safeGet(e, ['name']) === 'ResponseExceededMaxSizeError') {
       throw makeSignalPermanentError('Response too large', {
@@ -185,7 +213,7 @@ export async function getGoogleContentSafetyScores(
       activeSpan.recordException(e as Error);
     }
     throw new Error(
-      `Failed to fetch image for Google Content Safety API: ${String(e)}`,
+      `Failed to fetch media for Google Content Safety API: ${String(e)}`,
     );
   }
 
@@ -195,7 +223,11 @@ export async function getGoogleContentSafetyScores(
       fetchHTTP,
       timeoutMs: CONTENT_SAFETY_API_TIMEOUT_MS,
     });
-    const priority = await client.classifyImage(imageBuffer);
+    const priority = isVideo
+      ? await client.classifyVideo(
+          await reencodeVideoForContentSafety(mediaBuffer),
+        )
+      : await client.classifyImage(mediaBuffer);
     if (priority === undefined) {
       throw new Error('Empty Google Content Safety API results');
     }
