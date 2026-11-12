@@ -1,0 +1,125 @@
+name: Label security PRs
+
+# Adds the `security-update` label to Dependabot PRs that fix a published advisory,
+# so a release's security fixes can be listed with
+# `gh pr list --state merged --label security-update`.
+#
+# A PR counts as a security fix when one of its updated dependencies is
+# affected by a GitHub Advisory Database advisory at the old version and not at
+# the new one. This uses the public advisories API rather than fetch-metadata's
+# `alert-lookup`, which needs a PAT or GitHub App token.
+#
+# Docker images have no advisory ecosystem. `node` images count as a security
+# fix when the update crosses a release marked `security` in the Node.js release
+# index. Other images are skipped.
+
+on:
+  # Dependabot `pull_request` runs get a read-only token, and labeling needs
+  # write. This workflow never checks out or runs PR code: it reads the PR's
+  # commit metadata through the API and only adds a label.
+  pull_request_target: # zizmor: ignore[dangerous-triggers]
+    types: [opened, reopened, synchronize]
+
+permissions: {}
+
+jobs:
+  label:
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+
+      - name: Label if it fixes an advisory
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          UPDATED_DEPENDENCIES: ${{ steps.metadata.outputs.updated-dependencies-json }}
+          LABEL: security-update
+        run: |
+          set -euo pipefail
+          shopt -s inherit_errexit
+
+          # Dependabot package-ecosystem -> GitHub Advisory Database ecosystem
+          advisory_ecosystem() {
+            case "$1" in
+              npm_and_yarn | bun) echo npm ;;
+              pip | uv) echo pip ;;
+              github_actions) echo actions ;;
+              go_modules) echo go ;;
+              cargo) echo rust ;;
+              bundler) echo rubygems ;;
+              maven | gradle) echo maven ;;
+              composer | nuget | pub | swift) echo "$1" ;;
+              mix) echo erlang ;;
+            esac
+          }
+
+          # The API returns only reviewed advisories unless asked for unreviewed.
+          affecting_advisories() {
+            for type in reviewed unreviewed; do
+              gh api --paginate -X GET /advisories \
+                -f type="$type" -f ecosystem="$1" -f affects="$2@$3" -f per_page=100 \
+                --jq '.[] | select(.withdrawn_at == null) | .ghsa_id'
+            done | sort -u
+          }
+
+          # Node.js marks security releases in its release index; image tags
+          # look like 24.22.1 or 24.22.1-trixie-slim.
+          crosses_node_security_release() {
+            jq --arg prev "${1%%-*}" --arg new "${2%%-*}" '
+              def semver: ltrimstr("v") | split(".") | map(tonumber);
+              any(.[]; .security
+                and (.version | semver) > ($prev | semver)
+                and (.version | semver) <= ($new | semver))
+            ' <<<"$node_releases"
+          }
+
+          node_image='^((docker\.io/)?library/)?node$'
+          node_tag='^[0-9]+\.[0-9]+\.[0-9]+(-|$)'
+          node_releases=""
+          fixes_advisory=false
+          while IFS= read -r dep; do
+            name=$(jq -r '.dependencyName' <<<"$dep")
+            prev=$(jq -r '.prevVersion // ""' <<<"$dep")
+            new=$(jq -r '.newVersion // ""' <<<"$dep")
+            ecosystem=$(advisory_ecosystem "$(jq -r '.packageEcosystem // ""' <<<"$dep")")
+            if [[ -n "$ecosystem" && -n "$prev" && -n "$new" ]]; then
+              before=$(affecting_advisories "$ecosystem" "$name" "$prev")
+              after=$(affecting_advisories "$ecosystem" "$name" "$new")
+              fixed=$(comm -23 <(echo "$before") <(echo "$after"))
+            elif [[ "$name" =~ $node_image && "$prev" =~ $node_tag && "$new" =~ $node_tag ]]; then
+              if [[ -z "$node_releases" ]]; then
+                node_releases=$(curl -fsSL --retry 3 https://nodejs.org/dist/index.json)
+              fi
+              fixed=$(crosses_node_security_release "$prev" "$new")
+              [[ "$fixed" == true ]] || fixed=""
+            else
+              echo "Skipping $name: no advisory source for it"
+              continue
+            fi
+            if [[ -n "$fixed" ]]; then
+              echo "$name $prev -> $new fixes a published advisory"
+              fixes_advisory=true
+            fi
+          done < <(jq -c '.[]' <<<"$UPDATED_DEPENDENCIES")
+
+          if [[ "$fixes_advisory" != true ]]; then
+            echo "No published advisory fixed; not labeling"
+            exit 0
+          fi
+
+          labels=$(gh api --paginate "repos/$REPO/labels" --jq '.[].name')
+          if ! grep -Fxq "$LABEL" <<<"$labels"; then
+            # Adding a missing label through the API would create it.
+            echo "::warning::Label '$LABEL' does not exist in $REPO; create it to label security PRs"
+            exit 0
+          fi
+
+          gh api -X POST "repos/$REPO/issues/$PR_NUMBER/labels" -f "labels[]=$LABEL" --silent
+          echo "Added '$LABEL' to #$PR_NUMBER"

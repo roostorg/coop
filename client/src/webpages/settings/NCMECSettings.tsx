@@ -12,6 +12,7 @@ import { toast } from '@/coop-ui/Toast';
 import { Heading, Text } from '@/coop-ui/Typography';
 import {
   GQLNcmecMediaReviewRequirement,
+  GQLNcmecOrgSettingsDocument,
   GQLUserPermission,
   useGQLNcmecOrgSettingsQuery,
   useGQLUpdateNcmecOrgSettingsMutation,
@@ -112,6 +113,10 @@ export default function NCMECSettings() {
 
   const [updateSettings, { loading: isUpdateLoading }] =
     useGQLUpdateNcmecOrgSettingsMutation({
+      // The first save creates the settings row and enables NCMEC reporting;
+      // the cached query still holds the empty, disabled state from before it.
+      refetchQueries: [GQLNcmecOrgSettingsDocument],
+      awaitRefetchQueries: true,
       onCompleted: () => {
         toast.success('NCMEC settings saved successfully!');
       },

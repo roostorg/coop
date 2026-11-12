@@ -1,6 +1,8 @@
 import {
   type ScalarType,
   type ScalarTypeRuntimeType,
+  type SignalContextNeeds,
+  type SignalEvaluationContext,
   type SignalSubcategory,
   type TaggedScalar,
 } from '@roostorg/coop-types';
@@ -95,6 +97,9 @@ export type SignalInput<
   runtimeArgs?: ReadonlyDeep<
     Type extends SignalType ? RuntimeSignalArgsByType[Type] : unknown
   >;
+
+  // Only set when the signal or its integration's org settings need context.
+  context?: SignalEvaluationContext;
 };
 
 // The result of running a signal can be:
@@ -292,6 +297,15 @@ export default abstract class SignalBase<
    * Default: true (most signals can be used in automated rules)
    */
   abstract get allowedInAutomatedRules(): boolean;
+
+  /**
+   * Context expansions (full item, parent, thread) that should
+   * be loaded and passed to run() as `input.context`. Undefined means the
+   * signal receives no context, which is the default for all signals.
+   */
+  get contextNeeds(): SignalContextNeeds | undefined {
+    return undefined;
+  }
 }
 
 export { SignalBase };
