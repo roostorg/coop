@@ -333,6 +333,7 @@ export class HmaService {
   private async hmaBankExists(hmaName: string): Promise<boolean> {
     const response = await this.fetchHTTP({
       url: `${this.hmaServiceUrl}/c/bank/${encodeURIComponent(hmaName)}`,
+      isUntrustedUrl: false,
       method: 'get',
       handleResponseBody: 'discard',
     });
@@ -394,6 +395,7 @@ export class HmaService {
 
       const response = await this.fetchHTTP({
         url: `${this.hmaServiceUrl}/c/banks`,
+        isUntrustedUrl: false,
         method: 'post',
         body: jsonStringify(requestBody),
         headers: { 'Content-Type': 'application/json' },
@@ -419,6 +421,7 @@ export class HmaService {
       if (exchange && enabled_ratio !== 1.0) {
         const ratioResponse = await this.fetchHTTP({
           url: `${this.hmaServiceUrl}/c/bank/${hmaName}`,
+          isUntrustedUrl: false,
           method: 'put',
           body: jsonStringify({ enabled_ratio }),
           headers: { 'Content-Type': 'application/json' },
@@ -463,6 +466,7 @@ export class HmaService {
         url: isExchange
           ? `${this.hmaServiceUrl}/c/exchange/${encodeURIComponent(hmaName)}`
           : `${this.hmaServiceUrl}/c/bank/${encodeURIComponent(hmaName)}`,
+        isUntrustedUrl: false,
         method: 'delete',
         handleResponseBody: 'discard',
       });
@@ -584,6 +588,7 @@ export class HmaService {
   ): Promise<void> {
     const response = await this.fetchHTTP({
       url: `${this.hmaServiceUrl}/c/bank/${encodeURIComponent(hmaName)}`,
+      isUntrustedUrl: false,
       method: 'put',
       body: jsonStringify(changes),
       headers: { 'Content-Type': 'application/json' },
@@ -614,6 +619,7 @@ export class HmaService {
 
     const response = await this.fetchHTTP({
       url,
+      isUntrustedUrl: false,
       method: 'delete',
       handleResponseBody: 'discard',
     });
@@ -635,6 +641,7 @@ export class HmaService {
   private async getExchangeApiName(hmaName: string): Promise<string | null> {
     const response = await this.fetchHTTP({
       url: `${this.hmaServiceUrl}/c/exchange/${encodeURIComponent(hmaName)}`,
+      isUntrustedUrl: false,
       method: 'get',
       handleResponseBody: 'as-json',
     });
@@ -663,6 +670,7 @@ export class HmaService {
     try {
       const response = await this.fetchHTTP({
         url: `${this.hmaServiceUrl}/c/bank/${bank.hma_name}`,
+        isUntrustedUrl: false,
         method: 'get',
         handleResponseBody: 'discard',
       });
@@ -695,6 +703,7 @@ export class HmaService {
   private async forgetMissingBank(bank: HashBank): Promise<boolean> {
     const response = await this.fetchHTTP({
       url: `${this.hmaServiceUrl}/c/exchange/${encodeURIComponent(bank.hma_name)}`,
+      isUntrustedUrl: false,
       method: 'delete',
       handleResponseBody: 'discard',
     });
@@ -723,6 +732,7 @@ export class HmaService {
     try {
       const response = await this.fetchHTTP({
         url: `${this.hmaServiceUrl}/c/bank/${bank.hma_name}`,
+        isUntrustedUrl: false,
         method: 'get',
         handleResponseBody: 'discard',
       });
@@ -757,6 +767,7 @@ export class HmaService {
           try {
             const response = await this.fetchHTTP({
               url: `${this.hmaServiceUrl}/c/bank/${bank.hma_name}`,
+              isUntrustedUrl: false,
               method: 'get',
               headers: {
                 'Content-Type': 'application/json',
@@ -797,6 +808,7 @@ export class HmaService {
   async getExchangeApis(): Promise<ExchangeApiInfo[]> {
     const apisResponse = await this.fetchHTTP({
       url: `${this.hmaServiceUrl}/c/exchanges/apis`,
+      isUntrustedUrl: false,
       method: 'get',
       handleResponseBody: 'as-json',
     });
@@ -812,6 +824,7 @@ export class HmaService {
         try {
           const configResponse = await this.fetchHTTP({
             url: `${this.hmaServiceUrl}/c/exchanges/api/${encodeURIComponent(name)}`,
+            isUntrustedUrl: false,
             method: 'get',
             handleResponseBody: 'as-json',
           });
@@ -837,6 +850,7 @@ export class HmaService {
     try {
       const response = await this.fetchHTTP({
         url: `${this.hmaServiceUrl}/c/exchanges/api/${encodeURIComponent(apiName)}/schema`,
+        isUntrustedUrl: false,
         method: 'get',
         handleResponseBody: 'as-json',
       });
@@ -878,6 +892,7 @@ export class HmaService {
 
     const response = await this.fetchHTTP({
       url: `${this.hmaServiceUrl}/c/exchanges`,
+      isUntrustedUrl: false,
       method: 'post',
       body: jsonStringify(requestBody),
       headers: { 'Content-Type': 'application/json' },
@@ -909,6 +924,7 @@ export class HmaService {
   ): Promise<ExchangeCredentialStatus> {
     const response = await this.fetchHTTP({
       url: `${this.hmaServiceUrl}/c/exchange/${encodeURIComponent(hmaName)}/credentials`,
+      isUntrustedUrl: false,
       method: 'post',
       body: jsonStringify({ credential_json: credentialJson }),
       headers: { 'Content-Type': 'application/json' },
@@ -967,6 +983,7 @@ export class HmaService {
     try {
       response = await this.fetchHTTP({
         url: `${this.hmaServiceUrl}/c/exchange/${encodeURIComponent(hmaName)}`,
+        isUntrustedUrl: false,
         method: 'get',
         handleResponseBody: 'as-json',
       });
@@ -1007,6 +1024,7 @@ export class HmaService {
     try {
       const statusResponse = await this.fetchHTTP({
         url: `${this.hmaServiceUrl}/c/exchange/${encodeURIComponent(hmaName)}/status`,
+        isUntrustedUrl: false,
         method: 'get',
         handleResponseBody: 'as-json',
       });
@@ -1092,6 +1110,7 @@ export class HmaService {
   async hashContentFromUrl(url: string): Promise<Record<string, string>> {
     const response = await this.fetchHTTP({
       url: `${this.hmaServiceUrl}/h/hash?url=${encodeURIComponent(url)}`,
+      isUntrustedUrl: false,
       method: 'get',
       handleResponseBody: 'as-json',
     });
@@ -1140,6 +1159,7 @@ export class HmaService {
 
       response = await this.fetchHTTP({
         url: `${this.hmaServiceUrl}/c/bank/${bankName}/content?${params.toString()}`,
+        isUntrustedUrl: false,
         method: 'post',
         handleResponseBody: 'as-json',
       });
@@ -1160,6 +1180,7 @@ export class HmaService {
 
       response = await this.fetchHTTP({
         url: `${this.hmaServiceUrl}/c/bank/${bankName}/content`,
+        isUntrustedUrl: false,
         method: 'post',
         // Don't set Content-Type explicitly: undici needs to add the multipart
         // boundary parameter itself when serializing the FormData.
@@ -1191,6 +1212,7 @@ export class HmaService {
 
     const response = await this.fetchHTTP({
       url: `${this.hmaServiceUrl}/m/lookup?${params.toString()}`,
+      isUntrustedUrl: false,
       method: 'get',
       handleResponseBody: 'as-json',
     });

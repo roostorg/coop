@@ -1,13 +1,17 @@
-import { vi, type Mock } from 'vitest';
+import fc from 'fast-check';
+import { assert, vi, type Mock } from 'vitest';
 
-import { jsonParse } from '../../utils/encoding.js';
+import createOrg from '../../test/fixtureHelpers/createOrg.js';
+import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
+import { jsonParse, tryJsonParse } from '../../utils/encoding.js';
+import { type CoopRequestQuery } from '../networkingService/index.js';
 import type { HashBank } from './dbTypes.js';
 import {
+  HashBankService,
   HashBankUserError,
   HmaService,
   isClipEmbedding,
   type ExchangeInfo,
-  type HashBankService,
 } from './index.js';
 
 const MOCK_BANK: HashBank = {
@@ -584,41 +588,115 @@ describe('HmaService', () => {
       'GET /c/exchanges/api/ncmec/schema': ok(NCMEC_SCHEMA),
     };
 
-    it('posts to /c/exchange/<hma_name>/credentials and returns the status', async () => {
-      const fetchHTTP = routeFetch({
-        ...exchangeRoutes,
-        'POST /c/exchange/COOP_ORG1_TEST_BANK/credentials': ok({
-          supports_auth: true,
-          has_credentials: true,
-          source: 'exchange',
-        }),
-      });
-      const svc = makeService(fetchHTTP);
-
-      const status = await svc.setBankExchangeCredentials('org1', 1, {
-        user: 'u',
-        password: 'p',
-      });
-
-      expect(status).toEqual({
-        has_credentials: true,
-        has_own_credentials: true,
-      });
-      const [call] = callsTo(fetchHTTP, 'post', '/credentials');
-      expect(jsonParse(call.body!)).toEqual({
-        credential_json: { user: 'u', password: 'p' },
-      });
+    const testWithBanks = makeTransactionalTestWithFixture(async ({ deps }) => {
+      const orgs = [await createOrg(deps), await createOrg(deps)];
+      const hashBankService = new HashBankService(deps.KyselyPg);
+      const banks = await Promise.all(
+        [0, 1, 2, 3].map(async (index) =>
+          hashBankService.create({
+            org_id: orgs[index % 2].org.id,
+            name: `bank-${Math.floor(index / 2)}`,
+            hma_name: `EXCHANGE_${orgs[index % 2].org.id}_${index}`,
+            enabled_ratio: 1,
+          }),
+        ),
+      );
+      return { orgs, banks };
     });
 
-    it("refuses another org's bank without calling HMA", async () => {
-      const fetchHTTP = routeFetch({});
-      const svc = makeService(fetchHTTP);
-
-      await expect(
-        svc.setBankExchangeCredentials('org2', 1, { user: 'u' }),
-      ).rejects.toThrow('Hash bank not found');
-      expect(fetchHTTP).not.toHaveBeenCalled();
-    });
+    testWithBanks(
+      'credential updates change only the selected tenant-owned exchange',
+      async ({ deps, orgs, banks }) => {
+        const initialState = Object.fromEntries([
+          [
+            '/c/exchanges/api/ncmec/credentials',
+            { credential_json: { user: 'shared', password: 'shared' } },
+          ],
+          ...banks.map((bank) => [
+            `/c/exchange/${bank.hma_name}/credentials`,
+            { credential_json: { user: bank.hma_name, password: 'initial' } },
+          ]),
+        ]);
+        let remoteState: Record<string, unknown> = initialState;
+        const fetchHTTP = vi.fn(async (req: CoopRequestQuery<'as-json'>) => {
+          const path = new URL(req.url).pathname.replace(/^\/+/, '/');
+          if (req.method === 'post') {
+            // Record every write, including an accidental provider-global route.
+            assert(typeof req.body === 'string');
+            remoteState = { ...remoteState, [path]: tryJsonParse(req.body) };
+            return ok({ has_credentials: true, source: 'exchange' });
+          }
+          if (req.method === 'get') {
+            if (path === '/c/exchanges/api/ncmec/schema') {
+              return ok(NCMEC_SCHEMA);
+            }
+            if (banks.some((bank) => path === `/c/exchange/${bank.hma_name}`)) {
+              return ok({ api: 'ncmec' });
+            }
+          }
+          throw new Error(`Unexpected request: ${req.method} ${path}`);
+        });
+        const service = new HmaService(
+          fetchHTTP as never,
+          deps.KyselyPg,
+          deps.Tracer,
+        );
+        const operation = fc.record({
+          actor: fc.integer({ min: 0, max: 1 }),
+          bank: fc.integer({ min: 0, max: 3 }),
+          password: fc.string({ minLength: 1, maxLength: 32 }),
+        });
+        await fc.assert(
+          fc.asyncProperty(
+            fc.array(operation, { minLength: 1, maxLength: 10 }),
+            async (operations) => {
+              remoteState = initialState;
+              let expected = initialState;
+              for (const { actor, bank: index, password } of operations) {
+                const bank = banks[index];
+                const orgId = orgs[actor].org.id;
+                const credentials = { user: `user-${actor}`, password };
+                const result = service.setBankExchangeCredentials(
+                  orgId,
+                  bank.id,
+                  credentials,
+                );
+                if (bank.org_id === orgId) {
+                  await expect(result).resolves.toEqual({
+                    has_credentials: true,
+                    has_own_credentials: true,
+                  });
+                  expected = {
+                    ...expected,
+                    [`/c/exchange/${bank.hma_name}/credentials`]: {
+                      credential_json: credentials,
+                    },
+                  };
+                } else {
+                  await expect(result).rejects.toThrow('Hash bank not found');
+                }
+                expect(remoteState).toEqual(expected);
+              }
+            },
+          ),
+          {
+            numRuns: 25,
+            examples: [
+              [
+                [
+                  { actor: 0, bank: 0, password: 'first' },
+                  { actor: 1, bank: 1, password: 'second' },
+                  { actor: 0, bank: 1, password: 'forbidden' },
+                  { actor: 0, bank: 2, password: 'third' },
+                  { actor: 0, bank: 0, password: 'replacement' },
+                ],
+              ],
+            ],
+          },
+        );
+      },
+      20_000,
+    );
 
     it('refuses banks that are not connected to an exchange', async () => {
       const fetchHTTP = routeFetch({

@@ -20,6 +20,7 @@
 ---
 
 - [Development Guide](development/README.md)
+  - [Try Coop in GitHub Codespaces](development/codespaces.md)
   - [Local Development](development/local.md)
   - [Architecture](development/architecture.md)
   - [API Authentication](development/api-auth.md)

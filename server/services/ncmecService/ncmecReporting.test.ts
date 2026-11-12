@@ -526,6 +526,9 @@ describe('NCMEC reporting', () => {
   });
 
   describe('uploadDownloadedMedia', () => {
+    beforeEach(() => vi.stubEnv('ALLOW_USER_INPUT_LOCALHOST_URIS', 'true'));
+    afterEach(() => vi.unstubAllEnvs());
+
     const testWithMediaServer = makeTestWithFixture(async () => {
       let markSocketClosed: () => void = () => {};
       const socketClosed = new Promise<void>((resolve) => {
