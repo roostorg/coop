@@ -360,12 +360,39 @@ const ZENTROPI_COPE_B_S1_MODEL_CARD: ModelCard = {
         {
           label: 'Generalization',
           value:
-            'Evaluated on third-party DecisionIndex benchmarks whose data the model never saw during training, including phishing detection (PhishNChips accuracy 0.938) and hallucination detection (RAGTruth F1 0.756).',
+            'Evaluated on third-party DecisionIndex benchmarks whose data the model never saw during training: PhishNChips 0.938 accuracy, FinEntity 0.900 macro-F1, MuSR 0.690 accuracy, VAST 0.610 macro-F1, and RAGTruth 0.756 F1.',
         },
       ],
     },
-    ZENTROPI_LIMITATIONS_SECTION,
-    ZENTROPI_IMPLEMENTATION_SECTION,
+    {
+      id: 'biasAndLimitations',
+      title: 'Bias Documentation & Known Limits',
+      fields: [
+        ...(ZENTROPI_LIMITATIONS_SECTION.fields ?? []),
+        {
+          label: 'Request Limits',
+          value:
+            'Up to 26 typed decision questions per request, each answered in a single pass. Confidence calibration is distribution-specific and tuned for safety traffic.',
+        },
+      ],
+    },
+    {
+      id: 'implementationGuidance',
+      title: 'Implementation Guidance',
+      fields: [
+        ...(ZENTROPI_IMPLEMENTATION_SECTION.fields ?? []),
+        {
+          label: 'System One Format',
+          value:
+            'CoPE-B-S1 uses the System One JSON format: supply a state (the content to judge, as JSON) and typed questions (noul for true/false, choice for one of N, or score for an ordinal level), each with its own instructions and criteria.',
+        },
+        {
+          label: 'Inference',
+          value:
+            "The model does not generate text; it reads each answer's probability directly from a prefilled slot, so many questions are answered in one pass at near-constant marginal cost. Run it through Zentropi's hosted API or a self-hosted SGLang server; standard text-generation APIs cannot execute it.",
+        },
+      ],
+    },
     {
       id: 'relevantLinks',
       title: 'Relevant Links',
