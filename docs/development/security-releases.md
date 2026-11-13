@@ -48,8 +48,11 @@ On option B, the date alone is not enough: a fix merged to `main` before `x.y.z`
 
 ```bash
 git log origin/release/x.y --grep 'cherry picked from commit' --format='%h %s'
+git log origin/release/x.y --format='%h %s' | grep -i backport
 git diff origin/release/x.y origin/main -- pnpm-lock.yaml
 ```
+
+A squash-merged backport has no cherry-pick line; the second command finds it by its title, and its PR description names the source PR. The Security backports workflow does not recognize a squashed backport and may open a duplicate for it.
 
 This depends on the labeling workflow in [#1519](https://github.com/roostorg/coop/pull/1519) and on the `security-update` label existing ([#1520](https://github.com/roostorg/coop/issues/1520), items 1 and 15). PRs merged before both are in place are not labeled, so also check the unlabeled PRs merged since the last release:
 
@@ -134,7 +137,7 @@ If `main` has unreleased changes, choose one of the options below. **Pending dec
 - The [Security backports](security-backports.md) workflow creates `release/x.y` and opens a backport PR for each `security-update`-labelled PR merged to `main`, from a `backport/<n>-to-release/x.y` branch. It depends on [#1550](https://github.com/roostorg/coop/pull/1550); without it, cherry-pick by hand as below.
 - PR checks run on PRs against `release/x.y`, but `main`'s branch protection rules do not cover it.
 - Open each backport PR with `gh pr create --base release/x.y`; `gh` defaults to `main`. Its description is one line, `Backporting PR #<n> to <x.y> security release branch` (or `Backporting <sha> …` for a fix with no PR), with no template sections; an agent may write this line. Release Drafter does not run on `release/x.y` until [#1548](https://github.com/roostorg/coop/pull/1548) and [#1550](https://github.com/roostorg/coop/pull/1550) are in, so write the release's notes directly in step 3.
-- Merge backport PRs with a merge commit or a rebase, not a squash: squashing can drop the `(cherry picked from commit …)` line that marks a commit as backported.
+- Merge backport PRs with **Rebase and merge**. Merge commits are disabled in this repository, and a squash merge uses the PR title with an empty body, which drops the `(cherry picked from commit …)` line that marks a commit as backported. **Pending decision ([#1520](https://github.com/roostorg/coop/issues/1520), item 12):** a ruleset for `release/*` that allows only rebase merges.
 - `release/x.y` keeps the `AGENTS.md`, PR template and `CHANGELOG.md` of its `x.y.0` tag, which may predate release notes in PR descriptions. Its release notes go only in the GitHub release: don't add entries to its `CHANGELOG.md`, and don't forward-port any to `main`.
 - A release runs the workflow files at its tag, and PR checks run the workflow files on the PR's base branch, so fixes to `.github/workflows/` on `main` must also be cherry-picked to `release/x.y` before they apply to it. When creating `release/x.y`, check that it has [#1462](https://github.com/roostorg/coop/pull/1462), which runs the server and client checks when `pnpm-lock.yaml` changes.
 - `@roostorg/coop-types` and `@roostorg/db-migrator` only publish from `main` (see step 5), so a fix in `types/` or `migrator/` reaches npm only through `main`. Publishing either package from `release/x.y` would move its npm `latest` backwards; the workflows do not support it, so ask a maintainer.
@@ -197,7 +200,14 @@ If the fix touches `types/` or `migrator/`, bump `version` in `types/package.jso
 
 On option A, follow [Creating a release](releases.md#creating-a-release), with the notes from step 3.
 
-On option B, first check that no other draft release uses the tag or title `x.y.z`; the draft release for `main` may name the next patch version:
+On option B, first check that `release/x.y` holds exactly the reviewed backports, whatever merge method was used: its tree must match the reviewed PR heads merged together. For two PRs, compare these; for a single PR, use `git rev-parse <pr head>^{tree}` instead of `git merge-tree`:
+
+```bash
+git merge-tree --write-tree <first pr head> <second pr head>
+git rev-parse origin/release/x.y^{tree}
+```
+
+Then check that no other draft release uses the tag or title `x.y.z`; the draft release for `main` may name the next patch version:
 
 ```bash
 gh release list --repo roostorg/coop --json tagName,name,isDraft
