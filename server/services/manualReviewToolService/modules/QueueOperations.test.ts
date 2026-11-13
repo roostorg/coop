@@ -2,6 +2,7 @@ import fc from 'fast-check';
 import { uid } from 'uid';
 import { v1 as uuidv1 } from 'uuid';
 
+import { type Dependencies } from '../../../iocContainer/index.js';
 import createActions from '../../../test/fixtureHelpers/createActions.js';
 import createContentItemTypes from '../../../test/fixtureHelpers/createContentItemTypes.js';
 import createMrtQueue from '../../../test/fixtureHelpers/createMrtQueue.js';
@@ -441,106 +442,234 @@ describe('QueueOperations', () => {
     });
 
   testWithTwoOrgs()(
-    'addAccessibleQueuesForUser must not grant access to a queue in a different org',
-    async ({ attacker, victim, mrtService }) => {
-      await expect(
-        mrtService.addAccessibleQueuesForUser({
-          orgId: attacker.org.id,
-          userId: attacker.user.id,
-          queueIds: [victim.queue.id],
-        }),
-      ).rejects.toBeDefined();
-
-      const viewers = await mrtService.getUsersWhoCanSeeQueue({
-        orgId: victim.org.id,
-        queueId: victim.queue.id,
-        userId: attacker.user.id,
-      });
-      expect(viewers.map((v) => v.userId)).not.toContain(attacker.user.id);
-    },
-  );
-  testWithTwoOrgs()(
-    'addAccessibleQueuesForUser must not grant access for a user in a different org',
-    async ({ attacker, victim, mrtService }) => {
-      await expect(
-        mrtService.addAccessibleQueuesForUser({
-          orgId: attacker.org.id,
-          userId: victim.user.id,
-          queueIds: [attacker.queue.id],
-        }),
-      ).rejects.toBeDefined();
-
-      const viewers = await mrtService.getUsersWhoCanSeeQueue({
+    'grants and revokes queue access only for users and queues in the caller’s org',
+    async ({ attacker, victim, mrtService, deps }) => {
+      const { user: attackerMember } = await createUser(
+        deps.KyselyPg,
+        attacker.org.id,
+      );
+      const { user: victimMember } = await createUser(
+        deps.KyselyPg,
+        victim.org.id,
+      );
+      const tenants = [
+        { org: attacker.org, userIds: [attacker.user.id, attackerMember.id] },
+        { org: victim.org, userIds: [victim.user.id, victimMember.id] },
+      ];
+      const { queue: secondAttackerQueue } = await createMrtQueue({
         orgId: attacker.org.id,
-        queueId: attacker.queue.id,
-        userId: victim.user.id,
+        userId: attacker.user.id,
+        mrtService,
+        name: 'second-queue',
       });
-      expect(viewers.map((v) => v.userId)).not.toContain(victim.user.id);
-    },
-  );
-  testWithTwoOrgs()(
-    'removeAccessibleQueuesForUser must not revoke access for a queue in a different org',
-    async ({ attacker, victim, mrtService }) => {
-      await mrtService.addAccessibleQueuesForUser({
+      const { queue: secondVictimQueue } = await createMrtQueue({
         orgId: victim.org.id,
         userId: victim.user.id,
-        queueIds: [victim.queue.id],
+        mrtService,
+        name: 'second-queue',
       });
-
-      await expect(
-        mrtService.removeAccessibleQueuesForUser({
-          orgId: attacker.org.id,
-          userId: attacker.user.id,
-          queueIds: [victim.queue.id],
+      const queues = [
+        attacker.queue,
+        victim.queue,
+        secondAttackerQueue,
+        secondVictimQueue,
+      ];
+      const allQueueIds = queues.map((queue) => queue.id);
+      const missingQueueId = uuidv1();
+      const missingUserId = uid();
+      const arbitraryOperation = fc.record({
+        action: fc.constantFrom('grant', 'revoke'),
+        orgId: fc.constantFrom(attacker.org.id, victim.org.id),
+        userId: fc.constantFrom(
+          ...tenants.flatMap((tenant) => tenant.userIds),
+          missingUserId,
+        ),
+        queueIds: fc.array(fc.constantFrom(...allQueueIds, missingQueueId), {
+          minLength: 1,
         }),
-      ).rejects.toBeDefined();
-
-      const viewers = await mrtService.getUsersWhoCanSeeQueue({
-        orgId: victim.org.id,
-        queueId: victim.queue.id,
-        userId: victim.user.id,
       });
-      expect(viewers.map((v) => v.userId)).toContain(victim.user.id);
-    },
-  );
-  testWithTwoOrgs()(
-    'removeAccessibleQueuesForUser must not revoke access for a user in a different org',
-    async ({ attacker, victim, mrtService }) => {
-      await expect(
-        mrtService.removeAccessibleQueuesForUser({
-          orgId: attacker.org.id,
-          userId: victim.user.id,
-          queueIds: [attacker.queue.id],
-        }),
-      ).rejects.toBeDefined();
+      const localOperation = fc
+        .constantFrom(...tenants)
+        .chain(({ org, userIds }) =>
+          fc.record({
+            action: fc.constantFrom('grant', 'revoke'),
+            orgId: fc.constant(org.id),
+            userId: fc.constantFrom(...userIds),
+            queueIds: fc.array(
+              fc.constantFrom(
+                ...queues
+                  .filter((queue) => queue.orgId === org.id)
+                  .map((queue) => queue.id),
+              ),
+              { minLength: 1 },
+            ),
+          }),
+        );
+      const operation = fc.oneof(arbitraryOperation, localOperation);
+      const attackerUser = { orgId: attacker.org.id, userId: attacker.user.id };
+      const victimUser = { orgId: victim.org.id, userId: victim.user.id };
 
-      const viewers = await mrtService.getUsersWhoCanSeeQueue({
-        orgId: attacker.org.id,
-        queueId: attacker.queue.id,
-        userId: attacker.user.id,
-      });
-      expect(viewers.map((v) => v.userId)).toContain(attacker.user.id);
-    },
-  );
+      await fc.assert(
+        fc.asyncProperty(
+          fc.array(operation, { minLength: 1 }),
+          async (operations) => {
+            // The outer fixture rolls back per test, not per generated case.
+            await deps.KyselyPg.deleteFrom(
+              'manual_review_tool.users_and_accessible_queues',
+            )
+              .where('queue_id', 'in', allQueueIds)
+              .execute();
+            let expected: string[] = [];
 
-  testWithTwoOrgs()(
-    'addAccessibleQueuesForUser grants access within the same org',
-    async ({ attacker, mrtService }) => {
-      await expect(
-        mrtService.addAccessibleQueuesForUser({
-          orgId: attacker.org.id,
-          userId: attacker.user.id,
-          queueIds: [attacker.queue.id],
-        }),
-      ).resolves.toBeDefined();
+            for (const op of operations) {
+              const { action, orgId, userId, queueIds } = op;
+              const tenant = tenants.find((tenant) => tenant.org.id === orgId);
+              const permitted =
+                tenant?.userIds.includes(userId) &&
+                queueIds.every((queueId) =>
+                  queues.some(
+                    (queue) => queue.id === queueId && queue.orgId === orgId,
+                  ),
+                );
+              const input = { orgId, userId, queueIds };
+              const result =
+                action === 'grant'
+                  ? mrtService.addAccessibleQueuesForUser(input)
+                  : mrtService.removeAccessibleQueuesForUser(input);
 
-      const viewers = await mrtService.getUsersWhoCanSeeQueue({
-        orgId: attacker.org.id,
-        queueId: attacker.queue.id,
-        userId: attacker.user.id,
-      });
-      expect(viewers.map((v) => v.userId)).toContain(attacker.user.id);
+              if (permitted) {
+                await result;
+                const edges = queueIds.map((id) => `${userId}:${id}`);
+                expected =
+                  action === 'grant'
+                    ? [...new Set([...expected, ...edges])]
+                    : expected.filter((edge) => !edges.includes(edge));
+              } else {
+                await expect(result).rejects.toMatchObject({
+                  name: 'AccessibleQueueNotInOrgError',
+                });
+              }
+
+              const stored = await deps.KyselyPg.selectFrom(
+                'manual_review_tool.users_and_accessible_queues',
+              )
+                .select(['user_id', 'queue_id'])
+                .where('queue_id', 'in', allQueueIds)
+                .execute();
+              expect(
+                new Set(stored.map((row) => `${row.user_id}:${row.queue_id}`)),
+              ).toEqual(new Set(expected));
+            }
+          },
+        ),
+        {
+          numRuns: 30,
+          examples: [
+            [
+              [
+                {
+                  ...victimUser,
+                  action: 'grant',
+                  queueIds: [victim.queue.id, secondVictimQueue.id],
+                },
+                {
+                  ...attackerUser,
+                  action: 'grant',
+                  queueIds: [attacker.queue.id, victim.queue.id],
+                },
+                {
+                  ...attackerUser,
+                  action: 'grant',
+                  queueIds: [
+                    attacker.queue.id,
+                    secondAttackerQueue.id,
+                    attacker.queue.id,
+                  ],
+                },
+                {
+                  ...attackerUser,
+                  action: 'revoke',
+                  queueIds: [attacker.queue.id, victim.queue.id],
+                },
+                {
+                  action: 'revoke',
+                  orgId: attacker.org.id,
+                  userId: victim.user.id,
+                  queueIds: [victim.queue.id],
+                },
+                {
+                  action: 'grant',
+                  orgId: attacker.org.id,
+                  userId: victim.user.id,
+                  queueIds: [attacker.queue.id],
+                },
+                {
+                  ...attackerUser,
+                  action: 'revoke',
+                  queueIds: [
+                    secondAttackerQueue.id,
+                    attacker.queue.id,
+                    secondAttackerQueue.id,
+                  ],
+                },
+                {
+                  ...attackerUser,
+                  action: 'grant',
+                  queueIds: [attacker.queue.id, missingQueueId],
+                },
+                {
+                  action: 'grant',
+                  orgId: attacker.org.id,
+                  userId: missingUserId,
+                  queueIds: [attacker.queue.id],
+                },
+              ],
+            ],
+            [
+              [
+                {
+                  action: 'grant',
+                  orgId: attacker.org.id,
+                  userId: attackerMember.id,
+                  queueIds: [attacker.queue.id, secondAttackerQueue.id],
+                },
+                {
+                  action: 'grant',
+                  orgId: victim.org.id,
+                  userId: victimMember.id,
+                  queueIds: [victim.queue.id, secondVictimQueue.id],
+                },
+                {
+                  action: 'revoke',
+                  orgId: attacker.org.id,
+                  userId: victimMember.id,
+                  queueIds: [victim.queue.id],
+                },
+                {
+                  action: 'grant',
+                  orgId: victim.org.id,
+                  userId: attackerMember.id,
+                  queueIds: [victim.queue.id],
+                },
+                {
+                  action: 'revoke',
+                  orgId: attacker.org.id,
+                  userId: attackerMember.id,
+                  queueIds: [attacker.queue.id, secondAttackerQueue.id],
+                },
+                {
+                  action: 'revoke',
+                  orgId: victim.org.id,
+                  userId: victimMember.id,
+                  queueIds: [victim.queue.id, secondVictimQueue.id],
+                },
+              ],
+            ],
+          ],
+        },
+      );
     },
+    20_000,
   );
 
   testWithTwoOrgs()(
@@ -727,54 +856,175 @@ describe('QueueOperations', () => {
   );
 
   testWithRoleAssignableQueue()(
-    'updating assigned roles grants and revokes reviewer access',
+    'updating queue assignments replaces direct users and roles',
     async ({ org, creator, moderator, mrtService, kyselyPg }) => {
       const roleId = await getRoleId(kyselyPg, org.id, UserRole.MODERATOR);
       const queue = await createQueueWithRoles(mrtService, org, creator, []);
-
-      await mrtService.updateManualReviewQueue({
-        orgId: org.id,
-        queueId: queue.id,
-        autoCloseJobs: queue.autoCloseJobs,
-        userIds: [creator.id],
-        roleIds: [roleId],
-        actionIdsToHide: [],
-        actionIdsToUnhide: [],
+      const assignment = fc.record({
+        direct: fc.boolean(),
+        role: fc.boolean(),
       });
 
-      const reviewableAfterAssignment =
-        await mrtService.getReviewableQueuesForUser({
-          invoker: reviewerInvoker(moderator.id, org.id),
-        });
-      expect(reviewableAfterAssignment.map((q) => q.id)).toContain(queue.id);
-      expect(
-        await mrtService.getAssignedRoleIdsForQueue({
-          orgId: org.id,
-          queueId: queue.id,
+      await fc.assert(
+        fc.asyncProperty(assignment, assignment, async (initial, next) => {
+          // Reset inside the property so every generated case and shrink starts
+          // from its own independently seeded assignments.
+          await seedQueueAssignments(kyselyPg, {
+            queueId: queue.id,
+            userIds: initial.direct ? [creator.id, moderator.id] : [creator.id],
+            roleIds: initial.role ? [roleId] : [],
+          });
+
+          await mrtService.updateManualReviewQueue({
+            orgId: org.id,
+            queueId: queue.id,
+            autoCloseJobs: queue.autoCloseJobs,
+            userIds: next.direct ? [creator.id, moderator.id] : [creator.id],
+            roleIds: next.role ? [roleId] : [],
+            actionIdsToHide: [],
+            actionIdsToUnhide: [],
+          });
+
+          const users = await mrtService.getUsersWhoCanSeeQueue({
+            orgId: org.id,
+            queueId: queue.id,
+            userId: creator.id,
+          });
+          expect(users.map((user) => user.userId).sort()).toEqual(
+            (next.direct ? [creator.id, moderator.id] : [creator.id])
+              .slice()
+              .sort(),
+          );
+          expect(
+            await mrtService.getAssignedRoleIdsForQueue({
+              orgId: org.id,
+              queueId: queue.id,
+            }),
+          ).toEqual(next.role ? [roleId] : []);
         }),
-      ).toEqual([roleId]);
-
-      await mrtService.updateManualReviewQueue({
-        orgId: org.id,
-        queueId: queue.id,
-        autoCloseJobs: queue.autoCloseJobs,
-        userIds: [creator.id],
-        roleIds: [],
-        actionIdsToHide: [],
-        actionIdsToUnhide: [],
-      });
-
-      expect(
-        await mrtService.getAssignedRoleIdsForQueue({
-          orgId: org.id,
-          queueId: queue.id,
-        }),
-      ).toEqual([]);
-      const reviewable = await mrtService.getReviewableQueuesForUser({
-        invoker: reviewerInvoker(moderator.id, org.id),
-      });
-      expect(reviewable.map((q) => q.id)).not.toContain(queue.id);
+        {
+          numRuns: 30,
+          examples: [
+            [
+              { direct: false, role: false },
+              { direct: true, role: true },
+            ],
+            [
+              { direct: true, role: true },
+              { direct: false, role: false },
+            ],
+            [
+              { direct: true, role: false },
+              { direct: false, role: true },
+            ],
+            [
+              { direct: false, role: true },
+              { direct: true, role: false },
+            ],
+          ],
+        },
+      );
     },
+    20_000,
+  );
+
+  testWithRoleAssignableQueue()(
+    'returns reviewable queues within the caller’s org based on permissions and user or role assignments',
+    async ({ org, creator, moderator, mrtService, kyselyPg, deps }) => {
+      const roleId = await getRoleId(kyselyPg, org.id, UserRole.MODERATOR);
+      const directQueue = await createQueueWithRoles(
+        mrtService,
+        org,
+        creator,
+        [],
+      );
+      const roleQueue = await createQueueWithRoles(mrtService, org, creator, [
+        roleId,
+      ]);
+      const bothQueue = await createQueueWithRoles(mrtService, org, creator, [
+        roleId,
+      ]);
+      const unassignedQueue = await createQueueWithRoles(
+        mrtService,
+        org,
+        creator,
+        [],
+      );
+      for (const queue of [directQueue, bothQueue]) {
+        await seedQueueAssignments(kyselyPg, {
+          queueId: queue.id,
+          userIds: [creator.id, moderator.id],
+          roleIds: queue.id === bothQueue.id ? [roleId] : [],
+        });
+      }
+      const { org: otherOrg } = await createOrg(deps);
+      const { user: otherUser } = await createUser(kyselyPg, otherOrg.id);
+      const foreignQueue = await createQueueWithRoles(
+        mrtService,
+        otherOrg,
+        otherUser,
+        [],
+      );
+      const reviewerQueueIds = [directQueue.id, roleQueue.id, bothQueue.id];
+      const localQueueIds = [...reviewerQueueIds, unassignedQueue.id];
+      const allQueueIds = [...localQueueIds, foreignQueue.id];
+      const permissionCases = [
+        { permissions: [], visibleQueueIds: [] },
+        {
+          permissions: [UserPermission.VIEW_CHILD_SAFETY_DATA],
+          visibleQueueIds: [],
+        },
+        {
+          permissions: [UserPermission.VIEW_MRT],
+          visibleQueueIds: reviewerQueueIds,
+        },
+        {
+          permissions: [UserPermission.EDIT_MRT_QUEUES],
+          visibleQueueIds: localQueueIds,
+        },
+        {
+          permissions: [
+            UserPermission.VIEW_MRT,
+            UserPermission.EDIT_MRT_QUEUES,
+          ],
+          visibleQueueIds: localQueueIds,
+        },
+      ];
+
+      await fc.assert(
+        fc.asyncProperty(
+          fc.option(fc.subarray(allQueueIds), { nil: undefined }),
+          async (requestedQueueIds) => {
+            for (const { permissions, visibleQueueIds } of permissionCases) {
+              const expectedQueueIds = visibleQueueIds.filter(
+                (id) =>
+                  requestedQueueIds === undefined ||
+                  requestedQueueIds.includes(id),
+              );
+              const actual = await mrtService.getReviewableQueuesForUser({
+                invoker: { orgId: org.id, userId: moderator.id, permissions },
+                queueIds: requestedQueueIds,
+              });
+              expect(actual.map((queue) => queue.id).sort()).toEqual(
+                expectedQueueIds.slice().sort(),
+              );
+            }
+          },
+        ),
+        {
+          numRuns: 30,
+          examples: [
+            [undefined],
+            [[]],
+            [[foreignQueue.id]],
+            [[directQueue.id, foreignQueue.id]],
+            [[roleQueue.id, bothQueue.id]],
+            [[unassignedQueue.id]],
+          ],
+        },
+      );
+    },
+    20_000,
   );
 
   testWithRoleAssignableQueue()(
@@ -908,3 +1158,39 @@ describe('QueueOperations', () => {
       ),
   );
 });
+
+// Helpers
+
+async function seedQueueAssignments(
+  db: Dependencies['KyselyPg'],
+  {
+    queueId,
+    userIds,
+    roleIds,
+  }: {
+    queueId: string;
+    userIds: readonly string[];
+    roleIds: readonly string[];
+  },
+) {
+  await db
+    .deleteFrom('manual_review_tool.users_and_accessible_queues')
+    .where('queue_id', '=', queueId)
+    .execute();
+  await db
+    .deleteFrom('manual_review_tool.roles_and_accessible_queues')
+    .where('queue_id', '=', queueId)
+    .execute();
+  if (userIds.length > 0) {
+    await db
+      .insertInto('manual_review_tool.users_and_accessible_queues')
+      .values(userIds.map((userId) => ({ queue_id: queueId, user_id: userId })))
+      .execute();
+  }
+  if (roleIds.length > 0) {
+    await db
+      .insertInto('manual_review_tool.roles_and_accessible_queues')
+      .values(roleIds.map((roleId) => ({ queue_id: queueId, role_id: roleId })))
+      .execute();
+  }
+}
