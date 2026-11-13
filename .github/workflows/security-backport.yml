@@ -81,7 +81,7 @@ jobs:
         if: steps.plan.outputs.push == 'true'
         id: app
         with:
-          app-id: ${{ vars.BACKPORT_APP_ID }}
+          client-id: ${{ vars.BACKPORT_APP_CLIENT_ID }}
           private-key: ${{ secrets.BACKPORT_APP_PRIVATE_KEY }}
           permission-contents: write
           permission-pull-requests: write

@@ -43,6 +43,6 @@ If a cherry-pick conflicts or a check fails, the workflow comments on the source
 
 ## Setup
 
-- A GitHub App installed on this repository with **Contents**, **Pull requests**, **Issues** and **Workflows** read and write permissions. The workflow uses it instead of `GITHUB_TOKEN` so that CI runs on the backport PRs. GitHub requires **Workflows** to push a backport that changes `.github/workflows/`. Store its ID in the `BACKPORT_APP_ID` Actions variable and its private key in the `BACKPORT_APP_PRIVATE_KEY` secret.
+- A GitHub App installed on this repository with **Contents**, **Pull requests**, **Issues** and **Workflows** read and write permissions. The workflow uses it instead of `GITHUB_TOKEN` so that CI runs on the backport PRs. GitHub requires **Workflows** to push a backport that changes `.github/workflows/`. Store its client ID in the `BACKPORT_APP_CLIENT_ID` Actions variable and its private key in the `BACKPORT_APP_PRIVATE_KEY` secret.
 - The `security-update` and `has-release-notes` labels.
 - Don't add the app as a bypass actor on the release branch ruleset. A bypass actor skips every rule in it, including the PR requirement, and the app needs none of them.
