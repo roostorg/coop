@@ -1136,6 +1136,7 @@ export default async function getBottle(
 
                   await container.fetchHTTP({
                     url: ignoreCallback,
+                    isUntrustedUrl: false,
                     method: 'post',
                     body: jsonStringify(ignoreCallbackBody),
                     logRequestAndResponseBody: 'ON_FAILURE',
@@ -1199,6 +1200,7 @@ export default async function getBottle(
 
                   const appealResponse = await container.fetchHTTP({
                     url: orgAppealSettings.appealCallbackUrl,
+                    isUntrustedUrl: false,
                     method: 'post',
                     body: jsonStringify(appealCallbackBody),
                     logRequestAndResponseBody: 'ON_FAILURE',
