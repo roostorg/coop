@@ -9,11 +9,13 @@ import {
   type TIntegrationConfigWithMetadata,
 } from '../datasources/IntegrationApi.js';
 import {
+  GQLZentropiModel,
   type GQLIntegrationConfig,
   type GQLIntegrationConfigFieldInputType,
   type GQLIntegrationConfigResolvers,
   type GQLMutationResolvers,
   type GQLQueryResolvers,
+  type GQLZentropiLabelerVersionResolvers,
 } from '../generated.js';
 import { type ResolverMap } from '../resolvers.js';
 import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
@@ -35,10 +37,17 @@ const typeDefs = /* GraphQL */ `
     apiKey: String!
   }
 
+  enum ZentropiModel {
+    COPE_LATEST
+    COPE_B_A4B
+    COPE_B_S1
+  }
+
   type ZentropiLabelerVersion {
     id: String!
     label: String!
     labelerId: String
+    model: ZentropiModel
   }
 
   type ZentropiIntegrationApiCredential {
@@ -142,6 +151,7 @@ const typeDefs = /* GraphQL */ `
     id: String!
     label: String!
     labelerId: String
+    model: ZentropiModel
   }
 
   input ZentropiIntegrationApiCredentialInput {
@@ -385,6 +395,10 @@ const Mutation: GQLMutationResolvers = {
           params.input.credential,
           user.orgId,
         );
+      context.services.IntegrationContextSettingsService.invalidate(
+        user.orgId,
+        params.input.integrationId,
+      );
 
       return gqlSuccessResult(
         { config: newConfig as GQLIntegrationConfig },
@@ -406,10 +420,23 @@ const Mutation: GQLMutationResolvers = {
   },
 };
 
+const zentropiModels: ReadonlySet<string> = new Set(
+  Object.values(GQLZentropiModel),
+);
+
+const ZentropiLabelerVersion: GQLZentropiLabelerVersionResolvers = {
+  // A stored model that this build does not offer (e.g. one saved by a newer
+  // release) is reported as unset, so the integration settings stay loadable.
+  model(it) {
+    return it.model != null && zentropiModels.has(it.model) ? it.model : null;
+  },
+};
+
 const resolvers = {
   IntegrationApiCredential,
   PluginIntegrationApiCredential,
   IntegrationConfig,
+  ZentropiLabelerVersion,
   Query,
   Mutation,
 };

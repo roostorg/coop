@@ -83,6 +83,7 @@ function makePartialItemsService(
 
           const response = await fetchHttp({
             url: partialItemsEndpoint,
+            isUntrustedUrl: false,
             method: 'post',
             headers: {
               'Content-Type': 'application/json',

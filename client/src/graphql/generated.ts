@@ -5543,14 +5543,24 @@ export type GQLZentropiLabelerVersion = {
   readonly id: Scalars['String']['output'];
   readonly label: Scalars['String']['output'];
   readonly labelerId?: Maybe<Scalars['String']['output']>;
+  readonly model?: Maybe<GQLZentropiModel>;
 };
 
 export type GQLZentropiLabelerVersionInput = {
   readonly id: Scalars['String']['input'];
   readonly label: Scalars['String']['input'];
   readonly labelerId?: InputMaybe<Scalars['String']['input']>;
+  readonly model?: InputMaybe<GQLZentropiModel>;
 };
 
+export const GQLZentropiModel = {
+  CopeBA4B: 'COPE_B_A4B',
+  CopeBS1: 'COPE_B_S1',
+  CopeLatest: 'COPE_LATEST',
+} as const;
+
+export type GQLZentropiModel =
+  (typeof GQLZentropiModel)[keyof typeof GQLZentropiModel];
 export type GQLApiAuthQueryVariables = Exact<{ [key: string]: never }>;
 
 export type GQLApiAuthQuery = {
@@ -6882,6 +6892,7 @@ export type GQLIntegrationConfigQuery = {
                   readonly id: string;
                   readonly label: string;
                   readonly labelerId?: string | null;
+                  readonly model?: GQLZentropiModel | null;
                 }>;
               };
         } | null;
@@ -30970,6 +30981,7 @@ export const GQLIntegrationConfigDocument = gql`
                 id
                 label
                 labelerId
+                model
               }
             }
             ... on PluginIntegrationApiCredential {

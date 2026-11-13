@@ -44,6 +44,7 @@ const publicSignalProps = [
   'getCost',
   'integration',
   'allowedInAutomatedRules',
+  'contextNeeds',
 ] as const;
 
 /**
@@ -360,6 +361,7 @@ export class SignalsService {
       getCost: it.getCost,
       integration: it.integration,
       allowedInAutomatedRules: it.allowedInAutomatedRules,
+      contextNeeds: it.contextNeeds,
     } satisfies Signal as Signal;
   }
 }

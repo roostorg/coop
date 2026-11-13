@@ -1,4 +1,5 @@
 import fc from 'fast-check';
+import { vi } from 'vitest';
 
 import type { RuleEvaluationContext } from '../rule_engine/RuleEvaluator.js';
 import { type ItemSubmission } from '../services/itemProcessingService/index.js';
@@ -16,6 +17,116 @@ import { jsonStringify } from '../utils/encoding.js';
 import { runLeafCondition } from './leafCondition.js';
 
 describe('LeafCondition handling', () => {
+  test('does not add a context key when no context is loaded', async () => {
+    const runSignal = vi.fn(async (input: Record<string, unknown>) => {
+      expect(input).not.toHaveProperty('context');
+      return {
+        score: true,
+        outputType: { scalarType: 'BOOLEAN' },
+      };
+    });
+    const result = await runLeafCondition(
+      {
+        input: { type: 'USER_ID' },
+        signal: {
+          id: jsonStringify({ type: SignalType.CUSTOM }),
+          subcategory: undefined,
+        },
+        comparator: 'EQUALS',
+        threshold: true,
+      } as unknown as LeafCondition,
+      {
+        input: {
+          itemId: 'user-1',
+          itemType: { id: 'user', kind: 'USER', name: 'User' },
+        },
+        org: { id: 'org-1' },
+        getSignalContext: vi.fn(async () => undefined),
+        runSignal,
+      } as unknown as RuleEvaluationContext,
+    );
+
+    expect(result.outcome).toBe(ConditionCompletionOutcome.PASSED);
+  });
+
+  test('does not load context when there are no values to score', async () => {
+    const getSignalContext = vi.fn(async () => undefined);
+    await runLeafCondition(
+      {
+        input: { type: 'CONTENT_FIELD', name: 'tags', contentTypeId: 'type' },
+        signal: {
+          id: jsonStringify({ type: SignalType.CUSTOM }),
+          subcategory: undefined,
+        },
+        comparator: 'EQUALS',
+        threshold: true,
+      } as unknown as LeafCondition,
+      {
+        input: {
+          itemId: 'item-1',
+          submissionId: 'submission-1',
+          data: { tags: [] },
+          itemType: {
+            id: 'type',
+            kind: 'CONTENT',
+            name: 'Post',
+            schema: [
+              {
+                name: 'tags',
+                type: 'ARRAY',
+                required: false,
+                container: {
+                  containerType: 'ARRAY',
+                  keyScalarType: null,
+                  valueScalarType: 'STRING',
+                },
+              },
+            ],
+            schemaFieldRoles: {},
+          },
+        },
+        org: { id: 'org-1' },
+        getSignalContext,
+        runSignal: vi.fn(),
+      } as unknown as RuleEvaluationContext,
+    );
+
+    expect(getSignalContext).not.toHaveBeenCalled();
+  });
+
+  test('passes declared signal context to runSignal', async () => {
+    const context = { truncated: false, item: { itemId: 'user-1' } };
+    const runSignal = vi.fn(async (input: Record<string, unknown>) => {
+      expect(input.context).toBe(context);
+      return {
+        score: true,
+        outputType: { scalarType: 'BOOLEAN' },
+      };
+    });
+    await runLeafCondition(
+      {
+        input: { type: 'USER_ID' },
+        signal: {
+          id: jsonStringify({ type: SignalType.CUSTOM }),
+          subcategory: undefined,
+        },
+        comparator: 'EQUALS',
+        threshold: true,
+      } as unknown as LeafCondition,
+      {
+        input: {
+          itemId: 'user-1',
+          itemType: { id: 'user', kind: 'USER', name: 'User' },
+        },
+        org: { id: 'org-1' },
+        getSignalContext: vi.fn(async () => context),
+        runSignal,
+      } as unknown as RuleEvaluationContext,
+    );
+
+    expect(runSignal).toHaveBeenCalledTimes(1);
+  });
+
   test(
     'should return inapplicable if the condition references contentSubmission ' +
       "values, but there's no content, except if testing for IS_NOT_PROVIDED",
@@ -139,6 +250,7 @@ describe('LeafCondition handling', () => {
       ({
         input: tagsSubmission(tags),
         org: { id: 'dummy' },
+        getSignalContext: async () => undefined,
         runSignal: async ({ value }: { value: { value: string } }) => ({
           score: scores[value.value],
           outputType: { scalarType: 'NUMBER' },

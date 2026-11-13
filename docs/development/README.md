@@ -1,6 +1,6 @@
 # Getting Started
 
-Quickly get set up with Coop for the first time for local development. For testing and demonstration, you may be interested in the [Docker images](docker.md).
+Quickly get set up with Coop for the first time for local development. For testing and demonstration, you may be interested in the [Docker images](docker.md), or in [trying Coop in GitHub Codespaces](codespaces.md), with nothing to install.
 
 > [!NOTE]
 > You may also want to familiarize yourself with Coop's [Basic Concepts](../user/concepts.md) for additional context.

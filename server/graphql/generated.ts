@@ -5614,13 +5614,24 @@ export type GQLZentropiLabelerVersion = {
   readonly id: Scalars['String']['output'];
   readonly label: Scalars['String']['output'];
   readonly labelerId?: Maybe<Scalars['String']['output']>;
+  readonly model?: Maybe<GQLZentropiModel>;
 };
 
 export type GQLZentropiLabelerVersionInput = {
   readonly id: Scalars['String']['input'];
   readonly label: Scalars['String']['input'];
   readonly labelerId?: InputMaybe<Scalars['String']['input']>;
+  readonly model?: InputMaybe<GQLZentropiModel>;
 };
+
+export const GQLZentropiModel = {
+  CopeBA4B: 'COPE_B_A4B',
+  CopeBS1: 'COPE_B_S1',
+  CopeLatest: 'COPE_LATEST',
+} as const;
+
+export type GQLZentropiModel =
+  (typeof GQLZentropiModel)[keyof typeof GQLZentropiModel];
 
 export type ResolverTypeWrapper<T> = Promise<T> | T;
 
@@ -6964,6 +6975,7 @@ export type GQLResolversTypes = {
   ZentropiIntegrationApiCredentialInput: GQLZentropiIntegrationApiCredentialInput;
   ZentropiLabelerVersion: ResolverTypeWrapper<GQLZentropiLabelerVersion>;
   ZentropiLabelerVersionInput: GQLZentropiLabelerVersionInput;
+  ZentropiModel: GQLZentropiModel;
 };
 
 /** Mapping between all available schema types and the resolvers parents */
@@ -15894,6 +15906,11 @@ export type GQLZentropiLabelerVersionResolvers<
   label?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   labelerId?: Resolver<
     Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  model?: Resolver<
+    Maybe<GQLResolversTypes['ZentropiModel']>,
     ParentType,
     ContextType
   >;
