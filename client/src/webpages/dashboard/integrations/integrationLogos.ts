@@ -7,6 +7,7 @@ import GoogleLogo from '../../../images/GoogleLogo.png';
 import GoogleLogoWithBackground from '../../../images/GoogleLogoWithBackground.png';
 import OpenAILogo from '../../../images/OpenAILogo.png';
 import OpenAILogoWithBackground from '../../../images/OpenAILogoWithBackground.png';
+import RobloxLogo from '../../../images/RobloxLogo.png';
 import ZentropiLogo from '../../../images/ZentropiLogo.png';
 
 export const INTEGRATION_LOGO_FALLBACKS: Partial<
@@ -19,6 +20,10 @@ export const INTEGRATION_LOGO_FALLBACKS: Partial<
   OPEN_AI: {
     logo: OpenAILogo,
     logoWithBackground: OpenAILogoWithBackground,
+  },
+  SENTINEL: {
+    logo: RobloxLogo,
+    logoWithBackground: RobloxLogo,
   },
   ZENTROPI: {
     logo: ZentropiLogo,

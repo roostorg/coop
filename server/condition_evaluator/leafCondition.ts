@@ -2,6 +2,7 @@
 import {
   getScalarType,
   ScalarTypes,
+  type ItemIdentifier,
   type ScalarType,
   type TaggedScalar,
 } from '@roostorg/coop-types';
@@ -203,7 +204,12 @@ export async function runLeafCondition(
             args: signal.args,
             ...(signalContext === undefined ? {} : { context: signalContext }),
             runtimeArgs: isFullSubmission(ruleInput)
-              ? await getSignalRuntimeArgs(evaluationContext, ruleInput, signal)
+              ? await getSignalRuntimeArgs(
+                  evaluationContext,
+                  ruleInput,
+                  signal,
+                  conditionInput,
+                )
               : undefined,
           });
         }),
@@ -566,6 +572,7 @@ async function getSignalRuntimeArgs(
   evaluationContext: RuleEvaluationContext,
   itemSubmission: ItemSubmission,
   conditionSignalInfo: ReadonlyDeep<ConditionSignalInfo>,
+  conditionInput: ReadonlyDeep<ConditionInput>,
 ) {
   if (conditionSignalInfo.type === 'AGGREGATION') {
     const args = conditionSignalInfo.args;
@@ -577,6 +584,30 @@ async function getSignalRuntimeArgs(
       );
     }
   }
+
+  if (conditionSignalInfo.type === 'SENTINEL_RARE_CLASS_AFFINITY') {
+    // The thread this content belongs to, so Sentinel can score earlier messages.
+    const threadIdentifier: ItemIdentifier | undefined =
+      itemSubmission.itemType.kind === 'CONTENT'
+        ? (getFieldValueForRole(
+            itemSubmission.itemType.schema,
+            itemSubmission.itemType.schemaFieldRoles,
+            'threadId',
+            itemSubmission.data,
+          ) ?? undefined)
+        : undefined;
+
+    // Score the text of the field the condition reads.
+    const contentTextFieldName: string | undefined =
+      conditionInput.type === 'CONTENT_FIELD' ? conditionInput.name : undefined;
+
+    return {
+      threadIdentifier,
+      contentTextFieldName,
+      submissionTime: itemSubmission.submissionTime,
+    };
+  }
+
   return undefined;
 }
 
