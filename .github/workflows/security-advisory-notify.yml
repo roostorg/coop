@@ -66,7 +66,7 @@ jobs:
 
       - name: Post new advisories
         if: env.CONFIGURED == 'true' && steps.list.outputs.post == 'true'
-        uses: roostorg/discord-bot@308d8cce31f854d50182558bf29851f01e493acf
+        uses: roostorg/discord-bot@ec1c56411627b77bdcc6e47fca9ab8d817e739ca
         with:
           webhook-url: ${{ secrets.SECURITY_DISCORD_WEBHOOK }}
           event: repository_advisory
