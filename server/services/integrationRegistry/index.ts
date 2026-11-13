@@ -66,6 +66,7 @@ function buildRegistry(): IntegrationRegistry {
           requiresConfig: manifest.requiresConfig,
           logoUrl: manifest.logoUrl,
           logoWithBackgroundUrl: manifest.logoWithBackgroundUrl,
+          modelCards: manifest.modelCards ?? [manifest.modelCard],
         };
       });
     },

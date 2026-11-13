@@ -91,6 +91,7 @@ const typeDefs = /* GraphQL */ `
     requiresConfig: Boolean!
     logoUrl: String
     logoWithBackgroundUrl: String
+    modelCards: [ModelCard!]!
   }
 
   type PluginIntegrationApiCredential {

@@ -7,8 +7,27 @@ import DashboardHeader from '../components/DashboardHeader';
 import {
   useGQLAvailableIntegrationsQuery,
   useGQLMyIntegrationsQuery,
+  type GQLMyIntegrationsQuery,
 } from '../../../graphql/generated';
 import IntegrationCard from './IntegrationCard';
+
+type MyIntegrationCredential = NonNullable<
+  NonNullable<GQLMyIntegrationsQuery['myOrg']>['integrationConfigs']
+>[number]['apiCredential'];
+
+/** An integration counts as active once its credential has a value saved. */
+function hasConfiguredCredential(cred: MyIntegrationCredential): boolean {
+  switch (cred.__typename) {
+    case 'GoogleContentSafetyApiIntegrationApiCredential':
+    case 'OpenAiIntegrationApiCredential':
+    case 'ZentropiIntegrationApiCredential':
+      return Boolean(cred.apiKey);
+    case 'PluginIntegrationApiCredential':
+      return Object.keys(cred.credential ?? {}).length > 0;
+    default:
+      return false;
+  }
+}
 
 export default function IntegrationsDashboard() {
   gql`
@@ -16,6 +35,20 @@ export default function IntegrationsDashboard() {
       myOrg {
         integrationConfigs {
           name
+          apiCredential {
+            ... on GoogleContentSafetyApiIntegrationApiCredential {
+              apiKey
+            }
+            ... on OpenAiIntegrationApiCredential {
+              apiKey
+            }
+            ... on ZentropiIntegrationApiCredential {
+              apiKey
+            }
+            ... on PluginIntegrationApiCredential {
+              credential
+            }
+          }
         }
       }
     }
@@ -30,6 +63,11 @@ export default function IntegrationsDashboard() {
         requiresConfig
         logoUrl
         logoWithBackgroundUrl
+        modelCards {
+          modelName
+          version
+          releaseDate
+        }
       }
     }
   `;
@@ -55,15 +93,18 @@ export default function IntegrationsDashboard() {
   }
 
   const allIntegrations = catalogData?.availableIntegrations ?? [];
-  const myIntegrationNames =
-    myData?.myOrg?.integrationConfigs?.map((config) => config.name) ?? [];
-
-  const myIntegrations = allIntegrations.filter((it) =>
-    myIntegrationNames.includes(it.name),
+  // An integration is "active" only once a credential has actually been saved.
+  // getAllIntegrationConfigs returns an entry for every integration (with empty
+  // defaults), so presence alone does not mean it is configured.
+  const activeIntegrationNames = new Set(
+    (myData?.myOrg?.integrationConfigs ?? [])
+      .filter((config) => hasConfiguredCredential(config.apiCredential))
+      .map((config) => config.name),
   );
-  const otherIntegrations = allIntegrations
-    .filter((it) => !myIntegrationNames.includes(it.name))
-    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const integrations = [...allIntegrations].sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
 
   return (
     <div className="flex flex-col">
@@ -75,32 +116,15 @@ export default function IntegrationsDashboard() {
         subtitle="Coop comes with pre-built integrations to common software used for online safety. Add your API key to enable the integration."
       />
       <div className="items-center align-center">
-        {myIntegrations.length > 0 ? (
-          <>
-            <div className="flex pt-4 text-xl font-bold text-start">
-              My Custom Integrations
-            </div>
-            <div className="grid auto-rows-[minmax(240px,_auto)] grid-rows-auto grid-cols-[repeat(auto-fill,_minmax(280px,_1fr))] gap-6 justify-center items-center pr-11 pt-4 pb-8">
-              {myIntegrations
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map((integration, i) => (
-                  <IntegrationCard key={i} integration={integration} />
-                ))}
-            </div>
-          </>
-        ) : null}
-        <>
-          {otherIntegrations.length > 0 ? (
-            <div className="flex pt-4 text-xl font-bold text-start">
-              All Integrations
-            </div>
-          ) : null}
-          <div className="grid auto-rows-[minmax(240px,_auto)] grid-rows-auto grid-cols-[repeat(auto-fill,_minmax(280px,_1fr))] gap-6 justify-center items-center pr-11 pt-4 pb-8">
-            {otherIntegrations.map((integration, i) => (
-              <IntegrationCard key={i} integration={integration} />
-            ))}
-          </div>
-        </>
+        <div className="grid auto-rows-[minmax(240px,_auto)] grid-rows-auto grid-cols-[repeat(auto-fill,_minmax(280px,_1fr))] gap-6 justify-center items-center pr-11 pt-4 pb-8">
+          {integrations.map((integration, i) => (
+            <IntegrationCard
+              key={i}
+              integration={integration}
+              active={activeIntegrationNames.has(integration.name)}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );

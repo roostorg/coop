@@ -1544,6 +1544,7 @@ export type GQLIntegrationMetadata = {
   readonly docsUrl: Scalars['String']['output'];
   readonly logoUrl?: Maybe<Scalars['String']['output']>;
   readonly logoWithBackgroundUrl?: Maybe<Scalars['String']['output']>;
+  readonly modelCards: ReadonlyArray<GQLModelCard>;
   readonly name: Scalars['String']['output'];
   readonly requiresConfig: Scalars['Boolean']['output'];
   readonly title: Scalars['String']['output'];
@@ -6935,6 +6936,23 @@ export type GQLMyIntegrationsQuery = {
     readonly integrationConfigs: ReadonlyArray<{
       readonly __typename: 'IntegrationConfig';
       readonly name: string;
+      readonly apiCredential:
+        | {
+            readonly __typename: 'GoogleContentSafetyApiIntegrationApiCredential';
+            readonly apiKey: string;
+          }
+        | {
+            readonly __typename: 'OpenAiIntegrationApiCredential';
+            readonly apiKey: string;
+          }
+        | {
+            readonly __typename: 'PluginIntegrationApiCredential';
+            readonly credential: JsonObject;
+          }
+        | {
+            readonly __typename: 'ZentropiIntegrationApiCredential';
+            readonly apiKey: string;
+          };
     }>;
   } | null;
 };
@@ -6953,6 +6971,12 @@ export type GQLAvailableIntegrationsQuery = {
     readonly requiresConfig: boolean;
     readonly logoUrl?: string | null;
     readonly logoWithBackgroundUrl?: string | null;
+    readonly modelCards: ReadonlyArray<{
+      readonly __typename: 'ModelCard';
+      readonly modelName: string;
+      readonly version: string;
+      readonly releaseDate?: string | null;
+    }>;
   }>;
 };
 
@@ -31142,6 +31166,20 @@ export const GQLMyIntegrationsDocument = gql`
     myOrg {
       integrationConfigs {
         name
+        apiCredential {
+          ... on GoogleContentSafetyApiIntegrationApiCredential {
+            apiKey
+          }
+          ... on OpenAiIntegrationApiCredential {
+            apiKey
+          }
+          ... on ZentropiIntegrationApiCredential {
+            apiKey
+          }
+          ... on PluginIntegrationApiCredential {
+            credential
+          }
+        }
       }
     }
   }
@@ -31246,6 +31284,11 @@ export const GQLAvailableIntegrationsDocument = gql`
       requiresConfig
       logoUrl
       logoWithBackgroundUrl
+      modelCards {
+        modelName
+        version
+        releaseDate
+      }
     }
   }
 `;

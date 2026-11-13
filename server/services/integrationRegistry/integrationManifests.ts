@@ -412,4 +412,6 @@ export type AvailableIntegration = Readonly<{
   requiresConfig: boolean;
   logoUrl?: string;
   logoWithBackgroundUrl?: string;
+  /** One entry per model the integration exposes, for the catalog card. */
+  modelCards: readonly ModelCard[];
 }>;
