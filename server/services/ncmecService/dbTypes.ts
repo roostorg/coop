@@ -12,12 +12,12 @@ export type NcmecReportingServicePg = {
     org_id: string;
     username: string;
     password: string;
-    contact_email?: string;
-    more_info_url?: string;
-    company_template?: string;
-    legal_url?: string;
-    ncmec_preservation_endpoint?: string;
-    ncmec_additional_info_endpoint?: string;
+    contact_email?: string | null;
+    more_info_url?: string | null;
+    company_template?: string | null;
+    legal_url?: string | null;
+    ncmec_preservation_endpoint?: string | null;
+    ncmec_additional_info_endpoint?: string | null;
     default_ncmec_queue_id?: string | null;
     default_internet_detail_type?: string | null;
     terms_of_service?: string | null;
