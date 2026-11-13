@@ -63,6 +63,7 @@ describe('fetchHTTP', () => {
     async ({ baseURL, tracer }) => {
       const resp = await fetchHTTP(tracer, {
         url: new URL('/hello', baseURL).toString(),
+        isUntrustedUrl: false,
         method: 'get',
         handleResponseBody: 'as-json',
       });
@@ -84,6 +85,7 @@ describe('fetchHTTP', () => {
             '/sends-trailing-content-after-json',
             baseURL,
           ).toString(),
+          isUntrustedUrl: false,
           method: 'get',
           handleResponseBody: 'as-json',
         }),
@@ -104,6 +106,7 @@ describe('fetchHTTP', () => {
               try {
                 await fetchHTTP(tracer, {
                   url: new URL('/never-responds', baseURL).toString(),
+                  isUntrustedUrl: false,
                   method: 'get',
                   handleResponseBody,
                   timeoutMs: 100,
@@ -129,6 +132,7 @@ describe('fetchHTTP', () => {
               try {
                 await fetchHTTP<typeof handleResponseBody>(tracer, {
                   url: new URL('/only-sends-headers', baseURL).toString(),
+                  isUntrustedUrl: false,
                   method: 'get',
                   handleResponseBody,
                   timeoutMs: 100,
@@ -154,6 +158,7 @@ describe('fetchHTTP', () => {
               try {
                 await fetchHTTP(tracer, {
                   url: new URL('/sends-incomplete-body', baseURL).toString(),
+                  isUntrustedUrl: false,
                   method: 'get',
                   handleResponseBody,
                   timeoutMs: 100,
@@ -172,6 +177,7 @@ describe('fetchHTTP', () => {
         async ({ baseURL, tracer }) => {
           const resp = await fetchHTTP(tracer, {
             url: new URL('/sends-incomplete-body', baseURL).toString(),
+            isUntrustedUrl: false,
             method: 'get',
             handleResponseBody: 'as-readable-stream',
             timeoutMs: 100,
@@ -195,6 +201,7 @@ describe('fetchHTTP', () => {
         async ({ baseURL, tracer }) => {
           const resp = await fetchHTTP(tracer, {
             url: new URL('/sends-incomplete-body', baseURL).toString(),
+            isUntrustedUrl: false,
             method: 'get',
             handleResponseBody: 'discard',
             timeoutMs: 100,

@@ -5,7 +5,7 @@ import { SpanKind } from '@opentelemetry/api';
 // that supports streams as the value for form parts.
 import { FormDataEncoder } from 'form-data-encoder';
 import { FormData as NonWebCompatibleFormData } from 'formdata-node';
-import { Agent, fetch, type FormData, type Headers } from 'undici';
+import { fetch, type FormData, type Headers } from 'undici';
 import { xml2json } from 'xml-js';
 
 import { b64EncodeArrayBuffer, jsonStringify } from '../../utils/encoding.js';
@@ -14,6 +14,7 @@ import { assertUnreachable } from '../../utils/misc.js';
 import type SafeTracer from '../../utils/SafeTracer.js';
 import { MINUTE_MS } from '../../utils/time.js';
 import { bodyCancellationReason } from './bodyCancellationReason.js';
+import { createUrlAgents } from './untrustedUrl.js';
 
 /**
  * This enum determines how we handle and return the response body. If the
@@ -84,6 +85,13 @@ export type CoopRequestQuery<T extends HandleResponseBody> = {
   headers?: Record<string, string | ReadonlyArray<string>>;
   logRequestAndResponseBody?: 'ALWAYS' | 'ON_FAILURE' | 'NEVER';
   /**
+   * Required for downloads from user-supplied media URLs. Blocks non-public
+   * destination IPs on every connection, including redirects and DNS fallback.
+   * ALLOW_USER_INPUT_LOCALHOST_URIS=true permits loopback, but not other private
+   * networks. Set false for operator-configured service endpoints.
+   */
+  isUntrustedUrl: boolean;
+  /**
    * Amount of time after which to fail the request and try to abort it,
    * measured from the time that the request starts to be sent.
    *
@@ -146,22 +154,22 @@ export type CoopResponse<T extends HandleResponseBody> = {
 // thousands of items through a model), and we don't want the request to time out.
 const bytesFromMegabytes = (megabytes: number) => megabytes * 1024 ** 2;
 const agentMapping = {
-  '5mb': new Agent({
+  '5mb': createUrlAgents({
     connections: 2_000,
     maxResponseSize: bytesFromMegabytes(5),
     headersTimeout: 15 * MINUTE_MS,
   }),
-  '25mb': new Agent({
+  '25mb': createUrlAgents({
     connections: 2_000,
     maxResponseSize: bytesFromMegabytes(25),
     headersTimeout: 15 * MINUTE_MS,
   }),
-  '125mb': new Agent({
+  '125mb': createUrlAgents({
     connections: 2_000,
     maxResponseSize: bytesFromMegabytes(125),
     headersTimeout: 15 * MINUTE_MS,
   }),
-  unlimited: new Agent({
+  unlimited: createUrlAgents({
     connections: 2_000,
     maxResponseSize: -1,
     headersTimeout: 15 * MINUTE_MS,
@@ -177,6 +185,11 @@ export async function fetchHTTP<T extends HandleResponseBody>(
   query: CoopRequestQuery<T>,
 ): Promise<CoopResponse<T>> {
   const url = new URL(query.url);
+  const urlTrust = query.isUntrustedUrl
+    ? process.env.ALLOW_USER_INPUT_LOCALHOST_URIS === 'true'
+      ? 'loopback'
+      : 'untrusted'
+    : 'trusted';
 
   return tracer.addActiveSpan(
     {
@@ -305,7 +318,7 @@ export async function fetchHTTP<T extends HandleResponseBody>(
         },
         body: finalBody,
         duplex: finalBody instanceof ReadableStream ? 'half' : undefined,
-        dispatcher: agentMapping[query.maxResponseSize ?? '5mb'],
+        dispatcher: agentMapping[query.maxResponseSize ?? '5mb'][urlTrust],
         signal,
       });
 
