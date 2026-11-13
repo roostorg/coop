@@ -102,8 +102,8 @@ Use this path for a vulnerability in Coop's own code, or any issue not yet publi
 
 If a fork fix for option B merged into `main` instead of `release/x.y`, the fix is public from that merge, and the response clock runs from it. Cherry-pick it to `release/x.y` with `git cherry-pick -x` in a public backport PR:
 
-- Title it `fix(<scope>): backport <sha> to release/x.y`, and describe it only in the commit's own wording, nothing about the vulnerability. The commit's own title, "Merge commit from fork", does not pass the PR title check.
-- Leave its `## Release notes` section blank, and write the entry in the release notes directly (step 3).
+- Title it `fix(<scope>): backport <sha> to release/x.y`, with the one-line description below, nothing about the vulnerability. The commit's own title, "Merge commit from fork", does not pass the PR title check.
+- Write its entry in the release notes directly (step 3).
 - Skip step 8's forward-port; the fix is already on `main`.
 
 ### Public upstream CVE: normal PR
@@ -129,11 +129,11 @@ If `main` has unreleased changes, choose one of the options below. **Pending dec
 - Create the branch once per minor version, from its first release tag: `git switch -c release/x.y x.y.0`, then push it to `origin`.
 - Fixes land on `main` first, then are cherry-picked to `release/x.y` with `git cherry-pick -x`. The exception is a private-fork fix, which merges into `release/x.y` directly and is forward-ported to `main` in step 8.
 - Clean `-x` cherry-picks of exact `main` commits were already reviewed on `main`, so batch them into one backport PR per release. Open a separate PR for each backport that does not map exactly to a `main` commit: one update split out of a Dependabot group, a lockfile regenerated with `pnpm update`, or a cherry-pick with conflicts resolved by hand.
-- If a security fix adds or bumps a dependency, the backport takes that change as part of the fix, even when the dependency change is not itself a security update. It uses the same specifier and version as `main`, so the lockfile check below accepts it, and approving the fix approves it without a separate dependency approval. Name the dependency change in the backport PR, and check its license and known CVEs as usual.
+- If a security fix adds or bumps a dependency, the backport takes that change as part of the fix, even when the dependency change is not itself a security update. It uses the same specifier and version as `main`, so the lockfile check below accepts it, and approving the fix approves it without a separate dependency approval. Check its license and known CVEs as usual, and list the change under **Upgrade notes** if deployers need to know about it.
 - `release/x.y` has no ruleset or branch protection until [#1520](https://github.com/roostorg/coop/issues/1520) item 12 is decided, so a backport PR is a choice, not a requirement: it runs CI on the release branch and records an approval. Until the ruleset exists, maintainers may push clean cherry-picks directly.
 - The [Security backports](security-backports.md) workflow creates `release/x.y` and opens a backport PR for each `security-update`-labelled PR merged to `main`, from a `backport/<n>-to-release/x.y` branch. It depends on [#1550](https://github.com/roostorg/coop/pull/1550); without it, cherry-pick by hand as below.
 - PR checks run on PRs against `release/x.y`, but `main`'s branch protection rules do not cover it.
-- Open each backport PR with `gh pr create --base release/x.y`; `gh` defaults to `main`. Add a `## Release notes` section with each fix's note to its description, even though the branch's PR template may not have one: the draft release for `release/x.y` and the notes in step 3 are built from it.
+- Open each backport PR with `gh pr create --base release/x.y`; `gh` defaults to `main`. Its description is one line, `Backporting PR #<n> to <x.y> security release branch` (or `Backporting <sha> …` for a fix with no PR), with no template sections; an agent may write this line. Release Drafter does not run on `release/x.y` until [#1548](https://github.com/roostorg/coop/pull/1548) and [#1550](https://github.com/roostorg/coop/pull/1550) are in, so write the release's notes directly in step 3.
 - Merge backport PRs with a merge commit or a rebase, not a squash: squashing can drop the `(cherry picked from commit …)` line that marks a commit as backported.
 - `release/x.y` keeps the `AGENTS.md`, PR template and `CHANGELOG.md` of its `x.y.0` tag, which may predate release notes in PR descriptions. Its release notes go only in the GitHub release: don't add entries to its `CHANGELOG.md`, and don't forward-port any to `main`.
 - A release runs the workflow files at its tag, and PR checks run the workflow files on the PR's base branch, so fixes to `.github/workflows/` on `main` must also be cherry-picked to `release/x.y` before they apply to it. When creating `release/x.y`, check that it has [#1462](https://github.com/roostorg/coop/pull/1462), which runs the server and client checks when `pnpm-lock.yaml` changes.
@@ -166,7 +166,7 @@ pnpm update -r <package>... --lockfile-only --no-save
 
 pnpm rejects a version for a transitive dependency, so the update resolves the newest version that has cleared `minimumReleaseAge`, which can be newer than `main`'s. Confirm each package resolved to exactly `main`'s version; the check in step 5 catches anything newer. If it did not, add a temporary entry to `overrides` in `pnpm-workspace.yaml` pinning `main`'s version, run the update again, then remove the entry and confirm `pnpm install --frozen-lockfile` still passes. Then run steps 3 to 5 above, and end the commit message with `(cherry picked from commit <sha on main>)` by hand, as `git cherry-pick -x` would. The Security backports workflow skips a fix whose commit carries that line; without it, the workflow opens a duplicate backport.
 
-On a `release/x.y` without [#1462](https://github.com/roostorg/coop/pull/1462), PR checks skip the server and client jobs for a lockfile-only change, so run `docker compose run --rm --build test`, `docker compose run --rm --build backend pnpm run build` and `docker compose run --rm --build backend pnpm run typecheck` locally and record the results in the PR, or cherry-pick #1462 first.
+On a `release/x.y` without [#1462](https://github.com/roostorg/coop/pull/1462), PR checks skip the server and client jobs for a lockfile-only change, so run `docker compose run --rm --build test`, `docker compose run --rm --build backend pnpm run build` and `docker compose run --rm --build backend pnpm run typecheck` locally and keep the results in the release log, to share with the reviewer on request, or cherry-pick #1462 first.
 
 ## 3. Write the release notes
 
