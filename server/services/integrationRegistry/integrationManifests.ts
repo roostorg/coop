@@ -210,151 +210,179 @@ const OPENAI: IntegrationManifestEntry = {
   requiresConfig: true,
 };
 
-const ZENTROPI: IntegrationManifestEntry = {
-  modelCard: {
-    modelName: 'Zentropi: CoPE-B',
-    version: 'CoPE-B-A4B, CoPE-B-S1',
-    releaseDate: 'May 2026 (CoPE-B-A4B), October 2026 (CoPE-B-S1)',
-    sections: [
-      {
-        id: 'trainingData',
-        title: 'Training Data Sources',
-        fields: [
-          {
-            label: 'Data Sources',
-            value:
-              'Policy texts authored by the CoPE team across multiple topic areas, and content from publicly-accessible internet forums. Labels are produced with an LLM-assisted relabeling pipeline. CoPE-B-S1 adds higher-quality data across additional safety domains. Training and evaluation sets share no content or policy text.',
-          },
-        ],
-      },
-      {
-        id: 'policyAndTaxonomy',
-        title: 'Policy & Taxonomy Definitions',
-        fields: [
-          {
-            label: 'Policies',
-            value:
-              "No fixed taxonomy. CoPE (Content Policy Evaluator) models are policy-steerable: each labeler's policy text defines what the model looks for, so the same content can be labeled differently under different policies.",
-          },
-        ],
-      },
-      {
-        id: 'annotationMethodology',
-        title: 'Annotation Methodology',
-        fields: [
-          {
-            label: 'Methodology',
-            value:
-              'Contradictory-example training: identical content is labeled differently under different policies, so the model learns to interpret the policy rather than memorize content patterns. Binocular labeling: policies are refined with dual LLM labeling until independent readers agree.',
-          },
-        ],
-      },
-      {
-        id: 'performanceBenchmarks',
-        title: 'Performance Benchmarks',
-        subsections: [
-          {
-            title: 'CoPE-B-A4B',
-            fields: [
-              {
-                label: 'F1 Score',
-                value:
-                  '0.81 (precision 0.74, recall 0.90): unweighted mean across drugs, harassment, hate speech, self-harm, sexual content, toxic speech and violence, on policies and content never seen during training. Ahead of GPT-5.4 with default reasoning (0.78), and of the fixed-taxonomy classifiers LlamaGuard4-12B and ShieldGemma-9B by 0.16 or more.',
-              },
-              {
-                label: 'Policy Steerability',
-                value: "0.634 on Zentropi's Policy Steerability Benchmark.",
-              },
-            ],
-          },
-          {
-            title: 'CoPE-B-S1',
-            fields: [
-              {
-                label: 'Policy Steerability',
-                value:
-                  "0.766 on Zentropi's Policy Steerability Benchmark, ahead of every other open model Zentropi tested.",
-              },
-              {
-                label: 'Generalization',
-                value:
-                  'Evaluated on third-party DecisionIndex benchmarks whose data the model never saw during training, including phishing detection (PhishNChips accuracy 0.938) and hallucination detection (RAGTruth F1 0.756).',
-              },
-            ],
-          },
-        ],
-      },
-      {
-        id: 'biasAndLimitations',
-        title: 'Bias Documentation & Known Limits',
-        fields: [
-          {
-            label: 'Known Limitations',
-            value:
-              'Text only. Up to 256K tokens of combined policy and content. Each labeler version returns a binary label with a confidence. Optimized for US English; performance may degrade for other languages and locales. Cannot classify content that requires external knowledge (e.g. misinformation) unless that knowledge is supplied in the policy. Labels reflect the policy you write: monitor classification patterns across demographic groups, keep a human in the loop for consequential actions, and audit decisions regularly.',
-          },
-        ],
-      },
-      {
-        id: 'implementationGuidance',
-        title: 'Implementation Guidance',
-        fields: [
-          {
-            label: 'Credentials',
-            value:
-              'API key, plus one entry per labeler version created by the user: version ID, display name, optional labeler ID, and the model that evaluates it.',
-          },
-          {
-            label: 'Model Selection',
-            value:
-              'cope-latest is an alias that Zentropi points at its current recommended text model. Choose cope-b-a4b or cope-b-s1 to pin a model. Confidence can differ between models, so re-check rule thresholds when you change the model of a labeler version.',
-          },
-          {
-            label: 'Input Format',
-            value:
-              'Use Zentropi to create and test labeling policies and classifiers. A policy should include: (1) Overview of policy subject, (2) Definition of Terms (precise definitions of words/phrases), (3) Interpretation of Language (guidance on ambiguous language), (4) Definition of Labels with Includes/Excludes criteria. The model returns 1 when the content matches the policy and 0 when it does not, with a confidence.',
-          },
-        ],
-      },
-      {
-        id: 'relevantLinks',
-        title: 'Relevant Links',
-        fields: [
-          {
-            label: 'CoPE-B-A4B Model Card',
-            value: 'https://huggingface.co/zentropi-ai/cope-b-a4b',
-          },
-          {
-            label: 'CoPE-B-S1 Model Card',
-            value: 'https://huggingface.co/zentropi-ai/cope-b-s1',
-          },
-          {
-            label: 'Documentation',
-            value: 'https://zentropi.ai/api',
-          },
-          {
-            label: 'Paper',
-            value: 'https://arxiv.org/abs/2512.18027',
-          },
-          {
-            label: 'Policy Steerability Benchmark',
-            value:
-              'https://blog.zentropi.ai/introducing-the-policy-steerability-benchmark/',
-          },
-          {
-            label: 'Research Talk',
-            value:
-              'https://www.youtube.com/live/JMq49FZ5qmY?si=Q6qpHNeTo-Bc6t9a&t=1',
-          },
-          {
-            label: 'Sample Code Notebook',
-            value:
-              'https://colab.research.google.com/drive/1JD8OIa3yZYfVbeY81ao03lrvg0aS-6SQ',
-          },
-        ],
-      },
-    ],
+// Sections shared verbatim by every CoPE-B model card. Per-model content
+// (benchmarks, model-card link) is composed around these in each card.
+const ZENTROPI_TRAINING_DATA_SECTION: ModelCardSection = {
+  id: 'trainingData',
+  title: 'Training Data Sources',
+  fields: [
+    {
+      label: 'Data Sources',
+      value:
+        'Policy texts authored by the CoPE team across multiple topic areas, and content from publicly-accessible internet forums. Labels are produced with an LLM-assisted relabeling pipeline. CoPE-B-S1 adds higher-quality data across additional safety domains. Training and evaluation sets share no content or policy text.',
+    },
+  ],
+};
+
+const ZENTROPI_POLICY_SECTION: ModelCardSection = {
+  id: 'policyAndTaxonomy',
+  title: 'Policy & Taxonomy Definitions',
+  fields: [
+    {
+      label: 'Policies',
+      value:
+        "No fixed taxonomy. CoPE (Content Policy Evaluator) models are policy-steerable: each labeler's policy text defines what the model looks for, so the same content can be labeled differently under different policies.",
+    },
+  ],
+};
+
+const ZENTROPI_METHODOLOGY_SECTION: ModelCardSection = {
+  id: 'annotationMethodology',
+  title: 'Annotation Methodology',
+  fields: [
+    {
+      label: 'Methodology',
+      value:
+        'Contradictory-example training: identical content is labeled differently under different policies, so the model learns to interpret the policy rather than memorize content patterns. Binocular labeling: policies are refined with dual LLM labeling until independent readers agree.',
+    },
+  ],
+};
+
+const ZENTROPI_LIMITATIONS_SECTION: ModelCardSection = {
+  id: 'biasAndLimitations',
+  title: 'Bias Documentation & Known Limits',
+  fields: [
+    {
+      label: 'Known Limitations',
+      value:
+        'Text only. Up to 256K tokens of combined policy and content. Each labeler version returns a binary label with a confidence. Optimized for US English; performance may degrade for other languages and locales. Cannot classify content that requires external knowledge (e.g. misinformation) unless that knowledge is supplied in the policy. Labels reflect the policy you write: monitor classification patterns across demographic groups, keep a human in the loop for consequential actions, and audit decisions regularly.',
+    },
+  ],
+};
+
+const ZENTROPI_IMPLEMENTATION_SECTION: ModelCardSection = {
+  id: 'implementationGuidance',
+  title: 'Implementation Guidance',
+  fields: [
+    {
+      label: 'Credentials',
+      value:
+        'API key, plus one entry per labeler version created by the user: version ID, display name, optional labeler ID, and the model that evaluates it.',
+    },
+    {
+      label: 'Model Selection',
+      value:
+        'cope-latest is an alias that Zentropi points at its current recommended text model. Choose cope-b-a4b or cope-b-s1 to pin a model. Confidence can differ between models, so re-check rule thresholds when you change the model of a labeler version.',
+    },
+    {
+      label: 'Input Format',
+      value:
+        'Use Zentropi to create and test labeling policies and classifiers. A policy should include: (1) Overview of policy subject, (2) Definition of Terms (precise definitions of words/phrases), (3) Interpretation of Language (guidance on ambiguous language), (4) Definition of Labels with Includes/Excludes criteria. The model returns 1 when the content matches the policy and 0 when it does not, with a confidence.',
+    },
+  ],
+};
+
+const ZENTROPI_SHARED_LINKS: readonly ModelCardField[] = [
+  { label: 'Documentation', value: 'https://zentropi.ai/api' },
+  { label: 'Paper', value: 'https://arxiv.org/abs/2512.18027' },
+  {
+    label: 'Policy Steerability Benchmark',
+    value:
+      'https://blog.zentropi.ai/introducing-the-policy-steerability-benchmark/',
   },
+  {
+    label: 'Research Talk',
+    value: 'https://www.youtube.com/live/JMq49FZ5qmY?si=Q6qpHNeTo-Bc6t9a&t=1',
+  },
+  {
+    label: 'Sample Code Notebook',
+    value:
+      'https://colab.research.google.com/drive/1JD8OIa3yZYfVbeY81ao03lrvg0aS-6SQ',
+  },
+];
+
+const ZENTROPI_COPE_B_A4B_MODEL_CARD: ModelCard = {
+  modelName: 'CoPE-B-A4B',
+  version: '',
+  releaseDate: 'May 2026',
+  sections: [
+    ZENTROPI_TRAINING_DATA_SECTION,
+    ZENTROPI_POLICY_SECTION,
+    ZENTROPI_METHODOLOGY_SECTION,
+    {
+      id: 'performanceBenchmarks',
+      title: 'Performance Benchmarks',
+      fields: [
+        {
+          label: 'F1 Score',
+          value:
+            '0.81 (precision 0.74, recall 0.90): unweighted mean across drugs, harassment, hate speech, self-harm, sexual content, toxic speech and violence, on policies and content never seen during training. Ahead of GPT-5.4 with default reasoning (0.78), and of the fixed-taxonomy classifiers LlamaGuard4-12B and ShieldGemma-9B by 0.16 or more.',
+        },
+        {
+          label: 'Policy Steerability',
+          value: "0.634 on Zentropi's Policy Steerability Benchmark.",
+        },
+      ],
+    },
+    ZENTROPI_LIMITATIONS_SECTION,
+    ZENTROPI_IMPLEMENTATION_SECTION,
+    {
+      id: 'relevantLinks',
+      title: 'Relevant Links',
+      fields: [
+        {
+          label: 'Model Card',
+          value: 'https://huggingface.co/zentropi-ai/cope-b-a4b',
+        },
+        ...ZENTROPI_SHARED_LINKS,
+      ],
+    },
+  ],
+};
+
+const ZENTROPI_COPE_B_S1_MODEL_CARD: ModelCard = {
+  modelName: 'CoPE-B-S1',
+  version: '',
+  releaseDate: 'October 2026',
+  sections: [
+    ZENTROPI_TRAINING_DATA_SECTION,
+    ZENTROPI_POLICY_SECTION,
+    ZENTROPI_METHODOLOGY_SECTION,
+    {
+      id: 'performanceBenchmarks',
+      title: 'Performance Benchmarks',
+      fields: [
+        {
+          label: 'Policy Steerability',
+          value:
+            "0.766 on Zentropi's Policy Steerability Benchmark, ahead of every other open model Zentropi tested.",
+        },
+        {
+          label: 'Generalization',
+          value:
+            'Evaluated on third-party DecisionIndex benchmarks whose data the model never saw during training, including phishing detection (PhishNChips accuracy 0.938) and hallucination detection (RAGTruth F1 0.756).',
+        },
+      ],
+    },
+    ZENTROPI_LIMITATIONS_SECTION,
+    ZENTROPI_IMPLEMENTATION_SECTION,
+    {
+      id: 'relevantLinks',
+      title: 'Relevant Links',
+      fields: [
+        {
+          label: 'Model Card',
+          value: 'https://huggingface.co/zentropi-ai/cope-b-s1',
+        },
+        ...ZENTROPI_SHARED_LINKS,
+      ],
+    },
+  ],
+};
+
+const ZENTROPI: IntegrationManifestEntry = {
+  modelCard: ZENTROPI_COPE_B_A4B_MODEL_CARD,
+  modelCards: [ZENTROPI_COPE_B_A4B_MODEL_CARD, ZENTROPI_COPE_B_S1_MODEL_CARD],
   modelCardLearnMoreUrl: 'https://modelcards.withgoogle.com/',
   title: 'Zentropi',
   docsUrl: 'https://zentropi.ai/api',

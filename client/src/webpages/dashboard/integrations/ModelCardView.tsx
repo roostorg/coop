@@ -60,9 +60,9 @@ function ModelCardSectionBlock({
   defaultOpen?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen);
-  const hasSubsections = section.subsections && section.subsections.length > 0;
-  const hasFields = section.fields && section.fields.length > 0;
-  const hasContent = hasSubsections ?? hasFields;
+  const hasSubsections = (section.subsections?.length ?? 0) > 0;
+  const hasFields = (section.fields?.length ?? 0) > 0;
+  const hasContent = [hasSubsections, hasFields].some(Boolean);
 
   return (
     <div className="border-b border-zinc-200 last:border-b-0">

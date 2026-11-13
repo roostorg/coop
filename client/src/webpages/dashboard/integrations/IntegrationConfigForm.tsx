@@ -1,5 +1,4 @@
 import { gql } from '@apollo/client';
-import { ChevronDown, ChevronRight } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate, useParams } from 'react-router';
@@ -228,46 +227,54 @@ function parseJsonField<T>(value: T): T | typeof INVALID_JSON {
 }
 
 /**
- * One model of an integration, rendered as a collapsible row. Collapsed it
- * shows the model name, version, and release date; expanded it reveals that
- * model's model card. Integrations with several models stack one row per
- * model.
+ * The model cards for an integration. A single-model integration shows its one
+ * card directly; a multi-model integration shows one tab per model, each
+ * opening that model's card. Tab labels are the model names, so the integration
+ * name is never repeated.
  */
-function ModelAccordionRow({
-  title,
-  card,
-  defaultOpen = false,
-}: {
-  title: string;
-  card: GQLModelCard;
-  defaultOpen?: boolean;
-}) {
-  const [open, setOpen] = useState(defaultOpen);
+function IntegrationModelCards({ cards }: { cards: readonly GQLModelCard[] }) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const card = cards[activeIndex] ?? cards[0];
+  const subheader = [card.version, card.releaseDate]
+    .filter(Boolean)
+    .join(' · ');
   return (
     <div className="overflow-hidden bg-white border border-solid rounded-2xl border-slate-200">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="flex items-center w-full gap-3 px-5 py-4 text-left bg-transparent border-none cursor-pointer hover:bg-slate-50"
-        aria-expanded={open}
-      >
-        <span className="text-base font-bold text-zinc-900">{title}</span>
-        <span className="flex items-center gap-3 text-sm text-zinc-500">
-          <span>{card.version}</span>
-          {card.releaseDate != null && <span>{card.releaseDate}</span>}
-        </span>
-        <span className="flex-1" />
-        {open ? (
-          <ChevronDown className="shrink-0 text-zinc-400" size={18} />
-        ) : (
-          <ChevronRight className="shrink-0 text-zinc-400" size={18} />
-        )}
-      </button>
-      {open && (
-        <div className="px-5 pb-2 border-t border-solid border-slate-200">
-          <ModelCardView card={card} hideHeader />
+      {cards.length > 1 && (
+        <div
+          role="tablist"
+          className="flex border-0 border-b border-solid border-slate-200"
+        >
+          {cards.map((c, index) => (
+            <button
+              key={index}
+              type="button"
+              role="tab"
+              aria-selected={index === activeIndex}
+              onClick={() => setActiveIndex(index)}
+              className={`px-5 py-3 text-sm font-semibold bg-transparent border-0 cursor-pointer ${
+                index === activeIndex
+                  ? 'text-zinc-900 border-b-2 border-solid border-indigo-500'
+                  : 'text-zinc-500 hover:text-zinc-800'
+              }`}
+            >
+              {c.modelName}
+            </button>
+          ))}
         </div>
       )}
+      <div className="px-5 pt-3 pb-2">
+        {cards.length > 1 ? (
+          <>
+            {subheader !== '' && (
+              <div className="mb-1 text-sm text-zinc-500">{subheader}</div>
+            )}
+            <ModelCardView card={card} hideHeader />
+          </>
+        ) : (
+          <ModelCardView card={card} />
+        )}
+      </div>
     </div>
   );
 }
@@ -633,15 +640,8 @@ export default function IntegrationConfigForm() {
 
       {primaryModelCard != null ? (
         <div className="flex flex-col lg:flex-row gap-8 w-full max-w-7xl">
-          <div className="flex flex-col flex-1 min-w-0 gap-3.5">
-            {modelCards.map((card, index) => (
-              <ModelAccordionRow
-                key={index}
-                title={`${formattedName}: ${card.modelName}`}
-                card={card}
-                defaultOpen={index === 0}
-              />
-            ))}
+          <div className="flex flex-col flex-1 min-w-0">
+            <IntegrationModelCards cards={modelCards} />
           </div>
           <div className="flex flex-col lg:w-96 shrink-0">
             {apiModelCardLearnMoreUrl != null && (
