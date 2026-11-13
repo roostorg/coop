@@ -253,7 +253,7 @@ For a release with no Coop advisory, replace everything above **Other security u
 > **This is a security release.** It updates dependencies to versions that fix published upstream advisories, listed below. <Upgrade wording>. For security announcements, we encourage adopters to subscribe to the [security-announce@roost.tools mailing list](https://groups.google.com/a/roost.tools/g/security-announce).
 ```
 
-List every upstream advisory fixed by a dependency update that has no Coop advisory under **Other security updates**, without saying whether it affects Coop: reachability stays private (see [Before you start](#before-you-start)). A backport resolved by hand can add a dependency that is new to `release/x.y`, which needs maintainer approval like any new dependency even though `main` already has it, or change behavior beyond the fix. List any such behavior change under **Upgrade notes**. Leave out sections that do not apply. For upgrade wording, see [Upgrade wording](#upgrade-wording).
+List every upstream advisory fixed by a dependency update that has no Coop advisory under **Other security updates**, without saying whether it affects Coop: reachability stays private (see [Before you start](#before-you-start)). If a fix adds or bumps a dependency, the backport takes the same specifier and version as `main` as part of the fix; approving the fix approves it. Check its license and known CVEs as usual. A backport resolved by hand can also change behavior beyond the fix; list any such change under **Upgrade notes**. Leave out sections that do not apply. For upgrade wording, see [Upgrade wording](#upgrade-wording).
 
 ## 5. Confirm artifacts published
 
