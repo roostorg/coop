@@ -18,6 +18,7 @@ jobs:
   notify:
     runs-on: ubuntu-latest
     steps:
-      - uses: roostorg/discord-bot@f9055284bc6c721627dae45f66229382ad17abeb
+      - uses: roostorg/discord-bot@ec1c56411627b77bdcc6e47fca9ab8d817e739ca
         with:
           webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          layout: minimal
