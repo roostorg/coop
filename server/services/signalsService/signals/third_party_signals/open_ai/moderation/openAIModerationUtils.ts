@@ -253,6 +253,7 @@ export async function getOpenAiModerationScores(
   try {
     const response = await fetchHTTP({
       url: 'https://api.openai.com/v1/moderations',
+      isUntrustedUrl: false,
       method: 'post',
       headers: {
         'Content-Type': 'application/json',

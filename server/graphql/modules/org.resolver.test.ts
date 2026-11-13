@@ -199,6 +199,30 @@ describe('Org resolvers', () => {
         'User required.',
       );
     });
+
+    it('Org.publicSigningKey rejects callers from another org even with MANAGE_ORG', async () => {
+      const { ctx } = makeCtx({
+        orgId: 'org-1',
+        callerOrgId: 'other-org',
+        permissions: [UserPermission.MANAGE_ORG],
+      });
+
+      await expect(Org.publicSigningKey(orgParent, {}, ctx)).rejects.toThrow(
+        'User required.',
+      );
+    });
+
+    it('Org.integrationConfigs rejects callers from another org even with MANAGE_ORG', async () => {
+      const { ctx } = makeCtx({
+        orgId: 'org-1',
+        callerOrgId: 'other-org',
+        permissions: [UserPermission.MANAGE_ORG],
+      });
+
+      await expect(Org.integrationConfigs(orgParent, {}, ctx)).rejects.toThrow(
+        'User required.',
+      );
+    });
   });
 
   describe('Org.usersWhoCanReviewEveryQueue is not readable cross-tenant (PII leak guard)', () => {

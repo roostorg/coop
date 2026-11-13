@@ -340,8 +340,8 @@ importers:
         specifier: ^29.1.1
         version: 29.1.1(@noble/hashes@1.8.0)
       knip:
-        specifier: ^6.44.0
-        version: 6.44.0
+        specifier: ^6.44.1
+        version: 6.44.1
       postcss:
         specifier: ^8.5.32
         version: 8.5.32
@@ -404,8 +404,8 @@ importers:
         specifier: ^8.23.1
         version: 8.23.1
       knip:
-        specifier: ^6.44.0
-        version: 6.44.0
+        specifier: ^6.44.1
+        version: 6.44.1
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -435,8 +435,8 @@ importers:
         specifier: ^17.0.24
         version: 17.0.35
       knip:
-        specifier: ^6.44.0
-        version: 6.44.0
+        specifier: ^6.44.1
+        version: 6.44.1
       typescript:
         specifier: ^6.0.3
         version: 6.0.3
@@ -606,6 +606,9 @@ importers:
       ioredis:
         specifier: ^5.2.4
         version: 5.11.1(supports-color@10.2.2)
+      ipaddr.js:
+        specifier: 2.5.0
+        version: 2.5.0
       kysely:
         specifier: ^0.29.8
         version: 0.29.8
@@ -791,8 +794,8 @@ importers:
         specifier: ^10.4.0
         version: 10.4.0
       knip:
-        specifier: ^6.44.0
-        version: 6.44.0
+        specifier: ^6.44.1
+        version: 6.44.1
       supertest:
         specifier: ^6.2.2
         version: 6.3.3(supports-color@10.2.2)
@@ -7366,6 +7369,10 @@ packages:
     resolution: {integrity: sha512-0KI/607xoxSToH7GjN1FfSbLoU0+btTicjsQSWQlh/hZykN8KpmMf7uYwPW3R+akZ6R/w18ZlXSHBYXiYUPO3g==}
     engines: {node: '>= 0.10'}
 
+  ipaddr.js@2.5.0:
+    resolution: {integrity: sha512-aq+t5NAc+cS6rZQQVWC2x98CPqGtKKTMDd4Gaodv0wShnItdKg/51djkGJ1hqH+Oy0ivDftCbSLCQob8zso01w==}
+    engines: {node: '>= 10'}
+
   is-absolute@1.0.0:
     resolution: {integrity: sha512-dOWoqflvcydARa360Gvv18DZ/gRuHKi2NU/wU5X1ZFzdYfH29nkiNZsF3mp4OJ3H4yo9Mx8A/uAGNzpzPN3yBA==}
     engines: {node: '>=0.10.0'}
@@ -7658,8 +7665,8 @@ packages:
   keyv@4.5.4:
     resolution: {integrity: sha512-oxVHkHR/EJf2CNXnWxRLW6mg7JyCCUcG0DtEGmL2ctUo1PNTin1PUil+r/+4r5MpVgC/fn1kjsx7mjSujKqIpw==}
 
-  knip@6.44.0:
-    resolution: {integrity: sha512-mT0fl71Mqrko91azUO2Jw/uhYKwldORKT4liRq6yV0ZAtt6G2eYusdnvx8eBSQJDjvhRGKkpKUUx+vUG6syV4w==}
+  knip@6.44.1:
+    resolution: {integrity: sha512-Hbd8nvkIsNgFfXgC7Jsb5LHv7jj6VwA3tmfHd53XPX2z9Vc9RnAZqV0BIiP4OrtYqKwCoLseFHQZerb1bNlbSw==}
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
 
@@ -17835,6 +17842,8 @@ snapshots:
 
   ipaddr.js@1.9.1: {}
 
+  ipaddr.js@2.5.0: {}
+
   is-absolute@1.0.0:
     dependencies:
       is-relative: 1.0.0
@@ -18139,7 +18148,7 @@ snapshots:
     dependencies:
       json-buffer: 3.0.1
 
-  knip@6.44.0:
+  knip@6.44.1:
     dependencies:
       formatly: 0.11.4
       get-tsconfig: 4.14.3

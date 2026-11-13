@@ -15,6 +15,7 @@ export async function fetchWithTimeout(
 ): Promise<CoopResponse<'as-json'>> {
   return fetchHTTP({
     url,
+    isUntrustedUrl: false,
     method: 'post',
     headers: options.headers,
     body: options.body,
@@ -30,6 +31,7 @@ export async function fetchImage(
 ): Promise<Buffer> {
   const response = await fetchHTTP({
     url,
+    isUntrustedUrl: true,
     method: 'get',
     timeoutMs,
     handleResponseBody: 'as-array-buffer',

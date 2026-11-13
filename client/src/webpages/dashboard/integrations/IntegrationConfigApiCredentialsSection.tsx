@@ -8,8 +8,19 @@ import {
   GQLIntegrationConfigFieldInputType,
   GQLOpenAiIntegrationApiCredential,
   GQLZentropiIntegrationApiCredential,
+  GQLZentropiModel,
   Scalars,
 } from '../../../graphql/generated';
+
+const ZENTROPI_MODEL_LABELS = {
+  [GQLZentropiModel.CopeLatest]: 'cope-latest (default)',
+  [GQLZentropiModel.CopeBA4B]: 'cope-b-a4b',
+  [GQLZentropiModel.CopeBS1]: 'cope-b-s1',
+} as const satisfies Record<GQLZentropiModel, string>;
+
+const ZENTROPI_MODEL_OPTIONS = Object.entries(ZENTROPI_MODEL_LABELS).map(
+  ([value, label]) => ({ value, label }),
+);
 
 export type PluginConfigField = Omit<GQLIntegrationConfigField, '__typename'>;
 
@@ -74,7 +85,7 @@ export default function IntegrationConfigApiCredentialsSection(props: {
 
     const updateLabelerVersion = (
       index: number,
-      field: 'id' | 'label' | 'labelerId',
+      field: 'id' | 'label' | 'labelerId' | 'model',
       value: string,
     ) => {
       const updated = labelerVersions.map((v, i) =>
@@ -150,6 +161,18 @@ export default function IntegrationConfigApiCredentialsSection(props: {
                 }
                 className="flex-1"
               />
+              <label className="flex flex-1 flex-col">
+                <span className="mb-1">Model</span>
+                <Select
+                  aria-label={`Model for ${version.label || 'labeler version'}`}
+                  value={version.model ?? GQLZentropiModel.CopeLatest}
+                  options={ZENTROPI_MODEL_OPTIONS}
+                  onChange={(model) =>
+                    updateLabelerVersion(index, 'model', model)
+                  }
+                  className="w-full"
+                />
+              </label>
               <Button
                 type="text"
                 icon={<Trash2 size={14} />}
