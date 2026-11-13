@@ -160,10 +160,10 @@ The script depends on [#1524](https://github.com/roostorg/coop/pull/1524) ([#152
 For a fix that only changes `pnpm-lock.yaml`, regenerating on the branch is simpler than resolving the cherry-pick:
 
 ```bash
-pnpm update -r <package>@<version on main>... --lockfile-only --no-save
+pnpm update -r <package>... --lockfile-only --no-save
 ```
 
-Give each package's exact version from `main`'s lockfile: without one, pnpm resolves the newest version that has cleared `minimumReleaseAge`, which can be newer than `main`'s. Then run steps 3 to 5 above, and end the commit message with `(cherry picked from commit <sha on main>)` by hand, as `git cherry-pick -x` would. The Security backports workflow skips a fix whose commit carries that line; without it, the workflow opens a duplicate backport.
+pnpm rejects a version for a transitive dependency, so the update resolves the newest version that has cleared `minimumReleaseAge`, which can be newer than `main`'s. Confirm each package resolved to exactly `main`'s version; the check in step 5 catches anything newer. If it did not, add a temporary entry to `overrides` in `pnpm-workspace.yaml` pinning `main`'s version, run the update again, then remove the entry and confirm `pnpm install --frozen-lockfile` still passes. Then run steps 3 to 5 above, and end the commit message with `(cherry picked from commit <sha on main>)` by hand, as `git cherry-pick -x` would. The Security backports workflow skips a fix whose commit carries that line; without it, the workflow opens a duplicate backport.
 
 ## 3. Write the release notes
 
