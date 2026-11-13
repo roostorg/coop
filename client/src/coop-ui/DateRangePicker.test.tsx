@@ -1,5 +1,12 @@
 import { DateRangePicker } from '@/coop-ui/DateRangePicker';
 import { fireEvent, render, screen } from '@testing-library/react';
+import {
+  differenceInMilliseconds,
+  endOfDay,
+  formatDistance,
+  startOfDay,
+  startOfHour,
+} from 'date-fns';
 import React from 'react';
 import { vi } from 'vitest';
 
@@ -66,9 +73,47 @@ describe('DateRangePicker', () => {
 
     expect(onUpdateMock).toHaveBeenCalledWith({
       range: {
-        from: new Date(2023, 1, 1), // Note: month is 0-indexed
-        to: new Date(2023, 2, 30),
+        from: startOfDay(new Date(2023, 1, 1)),
+        to: endOfDay(new Date(2023, 2, 30)),
       },
     });
+  });
+
+  // Editing only the end day must still emit a full inclusive local-day window.
+  it('normalizes to inclusive local days when only the end date inputs change', () => {
+    const onUpdateMock = vi.fn();
+    const initialFrom = startOfHour(new Date(2026, 10, 4, 14, 47));
+    const initialTo = startOfHour(new Date(2026, 10, 11, 14, 47));
+
+    render(
+      <DateRangePicker
+        initialDateFrom={initialFrom}
+        initialDateTo={initialTo}
+        onUpdate={onUpdateMock}
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /Nov 4, 2026 - Nov 11, 2026/i }),
+    );
+
+    const dateToDayInput = screen.getAllByPlaceholderText('D')[1];
+    fireEvent.change(dateToDayInput, { target: { value: '10' } });
+    fireEvent.click(screen.getByRole('button', { name: /Update/i }));
+
+    expect(onUpdateMock).toHaveBeenCalledTimes(1);
+    const range = onUpdateMock.mock.calls[0][0].range as {
+      from: Date;
+      to: Date;
+    };
+
+    expect(range.from).toEqual(startOfDay(new Date(2026, 10, 4)));
+    expect(range.to).toEqual(endOfDay(new Date(2026, 10, 10)));
+    expect(range.from.getHours()).toBe(0);
+    expect(range.to.getHours()).toBe(23);
+    expect(
+      differenceInMilliseconds(range.to, range.from) / 86_400_000,
+    ).toBeCloseTo(6.999, 2);
+    expect(formatDistance(range.to, range.from)).toBe('7 days');
   });
 });

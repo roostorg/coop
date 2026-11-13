@@ -14,7 +14,7 @@ import {
 import { LookbackLength } from '@/utils/time';
 import { gql } from '@apollo/client';
 import { makeEnumLike } from '@roostorg/coop-types';
-import { startOfHour, subDays } from 'date-fns';
+import { endOfDay, startOfDay, subDays } from 'date-fns';
 import {
   FileWarning as FileExclamationFilled,
   GitBranch as FlowChartAltFilled,
@@ -63,8 +63,8 @@ export default function Overview() {
   });
   const [timeDivision, setTimeDivision] = useState<TimeDivisionOptions>('DAY');
   const [customTimeWindow, setCustomTimeWindow] = useState({
-    start: startOfHour(subDays(new Date(), 7)),
-    end: startOfHour(new Date()),
+    start: startOfDay(subDays(new Date(), 6)),
+    end: endOfDay(new Date()),
   });
   if (error) {
     throw error;
