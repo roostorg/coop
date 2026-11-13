@@ -18,6 +18,7 @@ import {
   useGQLSetIntegrationConfigMutation,
   useGQLSetPluginIntegrationConfigMutation,
   type GQLGoogleContentSafetyApiIntegrationApiCredential,
+  type GQLModelCard,
   type GQLOpenAiIntegrationApiCredential,
   type GQLZentropiIntegrationApiCredential,
 } from '../../../graphql/generated';
@@ -113,6 +114,26 @@ gql`
               }
             }
           }
+          modelCards {
+            modelName
+            version
+            releaseDate
+            sections {
+              id
+              title
+              subsections {
+                title
+                fields {
+                  label
+                  value
+                }
+              }
+              fields {
+                label
+                value
+              }
+            }
+          }
           modelCardLearnMoreUrl
           apiCredential {
             ... on GoogleContentSafetyApiIntegrationApiCredential {
@@ -127,7 +148,6 @@ gql`
                 id
                 label
                 labelerId
-                model
               }
             }
             ... on PluginIntegrationApiCredential {
@@ -162,7 +182,10 @@ export function getNewEmptyApiKey(name: string): GQLIntegrationApiCredential {
       };
     }
     case 'OPEN_AI': {
-      return { __typename: 'OpenAiIntegrationApiCredential', apiKey: '' };
+      return {
+        __typename: 'OpenAiIntegrationApiCredential',
+        apiKey: '',
+      };
     }
     case 'ZENTROPI': {
       return {
@@ -201,6 +224,59 @@ function parseJsonField<T>(value: T): T | typeof INVALID_JSON {
   } catch {
     return INVALID_JSON;
   }
+}
+
+/**
+ * The model cards for an integration. A single-model integration shows its one
+ * card directly; a multi-model integration shows one tab per model, each
+ * opening that model's card. Tab labels are the model names, so the integration
+ * name is never repeated.
+ */
+function IntegrationModelCards({ cards }: { cards: readonly GQLModelCard[] }) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const card = cards[activeIndex] ?? cards[0];
+  const subheader = [card.version, card.releaseDate]
+    .filter(Boolean)
+    .join(' · ');
+  return (
+    <div className="overflow-hidden bg-white border border-solid rounded-2xl border-slate-200">
+      {cards.length > 1 && (
+        <div
+          role="tablist"
+          className="flex border-0 border-b border-solid border-slate-200"
+        >
+          {cards.map((c, index) => (
+            <button
+              key={index}
+              type="button"
+              role="tab"
+              aria-selected={index === activeIndex}
+              onClick={() => setActiveIndex(index)}
+              className={`px-5 py-3 text-sm font-semibold bg-transparent border-0 cursor-pointer ${
+                index === activeIndex
+                  ? 'text-zinc-900 border-b-2 border-solid border-indigo-500'
+                  : 'text-zinc-500 hover:text-zinc-800'
+              }`}
+            >
+              {c.modelName}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="px-5 pt-3 pb-2">
+        {cards.length > 1 ? (
+          <>
+            {subheader !== '' && (
+              <div className="mb-1 text-sm text-zinc-500">{subheader}</div>
+            )}
+            <ModelCardView card={card} hideHeader />
+          </>
+        ) : (
+          <ModelCardView card={card} />
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function IntegrationConfigForm() {
@@ -532,8 +608,16 @@ export default function IntegrationConfigForm() {
   };
 
   const apiModelCard = response?.config?.modelCard;
+  const apiModelCards = response?.config?.modelCards;
+  const modelCards =
+    apiModelCards != null && apiModelCards.length > 0
+      ? apiModelCards
+      : apiModelCard != null
+        ? [apiModelCard]
+        : [];
+  const primaryModelCard = modelCards[0];
   const apiModelCardLearnMoreUrl = response?.config?.modelCardLearnMoreUrl;
-  const hasModelCard = apiModelCard != null;
+  const hasModelCard = primaryModelCard != null;
 
   return (
     <div className="flex flex-col text-start">
@@ -554,10 +638,10 @@ export default function IntegrationConfigForm() {
         )}
       </div>
 
-      {hasModelCard && apiModelCard ? (
+      {primaryModelCard != null ? (
         <div className="flex flex-col lg:flex-row gap-8 w-full max-w-7xl">
-          <div className="flex-1 min-w-0">
-            <ModelCardView card={apiModelCard} />
+          <div className="flex flex-col flex-1 min-w-0">
+            <IntegrationModelCards cards={modelCards} />
           </div>
           <div className="flex flex-col lg:w-96 shrink-0">
             {apiModelCardLearnMoreUrl != null && (

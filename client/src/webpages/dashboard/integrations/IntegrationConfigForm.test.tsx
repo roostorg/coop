@@ -57,6 +57,15 @@ function renderForm(labelerVersions: GQLZentropiLabelerVersion[]) {
           releaseDate: null,
           sections: [],
         },
+        modelCards: [
+          {
+            __typename: 'ModelCard',
+            modelName: 'CoPE',
+            version: '1',
+            releaseDate: null,
+            sections: [],
+          },
+        ],
         modelCardLearnMoreUrl: null,
         apiCredential: {
           __typename: 'ZentropiIntegrationApiCredential',
@@ -226,6 +235,133 @@ describe('Zentropi integration configuration', () => {
   });
 });
 
+function renderMultiModelForm() {
+  configData = {
+    __typename: 'Query',
+    integrationConfig: {
+      __typename: 'IntegrationConfigSuccessResult',
+      config: {
+        __typename: 'IntegrationConfig',
+        name: 'ZENTROPI',
+        title: 'Zentropi',
+        docsUrl: 'https://zentropi.ai/api',
+        requiresConfig: true,
+        configurationFields: [],
+        logoUrl: null,
+        logoWithBackgroundUrl: null,
+        modelCard: {
+          __typename: 'ModelCard',
+          modelName: 'CoPE-B-A4B',
+          version: '',
+          releaseDate: 'May 2026',
+          sections: [
+            {
+              __typename: 'ModelCardSection',
+              id: 'performanceBenchmarks',
+              title: 'Performance Benchmarks',
+              subsections: [],
+              fields: [
+                {
+                  __typename: 'ModelCardField',
+                  label: 'F1 Score',
+                  value: 'a4b-only-benchmark',
+                },
+              ],
+            },
+          ],
+        },
+        modelCards: [
+          {
+            __typename: 'ModelCard',
+            modelName: 'CoPE-B-A4B',
+            version: '',
+            releaseDate: 'May 2026',
+            sections: [
+              {
+                __typename: 'ModelCardSection',
+                id: 'performanceBenchmarks',
+                title: 'Performance Benchmarks',
+                subsections: [],
+                fields: [
+                  {
+                    __typename: 'ModelCardField',
+                    label: 'F1 Score',
+                    value: 'a4b-only-benchmark',
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            __typename: 'ModelCard',
+            modelName: 'CoPE-B-S1',
+            version: '',
+            releaseDate: 'October 2026',
+            sections: [
+              {
+                __typename: 'ModelCardSection',
+                id: 'performanceBenchmarks',
+                title: 'Performance Benchmarks',
+                subsections: [],
+                fields: [
+                  {
+                    __typename: 'ModelCardField',
+                    label: 'Policy Steerability',
+                    value: 's1-only-benchmark',
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+        modelCardLearnMoreUrl: null,
+        apiCredential: {
+          __typename: 'ZentropiIntegrationApiCredential',
+          apiKey: 'test-api-key',
+          labelerVersions: [],
+        },
+      },
+    },
+  };
+  return render(
+    <HelmetProvider>
+      <MemoryRouter initialEntries={['/integrations/zentropi']}>
+        <Routes>
+          <Route
+            path="/integrations/:name"
+            element={<IntegrationConfigForm />}
+          />
+        </Routes>
+      </MemoryRouter>
+    </HelmetProvider>,
+  );
+}
+
+describe('Integration with multiple models', () => {
+  beforeEach(() => {
+    permissions = [GQLUserPermission.ManageOrg];
+  });
+
+  it('shows a tab per model, labelled by model name without the integration prefix', () => {
+    renderMultiModelForm();
+    expect(screen.getByRole('tab', { name: 'CoPE-B-A4B' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'CoPE-B-S1' })).toBeInTheDocument();
+    // The integration name must not be repeated in the tab label.
+    expect(screen.queryByText(/Zentropi: CoPE-B/)).not.toBeInTheDocument();
+  });
+
+  it('switches the visible model card when another tab is selected', () => {
+    renderMultiModelForm();
+    expect(screen.getByText('a4b-only-benchmark')).toBeInTheDocument();
+    expect(screen.queryByText('s1-only-benchmark')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'CoPE-B-S1' }));
+
+    expect(screen.getByText('s1-only-benchmark')).toBeInTheDocument();
+    expect(screen.queryByText('a4b-only-benchmark')).not.toBeInTheDocument();
+  });
+});
+
 function renderPluginForm(
   credential: GQLPluginIntegrationApiCredential['credential'],
 ) {
@@ -270,6 +406,15 @@ function renderPluginForm(
           releaseDate: null,
           sections: [],
         },
+        modelCards: [
+          {
+            __typename: 'ModelCard',
+            modelName: 'Pigeon',
+            version: '1',
+            releaseDate: null,
+            sections: [],
+          },
+        ],
         modelCardLearnMoreUrl: null,
         apiCredential: {
           __typename: 'PluginIntegrationApiCredential',

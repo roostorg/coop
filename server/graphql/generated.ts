@@ -1537,6 +1537,7 @@ export type GQLIntegrationConfig = {
   readonly logoWithBackgroundUrl?: Maybe<Scalars['String']['output']>;
   readonly modelCard: GQLModelCard;
   readonly modelCardLearnMoreUrl?: Maybe<Scalars['String']['output']>;
+  readonly modelCards: ReadonlyArray<GQLModelCard>;
   readonly name: Scalars['String']['output'];
   readonly requiresConfig: Scalars['Boolean']['output'];
   readonly title: Scalars['String']['output'];
@@ -1614,6 +1615,7 @@ export type GQLIntegrationMetadata = {
   readonly docsUrl: Scalars['String']['output'];
   readonly logoUrl?: Maybe<Scalars['String']['output']>;
   readonly logoWithBackgroundUrl?: Maybe<Scalars['String']['output']>;
+  readonly modelCards: ReadonlyArray<GQLModelCard>;
   readonly name: Scalars['String']['output'];
   readonly requiresConfig: Scalars['Boolean']['output'];
   readonly title: Scalars['String']['output'];
@@ -9735,6 +9737,11 @@ export type GQLIntegrationConfigResolvers<
     ParentType,
     ContextType
   >;
+  modelCards?: Resolver<
+    ReadonlyArray<GQLResolversTypes['ModelCard']>,
+    ParentType,
+    ContextType
+  >;
   name?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   requiresConfig?: Resolver<
     GQLResolversTypes['Boolean'],
@@ -9915,6 +9922,11 @@ export type GQLIntegrationMetadataResolvers<
   >;
   logoWithBackgroundUrl?: Resolver<
     Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  modelCards?: Resolver<
+    ReadonlyArray<GQLResolversTypes['ModelCard']>,
     ParentType,
     ContextType
   >;
