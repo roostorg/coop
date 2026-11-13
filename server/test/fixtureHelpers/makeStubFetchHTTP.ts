@@ -13,6 +13,7 @@ export type RecordedFetchHTTPCall = {
   method: string;
   body: unknown;
   headers?: Record<string, string | ReadonlyArray<string>>;
+  isUntrustedUrl: boolean;
 };
 
 /** Records every outgoing fetchHTTP call and returns canned CyberTip
@@ -38,9 +39,9 @@ export function makeStubFetchHTTP(
   const fetchHTTP: FetchHTTP = async <T extends HandleResponseBody>(
     query: CoopRequestQuery<T>,
   ): Promise<CoopResponse<T>> => {
-    const { url, method, body, headers } = query;
+    const { url, method, body, headers, isUntrustedUrl } = query;
     // eslint-disable-next-line functional/immutable-data -- request recorder mutates by design
-    calls.push({ url, method, body, headers });
+    calls.push({ url, method, body, headers, isUntrustedUrl });
 
     // media download for #upload
     if (method === 'get') {

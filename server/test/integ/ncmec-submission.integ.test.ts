@@ -117,6 +117,16 @@ describe('NCMEC submitReport (integration)', () => {
         .map((c) => c.url.replace(/^.*\/ispws/, ''));
       expect(routes).toEqual(['/submit', '/upload', '/fileinfo', '/finish']);
 
+      // only the submitted media download is restricted to public addresses
+      const downloads = stub.calls.filter((c) => c.method === 'get');
+      expect(downloads.length).toBeGreaterThan(0);
+      expect(downloads.every((c) => c.isUntrustedUrl)).toBe(true);
+      expect(
+        stub.calls
+          .filter((c) => c.method !== 'get')
+          .every((c) => !c.isUntrustedUrl),
+      ).toBe(true);
+
       // preservation fired (isTest=false + endpoint set)
       expect(stub.calls.some((c) => c.url === PRESERVATION_URL)).toBe(true);
 
