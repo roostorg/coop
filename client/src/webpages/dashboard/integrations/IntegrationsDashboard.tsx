@@ -113,7 +113,7 @@ export default function IntegrationsDashboard() {
       </Helmet>
       <DashboardHeader
         title="Integrations"
-        subtitle="Coop comes with pre-built integrations to common software used for online safety. Add your API key to enable the integration."
+        subtitle="Coop's built-in integrations are free to use. Add your API key to enable one, or build your own integration backed by a model you host or any SaaS provider you use."
       />
       <div className="items-center align-center">
         <div className="grid auto-rows-[minmax(240px,_auto)] grid-rows-auto grid-cols-[repeat(auto-fill,_minmax(280px,_1fr))] gap-6 justify-center items-center pr-11 pt-4 pb-8">
