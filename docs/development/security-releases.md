@@ -219,6 +219,8 @@ If the draft for `main` holds `x.y.z`, rename it immediately before publishing, 
 gh release create x.y.z --target release/x.y --title "Coop x.y.z" --notes-file notes.md
 ```
 
+`--notes-file` publishes only the file's text, so check that it ends with the **Full Changelog** compare link from the template.
+
 If a newer minor version has already been released, add `--latest=false` so that GitHub's **Latest** release does not move back to `x.y.z`.
 
 If `gh release create` fails, for example with HTTP 500, check that it created neither a release nor a tag before retrying; otherwise a retry can leave a duplicate release or an orphaned tag:
@@ -255,6 +257,8 @@ Thanks to @<reporter> for reporting <GHSA-xxxx-xxxx-xxxx>.
 ## Upgrade notes
 
 - Images: `ghcr.io/roostorg/coop-server:x.y.z`, `coop-worker:x.y.z`, `coop-client:x.y.z` and `coop-migrations:x.y.z`.
+
+**Full Changelog**: https://github.com/roostorg/coop/compare/x.y.(z-1)...x.y.z
 ```
 
 For a release with no Coop advisory, replace everything above **Other security updates** with:
