@@ -35,7 +35,7 @@ The steps run in this order: choose the release base (step 2) before merging any
 
 ### Finding a release's security fixes
 
-Security fixes carry the `security-update` label: Dependabot PRs that fix a published advisory get it automatically, and authors or maintainers add it to manual fixes. To list the fixes merged to `main` since the last release `x.y.z` of the line being patched:
+Security fixes carry the `security-update` label: Dependabot PRs that fix a published advisory get it automatically, and authors or maintainers add it to manual fixes. Only fixes already merged to `main`, or merged from an advisory fork, are eligible for a patch release; open PRs wait for the next release. To list the fixes merged to `main` since the last release `x.y.z` of the line being patched:
 
 ```bash
 LAST=$(gh release view x.y.z --repo roostorg/coop --json publishedAt --jq .publishedAt)
@@ -200,7 +200,7 @@ On option B, first check that no other draft release uses the tag or title `x.y.
 gh release list --repo roostorg/coop --json tagName,name,isDraft
 ```
 
-If the draft for `main` holds `x.y.z`, rename it, or re-run the **Draft release notes** workflow on `main` once [#1548](https://github.com/roostorg/coop/pull/1548) is in. Then publish the draft release for `x.y.(z+1)` after checking that its target is `release/x.y`. Without a draft, create the release from the branch; the web UI's target defaults to `main`:
+If the draft for `main` holds `x.y.z`, rename it immediately before publishing, and run `gh release list` again just before you publish: every push to `main` runs Release Drafter, which sets the draft back to the next patch version until `x.y.z` is published. After publishing, the draft for `main` moves to `x.y.(z+1)`; if `main` has unreleased **Added** entries, rename it to the next minor version. [#1548](https://github.com/roostorg/coop/pull/1548) takes the version from `main` instead. Then publish the draft release for `x.y.(z+1)` after checking that its target is `release/x.y`. Without a draft, create the release from the branch; the web UI's target defaults to `main`:
 
 ```bash
 gh release create x.y.z --target release/x.y --title "Coop x.y.z" --notes-file notes.md
@@ -275,7 +275,7 @@ Publish each Coop advisory after the release, so that its patched version exists
 - **Title:** `<Impact> via <vector>`, with the upstream package in parentheses for a dependency, e.g. `Denial of service via malformed request bodies (<package>)`.
 - **Affected product:** ecosystem left empty, package `@roostorg/coop`, affected versions `< x.y.z` (narrower if older versions are not affected), patched versions `x.y.z`. Set these and the severity in the draft before step 4; a draft can be saved with them blank.
 - **Severity:** CVSS scored for how Coop uses the affected code.
-- **Description**, with these sections:
+- **Description**: don't describe related components the release does not fix; if one needs its own fix, give it its own advisory. Use these sections:
   - `### Summary`: one or two sentences.
   - `### Details`: the affected component and why Coop is affected.
   - `### Proof of concept`: the steps in prose. No exploit code.
