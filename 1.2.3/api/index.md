@@ -1,0 +1,27 @@
+# API Reference
+
+Learn about the Coop API, including the REST API endpoints your platform uses to integrate with Coop.
+
+All endpoints require an API key passed as an HTTP header on every request:
+
+```http
+X-API-KEY: <<apiKey>>
+Content-Type: application/json
+```
+
+You can find or rotate your API key under **Settings** → **API Keys** in the Coop UI. For details on verifying the signatures Coop adds to outgoing webhook requests, see [API Keys & Authentication](../development/api-auth.md).
+
+| Endpoint                     | Description                                                                         |
+| :--------------------------- | :---------------------------------------------------------------------------------- |
+| `POST /api/v1/items/async/`  | [Items](items.md): send content for rule evaluation                                 |
+| `POST /api/v1/report`        | [Report](report.md): submit a user report                                           |
+| `POST /api/v1/report/appeal` | [Appeal](appeal.md): submit a user appeal                                           |
+| `GET /api/v1/policies/`      | [Policies](policies.md): fetch your configured policies                             |
+| `GET /api/v1/actions/`       | [Actions](actions.md#list-actions): fetch action metadata and item-type assignments |
+| `GET /api/v1/item_types/`    | [Item Types](item-types.md): fetch current schemas and field roles                  |
+
+See also:
+
+- [Handling Actions](actions.md): receive action webhooks from Coop for automated actions, moderator decisions, crossing user strike thresholds, and appeal decisions
+- [Partial Items API](../api/partial-items.md): support Coop fetching Items and their attributes on demand
+- [Errors](errors.md): details of error responses from Coop
