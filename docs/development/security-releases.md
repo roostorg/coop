@@ -57,7 +57,19 @@ This depends on the labeling workflow in [#1519](https://github.com/roostorg/coo
 gh pr list --repo roostorg/coop --state merged --base main --search "merged:>=${LAST%%T*} -label:security-update" --limit 200 --json number,title
 ```
 
-For each dependency update, read the release notes or advisories of every package version it changes.
+Dependabot security groups merged before the labeling workflow are titled after their group, e.g. `npm-prod-security`, so also search titles:
+
+```bash
+gh pr list --repo roostorg/coop --state merged --base main --search "merged:>=${LAST%%T*} in:title security" --limit 200 --json number,title
+```
+
+For each dependency update, read the release notes or advisories of every package version it changes. To find which updates in a group are tier 1, check what depends on each package:
+
+```bash
+pnpm why -r --prod <package>
+```
+
+A package counts as tier 1 only through a workspace package that ships in one of the four images or in `@roostorg/coop-types`; for example, `nodejs-instrumentation` is not built by `publish-docker.yaml`. A package reached only through dev dependencies is tier 4.
 
 Dependabot closes an alert when its fix merges, so it no longer shows as open. List the alerts fixed since the last release and check that each was triaged:
 
@@ -81,7 +93,7 @@ Use this path for a vulnerability in Coop's own code, or any issue not yet publi
 
    Do the same for `release/x.y` on option B. The push is rejected without the `workflow` scope if the new commits change `.github/workflows/`.
 
-4. Clone the fork and open a PR against it with the fix and a regression test. Target `main` on option A, or `release/x.y` on option B.
+4. Clone the fork and open a PR against it with the fix and a regression test. Target `main` on option A, or `release/x.y` on option B. If on option B you also want the `main` version reviewed in the fork, open it as a second PR and keep both in sync: add every commit to both before review. Only one of them can be merged from the advisory, so before merging, export the other with `git format-patch` for the forward-port in step 8.
 5. GitHub Actions does not run in temporary private forks. Run the [CI checks](https://github.com/roostorg/coop/blob/main/AGENTS.md#ci) locally and record the results in the PR. The required checks stay at "Expected — Waiting for status to be reported", so merging needs a branch protection bypass. **Pending decision:** a narrow bypass for security releases, or a private mirror repository where Actions runs.
 6. Before merging, update the fork's target branch again as in step 3, rebase the fix onto it, and rerun the local CI checks. The fork checks mergeability against its own stale branch, so a PR it shows as mergeable can still conflict upstream. Force-pushing the rebase does not dismiss existing approvals, so ask for a new review.
 7. Copy anything you need from the fork PR, such as review comments and CI results, into the draft advisory. GitHub deletes the fork when the PR is merged.
@@ -90,7 +102,7 @@ Use this path for a vulnerability in Coop's own code, or any issue not yet publi
 
 If a fork fix for option B merged into `main` instead of `release/x.y`, the fix is public from that merge, and the response clock runs from it. Cherry-pick it to `release/x.y` with `git cherry-pick -x` in a public backport PR:
 
-- Use only the commit's own wording in the PR title and description, nothing about the vulnerability.
+- Title it `fix(<scope>): backport <sha> to release/x.y`, and describe it only in the commit's own wording, nothing about the vulnerability. The commit's own title, "Merge commit from fork", does not pass the PR title check.
 - Leave its `## Release notes` section blank, and write the entry in the release notes directly (step 3).
 - Skip step 8's forward-port; the fix is already on `main`.
 
@@ -148,10 +160,10 @@ The script depends on [#1524](https://github.com/roostorg/coop/pull/1524) ([#152
 For a fix that only changes `pnpm-lock.yaml`, regenerating on the branch is simpler than resolving the cherry-pick:
 
 ```bash
-pnpm update -r <package>... --lockfile-only --no-save
+pnpm update -r <package>@<version on main>... --lockfile-only --no-save
 ```
 
-Then run steps 3 to 5 above, and end the commit message with `(cherry picked from commit <sha on main>)` by hand, as `git cherry-pick -x` would. The Security backports workflow skips a fix whose commit carries that line; without it, the workflow opens a duplicate backport.
+Give each package's exact version from `main`'s lockfile: without one, pnpm resolves the newest version that has cleared `minimumReleaseAge`, which can be newer than `main`'s. Then run steps 3 to 5 above, and end the commit message with `(cherry picked from commit <sha on main>)` by hand, as `git cherry-pick -x` would. The Security backports workflow skips a fix whose commit carries that line; without it, the workflow opens a duplicate backport.
 
 ## 3. Write the release notes
 
@@ -239,7 +251,7 @@ For a release with no Coop advisory, replace everything above **Other security u
 > **This is a security release.** It updates dependencies to versions that fix published upstream advisories, listed below. <Upgrade wording>. For security announcements, we encourage adopters to subscribe to the [security-announce@roost.tools mailing list](https://groups.google.com/a/roost.tools/g/security-announce).
 ```
 
-List every upstream advisory fixed by a dependency update that has no Coop advisory under **Other security updates**, without saying whether it affects Coop: reachability stays private (see [Before you start](#before-you-start)). Leave out sections that do not apply. For upgrade wording, see [Upgrade wording](#upgrade-wording).
+List every upstream advisory fixed by a dependency update that has no Coop advisory under **Other security updates**, without saying whether it affects Coop: reachability stays private (see [Before you start](#before-you-start)). A backport resolved by hand can add a dependency that is new to `release/x.y`, which needs maintainer approval like any new dependency even though `main` already has it, or change behavior beyond the fix. List any such behavior change under **Upgrade notes**. Leave out sections that do not apply. For upgrade wording, see [Upgrade wording](#upgrade-wording).
 
 ## 5. Confirm artifacts published
 
