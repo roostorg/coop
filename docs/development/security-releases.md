@@ -135,7 +135,7 @@ If `main` has unreleased changes, choose one of the options below. **Pending dec
 - Open each backport PR with `gh pr create --base release/x.y`; `gh` defaults to `main`. Add a `## Release notes` section with each fix's note to its description, even though the branch's PR template may not have one: the draft release for `release/x.y` and the notes in step 3 are built from it.
 - Merge backport PRs with a merge commit or a rebase, not a squash: squashing can drop the `(cherry picked from commit …)` line that marks a commit as backported.
 - `release/x.y` keeps the `AGENTS.md`, PR template and `CHANGELOG.md` of its `x.y.0` tag, which may predate release notes in PR descriptions. Its release notes go only in the GitHub release: don't add entries to its `CHANGELOG.md`, and don't forward-port any to `main`.
-- A release runs the workflow files at its tag, so fixes to `.github/workflows/` on `main` must also be cherry-picked to `release/x.y` before they apply to its releases.
+- A release runs the workflow files at its tag, and PR checks run the workflow files on the PR's base branch, so fixes to `.github/workflows/` on `main` must also be cherry-picked to `release/x.y` before they apply to it. When creating `release/x.y`, check that it has [#1462](https://github.com/roostorg/coop/pull/1462), which runs the server and client checks when `pnpm-lock.yaml` changes.
 - `@roostorg/coop-types` and `@roostorg/db-migrator` only publish from `main` (see step 5), so a fix in `types/` or `migrator/` reaches npm only through `main`. Publishing either package from `release/x.y` would move its npm `latest` backwards; the workflows do not support it, so ask a maintainer.
 
 ### Cherry-picking deterministically
@@ -164,6 +164,8 @@ pnpm update -r <package>... --lockfile-only --no-save
 ```
 
 pnpm rejects a version for a transitive dependency, so the update resolves the newest version that has cleared `minimumReleaseAge`, which can be newer than `main`'s. Confirm each package resolved to exactly `main`'s version; the check in step 5 catches anything newer. If it did not, add a temporary entry to `overrides` in `pnpm-workspace.yaml` pinning `main`'s version, run the update again, then remove the entry and confirm `pnpm install --frozen-lockfile` still passes. Then run steps 3 to 5 above, and end the commit message with `(cherry picked from commit <sha on main>)` by hand, as `git cherry-pick -x` would. The Security backports workflow skips a fix whose commit carries that line; without it, the workflow opens a duplicate backport.
+
+On a `release/x.y` without [#1462](https://github.com/roostorg/coop/pull/1462), PR checks skip the server and client jobs for a lockfile-only change, so run `docker compose run --rm --build test`, `docker compose run --rm --build backend pnpm run build` and `docker compose run --rm --build backend pnpm run typecheck` locally and record the results in the PR, or cherry-pick #1462 first.
 
 ## 3. Write the release notes
 
