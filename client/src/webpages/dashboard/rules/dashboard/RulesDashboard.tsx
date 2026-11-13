@@ -140,22 +140,6 @@ gql`
   }
 `;
 
-export function getStatusColor(status: string) {
-  switch (status.toUpperCase()) {
-    case GQLRuleStatus.Live:
-      return '#4BB543';
-    case GQLRuleStatus.Background:
-      return '#3591d7';
-    case GQLRuleStatus.Expired:
-      return '#EE5E67';
-    case GQLRuleStatus.Archived:
-      return '#A5A6F6';
-    case GQLRuleStatus.Draft:
-    default:
-      return '#B5B2B0';
-  }
-}
-
 type RuleTableMode = 'active' | 'archived';
 
 /**

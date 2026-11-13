@@ -1,5 +1,4 @@
 import {
-  GQLConditionOutcome,
   GQLReportingRuleStatus,
   GQLRuleStatus,
   GQLUserPenaltySeverity,
@@ -50,28 +49,6 @@ export function integerSort<TData extends RowWithValues>(
   const s1 = parseInteger(rowA.original.values[columnId]);
   const s2 = parseInteger(rowB.original.values[columnId]);
   return s1 > s2 ? 1 : s2 > s1 ? -1 : 0;
-}
-
-export function boolSort<TData extends RowWithValues>(
-  rowA: Row<TData>,
-  rowB: Row<TData>,
-  columnId: string,
-) {
-  const s1 = rowA.original.values[columnId];
-  const s2 = rowB.original.values[columnId];
-  if (s1 == null) {
-    return -1;
-  }
-  if (s2 == null) {
-    return 1;
-  }
-  if (s1 && !s2) {
-    return 1;
-  }
-  if (!s1 && s2) {
-    return -1;
-  }
-  return 0;
 }
 
 /**
@@ -143,24 +120,6 @@ export function userRoleSort<TData extends RowWithValues>(
 ) {
   return enumSort(
     [GQLUserRole.Admin, GQLUserRole.RulesManager, GQLUserRole.Analyst],
-    rowA,
-    rowB,
-    columnId,
-  );
-}
-
-export function conditionOutcomeSort<TData extends RowWithValues>(
-  rowA: Row<TData>,
-  rowB: Row<TData>,
-  columnId: string,
-) {
-  return enumSort(
-    [
-      GQLConditionOutcome.Passed,
-      GQLConditionOutcome.Failed,
-      GQLConditionOutcome.Inapplicable,
-      GQLConditionOutcome.Errored,
-    ],
     rowA,
     rowB,
     columnId,

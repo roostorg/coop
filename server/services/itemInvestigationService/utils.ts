@@ -10,10 +10,7 @@ import {
   type ScyllaRealItemIdentifier,
 } from '../../scylla/index.js';
 import { jsonParse, jsonStringify, type JsonOf } from '../../utils/encoding.js';
-import {
-  instantiateOpaqueType,
-  type NonEmptyArray,
-} from '../../utils/typescript-types.js';
+import { instantiateOpaqueType } from '../../utils/typescript-types.js';
 import { type SubmissionId } from '../itemProcessingService/makeItemSubmission.js';
 import { type ItemSubmissionWithTypeIdentifier } from '../itemProcessingService/makeItemSubmissionWithTypeIdentifier.js';
 import { type NormalizedItemData } from '../itemProcessingService/toNormalizedItemDataOrErrors.js';
@@ -59,16 +56,6 @@ export function dbRowToItemSubmissionWithItemTypeIdentifier(row: {
       schemaVariant: row.item_type_schema_variant,
     },
   });
-}
-
-export function getLatestSubmission(
-  submissions: NonEmptyArray<ScyllaItemSubmissionsRow>,
-): ScyllaItemSubmissionsRow;
-export function getLatestSubmission(
-  submissions: ScyllaItemSubmissionsRow[],
-): ScyllaItemSubmissionsRow | undefined;
-export function getLatestSubmission(submissions: ScyllaItemSubmissionsRow[]) {
-  return _.maxBy(submissions, (i) => i.item_submission_time.getTime());
 }
 
 /**

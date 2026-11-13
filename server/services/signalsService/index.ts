@@ -2,11 +2,9 @@
 export { Integration } from './types/Integration.js';
 export {
   type SignalId,
-  SignalIdArbitrary,
   type ExternalSignalId,
   ExternalSignalIdArbitrary,
   type InternalSignalId,
-  InternalSignalIdArbitrary,
   isSignalId,
   getSignalIdString,
   signalIsInternal,

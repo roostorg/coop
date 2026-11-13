@@ -10,7 +10,6 @@ import {
 import {
   BuiltInExternalSignalTypeArbitrary,
   InternalSignalType,
-  InternalSignalTypeArbitrary,
   SignalType,
   type ExternalSignalType,
 } from './SignalType.js';
@@ -33,10 +32,6 @@ export type ExternalSignalId =
   | { type: Exclude<ExternalSignalType, typeof SignalType.CUSTOM> }
   | { type: string }; // plugin signal type ids (not in SignalType enum)
 
-export const InternalSignalIdArbitrary = fc.record({
-  type: InternalSignalTypeArbitrary,
-}) satisfies Arbitrary<InternalSignalId>;
-
 const BuiltinExternalSignalIdArbitrary = fc.record({
   type: BuiltInExternalSignalTypeArbitrary,
 });
@@ -50,11 +45,6 @@ export const ExternalSignalIdArbitrary = fc.oneof(
   BuiltinExternalSignalIdArbitrary,
   CustomExternalSignalIdArbitrary,
 ) satisfies Arbitrary<ExternalSignalId>;
-
-export const SignalIdArbitrary = fc.oneof(
-  InternalSignalIdArbitrary,
-  ExternalSignalIdArbitrary,
-);
 
 /**
  * Converts a SignalId to its canonical string form, as serialized in the

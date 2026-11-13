@@ -7,13 +7,11 @@ import {
   ConditionFailureOutcome,
   ValueComparator,
   type ConditionInput,
-  type ConditionSet,
   type LeafCondition,
 } from '../../services/moderationConfigService/index.js';
 import { ExternalSignalIdArbitrary } from '../../services/signalsService/index.js';
 import { jsonStringify } from '../../utils/encoding.js';
 import { enumToArbitrary } from '../../utils/enum.js';
-import { type NonEmptyArray } from '../../utils/typescript-types.js';
 import { LocationAreaArbitrary } from './ContentType.js';
 import { CoopInputArbitrary } from './Shared.js';
 
@@ -118,23 +116,6 @@ export const LeafConditionArbitrary = <T extends Arbitrary<ConditionInput>>(
       threshold: fc.oneof(ThresholdArbitrary, NullishArbitrary),
     }),
   );
-
-export const ConditionSetArbitrary = (
-  leafConditionArbitrary: Arbitrary<LeafCondition>,
-): Arbitrary<ConditionSet> =>
-  fc.letrec((tie) => ({
-    conditionSet: fc.record({
-      conjunction: ConditionConjunctionArbitrary,
-      conditions: fc.oneof(
-        fc.array(tie('conditionSet'), { minLength: 1 }) as unknown as Arbitrary<
-          NonEmptyArray<ConditionSet>
-        >,
-        fc.array(leafConditionArbitrary, {
-          minLength: 1,
-        }) as unknown as Arbitrary<NonEmptyArray<LeafCondition>>,
-      ),
-    }),
-  })).conditionSet;
 
 const ConditionSignalInfoArbitrary = fc
   .tuple(

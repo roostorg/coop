@@ -145,12 +145,3 @@ export function getFlattenedConditions(
     isConditionSet(it) ? getFlattenedConditions(it.conditions) : [it],
   );
 }
-
-export function isMediaType(it: GQLScalarType): boolean {
-  return (
-    it === GQLScalarType.Audio ||
-    it === GQLScalarType.Video ||
-    it === GQLScalarType.Image ||
-    it === GQLScalarType.Media
-  );
-}

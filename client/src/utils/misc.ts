@@ -1,5 +1,3 @@
-import { FormInstance } from 'antd';
-import lodashIsPlainObject from 'lodash/isPlainObject';
 import pick from 'lodash/pick';
 import unzip from 'lodash/unzip';
 
@@ -18,12 +16,6 @@ export function safePick<T extends object, U extends keyof T>(
   return pick(obj, props);
 }
 
-export function isPlainObject(
-  obj: unknown,
-): obj is { [k: string | number | symbol]: unknown } {
-  return lodashIsPlainObject(obj);
-}
-
 /**
  * This is a function that's used to help TS warn us if a union type that we
  * should've handled all cases for in fact has some cases unhandled.
@@ -40,30 +32,6 @@ export function assertUnreachable(
   message: string = "Didn't expect to get here",
 ): never {
   throw new Error(message);
-}
-
-/**
- * A helper for debugging antd forms.
- *
- * @returns A pretty-printed JSON string of the form's state, which you can
- * console.log or render on the screen during dev.
- */
-export function antdFormState(form: FormInstance, _fieldNames: string[]) {
-  const fieldNamesAndValues = form.getFieldsValue();
-  return JSON.stringify(
-    Object.fromEntries(
-      Object.entries(fieldNamesAndValues).map(([name, value]) => [
-        name,
-        {
-          value,
-          touched: form.isFieldTouched(name),
-          errors: form.getFieldError(name),
-        },
-      ]),
-    ),
-    undefined,
-    4,
-  );
 }
 
 /**
