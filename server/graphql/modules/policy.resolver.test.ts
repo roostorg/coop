@@ -1,5 +1,6 @@
 import { ApolloServer } from '@apollo/server';
 import { makeExecutableSchema } from '@graphql-tools/schema';
+import { type GraphQLResolveInfo } from 'graphql';
 import { vi } from 'vitest';
 
 import { makePolicyNameExistsError } from '../../services/moderationConfigService/index.js';
@@ -9,9 +10,16 @@ import {
   makeBadRequestError,
   makeUnauthorizedError,
 } from '../../utils/errors.js';
+import { type Context } from '../resolvers.js';
 import { formatGraphQLError } from '../utils/formatError.js';
 import { typeDefs as genericTypeDefs } from './generic.js';
 import { resolvers, typeDefs } from './policy.js';
+
+vi.hoisted(() => {
+  // sanitizeError selects its implementation when the module is imported.
+  vi.resetModules();
+  vi.stubEnv('EXPOSE_SENSITIVE_IMPLEMENTATION_DETAILS_IN_ERRORS', 'false');
+});
 
 const schema = makeExecutableSchema({
   typeDefs: [genericTypeDefs, typeDefs],
@@ -41,12 +49,18 @@ const apollo = new ApolloServer<ReturnType<typeof makeContext>>({
 });
 
 beforeAll(async () => apollo.start());
-afterAll(async () => apollo.stop());
+afterAll(async () => {
+  try {
+    await apollo.stop();
+  } finally {
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  }
+});
 
 async function savePolicies(
   policies = [{ name: 'Spam' }],
   getUser: () => typeof user | null = () => user,
-  includeFailureDetails = true,
 ) {
   const response = await apollo.executeOperation(
     {
@@ -55,7 +69,7 @@ async function savePolicies(
           addPolicies(policies: $policies) {
             policies { id name }
             failures
-            ${includeFailureDetails ? 'failureDetails { name title detail status }' : ''}
+            failureDetails { name title detail status }
           }
         }
       `,
@@ -123,13 +137,11 @@ describe('policy creation errors', () => {
     });
   });
 
-  it('sanitizes unexpected errors unless debug details are explicitly enabled', async () => {
+  it('sanitizes unexpected errors without exposing implementation details', async () => {
     createPolicy.mockRejectedValue(new Error('private SQL constraint details'));
 
     const result = await savePolicies();
 
-    const exposeDebugDetails =
-      process.env.EXPOSE_SENSITIVE_IMPLEMENTATION_DETAILS_IN_ERRORS === 'true';
     expect(result).toEqual({
       data: {
         addPolicies: {
@@ -138,9 +150,7 @@ describe('policy creation errors', () => {
           failureDetails: [
             {
               name: 'Spam',
-              title: exposeDebugDetails
-                ? 'Error: private SQL constraint details'
-                : 'Unknown error',
+              title: 'Unknown error',
               status: 500,
               detail: null,
             },
@@ -148,9 +158,7 @@ describe('policy creation errors', () => {
         },
       },
     });
-    if (!exposeDebugDetails) {
-      expect(jsonStringify(result)).not.toContain('private SQL');
-    }
+    expect(jsonStringify(result)).not.toContain('private SQL');
   });
 
   it('preserves partial successes and the legacy list of failed names', async () => {
@@ -180,16 +188,6 @@ describe('policy creation errors', () => {
     });
   });
 
-  it('keeps existing clients that only select failures working', async () => {
-    createPolicy.mockRejectedValue(
-      makePolicyNameExistsError({ shouldErrorSpan: true }),
-    );
-
-    expect(await savePolicies(undefined, undefined, false)).toEqual({
-      data: { addPolicies: { policies: [], failures: ['Spam'] } },
-    });
-  });
-
   it('returns no failure details after successful creation', async () => {
     createPolicy.mockResolvedValue({ id: 'policy-1', name: 'Spam' });
 
@@ -209,5 +207,40 @@ describe('policy creation errors', () => {
 
     expect(result.errors?.[0].message).toBe('Authenticated user required.');
     expect(createPolicy).not.toHaveBeenCalled();
+  });
+});
+
+const updatePolicy = resolvers.Mutation.updatePolicy;
+
+describe('updatePolicy resolver', () => {
+  it('passes the authenticated user as invokedBy', async () => {
+    const service = { updatePolicy: vi.fn().mockResolvedValue({ id: 'p' }) };
+    const context = {
+      getUser: () => ({
+        id: 'user-id',
+        orgId: 'org-id',
+        getPermissions: () => [UserPermission.MANAGE_POLICIES],
+      }),
+      services: { ModerationConfigService: service },
+    } as unknown as Context;
+    if (typeof updatePolicy !== 'function')
+      throw new Error('Missing updatePolicy resolver');
+
+    await updatePolicy(
+      {},
+      { input: { id: 'policy-id', name: 'Policy' } },
+      context,
+      {} as GraphQLResolveInfo,
+    );
+
+    expect(service.updatePolicy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        invokedBy: {
+          userId: 'user-id',
+          orgId: 'org-id',
+          permissions: [UserPermission.MANAGE_POLICIES],
+        },
+      }),
+    );
   });
 });

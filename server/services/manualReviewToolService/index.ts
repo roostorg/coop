@@ -25,6 +25,8 @@ export {
   type ReportHistory,
 } from './manualReviewToolService.js';
 
+export { RECENT_DECISIONS_PAGE_SIZE } from './modules/DecisionAnalytics.js';
+
 export {
   type ManualReviewQueue,
   jobIdToGuid,

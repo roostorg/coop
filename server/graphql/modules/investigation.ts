@@ -13,13 +13,16 @@ import {
   type ConditionSetWithResult,
 } from '../../services/moderationConfigService/index.js';
 import {
+  abortableAsyncIterableToArray,
   asyncIterableToArray,
-  asyncIterableToArrayWithTimeout,
-  asyncIterableToArrayWithTimeoutAndLimit,
   filterNullOrUndefined,
 } from '../../utils/collections.js';
 import { jsonStringify } from '../../utils/encoding.js';
-import { isCoopErrorOfType, makeNotFoundError } from '../../utils/errors.js';
+import {
+  isCoopErrorOfType,
+  makeNotFoundError,
+  makeTimeoutError,
+} from '../../utils/errors.js';
 import { MONTH_MS } from '../../utils/time.js';
 import {
   type GQLQueryItemsWithIdArgs,
@@ -253,6 +256,25 @@ const UserHistory: GQLUserHistoryResolvers = {
   },
 };
 
+async function collectBeforeLookupDeadline<T>(
+  items: AsyncIterable<T>,
+  deadline: AbortSignal,
+  limit?: number,
+) {
+  try {
+    return await abortableAsyncIterableToArray(items, deadline, limit);
+  } catch (e: unknown) {
+    if (deadline.aborted && e === deadline.reason) {
+      throw makeTimeoutError('Item lookup timed out', {
+        detail:
+          'Searching every item type for this ID took longer than 25 seconds.',
+        shouldErrorSpan: true,
+      });
+    }
+    throw e;
+  }
+}
+
 export async function resolveItemsWithId(
   { itemId, typeId, returnFirstResultOnly }: GQLQueryItemsWithIdArgs,
   context: ItemsWithIdContext,
@@ -290,17 +312,20 @@ export async function resolveItemsWithId(
     ];
   }
 
+  // 25s deadline caps slow upstream streams.
+  const lookupDeadline = AbortSignal.timeout(25_000);
   const itemsAsyncIterator =
     context.services.ItemInvestigationService.getItemByTypeAgnosticIdentifier({
       orgId: user.orgId,
       itemId,
       latestSubmissionOnly: true,
+      signal: lookupDeadline,
     });
 
   if (returnFirstResultOnly) {
-    const items = await asyncIterableToArrayWithTimeoutAndLimit(
+    const items = await collectBeforeLookupDeadline(
       itemsAsyncIterator,
-      25_000,
+      lookupDeadline,
       1,
     );
 
@@ -324,10 +349,9 @@ export async function resolveItemsWithId(
     ];
   }
 
-  // 25s timeout caps slow upstream streams.
-  const items = await asyncIterableToArrayWithTimeout(
+  const items = await collectBeforeLookupDeadline(
     itemsAsyncIterator,
-    25_000,
+    lookupDeadline,
   );
 
   if (items.length === 0) {

@@ -229,6 +229,35 @@ describe('investigation resolvers', () => {
         expect(result[0]).toMatchObject({ isSynthetic: true });
       });
 
+      it('fails with a timeout error and skips synthesis when the lookup deadline passes', async () => {
+        const timeout = vi
+          .spyOn(AbortSignal, 'timeout')
+          .mockReturnValue(AbortSignal.abort());
+        const { ctx, service } = makeContext();
+
+        try {
+          const timeoutError = {
+            name: 'TimeoutError',
+            status: 504,
+            title: 'Item lookup timed out',
+          };
+          await expect(
+            resolveItemsWithId({ itemId: 'i-1' }, ctx),
+          ).rejects.toMatchObject(timeoutError);
+          await expect(
+            resolveItemsWithId(
+              { itemId: 'i-1', returnFirstResultOnly: true },
+              ctx,
+            ),
+          ).rejects.toMatchObject(timeoutError);
+          expect(
+            service.synthesizeUserItemFromCreatorReferences,
+          ).not.toHaveBeenCalled();
+        } finally {
+          timeout.mockRestore();
+        }
+      });
+
       it('returns real submissions and skips synthesis when the stream yields data', async () => {
         const submission = makeSubmission({ itemId: 'i-1' });
         const { ctx, service } = makeContext({
@@ -247,6 +276,9 @@ describe('investigation resolvers', () => {
         expect(
           service.synthesizeUserItemFromCreatorReferences,
         ).not.toHaveBeenCalled();
+        expect(service.getItemByTypeAgnosticIdentifier).toHaveBeenCalledWith(
+          expect.objectContaining({ signal: expect.any(AbortSignal) }),
+        );
       });
     });
   });

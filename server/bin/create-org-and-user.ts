@@ -3,8 +3,8 @@
 /**
  * Script to create a new organization and admin user
  *
- * Usage:
- *   pnpm run create-org \
+ * Usage in the server image:
+ *   node bin/create-org-and-user.js \
  *     --name "My Org" \
  *     --email "admin@example.com" \
  *     --website "https://example.com" \

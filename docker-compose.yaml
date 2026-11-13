@@ -27,7 +27,7 @@ services:
 
   # Runs all migrations from scratch, after clearing the database(s).
   migrations:
-    image: node:24.21.0-bookworm-slim
+    image: node:24.22.1-trixie-slim
     command: bash -c 'set -e && npm install -g pnpm@11.28.2
       && pnpm install --filter coop-data-migrator --frozen-lockfile --store-dir /tmp/pnpm-store
       && if [ "${CI:-}" = "true" ]; then ( cd db && NODE_OPTIONS="--loader ts-node/esm" node src/index.ts clean --env staging ); fi
@@ -61,7 +61,7 @@ services:
         condition: service_healthy
 
   drop_dbs:
-    image: node:24.21.0-bookworm-slim
+    image: node:24.22.1-trixie-slim
     command: bash -c 'npm install -g pnpm@11.28.2 && pnpm install --filter coop-data-migrator --frozen-lockfile --store-dir /tmp/pnpm-store && ( cd db && NODE_OPTIONS="--loader ts-node/esm" node src/index.ts drop --env staging )'
     working_dir: /src
     env_file: ./.env.githubci
@@ -92,7 +92,10 @@ services:
     healthcheck:
       test: ['CMD', 'pg_isready', '-U', 'postgres', '-d', 'postgres']
       interval: 2s
-      start_period: 2s
+      # Failed checks don't count until start_period ends; the first passing
+      # one still marks it healthy. First boot runs initdb, which can take
+      # longer than the default retries allow on a busy machine.
+      start_period: 60s
     environment:
       POSTGRES_PASSWORD: postgres123
       POSTGRES_USER: postgres
@@ -127,11 +130,13 @@ services:
       # (9042) is accepting and completing queries yet — that gap lets
       # dependents (e.g. db:create/db:update via cassandra-driver) connect
       # before Scylla is actually ready, causing timeouts even though
-      # Compose reports the container healthy.
+      # Compose reports the container healthy. Connect to the current
+      # address: the image's cqlshrc keeps the container's first IP, which is
+      # stale once it restarts with a new one.
       test:
         [
           'CMD-SHELL',
-          'cqlsh -e "SELECT release_version FROM system.local" || exit 1',
+          'cqlsh "$$(hostname -i | cut -d'' '' -f1)" -e "SELECT release_version FROM system.local" || exit 1',
         ]
       interval: 5s
       timeout: 5s
@@ -218,6 +223,8 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+      # As for postgres: a slow start on a busy machine isn't a failure.
+      start_period: 60s
 
 volumes:
   pg_data:

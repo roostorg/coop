@@ -22,17 +22,20 @@ Before cutting a release, ensure:
 
 - [ ] **CI is passing** for the `main` branch
 - [ ] **You understand the correct version** according to SemVer
-- [ ] **[CHANGELOG.md](https://github.com/roostorg/coop/blob/main/CHANGELOG.md) is up-to-date**
+- [ ] **The draft release notes include all notable changes**
+- [ ] **Security advisories fixed in this release** have their patched version set to `x.y.z` and are linked from their release notes
 
 Then:
 
-1. In GitHub: **Releases** → **Draft a new release**
-2. **Create a tag** in SemVer format `x.y.z` from the `main` branch
-3. **Draft the release notes**, starting from [CHANGELOG.md](https://github.com/roostorg/coop/blob/main/CHANGELOG.md)
-4. Check **Create a discussion for this release** for at least major and minor releases
-5. **Publish** the release
+1. Open the draft in **GitHub → Releases** and review its notes. Release Drafter's proposed version is a suggestion; choose the correct version according to SemVer.
+2. Set the tag to `x.y.z` (no `v` prefix), confirm the target commit on `main`, and title the release `Coop x.y.z`.
+3. Check **Create a discussion for this release** for at least major and minor releases.
+4. **Publish** the release.
+5. Confirm the **Publish Docker images** workflow succeeds and the version-tagged images exist.
 
 Publishing a release triggers automations:
 
 - **Docker images**: builds and pushes version-tagged Docker images for `coop-server`, `coop-worker`, `coop-client`, and `coop-migrations`
 - **Docs**: adds a folder for the release to the [index](https://roostorg.github.io/coop/) with a snapshot of the docs
+
+`@roostorg/coop-types` and `@roostorg/db-migrator` are not released this way; they publish to npm from `main` whenever `types/**` or `migrator/**` changes.
