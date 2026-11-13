@@ -1,9 +1,10 @@
 name: Security backports
 
 # Keeps release/x.y, the branch for the next patch of the latest release
-# x.y.z, ready for a security release: creates it when it's missing, opens a
-# backport PR for each `security-update`-labelled PR merged to main, and keeps
-# a draft release for x.y.(z+1). See docs/development/security-backports.md.
+# x.y.z, ready for a security release: opens a backport PR for each
+# `security-update`-labelled PR merged to main, and keeps a draft release for
+# x.y.(z+1). A maintainer creates release/x.y; until then the run warns.
+# See docs/development/security-backports.md.
 
 on:
   # Runs main's copy of this workflow and scripts; never checks out PR code.
@@ -72,7 +73,7 @@ jobs:
       - name: Check whether there is anything to push
         id: plan
         run: |
-          jq -r '"push=" + ((.target.exists | not) or (.backports + .failures | length > 0) | tostring)' \
+          jq -r '"push=" + (.backports + .failures | length > 0 | tostring)' \
             "$RUNNER_TEMP/security-backport/plan.json" >> "$GITHUB_OUTPUT"
 
       # An app token, unlike GITHUB_TOKEN, triggers CI on the PRs it opens.
@@ -85,8 +86,7 @@ jobs:
           permission-contents: write
           permission-pull-requests: write
           permission-issues: write
-          # Creating release/x.y at an older tag, or backporting a workflow
-          # change, updates files under .github/workflows.
+          # Backporting a workflow change pushes files under .github/workflows.
           permission-workflows: write
 
       - name: Push branches, open PRs and report failures

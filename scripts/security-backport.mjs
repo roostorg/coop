@@ -7,16 +7,16 @@
 //   node scripts/security-backport.mjs publish
 //
 // `prepare` needs only read access: it cherry-picks each pending PR's merge
-// commit onto a local backport/<n>-to-release-x.y branch, verifies lockfile
+// commit onto a local backport/<n>-to-release/x.y branch, verifies lockfile
 // changes, and writes the plan to $BACKPORT_WORKDIR/plan.json (default
-// $RUNNER_TEMP/security-backport). `publish`
-// creates release/x.y if it is missing, pushes the backport branches, opens a
-// PR for each and comments on the source PR for each failure. Pushes go
-// through $BACKPORT_PUSH_URL and API calls use $GH_TOKEN, so the write token
-// is only present for `publish`.
+// $RUNNER_TEMP/security-backport). If release/x.y doesn't exist, it warns
+// with the command a maintainer runs to create it and plans nothing. `publish`
+// pushes the backport branches, opens a PR for each and comments on the
+// source PR for each failure. Pushes go through $BACKPORT_PUSH_URL and API
+// calls use $GH_TOKEN, so the write token is only present for `publish`.
 //
-// It never force-pushes, never pushes to release/x.y once it exists, and
-// never modifies pnpm-lock.yaml: a change that does not apply cleanly, or
+// It never force-pushes, never pushes to release/*, and never modifies
+// pnpm-lock.yaml: a change that does not apply cleanly, or
 // whose lockfile changes do not match the source commit's exactly, goes to
 // the manual path instead.
 import { execFileSync, spawnSync } from 'node:child_process';
@@ -231,6 +231,14 @@ function manualSteps(pr, sha, target, parents) {
   ].join('\n');
 }
 
+export function createBranchMessage(target) {
+  return (
+    `${target.branch} does not exist, so nothing is backported. ` +
+    `A maintainer who can create release branches runs: ` +
+    `git push origin '${target.tag}^{commit}:refs/heads/${target.branch}'`
+  );
+}
+
 function prepare({ prFilter, retry }) {
   const repo = env('GITHUB_REPOSITORY');
   const workdir = workdirPath();
@@ -251,22 +259,25 @@ function prepare({ prFilter, retry }) {
     'origin',
     `+refs/heads/${target.branch}:refs/remotes/origin/${target.branch}`,
   ]).ok;
-  const base = branchExists ? `origin/${target.branch}` : target.tag;
-  const plan = {
-    repo,
-    target: {
-      ...target,
-      exists: branchExists,
-      baseSha: run('git', ['rev-parse', `${base}^{commit}`]),
-    },
-    backports: [],
-    failures: [],
-    skipped: [],
-  };
+  const plan = { repo, target, backports: [], failures: [], skipped: [] };
+  const writePlan = () =>
+    writeFileSync(
+      path.join(workdir, 'plan.json'),
+      `${JSON.stringify(plan, null, 2)}\n`,
+    );
   console.log(
-    `Latest release ${target.tag}; next security patch ${target.next} from ${target.branch}` +
-      (branchExists ? '' : ` (to be created at ${target.tag})`),
+    `Latest release ${target.tag}; next security patch ${target.next} from ${target.branch}`,
   );
+  if (!branchExists) {
+    // The release/* ruleset lets only its bypass actors create branches.
+    const message = createBranchMessage(target);
+    console.log(`::warning::${message}`);
+    const summary = process.env.GITHUB_STEP_SUMMARY;
+    if (summary) writeFileSync(summary, `${message}\n`, { flag: 'a' });
+    writePlan();
+    return;
+  }
+  const base = `origin/${target.branch}`;
 
   const forkPoint = run('git', ['merge-base', 'origin/main', base]);
   const since = run('git', ['log', '-1', '--format=%cI', forkPoint]).slice(
@@ -367,10 +378,7 @@ function prepare({ prFilter, retry }) {
     else plan.failures.push(result);
   }
 
-  writeFileSync(
-    path.join(workdir, 'plan.json'),
-    `${JSON.stringify(plan, null, 2)}\n`,
-  );
+  writePlan();
   console.log(
     `${plan.backports.length} to open, ${plan.failures.length} failed, ${plan.skipped.length} skipped`,
   );
@@ -568,16 +576,6 @@ function publish() {
     readFileSync(path.join(workdir, 'plan.json'), 'utf8'),
   );
   const { repo, target } = plan;
-
-  if (!target.exists) {
-    // Fails rather than overwrites if someone created the branch since.
-    run('git', [
-      'push',
-      pushUrl,
-      `${target.baseSha}:refs/heads/${target.branch}`,
-    ]);
-    console.log(`Created ${target.branch} at ${target.tag}`);
-  }
 
   for (const b of plan.backports) {
     if (!b.pushed) {

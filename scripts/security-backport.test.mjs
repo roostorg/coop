@@ -1,10 +1,15 @@
 import assert from 'node:assert/strict';
+import { execSync } from 'node:child_process';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { test } from 'node:test';
 
 import {
   alreadyOnBranch,
   backportBody,
   checkLockfileBackport,
+  createBranchMessage,
   latestStableTag,
   lockfileDelta,
   lockfilePackages,
@@ -176,4 +181,25 @@ test('backportBody warns when several packages change', () => {
     target,
   );
   assert.match(many, /WARNING/);
+});
+
+test('the command in the missing-branch warning creates the branch at the tag', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'security-backport-'));
+  try {
+    const sh = (cmd, cwd = path.join(dir, 'clone')) =>
+      execSync(cmd, { cwd, encoding: 'utf8', stdio: 'pipe' }).trim();
+    sh('git init -q --bare origin.git && git init -q clone', dir);
+    sh('git remote add origin ../origin.git');
+    sh('git -c user.name=t -c user.email=t@t commit -q --allow-empty -m 1');
+    sh('git -c user.name=t -c user.email=t@t tag -a 1.3.0 -m 1.3.0');
+    const target = latestStableTag(['1.3.0']);
+    const message = createBranchMessage(target);
+    sh(message.slice(message.indexOf('git push')));
+    assert.equal(
+      sh('git rev-parse release/1.3', path.join(dir, 'origin.git')),
+      sh('git rev-parse HEAD'),
+    );
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
