@@ -102,7 +102,7 @@ const GOOGLE_CONTENT_SAFETY: IntegrationManifestEntry = {
     ],
   },
   modelCardLearnMoreUrl: 'https://modelcards.withgoogle.com/',
-  title: 'Google Content Safety API',
+  title: 'Google',
   docsUrl: 'https://protectingchildren.google/tools-for-partners/',
   requiresConfig: true,
 };
@@ -205,7 +205,7 @@ const OPENAI: IntegrationManifestEntry = {
   modelCards: [OPENAI_MODERATION_MODEL_CARD],
   modelCardLearnMoreUrl:
     'https://cdn.openai.com/API/docs/omni_moderation_information_for_developers.pdf',
-  title: 'OpenAI Moderation API',
+  title: 'OpenAI',
   docsUrl: 'https://platform.openai.com/docs',
   requiresConfig: true,
 };
