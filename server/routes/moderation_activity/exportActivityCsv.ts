@@ -1,4 +1,4 @@
-import _Ajv from 'ajv-draft-04';
+import * as v from 'valibot';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import {
@@ -15,9 +15,6 @@ import {
 } from '../../utils/errors.js';
 import { type RequestHandlerWithBodies } from '../../utils/route-helpers.js';
 import { streamActivityCsv } from './streamActivityCsv.js';
-
-const Ajv = _Ajv as unknown as typeof _Ajv.default;
-const ajv = new Ajv({ allErrors: true, strictSchema: true });
 
 const MAX_EXPORT_SPAN_DAYS = 400;
 
@@ -42,7 +39,7 @@ type ExportInput = {
   userSearchString?: string;
 };
 
-const stringArray = { type: 'array', items: { type: 'string' } };
+const stringArray = v.array(v.string());
 
 const DECISION_TYPES: Record<DecisionType, true> = {
   IGNORE: true,
@@ -55,36 +52,27 @@ const DECISION_TYPES: Record<DecisionType, true> = {
   RELATED_ACTION: true,
 };
 
-const validateExportInput = ajv.compile<ExportInput>({
-  type: 'object',
-  additionalProperties: false,
-  required: ['startTime'],
-  properties: {
-    view: { type: 'string', enum: ['ALL', 'DECISIONS', 'ACTIONS'] },
-    startTime: { type: 'string' },
-    endTime: { type: 'string' },
-    reviewerIds: stringArray,
-    policyIds: stringArray,
-    queueIds: stringArray,
-    userSearchString: { type: 'string' },
-    decisions: {
-      type: 'array',
-      items: {
-        type: 'object',
-        additionalProperties: false,
-        required: ['type'],
-        properties: {
-          type: { type: 'string', enum: Object.keys(DECISION_TYPES) },
-          actionIds: stringArray,
-        },
-      },
-    },
-  },
+const exportInputSchema = v.strictObject({
+  view: v.optional(v.picklist(['ALL', 'DECISIONS', 'ACTIONS'])),
+  startTime: v.string(),
+  endTime: v.optional(v.string()),
+  reviewerIds: v.optional(stringArray),
+  policyIds: v.optional(stringArray),
+  queueIds: v.optional(stringArray),
+  userSearchString: v.optional(v.string()),
+  decisions: v.optional(
+    v.array(
+      v.strictObject({
+        type: v.picklist(Object.keys(DECISION_TYPES) as DecisionType[]),
+        actionIds: v.optional(stringArray),
+      }),
+    ),
+  ),
 });
 
 function parseExportInput(raw: unknown): ExportInput | string {
   const parsed: unknown = typeof raw === 'string' ? tryJsonParse(raw) : raw;
-  if (!validateExportInput(parsed)) {
+  if (!v.is(exportInputSchema, parsed)) {
     return '`input` must be JSON with a startTime and the activity feed filters.';
   }
   const start = new Date(parsed.startTime).getTime();

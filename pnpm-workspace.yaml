@@ -30,7 +30,6 @@ overrides:
   'uuid@<14.0.0': '^14.0.0'
   'fast-xml-parser@<5.8.0': '^5.8.0'
   'axios@<1.20.0': '^1.20.0'
-  'fast-uri@<3.1.8': '^3.1.8'
   'protobufjs@<7.6.3': '^7.6.3'
   'protobufjs@>=8.0.0 <8.6.0': '^8.6.0'
   # Keeps @grpc/proto-loader (used only by nodejs-instrumentation) on protobufjs 8.

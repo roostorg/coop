@@ -25,6 +25,37 @@ describe('validateActionParameters', () => {
     expect(params[0]?.type).toBe('STRING');
   });
 
+  it.each([
+    ['value', 200],
+    ['label', 200],
+    ['displayName', 200],
+    ['description', 2000],
+  ] as const)('counts code points for %s limits', (field, limit) => {
+    const parameter = {
+      name: 'reason',
+      displayName: 'Reason',
+      type: 'SELECT',
+      required: false,
+      options: [{ value: 'spam', label: 'Spam' }],
+    };
+    const withText = (text: string) => [
+      field === 'value' || field === 'label'
+        ? {
+            ...parameter,
+            options: [{ ...parameter.options[0], [field]: text }],
+          }
+        : { ...parameter, [field]: text },
+    ];
+    const atLimit = withText(`${'a'.repeat(limit - 3)}😀e\u0301`);
+
+    expect(validateActionParameters(atLimit)).toEqual(atLimit);
+    expect(() =>
+      validateActionParameters(
+        withText(`${'a'.repeat(limit - 3)}😀e\u0301\u0301`),
+      ),
+    ).toThrow(`must NOT have more than ${limit} characters`);
+  });
+
   it('accepts NUMBER with min/max and default in range', () => {
     expect(() =>
       validateActionParameters([
@@ -193,6 +224,39 @@ describe('validateActionParameters', () => {
         },
       ]),
     ).toThrow();
+  });
+
+  it('does not include rejected values in structural validation details', () => {
+    const secret = 'private-token-secret';
+    let error: unknown;
+
+    try {
+      validateActionParameters([
+        {
+          name: 'x',
+          displayName: 'X',
+          type: secret,
+          required: false,
+        },
+      ]);
+    } catch (caughtError) {
+      error = caughtError;
+    }
+
+    expect(error, 'expected validation to fail').toBeDefined();
+    expect(error).toMatchObject({
+      title: 'Invalid action parameters',
+      detail: '/0/type: must be equal to one of the allowed values',
+    });
+    expect((error as { detail?: string }).detail).not.toContain(secret);
+  });
+
+  it('identifies a missing parameter field', () => {
+    expect(() =>
+      validateActionParameters([
+        { name: 'reason', type: 'STRING', required: false },
+      ]),
+    ).toThrow("/0: must have required property 'displayName'");
   });
 
   describe('rejects "empty" defaultValue when the parameter is required', () => {
