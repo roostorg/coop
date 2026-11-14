@@ -1,0 +1,5 @@
+name: roostorg/coop-codeql-tests
+dependencies:
+  roostorg/coop-codeql: '*'
+extractor: javascript
+tests: .
