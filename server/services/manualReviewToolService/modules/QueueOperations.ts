@@ -131,7 +131,8 @@ export type QueueOperationsErrorType =
   | 'QueueDoesNotExistError'
   | 'UnableToDeleteDefaultQueueError'
   | 'AccessibleQueueNotInOrgError'
-  | 'QueueHasDependentRoutingRulesError';
+  | 'QueueHasDependentRoutingRulesError'
+  | 'UnableToChangeQueueTypeError';
 
 // Compound identifier for a queue. orgId is needed for security, but also
 // because queues are/will be actually sharded across redis instances for
@@ -318,16 +319,10 @@ export default class QueueOperations {
     let createdQueue: ManualReviewQueue;
     try {
       createdQueue = await this.transactionWithRetry(async (transaction) => {
-        // In newer versions of kysely, this is greatly simplified with
-        // `transaction.selectNoFrom(eb => eb.exists(...))`, but we're blocked on
-        // updating by https://github.com/kysely-org/kysely/issues/577#issuecomment-1804900006
-        const orgHasQueuesAlready = await transaction
-          .selectFrom('manual_review_tool.manual_review_queues')
-          .where('org_id', '=', orgId)
-          .where('is_appeals_queue', '=', isAppealsQueue ?? false)
-          .limit(1)
-          .execute()
-          .then((queues) => queues.length > 0);
+        const orgHasQueuesAlready = await this.#orgHasQueuesOfType(
+          transaction,
+          { orgId, isAppealsQueue: isAppealsQueue ?? false },
+        );
 
         const queue = await transaction
           .insertInto('manual_review_tool.manual_review_queues')
@@ -412,6 +407,10 @@ export default class QueueOperations {
     actionIdsToHide: readonly string[];
     actionIdsToUnhide: readonly string[];
     autoCloseJobs?: boolean;
+    // When provided and different from the queue's current value, converts
+    // the queue between a regular and an appeals queue. See
+    // {@link #assertQueueTypeCanChange} for the preconditions.
+    isAppealsQueue?: boolean;
     jobSortType?: JobSortType;
     clearReportsDisposition?: ClearReportsDisposition | null;
     clearReportsScope?: ClearReportsScope;
@@ -428,6 +427,7 @@ export default class QueueOperations {
       actionIdsToHide,
       actionIdsToUnhide,
       autoCloseJobs,
+      isAppealsQueue,
       jobSortType,
       clearReportsDisposition,
       clearReportsScope,
@@ -445,82 +445,243 @@ export default class QueueOperations {
     });
     await assertRolesInOrg(this.pgQuery, { orgId, roleIds });
 
-    return this.transactionWithRetry(async (transaction) => {
-      const [updatedQueue, _, __] = await Promise.all([
-        transaction
-          .updateTable('manual_review_tool.manual_review_queues')
-          .set(
-            removeUndefinedKeys({
-              name,
-              description: replaceEmptyStringWithNull(description),
-              auto_close_jobs: autoCloseJobs,
-              job_sort_type: jobSortType,
-              // null disables the feature and must survive removeUndefinedKeys.
-              clear_reports_disposition: clearReportsDisposition,
-              clear_reports_scope: clearReportsScope,
-            }),
-          )
-          .where('id', '=', queueId)
-          .where('org_id', '=', orgId)
-          .returning(PgQueueSelection)
-          .executeTakeFirstOrThrow(),
-        transaction
-          .insertInto('manual_review_tool.users_and_accessible_queues')
-          .values(
-            userIds.map((userId) => ({
-              queue_id: queueId,
-              user_id: userId,
-            })),
-          )
-          .onConflict((oc) => oc.doNothing())
-          .executeTakeFirstOrThrow(),
-        transaction
-          .deleteFrom('manual_review_tool.users_and_accessible_queues')
-          .where('queue_id', '=', queueId)
-          .where('user_id', 'not in', userIds)
-          .executeTakeFirstOrThrow(),
-      ]);
+    let queueTypeChange: { isAppealsQueue: boolean } | undefined;
+    const updatedQueue = await this.transactionWithRetry(
+      async (transaction) => {
+        queueTypeChange =
+          isAppealsQueue === undefined
+            ? undefined
+            : await this.#assertQueueTypeCanChange(transaction, {
+                orgId,
+                queueId,
+                isAppealsQueue,
+              });
 
-      if (roleIds.length > 0) {
-        await transaction
-          .insertInto('manual_review_tool.roles_and_accessible_queues')
-          .values(
-            roleIds.map((roleId) => ({
-              queue_id: queueId,
-              role_id: roleId,
-            })),
-          )
-          .onConflict((oc) => oc.doNothing())
-          .execute();
-        await transaction
-          .deleteFrom('manual_review_tool.roles_and_accessible_queues')
-          .where('queue_id', '=', queueId)
-          .where('role_id', 'not in', roleIds)
-          .execute();
-      } else {
-        await transaction
-          .deleteFrom('manual_review_tool.roles_and_accessible_queues')
-          .where('queue_id', '=', queueId)
-          .execute();
-      }
+        // A converted queue becomes the default queue of its new type if the
+        // org has none yet, mirroring createManualReviewQueue. The partial
+        // unique index manual_review_queue_is_default guarantees at most one
+        // default per (org, type), so a concurrent conversion fails loudly
+        // rather than leaving two defaults.
+        const isDefaultQueue =
+          queueTypeChange === undefined
+            ? undefined
+            : !(await this.#orgHasQueuesOfType(transaction, {
+                orgId,
+                isAppealsQueue: queueTypeChange.isAppealsQueue,
+              }));
 
-      await this.updateHiddenActionsForQueue({
-        transaction,
-        queueId,
-        orgId,
-        actionIdsToHide,
-        actionIdsToUnhide,
-      });
-      if (clearReportsTriggerActionIds !== undefined) {
-        await this.setClearReportsTriggerActionsForQueue({
+        const [updatedQueue, _, __] = await Promise.all([
+          transaction
+            .updateTable('manual_review_tool.manual_review_queues')
+            .set(
+              removeUndefinedKeys({
+                name,
+                description: replaceEmptyStringWithNull(description),
+                auto_close_jobs: autoCloseJobs,
+                is_appeals_queue: queueTypeChange?.isAppealsQueue,
+                is_default_queue: isDefaultQueue,
+                // Appeals queues are always FIFO; see createManualReviewQueue.
+                job_sort_type: queueTypeChange?.isAppealsQueue
+                  ? 'FIFO'
+                  : jobSortType,
+                // null disables the feature and must survive removeUndefinedKeys.
+                clear_reports_disposition: clearReportsDisposition,
+                clear_reports_scope: clearReportsScope,
+              }),
+            )
+            .where('id', '=', queueId)
+            .where('org_id', '=', orgId)
+            .returning(PgQueueSelection)
+            .executeTakeFirstOrThrow(),
+          transaction
+            .insertInto('manual_review_tool.users_and_accessible_queues')
+            .values(
+              userIds.map((userId) => ({
+                queue_id: queueId,
+                user_id: userId,
+              })),
+            )
+            .onConflict((oc) => oc.doNothing())
+            .executeTakeFirstOrThrow(),
+          transaction
+            .deleteFrom('manual_review_tool.users_and_accessible_queues')
+            .where('queue_id', '=', queueId)
+            .where('user_id', 'not in', userIds)
+            .executeTakeFirstOrThrow(),
+        ]);
+
+        if (roleIds.length > 0) {
+          await transaction
+            .insertInto('manual_review_tool.roles_and_accessible_queues')
+            .values(
+              roleIds.map((roleId) => ({
+                queue_id: queueId,
+                role_id: roleId,
+              })),
+            )
+            .onConflict((oc) => oc.doNothing())
+            .execute();
+          await transaction
+            .deleteFrom('manual_review_tool.roles_and_accessible_queues')
+            .where('queue_id', '=', queueId)
+            .where('role_id', 'not in', roleIds)
+            .execute();
+        } else {
+          await transaction
+            .deleteFrom('manual_review_tool.roles_and_accessible_queues')
+            .where('queue_id', '=', queueId)
+            .execute();
+        }
+
+        await this.updateHiddenActionsForQueue({
           transaction,
           queueId,
           orgId,
-          actionIds: clearReportsTriggerActionIds,
+          actionIdsToHide,
+          actionIdsToUnhide,
         });
-      }
-      return updatedQueue;
-    });
+        if (clearReportsTriggerActionIds !== undefined) {
+          await this.setClearReportsTriggerActionsForQueue({
+            transaction,
+            queueId,
+            orgId,
+            actionIds: clearReportsTriggerActionIds,
+          });
+        }
+        return updatedQueue;
+      },
+    );
+
+    // The conversion required an empty queue, so, as for a new queue, the
+    // pending-job index of a queue that is now regular is complete, and an
+    // appeals queue has none.
+    if (queueTypeChange?.isAppealsQueue === false) {
+      await this.pendingJobIndex.markBuilt({ orgId, queueId });
+    } else if (queueTypeChange?.isAppealsQueue === true) {
+      await this.pendingJobIndex.clear({ orgId, queueId });
+    }
+    return updatedQueue;
+  }
+
+  async #orgHasQueuesOfType(
+    db:
+      | Kysely<ManualReviewToolServicePg>
+      | Transaction<ManualReviewToolServicePg>,
+    opts: { orgId: string; isAppealsQueue: boolean },
+  ) {
+    const { orgId, isAppealsQueue } = opts;
+    // In newer versions of kysely, this is greatly simplified with
+    // `db.selectNoFrom(eb => eb.exists(...))`, but we're blocked on updating
+    // by https://github.com/kysely-org/kysely/issues/577#issuecomment-1804900006
+    const queues = await db
+      .selectFrom('manual_review_tool.manual_review_queues')
+      .select(['id'])
+      .where('org_id', '=', orgId)
+      .where('is_appeals_queue', '=', isAppealsQueue)
+      .limit(1)
+      .execute();
+    return queues.length > 0;
+  }
+
+  /**
+   * Checks whether a queue can be converted between a regular and an appeals
+   * queue. Regular and appeals jobs live in separate Bull queues with
+   * different payload shapes, so a conversion can't carry jobs across; and
+   * routing rules are type-specific, so a rule pointing at a converted queue
+   * would enqueue jobs nobody can see. Rather than silently orphaning either,
+   * we refuse the change until the operator has emptied the queue and
+   * repointed the rules.
+   *
+   * Must run inside the transaction that performs the conversion. It locks
+   * the queue row, which also blocks concurrent routing-rule inserts (their
+   * foreign-key check takes a KEY SHARE lock on it) until the conversion
+   * commits, and makes concurrent conversions of the same queue run one at
+   * a time.
+   *
+   * @returns undefined when no change is needed (the queue is already of the
+   * requested type), otherwise the type to convert to.
+   */
+  async #assertQueueTypeCanChange(
+    transaction: Transaction<ManualReviewToolServicePg>,
+    opts: { orgId: string; queueId: string; isAppealsQueue: boolean },
+  ): Promise<{ isAppealsQueue: boolean } | undefined> {
+    const { orgId, queueId, isAppealsQueue } = opts;
+    const queue = await transaction
+      .selectFrom('manual_review_tool.manual_review_queues')
+      .select(['is_appeals_queue', 'is_default_queue'])
+      .where('id', '=', queueId)
+      .where('org_id', '=', orgId)
+      .forUpdate()
+      .executeTakeFirst();
+    if (queue === undefined) {
+      throw makeQueueDoesNotExistError({ shouldErrorSpan: true });
+    }
+    if (queue.is_appeals_queue === isAppealsQueue) {
+      return undefined;
+    }
+
+    // Routing falls back to the default queue of each type, so converting
+    // it would leave the org with no fallback (see getDefaultQueueIdForOrg
+    // and getDefaultAppealsQueueIdForOrg). This matches the guard in
+    // deleteManualReviewQueue.
+    if (queue.is_default_queue) {
+      throw makeUnableToChangeQueueTypeError(
+        'The default queue cannot be converted to or from an appeals queue.',
+        { shouldErrorSpan: false },
+      );
+    }
+
+    const [routingRules, appealsRoutingRules] = await Promise.all([
+      transaction
+        .selectFrom('manual_review_tool.routing_rules')
+        .select(['name'])
+        .where('destination_queue_id', '=', queueId)
+        .where('org_id', '=', orgId)
+        .execute(),
+      transaction
+        .selectFrom('manual_review_tool.appeals_routing_rules')
+        .select(['name'])
+        .where('destination_queue_id', '=', queueId)
+        .where('org_id', '=', orgId)
+        .execute(),
+    ]);
+    const ruleNames = [
+      ...routingRules.map((r) => r.name),
+      ...appealsRoutingRules.map((r) => r.name),
+    ];
+    if (ruleNames.length > 0) {
+      throw makeUnableToChangeQueueTypeError(
+        `This queue cannot be converted while it is used by the following routing rules: ${ruleNames.join(', ')}. Update or delete those rules first.`,
+        { shouldErrorSpan: false, detail: jsonStringify(ruleNames) },
+      );
+    }
+
+    // Count every job that hasn't been fully processed yet, not just the
+    // waiting/delayed ones that Queue.count() reports: a job that a reviewer
+    // is currently holding a lock on would be orphaned all the same.
+    const bullQueue = queue.is_appeals_queue
+      ? await this.getOrCreateBullAppealQueue({ orgId, queueId })
+      : await this.getOrCreateBullQueue({ orgId, queueId });
+    const counts = await bullQueue.getJobCounts(
+      'waiting',
+      'delayed',
+      'active',
+      'prioritized',
+      'paused',
+      'waiting-children',
+    );
+    const numPendingJobs = Object.values(counts).reduce(
+      (sum, count) => sum + count,
+      0,
+    );
+    if (numPendingJobs > 0) {
+      throw makeUnableToChangeQueueTypeError(
+        'This queue cannot be converted while it still has pending jobs. Empty the queue first.',
+        { shouldErrorSpan: false },
+      );
+    }
+
+    return { isAppealsQueue };
   }
 
   /**
@@ -2786,6 +2947,18 @@ export const makeManualReviewQueueNameExistsError = (data: ErrorInstanceData) =>
     title:
       'A manual review queue with that name already exists in this organization.',
     name: 'ManualReviewQueueNameExistsError',
+    ...data,
+  });
+
+export const makeUnableToChangeQueueTypeError = (
+  title: string,
+  data: ErrorInstanceData,
+) =>
+  new CoopError({
+    status: 409,
+    type: [ErrorType.Conflict],
+    title,
+    name: 'UnableToChangeQueueTypeError',
     ...data,
   });
 
