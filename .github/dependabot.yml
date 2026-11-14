@@ -28,6 +28,7 @@ updates:
       - '/client'
       - '/db'
       - '/hma'
+      - '/hma/clip'
       - '/nodejs-instrumentation'
     patterns:
       - '*'

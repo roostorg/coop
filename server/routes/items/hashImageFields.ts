@@ -1,12 +1,18 @@
 import { getScalarType, ScalarTypes } from '@roostorg/coop-types';
+import _ from 'lodash';
 
 import { type Dependencies } from '../../iocContainer/index.js';
+import { isClipEmbedding } from '../../services/hmaService/index.js';
 import { type ItemType } from '../../services/moderationConfigService/index.js';
 import { withRetries } from '../../utils/misc.js';
 
 type HashService = Pick<
   Dependencies['HMAHashBankService'],
-  'listBanks' | 'hashContentFromUrl' | 'checkImageMatchWithDetails'
+  | 'listBanks'
+  | 'hashContentFromUrl'
+  | 'checkImageMatchWithDetails'
+  | 'isClipEnabled'
+  | 'findClosestClipMatch'
 >;
 
 type ImageValue = string | { url: string; [key: string]: unknown };
@@ -16,6 +22,12 @@ type ImageValue = string | { url: string; [key: string]: unknown };
  * (singular or array, whatever the field is named) and writes them back onto
  * `data`, in the same shape the field already had, so that signals like
  * IMAGE_SIMILARITY_MATCH can read `hashes` and `matchedBanks` from the values.
+ *
+ * When HMA also returns a CLIP embedding (`clip_float`) and the deployment has
+ * CLIP enabled, it is stored under `embeddings` instead. It is kept out of
+ * `hashes` on purpose: everything in `hashes` is forwarded to NCMEC as a file
+ * hash. It is dropped whenever CLIP is not enabled, so it can never end up in
+ * `hashes` or in storage by accident.
  *
  * NB: This mutates `data`.
  */
@@ -30,6 +42,9 @@ export async function addHashesToImageFields({
   orgId: string;
   HMAHashBankService: HashService;
 }) {
+  // Only HMA may set embeddings, so drop any the client sent up front.
+  removeClientEmbeddings(itemType, data);
+
   const imageFields = itemType.schema.filter(
     (field) =>
       isHashableScalarType(getScalarType(field)) &&
@@ -65,7 +80,7 @@ export async function addHashesToImageFields({
         return null;
       }
 
-      let hashes: Record<string, string>;
+      let hmaHashes: Record<string, string>;
       try {
         const hmaHashWithRetries = await withRetries(
           {
@@ -76,18 +91,25 @@ export async function addHashesToImageFields({
           },
           async () => HMAHashBankService.hashContentFromUrl(url),
         );
-        hashes = await hmaHashWithRetries();
+        hmaHashes = await hmaHashWithRetries();
       } catch (e) {
         return { ...coercedFields, url, hashes: {} };
       }
+      const { clip_float: clipFloat, ...hashes } = hmaHashes;
+      const embeddings =
+        HMAHashBankService.isClipEnabled() && isClipEmbedding(clipFloat)
+          ? { clip_float: clipFloat }
+          : undefined;
 
       // Matching is best-effort: signals re-check the hashes against banks
       // themselves, so a failed lookup must not discard the hashes we have.
       const matchedBankNames: string[] = [];
       try {
-        if (Object.keys(hashes).length > 0 && allBankNames.length > 0) {
-          const matchResults = await Promise.all(
-            Object.entries(hashes).map(async ([signalType, hash]) =>
+        // Nothing is looked up for an org without banks.
+        const lookups: Promise<{ matchedBanks: string[] }>[] = [];
+        if (allBankNames.length > 0) {
+          lookups.push(
+            ...Object.entries(hashes).map(async ([signalType, hash]) =>
               HMAHashBankService.checkImageMatchWithDetails(
                 allBankNames,
                 signalType,
@@ -95,6 +117,20 @@ export async function addHashesToImageFields({
               ),
             ),
           );
+          if (embeddings) {
+            // Held to the same 0.10 cutoff as the CLIP signal, so matchedBanks
+            // never lists a bank that the signal scores 0. Optional, so a
+            // failure here must not hide matches the other lookups found.
+            lookups.push(
+              HMAHashBankService.findClosestClipMatch(
+                allBankNames,
+                embeddings.clip_float,
+              ).catch(() => ({ matchedBanks: [] })),
+            );
+          }
+        }
+        if (lookups.length > 0) {
+          const matchResults = await Promise.all(lookups);
 
           const allMatchedHmaBanks = new Set<string>();
           matchResults.forEach((result) => {
@@ -117,6 +153,7 @@ export async function addHashesToImageFields({
         ...coercedFields,
         url,
         hashes,
+        ...(embeddings ? { embeddings } : {}),
         matchedBanks:
           matchedBankNames.length > 0 ? matchedBankNames : undefined,
       };
@@ -165,4 +202,36 @@ function hasImageValues(fieldType: string, value: unknown) {
     return typeof value === 'object' && Object.keys(value).length > 0;
   }
   return true;
+}
+
+/**
+ * Drops client-supplied `embeddings` from the image values of `data`. For items
+ * that are not hashed (a report's thread and additional items), this is the
+ * only thing standing between a client and a forged CLIP embedding.
+ *
+ * NB: This mutates `data`.
+ */
+export function removeClientEmbeddings(
+  itemType: Pick<ItemType, 'schema'>,
+  data: { [key: string]: unknown },
+) {
+  const strip = (value: unknown) =>
+    typeof value === 'object' && value !== null && 'embeddings' in value
+      ? _.omit(value, 'embeddings')
+      : value;
+  for (const field of itemType.schema) {
+    const value = data[field.name];
+    if (
+      !isHashableScalarType(getScalarType(field)) ||
+      !hasImageValues(field.type, value)
+    ) {
+      continue;
+    }
+    data[field.name] =
+      field.type === 'ARRAY'
+        ? (value as unknown[]).map(strip)
+        : field.type === 'MAP'
+          ? _.mapValues(value as Record<string, unknown>, strip)
+          : strip(value);
+  }
 }
