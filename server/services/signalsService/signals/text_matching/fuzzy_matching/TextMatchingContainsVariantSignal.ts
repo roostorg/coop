@@ -124,7 +124,7 @@ export default class TextMatchingContainsVariantSignal extends TextRegexMatching
       // If there was a match, find the original string so we can show the
       // user the appropriate matched string.
       matchedValue: foundMatchingVariant
-        ? input.matchingValues[idxOfMatchingMatchingValue]
+        ? input.matchingValues.at(idxOfMatchingMatchingValue)
         : undefined,
       outputType: this.outputType,
     };

@@ -6,6 +6,7 @@ import type { Dependencies } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
 import { jsonStringify } from '../../utils/encoding.js';
 import { isUniqueViolationError } from '../../utils/kysely.js';
+import { getOwn } from '../../utils/misc.js';
 import { makeMatchingBankNameExistsError } from '../moderationConfigService/modules/MatchingBankOperations.js';
 import type { HashBank } from './dbTypes.js';
 import { HashBankUserError, HmaRequestError } from './errors.js';
@@ -835,7 +836,7 @@ export class HmaService {
       // Fall through to built-in schemas
     }
 
-    const fallback = KNOWN_EXCHANGE_SCHEMAS[apiName];
+    const fallback = getOwn(KNOWN_EXCHANGE_SCHEMAS, apiName);
     if (fallback) {
       return fallback;
     }
@@ -1168,7 +1169,7 @@ export class HmaService {
 
     // Check which banks have matches
     hmaBankIds.forEach((bankId) => {
-      const bankMatches = matches[bankId];
+      const bankMatches = getOwn(matches, bankId);
       if (bankMatches && bankMatches.length > 0) {
         // TODO: Implement some configuration for the distance threshold
         matchedBanks.push(bankId);

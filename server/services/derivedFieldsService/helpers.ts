@@ -134,6 +134,7 @@ export async function getDerivedFieldInputTypes(
   derivationType: DerivedFieldType,
   orgId: string,
 ): Promise<readonly SignalInputType[]> {
+  // eslint-disable-next-line security/detect-object-injection -- derivationType selects a built-in recipe
   const [recipeFirstStep] = derivedFieldRecipes[derivationType];
   // NB: this intentionally doesn't check the step's type, so that we'll get
   // type errors if we define new step types besides RUN_SIGNAL.
@@ -153,6 +154,7 @@ export async function getDerivedFieldOutputType(
   derivationType: DerivedFieldType,
   orgId: string,
 ): Promise<SignalOutputType> {
+  // eslint-disable-next-line security/detect-object-injection -- derivationType selects a built-in recipe
   const recipeLastStep = derivedFieldRecipes[derivationType].at(-1)!;
   // NB: this intentionally doesn't check the step's type, so that we'll get type
   // errors if we define new step types besides RUN_SIGNAL.
@@ -170,6 +172,7 @@ export async function getDerivedFieldIsEnabled(
   derivationType: DerivedFieldType,
   orgId: string,
 ) {
+  // eslint-disable-next-line security/detect-object-injection -- derivationType selects a built-in recipe
   const runSignalSteps = derivedFieldRecipes[derivationType].filter(
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     (it) => it.type === DerivedFieldOperationType.RUN_SIGNAL,

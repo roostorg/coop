@@ -4,7 +4,7 @@ import { type ReadonlyDeep } from 'type-fest';
 import { jsonStringify } from '../../../../../../utils/encoding.js';
 import { makeSignalPermanentError } from '../../../../../../utils/errors.js';
 import { Language } from '../../../../../../utils/language.js';
-import { safeGet } from '../../../../../../utils/misc.js';
+import { getOwn, safeGet } from '../../../../../../utils/misc.js';
 import type SafeTracer from '../../../../../../utils/SafeTracer.js';
 import { type Bind2 } from '../../../../../../utils/typescript-types.js';
 import { type FetchHTTP } from '../../../../../networkingService/index.js';
@@ -114,7 +114,7 @@ function extractScoreOrThrow(
       shouldErrorSpan: true,
     });
   }
-  const score = response[0].category_scores[modelName];
+  const score = getOwn(response[0].category_scores, modelName);
   if (typeof score !== 'number' || Number.isNaN(score)) {
     throw makeSignalPermanentError(
       `Missing or non-numeric score for category "${modelName}"`,

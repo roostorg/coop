@@ -7,7 +7,7 @@ import { FormData } from 'undici';
 import { jsonStringify } from '../../../../../../utils/encoding.js';
 import { makeSignalPermanentError } from '../../../../../../utils/errors.js';
 import { Language } from '../../../../../../utils/language.js';
-import { __throw } from '../../../../../../utils/misc.js';
+import { __throw, getOwn } from '../../../../../../utils/misc.js';
 import { type Bind1 } from '../../../../../../utils/typescript-types.js';
 import { abandonDownload } from '../../../../../networkingService/cancelReadableStream.js';
 import { type FetchHTTP } from '../../../../../networkingService/index.js';
@@ -353,9 +353,7 @@ function openAIfileExtensionFromContentType(rawType: string) {
     'audio/webm': 'webm',
   };
 
-  const extensionFromMimeType = (
-    mimeTypes as { [k: string]: string | undefined }
-  )[rawType];
+  const extensionFromMimeType = getOwn(mimeTypes, rawType);
 
   return (
     extensionFromMimeType ??

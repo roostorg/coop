@@ -201,6 +201,7 @@ Release notes are published in [GitHub Releases](https://github.com/roostorg/coo
 - Prefer clear names and straightforward code over explanatory comments. Use comments for intent, constraints, or non-obvious decisions, not to restate what the code does.
 - Readmes, documentation, and code comments should **never** reference what **was** in the past. It should always reference what **is** currently in the code. For changelogs, just focus on making it useful to future readers.
 - **TypeScript:** ESLint + Prettier (Prettier config at root `.prettierrc`; ESLint configs per package in `server/` and `client/`). Run `pnpm run lint` and `pnpm run prettier:fix` from root.
+- **Dynamic property access:** Server security rules are errors, except `detect-object-injection` is disabled in tests. If ESLint reports `security/detect-object-injection` ("Object Injection Sink"), use the helpers in `server/utils/misc.ts`: `getOwn(object, key)` for dictionary reads and `setOwn(object, key, value)` for own data-property writes.
 - **Naming:** Use camelCase for variables/functions; PascalCase for components/classes; SCREAMING_SNAKE_CASE for constants.
 - **GraphQL:** Type-safe resolvers and queries via codegen; never hand-edit `generated.ts`.
 - **Imports:** Absolute imports configured via `tsconfig.json` paths; prefer `@/` prefix over relative paths where configured.

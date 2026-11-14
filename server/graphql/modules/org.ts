@@ -9,7 +9,7 @@ import {
 } from '../../services/moderationConfigService/index.js';
 import { filterDecisionsToFailedSubmissions } from '../../services/ncmecService/index.js';
 import { UserPermission } from '../../services/userManagementService/index.js';
-import { __throw } from '../../utils/misc.js';
+import { __throw, getOwn, setOwn } from '../../utils/misc.js';
 import { isValidUrl } from '../../utils/url.js';
 import {
   type GQLIntegrationConfig,
@@ -291,14 +291,12 @@ async function validateUserStrikeThresholdActionParameters(
     // checks run even for actions the client omitted from `actionParameters`.
     for (const actionId of t.actions) {
       const spec = specByActionId.get(actionId) ?? [];
-      const rawValues = Object.prototype.hasOwnProperty.call(raw, actionId)
-        ? raw[actionId]
-        : undefined;
+      const rawValues = getOwn(raw, actionId);
       const values = validateActionParameterValues(spec, rawValues);
       if (Object.keys(values).length > 0) {
         // Validated values are JSON by construction (the validator only emits
         // coerced primitives/arrays).
-        validated[actionId] = values as JsonValue;
+        setOwn(validated, actionId, values as JsonValue);
       }
     }
     return {

@@ -8,7 +8,7 @@ import {
 import _ from 'lodash';
 
 import { inject } from '../../iocContainer/utils.js';
-import { assertUnreachable } from '../../utils/misc.js';
+import { assertUnreachable, getOwn } from '../../utils/misc.js';
 import {
   CoopInput,
   type ItemSchema,
@@ -100,7 +100,8 @@ export const makeDerivedFieldsService = inject(
       orgId: string,
     ) => {
       return (
-        (await getAnnotatedDerivedFieldRecipesByInputType(orgId))[it] ?? []
+        getOwn(await getAnnotatedDerivedFieldRecipesByInputType(orgId), it) ??
+        []
       );
     };
 
