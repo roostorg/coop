@@ -144,3 +144,7 @@ feat(api)!: require a queue identifier
 ```
 
 For breaking changes, put `!` immediately before the colon and explain the impact and migration steps in the PR description. Preserve that explanation in the squash commit body, preferably with a `BREAKING CHANGE: <explanation>` footer.
+
+### Blocking a merge
+
+To keep a PR from being merged until a follow-up is done, mark it as described in [Blocking a PR from Merging](blocking-merges.md).
