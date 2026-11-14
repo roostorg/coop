@@ -1,7 +1,7 @@
 import { DateRangePicker } from '@/coop-ui/DateRangePicker';
 import { truncateAndFormatLargeNumber } from '@/utils/number';
 import { gql } from '@apollo/client';
-import { format } from 'date-fns';
+import { endOfDay, format, parseISO, startOfDay, subDays } from 'date-fns';
 import last from 'lodash/last';
 import orderBy from 'lodash/orderBy';
 import sortBy from 'lodash/sortBy';
@@ -32,7 +32,6 @@ import ComponentLoading from '../../../../../components/common/ComponentLoading'
 
 import { useGQLRulePassRateAnalyticsQuery } from '../../../../../graphql/generated';
 import { safePick } from '../../../../../utils/misc';
-import { WEEK } from '../../../../../utils/time';
 import { PRIMARY_COLOR } from '../../dashboard/visualization/chartColors';
 import {
   ChartType,
@@ -68,8 +67,8 @@ export default function RuleInsightsActionsChart(props: { ruleId: string }) {
   });
 
   const [timeWindow, setTimeWindow] = useState<TimeWindow>({
-    start: new Date(Date.now() - WEEK),
-    end: new Date(),
+    start: startOfDay(subDays(new Date(), 6)),
+    end: endOfDay(new Date()),
   });
   const [chartType, setChartType] = useState(ChartType.LINE);
 
@@ -78,11 +77,14 @@ export default function RuleInsightsActionsChart(props: { ruleId: string }) {
 
   const getDataInTimeWindow = useCallback(
     (arr?: readonly any[]) => {
+      const start = format(timeWindow.start, 'yyyy-MM-dd');
+      const end = format(timeWindow.end, 'yyyy-MM-dd');
       return arr?.filter((elemWithDate: any) => {
-        const time = new Date(elemWithDate.date).getTime();
-        return (
-          time > timeWindow.start.getTime() && time < timeWindow.end.getTime()
-        );
+        const date =
+          elemWithDate.date instanceof Date
+            ? format(elemWithDate.date, 'yyyy-MM-dd')
+            : elemWithDate.date.slice(0, 10);
+        return date >= start && date <= end;
       });
     },
     [timeWindow],
@@ -129,7 +131,7 @@ export default function RuleInsightsActionsChart(props: { ruleId: string }) {
           new Date(a.date).getTime() - new Date(b.date).getTime(),
       )
       .map((actionData: any) => ({
-        date: format(new Date(actionData.date), 'MM/dd/yy'),
+        date: format(parseISO(actionData.date.slice(0, 10)), 'MM/dd/yy'),
         totalMatches: actionData.totalMatches,
         totalRequests: actionData.totalRequests,
       }));
@@ -182,7 +184,7 @@ export default function RuleInsightsActionsChart(props: { ruleId: string }) {
                 <span className="mr-2 text-lg font-semibold text-primary">
                   {sumBy(data, 'value')}
                 </span>
-                actioned in total
+                rule matches in total
               </div>
               <div className="mx-3 mt-0 mb-2 divider" />
             </div>
@@ -235,7 +237,7 @@ export default function RuleInsightsActionsChart(props: { ruleId: string }) {
           <Line
             type="monotone"
             dataKey="totalMatches"
-            name="Total Matches"
+            name="Rule Matches"
             stroke={PRIMARY_COLOR}
             dot={false}
           />
@@ -277,6 +279,7 @@ export default function RuleInsightsActionsChart(props: { ruleId: string }) {
             stackId="a"
             type="monotone"
             dataKey="totalMatches"
+            name="Rule Matches"
             fill={PRIMARY_COLOR}
           />
         </BarChart>
@@ -305,7 +308,7 @@ export default function RuleInsightsActionsChart(props: { ruleId: string }) {
             stats={[
               {
                 value: totalActionedSubmissionsInWindow.toLocaleString(),
-                title: 'items actioned',
+                title: 'rule matches',
                 icon: <InvestmentFilled className="w-10 h-10 text-primary" />,
               },
               ...(percentActioned
@@ -314,7 +317,7 @@ export default function RuleInsightsActionsChart(props: { ruleId: string }) {
                       value: `${String(
                         Math.round(percentActioned * 100) / 100,
                       )}%`,
-                      title: 'of items were actioned on average each day',
+                      title: 'rule matches as a percentage of submissions',
                       icon: (
                         <PieChartAltFilled className="w-10 h-10 text-primary" />
                       ),
@@ -376,15 +379,12 @@ export default function RuleInsightsActionsChart(props: { ruleId: string }) {
 
   const noActionsInWindow = chartData !== null && chartData.length === 0;
 
-  // TODO: This copy (and all the copy in this component) doesn't really describe
-  // the data accurately, as the rule could pass but not have triggered any actions
-  // (e.g., a background rule), or have passed and triggered multiple actions.
   const noRuleRunsComponent = (
     <div className="text-center">
       <RuleInsightsEmptyCard
         icon={<LineChart className="w-4 h-4" />}
-        title="No Actions"
-        subtitle="Your rule has not executed any actions in this time period. As soon as it does, you'll see the data here."
+        title="No Rule Matches"
+        subtitle="No rule matches in this time period."
       />
     </div>
   );
