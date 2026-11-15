@@ -1,0 +1,72 @@
+server/services/signalsService/helpers/pluginCatalogStore.storage.test.ts
+  s_00830e7d6998dc::t_f4069f2c777b75 82-87,185-188,212-215
+  s_00830e7d6998dc::t_4be3f957adc996 79-81,88
+  s_00830e7d6998dc::t_276990595bd80e 173-174,176-178,180-184,189-199,201,203-211,216-228
+  s_00830e7d6998dc::t_929fa6abfa18cb 175,179
+  s_00830e7d6998dc::t_70f1c8f17cd46a 200,202
+server/services/integrationContextSettings/index.ts
+  s_00830e7d6998dc::t_3c80cffc83fbb5 2
+server/services/integrationContextSettings/service.ts
+  s_00830e7d6998dc::t_7d77669a671360 58
+  s_00830e7d6998dc::t_997035cc37324d 25
+  s_00830e7d6998dc::t_75b8145dbe0543 7-10
+  s_00830e7d6998dc::t_42e91745e0725f 67-78
+  s_00830e7d6998dc::t_97362b94593f46 6
+server/services/signalsService/SignalsService.ts
+  s_00830e7d6998dc::t_c8e83c35814e6f 1
+  s_00830e7d6998dc::t_9912fc51b0bbfa 34-41
+  s_00830e7d6998dc::t_372c1cdb33efdc 61
+  s_00830e7d6998dc::t_460711f11ef4d0 80-83
+  s_00830e7d6998dc::t_c485b8e7fa623d 94-95,97
+  s_00830e7d6998dc::t_a398842a7e3cd5 398
+  s_00830e7d6998dc::t_1daab74523cab3 96
+server/services/integrationContextSettings/settings.ts
+  s_00830e7d6998dc::t_df1aed9fcb1feb 15
+  s_00830e7d6998dc::t_da3d549d17943b 179-183
+server/services/integrationContextSettings/service.test.ts
+  s_00830e7d6998dc::t_b2ddeebe3f09e8 107-124
+  s_00830e7d6998dc::t_6fc34d6705f15a 3
+docs/integrations/custom.md
+  s_00830e7d6998dc::t_b5658619afba07 165-166
+server/services/signalsService/helpers/loadPluginSignals.ts
+  s_00830e7d6998dc::t_972baaf62eceac 30
+  s_00830e7d6998dc::t_a9ff755e85affd 75-79
+server/services/signalsService/index.ts
+  s_00830e7d6998dc::t_2bd76ff674c785 33,39
+server/services/integrationContextSettings/catalogSettings.ts
+  s_00830e7d6998dc::t_f224ea60a8843c 1-24,28-42
+  s_00830e7d6998dc::t_9f7f3f0751fe2c 25-27
+server/services/integrationContextSettings/settings.test.ts
+  s_00830e7d6998dc::t_74dbf9b26fcf2b 146,151
+  s_00830e7d6998dc::t_22ef999e35343e 2-4
+  s_00830e7d6998dc::t_cd183e229282fe 16-33
+  s_00830e7d6998dc::t_0e6b81d8d7398a 1,34
+server/services/signalsService/helpers/pluginCatalogStore.ts
+  s_00830e7d6998dc::t_bdbafec25debcb 106-108
+  s_00830e7d6998dc::t_50be21a18fc126 105
+  s_00830e7d6998dc::t_03dd12305c3915 91
+  s_00830e7d6998dc::t_cb5438eb25d6b5 148-150,154-161
+  s_00830e7d6998dc::t_70ed2cfb5eaa39 48,50-53
+  s_00830e7d6998dc::t_63e30871e011e5 151-153
+  s_00830e7d6998dc::t_2f80037727fb51 78
+  s_00830e7d6998dc::t_6baf99b850a651 89-90
+  s_00830e7d6998dc::t_31960c63fc695a 54-59
+server/services/signalsService/signalsServiceTypes.ts
+  s_00830e7d6998dc::t_c88aaa375a542c 1-100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b358101f716ffec75c15de3b01a4d4e16a06d316",
+  "prompts": {},
+  "sessions": {
+    "s_00830e7d6998dc": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "cfd3d02d-9f8c-491c-a26c-4722e60456eb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
