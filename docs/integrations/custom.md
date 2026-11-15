@@ -162,8 +162,8 @@ const plugin: CoopIntegrationPlugin = {
   them, so don't derive them from names that can change.
 - Coop stores each org's catalog and rebuilds signals from it with
   `createCatalogSignal`, so your backend is only called to refresh. Coop
-  refreshes the first time an org uses the integration and again once the
-  stored catalog is more than 15 minutes old.
+  refreshes the first time an org uses the integration and again in the
+  background once a day.
 - A refresh that fails or returns an invalid catalog keeps the last good one.
   The whole refresh is rejected if any entry is invalid, if its ID collides
   with another integration's signal, or if a policy list can't be read as a

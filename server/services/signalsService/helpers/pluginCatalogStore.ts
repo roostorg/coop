@@ -45,8 +45,18 @@ export type PluginCatalogRefreshListener = (event: {
 
 type StoreOptions = {
   timeoutMs?: number;
-  /** Age after which a stored catalog is refreshed in the background. */
+  /** Default age after which a stored catalog is refreshed in the background. */
   ttlMs?: number;
+  /**
+   * The org's own background refresh interval for an integration; null turns
+   * background refreshes off. Defaults to ttlMs.
+   */
+  refreshIntervals?: {
+    getCatalogRefreshIntervalMs(
+      orgId: string,
+      integrationId: string,
+    ): Promise<number | null>;
+  };
   /** How long a pod reuses what it read from the repository. */
   cacheTtlMs?: number;
   failureBackoffMs?: number;
@@ -65,7 +75,7 @@ type CacheEntry = {
  * short read-through cache and rebuilds runnable signals from stored entries
  * with the plugin's createCatalogSignal(). The provider is only called to
  * refresh: on demand, when nothing is stored yet, or in the background once
- * the stored catalog is older than ttlMs.
+ * the stored catalog is older than the org's refresh interval.
  */
 export class PluginCatalogStore {
   private readonly cache = new Map<string, CacheEntry>();
@@ -76,7 +86,9 @@ export class PluginCatalogStore {
     Promise<PluginCatalogRefreshResult>
   >();
   private readonly timeoutMs: number;
-  private readonly ttlMs: number;
+  private readonly refreshIntervals: NonNullable<
+    StoreOptions['refreshIntervals']
+  >;
   private readonly cacheTtlMs: number;
   private readonly failureBackoffMs: number;
   private readonly repository: PluginCatalogRepository;
@@ -90,7 +102,10 @@ export class PluginCatalogStore {
     options: StoreOptions = {},
   ) {
     this.timeoutMs = options.timeoutMs ?? 10_000;
-    this.ttlMs = options.ttlMs ?? 15 * 60 * 1000;
+    const ttlMs = options.ttlMs ?? 24 * 60 * 60 * 1000;
+    this.refreshIntervals = options.refreshIntervals ?? {
+      getCatalogRefreshIntervalMs: async () => ttlMs,
+    };
     this.cacheTtlMs = options.cacheTtlMs ?? 30 * 1000;
     this.failureBackoffMs = options.failureBackoffMs ?? 60 * 1000;
     this.repository =
@@ -130,13 +145,20 @@ export class PluginCatalogStore {
       await this.refreshPluginCatalog({ orgId, integrationId }).then(
         () => undefined,
       );
-    } else if (
-      Date.now() - stored.fetchedAt.getTime() > this.ttlMs &&
-      !this.inFlight.has(key)
-    ) {
-      this.refreshPluginCatalog({ orgId, integrationId }).catch(
-        () => undefined,
-      );
+    } else if (!this.inFlight.has(key)) {
+      // If the org's interval can't be read, skip the background refresh;
+      // the stored catalog keeps serving.
+      const intervalMs = await this.refreshIntervals
+        .getCatalogRefreshIntervalMs(orgId, integrationId)
+        .catch(() => null);
+      if (
+        intervalMs != null &&
+        Date.now() - stored.fetchedAt.getTime() > intervalMs
+      ) {
+        this.refreshPluginCatalog({ orgId, integrationId }).catch(
+          () => undefined,
+        );
+      }
     }
   }
 

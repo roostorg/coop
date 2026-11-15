@@ -76,7 +76,16 @@ function plugin(
 function store(
   entries: PluginEntry[],
   repository: PluginCatalogRepository,
-  options: { cacheTtlMs?: number; ttlMs?: number } = {},
+  options: {
+    cacheTtlMs?: number;
+    ttlMs?: number;
+    refreshIntervals?: {
+      getCatalogRefreshIntervalMs(
+        orgId: string,
+        integrationId: string,
+      ): Promise<number | null>;
+    };
+  } = {},
 ) {
   return new PluginCatalogStore(
     entries,
@@ -159,6 +168,62 @@ describe('PluginCatalogStore storage', () => {
     await vi.waitFor(async () =>
       expect((await repository.get('org-a', 'TEST'))?.version).toBe('2'),
     );
+  });
+
+  it("uses each org's refresh interval, and never refreshes manual orgs in the background", async () => {
+    const repository = makeInMemoryPluginCatalogRepository();
+    let calls = 0;
+    const instance = store(
+      [
+        plugin(async ({ orgId }) => ({
+          version: `${orgId}-${++calls}`,
+          signals: [entry('SIGNAL')],
+        })),
+      ],
+      repository,
+      {
+        refreshIntervals: {
+          getCatalogRefreshIntervalMs: async (orgId) =>
+            orgId === 'org-a' ? 1 : null,
+        },
+      },
+    );
+    for (const orgId of ['org-a', 'org-b']) {
+      await instance.refreshPluginCatalog({ orgId, integrationId: 'TEST' });
+    }
+    await new Promise((resolve) => setTimeout(resolve, 5));
+
+    await instance.ensureLoaded('org-a', 'TEST');
+    await instance.ensureLoaded('org-b', 'TEST');
+
+    await vi.waitFor(async () =>
+      expect((await repository.get('org-a', 'TEST'))?.version).toBe('org-a-3'),
+    );
+    expect((await repository.get('org-b', 'TEST'))?.version).toBe('org-b-2');
+  });
+
+  it("skips the background refresh when the org's interval can't be read", async () => {
+    const repository = makeInMemoryPluginCatalogRepository();
+    const refresh = vi.fn(async () => ({
+      version: '1',
+      signals: [entry('SIGNAL')],
+    }));
+    const instance = store([plugin(refresh)], repository, {
+      refreshIntervals: {
+        getCatalogRefreshIntervalMs: async () => {
+          throw new Error('settings unavailable');
+        },
+      },
+    });
+    await instance.refreshPluginCatalog({
+      orgId: 'org-a',
+      integrationId: 'TEST',
+    });
+
+    await instance.ensureLoaded('org-a', 'TEST');
+
+    expect(instance.get('org-a', 'TEST')?.signals.SIGNAL).toBeDefined();
+    expect(refresh).toHaveBeenCalledTimes(1);
   });
 
   it('keeps the last good catalog and shares the failure with other instances', async () => {

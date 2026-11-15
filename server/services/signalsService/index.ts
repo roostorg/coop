@@ -30,13 +30,13 @@ export {
   type SignalDisabledInfo,
 } from './signals/SignalBase.js';
 
+export { SignalsService } from './SignalsService.js';
 export {
-  SignalsService,
   type Signal,
   type SignalReference,
   type SignalTypesToRunInputTypes,
   type SignalTypesToRunOutputTypes,
-} from './SignalsService.js';
+} from './signalsServiceTypes.js';
 
 export {
   type SignalArgsByType,

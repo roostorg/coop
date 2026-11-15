@@ -1,4 +1,8 @@
 import {
+  CATALOG_SETTINGS_KEY,
+  readCatalogRefreshInterval,
+} from './catalogSettings.js';
+import {
   buildStoredPluginConfig,
   CONTEXT_SETTINGS_KEY,
   describeContextOptions,
@@ -8,6 +12,25 @@ import {
   validateContextOptions,
   withoutContextSettings,
 } from './settings.js';
+
+describe('readCatalogRefreshInterval', () => {
+  it('reads a saved interval', () => {
+    expect(
+      readCatalogRefreshInterval({
+        [CATALOG_SETTINGS_KEY]: { refreshInterval: 'MANUAL' },
+      }),
+    ).toBe('MANUAL');
+  });
+
+  it.each([
+    undefined,
+    {},
+    { [CATALOG_SETTINGS_KEY]: { refreshInterval: 'EVERY_MINUTE' } },
+    { [CATALOG_SETTINGS_KEY]: 'DAILY' },
+  ])('defaults to daily for missing or unknown values: %j', (config) => {
+    expect(readCatalogRefreshInterval(config)).toBe('DAILY');
+  });
+});
 
 describe('validateContextOptions', () => {
   it('returns undefined when the manifest declares none', () => {
@@ -120,11 +143,12 @@ describe('org context settings', () => {
     expect(readOrgContextSettings(undefined)).toEqual({});
   });
 
-  it('keeps context settings out of the config plugins see', () => {
+  it("keeps Coop's settings out of the config plugins see", () => {
     expect(
       withoutContextSettings({
         apiKey: 'test-api-key',
         [CONTEXT_SETTINGS_KEY]: { thread: { mode: 'off' } },
+        [CATALOG_SETTINGS_KEY]: { refreshInterval: 'WEEKLY' },
       }),
     ).toEqual({ apiKey: 'test-api-key' });
   });

@@ -27,6 +27,7 @@ export type PluginSignalsByType = Record<
 export function loadPluginSignals(
   pluginEntries: readonly PluginEntry[],
   signalAuthService: SignalAuthService,
+  builtInIds: ReadonlySet<string>,
 ): PluginSignalsByType {
   const byType: PluginSignalsByType = {};
 
@@ -69,6 +70,11 @@ export function loadPluginSignals(
       if (signalTypeId in byType) {
         throw new Error(
           `Duplicate plugin signal type "${signalTypeId}" from package "${packageSpec}".`,
+        );
+      }
+      if (builtInIds.has(signalTypeId)) {
+        throw new Error(
+          `Plugin signal type "${signalTypeId}" collides with a built-in signal; use a different signalTypeId.`,
         );
       }
       byType[signalTypeId] = new PluginSignalAdapter(

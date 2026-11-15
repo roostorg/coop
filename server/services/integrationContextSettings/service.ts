@@ -4,6 +4,11 @@ import { type Dependencies } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
 import { getIntegrationRegistry } from '../integrationRegistry/index.js';
 import {
+  CATALOG_REFRESH_INTERVALS,
+  readCatalogRefreshInterval,
+  type CatalogRefreshInterval,
+} from './catalogSettings.js';
+import {
   readOrgContextSettings,
   resolveContextNeeds,
   type OrgContextSettings,
@@ -17,6 +22,7 @@ const SETTINGS_TTL_MS = 30_000;
 type OrgIntegrationState = Readonly<{
   configured: boolean;
   settings: OrgContextSettings;
+  catalogRefreshInterval: CatalogRefreshInterval;
 }>;
 
 class IntegrationContextSettingsService {
@@ -49,12 +55,25 @@ class IntegrationContextSettingsService {
       .then((config) => ({
         configured: config != null,
         settings: readOrgContextSettings(config),
+        catalogRefreshInterval: readCatalogRefreshInterval(config),
       }));
     this.#cache.set(key, { state, expiresAt: Date.now() + SETTINGS_TTL_MS });
     state.catch(() => {
       if (this.#cache.get(key)?.state === state) this.#cache.delete(key);
     });
     return state;
+  }
+
+  /** Background refresh interval for the org's catalog; null means manual. */
+  async getCatalogRefreshIntervalMs(
+    orgId: string,
+    integrationId: string,
+  ): Promise<number | null> {
+    const { catalogRefreshInterval } = await this.#getState(
+      orgId,
+      integrationId,
+    );
+    return CATALOG_REFRESH_INTERVALS[catalogRefreshInterval];
   }
 
   invalidate(orgId: string, integrationId: string) {
