@@ -11,6 +11,7 @@ import { typeDefs as genericTypeDefs } from './modules/generic.js';
 import { typeDefs as hashBanksTypeDefs } from './modules/hashBanks/schema.js';
 import { typeDefs as insightsTypeDefs } from './modules/insights.js';
 import { typeDefs as integrationTypeDefs } from './modules/integration.js';
+import { typeDefs as integrationContextTypeDefs } from './modules/integrationContext.js';
 import { typeDefs as investigationTypeDefs } from './modules/investigation.js';
 import { typeDefs as itemTypeTypeDefs } from './modules/itemType.js';
 import { typeDefs as locationBankTypeDefs } from './modules/locationBank.js';
@@ -499,6 +500,7 @@ export default mergeTypeDefs([
   hashBanksTypeDefs,
   insightsTypeDefs,
   integrationTypeDefs,
+  integrationContextTypeDefs,
   investigationTypeDefs,
   itemTypeTypeDefs,
   locationBankTypeDefs,

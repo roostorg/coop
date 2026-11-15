@@ -7,6 +7,7 @@ import { createRequire } from 'module';
 import path from 'path';
 import { isCoopIntegrationPlugin } from '@roostorg/coop-types';
 
+import { withoutContextSettings } from '../../integrationContextSettings/index.js';
 import type { PluginEntry } from '../../integrationRegistry/loadPlugins.js';
 import type { SignalAuthService } from '../../signalAuthService/index.js';
 import PluginSignalAdapter, {
@@ -50,8 +51,13 @@ export function loadPluginSignals(
     ).createSignals;
     if (typeof createSignals !== 'function') continue;
 
-    const getCredential = async (orgId: string) =>
-      signalAuthService.getByIntegrationId(integrationId, orgId);
+    const getCredential = async (orgId: string) => {
+      const config = await signalAuthService.getByIntegrationId(
+        integrationId,
+        orgId,
+      );
+      return config && withoutContextSettings(config);
+    };
     const context = { integrationId, getCredential };
     let signals: unknown[];
     try {

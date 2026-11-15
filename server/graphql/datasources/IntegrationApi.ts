@@ -3,6 +3,10 @@ import { inject } from '../../iocContainer/utils.js';
 
 import '../../services/signalAuthService/index.js';
 
+import {
+  buildStoredPluginConfig,
+  type ContextSettingInput,
+} from '../../services/integrationContextSettings/index.js';
 import { getIntegrationRegistry } from '../../services/integrationRegistry/index.js';
 import type { CredentialTypes } from '../../services/signalAuthService/index.js';
 import { Integration } from '../../services/signalsService/index.js';
@@ -107,16 +111,30 @@ class IntegrationAPI {
     integrationId: string,
     credential: Record<string, unknown>,
     orgId: string,
+    contextSettings?: readonly ContextSettingInput[],
   ): Promise<TIntegrationConfigWithMetadata> {
     const registry = getIntegrationRegistry();
     const manifest = registry.getManifest(integrationId);
     if (manifest == null) {
       throw new Error(`Unknown integration: ${integrationId}`);
     }
+    const { contextOptions } = manifest;
+    const toStore = buildStoredPluginConfig({
+      credential,
+      contextOptions,
+      contextSettings,
+      existingConfig:
+        contextOptions != null && contextSettings === undefined
+          ? await this.signalAuthService.getByIntegrationId(
+              integrationId,
+              orgId,
+            )
+          : undefined,
+    });
     const newCredential = await this.signalAuthService.setByIntegrationId(
       integrationId,
       orgId,
-      credential,
+      toStore,
     );
     return mergeManifest(integrationId, newCredential, manifest);
   }

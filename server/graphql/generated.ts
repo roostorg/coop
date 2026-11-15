@@ -1532,6 +1532,7 @@ export type GQLIntegrationConfig = {
    * which have custom forms.
    */
   readonly configurationFields: ReadonlyArray<GQLIntegrationConfigField>;
+  readonly contextOptions: ReadonlyArray<GQLIntegrationContextOption>;
   readonly docsUrl: Scalars['String']['output'];
   readonly logoUrl?: Maybe<Scalars['String']['output']>;
   readonly logoWithBackgroundUrl?: Maybe<Scalars['String']['output']>;
@@ -1597,6 +1598,47 @@ export type GQLIntegrationConfigUnsupportedIntegrationError = GQLError & {
   readonly status: Scalars['Int']['output'];
   readonly title: Scalars['String']['output'];
   readonly type: ReadonlyArray<Scalars['String']['output']>;
+};
+
+export const GQLIntegrationContextKind = {
+  Parent: 'PARENT',
+  Thread: 'THREAD',
+} as const;
+
+export type GQLIntegrationContextKind =
+  (typeof GQLIntegrationContextKind)[keyof typeof GQLIntegrationContextKind];
+export const GQLIntegrationContextMode = {
+  Default: 'DEFAULT',
+  Include: 'INCLUDE',
+  Off: 'OFF',
+} as const;
+
+export type GQLIntegrationContextMode =
+  (typeof GQLIntegrationContextMode)[keyof typeof GQLIntegrationContextMode];
+/**
+ * Evaluation context a plugin integration can use, with the org's choice.
+ * Coop loads the included context (conversation thread, parent item) and
+ * passes it to the plugin's signals.
+ */
+export type GQLIntegrationContextOption = {
+  readonly __typename?: 'IntegrationContextOption';
+  readonly defaultMaxCount?: Maybe<Scalars['Int']['output']>;
+  /** The plugin's default: INCLUDE or OFF. */
+  readonly defaultMode: GQLIntegrationContextMode;
+  /** Whether the context is loaded, after applying the default. */
+  readonly included: Scalars['Boolean']['output'];
+  readonly kind: GQLIntegrationContextKind;
+  /** The org's max messages; null means the plugin default. */
+  readonly maxCount?: Maybe<Scalars['Int']['output']>;
+  readonly maxCountLimit?: Maybe<Scalars['Int']['output']>;
+  /** The org's choice; DEFAULT means use the plugin's default. */
+  readonly mode: GQLIntegrationContextMode;
+};
+
+export type GQLIntegrationContextSettingInput = {
+  readonly kind: GQLIntegrationContextKind;
+  readonly maxCount?: InputMaybe<Scalars['Int']['input']>;
+  readonly mode: GQLIntegrationContextMode;
 };
 
 export type GQLIntegrationEmptyInputCredentialsError = GQLError & {
@@ -4663,6 +4705,10 @@ export type GQLSetMrtChartConfigurationSettingsSuccessResponse = {
 };
 
 export type GQLSetPluginIntegrationConfigInput = {
+  /** Omit to keep the current settings. */
+  readonly contextSettings?: InputMaybe<
+    ReadonlyArray<GQLIntegrationContextSettingInput>
+  >;
   readonly credential: Scalars['JSONObject']['input'];
   readonly integrationId: Scalars['String']['input'];
 };
@@ -6357,6 +6403,10 @@ export type GQLResolversTypes = {
   >;
   IntegrationConfigTooManyCredentialsError: ResolverTypeWrapper<GQLIntegrationConfigTooManyCredentialsError>;
   IntegrationConfigUnsupportedIntegrationError: ResolverTypeWrapper<GQLIntegrationConfigUnsupportedIntegrationError>;
+  IntegrationContextKind: GQLIntegrationContextKind;
+  IntegrationContextMode: GQLIntegrationContextMode;
+  IntegrationContextOption: ResolverTypeWrapper<GQLIntegrationContextOption>;
+  IntegrationContextSettingInput: GQLIntegrationContextSettingInput;
   IntegrationEmptyInputCredentialsError: ResolverTypeWrapper<GQLIntegrationEmptyInputCredentialsError>;
   IntegrationMetadata: ResolverTypeWrapper<GQLIntegrationMetadata>;
   IntegrationNoInputCredentialsError: ResolverTypeWrapper<GQLIntegrationNoInputCredentialsError>;
@@ -7177,6 +7227,8 @@ export type GQLResolversParentTypes = {
   > & { config?: Maybe<GQLResolversParentTypes['IntegrationConfig']> };
   IntegrationConfigTooManyCredentialsError: GQLIntegrationConfigTooManyCredentialsError;
   IntegrationConfigUnsupportedIntegrationError: GQLIntegrationConfigUnsupportedIntegrationError;
+  IntegrationContextOption: GQLIntegrationContextOption;
+  IntegrationContextSettingInput: GQLIntegrationContextSettingInput;
   IntegrationEmptyInputCredentialsError: GQLIntegrationEmptyInputCredentialsError;
   IntegrationMetadata: GQLIntegrationMetadata;
   IntegrationNoInputCredentialsError: GQLIntegrationNoInputCredentialsError;
@@ -9718,6 +9770,11 @@ export type GQLIntegrationConfigResolvers<
     ParentType,
     ContextType
   >;
+  contextOptions?: Resolver<
+    ReadonlyArray<GQLResolversTypes['IntegrationContextOption']>,
+    ParentType,
+    ContextType
+  >;
   docsUrl?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   logoUrl?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -9869,6 +9926,40 @@ export type GQLIntegrationConfigUnsupportedIntegrationErrorResolvers<
     ContextType
   >;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type GQLIntegrationContextOptionResolvers<
+  ContextType = Context,
+  ParentType extends GQLResolversParentTypes['IntegrationContextOption'] =
+    GQLResolversParentTypes['IntegrationContextOption'],
+> = {
+  defaultMaxCount?: Resolver<
+    Maybe<GQLResolversTypes['Int']>,
+    ParentType,
+    ContextType
+  >;
+  defaultMode?: Resolver<
+    GQLResolversTypes['IntegrationContextMode'],
+    ParentType,
+    ContextType
+  >;
+  included?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
+  kind?: Resolver<
+    GQLResolversTypes['IntegrationContextKind'],
+    ParentType,
+    ContextType
+  >;
+  maxCount?: Resolver<Maybe<GQLResolversTypes['Int']>, ParentType, ContextType>;
+  maxCountLimit?: Resolver<
+    Maybe<GQLResolversTypes['Int']>,
+    ParentType,
+    ContextType
+  >;
+  mode?: Resolver<
+    GQLResolversTypes['IntegrationContextMode'],
+    ParentType,
+    ContextType
+  >;
 };
 
 export type GQLIntegrationEmptyInputCredentialsErrorResolvers<
@@ -16025,6 +16116,7 @@ export type GQLResolvers<ContextType = Context> = {
   IntegrationConfigSuccessResult?: GQLIntegrationConfigSuccessResultResolvers<ContextType>;
   IntegrationConfigTooManyCredentialsError?: GQLIntegrationConfigTooManyCredentialsErrorResolvers<ContextType>;
   IntegrationConfigUnsupportedIntegrationError?: GQLIntegrationConfigUnsupportedIntegrationErrorResolvers<ContextType>;
+  IntegrationContextOption?: GQLIntegrationContextOptionResolvers<ContextType>;
   IntegrationEmptyInputCredentialsError?: GQLIntegrationEmptyInputCredentialsErrorResolvers<ContextType>;
   IntegrationMetadata?: GQLIntegrationMetadataResolvers<ContextType>;
   IntegrationNoInputCredentialsError?: GQLIntegrationNoInputCredentialsErrorResolvers<ContextType>;

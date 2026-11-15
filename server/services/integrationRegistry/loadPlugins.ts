@@ -15,6 +15,7 @@ import {
   type IntegrationConfigFieldOption,
 } from '@roostorg/coop-types';
 
+import { validateContextOptions } from '../integrationContextSettings/settings.js';
 import type {
   IntegrationManifestEntry,
   ModelCard,
@@ -323,6 +324,7 @@ export function loadPlugins(
         id,
         manifest.configurationFields,
       ),
+      contextOptions: validateContextOptions(id, manifest.contextOptions),
     };
     if ((serverEntry as { modelCard?: ModelCard }).modelCard == null) {
       throw new Error(

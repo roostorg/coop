@@ -1,5 +1,6 @@
 import type { IntegrationConfigField } from '@roostorg/coop-types';
 
+import { withoutContextSettings } from '../../services/integrationContextSettings/index.js';
 import { getIntegrationRegistry } from '../../services/integrationRegistry/index.js';
 import { Integration } from '../../services/signalsService/index.js';
 import { UserPermission } from '../../services/userManagementService/index.js';
@@ -20,6 +21,7 @@ import {
 import { type ResolverMap } from '../resolvers.js';
 import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
+import { contextSettingsFromGql } from './integrationContext.js';
 
 const typeDefs = /* GraphQL */ `
   enum Integration {
@@ -321,7 +323,7 @@ const fieldInputTypeToGql = {
 
 const PluginIntegrationApiCredential = {
   credential(it: TIntegrationConfigWithMetadata['apiCredential']) {
-    return it;
+    return withoutContextSettings(it);
   },
 };
 
@@ -393,6 +395,7 @@ const Mutation: GQLMutationResolvers = {
           params.input.integrationId,
           params.input.credential,
           user.orgId,
+          contextSettingsFromGql(params.input.contextSettings),
         );
       context.services.IntegrationContextSettingsService.invalidate(
         user.orgId,
