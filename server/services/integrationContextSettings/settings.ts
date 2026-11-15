@@ -12,6 +12,7 @@ import type {
 } from '@roostorg/coop-types';
 
 import { DEFAULT_MAX_THREAD_MESSAGES } from '../signalContextService/limits.js';
+import { CATALOG_SETTINGS_KEY } from './catalogSettings.js';
 
 export const CONTEXT_SETTINGS_KEY = '__coopContext';
 
@@ -175,7 +176,11 @@ export function buildStoredPluginConfig(opts: {
 export function withoutContextSettings(
   config: Readonly<Record<string, unknown>>,
 ): Record<string, unknown> {
-  const { [CONTEXT_SETTINGS_KEY]: _omitted, ...rest } = config;
+  const {
+    [CONTEXT_SETTINGS_KEY]: _context,
+    [CATALOG_SETTINGS_KEY]: _catalog,
+    ...rest
+  } = config;
   return rest;
 }
 

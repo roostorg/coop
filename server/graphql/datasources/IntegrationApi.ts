@@ -194,6 +194,7 @@ export type { IntegrationAPI };
 export type IntegrationErrorType =
   | 'IntegrationConfigTooManyCredentialsError'
   | 'IntegrationConfigUnsupportedIntegrationError'
+  | 'IntegrationCatalogRefreshError'
   | 'IntegrationNoInputCredentialsError'
   | 'IntegrationEmptyInputCredentialsError';
 

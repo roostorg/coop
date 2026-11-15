@@ -10,6 +10,7 @@ import path from 'path';
 import {
   assertModelCardHasRequiredSections,
   isCoopIntegrationPlugin,
+  type CoopIntegrationPlugin,
   type CoopIntegrationsConfig,
   type IntegrationConfigField,
   type IntegrationConfigFieldOption,
@@ -26,6 +27,7 @@ export type PluginManifestMap = Map<string, IntegrationManifestEntry>;
 export type PluginEntry = Readonly<{
   packageSpec: string;
   integrationId: string;
+  plugin: CoopIntegrationPlugin;
 }>;
 
 export type LoadPluginsResult = Readonly<{
@@ -235,6 +237,14 @@ export function loadPlugins(
     if (manifest.modelCard != null) {
       assertModelCardHasRequiredSections(manifest.modelCard);
     }
+    if (
+      typeof resolved.refreshCatalog === 'function' &&
+      typeof resolved.createCatalogSignal !== 'function'
+    ) {
+      throw new Error(
+        `Integration "${id}" (${packageSpec}) implements refreshCatalog but not createCatalogSignal; both are required to serve stored catalogs.`,
+      );
+    }
 
     let logoUrl = manifest.logoUrl;
     let logoWithBackgroundUrl = manifest.logoWithBackgroundUrl;
@@ -332,7 +342,7 @@ export function loadPlugins(
       );
     }
     map.set(id, serverEntry);
-    pluginEntries.push({ packageSpec, integrationId: id });
+    pluginEntries.push({ packageSpec, integrationId: id, plugin: resolved });
   }
 
   return {

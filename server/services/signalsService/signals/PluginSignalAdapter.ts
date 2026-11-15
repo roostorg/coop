@@ -26,7 +26,7 @@ export type { PluginSignalDescriptor };
  * Rejects policy lists the one-level tree can't represent, so a plugin with a
  * bad list fails at load instead of policies silently disappearing.
  */
-function assertValidPolicies(
+export function assertValidPolicies(
   signalId: string,
   flat: ReadonlyDeep<PluginSignalDescriptor['eligibleSubcategories']>,
 ) {

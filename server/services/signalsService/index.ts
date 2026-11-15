@@ -30,13 +30,13 @@ export {
   type SignalDisabledInfo,
 } from './signals/SignalBase.js';
 
+export { SignalsService } from './SignalsService.js';
 export {
-  SignalsService,
   type Signal,
   type SignalReference,
   type SignalTypesToRunInputTypes,
   type SignalTypesToRunOutputTypes,
-} from './SignalsService.js';
+} from './signalsServiceTypes.js';
 
 export {
   type SignalArgsByType,
@@ -45,3 +45,7 @@ export {
 
 // This is the signal service factory function for bottle.
 export { default as makeSignalsService } from './SignalsService.js';
+export {
+  makePostgresPluginCatalogRepository,
+  type PluginCatalogRepository,
+} from './helpers/pluginCatalogRepository.js';
