@@ -1,6 +1,18 @@
 import { credentialIsConfigured } from './IntegrationApi.js';
 import type { IntegrationManifestEntry } from './integrationManifests.js';
 
+function openAiManifest(): IntegrationManifestEntry {
+  const moderation = { modelName: 'OpenAI Moderation API', version: '1' };
+  const csam = { modelName: 'OpenAI CSAM Image Classifier', version: 'Latest' };
+  return {
+    modelCard: moderation,
+    modelCards: [moderation, csam],
+    title: 'OpenAI',
+    docsUrl: 'https://platform.openai.com/docs',
+    requiresConfig: true,
+  };
+}
+
 function manifestWith(
   configurationFields?: IntegrationManifestEntry['configurationFields'],
 ): IntegrationManifestEntry {
@@ -69,5 +81,16 @@ describe('credentialIsConfigured', () => {
       false,
     );
     expect(credentialIsConfigured('MY_PLUGIN', {}, manifest)).toBe(false);
+  });
+
+  it('counts OpenAI as configured with only the CSAM Classifier key', () => {
+    const manifest = openAiManifest();
+    expect(
+      credentialIsConfigured(
+        'OPEN_AI',
+        { apiKey: '', csamClassifierApiKey: 'sk-csam' },
+        manifest,
+      ),
+    ).toBe(true);
   });
 });

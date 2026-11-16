@@ -52,10 +52,18 @@ export function credentialIsConfigured(
 ): boolean {
   switch (integrationId) {
     case Integration.GOOGLE_CONTENT_SAFETY_API:
-    case Integration.OPEN_AI:
     case Integration.ZENTROPI:
       return (
         typeof credential.apiKey === 'string' && credential.apiKey.length > 0
+      );
+    case Integration.OPEN_AI:
+      // The Moderation API key and the CSAM Classifier key are independent
+      // (possibly different OpenAI orgs); either one alone means configured.
+      return (
+        (typeof credential.apiKey === 'string' &&
+          credential.apiKey.length > 0) ||
+        (typeof credential.csamClassifierApiKey === 'string' &&
+          credential.csamClassifierApiKey.length > 0)
       );
     default: {
       // Plugins declare their form; configured means every required field has
@@ -81,7 +89,7 @@ function defaultCredentialForIntegrationId(
   switch (integrationId) {
     case Integration.GOOGLE_CONTENT_SAFETY_API:
     case Integration.OPEN_AI:
-      return { apiKey: '' };
+      return { apiKey: '', csamClassifierApiKey: '' };
     case Integration.ZENTROPI:
       return { apiKey: '', labelerVersions: [] };
     default:
@@ -133,7 +141,11 @@ class IntegrationAPI {
     if (apiCredential.openAi) {
       return this.setConfigByIntegrationId(
         'OPEN_AI',
-        { apiKey: apiCredential.openAi.apiKey },
+        {
+          apiKey: apiCredential.openAi.apiKey,
+          csamClassifierApiKey:
+            apiCredential.openAi.csamClassifierApiKey ?? undefined,
+        },
         orgId,
       );
     }

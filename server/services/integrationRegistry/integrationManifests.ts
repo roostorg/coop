@@ -13,6 +13,8 @@ import {
   type ModelCardSubsection,
 } from '@roostorg/coop-types';
 
+import { OPENAI_CSAM_CLASSIFIER_MODEL_CARD } from './openAiCsamModelCard.js';
+
 export type {
   ModelCard,
   ModelCardField,
@@ -202,6 +204,7 @@ const OPENAI_MODERATION_MODEL_CARD: ModelCard = {
 
 const OPENAI: IntegrationManifestEntry = {
   modelCard: OPENAI_MODERATION_MODEL_CARD,
+  modelCards: [OPENAI_MODERATION_MODEL_CARD, OPENAI_CSAM_CLASSIFIER_MODEL_CARD],
   modelCardLearnMoreUrl:
     'https://cdn.openai.com/API/docs/omni_moderation_information_for_developers.pdf',
   title: 'OpenAI',

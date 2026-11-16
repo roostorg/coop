@@ -121,6 +121,7 @@ gql`
             }
             ... on OpenAiIntegrationApiCredential {
               apiKey
+              csamClassifierApiKey
             }
             ... on ZentropiIntegrationApiCredential {
               apiKey
@@ -166,6 +167,7 @@ export function getNewEmptyApiKey(name: string): GQLIntegrationApiCredential {
       return {
         __typename: 'OpenAiIntegrationApiCredential',
         apiKey: '',
+        csamClassifierApiKey: '',
       };
     }
     case 'ZENTROPI': {
@@ -476,12 +478,16 @@ export default function IntegrationConfigForm() {
       return 'Please input the Google Content Safety API key';
     }
 
-    if (
-      'openAi' in mappedApiCredential &&
-      !(mappedApiCredential['openAi'] as GQLOpenAiIntegrationApiCredential)
-        .apiKey
-    ) {
-      return 'Please input the OpenAI API key';
+    if ('openAi' in mappedApiCredential) {
+      const openAi = mappedApiCredential[
+        'openAi'
+      ] as GQLOpenAiIntegrationApiCredential;
+      // The Moderation API key and the CSAM Classifier key are independent
+      // (they may belong to different OpenAI orgs), so either one alone is a
+      // valid configuration.
+      if (!openAi.apiKey && !openAi.csamClassifierApiKey) {
+        return 'Please input the OpenAI API key or CSAM Classifier API key';
+      }
     }
 
     if (
@@ -682,6 +688,7 @@ export default function IntegrationConfigForm() {
             <IntegrationConfigApiCredentialsSection
               name={integrationName}
               apiCredential={apiCredential}
+              savedApiCredential={apiConfig?.apiCredential}
               setApiCredential={(cred: GQLIntegrationApiCredential) =>
                 setApiCredential(cred)
               }
@@ -696,6 +703,7 @@ export default function IntegrationConfigForm() {
           <IntegrationConfigApiCredentialsSection
             name={integrationName}
             apiCredential={apiCredential}
+            savedApiCredential={apiConfig?.apiCredential}
             setApiCredential={(cred: GQLIntegrationApiCredential) =>
               setApiCredential(cred)
             }

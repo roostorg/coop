@@ -34,6 +34,7 @@ const typeDefs = /* GraphQL */ `
 
   type OpenAiIntegrationApiCredential {
     apiKey: String!
+    csamClassifierApiKey: String
   }
 
   enum ZentropiModel {
@@ -148,6 +149,7 @@ const typeDefs = /* GraphQL */ `
 
   input OpenAiIntegrationApiCredentialInput {
     apiKey: String!
+    csamClassifierApiKey: String
   }
 
   input ZentropiLabelerVersionInput {
