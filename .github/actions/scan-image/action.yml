@@ -1,12 +1,12 @@
 name: Scan image
 description: >
   Install Trivy to $RUNNER_TEMP/trivy-bin, scan a published image for
-  vulnerabilities and upload the results to code scanning. Report-only:
-  findings never fail the job.
+  vulnerabilities and upload the results to code scanning. Findings never fail
+  the job; download, scan and upload failures do only with fail-on-error.
 
 inputs:
   image:
-    description: Image reference to scan, pinned by digest.
+    description: Image reference to scan.
     required: true
   category:
     description: Code scanning category for the results.
@@ -17,19 +17,26 @@ inputs:
   sha:
     description: Commit SHA to report the results under.
     required: true
+  fail-on-error:
+    description: >
+      Fail the job if Trivy can't be downloaded, the scan fails or the upload
+      fails. Leave off where a scan must never block a publish.
+    required: false
+    default: 'false'
 
 runs:
   using: composite
   steps:
     # Findings go to code scanning (visible to maintainers, not the public) and
     # never block a push, so a security release can always ship.
-    # continue-on-error keeps a download, Trivy or DB outage from failing a job
-    # whose images are already published; a checksum mismatch still fails.
+    # Without fail-on-error, continue-on-error keeps a download, Trivy or DB
+    # outage from failing a job whose images are already published; a checksum
+    # mismatch always fails.
     - name: Download Trivy
       id: download
-      continue-on-error: true
+      continue-on-error: ${{ inputs.fail-on-error != 'true' }}
       shell: bash
-      run: curl -fsSLo "$RUNNER_TEMP/trivy.tar.gz" "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+      run: curl -fsSL --retry 3 -o "$RUNNER_TEMP/trivy.tar.gz" "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
 
     - name: Install Trivy
       if: steps.download.outcome == 'success'
@@ -42,7 +49,7 @@ runs:
     - name: Scan image
       id: scan
       if: steps.download.outcome == 'success'
-      continue-on-error: true
+      continue-on-error: ${{ inputs.fail-on-error != 'true' }}
       shell: bash
       env:
         IMAGE: ${{ inputs.image }}
@@ -50,7 +57,7 @@ runs:
 
     - uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
       if: steps.scan.outcome == 'success'
-      continue-on-error: true
+      continue-on-error: ${{ inputs.fail-on-error != 'true' }}
       with:
         sarif_file: trivy.sarif
         category: ${{ inputs.category }}
