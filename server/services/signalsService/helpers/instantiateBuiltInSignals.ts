@@ -22,6 +22,8 @@ import TextMatchingContainsTextSignal from '../signals/text_matching/TextMatchin
 import TextMatchingNotContainsRegexSignal from '../signals/text_matching/TextMatchingNotContainsRegexSignal.js';
 import TextMatchingNotContainsTextSignal from '../signals/text_matching/TextMatchingNotContainsTextSignal.js';
 import GoogleContentSafetyImageSignal from '../signals/third_party_signals/google/content_safety/GoogleContentSafetyImageSignal.js';
+import OpenAiCsamGenAiImageSignal from '../signals/third_party_signals/open_ai/csam_classifier/OpenAiCsamGenAiImageSignal.js';
+import OpenAiCsamOverallImageSignal from '../signals/third_party_signals/open_ai/csam_classifier/OpenAiCsamOverallImageSignal.js';
 import OpenAiGraphicViolenceImageSignal from '../signals/third_party_signals/open_ai/moderation/OpenAiGraphicViolenceImageSignal.js';
 import OpenAiGraphicViolenceTextSignal from '../signals/third_party_signals/open_ai/moderation/OpenAiGraphicViolenceTextSignal.js';
 import OpenAiHateTextSignal from '../signals/third_party_signals/open_ai/moderation/OpenAiHateTextSignal.js';
@@ -62,6 +64,7 @@ export function instantiateBuiltInSignals(
 ) {
   const {
     googleContentSafetyFetcher: getGoogleContentSafetyScores,
+    openAiCsamClassifierFetcher: getOpenAiCsamClassifierScores,
     openAiModerationFetcher: getOpenAiScores,
     openAiWhisperTranscriptionFetcher: getOpenAiTranscription,
     zentropiFetcher: getZentropiScores,
@@ -88,6 +91,15 @@ export function instantiateBuiltInSignals(
       new GoogleContentSafetyImageSignal(
         credentialGetters.GOOGLE_CONTENT_SAFETY_API,
         getGoogleContentSafetyScores,
+      ),
+    [SignalType.OPEN_AI_CSAM_GENAI_IMAGE_MODEL]: new OpenAiCsamGenAiImageSignal(
+      credentialGetters.OPEN_AI,
+      getOpenAiCsamClassifierScores,
+    ),
+    [SignalType.OPEN_AI_CSAM_OVERALL_IMAGE_MODEL]:
+      new OpenAiCsamOverallImageSignal(
+        credentialGetters.OPEN_AI,
+        getOpenAiCsamClassifierScores,
       ),
     [SignalType.OPEN_AI_GRAPHIC_VIOLENCE_IMAGE_MODEL]:
       new OpenAiGraphicViolenceImageSignal(

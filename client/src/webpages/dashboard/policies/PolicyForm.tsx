@@ -1,5 +1,6 @@
 import { Button } from '@/coop-ui/Button';
 import { treeFromList } from '@/utils/tree';
+import { type ApolloError } from '@apollo/client';
 import { Input } from 'antd';
 import {
   Check as CheckmarkFilled,
@@ -57,8 +58,16 @@ export default function PolicyForm() {
   const { data, loading } = useGQLPoliciesQuery();
   const [showSuccess, setShowSuccess] = useState(false);
 
+  const onCreatePolicyError = (error: ApolloError) => {
+    const message = error.graphQLErrors
+      .map((it) => it.message.trim())
+      .filter(Boolean)
+      .join('\n');
+    setErrorMessage(message || 'Error saving policy. Please try again.');
+  };
+
   const [addPolicy, { loading: addPolicyLoading }] = useGQLAddPoliciesMutation({
-    onError: () => setErrorMessage('Error saving policy. Please try again.'),
+    onError: onCreatePolicyError,
     refetchQueries: [
       namedOperations.Query.PoliciesWithModels,
       namedOperations.Query.Policies,
@@ -271,9 +280,23 @@ export default function PolicyForm() {
                       },
                     ],
                   },
-                  onCompleted: () => setShowSuccess(true),
-                  onError: () =>
-                    setErrorMessage('Error saving policy. Please try again.'),
+                  onCompleted: ({ addPolicies }) => {
+                    if (addPolicies.failures.length > 0) {
+                      const messages = addPolicies.failureDetails
+                        .map(({ title, detail }) =>
+                          [title, detail].filter((it) => it?.trim()).join(' '),
+                        )
+                        .filter(Boolean);
+                      setErrorMessage(
+                        messages.length > 0
+                          ? messages.join('\n')
+                          : 'Error saving policy. Please try again.',
+                      );
+                      return;
+                    }
+                    setShowSuccess(true);
+                  },
+                  onError: onCreatePolicyError,
                 });
               }
             }}

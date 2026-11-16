@@ -1,5 +1,5 @@
 import { Button, Input, Select } from 'antd';
-import { Plus, Trash2 } from 'lucide-react';
+import { CheckCircle2, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 
 import {
@@ -26,10 +26,24 @@ const ZENTROPI_MODEL_OPTIONS = Object.entries(ZENTROPI_MODEL_LABELS).map(
 
 export type PluginConfigField = Omit<GQLIntegrationConfigField, '__typename'>;
 
+function ActiveLabel() {
+  return (
+    <div className="mt-1 flex items-center gap-1 text-xs text-green-600">
+      <CheckCircle2 size={12} /> Active
+    </div>
+  );
+}
+
 export default function IntegrationConfigApiCredentialsSection(props: {
   name: string;
   setApiCredential: (cred: GQLIntegrationApiCredential) => void;
   apiCredential: GQLIntegrationApiCredential;
+  /**
+   * The credential as currently persisted on the server. A key counts as
+   * "Active" only when the entered value matches what is saved, so an unsaved
+   * edit does not read as active.
+   */
+  savedApiCredential?: GQLIntegrationApiCredential;
   compact?: boolean;
   /** Fields declared by a plugin manifest; drives the plugin config form. */
   configurationFields?: readonly PluginConfigField[];
@@ -37,6 +51,7 @@ export default function IntegrationConfigApiCredentialsSection(props: {
   const {
     setApiCredential,
     apiCredential,
+    savedApiCredential,
     compact,
     configurationFields = [],
   } = props;
@@ -64,18 +79,48 @@ export default function IntegrationConfigApiCredentialsSection(props: {
   const renderOpenAiCredential = (
     apiCredential: GQLOpenAiIntegrationApiCredential,
   ) => {
+    const saved =
+      savedApiCredential?.__typename === 'OpenAiIntegrationApiCredential'
+        ? savedApiCredential
+        : undefined;
+    const apiKeyActive =
+      apiCredential.apiKey.length > 0 && apiCredential.apiKey === saved?.apiKey;
+    const csamKeyActive =
+      (apiCredential.csamClassifierApiKey ?? '').length > 0 &&
+      apiCredential.csamClassifierApiKey === saved?.csamClassifierApiKey;
     return (
-      <div className={`flex flex-col ${inputWidthClass}`}>
-        <div className="mb-1">API Key</div>
-        <Input
-          value={apiCredential.apiKey}
-          onChange={(event) =>
-            setApiCredential({
-              ...apiCredential,
-              apiKey: event.target.value,
-            })
-          }
-        />
+      <div className="flex flex-col gap-4">
+        <div className={`flex flex-col ${inputWidthClass}`}>
+          <div className="mb-1">API Key</div>
+          <Input
+            value={apiCredential.apiKey}
+            onChange={(event) =>
+              setApiCredential({
+                ...apiCredential,
+                apiKey: event.target.value,
+              })
+            }
+          />
+          {apiKeyActive ? <ActiveLabel /> : null}
+        </div>
+        <div className={`flex flex-col ${inputWidthClass}`}>
+          <div className="mb-1">CSAM Classifier API Key</div>
+          <div className="mb-1 text-xs text-gray-500">
+            A standard OpenAI API key for the organization granted CSAM
+            Classifier access. This can differ from your Moderation API key if
+            access was granted on a different OpenAI organization.
+          </div>
+          <Input
+            value={apiCredential.csamClassifierApiKey ?? ''}
+            onChange={(event) =>
+              setApiCredential({
+                ...apiCredential,
+                csamClassifierApiKey: event.target.value,
+              })
+            }
+          />
+          {csamKeyActive ? <ActiveLabel /> : null}
+        </div>
       </div>
     );
   };
