@@ -11,12 +11,14 @@ For specific integration information and detailed requirements, see that integra
 | [Google Content Safety API]     | Free                   | API key, approval by Google[^CSAPI]                            |
 | [Hasher-Matcher-Actioner (HMA)] | Free                   | Your own hashes, and/or access to third-party hash banks[^HMA] |
 | [NCMEC Reporting]               | Free                   | CyberTip API key, approval by NCMEC[^ESP]                      |
+| [OpenAI CSAM Image Classifier]  | Free                   | OpenAI API key, CSAM Classifier access by OpenAI[^CSAM]        |
 | [OpenAI Moderation API]         | Free[^OAI]             | OpenAI API key                                                 |
 | [Zentropi CoPE]                 | Free, paid options[^Z] | Zentropi API key                                               |
 
 [Google Content Safety API]: google-content-safety.md
 [Hasher-Matcher-Actioner (HMA)]: hma.md
 [NCMEC Reporting]: ncmec.md
+[OpenAI CSAM Image Classifier]: openai-csam-classifier.md
 [OpenAI Moderation API]: openai-moderation.md
 [Zentropi CoPE]: zentropi-cope.md
 
@@ -26,9 +28,11 @@ For specific integration information and detailed requirements, see that integra
 
 [^ESP]: Requires [NCMEC ESP registration](https://esp.ncmec.org/registration) and approval to receive CyberTip API credentials
 
+[^CSAM]: CSAM Image Classifier access is granted by OpenAI at no cost to approved organizations through its [intake form](https://openai.com/form/csam-classifier-intake), subject to review of the applying organization, its NCMEC reporting, and its safety stack.
+
 [^OAI]: [Per OpenAI](https://help.openai.com/en/articles/4936833-is-the-moderation-endpoint-free-to-use), the API is completely free and does not count towards monthly usage limits.
 
-[^Z]: Zentropi text classifiers are free, and currently use the openly-licensed [CoPE-A-9B model](https://huggingface.co/zentropi-ai/cope-a-9b). The API supports all labelers you create, including free and optionally paid; see [Zentropi pricing details](https://zentropi.ai/subscription).
+[^Z]: Zentropi text classifiers are free, and use the [model you choose](zentropi-cope.md#configuration) for each labeler version. The API supports all labelers you create, including free and optionally paid; see [Zentropi pricing details](https://zentropi.ai/subscription).
 
 ## Model cards
 
