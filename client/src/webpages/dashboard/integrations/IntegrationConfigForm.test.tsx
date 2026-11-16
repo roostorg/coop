@@ -50,13 +50,15 @@ function renderForm(labelerVersions: GQLZentropiLabelerVersion[]) {
         configurationFields: [],
         logoUrl: null,
         logoWithBackgroundUrl: null,
-        modelCard: {
-          __typename: 'ModelCard',
-          modelName: 'CoPE',
-          version: '1',
-          releaseDate: null,
-          sections: [],
-        },
+        modelCards: [
+          {
+            __typename: 'ModelCard',
+            modelName: 'CoPE',
+            version: '1',
+            releaseDate: null,
+            sections: [],
+          },
+        ],
         modelCardLearnMoreUrl: null,
         apiCredential: {
           __typename: 'ZentropiIntegrationApiCredential',
@@ -226,6 +228,112 @@ describe('Zentropi integration configuration', () => {
   });
 });
 
+function renderMultiModelForm() {
+  configData = {
+    __typename: 'Query',
+    integrationConfig: {
+      __typename: 'IntegrationConfigSuccessResult',
+      config: {
+        __typename: 'IntegrationConfig',
+        name: 'ZENTROPI',
+        title: 'Zentropi',
+        docsUrl: 'https://zentropi.ai/api',
+        requiresConfig: true,
+        configurationFields: [],
+        logoUrl: null,
+        logoWithBackgroundUrl: null,
+        modelCards: [
+          {
+            __typename: 'ModelCard',
+            modelName: 'CoPE-B-A4B',
+            version: '',
+            releaseDate: 'May 2026',
+            sections: [
+              {
+                __typename: 'ModelCardSection',
+                id: 'performanceBenchmarks',
+                title: 'Performance Benchmarks',
+                subsections: [],
+                fields: [
+                  {
+                    __typename: 'ModelCardField',
+                    label: 'F1 Score',
+                    value: 'a4b-only-benchmark',
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            __typename: 'ModelCard',
+            modelName: 'CoPE-B-S1',
+            version: '',
+            releaseDate: 'October 2026',
+            sections: [
+              {
+                __typename: 'ModelCardSection',
+                id: 'performanceBenchmarks',
+                title: 'Performance Benchmarks',
+                subsections: [],
+                fields: [
+                  {
+                    __typename: 'ModelCardField',
+                    label: 'Policy Steerability',
+                    value: 's1-only-benchmark',
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+        modelCardLearnMoreUrl: null,
+        apiCredential: {
+          __typename: 'ZentropiIntegrationApiCredential',
+          apiKey: 'test-api-key',
+          labelerVersions: [],
+        },
+      },
+    },
+  };
+  return render(
+    <HelmetProvider>
+      <MemoryRouter initialEntries={['/integrations/zentropi']}>
+        <Routes>
+          <Route
+            path="/integrations/:name"
+            element={<IntegrationConfigForm />}
+          />
+        </Routes>
+      </MemoryRouter>
+    </HelmetProvider>,
+  );
+}
+
+describe('Integration with multiple models', () => {
+  beforeEach(() => {
+    permissions = [GQLUserPermission.ManageOrg];
+  });
+
+  it('shows a tab per model, labelled by model name without the integration prefix', () => {
+    renderMultiModelForm();
+    expect(screen.getByRole('tab', { name: 'CoPE-B-A4B' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'CoPE-B-S1' })).toBeInTheDocument();
+    // The integration name must not be repeated in the tab label.
+    expect(screen.queryByText(/Zentropi: CoPE-B/)).not.toBeInTheDocument();
+  });
+
+  it('switches the visible model card when another tab is selected', () => {
+    renderMultiModelForm();
+    expect(screen.getByText('a4b-only-benchmark')).toBeInTheDocument();
+    expect(screen.queryByText('s1-only-benchmark')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'CoPE-B-S1' }));
+
+    expect(screen.getByText('s1-only-benchmark')).toBeInTheDocument();
+    expect(screen.queryByText('a4b-only-benchmark')).not.toBeInTheDocument();
+  });
+});
+
 function renderPluginForm(
   credential: GQLPluginIntegrationApiCredential['credential'],
 ) {
@@ -263,13 +371,15 @@ function renderPluginForm(
         ],
         logoUrl: null,
         logoWithBackgroundUrl: null,
-        modelCard: {
-          __typename: 'ModelCard',
-          modelName: 'Pigeon',
-          version: '1',
-          releaseDate: null,
-          sections: [],
-        },
+        modelCards: [
+          {
+            __typename: 'ModelCard',
+            modelName: 'Pigeon',
+            version: '1',
+            releaseDate: null,
+            sections: [],
+          },
+        ],
         modelCardLearnMoreUrl: null,
         apiCredential: {
           __typename: 'PluginIntegrationApiCredential',
@@ -361,6 +471,84 @@ describe('Plugin integration configuration', () => {
     fireEvent.change(screen.getByLabelText(/API key/), {
       target: { value: '' },
     });
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+  });
+});
+
+function renderOpenAiForm(apiKey: string, csamClassifierApiKey: string) {
+  const emptySections: [] = [];
+  configData = {
+    __typename: 'Query',
+    integrationConfig: {
+      __typename: 'IntegrationConfigSuccessResult',
+      config: {
+        __typename: 'IntegrationConfig',
+        name: 'OPEN_AI',
+        title: 'OpenAI',
+        docsUrl: 'https://platform.openai.com/docs',
+        requiresConfig: true,
+        configurationFields: [],
+        logoUrl: null,
+        logoWithBackgroundUrl: null,
+        modelCards: [
+          {
+            __typename: 'ModelCard',
+            modelName: 'OpenAI Moderation API',
+            version: '',
+            releaseDate: null,
+            sections: emptySections,
+          },
+          {
+            __typename: 'ModelCard',
+            modelName: 'OpenAI CSAM Image Classifier',
+            version: 'Latest',
+            releaseDate: null,
+            sections: emptySections,
+          },
+        ],
+        modelCardLearnMoreUrl: null,
+        apiCredential: {
+          __typename: 'OpenAiIntegrationApiCredential',
+          apiKey,
+          csamClassifierApiKey,
+        },
+      },
+    },
+  };
+  return render(
+    <HelmetProvider>
+      <MemoryRouter initialEntries={['/integrations/open_ai']}>
+        <Routes>
+          <Route
+            path="/integrations/:name"
+            element={<IntegrationConfigForm />}
+          />
+        </Routes>
+      </MemoryRouter>
+    </HelmetProvider>,
+  );
+}
+
+describe('OpenAI integration configuration', () => {
+  beforeEach(() => {
+    setConfig.mockReset().mockResolvedValue({});
+    permissions = [GQLUserPermission.ManageOrg];
+  });
+
+  // The Moderation API key and CSAM Classifier key are independent (possibly
+  // different OpenAI orgs), so either one alone is a valid configuration.
+  it('allows saving with only the CSAM Classifier key', () => {
+    renderOpenAiForm('', 'sk-csam-only');
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
+  });
+
+  it('allows saving with only the Moderation API key', () => {
+    renderOpenAiForm('sk-moderation-only', '');
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
+  });
+
+  it('blocks saving when neither OpenAI key is set', () => {
+    renderOpenAiForm('', '');
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
   });
 });

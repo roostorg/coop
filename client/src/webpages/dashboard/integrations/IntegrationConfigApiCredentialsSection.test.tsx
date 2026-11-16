@@ -223,3 +223,52 @@ describe('IntegrationConfigApiCredentialsSection (plugin fields)', () => {
     });
   });
 });
+
+describe('IntegrationConfigApiCredentialsSection (OpenAI active state)', () => {
+  const openAi = (apiKey: string, csamClassifierApiKey: string) =>
+    ({
+      __typename: 'OpenAiIntegrationApiCredential' as const,
+      apiKey,
+      csamClassifierApiKey,
+    }) as const;
+
+  it('shows Active only for keys whose entered value matches what is saved', () => {
+    const saved = openAi('sk-mod', 'sk-csam');
+    render(
+      <IntegrationConfigApiCredentialsSection
+        name="OPEN_AI"
+        apiCredential={saved}
+        savedApiCredential={saved}
+        setApiCredential={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryAllByText('Active')).toHaveLength(2);
+  });
+
+  it('does not show Active for an edited, unsaved key', () => {
+    render(
+      <IntegrationConfigApiCredentialsSection
+        name="OPEN_AI"
+        apiCredential={openAi('sk-mod-edited', 'sk-csam')}
+        savedApiCredential={openAi('sk-mod', 'sk-csam')}
+        setApiCredential={vi.fn()}
+      />,
+    );
+
+    // Only the unchanged CSAM key counts as active.
+    expect(screen.queryAllByText('Active')).toHaveLength(1);
+  });
+
+  it('does not show Active for a typed key when nothing is saved yet', () => {
+    render(
+      <IntegrationConfigApiCredentialsSection
+        name="OPEN_AI"
+        apiCredential={openAi('sk-mod', 'sk-csam')}
+        setApiCredential={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByText('Active')).toBeNull();
+  });
+});

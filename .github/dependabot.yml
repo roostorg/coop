@@ -16,6 +16,8 @@ multi-ecosystem-groups:
   docker-images:
     schedule:
       interval: 'weekly'
+    commit-message:
+      prefix: 'chore(deps)'
     labels:
       - 'dependencies'
       - 'dependabot'
@@ -68,6 +70,9 @@ updates:
     directory: '/'
     schedule:
       interval: 'weekly'
+    commit-message:
+      prefix: 'chore'
+      include: 'scope'
     # Longer than pnpm-workspace.yaml's 3-day minimumReleaseAge (4320 minutes),
     # so a proposed version is always old enough for `pnpm install` to accept.
     # Cooldown applies to version updates only; security updates are proposed
@@ -143,6 +148,8 @@ updates:
     directory: '/'
     schedule:
       interval: 'weekly'
+    commit-message:
+      prefix: 'chore(deps)'
     cooldown:
       default-days: 7
     labels:
