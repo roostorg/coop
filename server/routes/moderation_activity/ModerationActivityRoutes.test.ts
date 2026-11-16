@@ -164,8 +164,15 @@ describe('GET /moderation_activity/export', () => {
       { startTime: '2026-02-01T00:00:00Z', endTime: '2026-01-01T00:00:00Z' },
       { startTime: 'yesterday-ish' },
       { startTime: daysAgo(30), reviewerIds: 5 },
+      { startTime: daysAgo(30), view: 'UNKNOWN' },
+      { startTime: daysAgo(30), extra: true },
       { startTime: daysAgo(30), decisions: [{ ignoreDecision: { _: true } }] },
       { startTime: daysAgo(30), decisions: [{ type: 'NOT_A_DECISION' }] },
+      { startTime: daysAgo(30), decisions: [{ type: 'IGNORE', extra: true }] },
+      {
+        startTime: daysAgo(30),
+        decisions: [{ type: 'CUSTOM_ACTION', actionIds: [5] }],
+      },
     ];
     for (const input of badInputs) {
       await request.get(rawExportUrl(input)).expect(400);

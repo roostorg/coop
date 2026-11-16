@@ -37,7 +37,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Post new advisories
-        uses: roostorg/discord-bot/security-advisories@f86a3b9803fad707739ad40ac3a4bafd099602c9 # main
+        uses: roostorg/discord-bot/security-advisories@ec1c56411627b77bdcc6e47fca9ab8d817e739ca
         with:
           webhook-url: ${{ secrets.SECURITY_DISCORD_WEBHOOK }}
           advisory-read-token: ${{ secrets.ADVISORY_READ_TOKEN }}
