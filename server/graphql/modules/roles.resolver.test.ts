@@ -1,3 +1,5 @@
+import { vi, type Mock } from 'vitest';
+
 import {
   UserPermission,
   UserRole,
@@ -11,18 +13,18 @@ import { resolvers } from './roles.js';
 // sanitized input.
 
 type RoleApiMock = {
-  listRolesForOrg: jest.Mock;
-  getPermissionGroups: jest.Mock;
-  updateRolePermissions: jest.Mock;
-  renameRole: jest.Mock;
+  listRolesForOrg: Mock;
+  getPermissionGroups: Mock;
+  updateRolePermissions: Mock;
+  renameRole: Mock;
 };
 
 function makeCtx(permissions: readonly UserPermission[]) {
   const roleAPI: RoleApiMock = {
-    listRolesForOrg: jest.fn(async () => []),
-    getPermissionGroups: jest.fn(() => []),
-    updateRolePermissions: jest.fn(async () => stubRoleParent()),
-    renameRole: jest.fn(async () => stubRoleParent()),
+    listRolesForOrg: vi.fn(async () => []),
+    getPermissionGroups: vi.fn(() => []),
+    updateRolePermissions: vi.fn(async () => stubRoleParent()),
+    renameRole: vi.fn(async () => stubRoleParent()),
   };
   const ctx = {
     getUser: () => ({
@@ -43,7 +45,6 @@ function stubRoleParent() {
     description: 'desc',
     isSystem: true,
     permissions: [UserPermission.MANAGE_ORG],
-    isFallback: false,
     userCount: 1,
   };
 }
@@ -114,6 +115,12 @@ describe('roles resolvers', () => {
       // here because admins managing users routinely see what permissions
       // their reports have via the User type already.
       const { ctx, roleAPI } = makeCtx([UserPermission.MANAGE_USERS]);
+      await Query.rolesForOrg({}, {}, ctx);
+      expect(roleAPI.listRolesForOrg).toHaveBeenCalledWith('org-1');
+    });
+
+    it('delegates to roleAPI.listRolesForOrg when caller has EDIT_MRT_QUEUES', async () => {
+      const { ctx, roleAPI } = makeCtx([UserPermission.EDIT_MRT_QUEUES]);
       await Query.rolesForOrg({}, {}, ctx);
       expect(roleAPI.listRolesForOrg).toHaveBeenCalledWith('org-1');
     });

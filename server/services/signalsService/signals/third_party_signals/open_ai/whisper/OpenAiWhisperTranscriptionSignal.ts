@@ -1,4 +1,5 @@
 import { Readable } from 'node:stream';
+import { type ReadableStream } from 'node:stream/web';
 import { ScalarTypes } from '@roostorg/coop-types';
 import streamToBlob from 'stream-to-blob';
 import { FormData } from 'undici';
@@ -8,8 +9,9 @@ import { makeSignalPermanentError } from '../../../../../../utils/errors.js';
 import { Language } from '../../../../../../utils/language.js';
 import { __throw } from '../../../../../../utils/misc.js';
 import { type Bind1 } from '../../../../../../utils/typescript-types.js';
+import { abandonDownload } from '../../../../../networkingService/cancelReadableStream.js';
 import { type FetchHTTP } from '../../../../../networkingService/index.js';
-import { type CachedGetCredentials } from '../../../../../signalAuthService/signalAuthService.js';
+import { type GetCredentials } from '../../../../../signalAuthService/signalAuthService.js';
 import { Integration } from '../../../../types/Integration.js';
 import { SignalPricingStructure } from '../../../../types/SignalPricingStructure.js';
 import { SignalType } from '../../../../types/SignalType.js';
@@ -38,7 +40,7 @@ export default class OpenAiWhisperTranscriptionSignal extends SignalBase<
   'OPEN_AI_WHISPER_TRANSCRIPTION'
 > {
   constructor(
-    protected readonly getOpenAiCredentials: CachedGetCredentials<'OPEN_AI'>,
+    protected readonly getOpenAiCredentials: GetCredentials<'OPEN_AI'>,
     protected readonly getOpenAiTranscription: FetchOpenAiTranscription,
   ) {
     super();
@@ -214,6 +216,7 @@ export async function getOpenAiTranscription(
   const formData = await getWhisperAPIFormDataForUrl(fetchHTTP, url);
   const response = await fetchHTTP({
     url: 'https://api.openai.com/v1/audio/transcriptions',
+    isUntrustedUrl: false,
     method: 'post',
     headers: { Authorization: `Bearer ${apiKey}` },
     body: formData,
@@ -256,14 +259,19 @@ export async function getOpenAiTranscription(
 }
 
 async function getWhisperAPIFormDataForUrl(fetchHTTP: FetchHTTP, url: string) {
+  const download = new AbortController();
+  let body: ReadableStream | undefined;
   try {
     const response = await fetchHTTP({
       url,
+      isUntrustedUrl: true,
       method: 'get',
       handleResponseBody: 'as-readable-stream',
       maxResponseSize: '25mb',
       iWillConsumeTheResponseBodyStreamQuicklyToAvoidACrash: true,
+      signal: download.signal,
     });
+    body = response.body;
 
     if (!response.ok || !response.body) {
       throw Error(
@@ -301,6 +309,7 @@ async function getWhisperAPIFormDataForUrl(fetchHTTP: FetchHTTP, url: string) {
 
     return formData;
   } catch (e) {
+    await abandonDownload(download, body);
     if (e instanceof Error) {
       if (e.name === 'ResponseExceededMaxSizeError') {
         throw makeSignalPermanentError('Input file too large', {

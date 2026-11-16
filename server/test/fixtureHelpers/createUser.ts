@@ -2,6 +2,8 @@ import { faker } from '@faker-js/faker';
 import { type Kysely } from 'kysely';
 import { uid } from 'uid';
 
+// Test fixtures may create intentionally minimal organizations without roles.
+import { seedSystemRolesForOrg } from '../../graphql/datasources/rolePersistence.js';
 import {
   kyselyUserDeleteById,
   kyselyUserInsert,
@@ -37,6 +39,7 @@ export default async function createUser(
       ? await hashPassword(extra.password)
       : null;
 
+  await seedSystemRolesForOrg(db, orgId);
   const user = await kyselyUserInsert({
     db,
     id: userId,

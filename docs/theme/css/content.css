@@ -1,0 +1,122 @@
+/* Content styling overrides */
+
+:root {
+  scroll-behavior: smooth;
+}
+
+.content img {
+  background-color: color-mix(in srgb, var(--bg) 80%, white);
+  border: 0.5em solid color-mix(in srgb, var(--bg) 80%, white);
+  box-shadow: 0 0.25em 0.5em 0.25em rgba(0 0 0 / 0.1 );
+  box-sizing: border-box;
+  margin-block: 0.5em;
+}
+
+.blockquote-tag {
+  background: var(--quote-bg);
+  border-radius: 0.25em;
+  padding: 1em;
+}
+
+/* Share dropdown; .theme-popup anchors left, but this one hangs off the right. */
+#share-list {
+  left: unset;
+  right: 10px;
+}
+
+#share-list .share-item {
+  background: inherit;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font-size: inherit;
+  line-height: 25px;
+  margin: 0;
+  padding: 2px 20px;
+  text-align: start;
+  white-space: nowrap;
+  width: 100%;
+}
+
+#share-list .share-item:hover {
+  background-color: color-mix(in srgb, var(--fg) 4%, transparent);
+}
+
+.cta-buttons {
+  display: flex;
+  font-size: 1.125em;
+  justify-content: space-evenly;
+  flex-wrap: wrap;
+  margin-inline: auto;
+}
+
+.cta-buttons a.button {
+  background-image: linear-gradient(
+    135deg,
+    var(--roost-yellow),
+    var(--roost-muddy),
+    var(--roost-peach)
+  );
+  background-position: center;
+  background-size: 175%;
+  border-radius: 0.25em;
+  color: var(--roost-charcoal);
+  font-weight: 600;
+  margin-block: 1em;
+  margin-inline: 0.5em;
+  padding: 0.5em 1em;
+  text-decoration: none;
+  transition:
+    background-size 1s ease-in-out,
+    box-shadow 200ms ease-in-out,
+    color 200ms ease-in-out;
+}
+
+.cta-buttons a.button:hover,
+.cta-buttons a.button:focus {
+  background-size: 100%;
+  color: color-mix(var(--roost-charcoal) 80%, transparent);
+  text-decoration: none;
+  box-shadow:
+    -3px -3px 12px -3px var(--roost-yellow),
+    3px 3px 12px -3px var(--roost-peach);
+}
+
+.cta-buttons a.button.discord {
+  background-image: none;
+  background-color: #5865F2;
+  color: white;
+}
+
+.cta-buttons a.button.github {
+  background-image: none;
+  background-color: black;
+  color: white;
+}
+
+table {
+  width: 100%;
+}
+
+table td,
+table thead th {
+  padding: 0.25em 0.5em;
+}
+
+table td {
+  text-wrap: balance;
+}
+
+dt {
+  margin-block: 1.5em 0;
+}
+
+dd {
+  margin-inline-start: 1em;
+  margin-block: 0.25em;
+}
+
+hr {
+  margin-block: 2em;
+  opacity: 0.25;
+}

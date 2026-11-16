@@ -1,11 +1,12 @@
 import { ProxyTracerProvider } from '@opentelemetry/api';
+import { vi } from 'vitest';
 
 import SafeTracer from './SafeTracer.js';
 
 describe('SafeTracer', () => {
   describe('traced', () => {
     it('shuold run the underlying function with provided args, propagate return value', () => {
-      const fn = jest.fn<(it: unknown) => number>().mockReturnValue(1);
+      const fn = vi.fn<(it: unknown) => number>().mockReturnValue(1);
       const tracer = new SafeTracer(
         new ProxyTracerProvider().getTracer('noop'),
       );

@@ -27,7 +27,7 @@ export class PostgresSigningKeyPairStorage implements SigningKeyPairStorage {
 
   async storeKeyPair(
     keyId: SigningKeyId,
-    keyPair: CryptoKeyPair,
+    keyPair: crypto.webcrypto.CryptoKeyPair,
   ): Promise<void> {
     const [privateKey, publicKey] = await Promise.all([
       crypto.subtle.exportKey('jwk', keyPair.privateKey),
@@ -60,7 +60,9 @@ export class PostgresSigningKeyPairStorage implements SigningKeyPairStorage {
       .execute();
   }
 
-  private async fetchKeyPair(keyId: SigningKeyId): Promise<CryptoKeyPair> {
+  private async fetchKeyPair(
+    keyId: SigningKeyId,
+  ): Promise<crypto.webcrypto.CryptoKeyPair> {
     const result = await this.db
       .selectFrom('public.signing_keys')
       .select(['key_data'])
@@ -106,12 +108,16 @@ export class PostgresSigningKeyPairStorage implements SigningKeyPairStorage {
     };
   }
 
-  async fetchPublicKey(keyId: SigningKeyId): Promise<CryptoKey> {
+  async fetchPublicKey(
+    keyId: SigningKeyId,
+  ): Promise<crypto.webcrypto.CryptoKey> {
     const pair = await this.fetchKeyPair(keyId);
     return pair.publicKey;
   }
 
-  async fetchPrivateKey(keyId: SigningKeyId): Promise<CryptoKey> {
+  async fetchPrivateKey(
+    keyId: SigningKeyId,
+  ): Promise<crypto.webcrypto.CryptoKey> {
     const pair = await this.fetchKeyPair(keyId);
     return pair.privateKey;
   }

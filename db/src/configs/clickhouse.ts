@@ -198,7 +198,7 @@ export default {
   },
 
   async prepareDbAndDisconnect() {
-    const client = createClickhouseClient(connectionOptions.database);
+    const client = createClickhouseClient('default');
 
     try {
       await client.command({

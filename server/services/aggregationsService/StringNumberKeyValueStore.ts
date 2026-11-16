@@ -1,6 +1,7 @@
 import { type Cluster, type Redis } from 'ioredis';
 
-import { inject, type Dependencies } from '../../iocContainer/index.js';
+import { type Dependencies } from '../../iocContainer/index.js';
+import { inject } from '../../iocContainer/utils.js';
 
 type RedisConnection = Redis | Cluster;
 

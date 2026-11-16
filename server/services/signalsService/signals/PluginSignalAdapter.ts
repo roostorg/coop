@@ -3,7 +3,10 @@
  * signals can be registered and used in routing/enforcement rules.
  */
 
-import type { SignalSubcategory } from '@roostorg/coop-types';
+import type {
+  PluginSignalDescriptor,
+  SignalSubcategory,
+} from '@roostorg/coop-types';
 import { type ReadonlyDeep } from 'type-fest';
 
 import { type Language } from '../../../utils/language.js';
@@ -17,39 +20,7 @@ import SignalBase, {
   type SignalResult,
 } from './SignalBase.js';
 
-/** Minimal descriptor shape from a plugin; matches @roostorg/coop-types PluginSignalDescriptor. */
-export type PluginSignalDescriptor = Readonly<{
-  id: { type: string };
-  displayName: string;
-  description: string;
-  docsUrl: string | null;
-  recommendedThresholds: Readonly<{
-    highPrecisionThreshold: string | number;
-    highRecallThreshold: string | number;
-  }> | null;
-  supportedLanguages: readonly string[] | 'ALL';
-  pricingStructure: { type: 'FREE' | 'SUBSCRIPTION' };
-  eligibleInputs: readonly string[];
-  outputType: Readonly<{ scalarType: string }>;
-  getCost: () => number;
-  run: (input: unknown) => Promise<unknown>;
-  getDisabledInfo: (
-    orgId: string,
-  ) => Promise<
-    | { disabled: false; disabledMessage?: string }
-    | { disabled: true; disabledMessage: string }
-  >;
-  needsMatchingValues: boolean;
-  eligibleSubcategories: ReadonlyArray<{
-    id: string;
-    label: string;
-    description?: string;
-    childrenIds: readonly string[];
-  }>;
-  needsActionPenalties: boolean;
-  integration: string;
-  allowedInAutomatedRules: boolean;
-}>;
+export type { PluginSignalDescriptor };
 
 /**
  * Wraps a plugin-provided descriptor so it satisfies SignalBase and can be
@@ -142,5 +113,9 @@ export default class PluginSignalAdapter extends SignalBase<
 
   override get allowedInAutomatedRules() {
     return this.descriptor.allowedInAutomatedRules;
+  }
+
+  override get contextNeeds() {
+    return this.descriptor.contextNeeds;
   }
 }

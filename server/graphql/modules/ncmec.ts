@@ -1,10 +1,10 @@
-import { formatItemSubmissionForGQL } from '../../graphql/types.js';
 import { UserPermission } from '../../services/userManagementService/index.js';
 import type {
   GQLMutationResolvers,
   GQLNcmecOrgSettings,
   GQLQueryResolvers,
 } from '../generated.js';
+import { requireChildSafetyPermission } from '../utils/authorization.js';
 import {
   forbiddenError,
   unauthenticatedError,
@@ -24,6 +24,7 @@ const typeDefs = /* GraphQL */ `
       userId: ItemIdentifierInput!
       reportedMessages: [ItemIdentifierInput!]!
     ): [ThreadWithMessagesAndIpAddress!]!
+      @deprecated(reason: "Not supported. Always returns an empty list.")
     ncmecOrgSettings: NcmecOrgSettings
   }
 
@@ -246,10 +247,7 @@ const typeDefs = /* GraphQL */ `
 
 const Query: GQLQueryResolvers = {
   async ncmecReportById(_, { reportId }, context) {
-    const user = context.getUser();
-    if (!user) {
-      throw unauthenticatedError('User required.');
-    }
+    const user = requireChildSafetyPermission(context.getUser());
     const report = await context.services.NcmecService.getNcmecReportById({
       orgId: user.orgId,
       reportId,
@@ -278,24 +276,9 @@ const Query: GQLQueryResolvers = {
       reportedMessages: report.reportedMessages ?? [],
     };
   },
-  async ncmecThreads(_, { userId, reportedMessages }, context) {
-    const user = context.getUser();
-    if (!user) {
-      throw unauthenticatedError('User required.');
-    }
-    const threads = await context.services.NcmecService.getNcmecMessages(
-      user.orgId,
-      userId,
-      reportedMessages,
-    );
-    return threads.map((thread) => ({
-      threadId: thread.threadId,
-      threadTypeId: thread.threadTypeId,
-      messages: thread.messages.map((message) => ({
-        message: formatItemSubmissionForGQL(message.message),
-        ipAddress: message.ipAddress,
-      })),
-    }));
+  async ncmecThreads(_, __, context) {
+    requireChildSafetyPermission(context.getUser());
+    return [];
   },
   async ncmecOrgSettings(_, __, context): Promise<GQLNcmecOrgSettings | null> {
     const user = context.getUser();

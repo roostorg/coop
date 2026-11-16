@@ -23,6 +23,7 @@ async function importSeedHelpers() {
     createOrg,
     ums,
     userPersistence,
+    rolePersistence,
     createRule,
     createMrtQueue,
     itemSubmissionQueue,
@@ -37,6 +38,9 @@ async function importSeedHelpers() {
       `${TRANSPILED}/graphql/datasources/userKyselyPersistence.js`
     ) as Promise<
       typeof import('../../graphql/datasources/userKyselyPersistence.js')
+    >,
+    import(`${TRANSPILED}/graphql/datasources/rolePersistence.js`) as Promise<
+      typeof import('../../graphql/datasources/rolePersistence.js')
     >,
     import(`${TRANSPILED}/test/fixtureHelpers/createRule.js`) as Promise<
       typeof import('../../test/fixtureHelpers/createRule.js')
@@ -53,6 +57,7 @@ async function importSeedHelpers() {
     hashPassword: ums.hashPassword,
     UserRole: ums.UserRole,
     kyselyUserInsert: userPersistence.kyselyUserInsert,
+    seedSystemRolesForOrg: rolePersistence.seedSystemRolesForOrg,
     createRule: createRule.default,
     createMrtQueue: createMrtQueue.default,
     ITEM_SUBMISSION_QUEUE_NAME: itemSubmissionQueue.ITEM_SUBMISSION_QUEUE_NAME,
@@ -88,10 +93,16 @@ class Seeder {
    */
   async orgWithAdmin(opts: { password?: string } = {}): Promise<SeededAdmin> {
     const password = opts.password ?? 'e2e-password';
-    const { createOrg, hashPassword, UserRole, kyselyUserInsert } =
-      await importSeedHelpers();
+    const {
+      createOrg,
+      hashPassword,
+      UserRole,
+      kyselyUserInsert,
+      seedSystemRolesForOrg,
+    } = await importSeedHelpers();
 
     const org = await createOrg(this.deps);
+    await seedSystemRolesForOrg(this.deps.KyselyPg, org.org.id);
 
     const userId = uid();
     const email = `e2e-${userId}@example.com`;

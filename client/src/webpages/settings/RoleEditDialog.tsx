@@ -41,7 +41,6 @@ gql`
       displayName
       description
       isSystem
-      isFallback
       permissions
       userCount
     }
@@ -54,7 +53,6 @@ gql`
       displayName
       description
       isSystem
-      isFallback
       permissions
       userCount
     }
@@ -66,7 +64,6 @@ type EditableRole = {
   displayName: string;
   description?: string | null;
   permissions: readonly GQLUserPermission[];
-  isFallback: boolean;
   userCount: number;
 };
 
@@ -228,14 +225,6 @@ export default function RoleEditDialog(props: {
                 : 'Any changes to this role will retroactively apply to every user assigned to this role.'}
             </div>
           </div>
-
-          {role.isFallback && (
-            <div className="text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded p-3">
-              This role is currently using default permissions for your
-              organization. Saving will create a custom configuration that
-              overrides the defaults.
-            </div>
-          )}
 
           <div className="flex flex-col gap-2">
             <label

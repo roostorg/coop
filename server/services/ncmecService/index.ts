@@ -10,6 +10,7 @@ export {
   type NCMECReportParams,
   default as NcmecReporting,
 } from './ncmecReporting.js';
+export { isNcmecTestMode } from './ncmecEnv.js';
 export { summarizeNcmecErrorForReviewer } from './ncmecReviewerErrors.js';
 export { filterDecisionsToFailedSubmissions } from './ncmecSubmissionFilters.js';
 export {

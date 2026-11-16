@@ -1,6 +1,7 @@
 import { type Kysely } from 'kysely';
 
-import { inject, type Dependencies } from '../../iocContainer/index.js';
+import { type Dependencies } from '../../iocContainer/index.js';
+import { inject } from '../../iocContainer/utils.js';
 import { type CombinedPg } from '../../services/combinedDbTypes.js';
 import {
   type PermissionGroup,

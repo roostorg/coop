@@ -1,10 +1,11 @@
+import { type Policy } from '../../services/moderationConfigService/index.js';
 import { createApiKeyMiddleware } from '../../utils/apiKeyMiddleware.js';
 import { route } from '../../utils/route-helpers.js';
 import { type Controller, type ControllerRouteList } from '../index.js';
 import getPolicies from './getPolicies.js';
 
 export type GetPoliciesOutput = {
-  policies: { id: string; name: string; parentId: string | null }[];
+  policies: Omit<Policy, 'orgId' | 'createdAt' | 'updatedAt'>[];
 };
 
 export default {

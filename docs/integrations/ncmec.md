@@ -12,7 +12,7 @@ Before you can review and report content to NCMEC, you must have the following:
 
 2. **CyberTipline API credentials**: username and password from NCMEC to submit reports to the [CyberTipline API](https://report.cybertip.org/ispws/documentation/index.html).
 
-3. **"User" ItemType with a `creatorId` field**: NCMEC jobs are centered on a user, not individual pieces of content. Coop extracts the user from a content item via a `creatorId` field (a `RELATED_ITEM` field referencing the User Item Type), then aggregates all media associated with that user into a single NCMEC review job.
+3. **Content ItemTypes with a `creatorId` schema field role**: NCMEC jobs are centered on a user, not individual pieces of content. For every Content ItemType that can be escalated to NCMEC, map `creatorId` to a `RELATED_ITEM` field that references a User ItemType. Coop uses that field to identify the user and aggregate their media into a single NCMEC review job. User items can be escalated directly and do not need this role.
 
 4. **Dedicated NCMEC manual review queue** for Coop to route jobs to. Whether decisions made from this queue submit real CyberTips or go to NCMEC's sandbox is controlled by the `NCMEC_ENV` environment variable on the Coop server; see [Test vs. Production Submissions](#test-vs-production-submissions).
 
@@ -57,7 +57,7 @@ Content is routed to the NCMEC queue through three automatic detection paths and
 
 ### 1. Hash-matching known CSAM (HMA)
 
-Coop integrates with Meta's [Hasher-Matcher-Actioner (HMA)](https://github.com/facebook/ThreatExchange/tree/main/hasher-matcher-actioner) to match uploaded media against NCMEC's database of known CSAM hashes. This is the most reliable detection path: a hash match is a strong signal that content is confirmed CSAM.
+Coop integrates with Meta's [Hasher-Matcher-Actioner (HMA)](https://github.com/meta/ThreatExchange/tree/main/hasher-matcher-actioner) to match uploaded media against NCMEC's database of known CSAM hashes. This is the most reliable detection path: a hash match is a strong signal that content is confirmed CSAM.
 
 HMA syncs hashes from NCMEC via NCMEC's [Hash Sharing API](https://report.cybertip.org/ws-hashsharing/v2/documentation/), which gives you local access to NCMEC's database of image and video fingerprints for known CSAM for fast matching.
 
@@ -90,7 +90,7 @@ When your platform sends a user report to Coop's Report API with `reportedForRea
 
 ### 4. Manual escalation
 
-In any review job, moderators with NCMEC access can select **Enqueue to NCMEC** from the action list. This immediately moves the job to the NCMEC queue.
+In a User review job, or a Content review job whose item resolves to a User through its `creatorId` role, moderators with NCMEC access can select **Enqueue to NCMEC** from the action list. If a Content item has no creator value, the action is disabled and explains that the job must be linked to a user. The server also rejects the decision if the creator cannot be resolved to a User ItemType, leaving the original review job in its queue.
 
 ## CyberTip submission flow
 
@@ -147,6 +147,15 @@ Coop routes every CyberTip submission to one of two NCMEC endpoints determined b
 Operators are responsible for ensuring `NCMEC_ENV` matches the credentials they have configured in **Settings** → **NCMEC**. NCMEC issues separate test and production credentials, and submitting from an unapproved integration to the production endpoint can result in your credentials being revoked.
 
 Reports submitted against the test endpoint are stored in Coop's database with an `is_test` flag and are only visible in the NCMEC Reports dashboard to the reviewer who submitted them. Production reports are visible to anyone in the org with the `VIEW_CHILD_SAFETY_DATA` permission.
+
+#### Switching to production
+
+When you change `NCMEC_ENV` to `production`, the [retry job](#retry-behavior) handles decisions from the past 30 days that were made in test mode like this:
+
+- **Decisions that were submitted to the test endpoint** are not resent. Their test report counts as already submitted.
+- **Decisions whose test submission failed** are still retried, and the retry goes to the production endpoint.
+
+To send a real report for a user whose report only went to the test endpoint, put the user back into NCMEC review and submit a new decision.
 
 ## Webhooks
 
@@ -289,7 +298,9 @@ Coop only checks for a successful HTTP status code. The response body is ignored
 
 If a CyberTip submission fails (e.g. due to a transient network error or NCMEC API outage), Coop automatically retries the submission. A background job runs periodically and retries any failed NCMEC decisions that:
 
-- Have not already been successfully submitted (no matching report in the database)
+- Have not already been successfully submitted (no production report for the user, and no test report for the user made after the decision)
 - Have fewer than 10 prior retry attempts
 - Are not marked as a permanent error (e.g. all media missing)
 - Were decided within the past 30 days
+
+Reports are matched by reported user, not by decision. If a user already has a production report from the past 30 days, a later failed decision against that same user is not retried automatically. A test report only covers the user's decisions made before it, so a later failed decision is still retried.

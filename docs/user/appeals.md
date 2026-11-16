@@ -10,6 +10,8 @@ To populate appeals in your review queues, send Coop appealed decisions and crea
 
 Appeals arrive in the Review Console as jobs, similar to reports. The job shows the item that was originally actioned, the policies cited, the user's appeal reason, and any additional context you included when submitting the appeal.
 
+A dot on the Appeals tab means at least one appeals queue you can review has pending jobs.
+
 ## Upholding or overturning an appeal
 
 Reviewers see the original moderation decision and can choose to:

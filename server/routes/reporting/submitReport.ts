@@ -20,6 +20,7 @@ import {
 import { withRetries } from '../../utils/misc.js';
 import { type RequestHandlerWithBodies } from '../../utils/route-helpers.js';
 import { isValidDate } from '../../utils/time.js';
+import { addHashesToImageFields } from '../items/hashImageFields.js';
 import {
   type ReportItemInput,
   type ReportItemOutput,
@@ -96,94 +97,15 @@ export default function submitReport({
       const reportedItemSubmission = await toItemSubmission(reportedItem);
 
       if (
-        Array.isArray(reportedItem.data.images) &&
-        reportedItem.data.images.length > 0 &&
+        reportedItemSubmission.itemSubmission &&
         !reportedItemSubmission.error
       ) {
-        try {
-          const images = reportedItem.data.images as string[];
-
-          // Get all hash banks for this org once
-          const allBanks = await HMAHashBankService.listBanks(orgId);
-          const allBankNames = allBanks.map((bank) => bank.hma_name);
-
-          const imageHashes = await Promise.all(
-            images.map(async (url) => {
-              if (typeof url === 'string' && url) {
-                try {
-                  const hmaHashWithRetries = await withRetries(
-                    {
-                      maxRetries: 5,
-                      initialTimeMsBetweenRetries: 5,
-                      maxTimeMsBetweenRetries: 500,
-                      jitter: true,
-                    },
-                    async () => {
-                      return HMAHashBankService.hashContentFromUrl(url);
-                    },
-                  );
-                  const hashes = await hmaHashWithRetries();
-
-                  // Check which banks match this image
-                  const matchedBankNames: string[] = [];
-
-                  if (
-                    Object.keys(hashes).length > 0 &&
-                    allBankNames.length > 0
-                  ) {
-                    const matchResults = await Promise.all(
-                      Object.entries(hashes).map(async ([signalType, hash]) =>
-                        HMAHashBankService.checkImageMatchWithDetails(
-                          allBankNames,
-                          signalType,
-                          hash,
-                        ),
-                      ),
-                    );
-
-                    // Collect all matched banks
-                    const allMatchedHmaBanks = new Set<string>();
-                    matchResults.forEach((result) => {
-                      result.matchedBanks.forEach((bank) =>
-                        allMatchedHmaBanks.add(bank),
-                      );
-                    });
-
-                    // Map HMA bank names to user-friendly names
-                    allMatchedHmaBanks.forEach((hmaName) => {
-                      const bank = allBanks.find((b) => b.hma_name === hmaName);
-                      if (bank) {
-                        matchedBankNames.push(bank.name);
-                      }
-                    });
-                  }
-
-                  return {
-                    url,
-                    hashes,
-                    matchedBanks:
-                      matchedBankNames.length > 0
-                        ? matchedBankNames
-                        : undefined,
-                  };
-                } catch (e) {
-                  return {
-                    url,
-                    hashes: {},
-                  };
-                }
-              }
-              return null;
-            }),
-          );
-          // Attach the hashes array to the item submission data
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (reportedItemSubmission.itemSubmission.data as any).images =
-            imageHashes;
-        } catch (error) {
-          // eslint-disable-next-line no-console
-          console.error('Failed to get HMA hashes for images:', error);
-        }
+        await addHashesToImageFields({
+          itemType: reportedItemSubmission.itemSubmission.itemType,
+          data: reportedItemSubmission.itemSubmission.data,
+          orgId,
+          HMAHashBankService,
+        });
       }
 
       const reportedThreadSubmission = thread

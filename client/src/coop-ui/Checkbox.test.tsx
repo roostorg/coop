@@ -1,16 +1,14 @@
-import { render, screen } from '@testing-library/react';
-import React from 'react';
-
-import '@testing-library/jest-dom/extend-expect';
-
 import { Checkbox } from '@/coop-ui/Checkbox';
 import { CheckboxProps } from '@radix-ui/react-checkbox';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import React from 'react';
+import { vi } from 'vitest';
 
 describe('Checkbox Component', () => {
   const renderCheckbox = (props: Partial<CheckboxProps> = {}) => {
     const defaultProps: CheckboxProps = {
-      onCheckedChange: jest.fn(),
+      onCheckedChange: vi.fn(),
       ...props,
     };
     return render(<Checkbox {...defaultProps} />);
@@ -27,7 +25,7 @@ describe('Checkbox Component', () => {
   });
 
   test('calls onCheckedChange when the checkbox is clicked', () => {
-    const handleChange = jest.fn();
+    const handleChange = vi.fn();
     renderCheckbox({ onCheckedChange: handleChange });
 
     const checkbox = screen.getByRole('checkbox');
@@ -37,7 +35,7 @@ describe('Checkbox Component', () => {
   });
 
   test('does not call onCheckedChange when the checkbox is disabled', () => {
-    const handleChange = jest.fn();
+    const handleChange = vi.fn();
     renderCheckbox({ onCheckedChange: handleChange, disabled: true });
 
     const checkbox = screen.getByRole('checkbox');
@@ -55,17 +53,17 @@ describe('Checkbox Component', () => {
 
   test('renders with the defaultChecked prop and updates with checked prop', () => {
     const { rerender } = render(
-      <Checkbox defaultChecked={true} onCheckedChange={jest.fn()} />,
+      <Checkbox defaultChecked={true} onCheckedChange={vi.fn()} />,
     );
     const checkbox = screen.getByRole('checkbox');
 
     expect(checkbox).toBeChecked();
 
-    rerender(<Checkbox checked={false} onCheckedChange={jest.fn()} />);
+    rerender(<Checkbox checked={false} onCheckedChange={vi.fn()} />);
 
     expect(checkbox).not.toBeChecked();
 
-    rerender(<Checkbox checked={true} onCheckedChange={jest.fn()} />);
+    rerender(<Checkbox checked={true} onCheckedChange={vi.fn()} />);
 
     expect(checkbox).toBeChecked();
   });

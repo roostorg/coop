@@ -1,3 +1,5 @@
+import { vi } from 'vitest';
+
 import { jsonStringify } from './encoding.js';
 import KeyedResourceRegistry from './keyedResourceRegistry.js';
 
@@ -5,12 +7,10 @@ type Key = { orgId: string; queueId: string };
 
 /** Stand-in for a BullMQ Queue/Worker: something with a close() that matters. */
 function makeFakeResource() {
-  return { close: jest.fn(async () => {}) };
+  return { close: vi.fn(async () => {}) };
 }
 
-function makeRegistry(
-  create = jest.fn(async (_key: Key) => makeFakeResource()),
-) {
+function makeRegistry(create = vi.fn(async (_key: Key) => makeFakeResource())) {
   const registry = new KeyedResourceRegistry({
     create,
     keyToString: (key: Key) => jsonStringify(key),
@@ -68,17 +68,17 @@ describe('KeyedResourceRegistry', () => {
     const { registry, create } = makeRegistry();
     const key = { orgId: 'org', queueId: 'q1' };
 
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     try {
       const first = await registry.get(key);
-      jest.advanceTimersByTime(60 * 60 * 1000);
+      vi.advanceTimersByTime(60 * 60 * 1000);
       const second = await registry.get(key);
 
       expect(second).toBe(first);
       expect(first.close).not.toHaveBeenCalled();
       expect(create).toHaveBeenCalledTimes(1);
     } finally {
-      jest.useRealTimers();
+      vi.useRealTimers();
     }
   });
 
@@ -119,10 +119,10 @@ describe('KeyedResourceRegistry', () => {
 
   it('close() attempts every resource even when one fails, then reports', async () => {
     const bad = {
-      close: jest.fn(async () => Promise.reject(new Error('nope'))),
+      close: vi.fn(async () => Promise.reject(new Error('nope'))),
     };
     const good = makeFakeResource();
-    const create = jest.fn(async (key: Key) =>
+    const create = vi.fn(async (key: Key) =>
       key.queueId === 'bad' ? bad : good,
     );
     const { registry } = makeRegistry(create);
@@ -146,7 +146,7 @@ describe('KeyedResourceRegistry', () => {
   it('does not cache a failed creation', async () => {
     let attempt = 0;
     const resource = makeFakeResource();
-    const create = jest.fn(async (_key: Key) => {
+    const create = vi.fn(async (_key: Key) => {
       attempt += 1;
       if (attempt === 1) throw new Error('transient');
       return resource;

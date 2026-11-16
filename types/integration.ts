@@ -9,6 +9,8 @@
  * them via an integrations config file (see CoopIntegrationsConfig).
  */
 
+import type { JsonObject } from 'type-fest';
+
 /** Unique identifier for the integration (e.g. "GOOGLE_CONTENT_SAFETY_API"). */
 export type IntegrationId = string;
 
@@ -103,19 +105,60 @@ export function assertModelCardHasRequiredSections(card: ModelCard): void {
  * Describes a single configuration field for integrations that require
  * user-supplied config (e.g. API keys or other settings). Used to generate or validate config forms.
  */
-export type IntegrationConfigField = Readonly<{
+export type IntegrationConfigField = IntegrationConfigFieldBase &
+  (
+    | Readonly<{
+        /** Input type for the UI. */
+        inputType: 'text' | 'password' | 'json' | 'array';
+        options?: undefined;
+      }>
+    | Readonly<{
+        /** Renders a dropdown of `options`. */
+        inputType: 'select';
+        /** The stored value is `option.value`. */
+        options: readonly [
+          IntegrationConfigFieldOption,
+          ...IntegrationConfigFieldOption[],
+        ];
+      }>
+  );
+
+type IntegrationConfigFieldBase = Readonly<{
   /** Form field key (e.g. "apiKey", "truePercentage"). */
   key: string;
   /** Human-readable label for the field. */
   label: string;
   /** Whether the field is required. */
   required: boolean;
-  /** Input type for the UI. */
-  inputType: 'text' | 'password' | 'json' | 'array';
   /** Optional placeholder or hint. */
   placeholder?: string;
   /** Optional description for the field. */
   description?: string;
+}>;
+
+export type IntegrationConfigFieldOption = Readonly<{
+  value: string;
+  label: string;
+}>;
+
+/** Whether a context kind is loaded when the org hasn't chosen otherwise. */
+export type IntegrationContextDefault = 'include' | 'off';
+
+/**
+ * Evaluation context an integration can use, shown as org-level settings on
+ * its Integrations page. Coop loads the chosen context and passes it to every
+ * signal of the integration as `input.context`. Omitted kinds aren't offered.
+ * How the context is used (e.g. flattened to text) is up to the plugin.
+ */
+export type IntegrationContextOptions = Readonly<{
+  thread?: Readonly<{
+    default: IntegrationContextDefault;
+    /** Defaults to the platform default (20). */
+    defaultMaxMessages?: number;
+    /** Upper bound the org can choose; capped by the platform maximum (100). */
+    maxMessagesLimit?: number;
+  }>;
+  parent?: Readonly<{ default: IntegrationContextDefault }>;
 }>;
 
 /**
@@ -141,8 +184,15 @@ export type IntegrationManifest = Readonly<{
    */
   configurationFields?: readonly IntegrationConfigField[];
   /**
+   * Optional. Evaluation context this integration can use (thread, parent),
+   * with defaults. Orgs can change these per integration.
+   */
+  contextOptions?: IntegrationContextOptions;
+  /**
    * Optional list of signal type ids this integration provides (e.g. "ZENTROPI_LABELER").
    * Used by the platform to associate signals with this integration for display and gating.
+   * Lists the static createSignals() ids only; ids returned by refreshCatalog()
+   * are org-specific and don't need to be listed here.
    */
   signalTypeIds?: readonly string[];
   /**
@@ -187,9 +237,91 @@ export type PluginSignalContext = Readonly<{
   getCredential: (orgId: string) => Promise<Record<string, unknown>>;
 }>;
 
+/**
+ * Optional expansions a plugin signal can request. Coop combines them with the
+ * org's context settings for the integration (see manifest `contextOptions`),
+ * loads the effective needs once per rule evaluation, and attaches them to the
+ * run input as `context`. Signals with no effective needs receive the same
+ * input as before.
+ */
+export type SignalContextNeeds = Readonly<{
+  /** Attach the full item under evaluation (data + type metadata). */
+  includeFullItem?: boolean;
+  /** Attach the item referenced by the item type's `parentId` field role. */
+  includeParent?: boolean;
+  /**
+   * Attach the conversation the item belongs to: the thread referenced by the
+   * `threadId` role for content items, or the item itself for THREAD items.
+   */
+  includeThread?: boolean;
+  /** Overrides the platform default; clamped to the platform maximum. */
+  maxThreadMessages?: number;
+}>;
+
+/** An item loaded into a signal's evaluation context. */
+export type SignalContextItem = Readonly<{
+  itemId: string;
+  itemTypeId: string;
+  itemTypeName?: string;
+  itemTypeKind?: 'CONTENT' | 'THREAD' | 'USER';
+  /** Normalized item data, as submitted to Coop. */
+  data: Readonly<Record<string, unknown>>;
+  /** ISO 8601 timestamp from the item type's `createdAt` role, if any. */
+  createdAt?: string;
+  /** Creator identifier only; no user data is attached. */
+  creator?: Readonly<{ id: string; typeId: string }>;
+}>;
+
+/**
+ * Structured context attached to a plugin signal's run input when it has
+ * effective context needs (its `contextNeeds` or the org's context settings
+ * from manifest `contextOptions`). Every section is optional: plugins must tolerate
+ * absent sections (e.g. the item has no parent, or loading timed out).
+ */
+export type SignalEvaluationContext = Readonly<{
+  item?: SignalContextItem;
+  parent?: SignalContextItem;
+  thread?: Readonly<{
+    id: string;
+    typeId: string;
+    /**
+     * Oldest first, bounded by maxThreadMessages. Coop doesn't trim by size;
+     * apply your own text or payload limits.
+     */
+    messages: readonly SignalContextItem[];
+    /** True when older messages exist beyond maxThreadMessages. */
+    truncated: boolean;
+  }>;
+  /** Sections that were requested but could not be loaded. */
+  unavailable?: ReadonlyArray<'item' | 'parent' | 'thread'>;
+}>;
+
+/**
+ * Input passed to PluginSignalDescriptor.run(). `value` is a tagged scalar
+ * (`{ type, value }`) or, for FULL_ITEM signals, the tagged item data.
+ */
+export type PluginSignalRunInput = Readonly<{
+  value: unknown;
+  matchingValues?: readonly unknown[];
+  actionPenalties?: readonly unknown[];
+  subcategory?: string;
+  contentId?: string;
+  userId?: string;
+  orgId: string;
+  contextId?: string;
+  contentType?: string;
+  args?: unknown;
+  runtimeArgs?: unknown;
+  /** Present only when the signal has effective context needs. */
+  context?: SignalEvaluationContext;
+}>;
+
 /** Minimal signal descriptor returned by a plugin. The platform adapts this to its internal SignalBase. */
 export type PluginSignalDescriptor = Readonly<{
-  /** Stable signal type id (e.g. "ACME_MODERATION_SIGNAL"). Must match one of manifest.signalTypeIds. */
+  /**
+   * Stable signal type id (e.g. "ACME_MODERATION_SIGNAL"). For createSignals()
+   * it should be listed in manifest.signalTypeIds; refreshCatalog() ids need not be.
+   */
   id: Readonly<{ type: string }>;
   displayName: string;
   description: string;
@@ -203,8 +335,8 @@ export type PluginSignalDescriptor = Readonly<{
   eligibleInputs: readonly string[];
   outputType: Readonly<{ scalarType: string }>;
   getCost: () => number;
-  /** Run the signal. Input shape is platform-defined; result must have outputType and score. */
-  run: (input: unknown) => Promise<unknown>;
+  /** Run the signal. Result must have outputType and score. */
+  run: (input: PluginSignalRunInput) => Promise<unknown>;
   getDisabledInfo: (
     orgId: string,
   ) => Promise<
@@ -222,6 +354,63 @@ export type PluginSignalDescriptor = Readonly<{
   /** Integration id (same as context.integrationId). */
   integration: string;
   allowedInAutomatedRules: boolean;
+  /** Optional. Declares which context expansions this signal needs. */
+  contextNeeds?: SignalContextNeeds;
+}>;
+
+export type PluginSignalEntry = Readonly<{
+  signalTypeId: string;
+  signal: PluginSignalDescriptor;
+}>;
+
+/** Context passed to plugin.refreshCatalog(). Scoped to a single org. */
+export type CatalogRefreshContext = Readonly<{
+  integrationId: string;
+  orgId: string;
+  /** Resolves to this org's stored config for the integration. */
+  getCredential: () => Promise<Record<string, unknown>>;
+  /** Aborted when the platform refresh timeout elapses. Pass it to fetch(). */
+  abortSignal: AbortSignal;
+}>;
+
+/**
+ * A data-only signal in an org's catalog: everything Coop needs to list and
+ * validate the signal, without functions. Coop stores entries (Postgres) and
+ * rebuilds runnable signals from them with plugin.createCatalogSignal().
+ */
+export type CatalogSignalEntry = Readonly<
+  Omit<
+    PluginSignalDescriptor,
+    'id' | 'integration' | 'getCost' | 'run' | 'getDisabledInfo'
+  > & {
+    /**
+     * Stable signal type id; rules reference it, so keep it across refreshes.
+     * Uppercase letters, digits and underscores, starting with a letter; at
+     * most 100 characters.
+     */
+    signalTypeId: string;
+    /**
+     * Optional JSON the plugin needs to run this signal (e.g. a provider
+     * model id). Stored as-is; never shown to users. Don't put secrets here.
+     * At most 16 KB when serialized.
+     */
+    metadata?: JsonObject;
+  }
+>;
+
+/**
+ * Org-specific signal catalog returned by plugin.refreshCatalog(). Signal type
+ * ids must be stable across refreshes so existing rules keep resolving.
+ *
+ * Coop rejects the whole refresh, keeping the previously stored catalog, if
+ * any entry is invalid. Limits: 500 signals; per signal, displayName up to 200
+ * characters, description and docsUrl up to 2000, and up to 1000
+ * eligibleSubcategories (id and label up to 200 characters each).
+ */
+export type SignalCatalog = Readonly<{
+  /** Opaque provider version, at most 200 characters. Shown for debugging. */
+  version: string;
+  signals: readonly CatalogSignalEntry[];
 }>;
 
 /**
@@ -237,7 +426,13 @@ export type PluginSignalDescriptor = Readonly<{
  * To power routing/enforcement rules, also implement createSignals(context) and
  * return one descriptor per manifest.signalTypeIds entry.
  */
-export type CoopIntegrationPlugin = Readonly<{
+export type CoopIntegrationPlugin = CoopIntegrationPluginBase &
+  (
+    | Readonly<{ refreshCatalog?: undefined; createCatalogSignal?: undefined }>
+    | CatalogRefreshHooks
+  );
+
+type CoopIntegrationPluginBase = Readonly<{
   manifest: IntegrationManifest;
   /**
    * Optional static config shape for this integration.
@@ -251,9 +446,34 @@ export type CoopIntegrationPlugin = Readonly<{
    */
   createSignals?: (
     context: PluginSignalContext,
-  ) => ReadonlyArray<
-    Readonly<{ signalTypeId: string; signal: PluginSignalDescriptor }>
-  >;
+  ) => readonly PluginSignalEntry[];
+}>;
+
+/**
+ * Optional org-specific catalog support. Implement both hooks or neither.
+ */
+export type CatalogRefreshHooks = Readonly<{
+  /**
+   * Returns the org-specific signal catalog as data, e.g. by listing
+   * models or policies from a remote API with the org's credentials. Coop
+   * calls it on demand (Integrations UI, after config save, first use, and
+   * periodically), validates the result, and stores it per org. The returned
+   * signals are merged with createSignals() for that org; a refreshed signal
+   * replaces a createSignals() signal with the same id. Plugins without it
+   * keep static createSignals() behavior.
+   */
+  refreshCatalog: (context: CatalogRefreshContext) => Promise<SignalCatalog>;
+  /**
+   * Builds a runnable signal from a stored
+   * catalog entry, without calling the provider; Coop calls it on any server
+   * instance that serves the org. Coop uses the entry's data fields (names,
+   * types, subcategories) as the source of truth; the returned descriptor
+   * supplies run(), getDisabledInfo() and getCost().
+   */
+  createCatalogSignal: (
+    entry: CatalogSignalEntry,
+    context: PluginSignalContext,
+  ) => PluginSignalDescriptor;
 }>;
 
 /**
@@ -312,10 +532,15 @@ export function isCoopIntegrationPlugin(
     return false;
   }
   const m = o.manifest as Record<string, unknown>;
+  const hasCatalogHooks =
+    o.refreshCatalog !== undefined || o.createCatalogSignal !== undefined;
   return (
     typeof m.id === 'string' &&
     typeof m.name === 'string' &&
     typeof m.version === 'string' &&
-    typeof m.requiresConfig === 'boolean'
+    typeof m.requiresConfig === 'boolean' &&
+    (!hasCatalogHooks ||
+      (typeof o.refreshCatalog === 'function' &&
+        typeof o.createCatalogSignal === 'function'))
   );
 }

@@ -376,6 +376,7 @@ export default class JobRouting {
           .else(eb.ref('sequence_number'))
           .end(),
       }))
+      .where('org_id', '=', input.orgId)
       .execute();
 
     // Reuse the existing getRoutingRules function to get the rules in the new

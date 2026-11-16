@@ -1,7 +1,9 @@
 import { sql } from 'kysely';
 import { uid } from 'uid';
 import { v1 as uuidv1 } from 'uuid';
+import { vi } from 'vitest';
 
+import createContentItemTypes from '../../test/fixtureHelpers/createContentItemTypes.js';
 import createMrtQueue from '../../test/fixtureHelpers/createMrtQueue.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../test/fixtureHelpers/createUser.js';
@@ -110,6 +112,12 @@ describe('Manual Review Tool Service', () => {
       mrtService,
       userId: user.id,
     });
+    const { itemTypes } = await createContentItemTypes({
+      moderationConfigService: deps.ModerationConfigService,
+      orgId: org.id,
+      extra: {},
+    });
+    const contentItemTypeId = itemTypes[0].id;
     const action = await deps.ModerationConfigService.createAction(org.id, {
       name: `mrt-test-action-${uid()}`,
       description: null,
@@ -117,9 +125,17 @@ describe('Manual Review Tool Service', () => {
       callbackUrl: 'https://example.com',
       callbackUrlHeaders: null,
       callbackUrlBody: null,
+      itemTypeIds: [contentItemTypeId],
     });
 
-    return { mrtService, org, user, queue, actionId: action.id };
+    return {
+      mrtService,
+      org,
+      user,
+      queue,
+      actionId: action.id,
+      contentItemTypeId,
+    };
   });
 
   // Test that we can start the stalled jobs checker for manual job processing
@@ -132,6 +148,60 @@ describe('Manual Review Tool Service', () => {
       });
       // The startStalledCheckTimer method should be available and not throw
       expect(worker).toBeDefined();
+    },
+  );
+
+  testWithQueue(
+    'verifies the persisted reviewer lock',
+    async ({ mrtService, org, user, queue }) => {
+      const jobPayload = makeDummyMrtJobPayload();
+      await mrtService['queueOps']['addJob']({
+        jobPayload,
+        orgId: org.id,
+        queueId: queue.id,
+        enqueueSourceInfo: { kind: 'REPORT' },
+      });
+      const claimed = await mrtService.dequeueNextJob({
+        orgId: org.id,
+        queueId: queue.id,
+        userId: user.id,
+      });
+      if (!claimed) throw new Error('expected a claimed job');
+
+      await expect(
+        mrtService['queueOps'].extendJobLock({
+          orgId: org.id,
+          queueId: queue.id,
+          jobId: claimed.job.id,
+          lockToken: claimed.lockToken,
+          isAppealsQueue: false,
+        }),
+      ).resolves.toBe(true);
+      await expect(
+        mrtService['queueOps'].extendJobLock({
+          orgId: org.id,
+          queueId: queue.id,
+          jobId: claimed.job.id,
+          lockToken: uuidv1(),
+          isAppealsQueue: false,
+        }),
+      ).resolves.toBe(false);
+
+      await mrtService.releaseJobLock({
+        orgId: org.id,
+        queueId: queue.id,
+        jobId: claimed.job.id,
+        lockToken: claimed.lockToken,
+      });
+      await expect(
+        mrtService['queueOps'].extendJobLock({
+          orgId: org.id,
+          queueId: queue.id,
+          jobId: claimed.job.id,
+          lockToken: claimed.lockToken,
+          isAppealsQueue: false,
+        }),
+      ).resolves.toBe(false);
     },
   );
 
@@ -807,6 +877,138 @@ describe('Manual Review Tool Service', () => {
     );
 
     testWithQueue(
+      'rejects a related action with no policies when the flag is on',
+      async ({ mrtService, deps, org, queue, actionId, contentItemTypeId }) => {
+        await setRequiresPolicyForDecisions(
+          mrtService,
+          deps.KyselyPg,
+          org.id,
+          true,
+        );
+
+        const reviewerId = uuidv1();
+        const reviewerEmail = 'test@test.com';
+        const jobPayload = makeDummyMrtJobPayload();
+        const itemId = jobPayload.payload.item.itemId;
+        const itemTypeId = jobPayload.payload.item.itemTypeIdentifier.id;
+
+        await mrtService['queueOps']['addJob']({
+          jobPayload,
+          orgId: org.id,
+          queueId: queue.id,
+          enqueueSourceInfo: { kind: 'REPORT' },
+        });
+
+        const dequeuedJob = await mrtService.dequeueNextJob({
+          orgId: org.id,
+          queueId: queue.id,
+          userId: reviewerId,
+        });
+
+        if (!dequeuedJob) {
+          throw new Error("should've returned a job");
+        }
+
+        await expect(
+          mrtService.submitDecision({
+            queueId: queue.id,
+            reportHistory: [],
+            jobId: dequeuedJob.job.id,
+            lockToken: dequeuedJob.lockToken,
+            decisionComponents: [
+              {
+                type: 'CUSTOM_ACTION',
+                actions: [{ id: actionId }],
+                policies: [{ id: uuidv1() }],
+                itemIds: [itemId],
+                itemTypeId,
+              },
+            ],
+            relatedActions: [
+              {
+                actionIds: [actionId],
+                itemIds: [uuidv1()],
+                itemTypeId: contentItemTypeId,
+                policyIds: [],
+              },
+            ],
+            reviewerId,
+            reviewerEmail,
+            orgId: org.id,
+          }),
+        ).rejects.toThrow(
+          /requires every decision to include at least one policy/i,
+        );
+      },
+    );
+
+    testWithQueue(
+      'rejects a related action with an unknown policy ID even when the flag is off',
+      async ({ mrtService, deps, org, queue, actionId, contentItemTypeId }) => {
+        await setRequiresPolicyForDecisions(
+          mrtService,
+          deps.KyselyPg,
+          org.id,
+          false,
+        );
+
+        const reviewerId = uuidv1();
+        const reviewerEmail = 'test@test.com';
+        const jobPayload = makeDummyMrtJobPayload();
+        const itemId = jobPayload.payload.item.itemId;
+        const itemTypeId = jobPayload.payload.item.itemTypeIdentifier.id;
+
+        await mrtService['queueOps']['addJob']({
+          jobPayload,
+          orgId: org.id,
+          queueId: queue.id,
+          enqueueSourceInfo: { kind: 'REPORT' },
+        });
+
+        const dequeuedJob = await mrtService.dequeueNextJob({
+          orgId: org.id,
+          queueId: queue.id,
+          userId: reviewerId,
+        });
+
+        if (!dequeuedJob) {
+          throw new Error("should've returned a job");
+        }
+
+        await expect(
+          mrtService.submitDecision({
+            queueId: queue.id,
+            reportHistory: [],
+            jobId: dequeuedJob.job.id,
+            lockToken: dequeuedJob.lockToken,
+            decisionComponents: [
+              {
+                type: 'CUSTOM_ACTION',
+                actions: [{ id: actionId }],
+                policies: [],
+                itemIds: [itemId],
+                itemTypeId,
+              },
+            ],
+            relatedActions: [
+              {
+                actionIds: [actionId],
+                itemIds: [uuidv1()],
+                itemTypeId: contentItemTypeId,
+                policyIds: [uuidv1()],
+              },
+            ],
+            reviewerId,
+            reviewerEmail,
+            orgId: org.id,
+          }),
+        ).rejects.toThrow(
+          /requires every decision to include at least one policy/i,
+        );
+      },
+    );
+
+    testWithQueue(
       'allows a CUSTOM_ACTION decision with policies when the flag is on',
       async ({ mrtService, deps, org, queue, actionId }) => {
         await setRequiresPolicyForDecisions(
@@ -1469,8 +1671,8 @@ describe('Manual Review Tool Service', () => {
           enqueueSourceInfo: { kind: 'REPORT' },
         });
 
-        const releaseSpy = jest.spyOn(mrtService['queueOps'], 'releaseJobLock');
-        const logClaimSpy = jest
+        const releaseSpy = vi.spyOn(mrtService['queueOps'], 'releaseJobLock');
+        const logClaimSpy = vi
           .spyOn(mrtService['claimOps'], 'logClaim')
           .mockRejectedValueOnce(new Error('claim insert failed'));
 

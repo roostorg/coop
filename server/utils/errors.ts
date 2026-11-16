@@ -54,6 +54,8 @@ export enum ErrorType {
   ConcurrencyConflict = '/errors/concurrent-update-conflict',
 
   InternalServerError = '/errors/internal-server-error',
+  Timeout = '/errors/timeout',
+  ServiceUnavailable = '/errors/service-unavailable',
 
   // authz
   Unauthenticated = '/errors/authentication-failed-or-missing',
@@ -258,6 +260,8 @@ export type CoopErrorName =
   // generic errors
   | 'NotFoundError'
   | 'InternalServerError'
+  | 'TimeoutError'
+  | 'ServiceUnavailableError'
   | 'BadRequestError'
   | 'UnauthenticatedError'
   | 'UnauthorizedError'
@@ -344,6 +348,20 @@ export const makeUnauthorizedError = (title: string, data: ErrorInstanceData) =>
     name: 'UnauthorizedError',
   });
 
+// 503: a dependency (e.g. the database) is unavailable; the request may
+// succeed if retried later.
+export const makeServiceUnavailableError = (
+  title: string,
+  data: ErrorInstanceData,
+) =>
+  new CoopError({
+    ...data,
+    status: 503,
+    type: [...(data.type ?? []), ErrorType.ServiceUnavailable],
+    title,
+    name: 'ServiceUnavailableError',
+  });
+
 export const makeInternalServerError = (
   title: string,
   data: ErrorInstanceData,
@@ -354,6 +372,15 @@ export const makeInternalServerError = (
     type: [...(data.type ?? []), ErrorType.InternalServerError],
     title,
     name: 'InternalServerError',
+  });
+
+export const makeTimeoutError = (title: string, data: ErrorInstanceData) =>
+  new CoopError({
+    ...data,
+    status: 504,
+    type: [...(data.type ?? []), ErrorType.Timeout],
+    title,
+    name: 'TimeoutError',
   });
 
 export const makeBadRequestError = (title: string, data: ErrorInstanceData) =>

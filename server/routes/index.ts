@@ -2,14 +2,15 @@ import { type Route } from '../utils/route-helpers.js';
 import ActionRoutes from './action/ActionRoutes.js';
 import ContentRoutes from './content/ContentRoutes.js';
 import IntegrationLogosRoutes from './integration_logos/IntegrationLogosRoutes.js';
+import ItemTypeRoutes from './item_types/ItemTypeRoutes.js';
 import ItemRoutes from './items/ItemRoutes.js';
+import ModerationActivityRoutes from './moderation_activity/ModerationActivityRoutes.js';
 import PoliciesRoutes from './policies/PoliciesRoutes.js';
 import ReportingRoutes from './reporting/ReportingRoutes.js';
 import UserScoresRoutes from './user_scores/UserScoresRoutes.js';
 
-/** Array of routes accepted by a controller. Uses wide types so GET (no body) and POST routes both fit. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Controller accepts any route shape
-export type ControllerRouteList = Route<any, any>[];
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Controllers collect heterogeneous request and response body types.
+export type ControllerRouteList = (Route<never, any> | Route<any, any>)[];
 
 export type Controller = {
   // Path prefix expected to always start with a slash, given how we're
@@ -20,10 +21,12 @@ export type Controller = {
 
 export default {
   Items: ItemRoutes,
+  ItemTypes: ItemTypeRoutes,
   Content: ContentRoutes,
   Reporting: ReportingRoutes,
   Policies: PoliciesRoutes,
   UserScores: UserScoresRoutes,
   Actions: ActionRoutes,
   IntegrationLogos: IntegrationLogosRoutes,
+  ModerationActivity: ModerationActivityRoutes,
 } satisfies { [key: string]: Controller };

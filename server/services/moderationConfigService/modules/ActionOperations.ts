@@ -1,3 +1,4 @@
+/* eslint-disable max-lines -- action transaction and error definitions stay colocated */
 import { sql, type Kysely } from 'kysely';
 import { type JsonObject, type JsonValue, type Writable } from 'type-fest';
 import { uid } from 'uid';
@@ -131,6 +132,9 @@ export default class ActionOperations {
 
     return this.transactionWithRetry(async (trx) => {
       try {
+        if (input.itemTypeIds !== undefined) {
+          await this.#validateItemTypeIds(trx, orgId, input.itemTypeIds);
+        }
         const query = trx
           .insertInto('public.actions')
           .values({
@@ -242,10 +246,6 @@ export default class ActionOperations {
     itemTypeIds?: readonly string[] | undefined;
   }): Promise<CustomAction> {
     const { orgId, actionId, patch, itemTypeIds } = opts;
-    const validatedParameters =
-      patch.parameters === undefined
-        ? undefined
-        : validateActionParameters(patch.parameters);
     return this.transactionWithRetry(async (trx) => {
       const existing = (await trx
         .selectFrom('public.actions')
@@ -257,6 +257,15 @@ export default class ActionOperations {
 
       if (existing == null) {
         throw makeNotFoundError('Action not found', { shouldErrorSpan: true });
+      }
+
+      const validatedParameters =
+        patch.parameters === undefined
+          ? undefined
+          : validateActionParameters(patch.parameters);
+
+      if (itemTypeIds !== undefined) {
+        await this.#validateItemTypeIds(trx, orgId, itemTypeIds);
       }
 
       const setPayload = removeUndefinedKeys({
@@ -484,9 +493,32 @@ export default class ActionOperations {
   #getPgQuery(readFromReplica: boolean = false) {
     return readFromReplica ? this.pgQueryReplica : this.pgQuery;
   }
+
+  async #validateItemTypeIds(
+    trx: Kysely<ModerationConfigServicePg>,
+    orgId: string,
+    itemTypeIds: readonly string[],
+  ) {
+    const uniqueIds = new Set(itemTypeIds);
+    if (uniqueIds.size !== itemTypeIds.length) {
+      throw makeInvalidActionItemTypeIdsError({ shouldErrorSpan: true });
+    }
+    if (itemTypeIds.length === 0) return;
+
+    const matchingRows = await trx
+      .selectFrom('public.item_types')
+      .select('id')
+      .where('org_id', '=', orgId)
+      .where('id', 'in', itemTypeIds)
+      .execute();
+    if (matchingRows.length !== itemTypeIds.length) {
+      throw makeInvalidActionItemTypeIdsError({ shouldErrorSpan: true });
+    }
+  }
 }
 
-export type ActionErrorType = 'ActionNameExistsError';
+export type ActionErrorType =
+  'ActionNameExistsError' | 'InvalidActionItemTypeIdsError';
 
 export const makeActionNameExistsError = (data: ErrorInstanceData) =>
   new CoopError({
@@ -494,5 +526,15 @@ export const makeActionNameExistsError = (data: ErrorInstanceData) =>
     type: [ErrorType.UniqueViolation],
     title: 'An action with this name already exists',
     name: 'ActionNameExistsError',
+    ...data,
+  });
+
+export const makeInvalidActionItemTypeIdsError = (data: ErrorInstanceData) =>
+  new CoopError({
+    status: 400,
+    type: [ErrorType.InvalidUserInput],
+    title: 'Invalid action item type IDs',
+    detail: 'One or more item type IDs are invalid',
+    name: 'InvalidActionItemTypeIdsError',
     ...data,
   });
