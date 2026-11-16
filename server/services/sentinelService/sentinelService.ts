@@ -59,6 +59,8 @@ export function makeSentinelService(
         headers: { 'Content-Type': 'application/json' },
         body: options.body,
         handleResponseBody: 'as-json',
+        // Operator-configured service endpoint, not a submitted media URL.
+        isUntrustedUrl: false,
         timeoutMs: 10_000,
       });
 
