@@ -79,6 +79,11 @@ gql`
         ...PolicyFields
       }
       failures
+      failureDetails {
+        name
+        title
+        detail
+      }
     }
   }
 
