@@ -474,3 +474,81 @@ describe('Plugin integration configuration', () => {
     expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
   });
 });
+
+function renderOpenAiForm(apiKey: string, csamClassifierApiKey: string) {
+  const emptySections: [] = [];
+  configData = {
+    __typename: 'Query',
+    integrationConfig: {
+      __typename: 'IntegrationConfigSuccessResult',
+      config: {
+        __typename: 'IntegrationConfig',
+        name: 'OPEN_AI',
+        title: 'OpenAI',
+        docsUrl: 'https://platform.openai.com/docs',
+        requiresConfig: true,
+        configurationFields: [],
+        logoUrl: null,
+        logoWithBackgroundUrl: null,
+        modelCards: [
+          {
+            __typename: 'ModelCard',
+            modelName: 'OpenAI Moderation API',
+            version: '',
+            releaseDate: null,
+            sections: emptySections,
+          },
+          {
+            __typename: 'ModelCard',
+            modelName: 'OpenAI CSAM Image Classifier',
+            version: 'Latest',
+            releaseDate: null,
+            sections: emptySections,
+          },
+        ],
+        modelCardLearnMoreUrl: null,
+        apiCredential: {
+          __typename: 'OpenAiIntegrationApiCredential',
+          apiKey,
+          csamClassifierApiKey,
+        },
+      },
+    },
+  };
+  return render(
+    <HelmetProvider>
+      <MemoryRouter initialEntries={['/integrations/open_ai']}>
+        <Routes>
+          <Route
+            path="/integrations/:name"
+            element={<IntegrationConfigForm />}
+          />
+        </Routes>
+      </MemoryRouter>
+    </HelmetProvider>,
+  );
+}
+
+describe('OpenAI integration configuration', () => {
+  beforeEach(() => {
+    setConfig.mockReset().mockResolvedValue({});
+    permissions = [GQLUserPermission.ManageOrg];
+  });
+
+  // The Moderation API key and CSAM Classifier key are independent (possibly
+  // different OpenAI orgs), so either one alone is a valid configuration.
+  it('allows saving with only the CSAM Classifier key', () => {
+    renderOpenAiForm('', 'sk-csam-only');
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
+  });
+
+  it('allows saving with only the Moderation API key', () => {
+    renderOpenAiForm('sk-moderation-only', '');
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled();
+  });
+
+  it('blocks saving when neither OpenAI key is set', () => {
+    renderOpenAiForm('', '');
+    expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled();
+  });
+});

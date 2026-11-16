@@ -3501,10 +3501,12 @@ export type GQLNotificationType =
 export type GQLOpenAiIntegrationApiCredential = {
   readonly __typename?: 'OpenAiIntegrationApiCredential';
   readonly apiKey: Scalars['String']['output'];
+  readonly csamClassifierApiKey?: Maybe<Scalars['String']['output']>;
 };
 
 export type GQLOpenAiIntegrationApiCredentialInput = {
   readonly apiKey: Scalars['String']['input'];
+  readonly csamClassifierApiKey?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type GQLOrg = {
@@ -4820,6 +4822,8 @@ export const GQLSignalType = {
   GoogleContentSafetyApiImage: 'GOOGLE_CONTENT_SAFETY_API_IMAGE',
   ImageSimilarityDoesNotMatch: 'IMAGE_SIMILARITY_DOES_NOT_MATCH',
   ImageSimilarityMatch: 'IMAGE_SIMILARITY_MATCH',
+  OpenAiCsamGenaiImageModel: 'OPEN_AI_CSAM_GENAI_IMAGE_MODEL',
+  OpenAiCsamOverallImageModel: 'OPEN_AI_CSAM_OVERALL_IMAGE_MODEL',
   OpenAiGraphicViolenceImageModel: 'OPEN_AI_GRAPHIC_VIOLENCE_IMAGE_MODEL',
   OpenAiGraphicViolenceTextModel: 'OPEN_AI_GRAPHIC_VIOLENCE_TEXT_MODEL',
   OpenAiHateTextModel: 'OPEN_AI_HATE_TEXT_MODEL',
@@ -12672,6 +12676,11 @@ export type GQLOpenAiIntegrationApiCredentialResolvers<
     GQLResolversParentTypes['OpenAiIntegrationApiCredential'],
 > = {
   apiKey?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  csamClassifierApiKey?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
