@@ -33,7 +33,7 @@ jobs:
       - name: Check for do-not-merge markers
         shell: bash
         env:
-          MARKER: 'nocommit|do not merge'
+          MARKER: 'nocommit|do-not-merge'
           BASE_REF: ${{ github.base_ref }}
           PR_TITLE: ${{ github.event.pull_request.title }}
           PR_BODY: ${{ github.event.pull_request.body }}
