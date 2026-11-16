@@ -1,5 +1,6 @@
 import { SendEmailCommand, type SESClient } from '@aws-sdk/client-ses';
 import sgMail from '@sendgrid/mail';
+import { vi } from 'vitest';
 
 import makeSendEmail, {
   CoopEmailAddress,
@@ -9,9 +10,7 @@ import makeSendEmail, {
 } from './sendEmailService.js';
 
 function makeMockClient() {
-  const mockSend = jest
-    .fn()
-    .mockResolvedValue({ MessageId: 'test-message-id' });
+  const mockSend = vi.fn().mockResolvedValue({ MessageId: 'test-message-id' });
   const mockClient = { send: mockSend } as unknown as SESClient;
   return { mockSend, mockClient };
 }
@@ -126,7 +125,7 @@ describe('sendEmailService', () => {
     });
 
     it('should log the error when SES fails', async () => {
-      const consoleSpy = jest
+      using consoleSpy = vi
         .spyOn(console, 'error')
         .mockImplementation(() => {});
       const { mockSend, mockClient } = makeMockClient();
@@ -146,16 +145,12 @@ describe('sendEmailService', () => {
         'Failed to send email:',
         'MessageRejected',
       );
-      consoleSpy.mockRestore();
     });
   });
 
   describe('SendGrid backend', () => {
     it('reports successful and failed delivery attempts', async () => {
-      const sendSpy = jest.spyOn(sgMail, 'send');
-      const consoleSpy = jest
-        .spyOn(console, 'error')
-        .mockImplementation(() => {});
+      using sendSpy = vi.spyOn(sgMail, 'send');
       const sendEmail = makeSendEmailViaSendGrid('SG.test-key');
       const msg: Message = {
         to: 'test_user@example.com',
@@ -164,16 +159,11 @@ describe('sendEmailService', () => {
         text: 'Test body',
       };
 
-      try {
-        sendSpy.mockResolvedValueOnce([] as never);
-        await expect(sendEmail(msg)).resolves.toBe(true);
+      sendSpy.mockResolvedValueOnce([] as never);
+      await expect(sendEmail(msg)).resolves.toBe(true);
 
-        sendSpy.mockRejectedValueOnce(new Error('SendGrid error'));
-        await expect(sendEmail(msg)).resolves.toBe(false);
-      } finally {
-        sendSpy.mockRestore();
-        consoleSpy.mockRestore();
-      }
+      sendSpy.mockRejectedValueOnce(new Error('SendGrid error'));
+      await expect(sendEmail(msg)).resolves.toBe(false);
     });
   });
 
@@ -181,9 +171,7 @@ describe('sendEmailService', () => {
     it('prints the email and reports successful delivery', async () => {
       const previousNodeEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = 'development';
-      const consoleSpy = jest
-        .spyOn(console, 'log')
-        .mockImplementation(() => {});
+      using consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
       try {
         const sendEmail = makeSendEmailViaConsole();
@@ -205,7 +193,6 @@ describe('sendEmailService', () => {
         } else {
           process.env.NODE_ENV = previousNodeEnv;
         }
-        consoleSpy.mockRestore();
       }
     });
 
@@ -214,9 +201,7 @@ describe('sendEmailService', () => {
       const previousNodeEnv = process.env.NODE_ENV;
       process.env.EMAIL_TRANSPORT = 'console';
       process.env.NODE_ENV = 'development';
-      const consoleSpy = jest
-        .spyOn(console, 'log')
-        .mockImplementation(() => {});
+      using consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
       try {
         const sendEmail = makeSendEmail();
@@ -240,7 +225,6 @@ describe('sendEmailService', () => {
         } else {
           process.env.NODE_ENV = previousNodeEnv;
         }
-        consoleSpy.mockRestore();
       }
     });
 

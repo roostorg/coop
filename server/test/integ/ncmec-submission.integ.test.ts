@@ -58,8 +58,6 @@ describe('NCMEC submitReport (integration)', () => {
       deps.KyselyPgReadReplica,
       stub.fetchHTTP,
       deps.SigningKeyPairService,
-      deps.ModerationConfigService,
-      deps.getItemTypeEventuallyConsistent,
       deps.Tracer,
     );
 

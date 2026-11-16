@@ -3,7 +3,11 @@ import type { ItemIdentifier } from '@roostorg/coop-types';
 import _ from 'lodash';
 
 import { type Dependencies } from '../../iocContainer/index.js';
-import { type IActionExecutionsAdapter } from '../../plugins/warehouse/queries/IActionExecutionsAdapter.js';
+import {
+  type IActionExecutionsAdapter,
+  type ManualActionItemsInput,
+  type RecentModeratorActionsInput,
+} from '../../plugins/warehouse/queries/IActionExecutionsAdapter.js';
 import {
   type ContentApiRequestByIpRecord,
   type ContentApiRequestRecord,
@@ -521,9 +525,13 @@ export class ItemInvestigationService {
       ],
     }).catch((_) => []);
 
-    if (queryResults.length) {
+    // The global item_identifier index cannot also constrain org_id in CQL.
+    // Filter before partitioning so neither latest nor prior submissions leak.
+    const orgSubmissions = queryResults.filter((row) => row.org_id === orgId);
+
+    if (orgSubmissions.length) {
       const { latestSubmission, priorSubmissions } =
-        partitionLatestAndPriorSubmissions(queryResults);
+        partitionLatestAndPriorSubmissions(orgSubmissions);
 
       return scyllaSubmissionsForItemToSubmissionsForItemWithTypeIdentifier({
         latestSubmission,
@@ -1160,6 +1168,23 @@ export class ItemInvestigationService {
         };
       }),
     );
+  }
+
+  /**
+   * Org-wide feed of actions moderators took outside a review job, one record
+   * per operation. These never write a manual review decision, so the warehouse
+   * is the only place they exist.
+   *
+   * Records pass through unmapped — `ModerationActivityFeed` owns the shape the
+   * GraphQL layer sees.
+   */
+  async getRecentModeratorActions(input: RecentModeratorActionsInput) {
+    return this.actionExecutionsAdapter.getRecentModeratorActions(input);
+  }
+
+  /** Every item one moderator operation touched, paged. */
+  async getManualActionItems(input: ManualActionItemsInput) {
+    return this.actionExecutionsAdapter.getManualActionItems(input);
   }
 }
 

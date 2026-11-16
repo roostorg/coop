@@ -19,7 +19,7 @@ function getConfigPath(): string {
   const cwdPath = path.join(process.cwd(), 'integrations.config.json');
   // eslint-disable-next-line security/detect-non-literal-fs-filename -- path from cwd/env, not user input
   if (existsSync(cwdPath)) return cwdPath;
-  // When started from repo root (e.g. npm run start), cwd has no integrations.config.json; try server/
+  // When started from repo root (e.g. pnpm run start), cwd has no integrations.config.json; try server/
   const serverPath = path.join(
     process.cwd(),
     'server',

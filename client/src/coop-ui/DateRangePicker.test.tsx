@@ -1,10 +1,7 @@
-import React from 'react';
-
-import '@testing-library/jest-dom';
-import '@testing-library/jest-dom/extend-expect';
-
 import { DateRangePicker } from '@/coop-ui/DateRangePicker';
 import { fireEvent, render, screen } from '@testing-library/react';
+import React from 'react';
+import { vi } from 'vitest';
 
 describe('DateRangePicker', () => {
   it('should render without crashing', () => {
@@ -35,7 +32,7 @@ describe('DateRangePicker', () => {
   });
 
   it('should call onUpdate with the correct value when date is selected', async () => {
-    const onUpdateMock = jest.fn();
+    const onUpdateMock = vi.fn();
     render(
       <DateRangePicker
         initialDateFrom="2023-01-01"

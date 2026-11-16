@@ -1,7 +1,8 @@
 import crypto from 'node:crypto';
 import { URL } from 'node:url';
 
-import { inject, type Dependencies } from '../../iocContainer/index.js';
+import { type Dependencies } from '../../iocContainer/index.js';
+import { inject } from '../../iocContainer/utils.js';
 import { CoopEmailAddress } from '../../services/sendEmailService/index.js';
 import { b64EncodeArrayBuffer } from '../../utils/encoding.js';
 import {

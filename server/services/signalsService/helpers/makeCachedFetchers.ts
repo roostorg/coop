@@ -10,6 +10,7 @@ import {
 import { isCoopErrorOfType, type CoopError } from '../../../utils/errors.js';
 import { type JSON } from '../../../utils/json-schema-types.js';
 import { getGoogleContentSafetyScores } from '../signals/third_party_signals/google/content_safety/googleContentSafetyLib.js';
+import { getOpenAiCsamClassifierScores } from '../signals/third_party_signals/open_ai/csam_classifier/openAiCsamClassifierUtils.js';
 import { getOpenAiModerationScores } from '../signals/third_party_signals/open_ai/moderation/openAIModerationUtils.js';
 import { getOpenAiTranscription } from '../signals/third_party_signals/open_ai/whisper/OpenAiWhisperTranscriptionSignal.js';
 import { getZentropiScores } from '../signals/third_party_signals/zentropi/zentropiUtils.js';
@@ -34,6 +35,9 @@ export function makeCachedFetchers(
   return {
     googleContentSafetyFetcher: toCachedFetcher(
       getGoogleContentSafetyScores.bind(null, fetchHTTP, tracer),
+    ),
+    openAiCsamClassifierFetcher: toCachedFetcher(
+      getOpenAiCsamClassifierScores.bind(null, fetchHTTP, tracer),
     ),
     openAiModerationFetcher: toCachedFetcher(
       getOpenAiModerationScores.bind(null, fetchHTTP, tracer),

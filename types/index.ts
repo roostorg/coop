@@ -318,10 +318,16 @@ export type ItemTypeKind = keyof typeof ItemTypeKind;
 
 // Integration plugin types (for third-party integrations and adopters' config)
 export type {
+  CatalogRefreshContext,
+  CatalogRefreshHooks,
+  CatalogSignalEntry,
   CoopIntegrationConfigEntry,
   CoopIntegrationPlugin,
   CoopIntegrationsConfig,
   IntegrationConfigField,
+  IntegrationConfigFieldOption,
+  IntegrationContextDefault,
+  IntegrationContextOptions,
   IntegrationId,
   IntegrationManifest,
   ModelCard,
@@ -330,6 +336,12 @@ export type {
   ModelCardSubsection,
   PluginSignalContext,
   PluginSignalDescriptor,
+  PluginSignalEntry,
+  PluginSignalRunInput,
+  SignalCatalog,
+  SignalContextItem,
+  SignalContextNeeds,
+  SignalEvaluationContext,
   StoredIntegrationConfigPayload,
 } from './integration.js';
 export {

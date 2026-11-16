@@ -22,7 +22,7 @@ import {
   type ReactNode,
 } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 
 import CopyTextComponent from '../../../components/common/CopyTextComponent';
 import FullScreenLoading from '../../../components/common/FullScreenLoading';
@@ -696,7 +696,7 @@ export default function NcmecReportsDashboard() {
               Manual Review Tool.
             </div>
             <CoopButton
-              onClick={() => navigate('/dashboard/manual_review/queues')}
+              onClick={async () => navigate('/dashboard/manual_review/queues')}
               title="Back to Manual Review"
             />
           </div>

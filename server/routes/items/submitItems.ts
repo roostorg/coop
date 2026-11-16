@@ -27,6 +27,7 @@ import {
 } from '../../utils/errors.js';
 import { safeGet, withRetries } from '../../utils/misc.js';
 import { type RequestHandlerWithBodies } from '../../utils/route-helpers.js';
+import { addHashesToImageFields } from './hashImageFields.js';
 import { type SubmitItemsInput } from './ItemRoutes.js';
 
 /**
@@ -102,108 +103,13 @@ Dependencies): RequestHandlerWithBodies<SubmitItemsInput, undefined> {
       items.map(async (message) => {
         const itemSubmission = await toItemSubmission(message);
 
-        if (
-          Array.isArray(itemSubmission.itemSubmission?.data.images) &&
-          itemSubmission.itemSubmission.data.images.length > 0 &&
-          !itemSubmission.error
-        ) {
-          try {
-            const images = itemSubmission.itemSubmission.data.images as (
-              string | { url: string; [key: string]: unknown }
-            )[];
-
-            // Get all hash banks for this org once
-            const allBanks = await HMAHashBankService.listBanks(orgId);
-            const allBankNames = allBanks.map((bank) => bank.hma_name);
-
-            const imageHashes = await Promise.all(
-              images.map(async (image) => {
-                const url = typeof image === 'string' ? image : image.url;
-                // Preserve any fields the coercion step already populated on
-                // the media object (e.g. MEDIA's `mediaType`, which the manual
-                // review tool relies on to decide whether to render an image,
-                // video, or audio player). Rebuilding a fresh object below
-                // would otherwise silently drop them.
-                const coercedFields = typeof image === 'string' ? {} : image;
-                if (typeof url === 'string' && url) {
-                  try {
-                    const hmaHashWithRetries = await withRetries(
-                      {
-                        maxRetries: 5,
-                        initialTimeMsBetweenRetries: 5,
-                        maxTimeMsBetweenRetries: 500,
-                        jitter: true,
-                      },
-                      async () => {
-                        return HMAHashBankService.hashContentFromUrl(url);
-                      },
-                    );
-                    const hashes = await hmaHashWithRetries();
-
-                    // Check which banks match this image
-                    const matchedBankNames: string[] = [];
-
-                    if (
-                      hashes &&
-                      Object.keys(hashes).length > 0 &&
-                      allBankNames.length > 0
-                    ) {
-                      const matchResults = await Promise.all(
-                        Object.entries(hashes).map(async ([signalType, hash]) =>
-                          HMAHashBankService.checkImageMatchWithDetails(
-                            allBankNames,
-                            signalType,
-                            hash,
-                          ),
-                        ),
-                      );
-
-                      // Collect all matched banks
-                      const allMatchedHmaBanks = new Set<string>();
-                      matchResults.forEach((result) => {
-                        result.matchedBanks.forEach((bank) =>
-                          allMatchedHmaBanks.add(bank),
-                        );
-                      });
-
-                      // Map HMA bank names to user-friendly names
-                      allMatchedHmaBanks.forEach((hmaName) => {
-                        const bank = allBanks.find(
-                          (b) => b.hma_name === hmaName,
-                        );
-                        if (bank) {
-                          matchedBankNames.push(bank.name);
-                        }
-                      });
-                    }
-
-                    return {
-                      ...coercedFields,
-                      url,
-                      hashes,
-                      matchedBanks:
-                        matchedBankNames.length > 0
-                          ? matchedBankNames
-                          : undefined,
-                    };
-                  } catch (e) {
-                    return {
-                      ...coercedFields,
-                      url,
-                      hashes: {},
-                    };
-                  }
-                }
-                return null;
-              }),
-            );
-            // Attach the hashes array to the item submission data
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (itemSubmission.itemSubmission.data as any).images = imageHashes;
-          } catch (error) {
-            // eslint-disable-next-line no-console
-            console.error('Failed to get HMA hashes for images:', error);
-          }
+        if (itemSubmission.itemSubmission && !itemSubmission.error) {
+          await addHashesToImageFields({
+            itemType: itemSubmission.itemSubmission.itemType,
+            data: itemSubmission.itemSubmission.data,
+            orgId,
+            HMAHashBankService,
+          });
         }
 
         return itemSubmission;

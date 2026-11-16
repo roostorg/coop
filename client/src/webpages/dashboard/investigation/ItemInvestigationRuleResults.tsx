@@ -3,7 +3,7 @@ import { Button } from 'antd';
 import capitalize from 'lodash/capitalize';
 import lowerCase from 'lodash/lowerCase';
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 
 import ComponentLoading from '../../../components/common/ComponentLoading';
 import CoopBadge from '../components/CoopBadge';
@@ -14,50 +14,53 @@ import {
   DefaultColumnFilter,
   SelectColumnFilter,
 } from '../components/table/filters';
-import {
-  conditionOutcomeSort,
-  ruleStatusSort,
-  stringSort,
-} from '../components/table/sort';
+import { stringSort } from '../components/table/sort';
 import Table, { TableRow } from '../components/table/Table';
 
 import {
   GQLConditionOutcome,
+  GQLInvestigationItemsQuery,
+  GQLItemType,
   useGQLInvestigationItemsQuery,
 } from '../../../graphql/generated';
 import { ReadonlyDeep } from '../../../utils/typescript-types';
-import { LookbackVersion } from '../rules/info/insights/RuleInsightsSamplesTable';
-import RuleInsightsSampleDetailResults, {
+import {
   getDisplayName,
   outcomeIcon,
+  RuleInsightsSampleDetailResultsImpl,
 } from '../rules/info/insights/sample_details/RuleInsightsSampleDetailResults';
+import type { ConditionSetWithResult } from '../rules/types';
 import InvestigationTag from './InvestigationTag';
+
+type InvestigationExecution = Extract<
+  GQLInvestigationItemsQuery['itemWithHistory'],
+  { readonly __typename: 'ItemHistoryResult' }
+>['executions'][number];
+type InvestigationExecutionResult = InvestigationExecution['result'];
 
 export default function ItemInvestigationRuleResults(props: {
   itemIdentifier: ItemIdentifier;
+  itemTypes: readonly GQLItemType[];
   submissionTime?: string;
   rules: Readonly<ReadonlyDeep<{ id: string; actions: { name: string }[] }>[]>;
 }) {
-  const { rules, itemIdentifier, submissionTime } = props;
+  const { rules, itemIdentifier, submissionTime, itemTypes } = props;
   const navigate = useNavigate();
   const [modalInfo, setModalInfo] = useState<
     | {
         visible: false;
         title: undefined;
-        ruleId: undefined;
-        contentId: undefined;
+        result: undefined;
       }
     | {
         visible: true;
         title: string;
-        ruleId: string;
-        contentId: string;
+        result: InvestigationExecutionResult;
       }
   >({
     visible: false,
     title: undefined,
-    ruleId: undefined,
-    contentId: undefined,
+    result: undefined,
   });
 
   const {
@@ -107,7 +110,8 @@ export default function ItemInvestigationRuleResults(props: {
             }),
         },
         filterFn: 'includes' as const,
-        sortFn: conditionOutcomeSort,
+        sortFn: stringSort,
+        sortDescFirst: false,
       },
       {
         header: 'Status',
@@ -120,7 +124,8 @@ export default function ItemInvestigationRuleResults(props: {
             }),
         },
         filterFn: 'includes' as const,
-        sortFn: ruleStatusSort,
+        sortFn: stringSort,
+        sortDescFirst: false,
       },
       {
         header: 'Policies',
@@ -177,6 +182,10 @@ export default function ItemInvestigationRuleResults(props: {
         const outcome = ruleResult.passed
           ? GQLConditionOutcome.Passed
           : ruleResult.result?.result?.outcome;
+        const actionNames =
+          rules
+            ?.find((it) => ruleResult.ruleId === it.id)
+            ?.actions?.map((action) => action.name) ?? [];
         return {
           rule: ruleResult.ruleName,
           result: (
@@ -215,11 +224,9 @@ export default function ItemInvestigationRuleResults(props: {
           ),
           actions: (
             <div className="w-48 mr-10 grid gap-y-1">
-              {rules
-                ?.find((it) => ruleResult.ruleId === it.id)
-                ?.actions?.map((action, i) => (
-                  <InvestigationTag title={action.name} key={i} />
-                ))}
+              {actionNames.map((actionName, i) => (
+                <InvestigationTag title={actionName} key={i} />
+              ))}
             </div>
           ),
           edit: (
@@ -227,7 +234,7 @@ export default function ItemInvestigationRuleResults(props: {
               <Button
                 className="rounded-lg cursor-pointer"
                 size="middle"
-                onClick={() =>
+                onClick={async () =>
                   navigate(
                     `/dashboard/rules/proactive/form/${ruleResult.ruleId}`,
                   )
@@ -238,7 +245,14 @@ export default function ItemInvestigationRuleResults(props: {
             </div>
           ),
           ruleExecutionResult: ruleResult.result,
-          values: ruleResult,
+          values: {
+            rule: ruleResult.ruleName,
+            result: getDisplayName(outcome),
+            status: capitalize(lowerCase(ruleResult.environment)),
+            policies: ruleResult.policies,
+            tags: ruleResult.tags,
+            actions: actionNames,
+          },
         };
       }),
     [ruleExecutionsHistory, navigate, rules],
@@ -262,8 +276,7 @@ export default function ItemInvestigationRuleResults(props: {
     setModalInfo({
       visible: false,
       title: undefined,
-      ruleId: undefined,
-      contentId: undefined,
+      result: undefined,
     });
 
   const modal = (
@@ -274,28 +287,27 @@ export default function ItemInvestigationRuleResults(props: {
     >
       {modalInfo.visible && (
         <div className="p-4">
-          <RuleInsightsSampleDetailResults
-            ruleId={modalInfo.ruleId}
-            itemIdentifier={itemIdentifier}
-            itemSubmissionDate={submissionTime}
-            lookback={LookbackVersion.LATEST}
-          />
+          {modalInfo.result ? (
+            <RuleInsightsSampleDetailResultsImpl
+              itemTypes={itemTypes}
+              conditionSetWithResult={
+                modalInfo.result as unknown as ConditionSetWithResult
+              }
+              loading={itemTypes.length === 0}
+            />
+          ) : (
+            <div className="m-2 text-red-500">Rule result is unavailable</div>
+          )}
         </div>
       )}
     </CoopModal>
   );
 
   const onSelectRow = (rowData: TableRow<(typeof tableData)[number]>) => {
-    const executionResult = ruleExecutionsHistory[rowData.index];
-    if (executionResult == null) {
-      return;
-    }
-
     setModalInfo({
       visible: true,
       title: `Rule Result: ${rowData.original.rule}`,
-      ruleId: executionResult.ruleId,
-      contentId: executionResult.contentId,
+      result: rowData.original.ruleExecutionResult,
     });
   };
 

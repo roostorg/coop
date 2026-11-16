@@ -1,4 +1,5 @@
 import { type ScalarTypes } from '@roostorg/coop-types';
+import { vi } from 'vitest';
 
 import { jsonParse, type JsonOf } from '../../../utils/encoding.js';
 import { type HmaService } from '../../hmaService/index.js';
@@ -31,7 +32,7 @@ const mockBanks = [
 
 describe('ImageSimilarityDoesNotMatchSignal', () => {
   it('throws when no banks are provided', async () => {
-    const signal = makeSignal(jest.fn());
+    const signal = makeSignal(vi.fn());
 
     await expect(
       signal.run({
@@ -47,7 +48,7 @@ describe('ImageSimilarityDoesNotMatchSignal', () => {
   });
 
   it('throws when image has no hashes', async () => {
-    const signal = makeSignal(jest.fn());
+    const signal = makeSignal(vi.fn());
 
     await expect(
       signal.run({
@@ -61,7 +62,7 @@ describe('ImageSimilarityDoesNotMatchSignal', () => {
 
   it('returns score true (does not match) when no bank matches', async () => {
     const signal = makeSignal(
-      jest.fn().mockResolvedValue({
+      vi.fn().mockResolvedValue({
         matched: false,
         matchedBanks: [],
       }),
@@ -91,7 +92,7 @@ describe('ImageSimilarityDoesNotMatchSignal', () => {
 
   it('returns score false (does match) when at least one bank matches', async () => {
     const signal = makeSignal(
-      jest.fn().mockResolvedValue({
+      vi.fn().mockResolvedValue({
         matched: true,
         matchedBanks: ['ORG_BLOCKED_BANK'],
       }),

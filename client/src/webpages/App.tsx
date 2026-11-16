@@ -1,10 +1,6 @@
 import React, { Suspense } from 'react';
-import {
-  createBrowserRouter,
-  Navigate,
-  Outlet,
-  RouterProvider,
-} from 'react-router-dom';
+import { createBrowserRouter, Navigate, Outlet } from 'react-router';
+import { RouterProvider } from 'react-router/dom';
 
 import FullScreenLoading from '@/components/common/FullScreenLoading';
 import ErrorBoundary from '@/components/ErrorBoundary';

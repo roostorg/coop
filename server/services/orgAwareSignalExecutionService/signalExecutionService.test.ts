@@ -1,4 +1,5 @@
 import { ScalarTypes } from '@roostorg/coop-types';
+import { vi } from 'vitest';
 
 import getBottle, { type Dependencies } from '../../iocContainer/index.js';
 import { getBottleContainerWithIOMocks } from '../../test/setupMockedServer.js';
@@ -10,10 +11,10 @@ describe('Signal Execution Service', () => {
   let signalsService: SignalsService;
   let getPolicyActionPenalties: Dependencies['getPolicyActionPenaltiesEventuallyConsistent'];
   const mockLocationsLoader = async () => [];
-  const mockTextBankStringsLoader = jest.fn(async ({ bankId }) =>
+  const mockTextBankStringsLoader = vi.fn(async ({ bankId }) =>
     bankId === '1' ? ['a', 'b', 'c'] : bankId === '2' ? ['d', 'e', 'f'] : [],
   );
-  const mockGetImageBank = jest.fn(async ({ bankId }) =>
+  const mockGetImageBank = vi.fn(async ({ bankId }) =>
     bankId === 'test-bank'
       ? {
           id: 1,
@@ -29,10 +30,10 @@ describe('Signal Execution Service', () => {
   );
 
   // eslint-disable-next-line functional/immutable-data
-  mockLocationsLoader.close = jest.fn();
+  mockLocationsLoader.close = vi.fn();
   /* eslint-disable functional/immutable-data, @typescript-eslint/no-explicit-any */
-  (mockTextBankStringsLoader as any).close = jest.fn();
-  (mockGetImageBank as any).close = jest.fn();
+  (mockTextBankStringsLoader as any).close = vi.fn();
+  (mockGetImageBank as any).close = vi.fn();
   /* eslint-enable functional/immutable-data, @typescript-eslint/no-explicit-any */
 
   describe('getTransientRunSignalWithCache', () => {
@@ -57,7 +58,7 @@ describe('Signal Execution Service', () => {
       // This is only safe while we're not running tests concurrently.
       // Consider using the `makeTestWithFixture` helper instead to make
       // a local copy of this state for each test.
-      jest.clearAllMocks();
+      vi.clearAllMocks();
     });
 
     test('should batch textBank loads w/i a single tick', async () => {
@@ -134,9 +135,9 @@ describe('Signal Execution Service', () => {
       // spy on how many times runSignal was called.)
       const signalsServiceSpy = (await getBottle()).container.SignalsService;
       /* eslint-disable functional/immutable-data, @typescript-eslint/no-explicit-any --
-         jest.fn doesn't preserve the original method's overloads, so we need
+         vi.fn doesn't preserve the original method's overloads, so we need
          a cast to assign back onto the typed "runSignal" property. */
-      signalsServiceSpy.runSignal = jest.fn(
+      signalsServiceSpy.runSignal = vi.fn(
         signalsServiceSpy.runSignal.bind(signalsServiceSpy),
       ) as any;
       /* eslint-enable functional/immutable-data, @typescript-eslint/no-explicit-any */

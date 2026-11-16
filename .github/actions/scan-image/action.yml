@@ -1,0 +1,58 @@
+name: Scan image
+description: >
+  Install Trivy to $RUNNER_TEMP/trivy-bin, scan a published image for
+  vulnerabilities and upload the results to code scanning. Report-only:
+  findings never fail the job.
+
+inputs:
+  image:
+    description: Image reference to scan, pinned by digest.
+    required: true
+  category:
+    description: Code scanning category for the results.
+    required: true
+  ref:
+    description: Git ref to report the results under.
+    required: true
+  sha:
+    description: Commit SHA to report the results under.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    # Findings go to code scanning (visible to maintainers, not the public) and
+    # never block a push, so a security release can always ship.
+    # continue-on-error keeps a download, Trivy or DB outage from failing a job
+    # whose images are already published; a checksum mismatch still fails.
+    - name: Download Trivy
+      id: download
+      continue-on-error: true
+      shell: bash
+      run: curl -fsSLo "$RUNNER_TEMP/trivy.tar.gz" "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+
+    - name: Install Trivy
+      if: steps.download.outcome == 'success'
+      shell: bash
+      run: |
+        echo "${TRIVY_SHA256}  $RUNNER_TEMP/trivy.tar.gz" | sha256sum -c -
+        mkdir -p "$RUNNER_TEMP/trivy-bin"
+        tar -xzf "$RUNNER_TEMP/trivy.tar.gz" -C "$RUNNER_TEMP/trivy-bin" trivy
+
+    - name: Scan image
+      id: scan
+      if: steps.download.outcome == 'success'
+      continue-on-error: true
+      shell: bash
+      env:
+        IMAGE: ${{ inputs.image }}
+      run: '"$RUNNER_TEMP/trivy-bin/trivy" image --quiet --scanners vuln --platform linux/amd64 --format sarif --output trivy.sarif "$IMAGE"'
+
+    - uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
+      if: steps.scan.outcome == 'success'
+      continue-on-error: true
+      with:
+        sarif_file: trivy.sarif
+        category: ${{ inputs.category }}
+        ref: ${{ inputs.ref }}
+        sha: ${{ inputs.sha }}

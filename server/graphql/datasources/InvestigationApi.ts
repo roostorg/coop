@@ -1,4 +1,5 @@
-import { inject, type Dependencies } from '../../iocContainer/index.js';
+import { type Dependencies } from '../../iocContainer/index.js';
+import { inject } from '../../iocContainer/utils.js';
 import { type ItemSubmissionForGQL } from '../types.js';
 
 export type UserHistoryForGQL = {

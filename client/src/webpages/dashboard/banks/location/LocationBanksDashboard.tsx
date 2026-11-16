@@ -2,7 +2,7 @@ import { gql } from '@apollo/client';
 import { Globe } from 'lucide-react';
 import { MouseEvent, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 
 import FullScreenLoading from '../../../../components/common/FullScreenLoading';
 import CoopModal from '../../components/CoopModal';
@@ -47,7 +47,9 @@ gql`
 `;
 
 export default function LocationBanksDashboard() {
-  const { loading, error, data, refetch } = useGQLLocationBanksQuery();
+  const { loading, error, data, refetch } = useGQLLocationBanksQuery({
+    fetchPolicy: 'no-cache',
+  });
 
   const [deleteLocationBank] = useGQLDeleteLocationBankMutation({
     onError: () => {},

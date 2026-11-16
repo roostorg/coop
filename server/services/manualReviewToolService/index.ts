@@ -25,6 +25,8 @@ export {
   type ReportHistory,
 } from './manualReviewToolService.js';
 
+export { RECENT_DECISIONS_PAGE_SIZE } from './modules/DecisionAnalytics.js';
+
 export {
   type ManualReviewQueue,
   jobIdToGuid,
@@ -37,7 +39,11 @@ export {
   type ManualReviewAppealJobInput,
 } from './modules/JobEnrichment.js';
 
-export { type ManualReviewDecisionComponent } from './modules/JobDecisioning.js';
+export {
+  actionableRelatedActions,
+  relatedActionPublishPayloads,
+  type ManualReviewDecisionComponent,
+} from './modules/JobDecisioning.js';
 
 // Needs to be exported because it's used in the contract for
 // warehouse eventual-write tables.

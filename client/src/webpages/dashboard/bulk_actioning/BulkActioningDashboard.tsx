@@ -3,7 +3,7 @@ import { Input, Select } from 'antd';
 import orderBy from 'lodash/orderBy';
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router';
 import { type JsonObject } from 'type-fest';
 
 import ActionParameterInputs, {
