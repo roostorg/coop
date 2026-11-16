@@ -42,7 +42,7 @@ runs:
       if: steps.download.outcome == 'success'
       shell: bash
       run: |
-        echo "${TRIVY_SHA256}  $RUNNER_TEMP/trivy.tar.gz" | sha256sum -c -
+        echo "${TRIVY_SHA256}  $RUNNER_TEMP/trivy.tar.gz" | sha256sum --check --strict -
         mkdir -p "$RUNNER_TEMP/trivy-bin"
         tar -xzf "$RUNNER_TEMP/trivy.tar.gz" -C "$RUNNER_TEMP/trivy-bin" trivy
 
