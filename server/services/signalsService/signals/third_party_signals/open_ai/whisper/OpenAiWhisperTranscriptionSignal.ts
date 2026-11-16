@@ -216,6 +216,7 @@ export async function getOpenAiTranscription(
   const formData = await getWhisperAPIFormDataForUrl(fetchHTTP, url);
   const response = await fetchHTTP({
     url: 'https://api.openai.com/v1/audio/transcriptions',
+    isUntrustedUrl: false,
     method: 'post',
     headers: { Authorization: `Bearer ${apiKey}` },
     body: formData,
@@ -263,6 +264,7 @@ async function getWhisperAPIFormDataForUrl(fetchHTTP: FetchHTTP, url: string) {
   try {
     const response = await fetchHTTP({
       url,
+      isUntrustedUrl: true,
       method: 'get',
       handleResponseBody: 'as-readable-stream',
       maxResponseSize: '25mb',
