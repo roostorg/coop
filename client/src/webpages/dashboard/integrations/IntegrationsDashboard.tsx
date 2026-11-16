@@ -16,6 +16,7 @@ export default function IntegrationsDashboard() {
       myOrg {
         integrationConfigs {
           name
+          configured
         }
       }
     }
@@ -30,6 +31,11 @@ export default function IntegrationsDashboard() {
         requiresConfig
         logoUrl
         logoWithBackgroundUrl
+        modelCards {
+          modelName
+          version
+          releaseDate
+        }
       }
     }
   `;
@@ -55,15 +61,18 @@ export default function IntegrationsDashboard() {
   }
 
   const allIntegrations = catalogData?.availableIntegrations ?? [];
-  const myIntegrationNames =
-    myData?.myOrg?.integrationConfigs?.map((config) => config.name) ?? [];
-
-  const myIntegrations = allIntegrations.filter((it) =>
-    myIntegrationNames.includes(it.name),
+  // getAllIntegrationConfigs returns an entry for every integration (with empty
+  // defaults), so presence alone does not mean it is configured; the server's
+  // `configured` flag reports whether a credential value is actually saved.
+  const activeIntegrationNames = new Set(
+    (myData?.myOrg?.integrationConfigs ?? [])
+      .filter((config) => config.configured)
+      .map((config) => config.name),
   );
-  const otherIntegrations = allIntegrations
-    .filter((it) => !myIntegrationNames.includes(it.name))
-    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const integrations = [...allIntegrations].sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
 
   return (
     <div className="flex flex-col">
@@ -72,35 +81,18 @@ export default function IntegrationsDashboard() {
       </Helmet>
       <DashboardHeader
         title="Integrations"
-        subtitle="Coop comes with pre-built integrations to common software used for online safety. Add your API key to enable the integration."
+        subtitle="Coop's built-in integrations are free to use. Add your API key to enable one, or build your own integration backed by a model you host or any SaaS provider you use."
       />
       <div className="items-center align-center">
-        {myIntegrations.length > 0 ? (
-          <>
-            <div className="flex pt-4 text-xl font-bold text-start">
-              My Custom Integrations
-            </div>
-            <div className="grid auto-rows-[minmax(240px,_auto)] grid-rows-auto grid-cols-[repeat(auto-fill,_minmax(280px,_1fr))] gap-6 justify-center items-center pr-11 pt-4 pb-8">
-              {myIntegrations
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map((integration, i) => (
-                  <IntegrationCard key={i} integration={integration} />
-                ))}
-            </div>
-          </>
-        ) : null}
-        <>
-          {otherIntegrations.length > 0 ? (
-            <div className="flex pt-4 text-xl font-bold text-start">
-              All Integrations
-            </div>
-          ) : null}
-          <div className="grid auto-rows-[minmax(240px,_auto)] grid-rows-auto grid-cols-[repeat(auto-fill,_minmax(280px,_1fr))] gap-6 justify-center items-center pr-11 pt-4 pb-8">
-            {otherIntegrations.map((integration, i) => (
-              <IntegrationCard key={i} integration={integration} />
-            ))}
-          </div>
-        </>
+        <div className="grid auto-rows-[minmax(240px,_auto)] grid-rows-auto grid-cols-[repeat(auto-fill,_minmax(280px,_1fr))] gap-6 justify-center items-center pr-11 pt-4 pb-8">
+          {integrations.map((integration, i) => (
+            <IntegrationCard
+              key={i}
+              integration={integration}
+              active={activeIntegrationNames.has(integration.name)}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );

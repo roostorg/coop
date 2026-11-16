@@ -1461,11 +1461,14 @@ export type GQLIntegrationConfig = {
    * which have custom forms.
    */
   readonly configurationFields: ReadonlyArray<GQLIntegrationConfigField>;
+  /** Whether a credential with a value has been saved, without exposing it. */
+  readonly configured: Scalars['Boolean']['output'];
   readonly docsUrl: Scalars['String']['output'];
   readonly logoUrl?: Maybe<Scalars['String']['output']>;
   readonly logoWithBackgroundUrl?: Maybe<Scalars['String']['output']>;
   readonly modelCard: GQLModelCard;
   readonly modelCardLearnMoreUrl?: Maybe<Scalars['String']['output']>;
+  readonly modelCards: ReadonlyArray<GQLModelCard>;
   readonly name: Scalars['String']['output'];
   readonly requiresConfig: Scalars['Boolean']['output'];
   readonly title: Scalars['String']['output'];
@@ -1543,6 +1546,7 @@ export type GQLIntegrationMetadata = {
   readonly docsUrl: Scalars['String']['output'];
   readonly logoUrl?: Maybe<Scalars['String']['output']>;
   readonly logoWithBackgroundUrl?: Maybe<Scalars['String']['output']>;
+  readonly modelCards: ReadonlyArray<GQLModelCard>;
   readonly name: Scalars['String']['output'];
   readonly requiresConfig: Scalars['Boolean']['output'];
   readonly title: Scalars['String']['output'];
@@ -6844,7 +6848,7 @@ export type GQLIntegrationConfigQuery = {
               readonly label: string;
             }> | null;
           }>;
-          readonly modelCard: {
+          readonly modelCards: ReadonlyArray<{
             readonly __typename: 'ModelCard';
             readonly modelName: string;
             readonly version: string;
@@ -6868,7 +6872,7 @@ export type GQLIntegrationConfigQuery = {
                 readonly value: string;
               }> | null;
             }> | null;
-          };
+          }>;
           readonly apiCredential:
             | {
                 readonly __typename: 'GoogleContentSafetyApiIntegrationApiCredential';
@@ -6910,6 +6914,7 @@ export type GQLMyIntegrationsQuery = {
     readonly integrationConfigs: ReadonlyArray<{
       readonly __typename: 'IntegrationConfig';
       readonly name: string;
+      readonly configured: boolean;
     }>;
   } | null;
 };
@@ -6928,6 +6933,12 @@ export type GQLAvailableIntegrationsQuery = {
     readonly requiresConfig: boolean;
     readonly logoUrl?: string | null;
     readonly logoWithBackgroundUrl?: string | null;
+    readonly modelCards: ReadonlyArray<{
+      readonly __typename: 'ModelCard';
+      readonly modelName: string;
+      readonly version: string;
+      readonly releaseDate?: string | null;
+    }>;
   }>;
 };
 
@@ -30945,7 +30956,7 @@ export const GQLIntegrationConfigDocument = gql`
           }
           logoUrl
           logoWithBackgroundUrl
-          modelCard {
+          modelCards {
             modelName
             version
             releaseDate
@@ -31098,6 +31109,7 @@ export const GQLMyIntegrationsDocument = gql`
     myOrg {
       integrationConfigs {
         name
+        configured
       }
     }
   }
@@ -31202,6 +31214,11 @@ export const GQLAvailableIntegrationsDocument = gql`
       requiresConfig
       logoUrl
       logoWithBackgroundUrl
+      modelCards {
+        modelName
+        version
+        releaseDate
+      }
     }
   }
 `;

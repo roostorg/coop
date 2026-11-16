@@ -1532,11 +1532,14 @@ export type GQLIntegrationConfig = {
    * which have custom forms.
    */
   readonly configurationFields: ReadonlyArray<GQLIntegrationConfigField>;
+  /** Whether a credential with a value has been saved, without exposing it. */
+  readonly configured: Scalars['Boolean']['output'];
   readonly docsUrl: Scalars['String']['output'];
   readonly logoUrl?: Maybe<Scalars['String']['output']>;
   readonly logoWithBackgroundUrl?: Maybe<Scalars['String']['output']>;
   readonly modelCard: GQLModelCard;
   readonly modelCardLearnMoreUrl?: Maybe<Scalars['String']['output']>;
+  readonly modelCards: ReadonlyArray<GQLModelCard>;
   readonly name: Scalars['String']['output'];
   readonly requiresConfig: Scalars['Boolean']['output'];
   readonly title: Scalars['String']['output'];
@@ -1614,6 +1617,7 @@ export type GQLIntegrationMetadata = {
   readonly docsUrl: Scalars['String']['output'];
   readonly logoUrl?: Maybe<Scalars['String']['output']>;
   readonly logoWithBackgroundUrl?: Maybe<Scalars['String']['output']>;
+  readonly modelCards: ReadonlyArray<GQLModelCard>;
   readonly name: Scalars['String']['output'];
   readonly requiresConfig: Scalars['Boolean']['output'];
   readonly title: Scalars['String']['output'];
@@ -9718,6 +9722,7 @@ export type GQLIntegrationConfigResolvers<
     ParentType,
     ContextType
   >;
+  configured?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
   docsUrl?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   logoUrl?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -9732,6 +9737,11 @@ export type GQLIntegrationConfigResolvers<
   modelCard?: Resolver<GQLResolversTypes['ModelCard'], ParentType, ContextType>;
   modelCardLearnMoreUrl?: Resolver<
     Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  modelCards?: Resolver<
+    ReadonlyArray<GQLResolversTypes['ModelCard']>,
     ParentType,
     ContextType
   >;
@@ -9915,6 +9925,11 @@ export type GQLIntegrationMetadataResolvers<
   >;
   logoWithBackgroundUrl?: Resolver<
     Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  modelCards?: Resolver<
+    ReadonlyArray<GQLResolversTypes['ModelCard']>,
     ParentType,
     ContextType
   >;

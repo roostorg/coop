@@ -12,15 +12,19 @@ import {
   type ErrorInstanceData,
 } from '../../utils/errors.js';
 import { type GQLSetIntegrationConfigInput } from '../generated.js';
-import type {
-  IntegrationManifestEntry,
-  ModelCard,
+import {
+  modelCardsFor,
+  type IntegrationManifestEntry,
+  type ModelCard,
 } from './integrationManifests.js';
 
 export type TIntegrationConfigWithMetadata = Readonly<{
   name: string;
   apiCredential: Readonly<Record<string, unknown>>;
+  /** Whether a credential with a value has been saved for this integration. */
+  configured: boolean;
   modelCard: ModelCard;
+  modelCards: readonly ModelCard[];
   modelCardLearnMoreUrl?: string;
   title: string;
   docsUrl: string;
@@ -28,6 +32,48 @@ export type TIntegrationConfigWithMetadata = Readonly<{
   logoUrl?: string;
   logoWithBackgroundUrl?: string;
 }>;
+
+/**
+ * Whether a stored credential actually carries a value, so the catalog can show
+ * a non-secret "configured" status without shipping API keys to the client.
+ */
+function isBlankCredentialValue(value: unknown): boolean {
+  return (
+    value == null ||
+    (typeof value === 'string' && value.trim() === '') ||
+    (Array.isArray(value) && value.length === 0)
+  );
+}
+
+export function credentialIsConfigured(
+  integrationId: string,
+  credential: Record<string, unknown>,
+  manifest: IntegrationManifestEntry,
+): boolean {
+  switch (integrationId) {
+    case Integration.GOOGLE_CONTENT_SAFETY_API:
+    case Integration.OPEN_AI:
+    case Integration.ZENTROPI:
+      return (
+        typeof credential.apiKey === 'string' && credential.apiKey.length > 0
+      );
+    default: {
+      // Plugins declare their form; configured means every required field has
+      // a value. Plugins without required fields count any saved value.
+      const required = (manifest.configurationFields ?? []).filter(
+        (field) => field.required,
+      );
+      if (required.length === 0) {
+        return Object.values(credential).some(
+          (value) => !isBlankCredentialValue(value),
+        );
+      }
+      return required.every(
+        (field) => !isBlankCredentialValue(credential[field.key]),
+      );
+    }
+  }
+}
 
 function defaultCredentialForIntegrationId(
   integrationId: string,
@@ -51,7 +97,9 @@ function mergeManifest(
   return {
     name: integrationId,
     apiCredential: { ...apiCredential, name: integrationId },
+    configured: credentialIsConfigured(integrationId, apiCredential, manifest),
     modelCard: manifest.modelCard,
+    modelCards: modelCardsFor(manifest),
     modelCardLearnMoreUrl: manifest.modelCardLearnMoreUrl,
     title: manifest.title,
     docsUrl: manifest.docsUrl,
