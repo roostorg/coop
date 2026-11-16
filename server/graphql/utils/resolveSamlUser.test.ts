@@ -2,6 +2,7 @@ import { faker } from '@faker-js/faker';
 import { type Profile } from '@node-saml/passport-saml';
 import { type Request } from 'express';
 import { uid } from 'uid';
+import { vi } from 'vitest';
 
 import { UserRole } from '../../services/userManagementService/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
@@ -50,7 +51,7 @@ describe('resolveSamlUser', () => {
     async ({ deps, org }) => {
       const input = samlUserInput(org.id);
       await kyselyUserInsert({ db: deps.KyselyPg, ...input });
-      const done = jest.fn();
+      const done = vi.fn();
       await resolveSamlUser(
         deps.KyselyPg,
         deps.Tracer,
@@ -72,7 +73,7 @@ describe('resolveSamlUser', () => {
     async ({ deps, org }) => {
       const input = samlUserInput(org.id);
       await kyselyUserInsert({ db: deps.KyselyPg, ...input });
-      const done = jest.fn();
+      const done = vi.fn();
       await resolveSamlUser(
         deps.KyselyPg,
         deps.Tracer,
@@ -89,7 +90,7 @@ describe('resolveSamlUser', () => {
   testWithFixture(
     'rejects when no user exists for the email in that org',
     async ({ deps, org }) => {
-      const done = jest.fn();
+      const done = vi.fn();
       await resolveSamlUser(
         deps.KyselyPg,
         deps.Tracer,
@@ -105,7 +106,7 @@ describe('resolveSamlUser', () => {
   testWithFixture(
     'rejects when orgId is missing from the path',
     async ({ deps }) => {
-      const done = jest.fn();
+      const done = vi.fn();
       await resolveSamlUser(
         deps.KyselyPg,
         deps.Tracer,
@@ -127,7 +128,7 @@ describe('resolveSamlUser', () => {
     testWithFixture(
       `rejects without a match when the email claim is ${label}`,
       async ({ deps, org }) => {
-        const done = jest.fn();
+        const done = vi.fn();
         await resolveSamlUser(
           deps.KyselyPg,
           deps.Tracer,
@@ -147,7 +148,7 @@ describe('resolveSamlUser', () => {
     'rejects when the email claim is not a string',
     async ({ deps, org }) => {
       const arrayProfile = { email: ['a@example.com'] };
-      const done = jest.fn();
+      const done = vi.fn();
       await resolveSamlUser(
         deps.KyselyPg,
         deps.Tracer,
@@ -170,9 +171,9 @@ describe('resolveSamlUser', () => {
       },
     } as unknown as UsersDb;
     const tracer = {
-      logActiveSpanFailedIfAny: jest.fn(),
+      logActiveSpanFailedIfAny: vi.fn(),
     } as unknown as SafeTracer;
-    const done = jest.fn();
+    const done = vi.fn();
 
     await resolveSamlUser(
       db,

@@ -1,3 +1,5 @@
+import { vi } from 'vitest';
+
 import {
   type ItemSubmission,
   type NormalizedItemData,
@@ -66,11 +68,11 @@ function makeContext(
   user: { orgId: string } | null = { orgId: 'org-1' },
 ) {
   const service: ItemInvestigationServiceMock = {
-    getItemByIdentifier: jest.fn(async () => null),
-    getItemByTypeAgnosticIdentifier: jest.fn(() =>
+    getItemByIdentifier: vi.fn(async () => null),
+    getItemByTypeAgnosticIdentifier: vi.fn(() =>
       emptyAsyncIterable<SubmissionsForItem>(),
     ),
-    synthesizeUserItemFromCreatorReferences: jest.fn(async () => null),
+    synthesizeUserItemFromCreatorReferences: vi.fn(async () => null),
     ...overrides,
   };
 
@@ -101,7 +103,7 @@ describe('investigation resolvers', () => {
       it('returns the real submission and never falls back to synthesis', async () => {
         const submission = makeSubmission({ itemId: 'i-1' });
         const { ctx, service } = makeContext({
-          getItemByIdentifier: jest.fn().mockResolvedValue({
+          getItemByIdentifier: vi.fn().mockResolvedValue({
             latestSubmission: submission,
             priorSubmissions: undefined,
           }),
@@ -122,8 +124,8 @@ describe('investigation resolvers', () => {
       it('falls back to synthesis (with knownUserTypeId) when no real submission exists', async () => {
         const synthSubmission = makeSubmission({ itemId: 'i-1' });
         const { ctx, service } = makeContext({
-          getItemByIdentifier: jest.fn().mockResolvedValue(null),
-          synthesizeUserItemFromCreatorReferences: jest.fn().mockResolvedValue({
+          getItemByIdentifier: vi.fn().mockResolvedValue(null),
+          synthesizeUserItemFromCreatorReferences: vi.fn().mockResolvedValue({
             latestSubmission: synthSubmission,
             priorSubmissions: undefined,
           }),
@@ -162,7 +164,7 @@ describe('investigation resolvers', () => {
       it('returns the first real submission without invoking synthesis', async () => {
         const submission = makeSubmission({ itemId: 'i-1' });
         const { ctx, service } = makeContext({
-          getItemByTypeAgnosticIdentifier: jest.fn().mockReturnValue(
+          getItemByTypeAgnosticIdentifier: vi.fn().mockReturnValue(
             singleAsyncIterable({
               latestSubmission: submission,
               priorSubmissions: undefined,
@@ -185,7 +187,7 @@ describe('investigation resolvers', () => {
       it('falls back to synthesis (without knownUserTypeId) when the stream is empty', async () => {
         const synthSubmission = makeSubmission({ itemId: 'i-1' });
         const { ctx, service } = makeContext({
-          synthesizeUserItemFromCreatorReferences: jest.fn().mockResolvedValue({
+          synthesizeUserItemFromCreatorReferences: vi.fn().mockResolvedValue({
             latestSubmission: synthSubmission,
             priorSubmissions: undefined,
           }),
@@ -212,7 +214,7 @@ describe('investigation resolvers', () => {
       it('falls back to synthesis when the stream is empty', async () => {
         const synthSubmission = makeSubmission({ itemId: 'i-1' });
         const { ctx, service } = makeContext({
-          synthesizeUserItemFromCreatorReferences: jest.fn().mockResolvedValue({
+          synthesizeUserItemFromCreatorReferences: vi.fn().mockResolvedValue({
             latestSubmission: synthSubmission,
             priorSubmissions: undefined,
           }),
@@ -227,10 +229,39 @@ describe('investigation resolvers', () => {
         expect(result[0]).toMatchObject({ isSynthetic: true });
       });
 
+      it('fails with a timeout error and skips synthesis when the lookup deadline passes', async () => {
+        const timeout = vi
+          .spyOn(AbortSignal, 'timeout')
+          .mockReturnValue(AbortSignal.abort());
+        const { ctx, service } = makeContext();
+
+        try {
+          const timeoutError = {
+            name: 'TimeoutError',
+            status: 504,
+            title: 'Item lookup timed out',
+          };
+          await expect(
+            resolveItemsWithId({ itemId: 'i-1' }, ctx),
+          ).rejects.toMatchObject(timeoutError);
+          await expect(
+            resolveItemsWithId(
+              { itemId: 'i-1', returnFirstResultOnly: true },
+              ctx,
+            ),
+          ).rejects.toMatchObject(timeoutError);
+          expect(
+            service.synthesizeUserItemFromCreatorReferences,
+          ).not.toHaveBeenCalled();
+        } finally {
+          timeout.mockRestore();
+        }
+      });
+
       it('returns real submissions and skips synthesis when the stream yields data', async () => {
         const submission = makeSubmission({ itemId: 'i-1' });
         const { ctx, service } = makeContext({
-          getItemByTypeAgnosticIdentifier: jest.fn().mockReturnValue(
+          getItemByTypeAgnosticIdentifier: vi.fn().mockReturnValue(
             singleAsyncIterable({
               latestSubmission: submission,
               priorSubmissions: undefined,
@@ -245,6 +276,9 @@ describe('investigation resolvers', () => {
         expect(
           service.synthesizeUserItemFromCreatorReferences,
         ).not.toHaveBeenCalled();
+        expect(service.getItemByTypeAgnosticIdentifier).toHaveBeenCalledWith(
+          expect.objectContaining({ signal: expect.any(AbortSignal) }),
+        );
       });
     });
   });
@@ -277,14 +311,14 @@ describe('itemActionHistory parameter narrowing', () => {
     actions?: ReadonlyArray<Record<string, unknown>>;
   }) {
     const rows = opts.rows ?? [{ ...execution, parameters: opts.parameters }];
-    const getActions = jest.fn(async () => opts.actions ?? []);
+    const getActions = vi.fn(async () => opts.actions ?? []);
     return {
       getActions,
       ctx: {
         getUser: () => ({ orgId: 'org-1' }),
         services: {
           ItemInvestigationService: {
-            getItemActionHistory: jest.fn(async () => rows),
+            getItemActionHistory: vi.fn(async () => rows),
           },
           ModerationConfigService: { getActions },
         },

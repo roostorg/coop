@@ -1,6 +1,6 @@
 import { gql } from '@apollo/client';
 import { Helmet } from 'react-helmet-async';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router';
 
 import FullScreenLoading from '../../../../components/common/FullScreenLoading';
 import CoopButton from '../../components/CoopButton';
@@ -45,11 +45,12 @@ export default function ReportingRuleInfo() {
           buttons={[
             {
               title: 'Report Rules',
-              onClick: () => navigate('/dashboard/rules/report'),
+              onClick: async () => navigate('/dashboard/rules/report'),
             },
             {
               title: `Report Rule: ${name}`,
-              onClick: () => navigate(`/dashboard/rules/report/form/${ruleId}`),
+              onClick: async () =>
+                navigate(`/dashboard/rules/report/form/${ruleId}`),
             },
             { title: 'Insights' },
           ]}

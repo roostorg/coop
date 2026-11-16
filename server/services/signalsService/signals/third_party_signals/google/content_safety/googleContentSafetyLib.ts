@@ -7,7 +7,7 @@ import { safeGet } from '../../../../../../utils/misc.js';
 import type SafeTracer from '../../../../../../utils/SafeTracer.js';
 import { type Bind2 } from '../../../../../../utils/typescript-types.js';
 import { type FetchHTTP } from '../../../../../networkingService/index.js';
-import { type CachedGetCredentials } from '../../../../../signalAuthService/signalAuthService.js';
+import { type GetCredentials } from '../../../../../signalAuthService/signalAuthService.js';
 import { type SignalInput } from '../../../SignalBase.js';
 import { fetchImage, fetchWithTimeout } from './fetchUtils.js';
 
@@ -123,7 +123,7 @@ export class GoogleContentSafetyClient {
 }
 
 export async function runGoogleContentSafetyImageImpl(
-  getGoogleContentSafetyCredentials: CachedGetCredentials<'GOOGLE_CONTENT_SAFETY_API'>,
+  getGoogleContentSafetyCredentials: GetCredentials<'GOOGLE_CONTENT_SAFETY_API'>,
   input: SignalInput<ScalarTypes['IMAGE']>,
   getGoogleContentSafetyScores: FetchGoogleContentSafetyScores,
 ) {

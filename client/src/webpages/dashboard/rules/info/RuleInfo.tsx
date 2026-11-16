@@ -1,7 +1,7 @@
 import { gql } from '@apollo/client';
 import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router';
 
 import FullScreenLoading from '../../../../components/common/FullScreenLoading';
 import CoopButton from '../../components/CoopButton';
@@ -53,11 +53,11 @@ export default function RuleInfo() {
           buttons={[
             {
               title: 'Rules',
-              onClick: () => navigate('/dashboard/rules/proactive'),
+              onClick: async () => navigate('/dashboard/rules/proactive'),
             },
             {
               title: `Rule: ${name}`,
-              onClick: () =>
+              onClick: async () =>
                 navigate(`/dashboard/rules/proactive/form/${ruleId}`),
             },
             { title: 'Insights' },

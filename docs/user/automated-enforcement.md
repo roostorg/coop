@@ -8,6 +8,15 @@ Both types of rules are built from the same building blocks: conditions that ref
 
 Rule conditions can be set to **AND** (all must match for the rule to match) or **OR** (the rule matches when any condition matches).
 
+### Conditions with multiple values
+
+Some condition inputs produce more than one value: **Any image**, **Any video** and **Any geohash**, item fields that hold a list, and **Relevant Policy** when a job was enqueued for several policies. Coop evaluates the condition on each value, and the condition matches if **any** value matches. For example:
+
+- **Any image** with a signal score above 0.8 matches if at least one of the item's images scores above 0.8.
+- **Relevant Policy** _is equal to_ Harassment matches a job enqueued for Spam and Harassment.
+
+The exception is _is not equal to_, which matches only if **no** value matches: **Relevant Policy** _is not equal to_ Spam does not match a job enqueued for Spam and Harassment. A condition can't currently require that _every_ value matches.
+
 ### Proactive Rules
 
 Proactive Rules automate enforcement. When an item is submitted to Coop, every active Proactive Rule is evaluated against it, and any matching rule's configured action is executed automatically. Configure them under **Automated Enforcement** → **Proactive Rules**.

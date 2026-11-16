@@ -2,7 +2,8 @@ import { type ItemIdentifier } from '@roostorg/coop-types';
 import { type Kysely } from 'kysely';
 import { match } from 'ts-pattern';
 
-import { inject, type Dependencies } from '../../iocContainer/index.js';
+import { type Dependencies } from '../../iocContainer/index.js';
+import { inject } from '../../iocContainer/utils.js';
 import { type ConsumerDirectives } from '../../lib/cache/index.js';
 import {
   type IReportingAnalyticsAdapter,
@@ -376,6 +377,17 @@ function makeReportingService(
     async getNumTimesReported(opts: { orgId: string; itemId: string }) {
       const { orgId, itemId } = opts;
       return reportingAnalyticsAdapter.getNumTimesReported(orgId, itemId);
+    },
+
+    async getNumTimesReportedForItems(opts: {
+      orgId: string;
+      itemIds: readonly string[];
+    }) {
+      const { orgId, itemIds } = opts;
+      return reportingAnalyticsAdapter.getNumTimesReportedForItems(
+        orgId,
+        itemIds,
+      );
     },
   };
 }

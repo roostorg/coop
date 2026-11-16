@@ -1,20 +1,58 @@
-import { Button, Input } from 'antd';
-import { Plus, Trash2 } from 'lucide-react';
+import { Button, Input, Select } from 'antd';
+import { CheckCircle2, Plus, Trash2 } from 'lucide-react';
 
 import {
   GQLGoogleContentSafetyApiIntegrationApiCredential,
   GQLIntegrationApiCredential,
+  GQLIntegrationConfigField,
+  GQLIntegrationConfigFieldInputType,
   GQLOpenAiIntegrationApiCredential,
   GQLZentropiIntegrationApiCredential,
+  GQLZentropiModel,
+  Scalars,
 } from '../../../graphql/generated';
+
+const ZENTROPI_MODEL_LABELS = {
+  [GQLZentropiModel.CopeLatest]: 'cope-latest (default)',
+  [GQLZentropiModel.CopeBA4B]: 'cope-b-a4b',
+  [GQLZentropiModel.CopeBS1]: 'cope-b-s1',
+} as const satisfies Record<GQLZentropiModel, string>;
+
+const ZENTROPI_MODEL_OPTIONS = Object.entries(ZENTROPI_MODEL_LABELS).map(
+  ([value, label]) => ({ value, label }),
+);
+
+export type PluginConfigField = Omit<GQLIntegrationConfigField, '__typename'>;
+
+function ActiveLabel() {
+  return (
+    <div className="mt-1 flex items-center gap-1 text-xs text-green-600">
+      <CheckCircle2 size={12} /> Active
+    </div>
+  );
+}
 
 export default function IntegrationConfigApiCredentialsSection(props: {
   name: string;
   setApiCredential: (cred: GQLIntegrationApiCredential) => void;
   apiCredential: GQLIntegrationApiCredential;
+  /**
+   * The credential as currently persisted on the server. A key counts as
+   * "Active" only when the entered value matches what is saved, so an unsaved
+   * edit does not read as active.
+   */
+  savedApiCredential?: GQLIntegrationApiCredential;
   compact?: boolean;
+  /** Fields declared by a plugin manifest; drives the plugin config form. */
+  configurationFields?: readonly PluginConfigField[];
 }) {
-  const { setApiCredential, apiCredential, compact } = props;
+  const {
+    setApiCredential,
+    apiCredential,
+    savedApiCredential,
+    compact,
+    configurationFields = [],
+  } = props;
   const inputWidthClass = compact ? 'w-full' : 'w-1/2';
 
   const renderGoogleContentSafetyApiCredential = (
@@ -39,18 +77,48 @@ export default function IntegrationConfigApiCredentialsSection(props: {
   const renderOpenAiCredential = (
     apiCredential: GQLOpenAiIntegrationApiCredential,
   ) => {
+    const saved =
+      savedApiCredential?.__typename === 'OpenAiIntegrationApiCredential'
+        ? savedApiCredential
+        : undefined;
+    const apiKeyActive =
+      apiCredential.apiKey.length > 0 && apiCredential.apiKey === saved?.apiKey;
+    const csamKeyActive =
+      (apiCredential.csamClassifierApiKey ?? '').length > 0 &&
+      apiCredential.csamClassifierApiKey === saved?.csamClassifierApiKey;
     return (
-      <div className={`flex flex-col ${inputWidthClass}`}>
-        <div className="mb-1">API Key</div>
-        <Input
-          value={apiCredential.apiKey}
-          onChange={(event) =>
-            setApiCredential({
-              ...apiCredential,
-              apiKey: event.target.value,
-            })
-          }
-        />
+      <div className="flex flex-col gap-4">
+        <div className={`flex flex-col ${inputWidthClass}`}>
+          <div className="mb-1">API Key</div>
+          <Input
+            value={apiCredential.apiKey}
+            onChange={(event) =>
+              setApiCredential({
+                ...apiCredential,
+                apiKey: event.target.value,
+              })
+            }
+          />
+          {apiKeyActive ? <ActiveLabel /> : null}
+        </div>
+        <div className={`flex flex-col ${inputWidthClass}`}>
+          <div className="mb-1">CSAM Classifier API Key</div>
+          <div className="mb-1 text-xs text-gray-500">
+            A standard OpenAI API key for the organization granted CSAM
+            Classifier access. This can differ from your Moderation API key if
+            access was granted on a different OpenAI organization.
+          </div>
+          <Input
+            value={apiCredential.csamClassifierApiKey ?? ''}
+            onChange={(event) =>
+              setApiCredential({
+                ...apiCredential,
+                csamClassifierApiKey: event.target.value,
+              })
+            }
+          />
+          {csamKeyActive ? <ActiveLabel /> : null}
+        </div>
       </div>
     );
   };
@@ -62,7 +130,7 @@ export default function IntegrationConfigApiCredentialsSection(props: {
 
     const updateLabelerVersion = (
       index: number,
-      field: 'id' | 'label',
+      field: 'id' | 'label' | 'labelerId' | 'model',
       value: string,
     ) => {
       const updated = labelerVersions.map((v, i) =>
@@ -76,7 +144,12 @@ export default function IntegrationConfigApiCredentialsSection(props: {
         ...apiCredential,
         labelerVersions: [
           ...labelerVersions,
-          { __typename: 'ZentropiLabelerVersion' as const, id: '', label: '' },
+          {
+            __typename: 'ZentropiLabelerVersion' as const,
+            id: '',
+            label: '',
+            labelerId: '',
+          },
         ],
       });
     };
@@ -110,6 +183,14 @@ export default function IntegrationConfigApiCredentialsSection(props: {
               className={`flex gap-2 mb-2 ${compact ? 'flex-col' : 'flex-row items-center'}`}
             >
               <Input
+                placeholder="Labeler ID (optional)"
+                value={version.labelerId ?? ''}
+                onChange={(event) =>
+                  updateLabelerVersion(index, 'labelerId', event.target.value)
+                }
+                className="flex-1"
+              />
+              <Input
                 placeholder="Version ID"
                 value={version.id}
                 onChange={(event) =>
@@ -125,6 +206,18 @@ export default function IntegrationConfigApiCredentialsSection(props: {
                 }
                 className="flex-1"
               />
+              <label className="flex flex-1 flex-col">
+                <span className="mb-1">Model</span>
+                <Select
+                  aria-label={`Model for ${version.label || 'labeler version'}`}
+                  value={version.model ?? GQLZentropiModel.CopeLatest}
+                  options={ZENTROPI_MODEL_OPTIONS}
+                  onChange={(model) =>
+                    updateLabelerVersion(index, 'model', model)
+                  }
+                  className="w-full"
+                />
+              </label>
               <Button
                 type="text"
                 icon={<Trash2 size={14} />}
@@ -156,6 +249,113 @@ export default function IntegrationConfigApiCredentialsSection(props: {
     credential: Record<string, unknown>;
   }) => {
     const credential = pluginCredential.credential ?? {};
+    const setField = (key: string, value: string | string[]) =>
+      setApiCredential({
+        __typename: 'PluginIntegrationApiCredential',
+        credential: {
+          ...credential,
+          [key]: value,
+        } as Scalars['JSONObject']['output'],
+      });
+
+    if (configurationFields.length > 0) {
+      return (
+        <div className="flex flex-col gap-4">
+          {configurationFields.map((field) => {
+            const inputId = `integration-config-${field.key}`;
+            const value = credential[field.key];
+            const stringValue =
+              value == null
+                ? ''
+                : typeof value === 'string'
+                  ? value
+                  : JSON.stringify(value);
+            const commonProps = {
+              id: inputId,
+              value: stringValue,
+              placeholder: field.placeholder ?? undefined,
+              'aria-required': field.required,
+            };
+            return (
+              <div
+                key={field.key}
+                className={`flex flex-col ${inputWidthClass}`}
+              >
+                <label htmlFor={inputId} className="mb-1">
+                  {field.label}
+                  {field.required && (
+                    <span className="text-red-600" aria-hidden="true">
+                      {' *'}
+                    </span>
+                  )}
+                </label>
+                {field.inputType ===
+                GQLIntegrationConfigFieldInputType.Select ? (
+                  <Select
+                    id={inputId}
+                    value={stringValue === '' ? undefined : stringValue}
+                    placeholder={field.placeholder ?? 'Select an option'}
+                    aria-required={field.required}
+                    allowClear={!field.required}
+                    options={(field.options ?? []).map((option) => ({
+                      value: option.value,
+                      label: option.label,
+                    }))}
+                    onChange={(selected) => setField(field.key, selected ?? '')}
+                  />
+                ) : field.inputType ===
+                  GQLIntegrationConfigFieldInputType.Array ? (
+                  <Select
+                    id={inputId}
+                    mode="tags"
+                    open={false}
+                    suffixIcon={null}
+                    tokenSeparators={[',']}
+                    value={Array.isArray(value) ? value.map(String) : []}
+                    placeholder={
+                      field.placeholder ?? 'Type a value and press Enter'
+                    }
+                    aria-required={field.required}
+                    onChange={(values) => setField(field.key, values)}
+                  />
+                ) : field.inputType ===
+                  GQLIntegrationConfigFieldInputType.Password ? (
+                  <Input.Password
+                    {...commonProps}
+                    autoComplete="off"
+                    onChange={(event) =>
+                      setField(field.key, event.target.value)
+                    }
+                  />
+                ) : field.inputType ===
+                  GQLIntegrationConfigFieldInputType.Json ? (
+                  <Input.TextArea
+                    {...commonProps}
+                    autoSize={{ minRows: 3, maxRows: 12 }}
+                    onChange={(event) =>
+                      setField(field.key, event.target.value)
+                    }
+                  />
+                ) : (
+                  <Input
+                    {...commonProps}
+                    onChange={(event) =>
+                      setField(field.key, event.target.value)
+                    }
+                  />
+                )}
+                {field.description && (
+                  <div className="mt-1 text-xs text-zinc-500">
+                    {field.description}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+
     const entries = Object.entries(credential).filter(
       ([key]) => key !== 'name',
     );

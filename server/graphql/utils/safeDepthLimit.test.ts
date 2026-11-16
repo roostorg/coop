@@ -5,6 +5,7 @@ import {
   type DocumentNode,
   type GraphQLSchema,
 } from 'graphql';
+import { vi } from 'vitest';
 
 import { safeDepthLimit } from './safeDepthLimit.js';
 
@@ -67,8 +68,8 @@ describe('safeDepthLimit', () => {
   });
 
   test('logs the offending operation name when it falls back', () => {
-    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    const error = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     try {
       const doc = parseQuery(`
         query MyOp {

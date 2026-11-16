@@ -28,6 +28,14 @@ export default function getPolicies({
         id: it.id,
         name: it.name,
         parentId: it.parentId ?? null,
+        policyText: it.policyText,
+        enforcementGuidelines: it.enforcementGuidelines,
+        policyType: it.policyType,
+        semanticVersion: it.semanticVersion,
+        userStrikeCount: it.userStrikeCount,
+        applyUserStrikeCountConfigToChildren:
+          it.applyUserStrikeCountConfigToChildren,
+        penalty: it.penalty,
       })),
     } satisfies GetPoliciesOutput);
   };

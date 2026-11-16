@@ -1,0 +1,27 @@
+server:
+  - changed-files:
+      - any-glob-to-any-file: 'server/**'
+
+client:
+  - changed-files:
+      - any-glob-to-any-file: 'client/**'
+
+db:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'db/**'
+          - 'migrator/**'
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file: 'docs/**'
+
+ci:
+  - changed-files:
+      - any-glob-to-any-file: '.github/**'
+
+hma:
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'hma/**'
+          - 'server/services/hmaService/**'

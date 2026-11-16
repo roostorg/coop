@@ -36,8 +36,10 @@ module.exports = {
   ],
   plugins: ['@typescript-eslint', 'custom-rules'],
   rules: {
-    // TODO: re-enable as 'error' and fix violations in follow-up PR
-    '@typescript-eslint/switch-exhaustiveness-check': ['warn'],
+    '@typescript-eslint/switch-exhaustiveness-check': [
+      'error',
+      { considerDefaultExhaustiveForUnions: true },
+    ],
     'react/jsx-uses-react': 'off',
     'react/react-in-jsx-scope': 'off',
     'react/prop-types': 'off',

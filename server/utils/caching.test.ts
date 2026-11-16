@@ -1,3 +1,5 @@
+import { vi } from 'vitest';
+
 import { cached } from './caching.js';
 import { jsonParse, jsonStringify } from './encoding.js';
 
@@ -20,7 +22,7 @@ describe('cached', () => {
   });
 
   it('should not cache promise rejections, and should propagate them', async () => {
-    const producer = jest.fn(async (_it: string) => Promise.reject('anything'));
+    const producer = vi.fn(async (_it: string) => Promise.reject('anything'));
     const cachedProducer = cached({
       producer,
       directives: { freshUntilAge: 1 },
@@ -34,7 +36,7 @@ describe('cached', () => {
   });
 
   it("should only call the producer once during the cache's freshUntilAge", async () => {
-    const producer = jest.fn(async (it: string) => it);
+    const producer = vi.fn(async (it: string) => it);
     const cachedProducer = cached({
       producer,
       directives: { freshUntilAge: 1 },
@@ -48,7 +50,7 @@ describe('cached', () => {
   });
 
   it('should support custom key generation/parsing logic', async () => {
-    const producer = jest.fn(async (it: { x: boolean }) => it);
+    const producer = vi.fn(async (it: { x: boolean }) => it);
     const cachedProducer = cached({
       producer,
       directives: { freshUntilAge: 1 },
@@ -68,7 +70,7 @@ describe('cached', () => {
   });
 
   it('should require custom key generation logic for non-json-compatible key args', async () => {
-    const producer = jest.fn(
+    const producer = vi.fn(
       async (it: Map<string, boolean>) =>
         new Map([...it.entries(), ['extra', true]]),
     );

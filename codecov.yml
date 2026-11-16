@@ -1,0 +1,29 @@
+codecov:
+  require_ci_to_pass: true
+coverage:
+  status:
+    project: { default: { informational: true } }
+    patch: { default: { target: 80%, informational: true } }
+comment:
+  layout: 'condensed_header, diff, flags, components, condensed_files'
+  require_changes: true
+fixes:
+  - '/app/::'
+flag_management:
+  default_rules: { carryforward: true }
+  individual_flags:
+    - { name: server-unit, paths: [server/] }
+    - { name: server-integ, paths: [server/] }
+    - { name: client-unit, paths: [client/] }
+component_management:
+  individual_components:
+    - { component_id: server, name: server, paths: ['server/**'] }
+    - { component_id: client, name: client, paths: ['client/**'] }
+    - { component_id: db, name: db, paths: ['db/**', 'migrator/**'] }
+ignore:
+  - 'client/src/graphql/generated.ts'
+  - 'server/graphql/generated.ts'
+  - '**/*.test.ts'
+  - '**/*.test.tsx'
+  - 'server/e2e/**'
+  - 'server/test/**'

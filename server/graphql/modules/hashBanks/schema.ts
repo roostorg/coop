@@ -3,6 +3,7 @@ export const typeDefs = /* GraphQL */ `
     api: String!
     enabled: Boolean!
     has_auth: Boolean!
+    has_own_credentials: Boolean!
     error: String
     last_fetch_succeeded: Boolean
     last_fetch_time: String
@@ -42,7 +43,12 @@ export const typeDefs = /* GraphQL */ `
   type ExchangeApiInfo {
     name: String!
     supports_auth: Boolean!
-    has_auth: Boolean!
+    has_auth: Boolean! @deprecated
+  }
+
+  type ExchangeCredentialStatus {
+    has_credentials: Boolean!
+    has_own_credentials: Boolean!
   }
 
   input ExchangeConfigInput {
@@ -98,6 +104,10 @@ export const typeDefs = /* GraphQL */ `
     updateExchangeCredentials(
       apiName: String!
       credentialsJson: String!
-    ): Boolean!
+    ): Boolean! @deprecated
+    updateHashBankExchangeCredentials(
+      bankId: ID!
+      credentialsJson: String!
+    ): ExchangeCredentialStatus!
   }
 `;

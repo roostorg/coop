@@ -165,7 +165,7 @@ export default function ItemTypeFormCustomField<T extends ItemTypeKind>(props: {
 
         <div className="flex items-center mb-2 mr-2 space-x-2">
           <Checkbox
-            id="required-checkbox"
+            id={`required-checkbox-${field.index}`}
             checked={field.required}
             onCheckedChange={(isChecked) =>
               updateFieldState(field, {
@@ -174,12 +174,12 @@ export default function ItemTypeFormCustomField<T extends ItemTypeKind>(props: {
               })
             }
           />
-          <Label htmlFor="required-checkbox">Required</Label>
+          <Label htmlFor={`required-checkbox-${field.index}`}>Required</Label>
         </div>
 
         <div className="flex items-center mb-2 space-x-2">
           <Checkbox
-            id="hidden-checkbox"
+            id={`hidden-checkbox-${field.index}`}
             checked={field.hidden}
             onCheckedChange={(isChecked) =>
               updateFieldState(field, {
@@ -188,7 +188,7 @@ export default function ItemTypeFormCustomField<T extends ItemTypeKind>(props: {
               })
             }
           />
-          <Label htmlFor="hidden-checkbox">Hidden Field</Label>
+          <Label htmlFor={`hidden-checkbox-${field.index}`}>Hidden Field</Label>
         </div>
         <Button
           className="self-end ml-2 text-red-500 border-none"

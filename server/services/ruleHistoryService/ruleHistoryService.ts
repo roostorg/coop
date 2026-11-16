@@ -7,7 +7,7 @@ import { sql, type Kysely } from 'kysely';
 import _ from 'lodash';
 import { type CamelCasedProperties, type Simplify } from 'type-fest';
 
-import { inject } from '../../iocContainer/index.js';
+import { inject } from '../../iocContainer/utils.js';
 import { camelToSnakeCase } from '../../utils/misc.js';
 import {
   type Bind1,
