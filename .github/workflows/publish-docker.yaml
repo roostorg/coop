@@ -98,23 +98,24 @@ jobs:
           persist-credentials: false
 
       # A patch on an older line (e.g. 1.1.2 from release/1.1 after 1.2.0)
-      # must not move `latest` backwards, so it moves only when this release
-      # is the highest stable x.y.z tag in the repo.
+      # must not move `latest` backwards, so it moves only when the tag being
+      # built is the highest stable x.y.z tag in the repo. Covers releases and
+      # dispatches run from a tag.
       - name: Decide whether to move latest
         id: latest
-        if: github.event_name == 'release'
+        if: startsWith(github.ref, 'refs/tags/')
         env:
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          TAG: ${{ github.ref_name }}
           REPO_URL: ${{ github.server_url }}/${{ github.repository }}
         run: |
           highest=$(git ls-remote --tags --refs "$REPO_URL" \
             | sed 's|.*refs/tags/||' \
-            | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' \
+            | { grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' || true; } \
             | sort -V | tail -n 1)
-          if [ "$RELEASE_TAG" = "$highest" ]; then
+          if [ "$TAG" = "$highest" ]; then
             echo "latest=auto" >> "$GITHUB_OUTPUT"
           else
-            echo "::notice::$RELEASE_TAG is not the highest release ($highest); not moving latest."
+            echo "::notice::$TAG is not the highest x.y.z release (${highest:-none}); not moving latest."
             echo "latest=false" >> "$GITHUB_OUTPUT"
           fi
 
