@@ -5,6 +5,7 @@
 
 import {
   BUILT_IN_MANIFESTS,
+  modelCardsFor,
   type AvailableIntegration,
   type IntegrationManifestEntry,
 } from './integrationManifests.js';
@@ -66,6 +67,7 @@ function buildRegistry(): IntegrationRegistry {
           requiresConfig: manifest.requiresConfig,
           logoUrl: manifest.logoUrl,
           logoWithBackgroundUrl: manifest.logoWithBackgroundUrl,
+          modelCards: modelCardsFor(manifest),
         };
       });
     },
@@ -101,6 +103,7 @@ export function getIntegrationRegistry(): IntegrationRegistry {
 
 export {
   BUILT_IN_MANIFESTS,
+  modelCardsFor,
   type AvailableIntegration,
   type IntegrationManifestEntry,
   type ModelCard,

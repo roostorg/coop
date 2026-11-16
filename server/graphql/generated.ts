@@ -319,6 +319,7 @@ export type GQLAddManualReviewJobCommentSuccessResponse = {
 
 export type GQLAddPoliciesResponse = {
   readonly __typename?: 'AddPoliciesResponse';
+  readonly failureDetails: ReadonlyArray<GQLPolicyCreationFailure>;
   readonly failures: ReadonlyArray<Scalars['String']['output']>;
   readonly policies: ReadonlyArray<GQLPolicy>;
 };
@@ -1532,11 +1533,14 @@ export type GQLIntegrationConfig = {
    * which have custom forms.
    */
   readonly configurationFields: ReadonlyArray<GQLIntegrationConfigField>;
+  /** Whether a credential with a value has been saved, without exposing it. */
+  readonly configured: Scalars['Boolean']['output'];
   readonly docsUrl: Scalars['String']['output'];
   readonly logoUrl?: Maybe<Scalars['String']['output']>;
   readonly logoWithBackgroundUrl?: Maybe<Scalars['String']['output']>;
   readonly modelCard: GQLModelCard;
   readonly modelCardLearnMoreUrl?: Maybe<Scalars['String']['output']>;
+  readonly modelCards: ReadonlyArray<GQLModelCard>;
   readonly name: Scalars['String']['output'];
   readonly requiresConfig: Scalars['Boolean']['output'];
   readonly title: Scalars['String']['output'];
@@ -1614,6 +1618,7 @@ export type GQLIntegrationMetadata = {
   readonly docsUrl: Scalars['String']['output'];
   readonly logoUrl?: Maybe<Scalars['String']['output']>;
   readonly logoWithBackgroundUrl?: Maybe<Scalars['String']['output']>;
+  readonly modelCards: ReadonlyArray<GQLModelCard>;
   readonly name: Scalars['String']['output'];
   readonly requiresConfig: Scalars['Boolean']['output'];
   readonly title: Scalars['String']['output'];
@@ -3496,10 +3501,12 @@ export type GQLNotificationType =
 export type GQLOpenAiIntegrationApiCredential = {
   readonly __typename?: 'OpenAiIntegrationApiCredential';
   readonly apiKey: Scalars['String']['output'];
+  readonly csamClassifierApiKey?: Maybe<Scalars['String']['output']>;
 };
 
 export type GQLOpenAiIntegrationApiCredentialInput = {
   readonly apiKey: Scalars['String']['input'];
+  readonly csamClassifierApiKey?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type GQLOrg = {
@@ -3691,6 +3698,17 @@ export type GQLPolicyActionCount = {
   readonly policyId?: Maybe<Scalars['String']['output']>;
 };
 
+export type GQLPolicyCreationFailure = GQLError & {
+  readonly __typename?: 'PolicyCreationFailure';
+  readonly detail?: Maybe<Scalars['String']['output']>;
+  readonly name: Scalars['String']['output'];
+  readonly pointer?: Maybe<Scalars['String']['output']>;
+  readonly requestId?: Maybe<Scalars['String']['output']>;
+  readonly status: Scalars['Int']['output'];
+  readonly title: Scalars['String']['output'];
+  readonly type: ReadonlyArray<Scalars['String']['output']>;
+};
+
 export type GQLPolicyNameExistsError = GQLError & {
   readonly __typename?: 'PolicyNameExistsError';
   readonly detail?: Maybe<Scalars['String']['output']>;
@@ -3783,6 +3801,7 @@ export type GQLQuery = {
   readonly myOrg?: Maybe<GQLOrg>;
   readonly ncmecOrgSettings?: Maybe<GQLNcmecOrgSettings>;
   readonly ncmecReportById?: Maybe<GQLNcmecReport>;
+  /** @deprecated Not supported. Always returns an empty list. */
   readonly ncmecThreads: ReadonlyArray<GQLThreadWithMessagesAndIpAddress>;
   readonly org?: Maybe<GQLOrg>;
   readonly partialItems: GQLPartialItemsResponse;
@@ -4803,6 +4822,8 @@ export const GQLSignalType = {
   GoogleContentSafetyApiImage: 'GOOGLE_CONTENT_SAFETY_API_IMAGE',
   ImageSimilarityDoesNotMatch: 'IMAGE_SIMILARITY_DOES_NOT_MATCH',
   ImageSimilarityMatch: 'IMAGE_SIMILARITY_MATCH',
+  OpenAiCsamGenaiImageModel: 'OPEN_AI_CSAM_GENAI_IMAGE_MODEL',
+  OpenAiCsamOverallImageModel: 'OPEN_AI_CSAM_OVERALL_IMAGE_MODEL',
   OpenAiGraphicViolenceImageModel: 'OPEN_AI_GRAPHIC_VIOLENCE_IMAGE_MODEL',
   OpenAiGraphicViolenceTextModel: 'OPEN_AI_GRAPHIC_VIOLENCE_TEXT_MODEL',
   OpenAiHateTextModel: 'OPEN_AI_HATE_TEXT_MODEL',
@@ -5611,13 +5632,24 @@ export type GQLZentropiLabelerVersion = {
   readonly id: Scalars['String']['output'];
   readonly label: Scalars['String']['output'];
   readonly labelerId?: Maybe<Scalars['String']['output']>;
+  readonly model?: Maybe<GQLZentropiModel>;
 };
 
 export type GQLZentropiLabelerVersionInput = {
   readonly id: Scalars['String']['input'];
   readonly label: Scalars['String']['input'];
   readonly labelerId?: InputMaybe<Scalars['String']['input']>;
+  readonly model?: InputMaybe<GQLZentropiModel>;
 };
+
+export const GQLZentropiModel = {
+  CopeBA4B: 'COPE_B_A4B',
+  CopeBS1: 'COPE_B_S1',
+  CopeLatest: 'COPE_LATEST',
+} as const;
+
+export type GQLZentropiModel =
+  (typeof GQLZentropiModel)[keyof typeof GQLZentropiModel];
 
 export type ResolverTypeWrapper<T> = Promise<T> | T;
 
@@ -6028,6 +6060,7 @@ export type GQLResolversInterfaceTypes<
     | GQLPartialItemsEndpointResponseError
     | GQLPartialItemsInvalidResponseError
     | GQLPartialItemsMissingEndpointError
+    | GQLPolicyCreationFailure
     | GQLPolicyNameExistsError
     | GQLQueueDoesNotExistError
     | GQLRecordingJobDecisionFailedError
@@ -6656,6 +6689,7 @@ export type GQLResolversTypes = {
   PluginIntegrationApiCredential: ResolverTypeWrapper<GQLPluginIntegrationApiCredential>;
   Policy: ResolverTypeWrapper<GQLPolicy>;
   PolicyActionCount: ResolverTypeWrapper<GQLPolicyActionCount>;
+  PolicyCreationFailure: ResolverTypeWrapper<GQLPolicyCreationFailure>;
   PolicyNameExistsError: ResolverTypeWrapper<GQLPolicyNameExistsError>;
   PolicyType: GQLPolicyType;
   PolicyViolationsCount: ResolverTypeWrapper<GQLPolicyViolationsCount>;
@@ -6961,6 +6995,7 @@ export type GQLResolversTypes = {
   ZentropiIntegrationApiCredentialInput: GQLZentropiIntegrationApiCredentialInput;
   ZentropiLabelerVersion: ResolverTypeWrapper<GQLZentropiLabelerVersion>;
   ZentropiLabelerVersionInput: GQLZentropiLabelerVersionInput;
+  ZentropiModel: GQLZentropiModel;
 };
 
 /** Mapping between all available schema types and the resolvers parents */
@@ -7389,6 +7424,7 @@ export type GQLResolversParentTypes = {
   PluginIntegrationApiCredential: GQLPluginIntegrationApiCredential;
   Policy: GQLPolicy;
   PolicyActionCount: GQLPolicyActionCount;
+  PolicyCreationFailure: GQLPolicyCreationFailure;
   PolicyNameExistsError: GQLPolicyNameExistsError;
   PolicyViolationsCount: GQLPolicyViolationsCount;
   PostActionsEnqueueSourceInfo: GQLPostActionsEnqueueSourceInfo;
@@ -7903,6 +7939,11 @@ export type GQLAddPoliciesResponseResolvers<
   ParentType extends GQLResolversParentTypes['AddPoliciesResponse'] =
     GQLResolversParentTypes['AddPoliciesResponse'],
 > = {
+  failureDetails?: Resolver<
+    ReadonlyArray<GQLResolversTypes['PolicyCreationFailure']>,
+    ParentType,
+    ContextType
+  >;
   failures?: Resolver<
     ReadonlyArray<GQLResolversTypes['String']>,
     ParentType,
@@ -9349,6 +9390,7 @@ export type GQLErrorResolvers<
     | 'PartialItemsEndpointResponseError'
     | 'PartialItemsInvalidResponseError'
     | 'PartialItemsMissingEndpointError'
+    | 'PolicyCreationFailure'
     | 'PolicyNameExistsError'
     | 'QueueDoesNotExistError'
     | 'RecordingJobDecisionFailedError'
@@ -9705,6 +9747,7 @@ export type GQLIntegrationConfigResolvers<
     ParentType,
     ContextType
   >;
+  configured?: Resolver<GQLResolversTypes['Boolean'], ParentType, ContextType>;
   docsUrl?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   logoUrl?: Resolver<
     Maybe<GQLResolversTypes['String']>,
@@ -9719,6 +9762,11 @@ export type GQLIntegrationConfigResolvers<
   modelCard?: Resolver<GQLResolversTypes['ModelCard'], ParentType, ContextType>;
   modelCardLearnMoreUrl?: Resolver<
     Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  modelCards?: Resolver<
+    ReadonlyArray<GQLResolversTypes['ModelCard']>,
     ParentType,
     ContextType
   >;
@@ -9902,6 +9950,11 @@ export type GQLIntegrationMetadataResolvers<
   >;
   logoWithBackgroundUrl?: Resolver<
     Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  modelCards?: Resolver<
+    ReadonlyArray<GQLResolversTypes['ModelCard']>,
     ParentType,
     ContextType
   >;
@@ -12623,6 +12676,11 @@ export type GQLOpenAiIntegrationApiCredentialResolvers<
     GQLResolversParentTypes['OpenAiIntegrationApiCredential'],
 > = {
   apiKey?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  csamClassifierApiKey?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
@@ -13108,6 +13166,37 @@ export type GQLPolicyActionCountResolvers<
     ParentType,
     ContextType
   >;
+};
+
+export type GQLPolicyCreationFailureResolvers<
+  ContextType = Context,
+  ParentType extends GQLResolversParentTypes['PolicyCreationFailure'] =
+    GQLResolversParentTypes['PolicyCreationFailure'],
+> = {
+  detail?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  name?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  pointer?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  requestId?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  status?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
+  title?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  type?: Resolver<
+    ReadonlyArray<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
 export type GQLPolicyNameExistsErrorResolvers<
@@ -15894,6 +15983,11 @@ export type GQLZentropiLabelerVersionResolvers<
     ParentType,
     ContextType
   >;
+  model?: Resolver<
+    Maybe<GQLResolversTypes['ZentropiModel']>,
+    ParentType,
+    ContextType
+  >;
 };
 
 export type GQLResolvers<ContextType = Context> = {
@@ -16131,6 +16225,7 @@ export type GQLResolvers<ContextType = Context> = {
   PluginIntegrationApiCredential?: GQLPluginIntegrationApiCredentialResolvers<ContextType>;
   Policy?: GQLPolicyResolvers<ContextType>;
   PolicyActionCount?: GQLPolicyActionCountResolvers<ContextType>;
+  PolicyCreationFailure?: GQLPolicyCreationFailureResolvers<ContextType>;
   PolicyNameExistsError?: GQLPolicyNameExistsErrorResolvers<ContextType>;
   PolicyViolationsCount?: GQLPolicyViolationsCountResolvers<ContextType>;
   PostActionsEnqueueSourceInfo?: GQLPostActionsEnqueueSourceInfoResolvers<ContextType>;

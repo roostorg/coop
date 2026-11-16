@@ -24,6 +24,11 @@ export type SignalAuthServicePg = {
   'signal_auth_service.open_ai_configs': {
     org_id: string;
     api_key: string;
+    csam_classifier_api_key: ColumnType<
+      string | null,
+      string | null | undefined,
+      string | null | undefined
+    >;
     created_at: ColumnType<Date, never, never>;
     updated_at: ColumnType<Date, never, never>;
   };

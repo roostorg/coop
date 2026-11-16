@@ -20,14 +20,17 @@
 ---
 
 - [Development Guide](development/README.md)
+  - [Try Coop in GitHub Codespaces](development/codespaces.md)
   - [Local Development](development/local.md)
   - [Architecture](development/architecture.md)
   - [API Authentication](development/api-auth.md)
   - [Data Warehouse Abstraction](development/data-warehouse.md)
   - [Docker Images](development/docker.md)
   - [Releases](development/releases.md)
+    - [Vulnerability Scanning](development/vulnerability-scanning.md)
   - [Deployment](development/deployment.md)
   - [Email](development/email.md)
+  - [Blocking a PR from Merging](development/blocking-merges.md)
 
 ---
 
@@ -46,6 +49,7 @@
   - [Google Content Safety API](integrations/google-content-safety.md)
   - [Hasher-Matcher-Actioner (HMA)](integrations/hma.md)
   - [NCMEC CyberTipline](integrations/ncmec.md)
+  - [OpenAI CSAM Image Classifier](integrations/openai-csam-classifier.md)
   - [OpenAI Moderation API](integrations/openai-moderation.md)
   - [Zentropi CoPE](integrations/zentropi-cope.md)
   - [Custom](integrations/custom.md)

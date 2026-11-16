@@ -11,6 +11,10 @@ These docs are split into a few guides, depending on who you are and what you're
 
 Note that the docs are versioned; other versions can be found at the [documentation site index](https://roostorg.github.io/coop/).
 
+## Install Coop
+
+Coop publishes ready-to-use Docker images. Go directly to the [Docker image guide](development/docker.md) for details.
+
 ## Contributing
 
 Coop is an open source project from [ROOST](https://roost.tools) and the community. We welcome contributions and benefit from diverse perspectives and expertise in building safer online spaces.
