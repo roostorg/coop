@@ -19,6 +19,8 @@ Coop currently supports image classification through the Google Content Safety A
 - TIFF
 - WEBP
 
+Coop also supports video classification. Videos are re-encoded with [ffmpeg](https://www.ffmpeg.org/) before being sent, so the server needs ffmpeg installed with `libsvtav1` and `libopus`.
+
 ## Response
 
 The response contains 1 of 5 priorities:
