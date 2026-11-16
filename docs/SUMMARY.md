@@ -30,6 +30,7 @@
     - [Vulnerability Scanning](development/vulnerability-scanning.md)
   - [Deployment](development/deployment.md)
   - [Email](development/email.md)
+  - [Blocking a PR from Merging](development/blocking-merges.md)
 
 ---
 
