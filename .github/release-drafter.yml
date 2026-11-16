@@ -40,9 +40,8 @@ replacers:
   - target: change-body
     search: '/<!--[\s\S]*?-->/g'
     replace: ''
-  # Bots append summaries after a thematic break, which doesn't end the section.
   - target: change-body
-    search: '/^ {0,3}([-*_])(?:[ \t]*\1){2,}[ \t]*\r?$[\s\S]*/m'
+    search: '/((?:^|\r?\n)[ \t]*(?:-{3,}|\*{3,}|_{3,})\s*)+$/'
     replace: ''
   - target: change-body
     search: '/^\s+|\s+$/g'
