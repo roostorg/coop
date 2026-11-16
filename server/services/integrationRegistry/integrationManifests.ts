@@ -368,7 +368,13 @@ const ZENTROPI_COPE_B_S1_MODEL_CARD: ModelCard = {
       id: 'biasAndLimitations',
       title: 'Bias Documentation & Known Limits',
       fields: [
-        ...(ZENTROPI_LIMITATIONS_SECTION.fields ?? []),
+        // S1 answers typed questions (noul/choice/score), so it overrides the
+        // shared "binary label" wording rather than spreading it.
+        {
+          label: 'Known Limitations',
+          value:
+            'Text only. Up to 256K tokens of combined policy and content. Each labeler version returns a typed answer (binary, choice, or score) with a confidence. Optimized for US English; performance may degrade for other languages and locales. Cannot classify content that requires external knowledge (e.g. misinformation) unless that knowledge is supplied in the policy. Labels reflect the policy you write: monitor classification patterns across demographic groups, keep a human in the loop for consequential actions, and audit decisions regularly.',
+        },
         {
           label: 'Request Limits',
           value:
@@ -380,7 +386,11 @@ const ZENTROPI_COPE_B_S1_MODEL_CARD: ModelCard = {
       id: 'implementationGuidance',
       title: 'Implementation Guidance',
       fields: [
-        ...(ZENTROPI_IMPLEMENTATION_SECTION.fields ?? []),
+        // Keep the shared Credentials and Model Selection guidance, but drop the
+        // shared binary "Input Format" field in favor of S1's System One format.
+        ...(ZENTROPI_IMPLEMENTATION_SECTION.fields ?? []).filter(
+          (field) => field.label !== 'Input Format',
+        ),
         {
           label: 'System One Format',
           value:
@@ -425,8 +435,14 @@ export const BUILT_IN_MANIFESTS: Readonly<
   ZENTROPI,
 };
 
-// Validate required sections at load time
+// Validate required sections at load time, and keep modelCard in sync with
+// modelCards[0] so the primary card can't diverge from the list.
 for (const entry of Object.values(BUILT_IN_MANIFESTS)) {
+  if (entry.modelCards != null && entry.modelCards[0] !== entry.modelCard) {
+    throw new Error(
+      'Integration manifest modelCards[0] must be the same object as modelCard.',
+    );
+  }
   for (const card of entry.modelCards ?? [entry.modelCard]) {
     assertModelCardHasRequiredSections(card);
   }

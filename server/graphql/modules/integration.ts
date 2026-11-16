@@ -100,6 +100,8 @@ const typeDefs = /* GraphQL */ `
 
   type IntegrationConfig {
     name: String!
+    "Whether a credential with a value has been saved, without exposing it."
+    configured: Boolean!
     apiCredential: IntegrationApiCredential!
     modelCard: ModelCard!
     modelCards: [ModelCard!]!

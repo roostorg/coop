@@ -1,5 +1,5 @@
 import { gql } from '@apollo/client';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate, useParams } from 'react-router';
 
@@ -94,26 +94,6 @@ gql`
           }
           logoUrl
           logoWithBackgroundUrl
-          modelCard {
-            modelName
-            version
-            releaseDate
-            sections {
-              id
-              title
-              subsections {
-                title
-                fields {
-                  label
-                  value
-                }
-              }
-              fields {
-                label
-                value
-              }
-            }
-          }
           modelCards {
             modelName
             version
@@ -148,6 +128,7 @@ gql`
                 id
                 label
                 labelerId
+                model
               }
             }
             ... on PluginIntegrationApiCredential {
@@ -234,24 +215,64 @@ function parseJsonField<T>(value: T): T | typeof INVALID_JSON {
  */
 function IntegrationModelCards({ cards }: { cards: readonly GQLModelCard[] }) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const baseId = useId();
   const card = cards[activeIndex] ?? cards[0];
   const subheader = [card.version, card.releaseDate]
     .filter(Boolean)
     .join(' · ');
+  const multiModel = cards.length > 1;
+  const tabId = (index: number) => `${baseId}-tab-${index}`;
+  const panelId = (index: number) => `${baseId}-panel-${index}`;
+
+  // Roving-tabindex arrow-key navigation per the WAI-ARIA tabs pattern.
+  const onTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    const last = cards.length - 1;
+    let next: number | undefined;
+    if (event.key === 'ArrowRight') {
+      next = activeIndex === last ? 0 : activeIndex + 1;
+    } else if (event.key === 'ArrowLeft') {
+      next = activeIndex === 0 ? last : activeIndex - 1;
+    } else if (event.key === 'Home') {
+      next = 0;
+    } else if (event.key === 'End') {
+      next = last;
+    }
+    if (next === undefined) {
+      return;
+    }
+    event.preventDefault();
+    setActiveIndex(next);
+    document.getElementById(tabId(next))?.focus();
+  };
+
+  const panelProps = multiModel
+    ? {
+        role: 'tabpanel' as const,
+        id: panelId(activeIndex),
+        'aria-labelledby': tabId(activeIndex),
+        tabIndex: 0,
+      }
+    : {};
+
   return (
     <div className="overflow-hidden bg-white border border-solid rounded-2xl border-slate-200">
-      {cards.length > 1 && (
+      {multiModel && (
         <div
           role="tablist"
+          aria-label="Model cards"
           className="flex border-0 border-b border-solid border-slate-200"
         >
           {cards.map((c, index) => (
             <button
               key={index}
+              id={tabId(index)}
               type="button"
               role="tab"
               aria-selected={index === activeIndex}
+              aria-controls={panelId(index)}
+              tabIndex={index === activeIndex ? 0 : -1}
               onClick={() => setActiveIndex(index)}
+              onKeyDown={onTabKeyDown}
               className={`px-5 py-3 text-sm font-semibold bg-transparent border-0 cursor-pointer ${
                 index === activeIndex
                   ? 'text-zinc-900 border-b-2 border-solid border-indigo-500'
@@ -263,8 +284,8 @@ function IntegrationModelCards({ cards }: { cards: readonly GQLModelCard[] }) {
           ))}
         </div>
       )}
-      <div className="px-5 pt-3 pb-2">
-        {cards.length > 1 ? (
+      <div className="px-5 pt-3 pb-2" {...panelProps}>
+        {multiModel ? (
           <>
             {subheader !== '' && (
               <div className="mb-1 text-sm text-zinc-500">{subheader}</div>
@@ -607,14 +628,7 @@ export default function IntegrationConfigForm() {
     }
   };
 
-  const apiModelCard = response?.config?.modelCard;
-  const apiModelCards = response?.config?.modelCards;
-  const modelCards =
-    apiModelCards != null && apiModelCards.length > 0
-      ? apiModelCards
-      : apiModelCard != null
-        ? [apiModelCard]
-        : [];
+  const modelCards = response?.config?.modelCards ?? [];
   const primaryModelCard = modelCards[0];
   const apiModelCardLearnMoreUrl = response?.config?.modelCardLearnMoreUrl;
   const hasModelCard = primaryModelCard != null;

@@ -1461,6 +1461,8 @@ export type GQLIntegrationConfig = {
    * which have custom forms.
    */
   readonly configurationFields: ReadonlyArray<GQLIntegrationConfigField>;
+  /** Whether a credential with a value has been saved, without exposing it. */
+  readonly configured: Scalars['Boolean']['output'];
   readonly docsUrl: Scalars['String']['output'];
   readonly logoUrl?: Maybe<Scalars['String']['output']>;
   readonly logoWithBackgroundUrl?: Maybe<Scalars['String']['output']>;
@@ -6846,31 +6848,6 @@ export type GQLIntegrationConfigQuery = {
               readonly label: string;
             }> | null;
           }>;
-          readonly modelCard: {
-            readonly __typename: 'ModelCard';
-            readonly modelName: string;
-            readonly version: string;
-            readonly releaseDate?: string | null;
-            readonly sections?: ReadonlyArray<{
-              readonly __typename: 'ModelCardSection';
-              readonly id: string;
-              readonly title: string;
-              readonly subsections?: ReadonlyArray<{
-                readonly __typename: 'ModelCardSubsection';
-                readonly title: string;
-                readonly fields: ReadonlyArray<{
-                  readonly __typename: 'ModelCardField';
-                  readonly label: string;
-                  readonly value: string;
-                }>;
-              }> | null;
-              readonly fields?: ReadonlyArray<{
-                readonly __typename: 'ModelCardField';
-                readonly label: string;
-                readonly value: string;
-              }> | null;
-            }> | null;
-          };
           readonly modelCards: ReadonlyArray<{
             readonly __typename: 'ModelCard';
             readonly modelName: string;
@@ -6917,6 +6894,7 @@ export type GQLIntegrationConfigQuery = {
                   readonly id: string;
                   readonly label: string;
                   readonly labelerId?: string | null;
+                  readonly model?: GQLZentropiModel | null;
                 }>;
               };
         } | null;
@@ -6936,23 +6914,7 @@ export type GQLMyIntegrationsQuery = {
     readonly integrationConfigs: ReadonlyArray<{
       readonly __typename: 'IntegrationConfig';
       readonly name: string;
-      readonly apiCredential:
-        | {
-            readonly __typename: 'GoogleContentSafetyApiIntegrationApiCredential';
-            readonly apiKey: string;
-          }
-        | {
-            readonly __typename: 'OpenAiIntegrationApiCredential';
-            readonly apiKey: string;
-          }
-        | {
-            readonly __typename: 'PluginIntegrationApiCredential';
-            readonly credential: JsonObject;
-          }
-        | {
-            readonly __typename: 'ZentropiIntegrationApiCredential';
-            readonly apiKey: string;
-          };
+      readonly configured: boolean;
     }>;
   } | null;
 };
@@ -30994,26 +30956,6 @@ export const GQLIntegrationConfigDocument = gql`
           }
           logoUrl
           logoWithBackgroundUrl
-          modelCard {
-            modelName
-            version
-            releaseDate
-            sections {
-              id
-              title
-              subsections {
-                title
-                fields {
-                  label
-                  value
-                }
-              }
-              fields {
-                label
-                value
-              }
-            }
-          }
           modelCards {
             modelName
             version
@@ -31048,6 +30990,7 @@ export const GQLIntegrationConfigDocument = gql`
                 id
                 label
                 labelerId
+                model
               }
             }
             ... on PluginIntegrationApiCredential {
@@ -31166,20 +31109,7 @@ export const GQLMyIntegrationsDocument = gql`
     myOrg {
       integrationConfigs {
         name
-        apiCredential {
-          ... on GoogleContentSafetyApiIntegrationApiCredential {
-            apiKey
-          }
-          ... on OpenAiIntegrationApiCredential {
-            apiKey
-          }
-          ... on ZentropiIntegrationApiCredential {
-            apiKey
-          }
-          ... on PluginIntegrationApiCredential {
-            credential
-          }
-        }
+        configured
       }
     }
   }

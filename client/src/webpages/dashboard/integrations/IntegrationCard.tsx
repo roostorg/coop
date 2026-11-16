@@ -105,12 +105,19 @@ export default function IntegrationCard(props: {
             <span className="text-lg font-bold text-slate-700 truncate">
               {title}
             </span>
-            {modelCards.length > 0 && (
-              <span className="text-xs font-semibold tracking-wide uppercase text-slate-400">
-                {modelCards.length}{' '}
-                {modelCards.length === 1 ? 'MODEL' : 'MODELS'}
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              {modelCards.length > 0 && (
+                <span className="text-xs font-semibold tracking-wide uppercase text-slate-600">
+                  {modelCards.length}{' '}
+                  {modelCards.length === 1 ? 'MODEL' : 'MODELS'}
+                </span>
+              )}
+              {Boolean(active) && (
+                <span className="text-xs font-semibold tracking-wide uppercase text-indigo-700">
+                  • Active
+                </span>
+              )}
+            </div>
           </div>
         </div>
         {modelCards.length > 0 && (
@@ -122,14 +129,8 @@ export default function IntegrationCard(props: {
                   <span className="text-base font-bold text-slate-800">
                     {card.modelName}
                   </span>
-                  <span className="text-sm text-slate-400">
+                  <span className="text-sm text-slate-600">
                     {[card.version, card.releaseDate].filter(Boolean).join(' ')}
-                    {Boolean(active) && i === 0 && (
-                      <span className="font-semibold text-indigo-500">
-                        {' '}
-                        • ACTIVE
-                      </span>
-                    )}
                   </span>
                 </div>
               ))}

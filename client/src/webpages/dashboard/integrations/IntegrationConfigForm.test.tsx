@@ -50,13 +50,6 @@ function renderForm(labelerVersions: GQLZentropiLabelerVersion[]) {
         configurationFields: [],
         logoUrl: null,
         logoWithBackgroundUrl: null,
-        modelCard: {
-          __typename: 'ModelCard',
-          modelName: 'CoPE',
-          version: '1',
-          releaseDate: null,
-          sections: [],
-        },
         modelCards: [
           {
             __typename: 'ModelCard',
@@ -249,27 +242,6 @@ function renderMultiModelForm() {
         configurationFields: [],
         logoUrl: null,
         logoWithBackgroundUrl: null,
-        modelCard: {
-          __typename: 'ModelCard',
-          modelName: 'CoPE-B-A4B',
-          version: '',
-          releaseDate: 'May 2026',
-          sections: [
-            {
-              __typename: 'ModelCardSection',
-              id: 'performanceBenchmarks',
-              title: 'Performance Benchmarks',
-              subsections: [],
-              fields: [
-                {
-                  __typename: 'ModelCardField',
-                  label: 'F1 Score',
-                  value: 'a4b-only-benchmark',
-                },
-              ],
-            },
-          ],
-        },
         modelCards: [
           {
             __typename: 'ModelCard',
@@ -399,13 +371,6 @@ function renderPluginForm(
         ],
         logoUrl: null,
         logoWithBackgroundUrl: null,
-        modelCard: {
-          __typename: 'ModelCard',
-          modelName: 'Pigeon',
-          version: '1',
-          releaseDate: null,
-          sections: [],
-        },
         modelCards: [
           {
             __typename: 'ModelCard',

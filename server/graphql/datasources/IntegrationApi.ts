@@ -20,6 +20,8 @@ import type {
 export type TIntegrationConfigWithMetadata = Readonly<{
   name: string;
   apiCredential: Readonly<Record<string, unknown>>;
+  /** Whether a credential with a value has been saved for this integration. */
+  configured: boolean;
   modelCard: ModelCard;
   modelCards: readonly ModelCard[];
   modelCardLearnMoreUrl?: string;
@@ -29,6 +31,26 @@ export type TIntegrationConfigWithMetadata = Readonly<{
   logoUrl?: string;
   logoWithBackgroundUrl?: string;
 }>;
+
+/**
+ * Whether a stored credential actually carries a value, so the catalog can show
+ * a non-secret "configured" status without shipping API keys to the client.
+ */
+function credentialIsConfigured(
+  integrationId: string,
+  credential: Record<string, unknown>,
+): boolean {
+  switch (integrationId) {
+    case Integration.GOOGLE_CONTENT_SAFETY_API:
+    case Integration.OPEN_AI:
+    case Integration.ZENTROPI:
+      return (
+        typeof credential.apiKey === 'string' && credential.apiKey.length > 0
+      );
+    default:
+      return Object.keys(credential).length > 0;
+  }
+}
 
 function defaultCredentialForIntegrationId(
   integrationId: string,
@@ -52,6 +74,7 @@ function mergeManifest(
   return {
     name: integrationId,
     apiCredential: { ...apiCredential, name: integrationId },
+    configured: credentialIsConfigured(integrationId, apiCredential),
     modelCard: manifest.modelCard,
     modelCards: manifest.modelCards ?? [manifest.modelCard],
     modelCardLearnMoreUrl: manifest.modelCardLearnMoreUrl,

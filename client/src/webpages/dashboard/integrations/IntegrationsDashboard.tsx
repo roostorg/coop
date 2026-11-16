@@ -7,27 +7,8 @@ import DashboardHeader from '../components/DashboardHeader';
 import {
   useGQLAvailableIntegrationsQuery,
   useGQLMyIntegrationsQuery,
-  type GQLMyIntegrationsQuery,
 } from '../../../graphql/generated';
 import IntegrationCard from './IntegrationCard';
-
-type MyIntegrationCredential = NonNullable<
-  NonNullable<GQLMyIntegrationsQuery['myOrg']>['integrationConfigs']
->[number]['apiCredential'];
-
-/** An integration counts as active once its credential has a value saved. */
-function hasConfiguredCredential(cred: MyIntegrationCredential): boolean {
-  switch (cred.__typename) {
-    case 'GoogleContentSafetyApiIntegrationApiCredential':
-    case 'OpenAiIntegrationApiCredential':
-    case 'ZentropiIntegrationApiCredential':
-      return Boolean(cred.apiKey);
-    case 'PluginIntegrationApiCredential':
-      return Object.keys(cred.credential ?? {}).length > 0;
-    default:
-      return false;
-  }
-}
 
 export default function IntegrationsDashboard() {
   gql`
@@ -35,20 +16,7 @@ export default function IntegrationsDashboard() {
       myOrg {
         integrationConfigs {
           name
-          apiCredential {
-            ... on GoogleContentSafetyApiIntegrationApiCredential {
-              apiKey
-            }
-            ... on OpenAiIntegrationApiCredential {
-              apiKey
-            }
-            ... on ZentropiIntegrationApiCredential {
-              apiKey
-            }
-            ... on PluginIntegrationApiCredential {
-              credential
-            }
-          }
+          configured
         }
       }
     }
@@ -93,12 +61,12 @@ export default function IntegrationsDashboard() {
   }
 
   const allIntegrations = catalogData?.availableIntegrations ?? [];
-  // An integration is "active" only once a credential has actually been saved.
   // getAllIntegrationConfigs returns an entry for every integration (with empty
-  // defaults), so presence alone does not mean it is configured.
+  // defaults), so presence alone does not mean it is configured; the server's
+  // `configured` flag reports whether a credential value is actually saved.
   const activeIntegrationNames = new Set(
     (myData?.myOrg?.integrationConfigs ?? [])
-      .filter((config) => hasConfiguredCredential(config.apiCredential))
+      .filter((config) => config.configured)
       .map((config) => config.name),
   );
 
