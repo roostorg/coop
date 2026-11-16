@@ -3236,6 +3236,13 @@ export type GQLNcmecEscalationUnavailableError = GQLError & {
   readonly type: ReadonlyArray<Scalars['String']['output']>;
 };
 
+/**
+ * An NCMEC submission that was decisioned in the MRT but never produced a
+ * successful CyberTip report. Reused on the NCMEC Reports dashboard so that
+ * reviewers can see and retry failed submissions in the same place as
+ * successful reports. The userId + userItemTypeId pair uniquely identifies
+ * the reported user; decisionId is the stable handle for retrying.
+ */
 export type GQLNcmecFailedSubmission = {
   readonly __typename: 'NcmecFailedSubmission';
   /**
@@ -3383,13 +3390,7 @@ export type GQLNcmecReportedMediaDetails = {
   readonly url: Scalars['String']['output'];
 };
 
-/**
- * An NCMEC submission that was decisioned in the MRT but never produced a
- * successful CyberTip report. Reused on the NCMEC Reports dashboard so that
- * reviewers can see and retry failed submissions in the same place as
- * successful reports. The userId + userItemTypeId pair uniquely identifies
- * the reported user; decisionId is the stable handle for retrying.
- */
+/** The NCMEC endpoint a submission was sent to. */
 export const GQLNcmecSubmissionMode = {
   Production: 'PRODUCTION',
   Test: 'TEST',

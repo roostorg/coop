@@ -122,17 +122,20 @@ const typeDefs = /* GraphQL */ `
   }
 
   """
-  An NCMEC submission that was decisioned in the MRT but never produced a
-  successful CyberTip report. Reused on the NCMEC Reports dashboard so that
-  reviewers can see and retry failed submissions in the same place as
-  successful reports. The userId + userItemTypeId pair uniquely identifies
-  the reported user; decisionId is the stable handle for retrying.
+  The NCMEC endpoint a submission was sent to.
   """
   enum NcmecSubmissionMode {
     TEST
     PRODUCTION
   }
 
+  """
+  An NCMEC submission that was decisioned in the MRT but never produced a
+  successful CyberTip report. Reused on the NCMEC Reports dashboard so that
+  reviewers can see and retry failed submissions in the same place as
+  successful reports. The userId + userItemTypeId pair uniquely identifies
+  the reported user; decisionId is the stable handle for retrying.
+  """
   type NcmecFailedSubmission {
     decisionId: ID!
     ts: DateTime!

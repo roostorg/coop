@@ -154,10 +154,12 @@ Coop records the mode of every submission attempt, and retries a decision only i
 
 - **Decisions submitted to the test endpoint** are not resent. Their test report counts as submitted.
 - **Decisions whose test submission failed** are not retried. They stay in the NCMEC Reports dashboard with **Test Report** set to `True`, and their **Retry** button is disabled.
-- **Decisions with no recorded mode** are not retried automatically in production. These are failures recorded before Coop stored the attempt mode. Their **Retry** button stays enabled, so a reviewer can send one to production deliberately.
-- **New production decisions** are retried in production. A test report on the same user doesn't stop them.
+- **Decisions with no recorded mode** are not retried automatically in production. A decision has no recorded mode when its failure was recorded without one, or when its attempt never finished, for example because the server stopped mid-submission. Its **Retry** button stays enabled, so a reviewer can send it to production deliberately.
+- **Failed production decisions** are retried in production. A test report on the same user doesn't stop them.
 
 To send a real report for a user whose report only went to the test endpoint, put the user back into NCMEC review and submit a new decision.
+
+Switching from `production` back to `test` works the same way in reverse, except that decisions with no recorded mode are retried automatically against the test endpoint.
 
 ## Webhooks
 
@@ -310,7 +312,7 @@ A decision counts as submitted when:
 
 - It has a report of its own, test or production.
 - Its user has a production report. Coop sends at most one production report per user, so later decisions on that user are not retried.
-- Its user has a test report from before reports recorded their decision, made at or after the decision.
+- Its user has a test report with no recorded decision, made at or after the decision.
 
 A test report for one decision doesn't count for a different decision on the same user.
 

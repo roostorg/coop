@@ -1517,15 +1517,26 @@ export default class NcmecReporting {
     };
   }
 
-  /** Mode of the decision's latest failed attempt; null when none is
+  /** Mode the decision was attempted in: its own report's mode when it has
+   * one, else the mode of its latest failed attempt; null when neither is
    * recorded. Reads the primary so a just-written attempt is visible. */
   async getLatestAttemptIsTest(jobId: string): Promise<boolean | null> {
-    const row = await this.pgQuery
-      .selectFrom('ncmec_reporting.ncmec_reports_errors')
-      .select('is_test')
-      .where('job_id', '=', jobId)
-      .executeTakeFirst();
-    return row?.is_test ?? null;
+    const [report, error] = await Promise.all([
+      this.pgQuery
+        .selectFrom('ncmec_reporting.ncmec_reports')
+        .select('is_test')
+        .where('job_id', '=', jobId)
+        .executeTakeFirst(),
+      this.pgQuery
+        .selectFrom('ncmec_reporting.ncmec_reports_errors')
+        .select('is_test')
+        .where('job_id', '=', jobId)
+        .executeTakeFirst(),
+    ]);
+    if (report !== undefined) {
+      return report.is_test === true;
+    }
+    return error?.is_test ?? null;
   }
 
   async getNcmecReportById(opts: { orgId: string; reportId: string }) {

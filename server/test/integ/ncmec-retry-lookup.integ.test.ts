@@ -156,4 +156,29 @@ describe('NCMEC report coverage and attempt mode (integration)', () => {
       expect(await ncmecReporting.getLatestAttemptIsTest(jobId)).toBe(false);
     },
   );
+
+  testWithFixture(
+    "takes the attempt mode from the decision's own report",
+    async ({ deps, ncmecReporting, insertReport, userItemTypeId }) => {
+      const testJobId = uid();
+      await insertReport(uid(), true, testJobId);
+      expect(await ncmecReporting.getLatestAttemptIsTest(testJobId)).toBe(true);
+
+      // The report is the attempt that succeeded, so it wins over an older
+      // failure in the other mode.
+      const prodJobId = uid();
+      await deps.NcmecService.insertOrUpdateNcmecReportError({
+        jobId: prodJobId,
+        userId: uid(),
+        userTypeId: userItemTypeId,
+        status: 'RETRYABLE_ERROR',
+        error: 'boom',
+        isTest: true,
+      });
+      await insertReport(uid(), false, prodJobId);
+      expect(await ncmecReporting.getLatestAttemptIsTest(prodJobId)).toBe(
+        false,
+      );
+    },
+  );
 });
