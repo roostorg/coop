@@ -202,7 +202,6 @@ const OPENAI_MODERATION_MODEL_CARD: ModelCard = {
 
 const OPENAI: IntegrationManifestEntry = {
   modelCard: OPENAI_MODERATION_MODEL_CARD,
-  modelCards: [OPENAI_MODERATION_MODEL_CARD],
   modelCardLearnMoreUrl:
     'https://cdn.openai.com/API/docs/omni_moderation_information_for_developers.pdf',
   title: 'OpenAI',
@@ -435,6 +434,17 @@ export const BUILT_IN_MANIFESTS: Readonly<
   ZENTROPI,
 };
 
+/**
+ * The model cards for a manifest entry: `modelCards` when the integration
+ * exposes several models, else its single `modelCard`. The one place that
+ * resolves the two fields, so consumers can't drift.
+ */
+export function modelCardsFor(
+  entry: IntegrationManifestEntry,
+): readonly ModelCard[] {
+  return entry.modelCards ?? [entry.modelCard];
+}
+
 // Validate required sections at load time, and keep modelCard in sync with
 // modelCards[0] so the primary card can't diverge from the list.
 for (const entry of Object.values(BUILT_IN_MANIFESTS)) {
@@ -443,7 +453,7 @@ for (const entry of Object.values(BUILT_IN_MANIFESTS)) {
       'Integration manifest modelCards[0] must be the same object as modelCard.',
     );
   }
-  for (const card of entry.modelCards ?? [entry.modelCard]) {
+  for (const card of modelCardsFor(entry)) {
     assertModelCardHasRequiredSections(card);
   }
 }

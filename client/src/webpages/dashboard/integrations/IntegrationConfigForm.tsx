@@ -264,12 +264,14 @@ function IntegrationModelCards({ cards }: { cards: readonly GQLModelCard[] }) {
         >
           {cards.map((c, index) => (
             <button
-              key={index}
+              key={`${c.modelName}-${c.version}`}
               id={tabId(index)}
               type="button"
               role="tab"
               aria-selected={index === activeIndex}
-              aria-controls={panelId(index)}
+              // Only the active tab's panel is rendered, so only it has a
+              // valid aria-controls target.
+              aria-controls={index === activeIndex ? panelId(index) : undefined}
               tabIndex={index === activeIndex ? 0 : -1}
               onClick={() => setActiveIndex(index)}
               onKeyDown={onTabKeyDown}
@@ -655,7 +657,9 @@ export default function IntegrationConfigForm() {
       {primaryModelCard != null ? (
         <div className="flex flex-col lg:flex-row gap-8 w-full max-w-7xl">
           <div className="flex flex-col flex-1 min-w-0">
-            <IntegrationModelCards cards={modelCards} />
+            {/* Keyed by integration so the active tab resets when the form is
+                reused for a different integration. */}
+            <IntegrationModelCards key={integrationName} cards={modelCards} />
           </div>
           <div className="flex flex-col lg:w-96 shrink-0">
             {apiModelCardLearnMoreUrl != null && (

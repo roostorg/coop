@@ -12,9 +12,10 @@ import {
   type ErrorInstanceData,
 } from '../../utils/errors.js';
 import { type GQLSetIntegrationConfigInput } from '../generated.js';
-import type {
-  IntegrationManifestEntry,
-  ModelCard,
+import {
+  modelCardsFor,
+  type IntegrationManifestEntry,
+  type ModelCard,
 } from './integrationManifests.js';
 
 export type TIntegrationConfigWithMetadata = Readonly<{
@@ -36,9 +37,18 @@ export type TIntegrationConfigWithMetadata = Readonly<{
  * Whether a stored credential actually carries a value, so the catalog can show
  * a non-secret "configured" status without shipping API keys to the client.
  */
-function credentialIsConfigured(
+function isBlankCredentialValue(value: unknown): boolean {
+  return (
+    value == null ||
+    (typeof value === 'string' && value.trim() === '') ||
+    (Array.isArray(value) && value.length === 0)
+  );
+}
+
+export function credentialIsConfigured(
   integrationId: string,
   credential: Record<string, unknown>,
+  manifest: IntegrationManifestEntry,
 ): boolean {
   switch (integrationId) {
     case Integration.GOOGLE_CONTENT_SAFETY_API:
@@ -47,8 +57,21 @@ function credentialIsConfigured(
       return (
         typeof credential.apiKey === 'string' && credential.apiKey.length > 0
       );
-    default:
-      return Object.keys(credential).length > 0;
+    default: {
+      // Plugins declare their form; configured means every required field has
+      // a value. Plugins without required fields count any saved value.
+      const required = (manifest.configurationFields ?? []).filter(
+        (field) => field.required,
+      );
+      if (required.length === 0) {
+        return Object.values(credential).some(
+          (value) => !isBlankCredentialValue(value),
+        );
+      }
+      return required.every(
+        (field) => !isBlankCredentialValue(credential[field.key]),
+      );
+    }
   }
 }
 
@@ -74,9 +97,9 @@ function mergeManifest(
   return {
     name: integrationId,
     apiCredential: { ...apiCredential, name: integrationId },
-    configured: credentialIsConfigured(integrationId, apiCredential),
+    configured: credentialIsConfigured(integrationId, apiCredential, manifest),
     modelCard: manifest.modelCard,
-    modelCards: manifest.modelCards ?? [manifest.modelCard],
+    modelCards: modelCardsFor(manifest),
     modelCardLearnMoreUrl: manifest.modelCardLearnMoreUrl,
     title: manifest.title,
     docsUrl: manifest.docsUrl,

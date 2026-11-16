@@ -124,13 +124,18 @@ export default function IntegrationCard(props: {
           <>
             <div className="h-px my-4 bg-slate-200" />
             <div className="flex flex-col gap-3">
-              {modelCards.map((card, i) => (
-                <div key={i} className="flex flex-col">
+              {modelCards.map((card) => (
+                <div
+                  key={`${card.modelName}-${card.version}`}
+                  className="flex flex-col"
+                >
                   <span className="text-base font-bold text-slate-800">
                     {card.modelName}
                   </span>
                   <span className="text-sm text-slate-600">
-                    {[card.version, card.releaseDate].filter(Boolean).join(' ')}
+                    {[card.version, card.releaseDate]
+                      .filter(Boolean)
+                      .join(' · ')}
                   </span>
                 </div>
               ))}
