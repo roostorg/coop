@@ -5,6 +5,7 @@ import '../../services/signalAuthService/index.js';
 
 import {
   buildStoredPluginConfig,
+  type CatalogRefreshInterval,
   type ContextSettingInput,
 } from '../../services/integrationContextSettings/index.js';
 import { getIntegrationRegistry } from '../../services/integrationRegistry/index.js';
@@ -111,25 +112,26 @@ class IntegrationAPI {
     integrationId: string,
     credential: Record<string, unknown>,
     orgId: string,
-    contextSettings?: readonly ContextSettingInput[],
+    coopSettings: {
+      contextSettings?: readonly ContextSettingInput[];
+      catalogRefreshInterval?: CatalogRefreshInterval;
+    } = {},
   ): Promise<TIntegrationConfigWithMetadata> {
     const registry = getIntegrationRegistry();
     const manifest = registry.getManifest(integrationId);
     if (manifest == null) {
       throw new Error(`Unknown integration: ${integrationId}`);
     }
-    const { contextOptions } = manifest;
     const toStore = buildStoredPluginConfig({
       credential,
-      contextOptions,
-      contextSettings,
-      existingConfig:
-        contextOptions != null && contextSettings === undefined
-          ? await this.signalAuthService.getByIntegrationId(
-              integrationId,
-              orgId,
-            )
-          : undefined,
+      contextOptions: manifest.contextOptions,
+      contextSettings: coopSettings.contextSettings,
+      catalogRefreshInterval: coopSettings.catalogRefreshInterval,
+      // Settings the save leaves out keep their stored values.
+      existingConfig: await this.signalAuthService.getByIntegrationId(
+        integrationId,
+        orgId,
+      ),
     });
     const newCredential = await this.signalAuthService.setByIntegrationId(
       integrationId,

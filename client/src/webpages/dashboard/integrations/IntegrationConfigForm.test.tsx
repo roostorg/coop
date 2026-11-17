@@ -49,6 +49,8 @@ function renderForm(labelerVersions: GQLZentropiLabelerVersion[]) {
         requiresConfig: true,
         configurationFields: [],
         contextOptions: [],
+        supportsCatalogRefresh: false,
+        catalogStatus: null,
         logoUrl: null,
         logoWithBackgroundUrl: null,
         modelCard: {
@@ -241,6 +243,8 @@ function renderPluginForm(
         docsUrl: 'https://example.com/docs',
         requiresConfig: true,
         contextOptions: [],
+        supportsCatalogRefresh: false,
+        catalogStatus: null,
         configurationFields: [
           {
             __typename: 'IntegrationConfigField',

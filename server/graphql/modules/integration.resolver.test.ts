@@ -7,10 +7,12 @@ import {
   Kind,
   parse,
 } from 'graphql';
-import { vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { UserPermission } from '../../services/userManagementService/index.js';
+import { CoopError, ErrorType } from '../../utils/errors.js';
 import { resolvers, typeDefs } from './integration.js';
+import { resolvers as catalogResolvers } from './integrationCatalog.js';
 
 describe('Zentropi integration input', () => {
   // Use the actual SDL so this catches input nullability regressions, not just
@@ -122,6 +124,187 @@ describe('Zentropi labeler version output', () => {
     expect(result.data).toEqual({
       version: { id: 'lv_123', model: expected },
     });
+  });
+});
+
+type Resolver = (...args: unknown[]) => unknown;
+
+const refreshIntegrationCatalog = (
+  catalogResolvers.Mutation as { refreshIntegrationCatalog: Resolver }
+).refreshIntegrationCatalog;
+const setPluginIntegrationConfig = (
+  resolvers.Mutation as { setPluginIntegrationConfig: Resolver }
+).setPluginIntegrationConfig;
+
+function context({
+  user,
+  supports = true,
+  refresh = vi.fn(),
+  setConfig = vi.fn(async () => ({ name: 'TEST' })),
+}: {
+  user?: { orgId: string; getPermissions: () => string[] };
+  supports?: boolean;
+  refresh?: ReturnType<typeof vi.fn>;
+  setConfig?: ReturnType<typeof vi.fn>;
+} = {}) {
+  return {
+    getUser: () => user,
+    dataSources: {
+      integrationAPI: {
+        setConfigByIntegrationId: setConfig,
+      },
+    },
+    services: {
+      SignalsService: {
+        supportsCatalogRefresh: () => supports,
+        refreshPluginCatalog: refresh,
+      },
+      IntegrationContextSettingsService: { invalidate: vi.fn() },
+    },
+  };
+}
+
+const manager = {
+  orgId: 'org-a',
+  getPermissions: () => ['MANAGE_ORG'],
+};
+
+describe('integration catalog resolvers', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('rejects unauthenticated catalog refreshes', async () => {
+    await expect(
+      refreshIntegrationCatalog({}, { integrationId: 'TEST' }, context()),
+    ).rejects.toMatchObject({ extensions: { code: 'UNAUTHENTICATED' } });
+  });
+
+  it('rejects catalog refreshes without MANAGE_ORG', async () => {
+    await expect(
+      refreshIntegrationCatalog(
+        {},
+        { integrationId: 'TEST' },
+        context({
+          user: { ...manager, getPermissions: () => [] },
+        }),
+      ),
+    ).rejects.toMatchObject({ extensions: { code: 'FORBIDDEN' } });
+  });
+
+  it('returns unsupported integration errors', async () => {
+    const result = await refreshIntegrationCatalog(
+      {},
+      { integrationId: 'MISSING' },
+      context({ user: manager, supports: false }),
+    );
+    expect(result).toMatchObject({
+      __typename: 'IntegrationConfigUnsupportedIntegrationError',
+    });
+  });
+
+  it('maps successful refreshes', async () => {
+    const fetchedAt = new Date();
+    const refresh = vi.fn(async () => ({
+      version: 'v1',
+      signalCount: 2,
+      fetchedAt,
+      addedSignalTypeIds: ['A'],
+      removedSignalTypeIds: ['B'],
+    }));
+    const result = await refreshIntegrationCatalog(
+      {},
+      { integrationId: 'TEST' },
+      context({ user: manager, refresh }),
+    );
+    expect(result).toMatchObject({
+      __typename: 'RefreshIntegrationCatalogSuccessResponse',
+      integrationId: 'TEST',
+      version: 'v1',
+      signalCount: 2,
+    });
+  });
+
+  it('maps store failures to safe catalog errors', async () => {
+    const refresh = vi.fn(async () => {
+      throw new CoopError({
+        status: 400,
+        name: 'IntegrationCatalogRefreshError',
+        type: [ErrorType.InvalidUserInput],
+        title: 'Integration catalog refresh failed.',
+        detail: 'PLUGIN_ERROR',
+        shouldErrorSpan: false,
+      });
+    });
+    const result = await refreshIntegrationCatalog(
+      {},
+      { integrationId: 'TEST' },
+      context({ user: manager, refresh }),
+    );
+    expect(result).toMatchObject({
+      __typename: 'IntegrationCatalogRefreshError',
+    });
+  });
+
+  it('does not fail config saves when automatic refresh fails', async () => {
+    const refresh = vi.fn(async () => {
+      throw new Error('refresh failed');
+    });
+    const result = await setPluginIntegrationConfig(
+      {},
+      { input: { integrationId: 'TEST', credential: {} } },
+      context({ user: manager, refresh }),
+    );
+    expect(result).toMatchObject({
+      __typename: 'SetIntegrationConfigSuccessResponse',
+    });
+    expect(refresh).toHaveBeenCalledWith({
+      orgId: 'org-a',
+      integrationId: 'TEST',
+    });
+  });
+
+  it('saves the chosen catalog refresh interval', async () => {
+    const setConfig = vi.fn(async () => ({ name: 'TEST' }));
+    await setPluginIntegrationConfig(
+      {},
+      {
+        input: {
+          integrationId: 'TEST',
+          credential: {},
+          catalogRefreshInterval: 'WEEKLY',
+        },
+      },
+      context({ user: manager, setConfig, refresh: vi.fn(async () => ({})) }),
+    );
+
+    expect(setConfig).toHaveBeenCalledWith(
+      'TEST',
+      {},
+      'org-a',
+      expect.objectContaining({ catalogRefreshInterval: 'WEEKLY' }),
+    );
+  });
+
+  it('reads the saved interval, and null for plugins without a catalog', () => {
+    const catalogRefreshInterval = (
+      catalogResolvers.IntegrationConfig as { catalogRefreshInterval: Resolver }
+    ).catalogRefreshInterval;
+    const config = {
+      name: 'TEST',
+      apiCredential: { __coopCatalog: { refreshInterval: 'HOURLY' } },
+    };
+
+    expect(catalogRefreshInterval(config, {}, context({ user: manager }))).toBe(
+      'HOURLY',
+    );
+    expect(
+      catalogRefreshInterval(
+        config,
+        {},
+        context({ user: manager, supports: false }),
+      ),
+    ).toBeNull();
   });
 });
 

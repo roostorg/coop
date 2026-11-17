@@ -204,6 +204,43 @@ describe('buildStoredPluginConfig', () => {
     });
   });
 
+  it('stores the catalog refresh interval and keeps it when a save omits it', () => {
+    const saved = buildStoredPluginConfig({
+      credential: { apiKey: 'test-api-key' },
+      contextOptions: undefined,
+      contextSettings: undefined,
+      catalogRefreshInterval: 'WEEKLY',
+      existingConfig: undefined,
+    });
+    expect(saved).toEqual({
+      apiKey: 'test-api-key',
+      [CATALOG_SETTINGS_KEY]: { refreshInterval: 'WEEKLY' },
+    });
+
+    expect(
+      buildStoredPluginConfig({
+        credential: { apiKey: 'new-api-key' },
+        contextOptions: undefined,
+        contextSettings: undefined,
+        existingConfig: saved,
+      }),
+    ).toEqual({
+      apiKey: 'new-api-key',
+      [CATALOG_SETTINGS_KEY]: { refreshInterval: 'WEEKLY' },
+    });
+  });
+
+  it("doesn't store a catalog interval the org never chose", () => {
+    expect(
+      buildStoredPluginConfig({
+        credential: { apiKey: 'test-api-key' },
+        contextOptions: undefined,
+        contextSettings: undefined,
+        existingConfig: { apiKey: 'test-api-key' },
+      }),
+    ).toEqual({ apiKey: 'test-api-key' });
+  });
+
   it('ignores the reserved key when a client sends it in the credential', () => {
     expect(
       buildStoredPluginConfig({
