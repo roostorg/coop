@@ -33,6 +33,7 @@ import {
   ncmecDebugLog,
 } from './ncmecDebug.js';
 import { summarizeNcmecErrorForReviewer } from './ncmecReviewerErrors.js';
+import { type NcmecReportCoverage } from './ncmecSubmissionFilters.js';
 
 export const NCMECEvent = makeEnumLike([
   'Login',
@@ -1472,30 +1473,70 @@ export default class NcmecReporting {
     );
   }
 
-  // Retrieves a list of all users with a valid NCMEC decision, in the trio of
-  // (user_id, user_item_type_id, org_id) for uniqueness, before an hour before
-  // it executes, to allow for concurrent decisions to finish executing. Only
-  // meant to be used in the NCMEC retry script.
-  //
-  // A production report covers all of the user's decisions; a test report
-  // covers only decisions made at or before latestTestReportAt. Rows with a
-  // null is_test predate the column and count as production.
-  async getUsersWithNcmecDecision(opts: { startDate: Date }) {
-    const { startDate } = opts;
-    return this.pqQueryReadReplica
-      .selectFrom('ncmec_reporting.ncmec_reports')
-      .select([
-        'user_id as userId',
-        'user_item_type_id as userItemTypeId',
-        'org_id as orgId',
-        sql<boolean>`bool_or(is_test is not true)`.as('hasProductionReport'),
-        sql<Date | null>`max(created_at) filter (where is_test)`.as(
-          'latestTestReportAt',
-        ),
-      ])
-      .where('created_at', '>=', startDate)
-      .groupBy(['user_id', 'user_item_type_id', 'org_id'])
-      .execute();
+  /** Reports that cover the given decisions, for filterDecisionsToUnreported.
+   * `startDate` limits the per-user summary to recent reports; `orgId` limits
+   * it to one org. Job ids are matched regardless of either. */
+  async getNcmecReportCoverage(opts: {
+    jobIds: readonly string[];
+    startDate?: Date;
+    orgId?: string;
+  }): Promise<NcmecReportCoverage> {
+    const { jobIds, startDate, orgId } = opts;
+    const [linkedRows, users] = await Promise.all([
+      jobIds.length === 0
+        ? []
+        : this.pqQueryReadReplica
+            .selectFrom('ncmec_reporting.ncmec_reports')
+            .select('job_id')
+            .distinct()
+            .where(sql<boolean>`job_id = any(${[...jobIds]})`)
+            .execute(),
+      this.pqQueryReadReplica
+        .selectFrom('ncmec_reporting.ncmec_reports')
+        .select([
+          'org_id as orgId',
+          'user_id as userId',
+          'user_item_type_id as userItemTypeId',
+          sql<boolean>`bool_or(is_test is not true)`.as('hasProductionReport'),
+          sql<Date | null>`max(created_at) filter (where is_test and job_id is null)`.as(
+            'latestUnlinkedTestReportAt',
+          ),
+        ])
+        .$if(startDate !== undefined, (qb) =>
+          qb.where('created_at', '>=', startDate!),
+        )
+        .$if(orgId !== undefined, (qb) => qb.where('org_id', '=', orgId!))
+        .groupBy(['org_id', 'user_id', 'user_item_type_id'])
+        .execute(),
+    ]);
+    return {
+      reportedJobIds: new Set(
+        linkedRows.flatMap((r) => (r.job_id == null ? [] : [r.job_id])),
+      ),
+      users,
+    };
+  }
+
+  /** Mode the decision was attempted in: its own report's mode when it has
+   * one, else the mode of its latest failed attempt; null when neither is
+   * recorded. Reads the primary so a just-written attempt is visible. */
+  async getLatestAttemptIsTest(jobId: string): Promise<boolean | null> {
+    const [report, error] = await Promise.all([
+      this.pgQuery
+        .selectFrom('ncmec_reporting.ncmec_reports')
+        .select('is_test')
+        .where('job_id', '=', jobId)
+        .executeTakeFirst(),
+      this.pgQuery
+        .selectFrom('ncmec_reporting.ncmec_reports_errors')
+        .select('is_test')
+        .where('job_id', '=', jobId)
+        .executeTakeFirst(),
+    ]);
+    if (report !== undefined) {
+      return report.is_test === true;
+    }
+    return error?.is_test ?? null;
   }
 
   async getNcmecReportById(opts: { orgId: string; reportId: string }) {
@@ -1753,6 +1794,7 @@ export default class NcmecReporting {
                 jobId: reportParams.jobId,
                 userId: reportParams.reportedUser.id,
                 userTypeId: reportParams.reportedUser.typeId,
+                isTest,
                 status: 'PERMANENT_ERROR',
                 error:
                   'All reportable media is missing from storage; nothing to submit.',
@@ -1899,6 +1941,7 @@ export default class NcmecReporting {
               reported_messages: threadCsvs,
               incident_type: reportParams.incidentType,
               is_test: isTest,
+              job_id: reportParams.jobId ?? null,
             })
             .execute();
 
@@ -1936,6 +1979,7 @@ export default class NcmecReporting {
               jobId: reportParams.jobId,
               userId: reportParams.reportedUser.id,
               userTypeId: reportParams.reportedUser.typeId,
+              isTest,
               error: summarizeNcmecErrorForReviewer(e),
             });
           }
@@ -2271,6 +2315,7 @@ export default class NcmecReporting {
     userId: string;
     userTypeId: string;
     error: string;
+    isTest: boolean;
     status?: 'RETRYABLE_ERROR' | 'PERMANENT_ERROR';
   }) {
     try {
@@ -2286,12 +2331,14 @@ export default class NcmecReporting {
           status,
           last_error: opts.error,
           retry_count: 1,
+          is_test: opts.isTest,
         })
         .onConflict((oc) =>
           oc.columns(['job_id']).doUpdateSet({
             retry_count: sql`ncmec_reporting.ncmec_reports_errors.retry_count + 1`,
             last_error: opts.error,
             status,
+            is_test: opts.isTest,
           }),
         )
         .execute();

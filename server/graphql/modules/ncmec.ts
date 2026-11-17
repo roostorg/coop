@@ -122,6 +122,14 @@ const typeDefs = /* GraphQL */ `
   }
 
   """
+  The NCMEC endpoint a submission was sent to.
+  """
+  enum NcmecSubmissionMode {
+    TEST
+    PRODUCTION
+  }
+
+  """
   An NCMEC submission that was decisioned in the MRT but never produced a
   successful CyberTip report. Reused on the NCMEC Reports dashboard so that
   reviewers can see and retry failed submissions in the same place as
@@ -137,6 +145,16 @@ const typeDefs = /* GraphQL */ `
     status: NcmecFailedSubmissionStatus!
     retryCount: Int!
     lastError: String
+    """
+    The NCMEC endpoint the latest failed attempt was sent to. Null when no
+    attempt mode is recorded.
+    """
+    attemptMode: NcmecSubmissionMode
+    """
+    False when the latest attempt was sent to the other NCMEC endpoint than
+    the one this deployment uses now. Retry refuses such decisions.
+    """
+    canRetryInCurrentMode: Boolean!
   }
 
   type NCMECReportedMedia {

@@ -3316,6 +3316,16 @@ export type GQLNcmecEscalationUnavailableError = GQLError & {
  */
 export type GQLNcmecFailedSubmission = {
   readonly __typename?: 'NcmecFailedSubmission';
+  /**
+   * The NCMEC endpoint the latest failed attempt was sent to. Null when no
+   * attempt mode is recorded.
+   */
+  readonly attemptMode?: Maybe<GQLNcmecSubmissionMode>;
+  /**
+   * False when the latest attempt was sent to the other NCMEC endpoint than
+   * the one this deployment uses now. Retry refuses such decisions.
+   */
+  readonly canRetryInCurrentMode: Scalars['Boolean']['output'];
   readonly decisionId: Scalars['ID']['output'];
   readonly lastError?: Maybe<Scalars['String']['output']>;
   readonly retryCount: Scalars['Int']['output'];
@@ -3451,6 +3461,14 @@ export type GQLNcmecReportedMediaDetails = {
   readonly url: Scalars['String']['output'];
 };
 
+/** The NCMEC endpoint a submission was sent to. */
+export const GQLNcmecSubmissionMode = {
+  Production: 'PRODUCTION',
+  Test: 'TEST',
+} as const;
+
+export type GQLNcmecSubmissionMode =
+  (typeof GQLNcmecSubmissionMode)[keyof typeof GQLNcmecSubmissionMode];
 export type GQLNcmecThreadInput = {
   readonly reportedContent: ReadonlyArray<GQLNcmecContentInThreadReport>;
   readonly threadId: Scalars['ID']['input'];
@@ -6659,6 +6677,7 @@ export type GQLResolversTypes = {
   NcmecOrgSettings: ResolverTypeWrapper<GQLNcmecOrgSettings>;
   NcmecOrgSettingsInput: GQLNcmecOrgSettingsInput;
   NcmecReportedMediaDetails: ResolverTypeWrapper<GQLNcmecReportedMediaDetails>;
+  NcmecSubmissionMode: GQLNcmecSubmissionMode;
   NcmecThreadInput: GQLNcmecThreadInput;
   NoJobWithIdInQueueError: ResolverTypeWrapper<GQLNoJobWithIdInQueueError>;
   NonEmptyString: ResolverTypeWrapper<NonEmptyString>;
@@ -12419,6 +12438,16 @@ export type GQLNcmecFailedSubmissionResolvers<
   ParentType extends GQLResolversParentTypes['NcmecFailedSubmission'] =
     GQLResolversParentTypes['NcmecFailedSubmission'],
 > = {
+  attemptMode?: Resolver<
+    Maybe<GQLResolversTypes['NcmecSubmissionMode']>,
+    ParentType,
+    ContextType
+  >;
+  canRetryInCurrentMode?: Resolver<
+    GQLResolversTypes['Boolean'],
+    ParentType,
+    ContextType
+  >;
   decisionId?: Resolver<GQLResolversTypes['ID'], ParentType, ContextType>;
   lastError?: Resolver<
     Maybe<GQLResolversTypes['String']>,
