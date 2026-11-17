@@ -1,0 +1,50 @@
+client/src/webpages/dashboard/integrations/IntegrationConfigForm.test.tsx
+  s_00830e7d6998dc::t_b14570eba05f8f 52-53,246-247
+server/graphql/schema.ts
+  s_00830e7d6998dc::t_b14570eba05f8f 14,504
+server/graphql/resolvers.ts
+  s_00830e7d6998dc::t_b14570eba05f8f 26,286
+server/graphql/modules/integrationCatalog.ts
+  s_00830e7d6998dc::t_b14570eba05f8f 1-113
+  s_00830e7d6998dc::t_e2eb26699416bc 114-116
+client/src/webpages/dashboard/integrations/IntegrationCatalogSection.test.tsx
+  s_00830e7d6998dc::t_b14570eba05f8f 1-233
+client/src/webpages/dashboard/integrations/IntegrationConfigForm.tsx
+  s_00830e7d6998dc::t_b14570eba05f8f 30-31,100-101,111-125,254-256,274-281,353-355,425-427,534-537,692-704,725-737
+client/src/webpages/dashboard/integrations/integrationCatalogCache.test.ts
+  s_00830e7d6998dc::t_b14570eba05f8f 1-27
+client/src/webpages/dashboard/integrations/IntegrationCatalogSection.tsx
+  s_00830e7d6998dc::t_734ad148b0c77c 3
+  s_00830e7d6998dc::t_b14570eba05f8f 1-2,4-213
+  s_00830e7d6998dc::t_bff5c4f2d7622d 214-216
+server/graphql/modules/integration.ts
+  s_00830e7d6998dc::t_b14570eba05f8f 112-113,145-150,353-370,424-430,436-445
+docs/integrations/custom.md
+  s_00830e7d6998dc::t_295c30903bad6f 165-166
+  s_00830e7d6998dc::t_54b051b763eb71 167-169
+client/src/webpages/dashboard/integrations/integrationCatalogCache.ts
+  s_00830e7d6998dc::t_b14570eba05f8f 1-15
+server/graphql/modules/integration.resolver.test.ts
+  s_00830e7d6998dc::t_b14570eba05f8f 10,13,15,130-265,289,303,307,309
+  s_00830e7d6998dc::t_99f97d903d9fae 266-268,286-288
+  s_00830e7d6998dc::t_321961fc39df53 290-292,300-302
+  s_00830e7d6998dc::t_d33037077b28a6 304-306
+  s_00830e7d6998dc::t_d7e8f3725b9907 308
+  s_00830e7d6998dc::t_5f003d8bfe477f 310
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4ff77cc1c06865485221bf23af4e79eb3623c11e",
+  "prompts": {},
+  "sessions": {
+    "s_00830e7d6998dc": {
+      "agent_id": {
+        "tool": "cursor",
+        "id": "cfd3d02d-9f8c-491c-a26c-4722e60456eb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Juan Mrad <juansmrad@gmail.com>"
+    }
+  }
+}
