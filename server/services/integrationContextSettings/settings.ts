@@ -12,7 +12,10 @@ import type {
 } from '@roostorg/coop-types';
 
 import { DEFAULT_MAX_THREAD_MESSAGES } from '../signalContextService/limits.js';
-import { CATALOG_SETTINGS_KEY } from './catalogSettings.js';
+import {
+  CATALOG_SETTINGS_KEY,
+  type CatalogRefreshInterval,
+} from './catalogSettings.js';
 
 export const CONTEXT_SETTINGS_KEY = '__coopContext';
 
@@ -160,16 +163,28 @@ export function buildStoredPluginConfig(opts: {
   credential: Readonly<Record<string, unknown>>;
   contextOptions: NormalizedContextOptions | undefined;
   contextSettings: readonly ContextSettingInput[] | undefined;
+  catalogRefreshInterval?: CatalogRefreshInterval;
   existingConfig: Readonly<Record<string, unknown>> | undefined;
 }): Record<string, unknown> {
   const { credential, contextOptions, contextSettings, existingConfig } = opts;
-  const config = withoutContextSettings(credential);
-  if (contextOptions == null) return config;
-  const settings =
-    contextSettings !== undefined
-      ? sanitizeContextSettings(contextOptions, contextSettings)
-      : readOrgContextSettings(existingConfig);
-  return { ...config, [CONTEXT_SETTINGS_KEY]: settings };
+  const catalogSettings =
+    opts.catalogRefreshInterval !== undefined
+      ? { refreshInterval: opts.catalogRefreshInterval }
+      : existingConfig?.[CATALOG_SETTINGS_KEY];
+  return {
+    ...withoutContextSettings(credential),
+    ...(contextOptions != null
+      ? {
+          [CONTEXT_SETTINGS_KEY]:
+            contextSettings !== undefined
+              ? sanitizeContextSettings(contextOptions, contextSettings)
+              : readOrgContextSettings(existingConfig),
+        }
+      : {}),
+    ...(catalogSettings != null
+      ? { [CATALOG_SETTINGS_KEY]: catalogSettings }
+      : {}),
+  };
 }
 
 /** The config a plugin sees: everything except Coop's context settings. */

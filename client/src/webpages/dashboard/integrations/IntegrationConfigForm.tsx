@@ -18,6 +18,7 @@ import {
   useGQLSetIntegrationConfigMutation,
   useGQLSetPluginIntegrationConfigMutation,
   type GQLGoogleContentSafetyApiIntegrationApiCredential,
+  type GQLIntegrationCatalogRefreshInterval,
   type GQLOpenAiIntegrationApiCredential,
   type GQLZentropiIntegrationApiCredential,
 } from '../../../graphql/generated';
@@ -26,6 +27,8 @@ import {
   taggedUnionToOneOfInput,
 } from '../../../graphql/inputHelpers';
 import { userHasPermissions } from '../../../routing/permissions';
+import { evictOrgSignals } from './integrationCatalogCache';
+import IntegrationCatalogSection from './IntegrationCatalogSection';
 import IntegrationConfigApiCredentialsSection from './IntegrationConfigApiCredentialsSection';
 import IntegrationContextSettingsSection, {
   type IntegrationContextSetting,
@@ -94,6 +97,8 @@ gql`
             placeholder
             description
           }
+          supportsCatalogRefresh
+          catalogRefreshInterval
           contextOptions {
             kind
             defaultMode
@@ -102,6 +107,21 @@ gql`
             maxCount
             defaultMaxCount
             maxCountLimit
+          }
+          catalogStatus {
+            status
+            version
+            signalCount
+            fetchedAt
+            errorMessage
+            signals {
+              signalTypeId
+              displayName
+              subcategories {
+                id
+                label
+              }
+            }
           }
           logoUrl
           logoWithBackgroundUrl
@@ -231,6 +251,9 @@ export default function IntegrationConfigForm() {
   const [contextSettings, setContextSettings] = useState<
     IntegrationContextSetting[]
   >([]);
+  const [catalogRefreshInterval, setCatalogRefreshInterval] = useState<
+    GQLIntegrationCatalogRefreshInterval | undefined
+  >(undefined);
 
   const showModal = () => setModalVisible(true);
   const hideModal = () => setModalVisible(false);
@@ -248,6 +271,14 @@ export default function IntegrationConfigForm() {
         showModal();
       },
       onCompleted: () => showModal(),
+      update: (cache, { data: mutationData }) => {
+        if (
+          mutationData?.setPluginIntegrationConfig.__typename ===
+          'SetIntegrationConfigSuccessResponse'
+        ) {
+          evictOrgSignals(cache);
+        }
+      },
     });
   const mutationError =
     setConfigMutationParams.error ?? setPluginConfigMutationParams.error;
@@ -319,6 +350,9 @@ export default function IntegrationConfigForm() {
           maxCount: option.maxCount ?? null,
         })),
       );
+      setCatalogRefreshInterval(
+        response.config.catalogRefreshInterval ?? undefined,
+      );
     }
   }, [response]);
 
@@ -388,6 +422,9 @@ export default function IntegrationConfigForm() {
         return `${invalidJson.label} must be valid JSON`;
       }
       const invalidCount = contextOptions.find((option) => {
+        if (option.maxCountLimit == null) {
+          return false;
+        }
         const setting = contextSettings.find(
           (candidate) => candidate.kind === option.kind,
         );
@@ -493,6 +530,10 @@ export default function IntegrationConfigForm() {
                         }),
                       ),
                     }
+                  : {}),
+                ...(apiConfig?.supportsCatalogRefresh &&
+                catalogRefreshInterval != null
+                  ? { catalogRefreshInterval }
                   : {}),
               },
             },
@@ -648,7 +689,19 @@ export default function IntegrationConfigForm() {
                 disabled={!canEditConfig}
               />
             )}
-            {saveButton}
+            {apiConfig?.supportsCatalogRefresh && (
+              <IntegrationCatalogSection
+                integrationId={integrationName}
+                catalogStatus={apiConfig.catalogStatus}
+                refreshInterval={catalogRefreshInterval}
+                onRefreshIntervalChange={setCatalogRefreshInterval}
+                canEditConfig={canEditConfig}
+                disabledReason={validationMessage}
+              />
+            )}
+            <div className="mt-6 border-t border-slate-200 pt-5">
+              {saveButton}
+            </div>
           </div>
         </div>
       ) : (
@@ -669,7 +722,19 @@ export default function IntegrationConfigForm() {
               disabled={!canEditConfig}
             />
           )}
-          {saveButton}
+          {apiConfig?.supportsCatalogRefresh && (
+            <IntegrationCatalogSection
+              integrationId={integrationName}
+              catalogStatus={apiConfig.catalogStatus}
+              refreshInterval={catalogRefreshInterval}
+              onRefreshIntervalChange={setCatalogRefreshInterval}
+              canEditConfig={canEditConfig}
+              disabledReason={validationMessage}
+            />
+          )}
+          <div className="mt-6 border-t border-slate-200 pt-5">
+            {saveButton}
+          </div>
         </>
       )}
       {modal}

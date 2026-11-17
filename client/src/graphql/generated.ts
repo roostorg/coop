@@ -1453,9 +1453,65 @@ export type GQLIntegrationApiCredentialInput = {
   readonly zentropi?: InputMaybe<GQLZentropiIntegrationApiCredentialInput>;
 };
 
+export type GQLIntegrationCatalogRefreshError = GQLError & {
+  readonly __typename: 'IntegrationCatalogRefreshError';
+  readonly detail?: Maybe<Scalars['String']['output']>;
+  readonly pointer?: Maybe<Scalars['String']['output']>;
+  readonly requestId?: Maybe<Scalars['String']['output']>;
+  readonly status: Scalars['Int']['output'];
+  readonly title: Scalars['String']['output'];
+  readonly type: ReadonlyArray<Scalars['String']['output']>;
+};
+
+/** How often Coop refreshes an org's catalog in the background. */
+export const GQLIntegrationCatalogRefreshInterval = {
+  Daily: 'DAILY',
+  Every_6Hours: 'EVERY_6_HOURS',
+  Hourly: 'HOURLY',
+  Manual: 'MANUAL',
+  Weekly: 'WEEKLY',
+} as const;
+
+export type GQLIntegrationCatalogRefreshInterval =
+  (typeof GQLIntegrationCatalogRefreshInterval)[keyof typeof GQLIntegrationCatalogRefreshInterval];
+export const GQLIntegrationCatalogRefreshStatus = {
+  Error: 'ERROR',
+  NeverRefreshed: 'NEVER_REFRESHED',
+  Ok: 'OK',
+} as const;
+
+export type GQLIntegrationCatalogRefreshStatus =
+  (typeof GQLIntegrationCatalogRefreshStatus)[keyof typeof GQLIntegrationCatalogRefreshStatus];
+export type GQLIntegrationCatalogSignal = {
+  readonly __typename: 'IntegrationCatalogSignal';
+  readonly displayName: Scalars['String']['output'];
+  readonly signalTypeId: Scalars['String']['output'];
+  readonly subcategories: ReadonlyArray<GQLIntegrationCatalogSignalSubcategory>;
+};
+
+export type GQLIntegrationCatalogSignalSubcategory = {
+  readonly __typename: 'IntegrationCatalogSignalSubcategory';
+  readonly id: Scalars['String']['output'];
+  readonly label: Scalars['String']['output'];
+};
+
+export type GQLIntegrationCatalogStatus = {
+  readonly __typename: 'IntegrationCatalogStatus';
+  readonly errorMessage?: Maybe<Scalars['String']['output']>;
+  readonly fetchedAt?: Maybe<Scalars['DateTime']['output']>;
+  readonly signalCount?: Maybe<Scalars['Int']['output']>;
+  /** Signals in this org's current catalog, with their subcategories (e.g. policies). */
+  readonly signals: ReadonlyArray<GQLIntegrationCatalogSignal>;
+  readonly status: GQLIntegrationCatalogRefreshStatus;
+  readonly version?: Maybe<Scalars['String']['output']>;
+};
+
 export type GQLIntegrationConfig = {
   readonly __typename: 'IntegrationConfig';
   readonly apiCredential: GQLIntegrationApiCredential;
+  /** The org's background refresh interval; null when the plugin has no catalog. */
+  readonly catalogRefreshInterval?: Maybe<GQLIntegrationCatalogRefreshInterval>;
+  readonly catalogStatus?: Maybe<GQLIntegrationCatalogStatus>;
   /**
    * Form fields declared by a plugin manifest. Empty for built-in integrations,
    * which have custom forms.
@@ -1469,6 +1525,7 @@ export type GQLIntegrationConfig = {
   readonly modelCardLearnMoreUrl?: Maybe<Scalars['String']['output']>;
   readonly name: Scalars['String']['output'];
   readonly requiresConfig: Scalars['Boolean']['output'];
+  readonly supportsCatalogRefresh: Scalars['Boolean']['output'];
   readonly title: Scalars['String']['output'];
 };
 
@@ -2746,6 +2803,7 @@ export type GQLMutation = {
   readonly logSkip: Scalars['Boolean']['output'];
   readonly login: GQLLoginResponse;
   readonly logout?: Maybe<Scalars['Boolean']['output']>;
+  readonly refreshIntegrationCatalog: GQLRefreshIntegrationCatalogResponse;
   readonly rejectUser?: Maybe<Scalars['Boolean']['output']>;
   readonly releaseJobLock: Scalars['Boolean']['output'];
   readonly removeAccessibleQueuesToUser: GQLRemoveAccessibleQueuesToUserResponse;
@@ -2972,6 +3030,10 @@ export type GQLMutationLogSkipArgs = {
 
 export type GQLMutationLoginArgs = {
   input: GQLLoginInput;
+};
+
+export type GQLMutationRefreshIntegrationCatalogArgs = {
+  integrationId: Scalars['String']['input'];
 };
 
 export type GQLMutationRejectUserArgs = {
@@ -4128,6 +4190,21 @@ export type GQLRecordingJobDecisionFailedError = GQLError & {
   readonly type: ReadonlyArray<Scalars['String']['output']>;
 };
 
+export type GQLRefreshIntegrationCatalogResponse =
+  | GQLIntegrationCatalogRefreshError
+  | GQLIntegrationConfigUnsupportedIntegrationError
+  | GQLRefreshIntegrationCatalogSuccessResponse;
+
+export type GQLRefreshIntegrationCatalogSuccessResponse = {
+  readonly __typename: 'RefreshIntegrationCatalogSuccessResponse';
+  readonly addedSignalTypeIds: ReadonlyArray<Scalars['String']['output']>;
+  readonly fetchedAt: Scalars['DateTime']['output'];
+  readonly integrationId: Scalars['String']['output'];
+  readonly removedSignalTypeIds: ReadonlyArray<Scalars['String']['output']>;
+  readonly signalCount: Scalars['Int']['output'];
+  readonly version: Scalars['String']['output'];
+};
+
 export type GQLRejectAppealDecisionComponent =
   GQLManualReviewDecisionComponentBase & {
     readonly __typename: 'RejectAppealDecisionComponent';
@@ -4634,6 +4711,8 @@ export type GQLSetMrtChartConfigurationSettingsSuccessResponse = {
 };
 
 export type GQLSetPluginIntegrationConfigInput = {
+  /** Omit to keep the current interval. */
+  readonly catalogRefreshInterval?: InputMaybe<GQLIntegrationCatalogRefreshInterval>;
   /** Omit to keep the current settings. */
   readonly contextSettings?: InputMaybe<
     ReadonlyArray<GQLIntegrationContextSettingInput>
@@ -6802,6 +6881,33 @@ export type GQLMatchingBankIdsQuery = {
   } | null;
 };
 
+export type GQLRefreshIntegrationCatalogMutationVariables = Exact<{
+  integrationId: Scalars['String']['input'];
+}>;
+
+export type GQLRefreshIntegrationCatalogMutation = {
+  readonly __typename: 'Mutation';
+  readonly refreshIntegrationCatalog:
+    | {
+        readonly __typename: 'IntegrationCatalogRefreshError';
+        readonly title: string;
+        readonly detail?: string | null;
+      }
+    | {
+        readonly __typename: 'IntegrationConfigUnsupportedIntegrationError';
+        readonly title: string;
+      }
+    | {
+        readonly __typename: 'RefreshIntegrationCatalogSuccessResponse';
+        readonly integrationId: string;
+        readonly version: string;
+        readonly signalCount: number;
+        readonly fetchedAt: Date | string;
+        readonly addedSignalTypeIds: ReadonlyArray<string>;
+        readonly removedSignalTypeIds: ReadonlyArray<string>;
+      };
+};
+
 export type GQLSetIntegrationConfigMutationVariables = Exact<{
   input: GQLSetIntegrationConfigInput;
 }>;
@@ -6873,6 +6979,8 @@ export type GQLIntegrationConfigQuery = {
           readonly title: string;
           readonly docsUrl: string;
           readonly requiresConfig: boolean;
+          readonly supportsCatalogRefresh: boolean;
+          readonly catalogRefreshInterval?: GQLIntegrationCatalogRefreshInterval | null;
           readonly logoUrl?: string | null;
           readonly logoWithBackgroundUrl?: string | null;
           readonly modelCardLearnMoreUrl?: string | null;
@@ -6900,6 +7008,24 @@ export type GQLIntegrationConfigQuery = {
             readonly defaultMaxCount?: number | null;
             readonly maxCountLimit?: number | null;
           }>;
+          readonly catalogStatus?: {
+            readonly __typename: 'IntegrationCatalogStatus';
+            readonly status: GQLIntegrationCatalogRefreshStatus;
+            readonly version?: string | null;
+            readonly signalCount?: number | null;
+            readonly fetchedAt?: Date | string | null;
+            readonly errorMessage?: string | null;
+            readonly signals: ReadonlyArray<{
+              readonly __typename: 'IntegrationCatalogSignal';
+              readonly signalTypeId: string;
+              readonly displayName: string;
+              readonly subcategories: ReadonlyArray<{
+                readonly __typename: 'IntegrationCatalogSignalSubcategory';
+                readonly id: string;
+                readonly label: string;
+              }>;
+            }>;
+          } | null;
           readonly modelCard: {
             readonly __typename: 'ModelCard';
             readonly modelName: string;
@@ -30849,6 +30975,71 @@ export type GQLMatchingBankIdsQueryResult = Apollo.QueryResult<
   GQLMatchingBankIdsQuery,
   GQLMatchingBankIdsQueryVariables
 >;
+export const GQLRefreshIntegrationCatalogDocument = gql`
+  mutation RefreshIntegrationCatalog($integrationId: String!) {
+    refreshIntegrationCatalog(integrationId: $integrationId) {
+      ... on RefreshIntegrationCatalogSuccessResponse {
+        integrationId
+        version
+        signalCount
+        fetchedAt
+        addedSignalTypeIds
+        removedSignalTypeIds
+      }
+      ... on IntegrationCatalogRefreshError {
+        title
+        detail
+      }
+      ... on IntegrationConfigUnsupportedIntegrationError {
+        title
+      }
+    }
+  }
+`;
+export type GQLRefreshIntegrationCatalogMutationFn = Apollo.MutationFunction<
+  GQLRefreshIntegrationCatalogMutation,
+  GQLRefreshIntegrationCatalogMutationVariables
+>;
+
+/**
+ * __useGQLRefreshIntegrationCatalogMutation__
+ *
+ * To run a mutation, you first call `useGQLRefreshIntegrationCatalogMutation` within a React component and pass it any options that fit your needs.
+ * When your component renders, `useGQLRefreshIntegrationCatalogMutation` returns a tuple that includes:
+ * - A mutate function that you can call at any time to execute the mutation
+ * - An object with fields that represent the current status of the mutation's execution
+ *
+ * @param baseOptions options that will be passed into the mutation, supported options are listed on: https://www.apollographql.com/docs/react/api/react-hooks/#options-2;
+ *
+ * @example
+ * const [gqlRefreshIntegrationCatalogMutation, { data, loading, error }] = useGQLRefreshIntegrationCatalogMutation({
+ *   variables: {
+ *      integrationId: // value for 'integrationId'
+ *   },
+ * });
+ */
+export function useGQLRefreshIntegrationCatalogMutation(
+  baseOptions?: Apollo.MutationHookOptions<
+    GQLRefreshIntegrationCatalogMutation,
+    GQLRefreshIntegrationCatalogMutationVariables
+  >,
+) {
+  const options = { ...defaultOptions, ...baseOptions };
+  return Apollo.useMutation<
+    GQLRefreshIntegrationCatalogMutation,
+    GQLRefreshIntegrationCatalogMutationVariables
+  >(GQLRefreshIntegrationCatalogDocument, options);
+}
+export type GQLRefreshIntegrationCatalogMutationHookResult = ReturnType<
+  typeof useGQLRefreshIntegrationCatalogMutation
+>;
+export type GQLRefreshIntegrationCatalogMutationResult =
+  Apollo.MutationResult<GQLRefreshIntegrationCatalogMutation>;
+export type GQLRefreshIntegrationCatalogMutationOptions =
+  Apollo.BaseMutationOptions<
+    GQLRefreshIntegrationCatalogMutation,
+    GQLRefreshIntegrationCatalogMutationVariables
+  >;
 export const GQLSetIntegrationConfigDocument = gql`
   mutation SetIntegrationConfig($input: SetIntegrationConfigInput!) {
     setIntegrationConfig(input: $input) {
@@ -30999,6 +31190,8 @@ export const GQLIntegrationConfigDocument = gql`
             placeholder
             description
           }
+          supportsCatalogRefresh
+          catalogRefreshInterval
           contextOptions {
             kind
             defaultMode
@@ -31007,6 +31200,21 @@ export const GQLIntegrationConfigDocument = gql`
             maxCount
             defaultMaxCount
             maxCountLimit
+          }
+          catalogStatus {
+            status
+            version
+            signalCount
+            fetchedAt
+            errorMessage
+            signals {
+              signalTypeId
+              displayName
+              subcategories {
+                id
+                label
+              }
+            }
           }
           logoUrl
           logoWithBackgroundUrl
@@ -46766,6 +46974,7 @@ export const namedOperations = {
     UpdateTextBank: 'UpdateTextBank',
     DeleteTextBank: 'DeleteTextBank',
     BulkActionExecution: 'BulkActionExecution',
+    RefreshIntegrationCatalog: 'RefreshIntegrationCatalog',
     SetIntegrationConfig: 'SetIntegrationConfig',
     SetPluginIntegrationConfig: 'SetPluginIntegrationConfig',
     DeleteItemType: 'DeleteItemType',

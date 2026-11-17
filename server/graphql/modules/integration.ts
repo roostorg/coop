@@ -109,6 +109,8 @@ const typeDefs = /* GraphQL */ `
     requiresConfig: Boolean!
     logoUrl: String
     logoWithBackgroundUrl: String
+    supportsCatalogRefresh: Boolean!
+    catalogStatus: IntegrationCatalogStatus
     """
     Form fields declared by a plugin manifest. Empty for built-in integrations,
     which have custom forms.
@@ -138,6 +140,12 @@ const typeDefs = /* GraphQL */ `
     options: [IntegrationConfigFieldOption!]
     placeholder: String
     description: String
+  }
+
+  enum IntegrationCatalogRefreshStatus {
+    NEVER_REFRESHED
+    OK
+    ERROR
   }
 
   input GoogleContentSafetyApiIntegrationApiCredentialInput {
@@ -342,6 +350,24 @@ const IntegrationConfig: GQLIntegrationConfigResolvers = {
       description: field.description ?? null,
     }));
   },
+  supportsCatalogRefresh(it, _, context) {
+    return context.services.SignalsService.supportsCatalogRefresh(it.name);
+  },
+  async catalogStatus(it, _, context) {
+    const user = context.getUser();
+    if (!user) return null;
+    const status = await context.services.SignalsService.getPluginCatalogStatus(
+      {
+        orgId: user.orgId,
+        integrationId: it.name,
+      },
+    );
+    if (!status.supportsRefresh) return null;
+    return {
+      ...status,
+      status: status.status ?? 'NEVER_REFRESHED',
+    };
+  },
 };
 
 const Mutation: GQLMutationResolvers = {
@@ -395,12 +421,28 @@ const Mutation: GQLMutationResolvers = {
           params.input.integrationId,
           params.input.credential,
           user.orgId,
-          contextSettingsFromGql(params.input.contextSettings),
+          {
+            contextSettings: contextSettingsFromGql(
+              params.input.contextSettings,
+            ),
+            catalogRefreshInterval:
+              params.input.catalogRefreshInterval ?? undefined,
+          },
         );
       context.services.IntegrationContextSettingsService.invalidate(
         user.orgId,
         params.input.integrationId,
       );
+      if (
+        context.services.SignalsService.supportsCatalogRefresh(
+          params.input.integrationId,
+        )
+      ) {
+        await context.services.SignalsService.refreshPluginCatalog({
+          orgId: user.orgId,
+          integrationId: params.input.integrationId,
+        }).catch(() => undefined);
+      }
 
       return gqlSuccessResult(
         { config: newConfig as GQLIntegrationConfig },

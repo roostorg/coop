@@ -1524,9 +1524,65 @@ export type GQLIntegrationApiCredentialInput = {
   readonly zentropi?: InputMaybe<GQLZentropiIntegrationApiCredentialInput>;
 };
 
+export type GQLIntegrationCatalogRefreshError = GQLError & {
+  readonly __typename?: 'IntegrationCatalogRefreshError';
+  readonly detail?: Maybe<Scalars['String']['output']>;
+  readonly pointer?: Maybe<Scalars['String']['output']>;
+  readonly requestId?: Maybe<Scalars['String']['output']>;
+  readonly status: Scalars['Int']['output'];
+  readonly title: Scalars['String']['output'];
+  readonly type: ReadonlyArray<Scalars['String']['output']>;
+};
+
+/** How often Coop refreshes an org's catalog in the background. */
+export const GQLIntegrationCatalogRefreshInterval = {
+  Daily: 'DAILY',
+  Every_6Hours: 'EVERY_6_HOURS',
+  Hourly: 'HOURLY',
+  Manual: 'MANUAL',
+  Weekly: 'WEEKLY',
+} as const;
+
+export type GQLIntegrationCatalogRefreshInterval =
+  (typeof GQLIntegrationCatalogRefreshInterval)[keyof typeof GQLIntegrationCatalogRefreshInterval];
+export const GQLIntegrationCatalogRefreshStatus = {
+  Error: 'ERROR',
+  NeverRefreshed: 'NEVER_REFRESHED',
+  Ok: 'OK',
+} as const;
+
+export type GQLIntegrationCatalogRefreshStatus =
+  (typeof GQLIntegrationCatalogRefreshStatus)[keyof typeof GQLIntegrationCatalogRefreshStatus];
+export type GQLIntegrationCatalogSignal = {
+  readonly __typename?: 'IntegrationCatalogSignal';
+  readonly displayName: Scalars['String']['output'];
+  readonly signalTypeId: Scalars['String']['output'];
+  readonly subcategories: ReadonlyArray<GQLIntegrationCatalogSignalSubcategory>;
+};
+
+export type GQLIntegrationCatalogSignalSubcategory = {
+  readonly __typename?: 'IntegrationCatalogSignalSubcategory';
+  readonly id: Scalars['String']['output'];
+  readonly label: Scalars['String']['output'];
+};
+
+export type GQLIntegrationCatalogStatus = {
+  readonly __typename?: 'IntegrationCatalogStatus';
+  readonly errorMessage?: Maybe<Scalars['String']['output']>;
+  readonly fetchedAt?: Maybe<Scalars['DateTime']['output']>;
+  readonly signalCount?: Maybe<Scalars['Int']['output']>;
+  /** Signals in this org's current catalog, with their subcategories (e.g. policies). */
+  readonly signals: ReadonlyArray<GQLIntegrationCatalogSignal>;
+  readonly status: GQLIntegrationCatalogRefreshStatus;
+  readonly version?: Maybe<Scalars['String']['output']>;
+};
+
 export type GQLIntegrationConfig = {
   readonly __typename?: 'IntegrationConfig';
   readonly apiCredential: GQLIntegrationApiCredential;
+  /** The org's background refresh interval; null when the plugin has no catalog. */
+  readonly catalogRefreshInterval?: Maybe<GQLIntegrationCatalogRefreshInterval>;
+  readonly catalogStatus?: Maybe<GQLIntegrationCatalogStatus>;
   /**
    * Form fields declared by a plugin manifest. Empty for built-in integrations,
    * which have custom forms.
@@ -1540,6 +1596,7 @@ export type GQLIntegrationConfig = {
   readonly modelCardLearnMoreUrl?: Maybe<Scalars['String']['output']>;
   readonly name: Scalars['String']['output'];
   readonly requiresConfig: Scalars['Boolean']['output'];
+  readonly supportsCatalogRefresh: Scalars['Boolean']['output'];
   readonly title: Scalars['String']['output'];
 };
 
@@ -2817,6 +2874,7 @@ export type GQLMutation = {
   readonly logSkip: Scalars['Boolean']['output'];
   readonly login: GQLLoginResponse;
   readonly logout?: Maybe<Scalars['Boolean']['output']>;
+  readonly refreshIntegrationCatalog: GQLRefreshIntegrationCatalogResponse;
   readonly rejectUser?: Maybe<Scalars['Boolean']['output']>;
   readonly releaseJobLock: Scalars['Boolean']['output'];
   readonly removeAccessibleQueuesToUser: GQLRemoveAccessibleQueuesToUserResponse;
@@ -3043,6 +3101,10 @@ export type GQLMutationLogSkipArgs = {
 
 export type GQLMutationLoginArgs = {
   input: GQLLoginInput;
+};
+
+export type GQLMutationRefreshIntegrationCatalogArgs = {
+  integrationId: Scalars['String']['input'];
 };
 
 export type GQLMutationRejectUserArgs = {
@@ -4199,6 +4261,21 @@ export type GQLRecordingJobDecisionFailedError = GQLError & {
   readonly type: ReadonlyArray<Scalars['String']['output']>;
 };
 
+export type GQLRefreshIntegrationCatalogResponse =
+  | GQLIntegrationCatalogRefreshError
+  | GQLIntegrationConfigUnsupportedIntegrationError
+  | GQLRefreshIntegrationCatalogSuccessResponse;
+
+export type GQLRefreshIntegrationCatalogSuccessResponse = {
+  readonly __typename?: 'RefreshIntegrationCatalogSuccessResponse';
+  readonly addedSignalTypeIds: ReadonlyArray<Scalars['String']['output']>;
+  readonly fetchedAt: Scalars['DateTime']['output'];
+  readonly integrationId: Scalars['String']['output'];
+  readonly removedSignalTypeIds: ReadonlyArray<Scalars['String']['output']>;
+  readonly signalCount: Scalars['Int']['output'];
+  readonly version: Scalars['String']['output'];
+};
+
 export type GQLRejectAppealDecisionComponent =
   GQLManualReviewDecisionComponentBase & {
     readonly __typename?: 'RejectAppealDecisionComponent';
@@ -4705,6 +4782,8 @@ export type GQLSetMrtChartConfigurationSettingsSuccessResponse = {
 };
 
 export type GQLSetPluginIntegrationConfigInput = {
+  /** Omit to keep the current interval. */
+  readonly catalogRefreshInterval?: InputMaybe<GQLIntegrationCatalogRefreshInterval>;
   /** Omit to keep the current settings. */
   readonly contextSettings?: InputMaybe<
     ReadonlyArray<GQLIntegrationContextSettingInput>
@@ -5968,6 +6047,10 @@ export type GQLResolversUnionTypes<_RefType extends Record<string, unknown>> = {
     | (Omit<GQLPartialItemsSuccessResponse, 'items'> & {
         items: ReadonlyArray<_RefType['Item']>;
       });
+  RefreshIntegrationCatalogResponse:
+    | GQLIntegrationCatalogRefreshError
+    | GQLIntegrationConfigUnsupportedIntegrationError
+    | GQLRefreshIntegrationCatalogSuccessResponse;
   RemoveAccessibleQueuesToUserResponse:
     GQLMutateAccessibleQueuesForUserSuccessResponse | GQLNotFoundError;
   RemoveFavoriteRuleResponse: GQLRemoveFavoriteRuleSuccessResponse;
@@ -6062,6 +6145,7 @@ export type GQLResolversInterfaceTypes<
     | GQLCannotDeleteDefaultUserError
     | GQLChangePasswordError
     | GQLDeleteAllJobsUnauthorizedError
+    | GQLIntegrationCatalogRefreshError
     | GQLIntegrationConfigTooManyCredentialsError
     | GQLIntegrationConfigUnsupportedIntegrationError
     | GQLIntegrationEmptyInputCredentialsError
@@ -6385,6 +6469,12 @@ export type GQLResolversTypes = {
     GQLResolversUnionTypes<GQLResolversTypes>['IntegrationApiCredential']
   >;
   IntegrationApiCredentialInput: GQLIntegrationApiCredentialInput;
+  IntegrationCatalogRefreshError: ResolverTypeWrapper<GQLIntegrationCatalogRefreshError>;
+  IntegrationCatalogRefreshInterval: GQLIntegrationCatalogRefreshInterval;
+  IntegrationCatalogRefreshStatus: GQLIntegrationCatalogRefreshStatus;
+  IntegrationCatalogSignal: ResolverTypeWrapper<GQLIntegrationCatalogSignal>;
+  IntegrationCatalogSignalSubcategory: ResolverTypeWrapper<GQLIntegrationCatalogSignalSubcategory>;
+  IntegrationCatalogStatus: ResolverTypeWrapper<GQLIntegrationCatalogStatus>;
   IntegrationConfig: ResolverTypeWrapper<
     Omit<GQLIntegrationConfig, 'apiCredential'> & {
       apiCredential: GQLResolversTypes['IntegrationApiCredential'];
@@ -6744,6 +6834,10 @@ export type GQLResolversTypes = {
   RecentUserStrikeActionsInput: GQLRecentUserStrikeActionsInput;
   RecommendedThresholds: ResolverTypeWrapper<GQLRecommendedThresholds>;
   RecordingJobDecisionFailedError: ResolverTypeWrapper<GQLRecordingJobDecisionFailedError>;
+  RefreshIntegrationCatalogResponse: ResolverTypeWrapper<
+    GQLResolversUnionTypes<GQLResolversTypes>['RefreshIntegrationCatalogResponse']
+  >;
+  RefreshIntegrationCatalogSuccessResponse: ResolverTypeWrapper<GQLRefreshIntegrationCatalogSuccessResponse>;
   RejectAppealDecisionComponent: ResolverTypeWrapper<GQLRejectAppealDecisionComponent>;
   ReleaseJobLockInput: GQLReleaseJobLockInput;
   RemoveAccessibleQueuesToUserInput: GQLRemoveAccessibleQueuesToUserInput;
@@ -7215,6 +7309,10 @@ export type GQLResolversParentTypes = {
   Int: Scalars['Int']['output'];
   IntegrationApiCredential: GQLResolversUnionTypes<GQLResolversParentTypes>['IntegrationApiCredential'];
   IntegrationApiCredentialInput: GQLIntegrationApiCredentialInput;
+  IntegrationCatalogRefreshError: GQLIntegrationCatalogRefreshError;
+  IntegrationCatalogSignal: GQLIntegrationCatalogSignal;
+  IntegrationCatalogSignalSubcategory: GQLIntegrationCatalogSignalSubcategory;
+  IntegrationCatalogStatus: GQLIntegrationCatalogStatus;
   IntegrationConfig: Omit<GQLIntegrationConfig, 'apiCredential'> & {
     apiCredential: GQLResolversParentTypes['IntegrationApiCredential'];
   };
@@ -7479,6 +7577,8 @@ export type GQLResolversParentTypes = {
   RecentUserStrikeActionsInput: GQLRecentUserStrikeActionsInput;
   RecommendedThresholds: GQLRecommendedThresholds;
   RecordingJobDecisionFailedError: GQLRecordingJobDecisionFailedError;
+  RefreshIntegrationCatalogResponse: GQLResolversUnionTypes<GQLResolversParentTypes>['RefreshIntegrationCatalogResponse'];
+  RefreshIntegrationCatalogSuccessResponse: GQLRefreshIntegrationCatalogSuccessResponse;
   RejectAppealDecisionComponent: GQLRejectAppealDecisionComponent;
   ReleaseJobLockInput: GQLReleaseJobLockInput;
   RemoveAccessibleQueuesToUserInput: GQLRemoveAccessibleQueuesToUserInput;
@@ -9390,6 +9490,7 @@ export type GQLErrorResolvers<
     | 'CannotDeleteDefaultUserError'
     | 'ChangePasswordError'
     | 'DeleteAllJobsUnauthorizedError'
+    | 'IntegrationCatalogRefreshError'
     | 'IntegrationConfigTooManyCredentialsError'
     | 'IntegrationConfigUnsupportedIntegrationError'
     | 'IntegrationEmptyInputCredentialsError'
@@ -9755,6 +9856,97 @@ export type GQLIntegrationApiCredentialResolvers<
   >;
 };
 
+export type GQLIntegrationCatalogRefreshErrorResolvers<
+  ContextType = Context,
+  ParentType extends GQLResolversParentTypes['IntegrationCatalogRefreshError'] =
+    GQLResolversParentTypes['IntegrationCatalogRefreshError'],
+> = {
+  detail?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  pointer?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  requestId?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  status?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
+  title?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  type?: Resolver<
+    ReadonlyArray<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type GQLIntegrationCatalogSignalResolvers<
+  ContextType = Context,
+  ParentType extends GQLResolversParentTypes['IntegrationCatalogSignal'] =
+    GQLResolversParentTypes['IntegrationCatalogSignal'],
+> = {
+  displayName?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  signalTypeId?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  subcategories?: Resolver<
+    ReadonlyArray<GQLResolversTypes['IntegrationCatalogSignalSubcategory']>,
+    ParentType,
+    ContextType
+  >;
+};
+
+export type GQLIntegrationCatalogSignalSubcategoryResolvers<
+  ContextType = Context,
+  ParentType extends
+    GQLResolversParentTypes['IntegrationCatalogSignalSubcategory'] =
+    GQLResolversParentTypes['IntegrationCatalogSignalSubcategory'],
+> = {
+  id?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+  label?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
+};
+
+export type GQLIntegrationCatalogStatusResolvers<
+  ContextType = Context,
+  ParentType extends GQLResolversParentTypes['IntegrationCatalogStatus'] =
+    GQLResolversParentTypes['IntegrationCatalogStatus'],
+> = {
+  errorMessage?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  fetchedAt?: Resolver<
+    Maybe<GQLResolversTypes['DateTime']>,
+    ParentType,
+    ContextType
+  >;
+  signalCount?: Resolver<
+    Maybe<GQLResolversTypes['Int']>,
+    ParentType,
+    ContextType
+  >;
+  signals?: Resolver<
+    ReadonlyArray<GQLResolversTypes['IntegrationCatalogSignal']>,
+    ParentType,
+    ContextType
+  >;
+  status?: Resolver<
+    GQLResolversTypes['IntegrationCatalogRefreshStatus'],
+    ParentType,
+    ContextType
+  >;
+  version?: Resolver<
+    Maybe<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+};
+
 export type GQLIntegrationConfigResolvers<
   ContextType = Context,
   ParentType extends GQLResolversParentTypes['IntegrationConfig'] =
@@ -9762,6 +9954,16 @@ export type GQLIntegrationConfigResolvers<
 > = {
   apiCredential?: Resolver<
     GQLResolversTypes['IntegrationApiCredential'],
+    ParentType,
+    ContextType
+  >;
+  catalogRefreshInterval?: Resolver<
+    Maybe<GQLResolversTypes['IntegrationCatalogRefreshInterval']>,
+    ParentType,
+    ContextType
+  >;
+  catalogStatus?: Resolver<
+    Maybe<GQLResolversTypes['IntegrationCatalogStatus']>,
     ParentType,
     ContextType
   >;
@@ -9794,6 +9996,11 @@ export type GQLIntegrationConfigResolvers<
   >;
   name?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   requiresConfig?: Resolver<
+    GQLResolversTypes['Boolean'],
+    ParentType,
+    ContextType
+  >;
+  supportsCatalogRefresh?: Resolver<
     GQLResolversTypes['Boolean'],
     ParentType,
     ContextType
@@ -11992,6 +12199,12 @@ export type GQLMutationResolvers<
     ParentType,
     ContextType
   >;
+  refreshIntegrationCatalog?: Resolver<
+    GQLResolversTypes['RefreshIntegrationCatalogResponse'],
+    ParentType,
+    ContextType,
+    RequireFields<GQLMutationRefreshIntegrationCatalogArgs, 'integrationId'>
+  >;
   rejectUser?: Resolver<
     Maybe<GQLResolversTypes['Boolean']>,
     ParentType,
@@ -13779,6 +13992,48 @@ export type GQLRecordingJobDecisionFailedErrorResolvers<
     ParentType,
     ContextType
   >;
+  __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
+};
+
+export type GQLRefreshIntegrationCatalogResponseResolvers<
+  ContextType = Context,
+  ParentType extends
+    GQLResolversParentTypes['RefreshIntegrationCatalogResponse'] =
+    GQLResolversParentTypes['RefreshIntegrationCatalogResponse'],
+> = {
+  __resolveType: TypeResolveFn<
+    | 'IntegrationCatalogRefreshError'
+    | 'IntegrationConfigUnsupportedIntegrationError'
+    | 'RefreshIntegrationCatalogSuccessResponse',
+    ParentType,
+    ContextType
+  >;
+};
+
+export type GQLRefreshIntegrationCatalogSuccessResponseResolvers<
+  ContextType = Context,
+  ParentType extends
+    GQLResolversParentTypes['RefreshIntegrationCatalogSuccessResponse'] =
+    GQLResolversParentTypes['RefreshIntegrationCatalogSuccessResponse'],
+> = {
+  addedSignalTypeIds?: Resolver<
+    ReadonlyArray<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  fetchedAt?: Resolver<GQLResolversTypes['DateTime'], ParentType, ContextType>;
+  integrationId?: Resolver<
+    GQLResolversTypes['String'],
+    ParentType,
+    ContextType
+  >;
+  removedSignalTypeIds?: Resolver<
+    ReadonlyArray<GQLResolversTypes['String']>,
+    ParentType,
+    ContextType
+  >;
+  signalCount?: Resolver<GQLResolversTypes['Int'], ParentType, ContextType>;
+  version?: Resolver<GQLResolversTypes['String'], ParentType, ContextType>;
   __isTypeOf?: IsTypeOfResolverFn<ParentType, ContextType>;
 };
 
@@ -16109,6 +16364,10 @@ export type GQLResolvers<ContextType = Context> = {
   HashBank?: GQLHashBankResolvers<ContextType>;
   IgnoreDecisionComponent?: GQLIgnoreDecisionComponentResolvers<ContextType>;
   IntegrationApiCredential?: GQLIntegrationApiCredentialResolvers<ContextType>;
+  IntegrationCatalogRefreshError?: GQLIntegrationCatalogRefreshErrorResolvers<ContextType>;
+  IntegrationCatalogSignal?: GQLIntegrationCatalogSignalResolvers<ContextType>;
+  IntegrationCatalogSignalSubcategory?: GQLIntegrationCatalogSignalSubcategoryResolvers<ContextType>;
+  IntegrationCatalogStatus?: GQLIntegrationCatalogStatusResolvers<ContextType>;
   IntegrationConfig?: GQLIntegrationConfigResolvers<ContextType>;
   IntegrationConfigField?: GQLIntegrationConfigFieldResolvers<ContextType>;
   IntegrationConfigFieldOption?: GQLIntegrationConfigFieldOptionResolvers<ContextType>;
@@ -16250,6 +16509,8 @@ export type GQLResolvers<ContextType = Context> = {
   RecentUserStrikeActions?: GQLRecentUserStrikeActionsResolvers<ContextType>;
   RecommendedThresholds?: GQLRecommendedThresholdsResolvers<ContextType>;
   RecordingJobDecisionFailedError?: GQLRecordingJobDecisionFailedErrorResolvers<ContextType>;
+  RefreshIntegrationCatalogResponse?: GQLRefreshIntegrationCatalogResponseResolvers<ContextType>;
+  RefreshIntegrationCatalogSuccessResponse?: GQLRefreshIntegrationCatalogSuccessResponseResolvers<ContextType>;
   RejectAppealDecisionComponent?: GQLRejectAppealDecisionComponentResolvers<ContextType>;
   RemoveAccessibleQueuesToUserResponse?: GQLRemoveAccessibleQueuesToUserResponseResolvers<ContextType>;
   RemoveFavoriteMRTQueueSuccessResponse?: GQLRemoveFavoriteMrtQueueSuccessResponseResolvers<ContextType>;
