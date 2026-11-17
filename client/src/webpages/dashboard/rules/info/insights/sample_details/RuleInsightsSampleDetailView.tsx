@@ -63,6 +63,7 @@ export function staticValue(input: {
 
 export default function RuleInsightsSampleDetailView(props: {
   ruleId: string;
+  isReportingRule?: boolean;
   itemIdentifier: ItemIdentifier;
   lookback: LookbackVersion;
   itemSubmissionDate?: string;
@@ -84,7 +85,9 @@ export default function RuleInsightsSampleDetailView(props: {
       </div>
       <RuleInsightsSampleDetailResults
         ruleId={ruleId}
+        isReportingRule={props.isReportingRule}
         itemIdentifier={itemIdentifier}
+        itemSubmissionDate={props.itemSubmissionDate}
         lookback={lookback}
       />
     </div>
