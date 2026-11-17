@@ -124,7 +124,7 @@ services:
     volumes:
       - scylla_data:/var/lib/scylla
     ports:
-      - '9042:9042'
+      - '127.0.0.1:9042:9042'
     healthcheck:
       # nodetool status only confirms gossip is up, not that the CQL port
       # (9042) is accepting and completing queries yet — that gap lets
@@ -209,8 +209,8 @@ services:
   clickhouse:
     image: clickhouse/clickhouse-server:24.3
     ports:
-      - '8123:8123' # HTTP interface
-      - '9000:9000' # Native TCP interface
+      - '127.0.0.1:8123:8123' # HTTP interface
+      - '127.0.0.1:9000:9000' # Native TCP interface
     volumes:
       - clickhouse_data:/var/lib/clickhouse
     environment:
