@@ -17,11 +17,6 @@ import { instantiateOpaqueType } from '../../utils/typescript-types.js';
 import { CoopInputArbitrary } from './Shared.js';
 
 export const ScalarTypeArbitrary = enumToArbitrary(ScalarTypes);
-export const ContainerTypeArbitrary = enumToArbitrary(ContainerTypes);
-export const FieldTypeArbitrary = fc.oneof(
-  ScalarTypeArbitrary,
-  ContainerTypeArbitrary,
-);
 
 // ScalarTypeRuntimeTypes
 export const LocationAreaArbitrary = fc.record({

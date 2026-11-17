@@ -30,21 +30,8 @@ export function titleCaseEnumStringWithArticle(s: string): string {
     : `a ${titleCased}`;
 }
 
-export function prettyPrintJson(it: string) {
-  return prettyPrintJsonValue(JSON.parse(it));
-}
-
 export function prettyPrintJsonValue(it: JsonValue) {
   return JSON.stringify(it, undefined, 4);
-}
-
-export function isValidJson(it: string) {
-  try {
-    JSON.parse(it);
-    return true;
-  } catch (e) {
-    return false;
-  }
 }
 
 /**
