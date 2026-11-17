@@ -34,6 +34,13 @@ COPY ["server/package.json", "./server/"]
 RUN --mount=type=cache,target=/root/.local/share/pnpm/store pnpm install --filter server --prod --frozen-lockfile --ignore-scripts && \
     pnpm rebuild --filter server
 
+FROM node:24.14.1-bullseye-slim AS build_client
+WORKDIR /app
+COPY ["client/package.json", "client/package-lock.json", "./"]
+RUN npm ci
+COPY ["client", "./"]
+RUN npm run build
+
 # make a shared layer that can be the base for worker and api images.
 FROM node:24.22.2-trixie-slim AS backend_base
 WORKDIR /app
@@ -63,6 +70,7 @@ ENV BUILD_ID=$BUILD_ID
 # Expose 8080 because the backend will run on this port absent a
 # process.env.PORT to the contrary.
 FROM backend_base AS build_server
+COPY --from=build_client /app/build ./client-build
 EXPOSE 8080
 CMD ["node", "bin/www.js"]
 
