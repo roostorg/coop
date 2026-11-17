@@ -5042,6 +5042,21 @@ export type GQLTransformJobAndRecreateInQueueDecisionComponent =
     readonly type: GQLManualReviewDecisionType;
   };
 
+/**
+ * Returned when a queue can't be converted between a regular and an appeals
+ * queue, e.g. because it is the default queue, still has pending jobs, or is
+ * referenced by routing rules. The title explains which.
+ */
+export type GQLUnableToChangeQueueTypeError = GQLError & {
+  readonly __typename: 'UnableToChangeQueueTypeError';
+  readonly detail?: Maybe<Scalars['String']['output']>;
+  readonly pointer?: Maybe<Scalars['String']['output']>;
+  readonly requestId?: Maybe<Scalars['String']['output']>;
+  readonly status: Scalars['Int']['output'];
+  readonly title: Scalars['String']['output'];
+  readonly type: ReadonlyArray<Scalars['String']['output']>;
+};
+
 export type GQLUpdateActionInput = {
   readonly applyUserStrikes?: InputMaybe<Scalars['Boolean']['input']>;
   readonly callbackUrl?: InputMaybe<Scalars['String']['input']>;
@@ -5117,6 +5132,11 @@ export type GQLUpdateManualReviewQueueInput = {
   >;
   readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly id: Scalars['ID']['input'];
+  /**
+   * When provided, converts the queue to or from an appeals queue. Omit to
+   * leave the queue's type unchanged.
+   */
+  readonly isAppealsQueue?: InputMaybe<Scalars['Boolean']['input']>;
   readonly jobSortType?: InputMaybe<GQLJobSortType>;
   readonly name?: InputMaybe<Scalars['String']['input']>;
   readonly roleIds: ReadonlyArray<Scalars['ID']['input']>;
@@ -5126,7 +5146,8 @@ export type GQLUpdateManualReviewQueueInput = {
 export type GQLUpdateManualReviewQueueQueueResponse =
   | GQLManualReviewQueueNameExistsError
   | GQLMutateManualReviewQueueSuccessResponse
-  | GQLNotFoundError;
+  | GQLNotFoundError
+  | GQLUnableToChangeQueueTypeError;
 
 export type GQLUpdateNcmecOrgSettingsResponse = {
   readonly __typename: 'UpdateNcmecOrgSettingsResponse';
@@ -10635,6 +10656,12 @@ export type GQLUpdateManualReviewQueueMutation = {
       }
     | {
         readonly __typename: 'NotFoundError';
+        readonly title: string;
+        readonly status: number;
+        readonly type: ReadonlyArray<string>;
+      }
+    | {
+        readonly __typename: 'UnableToChangeQueueTypeError';
         readonly title: string;
         readonly status: number;
         readonly type: ReadonlyArray<string>;
@@ -34278,6 +34305,11 @@ export const GQLUpdateManualReviewQueueDocument = gql`
         }
       }
       ... on ManualReviewQueueNameExistsError {
+        title
+        status
+        type
+      }
+      ... on UnableToChangeQueueTypeError {
         title
         status
         type
