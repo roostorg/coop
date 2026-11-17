@@ -19,7 +19,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Optional semver version tag to publish (e.g. 1.0.0 or 1.1.0-alpha), for backfilling a release. Leave blank for an SHA-only build; does not move :latest.'
+        description: 'Optional semver version tag to publish (e.g. 1.0.0 or 1.1.0-alpha), for backfilling a release. Leave blank for an SHA-only build. Moves :latest only when run from the highest release tag.'
         required: false
         type: string
 
@@ -27,17 +27,22 @@ permissions:
   contents: read
 
 # Avoid redundant concurrent builds for the same ref (expensive multi-arch).
-# Keyed per-ref so releases (tag refs) never cancel main builds.
+# Keyed per-ref so releases (tag refs) never cancel main builds. Tag builds
+# share one group and never cancel, so they run one at a time and the
+# highest-tag check for `latest` can't be overtaken by an older tag's push.
+# A group holds one pending run, so a third tag build cancels the queued one;
+# re-run it once the others finish.
 concurrency:
-  group: publish-docker-${{ github.ref }}
-  cancel-in-progress: true
+  group: publish-docker-${{ startsWith(github.ref, 'refs/tags/') && 'tags' || github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 env:
   REGISTRY: ghcr.io
   # Shared tag policy: release -> version tags, plus `latest` only when the
   # release is the highest stable semver tag (see the `latest` step); main ->
-  # `edge` + sha; manual dispatch -> sha (+ optional `version`). Use
-  # `github.event.inputs` since `inputs` is unset on push/release.
+  # `edge` + sha; manual dispatch -> sha (+ optional `version`), and from a
+  # tag also its version tags and, if it's the highest release, `latest`.
+  # Use `github.event.inputs` since `inputs` is unset on push/release.
   TAGS: |
     type=sha,prefix=
     type=edge,branch=main,enable=${{ github.event_name != 'workflow_dispatch' }}
