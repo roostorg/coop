@@ -1,3 +1,4 @@
+import { type SignalEvaluationContext } from '@roostorg/coop-types';
 import _ from 'lodash';
 import { type Opaque, type ReadonlyDeep } from 'type-fest';
 
@@ -55,6 +56,9 @@ type RuleEvaluationContextImpl = Readonly<{
   input: RuleInput;
   runSignal: TransientRunSignalWithCache;
   getSignalCost: (id: SignalId) => Promise<number>;
+  getSignalContext: (
+    signalId: SignalId,
+  ) => Promise<SignalEvaluationContext | undefined>;
   getDerivedFieldValue: (spec: DerivedFieldSpec) => Promise<DerivedFieldValue>;
 }>;
 
@@ -77,6 +81,8 @@ class RuleEvaluator {
   constructor(
     private readonly makeRunSignal: Dependencies['TransientRunSignalWithCacheFactory'],
     private readonly signalsService: Dependencies['SignalsService'],
+    private readonly makeSignalContextLoader: Dependencies['SignalContextLoaderFactory'],
+    private readonly contextSettings: Dependencies['IntegrationContextSettingsService'],
     private readonly tracer: Dependencies['Tracer'],
   ) {}
 
@@ -127,6 +133,10 @@ class RuleEvaluator {
       runSignal,
       orgId,
     );
+    const signalContextLoader = this.makeSignalContextLoader({
+      orgId,
+      ruleInput: input,
+    });
 
     return instantiateOpaqueType<RuleEvaluationContext>({
       org: { id: orgId },
@@ -137,6 +147,23 @@ class RuleEvaluator {
           .getSignalOrThrow({ orgId, signalId })
           .then((s) => s.getCost())
           .catch(() => Infinity),
+      getSignalContext: async (signalId: SignalId) => {
+        if (signalId.type === 'CUSTOM') return undefined;
+        // Resolving needs reads the org's integration config. If that read
+        // fails, run the signal without context instead of failing it.
+        const needs = await this.signalsService
+          .getSignal({ orgId, signalId })
+          .then(async (signal) =>
+            signal
+              ? this.contextSettings.getEffectiveContextNeeds({
+                  orgId,
+                  signal,
+                })
+              : undefined,
+          )
+          .catch(() => undefined);
+        return needs ? signalContextLoader.load(needs) : undefined;
+      },
       // If the item data is missing, as it will be in user rule
       // RuleEvaluationContexts, then we can't extract a derived field value
       // (at least for now, since we don't have a notion of derived fields
@@ -188,7 +215,13 @@ class RuleEvaluator {
 }
 
 export default inject(
-  ['TransientRunSignalWithCacheFactory', 'SignalsService', 'Tracer'],
+  [
+    'TransientRunSignalWithCacheFactory',
+    'SignalsService',
+    'SignalContextLoaderFactory',
+    'IntegrationContextSettingsService',
+    'Tracer',
+  ],
   RuleEvaluator,
 );
 export { type RuleEvaluator };

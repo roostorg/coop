@@ -31,6 +31,7 @@ export function makeGqlServices(deps: Dependencies) {
     'ReportingService',
     'RuleEvaluator',
     'SignalsService',
+    'IntegrationContextSettingsService',
     'SigningKeyPairService',
     'Tracer',
     'UserManagementService',

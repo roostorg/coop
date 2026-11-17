@@ -164,6 +164,7 @@ Note: `check_migration_order` runs only in GitHub Actions — it's GitHub-specif
 ## Security
 
 - No secrets in code or committed files. Use environment variables via `.env` (gitignored).
+- Pass `isUntrustedUrl: true` to `fetchHTTP` for downloads of submitted media URLs. URL parsing alone does not validate DNS or redirect destinations. Keep operator-configured internal-service calls separate; services that fetch URLs themselves (such as HMA) need their own egress protection.
 - Do not disable lint or type rules to silence errors. Fix the underlying issue, or use a narrowly-scoped `// eslint-disable-next-line <rule>` / `// @ts-expect-error` with a comment explaining why.
 - Before adding a new dependency, check it for known CVEs and confirm the license is compatible with `LICENSE` (Apache 2.0).
 - Default Docker bindings are `127.0.0.1`; do not change bind addresses without explicit instruction.
@@ -232,10 +233,15 @@ pnpm install
 
 ## Codespaces
 
-Two things differ from a local dev setup:
+`.devcontainer/` is a demo for non-engineers: Docker-in-Docker running `docker-compose.images.yaml` plus `.devcontainer/docker-compose.codespaces.yaml`, which builds the server, client and migrations images from the checkout; `.devcontainer/scripts/seed-demo.mjs` creates the demo login (`demo@coop.local` / `coop-demo`) and adds demo data through the GraphQL and REST APIs. Guide: `docs/development/codespaces.md`.
 
-1. **Use the production client build**, not the vite dev server: `(cd client && pnpm run build)`, then `pnpm run server:start` serves the built assets. Vite's HMR websocket does not reliably traverse the Codespace port proxy.
-2. **Apollo's GraphQL URI must be relative** (`/api/v1/graphql`). Hard-coded `http://localhost:3000/...` breaks because the Codespace proxies to a different host. Source of truth is the `HttpLink` in `client/src/index.tsx`.
+```bash
+# Same container locally
+npx @devcontainers/cli up --workspace-folder .
+```
+
+- The browser only reaches the forwarded port 3000; the client's nginx proxies `/api/` to the server. Keep **Apollo's GraphQL URI relative** (`/api/v1/graphql`, the `HttpLink` in `client/src/index.tsx`): an absolute `http://localhost:...` URL breaks behind the Codespaces proxy.
+- `seed-demo.mjs` uses the public GraphQL schema and the REST routes `items/async` and `report`. If you rename or remove a mutation, input field or route it uses, update it and run it (`bash .devcontainer/scripts/start.sh` inside the container).
 
 ## ROOST guiding principles
 

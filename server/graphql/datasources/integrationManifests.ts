@@ -4,6 +4,7 @@
  */
 export {
   BUILT_IN_MANIFESTS,
+  modelCardsFor,
   type AvailableIntegration,
   type IntegrationManifestEntry,
   type ModelCard,

@@ -215,7 +215,7 @@ jobs:
           persist-credentials: false
 
       - name: Prepare Docker images
-        uses: ./.github/actions/prepare-docker-images
+        uses: $/.github/actions/prepare-docker-images
         with:
           pull: postgres scylla clickhouse redis
           build: backend test
@@ -358,7 +358,7 @@ jobs:
           persist-credentials: false
 
       - name: Prepare Docker images
-        uses: ./.github/actions/prepare-docker-images
+        uses: $/.github/actions/prepare-docker-images
         with:
           build: client
 

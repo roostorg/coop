@@ -1,4 +1,5 @@
 import { SpanStatusCode } from '@opentelemetry/api';
+import { type SignalEvaluationContext } from '@roostorg/coop-types';
 import _ from 'lodash';
 import stringify from 'safe-stable-stringify';
 import { type ReadonlyDeep } from 'type-fest';
@@ -43,6 +44,7 @@ type RunSignalInput<T extends SignalType = SignalType> = Omit<
 > & {
   matchingValues?: ReadonlyDeep<MatchingValues>;
   signal: SignalId;
+  context?: SignalEvaluationContext;
 };
 
 export type TransientRunSignalWithCache = (
@@ -143,7 +145,8 @@ export default inject(
             input,
           );
         },
-        ({ signal, ...signalInput }) => stringify([signal, signalInput]),
+        ({ signal, context: _context, ...signalInput }) =>
+          stringify([signal, signalInput]),
       );
     },
 );
