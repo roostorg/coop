@@ -9,9 +9,9 @@ export default function RuleInsights(props: { ruleId: string }) {
       <div className="flex items-center justify-between mb-8">
         <div className="flex flex-col items-start pt-4 text-start">
           <div className="flex flex-col">
-            <div className="flex text-xl font-semibold">Actions</div>
+            <div className="flex text-xl font-semibold">Rule Matches</div>
             <div className="flex text-base text-slate-500">
-              See how many actions the Rule has applied over time.
+              See how often this rule matched over time.
             </div>
           </div>
         </div>
