@@ -112,8 +112,7 @@ async function replaceRuleActions(
       rule_id: ruleId,
       action_id: actionId,
       // `JsonObject` (type-fest) isn't assignable to Prisma's JSON input type.
-      action_parameters: (actionParameters?.get(actionId) ??
-        {}),
+      action_parameters: actionParameters?.get(actionId) ?? {},
     })),
   });
 }
@@ -303,8 +302,7 @@ export async function kyselyUpdateRule(
   }
   if (input.conditionSet !== undefined) {
     // Domain type isn't assignable to Prisma's JSON input type.
-    patch.condition_set =
-      input.conditionSet;
+    patch.condition_set = input.conditionSet;
   }
   if (input.tags !== undefined) {
     patch.tags = input.tags;
