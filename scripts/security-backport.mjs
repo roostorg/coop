@@ -7,24 +7,27 @@
 //   node scripts/security-backport.mjs publish
 //
 // `prepare` needs only read access: it cherry-picks each pending PR's merge
-// commit onto a local backport/<n>-to-release/x.y branch, verifies lockfile
-// changes, and writes the plan to $BACKPORT_WORKDIR/plan.json (default
-// $RUNNER_TEMP/security-backport). If release/x.y doesn't exist, it warns
-// with the command a maintainer runs to create it and plans nothing. `publish`
-// pushes the backport branches, opens a PR for each and comments on the
-// source PR for each failure. Pushes go through $BACKPORT_PUSH_URL and API
-// calls use $GH_TOKEN, so the write token is only present for `publish`.
+// commit onto backport/security-to-release/x.y, the branch of one running
+// draft PR for the release, verifies lockfile changes, and writes the plan to
+// $BACKPORT_WORKDIR/plan.json (default $RUNNER_TEMP/security-backport). A PR
+// that changes several packages gets its own backport/<n>-to-release/x.y PR
+// instead. If release/x.y doesn't exist, it warns with the command a
+// maintainer runs to create it and plans nothing. `publish` pushes the
+// branches, opens or updates the PRs and comments on the source PR for each
+// failure. Pushes go through $BACKPORT_PUSH_URL and API calls use $GH_TOKEN,
+// so the write token is only present for `publish`.
 //
-// It never force-pushes, never pushes to release/*, and never modifies
-// pnpm-lock.yaml: a change that does not apply cleanly, or
-// whose lockfile changes do not match the source commit's exactly, goes to
-// the manual path instead.
+// It force-pushes only backport/security-to-release/x.y, with a lease, never
+// pushes to release/*, and never modifies pnpm-lock.yaml: a change that does
+// not apply cleanly, or whose lockfile changes do not match the source
+// commit's exactly, goes to the manual path instead.
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const LABEL = 'security-update';
+export const DECLINE_LABEL = 'no-backport';
 export const failureMarker = (branch) => `<!-- security-backport ${branch} -->`;
 const STABLE_TAG = /^(\d+)\.(\d+)\.(\d+)$/;
 
@@ -273,13 +276,15 @@ function prepare({ prFilter, retry }) {
 
   const target = latestStableTag(run('git', ['tag', '--list']).split('\n'));
   if (!target) throw new Error('no x.y.z release tag found');
-  const branchExists = tryRun('git', [
-    'fetch',
-    '--quiet',
-    'origin',
-    `+refs/heads/${target.branch}:refs/remotes/origin/${target.branch}`,
-  ]).ok;
-  const plan = { repo, target, backports: [], failures: [], skipped: [] };
+  const branchExists = fetchBranch(target.branch);
+  const plan = {
+    repo,
+    target,
+    combined: undefined,
+    backports: [],
+    failures: [],
+    skipped: [],
+  };
   const writePlan = () =>
     writeFileSync(
       path.join(workdir, 'plan.json'),
@@ -326,20 +331,35 @@ function prepare({ prFilter, retry }) {
     '--limit',
     '200',
     '--json',
-    'number,title,body,url,mergeCommit,mergedAt,author',
-  ])
-    .filter((p) => !prFilter || p.number === prFilter)
-    .sort((a, b) => a.mergedAt.localeCompare(b.mergedAt));
+    'number,title,body,url,mergeCommit,mergedAt,author,labels',
+  ]).sort((a, b) => a.mergedAt.localeCompare(b.mergedAt));
+
+  const combined = openCombined({ repo, target, base, prs });
+  plan.combined = combined.state;
+  if (combined.foreign.length > 0) {
+    // Rebuilding the branch would drop commits someone else pushed.
+    console.log(
+      `::error::${combined.state.branch} has commits the workflow did not add (${combined.foreign.join(', ')}); remove them, or merge or close its PR, then rerun`,
+    );
+    process.exitCode = 1;
+    writePlan();
+    return;
+  }
 
   for (const pr of prs) {
     const sha = pr.mergeCommit?.oid;
-    const branch = backportBranchName(pr.number, target.branch);
     const skip = (reason) => {
       plan.skipped.push({ pr: pr.number, reason });
       console.log(`#${pr.number}: skip, ${reason}`);
     };
+    const wasIncluded = combined.included.has(pr.number);
+    if (prFilter && pr.number !== prFilter && !wasIncluded) continue;
     if (!sha) {
       skip('no merge commit');
+      continue;
+    }
+    if (pr.labels?.some((l) => l.name === DECLINE_LABEL)) {
+      skip(`labelled ${DECLINE_LABEL}`);
       continue;
     }
     if (tryRun('git', ['merge-base', '--is-ancestor', sha, base]).ok) {
@@ -350,6 +370,12 @@ function prepare({ prFilter, retry }) {
       skip(`already cherry-picked onto ${target.branch}`);
       continue;
     }
+    if (wasIncluded && !combined.rebuild) {
+      combined.add(pr, combined.included.get(pr.number));
+      console.log(`#${pr.number}: already in ${combined.state.branch}`);
+      continue;
+    }
+    const branch = backportBranchName(pr.number, target.branch);
     const existing = ghJson([
       'pr',
       'list',
@@ -368,84 +394,244 @@ function prepare({ prFilter, retry }) {
       );
       continue;
     }
-    // A branch without a PR is from a run that failed to open the PR, or a
-    // manual backport: verify it and open the PR for it.
-    const existingRef = tryRun('git', [
-      'fetch',
-      '--quiet',
-      'origin',
-      `+refs/heads/${branch}:refs/remotes/origin/${branch}`,
-    ]).ok
-      ? `origin/${branch}`
-      : undefined;
-    if (!retry) {
-      const comments = ghJson([
-        'api',
-        `repos/${repo}/issues/${pr.number}/comments`,
-        '--paginate',
-        '--slurp',
-      ]).flat();
-      if (comments.some((c) => c.body.includes(failureMarker(target.branch)))) {
-        skip(
-          'backport already reported as failed; rerun with --retry after fixing',
-        );
-        continue;
-      }
+    // A backport/<n> branch without a PR is from a run that failed to open
+    // the PR, or a manual backport: verify it and open its own PR.
+    if (fetchBranch(branch)) {
+      const result = backportOne({
+        pr,
+        sha,
+        target,
+        base,
+        workdir,
+        existingRef: `origin/${branch}`,
+      });
+      record(plan, result, skip);
+      continue;
     }
-    const result = backportOne({ pr, sha, target, base, workdir, existingRef });
-    if (result.skip) skip(result.skip);
-    else if (result.ok) plan.backports.push(result);
-    else plan.failures.push(result);
+    if (!retry && !wasIncluded && failureReported(repo, pr, target)) {
+      skip(
+        'backport already reported as failed; rerun with --retry after fixing',
+      );
+      continue;
+    }
+    const result = combined.pick(pr, sha, workdir);
+    if (result.separate) {
+      // Grouped updates are reviewed on their own; see backportBody.
+      record(plan, backportOne({ pr, sha, target, base, workdir }), skip);
+    } else if (result.ok) {
+      combined.add(pr, result);
+    } else {
+      record(plan, result, skip);
+    }
   }
 
+  combined.finish();
   writePlan();
   console.log(
-    `${plan.backports.length} to open, ${plan.failures.length} failed, ${plan.skipped.length} skipped`,
+    `${combined.state.entries.length} in ${combined.state.branch}${combined.state.changed ? ' (changed)' : ''}, ${plan.backports.length} separate PRs to open, ${plan.failures.length} failed, ${plan.skipped.length} skipped`,
   );
 }
 
-function backportOne({ pr, sha, target, base, workdir, existingRef }) {
-  const branch = backportBranchName(pr.number, target.branch);
-  const dir = path.join(workdir, `pr-${pr.number}`);
-  const parents =
-    run('git', ['rev-list', '--parents', '-n', '1', sha]).split(' ').length - 1;
-  const fail = (reason, details = '') => {
-    tryRun('git', ['cherry-pick', '--abort'], { cwd: dir });
-    console.log(`#${pr.number}: FAILED, ${reason}`);
-    return {
-      ok: false,
-      pr: pr.number,
-      url: pr.url,
-      sha,
-      branch,
-      reason,
-      details,
-      steps: manualSteps(pr.number, sha, target, parents),
-      credit: originalCredit(pr),
-    };
-  };
+function record(plan, result, skip) {
+  if (result.skip) skip(result.skip);
+  else if (result.ok) plan.backports.push(result);
+  else plan.failures.push(result);
+}
 
-  if (existingRef) {
-    run('git', ['worktree', 'add', '--quiet', '-B', branch, dir, existingRef]);
-    const log = run('git', ['log', '--format=%s%n%b', `${base}..HEAD`], {
-      cwd: dir,
-    });
-    if (
-      !tryRun('git', ['merge-base', '--is-ancestor', base, 'HEAD'], {
-        cwd: dir,
-      }).ok
-    ) {
-      return fail(
-        `branch ${branch} exists but is not based on ${target.branch}`,
-      );
-    }
-    if (!alreadyOnBranch(log, pr.number, sha)) {
-      return fail(`branch ${branch} exists but does not contain ${sha}`);
-    }
-  } else {
-    run('git', ['worktree', 'add', '--quiet', '-B', branch, dir, base]);
+function fetchBranch(branch) {
+  return tryRun('git', [
+    'fetch',
+    '--quiet',
+    'origin',
+    `+refs/heads/${branch}:refs/remotes/origin/${branch}`,
+  ]).ok;
+}
+
+function failureReported(repo, pr, target) {
+  const comments = ghJson([
+    'api',
+    `repos/${repo}/issues/${pr.number}/comments`,
+    '--paginate',
+    '--slurp',
+  ]).flat();
+  return comments.some((c) => c.body.includes(failureMarker(target.branch)));
+}
+
+// The source commits that `log` (git log --format=%H%x00%B%x01) cherry-picked
+// with -x, and the commits that are not such a cherry-pick of `known`.
+export function cherryPicks(log, known) {
+  const picks = new Map();
+  const foreign = [];
+  for (const entry of log.split('\x01')) {
+    const [commit, message = ''] = entry.trim().split('\x00');
+    if (!commit) continue;
+    const source = [
+      ...message.matchAll(/\(cherry picked from commit ([0-9a-f]{40})\)/g),
+    ].at(-1)?.[1];
+    if (source && known.has(source)) picks.set(source, commit);
+    else foreign.push(commit.slice(0, 12));
   }
-  const pick = existingRef
+  return { picks, foreign };
+}
+
+// The running PR that collects every backport to release/x.y. The branch is
+// rebuilt from release/x.y when release/x.y has moved or a fix in it was
+// declined, and otherwise only gains commits.
+function openCombined({ repo, target, base, prs }) {
+  const branch = combinedBranchName(target.branch);
+  const dir = path.join(workdirPath(), 'combined');
+  const remote = fetchBranch(branch)
+    ? run('git', ['rev-parse', `origin/${branch}`])
+    : null;
+  const [open] = ghJson([
+    'pr',
+    'list',
+    '--repo',
+    repo,
+    '--head',
+    branch,
+    '--base',
+    target.branch,
+    '--state',
+    'open',
+    '--json',
+    'number,url,body',
+  ]);
+  const bySha = new Map(
+    prs.filter((p) => p.mergeCommit?.oid).map((p) => [p.mergeCommit.oid, p]),
+  );
+  const included = new Map();
+  let foreign = [];
+  let rebuild = true;
+  if (open && remote) {
+    const log = run('git', [
+      'log',
+      '--reverse',
+      '--format=%H%x00%B%x01',
+      `${base}..${remote}`,
+    ]);
+    const found = cherryPicks(log, bySha);
+    foreign = found.foreign;
+    for (const [source, commit] of found.picks) {
+      included.set(bySha.get(source).number, {
+        upgrades: commitUpgrades(commit),
+      });
+    }
+    const declined = [...found.picks.keys()].some((s) =>
+      bySha.get(s).labels?.some((l) => l.name === DECLINE_LABEL),
+    );
+    rebuild =
+      declined ||
+      !tryRun('git', ['merge-base', '--is-ancestor', base, remote]).ok;
+  }
+  const state = {
+    branch,
+    pr: open ? { number: open.number, url: open.url } : null,
+    remote,
+    head: null,
+    entries: [],
+    changed: false,
+    close: false,
+    body: '',
+    currentBody: open?.body?.replace(/\r/g, '') ?? '',
+  };
+  if (foreign.length > 0) return { state, foreign, included, rebuild };
+  run('git', [
+    'worktree',
+    'add',
+    '--quiet',
+    '-B',
+    branch,
+    dir,
+    rebuild ? base : remote,
+  ]);
+  console.log(
+    `${branch}: ${rebuild ? `building from ${target.branch}` : `adding to ${remote.slice(0, 12)}`}`,
+  );
+  return {
+    state,
+    foreign,
+    included,
+    rebuild,
+    add(pr, result) {
+      state.entries.push({
+        pr: pr.number,
+        url: pr.url,
+        title: pr.title,
+        sha: pr.mergeCommit.oid,
+        credit: originalCredit(pr),
+        releaseNotes: releaseNotesSection(pr.body),
+        upgrades: result.upgrades ?? [],
+      });
+    },
+    pick(pr, sha) {
+      const before = run('git', ['rev-parse', 'HEAD'], { cwd: dir });
+      const result = pickAndCheck({ pr, sha, target, dir, before });
+      const packages = new Set((result.upgrades ?? []).map((u) => u.name));
+      if (!result.ok || packages.size > 1) {
+        tryRun('git', ['cherry-pick', '--abort'], { cwd: dir });
+        run('git', ['reset', '--quiet', '--hard', before], { cwd: dir });
+      }
+      if (result.ok && packages.size > 1) return { separate: true };
+      if (result.ok) console.log(`#${pr.number}: added to ${branch}`);
+      return result;
+    },
+    finish() {
+      state.head = run('git', ['rev-parse', 'HEAD'], { cwd: dir });
+      state.body = combinedBody(state.entries, target);
+      state.close = state.entries.length === 0 && Boolean(state.pr);
+      state.changed =
+        state.close ||
+        (state.entries.length > 0 &&
+          (state.head !== remote ||
+            !state.pr ||
+            state.body.trimEnd() !== state.currentBody.trimEnd()));
+    },
+  };
+}
+
+export function combinedBranchName(releaseBranch) {
+  return `backport/security-to-${releaseBranch}`;
+}
+
+function parentCount(sha) {
+  return (
+    run('git', ['rev-list', '--parents', '-n', '1', sha]).split(' ').length - 1
+  );
+}
+
+function failure({ pr, sha, target }, reason, details = '') {
+  console.log(`#${pr.number}: FAILED, ${reason}`);
+  return {
+    ok: false,
+    pr: pr.number,
+    url: pr.url,
+    sha,
+    reason,
+    details,
+    steps: manualSteps(pr.number, sha, target, parentCount(sha)),
+    credit: originalCredit(pr),
+  };
+}
+
+// The packages whose versions `commit` changes in pnpm-lock.yaml.
+function commitUpgrades(commit, cwd) {
+  if (!commitTouches(commit, 'pnpm-lock.yaml')) return [];
+  return upgradedPackages(
+    lockfileDelta(
+      gitShow(`${commit}^`, 'pnpm-lock.yaml', cwd),
+      gitShow(commit, 'pnpm-lock.yaml', cwd),
+    ),
+  );
+}
+
+// Cherry-picks `sha` onto the worktree `dir` at `before` and checks its
+// lockfile changes. Leaves a failed cherry-pick for the caller to clean up.
+function pickAndCheck({ pr, sha, target, dir, before, picked = false }) {
+  const parents = parentCount(sha);
+  const fail = (reason, details) =>
+    failure({ pr, sha, target }, reason, details);
+  const pick = picked
     ? { ok: true }
     : tryRun(
         'git',
@@ -459,7 +645,6 @@ function backportOne({ pr, sha, target, base, workdir, existingRef }) {
       { cwd: dir },
     ).out;
     if (!conflicted && /nothing to commit|empty/i.test(pick.out)) {
-      tryRun('git', ['cherry-pick', '--abort'], { cwd: dir });
       return { skip: `the change is already on ${target.branch}` };
     }
     return fail(
@@ -479,7 +664,7 @@ function backportOne({ pr, sha, target, base, workdir, existingRef }) {
       gitShow(`${sha}^1`, 'pnpm-lock.yaml'),
       gitShow(sha, 'pnpm-lock.yaml'),
     );
-    const beforeText = gitShow(base, 'pnpm-lock.yaml');
+    const beforeText = gitShow(before, 'pnpm-lock.yaml', dir);
     const backport = lockfileDelta(
       beforeText,
       gitShow('HEAD', 'pnpm-lock.yaml', dir),
@@ -528,7 +713,51 @@ function backportOne({ pr, sha, target, base, workdir, existingRef }) {
       }
     }
   }
+  return { ok: true, upgrades };
+}
 
+// A backport in its own PR from backport/<n>-to-release/x.y: a fix that
+// changes several packages, or a branch someone pushed by hand.
+function backportOne({ pr, sha, target, base, workdir, existingRef }) {
+  const branch = backportBranchName(pr.number, target.branch);
+  const dir = path.join(workdir, `pr-${pr.number}`);
+  run('git', [
+    'worktree',
+    'add',
+    '--quiet',
+    '-B',
+    branch,
+    dir,
+    existingRef ?? base,
+  ]);
+  const withBranch = (result) => ({ ...result, branch });
+  if (existingRef) {
+    const log = run('git', ['log', '--format=%s%n%b', `${base}..HEAD`], {
+      cwd: dir,
+    });
+    const problem = !tryRun(
+      'git',
+      ['merge-base', '--is-ancestor', base, 'HEAD'],
+      { cwd: dir },
+    ).ok
+      ? `branch ${branch} exists but is not based on ${target.branch}`
+      : !alreadyOnBranch(log, pr.number, sha)
+        ? `branch ${branch} exists but does not contain ${sha}`
+        : undefined;
+    if (problem) return withBranch(failure({ pr, sha, target }, problem));
+  }
+  const result = pickAndCheck({
+    pr,
+    sha,
+    target,
+    dir,
+    before: base,
+    picked: Boolean(existingRef),
+  });
+  if (!result.ok) {
+    tryRun('git', ['cherry-pick', '--abort'], { cwd: dir });
+    return result.skip ? result : withBranch(result);
+  }
   const head = run('git', ['rev-parse', 'HEAD'], { cwd: dir });
   console.log(`#${pr.number}: ready as ${branch} (${head.slice(0, 12)})`);
   return {
@@ -542,7 +771,7 @@ function backportOne({ pr, sha, target, base, workdir, existingRef }) {
     branch,
     head,
     releaseNotes: releaseNotesSection(pr.body),
-    upgrades,
+    upgrades: result.upgrades,
   };
 }
 
@@ -602,13 +831,109 @@ export function failureComment(f, target) {
   ].join('\n');
 }
 
+// Release notes for several source PRs in one PR body. Each note but the
+// last carries its credit inline; the last is credited through the
+// `original-credit` comment, which replaces the combined PR's own credit.
+export function combinedReleaseNotes(entries) {
+  const noted = entries.filter((e) => e.releaseNotes);
+  if (noted.length === 0) return '';
+  const notes = noted.map((e, i) => {
+    const text = /^[-*][ \t]/.test(e.releaseNotes)
+      ? e.releaseNotes
+      : `- ${e.releaseNotes}`;
+    return i < noted.length - 1 ? `${text} (${e.credit})` : text;
+  });
+  return [...notes, creditComment(noted.at(-1).credit)].join('\n');
+}
+
+export function combinedBody(entries, target) {
+  const lines = [
+    `Security fixes from \`main\` for ${target.next}, cherry-picked onto \`${target.branch}\` with \`git cherry-pick -x\` by the security backport workflow. Each run adds new \`security-update\` PRs and rewrites this description, so don't push to this branch or edit this description.`,
+    '',
+    `Merge with **Rebase and merge**, so that each \`(cherry picked from commit …)\` line stays on \`${target.branch}\`.`,
+    '',
+    ...entries.flatMap((e) => [
+      `- #${e.pr} (${e.sha.slice(0, 12)})`,
+      ...e.upgrades.map(
+        (u) =>
+          `  - \`${u.name}\` ${u.from.length ? `${u.from.join(', ')} → ` : 'new: '}${u.to}`,
+      ),
+    ]),
+    '',
+    `To leave a fix out, label its PR \`${DECLINE_LABEL}\`; the next run rebuilds this branch without it. To change a release note, edit the source PR's \`## Release notes\` section and rerun the **Security backports** workflow.`,
+    '',
+    '## Release notes',
+    '',
+  ];
+  const notes = combinedReleaseNotes(entries);
+  if (notes) lines.push(notes);
+  return `${lines.join('\n').trimEnd()}\n`;
+}
+
 function publish() {
   const workdir = workdirPath();
   const pushUrl = env('BACKPORT_PUSH_URL');
   const plan = JSON.parse(
     readFileSync(path.join(workdir, 'plan.json'), 'utf8'),
   );
-  const { repo, target } = plan;
+  const { repo, target, combined } = plan;
+  const summaryRows = [];
+
+  if (combined?.close) {
+    gh([
+      'pr',
+      'close',
+      String(combined.pr.number),
+      '--repo',
+      repo,
+      '--comment',
+      'Every fix in this PR was declined or is already on the release branch, so the security backport workflow closed it.',
+    ]);
+    summaryRows.push(`- Closed ${combined.pr.url}: nothing left in it`);
+  } else if (combined?.changed) {
+    if (combined.head !== combined.remote) {
+      // The workflow owns this branch: rebuilding it after release/x.y moves
+      // or a fix is declined rewrites it, and the lease refuses to overwrite
+      // anything pushed since prepare read it.
+      run('git', [
+        'push',
+        `--force-with-lease=refs/heads/${combined.branch}:${combined.remote ?? ''}`,
+        pushUrl,
+        `${combined.head}:refs/heads/${combined.branch}`,
+      ]);
+    }
+    const bodyFile = path.join(workdir, 'body-combined.md');
+    writeFileSync(bodyFile, combined.body);
+    const url =
+      combined.pr?.url ??
+      gh([
+        'pr',
+        'create',
+        '--repo',
+        repo,
+        '--base',
+        target.branch,
+        '--head',
+        combined.branch,
+        '--title',
+        `fix: backport security fixes to ${target.branch} for ${target.next}`,
+        '--body-file',
+        bodyFile,
+        '--draft',
+      ]);
+    if (combined.pr) {
+      gh(['pr', 'edit', url, '--repo', repo, '--body-file', bodyFile]);
+    }
+    label(
+      repo,
+      url,
+      combined.entries.some((e) => e.releaseNotes),
+    );
+    summaryRows.push(
+      `- ${combined.pr ? 'Updated' : 'Opened'} ${url} with ${combined.entries.map((e) => `#${e.pr}`).join(', ')}`,
+    );
+    console.log(`${combined.branch}: ${url}`);
+  }
 
   for (const b of plan.backports) {
     if (!b.pushed) {
@@ -632,20 +957,8 @@ function publish() {
       bodyFile,
       ...(draft ? ['--draft'] : []),
     ]);
-    // release-notes.yml's autolabeler only runs on PRs to main, and the
-    // release/x.y draft only collects PRs labelled has-release-notes.
-    const labels = b.releaseNotes ? `${LABEL},has-release-notes` : LABEL;
-    const labelled = tryRun('gh', [
-      'pr',
-      'edit',
-      url,
-      '--repo',
-      repo,
-      '--add-label',
-      labels,
-    ]);
-    if (!labelled.ok)
-      console.log(`::warning::could not label ${url}: ${labelled.out}`);
+    label(repo, url, Boolean(b.releaseNotes));
+    summaryRows.push(`- Opened ${url}, a separate backport of #${b.pr}`);
     console.log(`#${b.pr}: opened ${url}`);
   }
 
@@ -661,6 +974,7 @@ function publish() {
       '--body-file',
       bodyFile,
     ]);
+    summaryRows.push(`- **Failed** #${f.pr}: ${f.reason}`);
     console.log(
       `::error::#${f.pr} could not be backported to ${target.branch}: ${f.reason}`,
     );
@@ -671,13 +985,30 @@ function publish() {
     const rows = [
       `### Security backports to \`${target.branch}\` (next: ${target.next})`,
       '',
-      ...plan.backports.map((b) => `- Opened backport of #${b.pr}`),
-      ...plan.failures.map((f) => `- **Failed** #${f.pr}: ${f.reason}`),
+      ...summaryRows,
       ...plan.skipped.map((s) => `- Skipped #${s.pr}: ${s.reason}`),
     ];
     writeFileSync(summary, `${rows.join('\n')}\n`, { flag: 'a' });
   }
   if (plan.failures.length > 0) process.exitCode = 1;
+}
+
+// release-notes.yml's autolabeler only runs on PRs to main, and the
+// release/x.y draft only collects PRs labelled has-release-notes.
+function label(repo, url, hasReleaseNotes) {
+  const notes = 'has-release-notes';
+  const labelled = tryRun('gh', [
+    'pr',
+    'edit',
+    url,
+    '--repo',
+    repo,
+    '--add-label',
+    hasReleaseNotes ? `${LABEL},${notes}` : LABEL,
+    ...(hasReleaseNotes ? [] : ['--remove-label', notes]),
+  ]);
+  if (!labelled.ok)
+    console.log(`::warning::could not label ${url}: ${labelled.out}`);
 }
 
 function main(argv) {

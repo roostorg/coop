@@ -9,6 +9,9 @@ import {
   alreadyOnBranch,
   backportBody,
   checkLockfileBackport,
+  cherryPicks,
+  combinedBody,
+  combinedReleaseNotes,
   createBranchMessage,
   failureComment,
   latestStableTag,
@@ -269,7 +272,7 @@ test("release-drafter.yml credits a backport's release note to the source PR", (
     { branch: 'release/1.2', next: '1.2.4' },
   );
   const notes = body
-    .slice(body.indexOf('## Release notes') + '## Release notes'.length)
+    .slice(body.search(/^## Release notes$/m) + '## Release notes'.length)
     .replace(stripComments, '')
     .trim();
   // change-template for the backport PR, opened by the app.
@@ -303,5 +306,79 @@ test('failureComment gives the credit line for a manual backport', () => {
   assert.match(
     comment,
     /^<!-- original-credit: \[#5\]\(u\) by \[@ann\]\(v\) -->$/m,
+  );
+});
+
+test('cherryPicks maps -x commits to their source and lists the rest', () => {
+  const a = 'a'.repeat(40);
+  const b = 'b'.repeat(40);
+  const log = [
+    `c1\x00fix: x\n\n(cherry picked from commit ${a})\n\x01`,
+    `c2\x00manual fix\n\x01`,
+    `c3\x00fix: y\n\n(cherry picked from commit ${'f'.repeat(40)})\n\x01`,
+  ].join('\n');
+  const { picks, foreign } = cherryPicks(
+    log,
+    new Map([
+      [a, 1],
+      [b, 2],
+    ]),
+  );
+  assert.deepEqual([...picks], [[a, 'c1']]);
+  assert.deepEqual(foreign, ['c2', 'c3']);
+});
+
+const entry = (pr, releaseNotes, upgrades = []) => ({
+  pr,
+  sha: String(pr).repeat(40).slice(0, 40),
+  releaseNotes,
+  credit: `[#${pr}](https://github.com/roostorg/coop/pull/${pr}) by [@u${pr}](https://github.com/u${pr})`,
+  upgrades,
+});
+
+test('combinedReleaseNotes credits each note, the last through the comment', () => {
+  assert.equal(
+    combinedReleaseNotes([
+      entry(1, 'Fix one'),
+      entry(2, ''),
+      entry(3, '- Fix three\n- Fix four'),
+    ]),
+    [
+      '- Fix one ([#1](https://github.com/roostorg/coop/pull/1) by [@u1](https://github.com/u1))',
+      '- Fix three',
+      '- Fix four',
+      '<!-- original-credit: [#3](https://github.com/roostorg/coop/pull/3) by [@u3](https://github.com/u3) -->',
+    ].join('\n'),
+  );
+  assert.equal(combinedReleaseNotes([entry(2, '')]), '');
+});
+
+test('combinedBody lists each source PR and its lockfile changes', () => {
+  const body = combinedBody(
+    [entry(1, 'Fix one', [{ name: 'qs', from: ['6.0.0'], to: '6.0.1' }])],
+    { branch: 'release/1.2', next: '1.2.4' },
+  );
+  assert.match(body, /^- #1 \(111111111111\)\n {2}- `qs` 6\.0\.0 → 6\.0\.1$/m);
+  assert.match(body, /## Release notes\n\n- Fix one\n<!-- original-credit: /);
+});
+
+test('release-drafter.yml credits each note of a combined backport PR', () => {
+  const { stripComments, credit } = creditReplacers();
+  const body = combinedBody([entry(1, 'Fix one'), entry(3, 'Fix three')], {
+    branch: 'release/1.2',
+    next: '1.2.4',
+  });
+  const notes = body
+    .slice(body.search(/^## Release notes$/m) + '## Release notes'.length)
+    .replace(stripComments, '')
+    .trim();
+  const app = 'https://github.com/apps/coop-backport';
+  const line = `${notes} ([#20](https://github.com/roostorg/coop/pull/20) by [@[coop-backport[bot]](${app})](${app}))`;
+  assert.equal(
+    line.replace(credit, ' ($1)'),
+    [
+      '- Fix one ([#1](https://github.com/roostorg/coop/pull/1) by [@u1](https://github.com/u1))',
+      '- Fix three ([#3](https://github.com/roostorg/coop/pull/3) by [@u3](https://github.com/u3))',
+    ].join('\n'),
   );
 });

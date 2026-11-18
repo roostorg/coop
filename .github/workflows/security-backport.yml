@@ -1,9 +1,10 @@
 name: Security backports
 
 # Keeps release/x.y, the branch for the next patch of the latest release
-# x.y.z, ready for a security release: opens a backport PR for each
-# `security-update`-labelled PR merged to main, and keeps a draft release for
-# x.y.(z+1). A maintainer creates release/x.y; until then the run warns.
+# x.y.z, ready for a security release: cherry-picks each
+# `security-update`-labelled PR merged to main into one running draft backport
+# PR, and keeps a draft release for x.y.(z+1). A maintainer creates
+# release/x.y; until then the run warns.
 # See docs/development/security-backports.md.
 
 on:
@@ -40,7 +41,9 @@ jobs:
       (github.event_name != 'pull_request_target' ||
        (github.event.pull_request.merged == true &&
         github.event.pull_request.base.ref == 'main' &&
-        (github.event.action == 'closed' || github.event.label.name == 'security-update')))
+        (github.event.action == 'closed' ||
+         github.event.label.name == 'security-update' ||
+         github.event.label.name == 'no-backport')))
     runs-on: ubuntu-latest
     timeout-minutes: 30
     # Holds the app's client ID and private key; limited to main.
@@ -77,7 +80,7 @@ jobs:
       - name: Check whether there is anything to push
         id: plan
         run: |
-          jq -r '"push=" + (.backports + .failures | length > 0 | tostring)' \
+          jq -r '"push=" + ((.backports + .failures | length > 0) or .combined.changed == true | tostring)' \
             "$RUNNER_TEMP/security-backport/plan.json" >> "$GITHUB_OUTPUT"
 
       # An app token, unlike GITHUB_TOKEN, triggers CI on the PRs it opens.
