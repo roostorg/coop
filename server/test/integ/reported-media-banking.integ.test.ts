@@ -6,8 +6,8 @@
  * `hmaService` entirely, so a regression in the queue name, the job payload
  * shape or the BullMQ wiring would not show up anywhere else.
  *
- * Run with: docker compose run --rm test npm run test:integ
- * Requires: `npm run up && npm run db:update`
+ * Run with: pnpm run test:integ
+ * Requires: `pnpm run up && pnpm run db:update`
  */
 import { uid } from 'uid';
 import { Headers } from 'undici';

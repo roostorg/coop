@@ -1,4 +1,4 @@
-FROM ghcr.io/facebook/threatexchange/hma:1.1.7
+FROM ghcr.io/meta/threatexchange/hma:1.2.2@sha256:9975bd6b4d57de0da776de8ea07fdddeb22cd0515c64c9301cc176836da514cf
 
 WORKDIR /app
 

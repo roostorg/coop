@@ -1,7 +1,7 @@
 import { Button } from '@/coop-ui/Button';
 import { Heading, Text } from '@/coop-ui/Typography';
 import React from 'react';
-import { NavigateFunction, useNavigate } from 'react-router-dom';
+import { NavigateFunction, useNavigate } from 'react-router';
 
 const withNavigate =
   <P extends { navigate: NavigateFunction }>(

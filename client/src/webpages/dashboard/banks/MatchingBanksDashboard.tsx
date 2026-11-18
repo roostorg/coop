@@ -3,7 +3,7 @@ import { userHasPermissions } from '@/routing/permissions';
 import { Hash, Type, Globe as World2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router';
 
 import CoopButton from '../components/CoopButton';
 import DashboardHeader from '../components/DashboardHeader';

@@ -46,8 +46,6 @@ function makeReporting(
     deps.KyselyPgReadReplica,
     fetchHTTP,
     deps.SigningKeyPairService,
-    deps.ModerationConfigService,
-    deps.getItemTypeEventuallyConsistent,
     deps.Tracer,
     reportedMediaBankingEnqueue,
   );

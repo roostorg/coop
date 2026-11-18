@@ -53,6 +53,7 @@ describe('JobRouting tests', () => {
           name: 'Default Queue',
           description: null,
           userIds: [userId],
+          roleIds: [],
           hiddenActionIds: [],
           isAppealsQueue: false,
           invokedBy: {
@@ -66,6 +67,7 @@ describe('JobRouting tests', () => {
           name: 'Another Queue',
           description: null,
           userIds: [userId],
+          roleIds: [],
           hiddenActionIds: [],
           isAppealsQueue: false,
           invokedBy: {
@@ -79,6 +81,7 @@ describe('JobRouting tests', () => {
           name: 'Policy Queue',
           description: null,
           userIds: [userId],
+          roleIds: [],
           hiddenActionIds: [],
           isAppealsQueue: false,
           invokedBy: {
@@ -93,6 +96,7 @@ describe('JobRouting tests', () => {
           name: 'No Policy Queue',
           description: null,
           userIds: [userId],
+          roleIds: [],
           hiddenActionIds: [],
           isAppealsQueue: false,
           invokedBy: {
@@ -288,7 +292,7 @@ describe('JobRouting tests', () => {
 
       const otherOrgOrder = await getPersistedRoutingRuleOrder(otherOrg.id);
       const order = await getPersistedRoutingRuleOrder(org.id);
-      const expectedOrder = order.toReversed();
+      const expectedOrder = order.slice().reverse();
 
       const reorderedRules = await manualReviewToolService.reorderRoutingRules({
         orgId: org.id,
@@ -616,6 +620,61 @@ describe('JobRouting tests', () => {
       const pendingJobCount = await manualReviewToolService.getPendingJobCount({
         orgId: org.id,
         queueId: anotherQueue.id,
+      });
+      expect(pendingJobCount).toBe(1);
+    },
+  );
+
+  // Regression: only the first policy id used to be checked.
+  jobRoutingTestWithFixtures(
+    'Should match a policy id that is not the first on the job',
+    async ({ manualReviewToolService, org, itemType, policyQueue }) => {
+      const normalizedDataOrError = toNormalizedItemDataOrErrors(
+        [itemType.id],
+        itemType,
+        { text: '12345' },
+      );
+      if (Array.isArray(normalizedDataOrError)) {
+        throw new Error('Error validating item data');
+      }
+
+      const itemSubmission = await submissionDataToItemSubmission(
+        async () => itemType,
+        {
+          orgId: org.id,
+          submissionId: makeSubmissionId(),
+          itemId: uid(),
+          itemTypeId: itemType.id,
+          itemTypeVersion: '',
+          itemTypeSchemaVariant: 'original',
+          data: normalizedDataOrError,
+          creatorId: null,
+          creatorTypeId: null,
+        },
+      );
+      if (itemSubmission instanceof Error) {
+        throw new Error('Error creating item submission');
+      }
+
+      const item =
+        itemSubmissionToItemSubmissionWithTypeIdentifier(itemSubmission);
+      await manualReviewToolService.enqueue({
+        enqueueSource: 'REPORT',
+        enqueueSourceInfo: { kind: 'REPORT' },
+        createdAt: new Date(),
+        orgId: org.id,
+        correlationId: toCorrelationId({ type: 'submit-report', id: uid() }),
+        policyIds: ['otherPolicy', 'testPolicyId'],
+        payload: {
+          kind: 'DEFAULT',
+          reportHistory: [],
+          item,
+        },
+      });
+
+      const pendingJobCount = await manualReviewToolService.getPendingJobCount({
+        orgId: org.id,
+        queueId: policyQueue.id,
       });
       expect(pendingJobCount).toBe(1);
     },

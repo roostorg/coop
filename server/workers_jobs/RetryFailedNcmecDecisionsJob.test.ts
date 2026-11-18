@@ -28,6 +28,7 @@ function makeNcmecDecisionRow(orgId: string): NcmecDecisionRow {
     id: uuidv1(),
     queue_id: uuidv1(),
     reviewer_id: 'reviewer-1',
+    created_at: new Date(),
     decision_components: [
       {
         type: 'SUBMIT_NCMEC_REPORT',
@@ -102,11 +103,18 @@ function makeDeps(
     publishActions: Mock;
     getNCMECActionsToRunAndPolicies: Mock;
     decisions: NcmecDecisionRow[];
+    reports: {
+      userId: string;
+      userItemTypeId: string;
+      orgId: string;
+      hasProductionReport: boolean;
+      latestTestReportAt: Date | null;
+    }[];
   }> = {},
 ) {
   const ncmecService = {
     submitReport: overrides.submitReport ?? vi.fn(async () => 'SUCCESS'),
-    getUsersWithNcmecDecision: vi.fn(async () => []),
+    getUsersWithNcmecDecision: vi.fn(async () => overrides.reports ?? []),
     getNcmecErrorsForJobIds: vi.fn(async () => []),
     insertOrUpdateNcmecReportError: vi.fn(async () => undefined),
     getNCMECActionsToRunAndPolicies:
@@ -274,4 +282,60 @@ describe('RetryFailedNcmecDecisionsJob', () => {
     expect(deps.ncmecService.submitReport).toHaveBeenCalledTimes(1);
     expect(deps.actionPublisher.publishActions).toHaveBeenCalledTimes(1);
   });
+
+  // A test report covers only the decisions made at or before it, so a later
+  // production decision on the same user is still retried.
+  it.each([
+    { report: 'a production report', testReportOffsetMs: null, retried: false },
+    {
+      report: 'a later test report',
+      testReportOffsetMs: 60_000,
+      retried: false,
+    },
+    {
+      report: 'an earlier test report',
+      testReportOffsetMs: -60_000,
+      retried: true,
+    },
+  ])(
+    'decision whose user has $report: retried=$retried',
+    async ({ testReportOffsetMs, retried }) => {
+      const decidedAt = new Date('2026-11-01T12:00:00Z');
+      const decision = {
+        ...makeNcmecDecisionRow(ORG_ID),
+        created_at: decidedAt,
+      };
+      const { item } = decision.job_payload.payload;
+      const deps = makeDeps({
+        decisions: [decision],
+        reports: [
+          {
+            userId: item.itemId,
+            userItemTypeId: item.itemTypeIdentifier.id,
+            orgId: ORG_ID,
+            hasProductionReport: testReportOffsetMs === null,
+            latestTestReportAt:
+              testReportOffsetMs === null
+                ? null
+                : new Date(decidedAt.getTime() + testReportOffsetMs),
+          },
+        ],
+      });
+      const job = makeRetryFailedNcmecDecisionsJob(
+        vi.fn() as never,
+        deps.manualReviewToolService as never,
+        deps.ncmecService as never,
+        deps.getItemTypeEventuallyConsistent as never,
+        deps.actionPublisher as never,
+        deps.moderationConfigService as never,
+        deps.userManagementService as never,
+      );
+
+      await job.run();
+
+      expect(deps.ncmecService.submitReport).toHaveBeenCalledTimes(
+        retried ? 1 : 0,
+      );
+    },
+  );
 });

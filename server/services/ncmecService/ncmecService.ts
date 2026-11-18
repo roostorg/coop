@@ -1,5 +1,3 @@
-import { type ItemIdentifier } from '@roostorg/coop-types';
-import _Ajv from 'ajv-draft-04';
 import { sql, type Kysely } from 'kysely';
 
 import { type Dependencies } from '../../iocContainer/index.js';
@@ -20,6 +18,7 @@ import {
 import { type NcmecReportingServicePg } from './dbTypes.js';
 import NcmecEnqueueToMrt from './ncmecEnqueueToMrt.js';
 import NcmecReporting, { type NCMECReportParams } from './ncmecReporting.js';
+import { type ValidatedNcmecTarget } from './resolveNcmecTargetUser.js';
 import {
   retryNcmecSubmission,
   type RetryNcmecSubmissionResult,
@@ -47,8 +46,6 @@ export class NcmecService {
       pqQueryReadReplica,
       fetchHTTP,
       signingKeyPairService,
-      moderationConfigService,
-      getItemTypeEventuallyConsistent,
       tracer,
       reportedMediaBankingEnqueue,
     );
@@ -57,8 +54,6 @@ export class NcmecService {
       moderationConfigService,
       manualReviewToolService,
       itemInvestigationService,
-      fetchHTTP,
-      signingKeyPairService,
       this.ncmecReporting,
     );
   }
@@ -101,14 +96,6 @@ export class NcmecService {
     return this.ncmecReporting.getNcmecReportById(opts);
   }
 
-  async getNcmecMessages(
-    orgId: string,
-    userId: ItemIdentifier,
-    reportedMedia: readonly ItemIdentifier[],
-  ) {
-    return this.ncmecReporting.getNcmecMessages(orgId, userId, reportedMedia);
-  }
-
   async getUserHasExistingNcmecReport(params: {
     orgId: string;
     userId: string;
@@ -136,6 +123,7 @@ export class NcmecService {
           enqueueSource: 'MRT_JOB';
           enqueueSourceInfo: MrtJobEnqueueSourceInfo;
           reenqueuedFrom: OriginJobInfo;
+          validatedNcmecTarget?: ValidatedNcmecTarget;
         }
       | {
           enqueueSource: 'RULE_EXECUTION';
@@ -277,14 +265,13 @@ export class NcmecService {
         org_id: params.orgId,
         username: params.username,
         password: params.password,
-        contact_email: params.contactEmail ?? undefined,
-        more_info_url: params.moreInfoUrl ?? undefined,
-        company_template: params.companyTemplate ?? undefined,
-        legal_url: params.legalUrl ?? undefined,
-        ncmec_preservation_endpoint:
-          params.ncmecPreservationEndpoint ?? undefined,
+        contact_email: params.contactEmail ?? null,
+        more_info_url: params.moreInfoUrl ?? null,
+        company_template: params.companyTemplate ?? null,
+        legal_url: params.legalUrl ?? null,
+        ncmec_preservation_endpoint: params.ncmecPreservationEndpoint ?? null,
         ncmec_additional_info_endpoint:
-          params.ncmecAdditionalInfoEndpoint ?? undefined,
+          params.ncmecAdditionalInfoEndpoint ?? null,
         default_ncmec_queue_id: params.defaultNcmecQueueId ?? null,
         default_internet_detail_type: params.defaultInternetDetailType ?? null,
         terms_of_service: params.termsOfService ?? null,
@@ -302,14 +289,13 @@ export class NcmecService {
         oc.column('org_id').doUpdateSet({
           username: params.username,
           password: params.password,
-          contact_email: params.contactEmail ?? undefined,
-          more_info_url: params.moreInfoUrl ?? undefined,
-          company_template: params.companyTemplate ?? undefined,
-          legal_url: params.legalUrl ?? undefined,
-          ncmec_preservation_endpoint:
-            params.ncmecPreservationEndpoint ?? undefined,
+          contact_email: params.contactEmail ?? null,
+          more_info_url: params.moreInfoUrl ?? null,
+          company_template: params.companyTemplate ?? null,
+          legal_url: params.legalUrl ?? null,
+          ncmec_preservation_endpoint: params.ncmecPreservationEndpoint ?? null,
           ncmec_additional_info_endpoint:
-            params.ncmecAdditionalInfoEndpoint ?? undefined,
+            params.ncmecAdditionalInfoEndpoint ?? null,
           default_ncmec_queue_id: params.defaultNcmecQueueId ?? null,
           default_internet_detail_type:
             params.defaultInternetDetailType ?? null,

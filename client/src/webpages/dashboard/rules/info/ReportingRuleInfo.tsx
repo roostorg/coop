@@ -1,16 +1,18 @@
 import { gql } from '@apollo/client';
 import { Helmet } from 'react-helmet-async';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router';
 
 import FullScreenLoading from '../../../../components/common/FullScreenLoading';
 import CoopButton from '../../components/CoopButton';
 import NavHeader from '../../components/NavHeader';
 
 import { useGQLReportingRuleInfoQuery } from '../../../../graphql/generated';
+import ReportingRuleInsights from './insights/ReportingRuleInsights';
 
 gql`
   query ReportingRuleInfo($id: ID!) {
     reportingRule(id: $id) {
+      id
       name
     }
   }
@@ -45,11 +47,12 @@ export default function ReportingRuleInfo() {
           buttons={[
             {
               title: 'Report Rules',
-              onClick: () => navigate('/dashboard/rules/report'),
+              onClick: async () => navigate('/dashboard/rules/report'),
             },
             {
               title: `Report Rule: ${name}`,
-              onClick: () => navigate(`/dashboard/rules/report/form/${ruleId}`),
+              onClick: async () =>
+                navigate(`/dashboard/rules/report/form/${ruleId}`),
             },
             { title: 'Insights' },
           ]}
@@ -59,6 +62,7 @@ export default function ReportingRuleInfo() {
           destination={`/dashboard/rules/report/form/${ruleId}`}
         />
       </div>
+      <ReportingRuleInsights ruleId={ruleId} />
     </div>
   );
 }

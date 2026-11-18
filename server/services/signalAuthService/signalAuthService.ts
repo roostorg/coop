@@ -23,8 +23,23 @@ export type Credentials<T extends ConfigurableIntegration> = {
 };
 
 export type GoogleContentSafetyCredential = { apiKey: string };
-export type OpenAICredential = { apiKey: string };
-export type ZentropiLabelerVersion = { id: string; label: string };
+// `csamClassifierApiKey` authenticates OpenAI's Novel CSAM Classifier API.
+// It is issued separately from the regular OpenAI API key, via an approval
+// process that happens outside Coop.
+export type OpenAICredential = {
+  apiKey: string;
+  csamClassifierApiKey?: string;
+};
+export type ZentropiModel = 'COPE_LATEST' | 'COPE_B_A4B' | 'COPE_B_S1';
+// `id` is the Zentropi labeler version ID. Its parent `labelerId` is optional;
+// GraphQL clients can explicitly clear it with null. Without a `model`,
+// Zentropi uses its default model.
+export type ZentropiLabelerVersion = {
+  id: string;
+  label: string;
+  labelerId?: string | null;
+  model?: ZentropiModel | null;
+};
 export type ZentropiCredential = {
   apiKey: string;
   labelerVersions?: ZentropiLabelerVersion[];
@@ -130,7 +145,9 @@ class SignalAuthService {
     }
     if (integrationId === Integration.OPEN_AI) {
       const c = await this.get(Integration.OPEN_AI, orgId);
-      return c != null ? { apiKey: c.apiKey } : undefined;
+      return c != null
+        ? { apiKey: c.apiKey, csamClassifierApiKey: c.csamClassifierApiKey }
+        : undefined;
     }
     if (integrationId === Integration.ZENTROPI) {
       const c = await this.get(Integration.ZENTROPI, orgId);
@@ -166,8 +183,16 @@ class SignalAuthService {
     }
     if (integrationId === Integration.OPEN_AI) {
       const apiKey = typeof config.apiKey === 'string' ? config.apiKey : '';
-      await this.set(Integration.OPEN_AI, orgId, { apiKey });
-      return { apiKey };
+      const csamClassifierApiKey =
+        typeof config.csamClassifierApiKey === 'string'
+          ? config.csamClassifierApiKey
+          : undefined;
+      // Return the persisted row, not the input: an omitted CSAM key preserves
+      // the stored one, so the saved value can differ from what was passed.
+      return this.set(Integration.OPEN_AI, orgId, {
+        apiKey,
+        csamClassifierApiKey,
+      });
     }
     if (integrationId === Integration.ZENTROPI) {
       const apiKey = typeof config.apiKey === 'string' ? config.apiKey : '';
@@ -235,26 +260,54 @@ function makeImplementations(
     },
     [Integration.OPEN_AI]: {
       get: async (orgId: string) => {
-        return pg
+        const row = await pg
           .selectFrom('signal_auth_service.open_ai_configs')
-          .select(['api_key as apiKey'])
+          .select([
+            'api_key as apiKey',
+            'csam_classifier_api_key as csamClassifierApiKey',
+          ])
           .where('org_id', '=', orgId)
           .executeTakeFirst();
+        if (row == null) return undefined;
+        return {
+          apiKey: row.apiKey,
+          csamClassifierApiKey: row.csamClassifierApiKey ?? undefined,
+        };
       },
       set: async (orgId: string, credential: OpenAICredential) => {
-        return pg
+        // An omitted csamClassifierApiKey (undefined) preserves the stored key,
+        // so updating only the moderation key does not drop it. An explicit
+        // empty string clears it, stored as null.
+        const csamProvided = credential.csamClassifierApiKey !== undefined;
+        const csamValue =
+          credential.csamClassifierApiKey != null &&
+          credential.csamClassifierApiKey !== ''
+            ? credential.csamClassifierApiKey
+            : null;
+        const row = await pg
           .insertInto('signal_auth_service.open_ai_configs')
           .values([
             {
               org_id: orgId,
               api_key: credential.apiKey,
+              csam_classifier_api_key: csamProvided ? csamValue : null,
             },
           ])
           .onConflict((oc) =>
-            oc.column('org_id').doUpdateSet({ api_key: credential.apiKey }),
+            oc.column('org_id').doUpdateSet({
+              api_key: credential.apiKey,
+              ...(csamProvided ? { csam_classifier_api_key: csamValue } : {}),
+            }),
           )
-          .returning(['api_key as apiKey'])
+          .returning([
+            'api_key as apiKey',
+            'csam_classifier_api_key as csamClassifierApiKey',
+          ])
           .executeTakeFirstOrThrow();
+        return {
+          apiKey: row.apiKey,
+          csamClassifierApiKey: row.csamClassifierApiKey ?? undefined,
+        };
       },
       delete: async (orgId: string) => {
         await pg

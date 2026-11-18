@@ -16,9 +16,16 @@ type StringSignalInput = SignalInput<ScalarTypes['STRING']>;
 function makeCredentialGetter(
   apiKey: string | null = 'test-api-key',
 ): GetCredentials<'ZENTROPI'> {
-  return vi
-    .fn<GetCredentials<'ZENTROPI'>>()
-    .mockResolvedValue(apiKey ? { apiKey } : undefined);
+  return vi.fn<GetCredentials<'ZENTROPI'>>().mockResolvedValue(
+    apiKey
+      ? {
+          apiKey,
+          labelerVersions: [
+            { id: 'lv_abc123', labelerId: 'lb_xyz789', label: 'Spam' },
+          ],
+        }
+      : undefined,
+  );
 }
 
 function makeInput(

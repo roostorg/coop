@@ -1,7 +1,7 @@
 import { Button, Form, Tooltip } from 'antd';
 import { SizeType } from 'antd/lib/config-provider/SizeContext';
 import { TooltipPlacement } from 'antd/lib/tooltip';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 
 export default function SubmitButton(props: {
   title: string;

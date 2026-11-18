@@ -18,7 +18,6 @@ export type OrgSettingsPg = {
     partial_items_request_headers: JsonObject | null;
     allow_multiple_policies_per_action: boolean;
     user_strike_ttl_days: number;
-    is_demo_org: boolean;
   } & (
     | {
         saml_enabled: true;
@@ -64,7 +63,6 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
         has_appeals_enabled: false,
         allow_multiple_policies_per_action: false,
         user_strike_ttl_days: 90,
-        is_demo_org: false,
         saml_enabled: false,
         sso_url: null,
         cert: null,
@@ -271,14 +269,6 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
         .where('org_id', '=', input.orgId)
         .set({ saml_enabled: input.enabled })
         .execute();
-    },
-    async isDemoOrg(orgId: string) {
-      const rows = await pgQuery
-        .selectFrom('public.org_settings')
-        .select(['is_demo_org'])
-        .where('org_id', '=', orgId)
-        .executeTakeFirst();
-      return rows?.is_demo_org ?? false;
     },
     async close() {
       await partialItemsEndpointCache.close();

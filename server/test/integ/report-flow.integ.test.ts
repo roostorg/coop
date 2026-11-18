@@ -20,8 +20,8 @@
  * `ModerationConfigService.getItemTypes` with `maxAge: 10`, so item types
  * created in an earlier test can stay cached and mask resolution problems.
  *
- * Run with: npm run test:integ
- * Requires: `npm run up && npm run db:update`
+ * Run with: pnpm run test:integ
+ * Requires: `pnpm run up && pnpm run db:update`
  */
 import { ScalarTypes } from '@roostorg/coop-types';
 import { uid } from 'uid';

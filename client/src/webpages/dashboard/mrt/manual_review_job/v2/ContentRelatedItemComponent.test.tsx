@@ -1,15 +1,12 @@
-import { MockedProvider } from '@apollo/client/testing';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import React from 'react';
-
-import '@testing-library/jest-dom/extend-expect';
-
 import {
   GQLActionParameterType,
   GQLItemTypeHiddenFieldsDocument,
   GQLPersonalSafetySettingsDocument,
   GQLUserPenaltySeverity,
 } from '@/graphql/generated';
+import { MockedProvider } from '@apollo/client/testing';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import React from 'react';
 
 import ContentRelatedItemComponent, {
   AdditionalReportedContentItems,

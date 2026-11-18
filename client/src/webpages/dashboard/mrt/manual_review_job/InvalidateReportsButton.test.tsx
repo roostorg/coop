@@ -1,15 +1,12 @@
-import { MockedProvider } from '@apollo/client/testing';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import React from 'react';
-import { vi } from 'vitest';
-
-import '@testing-library/jest-dom/extend-expect';
-
 import {
   GQLInvalidateReportsFromReporterDocument,
   type GQLInvalidateReportsFromReporterMutation,
   type GQLInvalidateReportsFromReporterMutationVariables,
 } from '@/graphql/generated';
+import { MockedProvider } from '@apollo/client/testing';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import React from 'react';
+import { vi } from 'vitest';
 
 import InvalidateReportsButton from './InvalidateReportsButton';
 

@@ -1,8 +1,0 @@
-# Ignore all files and directories
-*
-
-# Include specific files
-
-!src/
-!package*.json
-!tsconfig.json

@@ -1,0 +1,53 @@
+# Layered over docker-compose.images.yaml; devcontainer.json sets COMPOSE_FILE so
+# plain `docker compose` picks this up. It builds Coop from this checkout instead
+# of pulling the published images, so a codespace on a branch shows that branch.
+
+services:
+  migrations:
+    image: coop-migrations:codespace
+    build:
+      context: .
+      dockerfile: db/Dockerfile
+
+  # seed-demo.mjs creates the demo login along with the demo data, so this
+  # replaces the base file's random admin login with nothing.
+  seed:
+    image: coop-server:codespace
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: build_server
+    command: ['true']
+
+  server:
+    image: coop-server:codespace
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: build_server
+    environment:
+      # Links the server puts in emails and invites.
+      UI_URL: ${COOP_UI_URL:-http://localhost:3000}
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:8080/api/v1/ready').then((r) => process.exit(r.ok ? 0 : 1), () => process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+
+  client:
+    image: coop-client:codespace
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+      target: serve
+    # Codespaces can open the UI in the browser as soon as port 3000 is published,
+    # so start the client only once the server answers.
+    depends_on:
+      server:
+        condition: service_healthy

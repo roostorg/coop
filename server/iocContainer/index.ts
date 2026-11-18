@@ -119,6 +119,10 @@ import makeHmaService, {
   type HashBank,
   type HmaService,
 } from '../services/hmaService/index.js';
+import {
+  makeIntegrationContextSettingsService,
+  type IntegrationContextSettingsService,
+} from '../services/integrationContextSettings/index.js';
 import { ItemInvestigationService } from '../services/itemInvestigationService/index.js';
 import {
   itemSubmissionWithTypeIdentifierToItemSubmission,
@@ -147,6 +151,7 @@ import {
   // owned by the MRT service)
   // eslint-disable-next-line import/no-restricted-paths
 } from '../services/manualReviewToolService/manualReviewToolQueries.js';
+import { ModerationActivityFeed } from '../services/moderationActivityFeed/index.js';
 import {
   ModerationConfigService,
   type Action,
@@ -160,6 +165,7 @@ import {
 } from '../services/moderationConfigService/moderationConfigServiceQueries.js';
 import {
   buildSubmitReportParamsFromDecision,
+  isNcmecTestMode,
   makeNcmecService,
   type NcmecService,
 } from '../services/ncmecService/index.js';
@@ -215,6 +221,10 @@ import {
   type SignalAuthService,
 } from '../services/signalAuthService/index.js';
 import {
+  makeSignalContextLoaderFactory,
+  type SignalContextLoaderFactory,
+} from '../services/signalContextService/index.js';
+import {
   makeSignalsService,
   type SignalsService,
 } from '../services/signalsService/index.js';
@@ -263,6 +273,7 @@ import { createPgPool } from './createPgPool.js';
 import { registerGqlDataSources } from './services/gqlDataSources.js';
 import { registerWorkersAndJobs } from './services/workersAndJobs.js';
 import {
+  inject,
   isEnvTrue,
   register,
   safeGetEnvNonNegativeInt,
@@ -390,7 +401,10 @@ export interface Dependencies {
   ManualReviewContentResolver: ManualReviewContentResolver;
   ManualReviewToolService: ManualReviewToolService;
   SignalsService: SignalsService;
+  SignalContextLoaderFactory: SignalContextLoaderFactory;
+  IntegrationContextSettingsService: IntegrationContextSettingsService;
   ItemInvestigationService: ItemInvestigationService;
+  ModerationActivityFeed: ModerationActivityFeed;
   DerivedFieldsService: DerivedFieldsService;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   UserStatisticsService: any; // TODO: Fix circular reference with Dependencies
@@ -775,6 +789,16 @@ export default async function getBottle(
 
   // Core business logic services
   register(bottle, 'RuleEngine', makeRuleEngine);
+  register(
+    bottle,
+    'SignalContextLoaderFactory',
+    inject(['ItemInvestigationService'], makeSignalContextLoaderFactory),
+  );
+  register(
+    bottle,
+    'IntegrationContextSettingsService',
+    makeIntegrationContextSettingsService,
+  );
   register(bottle, 'RuleEvaluator', makeRuleEvaluator);
   register(bottle, 'RuleActionInsights', makeRuleActionInsights);
   register(bottle, 'ItemHistoryQueries', makeItemHistoryQueries);
@@ -969,6 +993,11 @@ export default async function getBottle(
 
   bottle.factory('ManualReviewToolService', (container) => {
     return new ManualReviewToolService(
+      // Lazy getter to break a circular dependency:
+      // ManualReviewToolService -> ReportingService -> ActionPublisher ->
+      // ManualReviewToolService. Resolved at call time, not construction time.
+      () => container.ReportingService.getNumTimesReported,
+      () => container.ReportingService.getNumTimesReportedForItems,
       container.IORedis,
       container.RuleEvaluator,
       container.RoutingRuleExecutionLogger,
@@ -993,6 +1022,7 @@ export default async function getBottle(
         reviewerEmail,
         decisionReason,
         suppressUserReportSweep,
+        validatedNcmecTarget,
       }) {
         const { orgId } = job;
         const { itemId, itemTypeIdentifier, data } = job.payload.item;
@@ -1141,6 +1171,7 @@ export default async function getBottle(
 
                   await container.fetchHTTP({
                     url: ignoreCallback,
+                    isUntrustedUrl: false,
                     method: 'post',
                     body: jsonStringify(ignoreCallbackBody),
                     logRequestAndResponseBody: 'ON_FAILURE',
@@ -1204,6 +1235,7 @@ export default async function getBottle(
 
                   const appealResponse = await container.fetchHTTP({
                     url: orgAppealSettings.appealCallbackUrl,
+                    isUntrustedUrl: false,
                     method: 'post',
                     body: jsonStringify(appealCallbackBody),
                     logRequestAndResponseBody: 'ON_FAILURE',
@@ -1317,13 +1349,7 @@ export default async function getBottle(
                       getItemTypeEventuallyConsistent:
                         container.getItemTypeEventuallyConsistent,
                     });
-                  // Submissions go to the NCMEC test endpoint
-                  // (exttest.cybertip.org) unless the deployment is explicitly
-                  // configured for production via NCMEC_ENV=production. Operators
-                  // are responsible for matching this to whether the credentials
-                  // configured in Settings → NCMEC are production or test
-                  // credentials issued by NCMEC.
-                  const isTest = process.env.NCMEC_ENV !== 'production';
+                  const isTest = isNcmecTestMode();
                   await container.NcmecService.submitReport(
                     reportParams,
                     isTest,
@@ -1418,6 +1444,7 @@ export default async function getBottle(
                           correlationId,
                           item: job.payload.item,
                           reenqueuedFrom: { jobId: job.id },
+                          validatedNcmecTarget,
                         },
                       );
                       break;
@@ -1573,6 +1600,13 @@ export default async function getBottle(
         container.NcmecService.getUserHasExistingNcmecReport(params),
       container.ManualReviewContentResolver,
       container.Meter,
+    );
+  });
+
+  bottle.factory('ModerationActivityFeed', (container) => {
+    return new ModerationActivityFeed(
+      container.ManualReviewToolService,
+      container.ItemInvestigationService,
     );
   });
 

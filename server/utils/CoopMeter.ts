@@ -1,4 +1,4 @@
-import opentelemetry from '@opentelemetry/api';
+import * as opentelemetry from '@opentelemetry/api';
 
 import { logJson } from './logging.js';
 

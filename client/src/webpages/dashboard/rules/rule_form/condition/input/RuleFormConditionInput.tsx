@@ -41,7 +41,9 @@ const COOP_INPUT_DESCRIPTIONS = {
   [CoopInput.AUTHOR_USER]:
     'Use this to check inspect the user who created this content, ' +
     'rather than inspecting the content itself.',
-  [CoopInput.POLICY_ID]: 'The policy that was used to enqueue this job.',
+  [CoopInput.POLICY_ID]:
+    'The policies that were used to enqueue this job. If there are several, ' +
+    'this condition will pass if any one of them matches.',
   [CoopInput.SOURCE]: 'The source from which this job was enqueued.',
 };
 

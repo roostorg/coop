@@ -1,0 +1,43 @@
+name: Draft release notes
+
+on:
+  # The action reads trusted default-branch config; no contributor code runs.
+  pull_request_target: # zizmor: ignore[dangerous-triggers]
+    types: [opened, reopened, synchronize, edited, closed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: release-notes-${{ github.event.pull_request.number || 'refresh' }}
+  cancel-in-progress: false
+
+jobs:
+  labels:
+    if: github.event_name == 'pull_request_target'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: release-drafter/release-drafter/autolabeler@978bb0b30c5ee8cdd332ced253758157150d43f0 # v7.10.0
+
+  draft:
+    needs: labels
+    if: >-
+      always() &&
+      (github.event_name == 'workflow_dispatch' ||
+       (needs.labels.result == 'success' && github.event.pull_request.merged == true))
+    runs-on: ubuntu-latest
+    concurrency:
+      group: release-draft-main
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      pull-requests: read
+    steps:
+      - uses: release-drafter/release-drafter@978bb0b30c5ee8cdd332ced253758157150d43f0 # v7.10.0
+        with:
+          commitish: main
+          publish: false
