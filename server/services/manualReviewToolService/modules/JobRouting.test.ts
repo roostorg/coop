@@ -226,6 +226,49 @@ describe('JobRouting tests', () => {
   );
 
   jobRoutingTestWithFixtures(
+    'maps duplicate names and unknown rules to routing rule errors',
+    async ({ manualReviewToolService, org, itemType, anotherQueue }) => {
+      for (const isAppealsRule of [false, true]) {
+        const input = {
+          orgId: org.id,
+          name: `dup-${isAppealsRule}`,
+          status: 'LIVE' as const,
+          itemTypeIds: [itemType.id as NonEmptyString] as [NonEmptyString],
+          creatorId: '',
+          conditionSet: { conjunction: 'AND' as const, conditions: [] },
+          destinationQueueId: anotherQueue.id,
+          isAppealsRule,
+        };
+        await manualReviewToolService.createRoutingRule(input);
+        // routing_rules' unique name constraint is DEFERRABLE INITIALLY
+        // DEFERRED, so it only fires on a real COMMIT, which this test's
+        // savepoint never issues; appeals_routing_rules' index is immediate.
+        if (isAppealsRule) {
+          await expect(
+            manualReviewToolService.createRoutingRule(input),
+          ).rejects.toMatchObject({ name: 'RoutingRuleNameExistsError' });
+        }
+        await expect(
+          manualReviewToolService.updateRoutingRule({
+            id: uid(),
+            orgId: org.id,
+            name: 'renamed',
+            isAppealsRule,
+          }),
+        ).rejects.toMatchObject({ name: 'NotFoundError' });
+      }
+
+      const [rule] = await manualReviewToolService.getRoutingRules({
+        orgId: org.id,
+        directives: { maxAge: 0 },
+      });
+      expect(rule.itemTypeIds).toEqual([itemType.id]);
+      // The matview's version column is timestamptz; the driver returns a Date.
+      expect(rule.version as unknown).toBeInstanceOf(Date);
+    },
+  );
+
+  jobRoutingTestWithFixtures(
     "reorderRoutingRules does not change another organization's routing rules",
     async ({ manualReviewToolService, org, deps }) => {
       const { org: otherOrg } = await createOrg(
@@ -283,11 +326,11 @@ describe('JobRouting tests', () => {
 
       const getPersistedRoutingRuleOrder = async (orgId: string) =>
         (
-          await deps.KyselyPg.selectFrom('manual_review_tool.routing_rules')
-            .select('id')
-            .where('org_id', '=', orgId)
-            .orderBy('sequence_number')
-            .execute()
+          await deps.PrismaPg.routing_rules.findMany({
+            select: { id: true },
+            where: { org_id: orgId },
+            orderBy: { sequence_number: 'asc' },
+          })
         ).map((rule) => rule.id);
 
       const otherOrgOrder = await getPersistedRoutingRuleOrder(otherOrg.id);
