@@ -1,6 +1,14 @@
 {
   "$schema": "./node_modules/knip/schema.json",
-  "entry": ["bin/*.ts", "globals.ts", "ts-reset.ts"],
+  "entry": [
+    "bin/www.ts",
+    "bin/run-worker-or-job.ts",
+    "bin/create-org-and-user.ts",
+    "bin/get-invite-token.ts",
+    "bin/recover-mrt-queue.ts",
+    "globals.ts",
+    "ts-reset.ts"
+  ],
   "project": ["**/*.ts"],
   "ignore": ["graphql/generated.ts"],
   "ignoreDependencies": ["@roostorg/coop-integration-example"],
