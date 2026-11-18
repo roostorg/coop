@@ -133,7 +133,7 @@ export default class MatchingBankOperations {
     const { id, name, description, type, strings, ownerId } = input;
 
     try {
-      const [updatedTextBank] =
+      const updatedTextBank = (
         await this.pgQuery.text_banks.updateManyAndReturn({
           data: {
             name,
@@ -145,7 +145,8 @@ export default class MatchingBankOperations {
           },
           where: { id, org_id: orgId },
           select: textBankPrismaSelect,
-        });
+        })
+      ).at(0);
       if (updatedTextBank === undefined) {
         throw new Error('no result');
       }

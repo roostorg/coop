@@ -83,12 +83,9 @@ type ActionPrismaRow = Prisma.actionsGetPayload<{
   select: typeof actionPrismaSelect;
 }>;
 
-type ActionDbResult = FixKyselyRowCorrelation<
-  ModerationConfigServicePg['public.actions'],
-  typeof actionDbSelection
->;
-
-const actionDbSelection = [
+// The row shape the Kysely selection produced, kept as the mapping target so
+// `#dbResultToAction` still gets a row correlated by `actionType`.
+type ActionDbSelection = readonly [
   'id',
   'name',
   'description',
@@ -101,12 +98,17 @@ const actionDbSelection = [
   'applies_to_all_items_of_kind as appliesToAllItemsOfKind',
   'apply_user_strikes as applyUserStrikes',
   'custom_mrt_api_params as customMrtApiParams',
-] as const;
+];
+
+type ActionDbResult = FixKyselyRowCorrelation<
+  ModerationConfigServicePg['public.actions'],
+  ActionDbSelection
+>;
 
 // Prisma can't alias columns, so rename here; JSON columns come back as
 // Prisma.JsonValue and are cast to their domain types.
 function actionRowToDbResult(row: ActionPrismaRow): ActionDbResult {
-  return {
+  const result = {
     id: row.id,
     name: row.name,
     description: row.description,
@@ -119,11 +121,16 @@ function actionRowToDbResult(row: ActionPrismaRow): ActionDbResult {
     appliesToAllItemsOfKind: row.applies_to_all_items_of_kind,
     applyUserStrikes: row.apply_user_strikes,
     customMrtApiParams: row.custom_mrt_api_params as JsonValue[],
-  } as ActionDbResult;
+  };
+  // Prisma's row isn't correlated by action_type (and its action_type enum
+  // has values the TS ActionType lacks), so this is an unchecked cast.
+  return result as ActionDbResult;
 }
 
 /** Prisma needs `Prisma.DbNull` to write SQL NULL into a nullable Json column. */
-function jsonOrDbNull(value: JsonObject | null): JsonObject | typeof Prisma.DbNull;
+function jsonOrDbNull(
+  value: JsonObject | null,
+): JsonObject | typeof Prisma.DbNull;
 function jsonOrDbNull(
   value: JsonObject | null | undefined,
 ): JsonObject | typeof Prisma.DbNull | undefined;
@@ -210,7 +217,7 @@ export default class ActionOperations {
   // Idempotent: existing built-ins are detected by (org_id, action_type).
   async upsertBuiltInActions(orgId: string): Promise<readonly Action[]> {
     return runInPrismaTransaction(this.pgQuery, {}, async (trx) => {
-      const existingByType = new Set<Action['actionType']>(
+      const existingByType = new Set(
         (
           await trx.actions.findMany({
             select: { action_type: true },
@@ -437,7 +444,10 @@ export default class ActionOperations {
     const results = await this.#getPgQuery(
       readFromReplica,
     ).rules_and_actions.findMany({
-      select: { action_parameters: true, actions: { select: actionPrismaSelect } },
+      select: {
+        action_parameters: true,
+        actions: { select: actionPrismaSelect },
+      },
       where: { rule_id: ruleId, actions: { org_id: orgId } },
     });
     return results.map((it) => ({

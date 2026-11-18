@@ -128,12 +128,14 @@ export default class RuleReadOperations {
     const readFromReplica = opts?.readFromReplica ?? true;
     const pg = readFromReplica ? this.pgQueryReplica : this.pgQuery;
     // prisma-raw: join to a view with no relation (rules_latest_versions)
-    const [row] = await pg.$queryRaw<RuleRow[]>`
+    const row = (
+      await pg.$queryRaw<RuleRow[]>`
       SELECT ${ruleSelect}
       FROM public.rules AS r
       LEFT JOIN public.rules_latest_versions AS rlv ON rlv.rule_id = r.id
       WHERE r.id = ${ruleId} AND r.org_id = ${orgId}
-      LIMIT 1`;
+      LIMIT 1`
+    ).at(0);
 
     if (row == null) {
       return null;

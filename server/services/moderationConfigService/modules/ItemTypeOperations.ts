@@ -3,6 +3,11 @@ import { type ReadonlyDeep } from 'type-fest';
 import { uid } from 'uid';
 
 import { type ConsumerDirectives } from '../../../lib/cache/index.js';
+import {
+  isPrismaTransaction,
+  Prisma,
+  type PrismaPgQueryable,
+} from '../../../storage/prisma/index.js';
 import { cached, type Cached } from '../../../utils/caching.js';
 import {
   CoopError,
@@ -10,11 +15,6 @@ import {
   isCoopErrorOfType,
   makeNotFoundError,
 } from '../../../utils/errors.js';
-import {
-  isPrismaTransaction,
-  Prisma,
-  type PrismaPgQueryable,
-} from '../../../storage/prisma/index.js';
 import {
   getPgErrorDetails,
   isUniqueViolationError,
@@ -36,12 +36,12 @@ import {
   type ThreadItemType,
   type UserItemType,
 } from '../index.js';
+import { runInPrismaTransaction } from '../prismaTransaction.js';
 import {
   getPartialSchemaFromOriginal,
   type ItemSchema,
   type ItemTypeSelector,
 } from '../types/itemTypes.js';
-import { runInPrismaTransaction } from '../prismaTransaction.js';
 import {
   assertValidItemSchema,
   assertValidItemTypeFieldRoles,
@@ -103,9 +103,10 @@ const itemTypeRoleColumnNames = [
   'email_field',
 ] as const;
 
-type ItemTypeForUpdateRow = { id: string; fields: ItemSchema } & Required<
-  ItemTypeRoleColumns
->;
+type ItemTypeForUpdateRow = {
+  id: string;
+  fields: ItemSchema;
+} & Required<ItemTypeRoleColumns>;
 
 export default class ItemTypeOperations {
   private readonly itemTypeVersionsCache: Cached<
@@ -128,12 +129,14 @@ export default class ItemTypeOperations {
       async producer(opts) {
         const { orgId } = opts;
         const { version, id } = opts.itemTypeIdentifier;
-        const [itemType] = await queryItemTypeVersions({
-          orgId,
-          currentVersionsOnly: false,
-          pgQuery,
-          where: Prisma.sql`id = ${id} AND version = ${version}::timestamptz`,
-        });
+        const itemType = (
+          await queryItemTypeVersions({
+            orgId,
+            currentVersionsOnly: false,
+            pgQuery,
+            where: Prisma.sql`id = ${id} AND version = ${version}::timestamptz`,
+          })
+        ).at(0);
 
         return itemType !== undefined
           ? dbResultToItemType(itemType, 'original')
@@ -579,13 +582,15 @@ export default class ItemTypeOperations {
   ): Promise<T> {
     const update = async (query: PrismaPgQueryable) => {
       // prisma-raw: FOR UPDATE
-      const [current] = await query.$queryRaw<ItemTypeForUpdateRow[]>`
+      const current = (
+        await query.$queryRaw<ItemTypeForUpdateRow[]>`
         SELECT id, fields, ${Prisma.raw(itemTypeRoleColumnNames.join(', '))}
         FROM public.item_types
         WHERE id = ${input.id}
           AND org_id = ${orgId}
           AND kind = ${kind}::item_type_kind
-        FOR UPDATE`;
+        FOR UPDATE`
+      ).at(0);
       if (current === undefined) {
         throw makeNotFoundError('Item type not found', {
           shouldErrorSpan: false,
@@ -818,12 +823,14 @@ async function queryCurrentItemTypeVersionOrThrow(opts: {
   id: string;
   kind: ItemTypeKind;
 }) {
-  const [row] = await queryItemTypeVersions({
-    orgId: opts.orgId,
-    currentVersionsOnly: true,
-    pgQuery: opts.pgQuery,
-    where: Prisma.sql`id = ${opts.id} AND kind = ${opts.kind}::item_type_kind`,
-  });
+  const row = (
+    await queryItemTypeVersions({
+      orgId: opts.orgId,
+      currentVersionsOnly: true,
+      pgQuery: opts.pgQuery,
+      where: Prisma.sql`id = ${opts.id} AND kind = ${opts.kind}::item_type_kind`,
+    })
+  ).at(0);
   if (row === undefined) {
     throw new Error('no result');
   }

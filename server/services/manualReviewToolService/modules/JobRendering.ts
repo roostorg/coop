@@ -40,11 +40,13 @@ export default class JobRendering {
       }
 
       // prisma-raw: FOR UPDATE
-      const [itemType] = await query.$queryRaw<{ fields: ItemSchema }[]>`
+      const itemType = (
+        await query.$queryRaw<{ fields: ItemSchema }[]>`
         SELECT fields
         FROM public.item_types
         WHERE id = ${opts.itemTypeId} AND org_id = ${opts.orgId}
-        FOR UPDATE`;
+        FOR UPDATE`
+      ).at(0);
       if (itemType === undefined) {
         throw makeNotFoundError('Item type not found', {
           shouldErrorSpan: false,

@@ -27,7 +27,9 @@ function toUserStrikeThreshold(
   }>,
 ) {
   return {
-    id: row.id,
+    // An integer column whose Kysely type was `string` (pg returned a
+    // number); the GraphQL `ID` field types it as a string.
+    id: String(row.id),
     orgId: row.org_id,
     threshold: row.threshold,
     actions: row.actions,
@@ -95,7 +97,7 @@ export default class UserStrikeOperations {
     const { orgId, thresholdSettings } = opts;
 
     try {
-      const [updated] =
+      const updated = (
         await this.pgQuery.user_strike_thresholds.updateManyAndReturn({
           data: removeUndefinedKeys({
             threshold: thresholdSettings.threshold,
@@ -106,7 +108,8 @@ export default class UserStrikeOperations {
           // which Postgres coerced implicitly under Kysely.
           where: { id: Number(thresholdSettings.id), org_id: orgId },
           select: userStrikeThresholdPrismaSelect,
-        });
+        })
+      ).at(0);
       if (updated === undefined) {
         throw new Error('no result');
       }
