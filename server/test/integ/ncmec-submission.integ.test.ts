@@ -325,32 +325,4 @@ describe('NCMEC submitReport (integration)', () => {
     },
     60_000,
   );
-
-  testWithFixture(
-    'keeps the report successful when the banking jobs cannot be enqueued',
-    async ({ deps, orgId, reportId, userItemTypeId }) => {
-      const { stub, ncmecReporting, reportedMediaBankingEnqueue } =
-        makeReporting(
-          deps,
-          reportId,
-          undefined,
-          vi.fn().mockRejectedValue(new Error('Redis is down')),
-        );
-      const params = reportWithTwoMedia(orgId, userItemTypeId);
-
-      const result = await ncmecReporting.submitReport(params, false);
-
-      expect(result).toBe('SUCCESS');
-      expect(reportedMediaBankingEnqueue).toHaveBeenCalledTimes(1);
-      expect(stub.calls.some((c) => c.url === PRESERVATION_URL)).toBe(true);
-      const errorRow = await deps.KyselyPg.selectFrom(
-        'ncmec_reporting.ncmec_reports_errors',
-      )
-        .selectAll()
-        .where('job_id', '=', params.jobId)
-        .executeTakeFirst();
-      expect(errorRow).toBeUndefined();
-    },
-    60_000,
-  );
 });

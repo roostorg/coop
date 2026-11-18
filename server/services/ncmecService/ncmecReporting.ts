@@ -1927,31 +1927,16 @@ export default class NcmecReporting {
             reportParams.media.length > 0 &&
             isTest === false
           ) {
-            // Banking runs in its own worker. Enqueueing must never fail an
-            // accepted report, so a Redis outage is logged and dropped here.
-            try {
-              await this.reportedMediaBankingEnqueue(
-                reportParams.media.map((media) => ({
-                  orgId: reportParams.orgId,
-                  hashBankId: reportedMediaHashBankId,
-                  ncmecReportId: reportId,
-                  itemId: media.id,
-                  itemTypeId: media.typeId,
-                  url: media.url,
-                })),
-              );
-            } catch (e) {
-              // eslint-disable-next-line no-restricted-syntax
-              logErrorJson({
-                error: e,
-                message: jsonStringify({
-                  event: 'ncmecReportedMediaBankingEnqueueFailed',
-                  orgId: reportParams.orgId,
-                  ncmecReportId: reportId,
-                  hashBankId: reportedMediaHashBankId,
-                }),
-              });
-            }
+            await this.reportedMediaBankingEnqueue(
+              reportParams.media.map((media) => ({
+                orgId: reportParams.orgId,
+                hashBankId: reportedMediaHashBankId,
+                ncmecReportId: reportId,
+                itemId: media.id,
+                itemTypeId: media.typeId,
+                url: media.url,
+              })),
+            );
           }
           return 'SUCCESS';
         } catch (e) {

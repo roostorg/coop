@@ -763,10 +763,8 @@ export default async function getBottle(
   bottle.factory('itemSubmissionRetryQueueBulkWrite', (container) =>
     makeItemSubmissionBulkWrite(container.IORedis, ITEM_SUBMISSION_DLQ_NAME),
   );
-  // Enqueued from the NCMEC submission path, so a Redis outage has to fail
-  // fast instead of buffering and holding up an accepted report.
   bottle.factory('reportedMediaBankingEnqueue', (container) =>
-    makeReportedMediaBankingEnqueue(container.IORedisEnqueueNoBuffer),
+    makeReportedMediaBankingEnqueue(container.IORedis),
   );
 
   // Loggers
