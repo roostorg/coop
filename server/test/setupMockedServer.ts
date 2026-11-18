@@ -44,10 +44,10 @@ export async function makeMockedServer(
   await tdb.begin();
 
   const deps = await getBottleContainerWithIOMocks({ kyselyPool: tdb.pool });
-  const { app: server, shutdown: shutdownServer } = await makeServer(
-    deps,
-    { environment: 'test', extraRoutes: opts.extraRoutes },
-  );
+  const { app: server, shutdown: shutdownServer } = await makeServer(deps, {
+    environment: 'test',
+    extraRoutes: opts.extraRoutes,
+  });
   const request = superTest.agent(server);
 
   return {

@@ -11,18 +11,6 @@ import getBottle, { type Dependencies } from '../iocContainer/index.js';
 import { registerKernel } from '../start/kernel.js';
 import { registerRoutes } from '../start/routes.js';
 
-declare module '@adonisjs/core/types' {
-  // Every service in Coop's service graph is also an AdonisJS container
-  // binding with the same name, so `await container.make('RuleEngine')` is
-  // typed. `coop.deps` is the whole graph, for code that still takes a
-  // `Dependencies` object.
-  interface ContainerBindings extends Dependencies {
-    'coop.deps': Dependencies;
-    'coop.auth': AuthStack;
-    'coop.apollo': ApolloServer<Context>;
-  }
-}
-
 /**
  * Exposes Coop's service graph through the AdonisJS IoC container, and wires
  * the HTTP layer (routes, middleware, Apollo, sessions) on top of it.
