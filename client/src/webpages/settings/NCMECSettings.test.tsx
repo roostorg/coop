@@ -81,6 +81,15 @@ function settingsQueryMock(
   };
 }
 
+const saveSucceeded = {
+  data: {
+    updateNcmecOrgSettings: {
+      __typename: 'UpdateNcmecOrgSettingsResponse',
+      success: true,
+    },
+  },
+};
+
 function updateMock(
   result: MockedResponse['result'],
   settings = savedSettings,
@@ -135,14 +144,7 @@ describe('NCMECSettings', () => {
   it('shows the saved settings as enabled after the first save, and after navigating back', async () => {
     renderPage([
       settingsQueryMock(false),
-      updateMock({
-        data: {
-          updateNcmecOrgSettings: {
-            __typename: 'UpdateNcmecOrgSettingsResponse',
-            success: true,
-          },
-        },
-      }),
+      updateMock(saveSucceeded),
       settingsQueryMock(true),
     ]);
 
@@ -209,17 +211,7 @@ describe('NCMECSettings', () => {
     const withBank = { ...savedSettings, reportedMediaHashBankId: 7 };
     renderPage([
       settingsQueryMock(true),
-      updateMock(
-        {
-          data: {
-            updateNcmecOrgSettings: {
-              __typename: 'UpdateNcmecOrgSettingsResponse',
-              success: true,
-            },
-          },
-        },
-        withBank,
-      ),
+      updateMock(saveSucceeded, withBank),
       settingsQueryMock(true, withBank),
     ]);
 
@@ -242,5 +234,31 @@ describe('NCMECSettings', () => {
         screen.getByLabelText(/hash bank for reported media/i),
       ).toHaveTextContent(reportedCsamBank.name),
     );
+  });
+
+  it('saves no hash bank after the selected one is cleared', async () => {
+    const withBank = { ...savedSettings, reportedMediaHashBankId: 7 };
+    renderPage([
+      settingsQueryMock(true, withBank),
+      updateMock(saveSucceeded),
+      settingsQueryMock(true),
+    ]);
+
+    const bankSelect = await screen.findByLabelText(
+      /hash bank for reported media/i,
+    );
+    await waitFor(() =>
+      expect(bankSelect).toHaveTextContent(reportedCsamBank.name),
+    );
+    userEvent.click(bankSelect);
+    userEvent.click(
+      await screen.findByRole('option', {
+        name: "Don't add reported media to a bank",
+      }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Update Settings' }));
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalled());
+    expect(toast.error).not.toHaveBeenCalled();
   });
 });
