@@ -8,7 +8,7 @@ import { type CombinedPg } from '../../services/combinedDbTypes.js';
 import { makePrismaClient } from '../../storage/prisma/index.js';
 
 const out = (line: string) =>
-  appendFileSync(process.env.BENCH_OUT ?? '/dev/stdout', line + '\n');
+  appendFileSync(process.env.BENCH_OUT!, line + '\n');
 
 const N = Number(process.env.BENCH_N ?? 2000);
 
@@ -20,7 +20,8 @@ async function time(label: string, fn: () => Promise<unknown>) {
   out(`${label.padEnd(48)} ${us.toFixed(1)} µs/op`);
 }
 
-it(
+// Opt-in: BENCH_OUT=<file> [BENCH_N=2000] vitest run --config vitest.integ.config.ts test/bench
+it.skipIf(!process.env.BENCH_OUT)(
   'compares Kysely and Prisma on the same pool',
   { timeout: 300_000 },
   async () => {
