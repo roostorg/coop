@@ -991,8 +991,8 @@ export default async function getBottle(
     'ModerationConfigService',
     (container) =>
       new ModerationConfigService(
-        container.KyselyPg,
-        container.KyselyPgReadReplica,
+        container.PrismaPg,
+        container.PrismaPgReadReplica,
         async (_) => {},
       ),
   );
@@ -1616,6 +1616,7 @@ export default async function getBottle(
       async (params) =>
         container.NcmecService.getUserHasExistingNcmecReport(params),
       container.ManualReviewContentResolver,
+      container.PrismaPg,
       container.Meter,
     );
   });

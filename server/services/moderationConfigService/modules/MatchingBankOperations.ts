@@ -1,30 +1,48 @@
-import type { Kysely } from 'kysely';
 import { uid } from 'uid';
 
+import {
+  type Prisma,
+  type PrismaPgQueryable,
+} from '../../../storage/prisma/index.js';
 import {
   CoopError,
   ErrorType,
   type ErrorInstanceData,
 } from '../../../utils/errors.js';
 import { isUniqueViolationError } from '../../../utils/kysely.js';
-import type { ModerationConfigServicePg } from '../dbTypes.js';
 
-const TEXT_BANK_COLUMNS = [
-  'id',
-  'name',
-  'description',
-  'type',
-  'strings',
-  'org_id as orgId',
-  'created_at as createdAt',
-  'updated_at as updatedAt',
-  'owner_id as ownerId',
-] as const;
+const textBankPrismaSelect = {
+  id: true,
+  name: true,
+  description: true,
+  type: true,
+  strings: true,
+  org_id: true,
+  created_at: true,
+  updated_at: true,
+  owner_id: true,
+} as const satisfies Prisma.text_banksSelect;
+
+function toTextBank(
+  row: Prisma.text_banksGetPayload<{ select: typeof textBankPrismaSelect }>,
+) {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    type: row.type,
+    strings: row.strings,
+    orgId: row.org_id,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    ownerId: row.owner_id,
+  };
+}
 
 export default class MatchingBankOperations {
   constructor(
-    private readonly pgQuery: Kysely<ModerationConfigServicePg>,
-    private readonly pgQueryReplica: Kysely<ModerationConfigServicePg>,
+    private readonly pgQuery: PrismaPgQueryable,
+    private readonly pgQueryReplica: PrismaPgQueryable,
   ) {}
 
   async getTextBank(opts: {
@@ -35,12 +53,10 @@ export default class MatchingBankOperations {
     const { orgId, id, readFromReplica } = opts;
     const pgQuery = readFromReplica ? this.pgQueryReplica : this.pgQuery;
 
-    const textBank = await pgQuery
-      .selectFrom('public.text_banks')
-      .select(TEXT_BANK_COLUMNS)
-      .where('org_id', '=', orgId)
-      .where('id', '=', id)
-      .executeTakeFirst();
+    const textBank = await pgQuery.text_banks.findFirst({
+      select: textBankPrismaSelect,
+      where: { org_id: orgId, id },
+    });
 
     if (!textBank) {
       throw new CoopError({
@@ -52,20 +68,19 @@ export default class MatchingBankOperations {
       });
     }
 
-    return textBank;
+    return toTextBank(textBank);
   }
 
   async getTextBanks(opts: { orgId: string; readFromReplica?: boolean }) {
     const { orgId, readFromReplica } = opts;
     const pgQuery = readFromReplica ? this.pgQueryReplica : this.pgQuery;
 
-    const textBanks = await pgQuery
-      .selectFrom('public.text_banks')
-      .select(TEXT_BANK_COLUMNS)
-      .where('org_id', '=', orgId)
-      .execute();
+    const textBanks = await pgQuery.text_banks.findMany({
+      select: textBankPrismaSelect,
+      where: { org_id: orgId },
+    });
 
-    return textBanks;
+    return textBanks.map(toTextBank);
   }
 
   async createTextBank(
@@ -81,9 +96,8 @@ export default class MatchingBankOperations {
     const { name, description, type, strings, ownerId } = input;
 
     try {
-      const newTextBank = await this.pgQuery
-        .insertInto('public.text_banks')
-        .values({
+      const newTextBank = await this.pgQuery.text_banks.create({
+        data: {
           id: uid(),
           name,
           description,
@@ -92,11 +106,11 @@ export default class MatchingBankOperations {
           org_id: orgId,
           updated_at: new Date(),
           owner_id: ownerId,
-        })
-        .returning(TEXT_BANK_COLUMNS)
-        .executeTakeFirstOrThrow();
+        },
+        select: textBankPrismaSelect,
+      });
 
-      return newTextBank;
+      return toTextBank(newTextBank);
     } catch (error) {
       if (isUniqueViolationError(error)) {
         throw makeMatchingBankNameExistsError({ shouldErrorSpan: true });
@@ -119,22 +133,24 @@ export default class MatchingBankOperations {
     const { id, name, description, type, strings, ownerId } = input;
 
     try {
-      const updatedTextBank = await this.pgQuery
-        .updateTable('public.text_banks')
-        .set({
-          name,
-          description,
-          type,
-          strings,
-          owner_id: ownerId,
-          updated_at: new Date(),
-        })
-        .where('id', '=', id)
-        .where('org_id', '=', orgId)
-        .returning(TEXT_BANK_COLUMNS)
-        .executeTakeFirstOrThrow();
+      const [updatedTextBank] =
+        await this.pgQuery.text_banks.updateManyAndReturn({
+          data: {
+            name,
+            description,
+            type,
+            strings,
+            owner_id: ownerId,
+            updated_at: new Date(),
+          },
+          where: { id, org_id: orgId },
+          select: textBankPrismaSelect,
+        });
+      if (updatedTextBank === undefined) {
+        throw new Error('no result');
+      }
 
-      return updatedTextBank;
+      return toTextBank(updatedTextBank);
     } catch (error) {
       if (isUniqueViolationError(error)) {
         throw makeMatchingBankNameExistsError({ shouldErrorSpan: true });
@@ -144,13 +160,13 @@ export default class MatchingBankOperations {
   }
 
   async deleteTextBank(orgId: string, id: string) {
-    const rowsDeleted = await this.pgQuery
-      .deleteFrom('public.text_banks')
-      .where('id', '=', id)
-      .where('org_id', '=', orgId)
-      .execute();
+    await this.pgQuery.text_banks.deleteMany({
+      where: { id, org_id: orgId },
+    });
 
-    return rowsDeleted.length === 1;
+    // Unconditional, as in the Kysely implementation, whose check on the
+    // length of `execute()`'s result (always one DeleteResult) always passed.
+    return true;
   }
 }
 

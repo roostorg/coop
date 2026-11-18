@@ -1,6 +1,6 @@
 import { type Dependencies } from '../iocContainer/index.js';
-import { makeKyselyTransactionWithRetry } from '../utils/kyselyTransactionWithRetry.js';
 import { safePick } from '../utils/misc.js';
+import { makePrismaTransactionWithRetry } from '../utils/prismaTransactionWithRetry.js';
 
 /**
  * The slice of the IoC container that GraphQL resolvers can see, exposed on the
@@ -42,7 +42,7 @@ export function makeGqlServices(deps: Dependencies) {
   ]);
   return {
     ...services,
-    transaction: makeKyselyTransactionWithRetry(deps.KyselyPg),
+    transaction: makePrismaTransactionWithRetry(deps.PrismaPg),
   };
 }
 
