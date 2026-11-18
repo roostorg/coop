@@ -130,7 +130,8 @@ export function upgradedPackages(delta) {
   return out;
 }
 
-// The `## Release notes` section of a PR body, without HTML comments.
+// The `## Release notes` section of a PR body, without HTML comments or
+// trailing separators.
 export function releaseNotesSection(body) {
   const lines = (body ?? '').replace(/\r/g, '').split('\n');
   const start = lines.findIndex((l) => /^## Release notes\s*$/i.test(l));
@@ -230,6 +231,10 @@ function commitTouches(sha, file) {
   ])
     .split('\n')
     .includes(file);
+}
+
+export function creditComment(credit) {
+  return `<!-- original-credit: ${credit} -->`;
 }
 
 function manualSteps(pr, sha, target, parents) {
@@ -416,6 +421,7 @@ function backportOne({ pr, sha, target, base, workdir, existingRef }) {
       reason,
       details,
       steps: manualSteps(pr.number, sha, target, parents),
+      credit: originalCredit(pr),
     };
   };
 
@@ -570,12 +576,12 @@ export function backportBody(b, target) {
     '## Release notes',
     '',
     ...(b.releaseNotes ? [b.releaseNotes] : []),
-    `<!-- original-credit: ${b.credit} -->`,
+    creditComment(b.credit),
   );
   return `${lines.join('\n')}\n`;
 }
 
-function failureComment(f, target) {
+export function failureComment(f, target) {
   return [
     failureMarker(target.branch),
     `The security backport workflow could not backport this PR to \`${target.branch}\` for ${target.next}: ${f.reason}.`,
@@ -585,6 +591,12 @@ function failureComment(f, target) {
     'Backport it by hand, following the security release runbook:',
     '',
     f.steps,
+    '',
+    "In the backport PR, copy this PR's `## Release notes` section, end it with this line so the release notes credit this PR and its author, and add the `has-release-notes` label:",
+    '',
+    '```markdown',
+    creditComment(f.credit),
+    '```',
     '',
     `Or, once the cause is fixed, rerun the **Security backports** workflow with \`pr: ${f.pr}\` and \`retry: true\`.`,
   ].join('\n');

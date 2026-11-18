@@ -52,7 +52,7 @@ replacers:
     replace: '- '
   # Credit a security backport to the source PR and its author, not the backport
   # PR and the app that opened it.
-  - search: '/\s*<!-- original-credit: (.+?) --> \(\[#\d+\]\(\S+\) by .*\)$/gm'
+  - search: '/\s*<!-- original-credit: (\[#\d+\]\(https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/pull\/\d+\) by \[@[\w-]+(?:\[bot\])?\]\(https:\/\/github\.com\/(?:apps\/)?[\w-]+\)) --> \(\[#\d+\]\(\S+\) by .*\)$/gm'
     replace: ' ($1)'
 template: |
   $CHANGES

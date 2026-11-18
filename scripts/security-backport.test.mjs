@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
@@ -10,6 +10,7 @@ import {
   backportBody,
   checkLockfileBackport,
   createBranchMessage,
+  failureComment,
   latestStableTag,
   lockfileDelta,
   lockfilePackages,
@@ -234,4 +235,73 @@ test('the command in the missing-branch warning creates the branch at the tag', 
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+// The replacers in release-drafter.yml that turn a backport PR's credit
+// comment into the release note's credit.
+function creditReplacers() {
+  const yml = readFileSync(
+    new URL('../.github/release-drafter.yml', import.meta.url),
+    'utf8',
+  );
+  const [stripComments, credit] = [
+    ...yml.matchAll(/search: '\/(.*original-credit.*)\/(\w*)'$/gm),
+  ].map(([, source, flags]) => new RegExp(source, flags));
+  assert.ok(stripComments && credit);
+  return { stripComments, credit };
+}
+
+test("release-drafter.yml credits a backport's release note to the source PR", () => {
+  const { stripComments, credit } = creditReplacers();
+  const sourceUrl = 'https://github.com/roostorg/coop/pull/11';
+  const body = backportBody(
+    {
+      pr: 11,
+      sha: 'abc',
+      releaseNotes: '- Fix A\n- Fix B',
+      credit: originalCredit({
+        number: 11,
+        url: sourceUrl,
+        author: { login: 'bob', is_bot: false },
+      }),
+      upgrades: [],
+    },
+    { branch: 'release/1.2', next: '1.2.4' },
+  );
+  const notes = body
+    .slice(body.indexOf('## Release notes') + '## Release notes'.length)
+    .replace(stripComments, '')
+    .trim();
+  // change-template for the backport PR, opened by the app.
+  const app = 'https://github.com/apps/coop-backport';
+  const line = `${notes} ([#20](https://github.com/roostorg/coop/pull/20) by [@[coop-backport[bot]](${app})](${app}))`;
+  assert.equal(
+    line.replace(credit, ' ($1)'),
+    `- Fix A\n- Fix B ([#11](${sourceUrl}) by [@bob](https://github.com/bob))`,
+  );
+});
+
+test('release-drafter.yml ignores credit comments not in originalCredit form', () => {
+  const { stripComments, credit } = creditReplacers();
+  const line =
+    '- Fix D\n<!-- original-credit: by [@someone](https://example.com) --> ([#30](https://github.com/roostorg/coop/pull/30) by [@dave](https://github.com/dave))';
+  assert.equal(line.replace(credit, ' ($1)'), line);
+  assert.equal('Fix <!-- a --> x'.replace(stripComments, ''), 'Fix  x');
+});
+
+test('failureComment gives the credit line for a manual backport', () => {
+  const comment = failureComment(
+    {
+      pr: 5,
+      reason: 'the cherry-pick conflicts',
+      details: '',
+      steps: '```bash\n```',
+      credit: '[#5](u) by [@ann](v)',
+    },
+    { branch: 'release/1.2', next: '1.2.4' },
+  );
+  assert.match(
+    comment,
+    /^<!-- original-credit: \[#5\]\(u\) by \[@ann\]\(v\) -->$/m,
+  );
 });

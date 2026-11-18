@@ -34,11 +34,11 @@ If a backport changes more than one package, as with a grouped Dependabot PR, it
 
 ## When it fails
 
-If a cherry-pick conflicts or a check fails, the workflow comments on the source PR with the reason and the commands to backport it by hand, and the run fails. It never force-pushes, and never pushes to `release/*`. Backport by hand following "Cherry-picking deterministically" in the [runbook](security-releases.md). Use the `backport/<n>-to-release/x.y` branch name and `git cherry-pick -x`, so the workflow recognizes the result. Alternatively, fix the cause and run the workflow with `pr` set to the PR number and `retry` checked.
+If a cherry-pick conflicts or a check fails, the workflow comments on the source PR with the reason and the commands to backport it by hand, and the run fails. It never force-pushes, and never pushes to `release/*`. Backport by hand following "Cherry-picking deterministically" in the [runbook](security-releases.md). Use the `backport/<n>-to-release/x.y` branch name and `git cherry-pick -x`, so the workflow recognizes the result, and copy the release notes and the credit line the comment gives. Alternatively, fix the cause and run the workflow with `pr` set to the PR number and `retry` checked.
 
 ## What it doesn't handle
 
-- **Fixes from a private GHSA fork.** Merge the fix into `main` from the advisory. It lands as a commit with no PR in this repository, so the workflow never sees it, and it never publishes anything about an advisory. Cherry-pick it to `release/x.y` by hand with `git cherry-pick -x` in a public backport PR, and add its release note to the draft release by hand, linking only the advisory.
+- **Fixes from a private GHSA fork.** Merge the fix into `main` from the advisory. It lands as a commit with no PR in this repository, so the workflow never sees it, and it never publishes anything about an advisory. The fix is public from that merge, so follow the private fork path in the [runbook](security-releases.md) and release straight after. Cherry-pick it to `release/x.y` by hand with `git cherry-pick -x` in a public backport PR. Write its release note, linking only the advisory, in that PR's `## Release notes` section and label it `security-update` and `has-release-notes`, so that Release Drafter collects it; the draft release is regenerated on every run, so edits to it by hand are lost. The note credits whoever opens the backport PR.
 - **Rebase-merged PRs with several commits.** The workflow cherry-picks only the merge commit GitHub records, so backport these by hand.
 - **Publishing.** Cutting `x.y.(z+1)` stays manual: review the draft release, then publish it with `release/x.y` as its target.
 
