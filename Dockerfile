@@ -47,7 +47,7 @@ COPY --from=backend_prod_deps /app/package.json ./
 COPY --from=backend_prod_deps /app/node_modules ./node_modules
 COPY --from=backend_prod_deps /app/server/package.json ./server/
 COPY --from=backend_prod_deps /app/server/node_modules ./server/node_modules
-COPY --from=build_backend /app/server/transpiled ./server/
+COPY --from=build_backend /app/server/build ./server/
 WORKDIR /app/server
 
 # See https://github.com/Yelp/dumb-init

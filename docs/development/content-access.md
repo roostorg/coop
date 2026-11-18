@@ -10,7 +10,7 @@ rules and do not persist audit events.
 
 Pass a `contentAccess` extension to `getBottle`, or register it before the dependency
 container initializes. For a startup module located at `server/content-access-startup.ts`
-(compiled alongside `services/` in `server/transpiled/`):
+(compiled alongside `services/` in `server/build/`):
 
 ```ts
 import {
