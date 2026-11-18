@@ -166,8 +166,10 @@ describe('resolveSamlUser', () => {
   test('logs to the tracer and returns an internal error on a DB failure', async () => {
     const dbError = new Error('connection refused');
     const db = {
-      selectFrom() {
-        throw dbError;
+      users: {
+        async findFirst() {
+          throw dbError;
+        },
       },
     } as unknown as UsersDb;
     const tracer = {
