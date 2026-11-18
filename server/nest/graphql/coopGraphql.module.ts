@@ -41,7 +41,11 @@ import { COOP_DEPS } from '../tokens.js';
             [MapperKind.MUTATION_ROOT_FIELD]: (fieldConfig, _f, _t, s) =>
               authSchemaWrapper(fieldConfig, s),
           }),
-        playground: false,
+        // Apollo behaves as it did before Nest: GraphQL errors keep the HTTP
+        // status Apollo picks, and formatGraphQLError alone shapes them. Nest
+        // serves GraphiQL outside production in place of Apollo's landing page.
+        preserveHttpStatusForExecutionErrors: false,
+        autoTransformHttpErrors: false,
         plugins: [
           ...(process.env.NODE_ENV === 'production'
             ? [ApolloServerPluginLandingPageDisabled()]

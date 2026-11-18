@@ -1,5 +1,6 @@
 import {
   Catch,
+  HttpException,
   NotFoundException,
   type ArgumentsHost,
   type ExceptionFilter,
@@ -44,13 +45,16 @@ export class CoopExceptionFilter implements ExceptionFilter {
     }
     const res = host.switchToHttp().getResponse<Response>();
 
-    // Nest raises NotFoundException for unmatched routes.
+    // Nest raises NotFoundException for unmatched routes, and wraps 4xx errors
+    // from Express middleware such as body-parser in an HttpException.
     const err =
       exception instanceof NotFoundException
         ? makeNotFoundError('Requested route not found.', {
             shouldErrorSpan: true,
           })
-        : (exception as Error);
+        : exception instanceof HttpException && exception.cause instanceof Error
+          ? exception.cause
+          : (exception as Error);
 
     await this.tracer.addActiveSpan(
       { resource: 'app', operation: 'handleError' },
