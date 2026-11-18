@@ -11,7 +11,7 @@ describe('POST Report', () => {
     const orgId = uid();
     const { apiKey } = await createOrg(
       {
-        KyselyPg: deps.KyselyPg,
+        PrismaPg: deps.PrismaPg,
         ModerationConfigService: deps.ModerationConfigService,
         ApiKeyService: deps.ApiKeyService,
       },
@@ -83,7 +83,7 @@ describe('POST Report', () => {
       },
     );
 
-    await createUser(deps.KyselyPg, orgId, { id: uid() });
+    await createUser(deps.PrismaPg, orgId, { id: uid() });
 
     return {
       apiKey,

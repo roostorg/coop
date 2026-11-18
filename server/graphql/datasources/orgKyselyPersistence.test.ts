@@ -15,7 +15,7 @@ describe('orgKyselyPersistence', () => {
   const testWithFixture = makeTransactionalTestWithFixture(async ({ deps }) => {
     const { org } = await createOrg(
       {
-        KyselyPg: deps.KyselyPg,
+        PrismaPg: deps.PrismaPg,
         ModerationConfigService: deps.ModerationConfigService,
         ApiKeyService: deps.ApiKeyService,
       },
@@ -28,9 +28,9 @@ describe('orgKyselyPersistence', () => {
     testWithFixture(
       'findById / findByName / findByEmail return the row when it exists',
       async ({ deps, org }) => {
-        const byId = await kyselyOrgFindById(deps.KyselyPg, org.id);
-        const byName = await kyselyOrgFindByName(deps.KyselyPg, org.name);
-        const byEmail = await kyselyOrgFindByEmail(deps.KyselyPg, org.email);
+        const byId = await kyselyOrgFindById(deps.PrismaPg, org.id);
+        const byName = await kyselyOrgFindByName(deps.PrismaPg, org.name);
+        const byEmail = await kyselyOrgFindByEmail(deps.PrismaPg, org.email);
 
         expect(byId).toMatchObject({ id: org.id, name: org.name });
         expect(byName).toMatchObject({ id: org.id });
@@ -41,13 +41,13 @@ describe('orgKyselyPersistence', () => {
     testWithFixture(
       'findById / findByName / findByEmail return undefined (not null) when missing',
       async ({ deps }) => {
-        const byId = await kyselyOrgFindById(deps.KyselyPg, `missing-${uid()}`);
+        const byId = await kyselyOrgFindById(deps.PrismaPg, `missing-${uid()}`);
         const byName = await kyselyOrgFindByName(
-          deps.KyselyPg,
+          deps.PrismaPg,
           `missing-${uid()}`,
         );
         const byEmail = await kyselyOrgFindByEmail(
-          deps.KyselyPg,
+          deps.PrismaPg,
           `missing-${uid()}@example.com`,
         );
 
@@ -66,7 +66,7 @@ describe('orgKyselyPersistence', () => {
       async ({ deps }) => {
         await expect(
           kyselyOrgInsert({
-            db: deps.KyselyPg,
+            db: deps.PrismaPg,
             id: uid(),
             email: 'not-an-email',
             name: `Bad_${uid()}`,
@@ -81,7 +81,7 @@ describe('orgKyselyPersistence', () => {
       async ({ deps }) => {
         const id = uid();
         const inserted = await kyselyOrgInsert({
-          db: deps.KyselyPg,
+          db: deps.PrismaPg,
           id,
           email: faker.internet.email(),
           name: `Insert_NoApiKey_${id}`,
@@ -106,7 +106,7 @@ describe('orgKyselyPersistence', () => {
       'throws an invariant error for malformed patch (defense-in-depth)',
       async ({ deps, org }) => {
         await expect(
-          kyselyOrgUpdate(deps.KyselyPg, org.id, {
+          kyselyOrgUpdate(deps.PrismaPg, org.id, {
             // eslint-disable-next-line no-script-url
             websiteUrl: 'javascript:alert(1)',
           }),
@@ -118,7 +118,7 @@ describe('orgKyselyPersistence', () => {
       'returns undefined when the org does not exist',
       async ({ deps }) => {
         const result = await kyselyOrgUpdate(
-          deps.KyselyPg,
+          deps.PrismaPg,
           `missing-${uid()}`,
           { name: 'whatever' },
         );
@@ -129,10 +129,10 @@ describe('orgKyselyPersistence', () => {
     testWithFixture(
       'empty-string websiteUrl is treated as "no change" (Sequelize parity)',
       async ({ deps, org }) => {
-        const before = await kyselyOrgFindById(deps.KyselyPg, org.id);
+        const before = await kyselyOrgFindById(deps.PrismaPg, org.id);
         expect(before).toBeDefined();
 
-        const updated = await kyselyOrgUpdate(deps.KyselyPg, org.id, {
+        const updated = await kyselyOrgUpdate(deps.PrismaPg, org.id, {
           websiteUrl: '',
         });
 
@@ -144,10 +144,10 @@ describe('orgKyselyPersistence', () => {
     testWithFixture(
       'null name / email / websiteUrl are skipped (only updated_at changes)',
       async ({ deps, org }) => {
-        const before = await kyselyOrgFindById(deps.KyselyPg, org.id);
+        const before = await kyselyOrgFindById(deps.PrismaPg, org.id);
         expect(before).toBeDefined();
 
-        const updated = await kyselyOrgUpdate(deps.KyselyPg, org.id, {
+        const updated = await kyselyOrgUpdate(deps.PrismaPg, org.id, {
           name: null,
           email: null,
           websiteUrl: null,
@@ -165,19 +165,19 @@ describe('orgKyselyPersistence', () => {
       async ({ deps, org }) => {
         // Start by setting a value, then verify the three semantics.
         const initial = 'oncall@example.com';
-        const set = await kyselyOrgUpdate(deps.KyselyPg, org.id, {
+        const set = await kyselyOrgUpdate(deps.PrismaPg, org.id, {
           onCallAlertEmail: initial,
         });
         expect(set!.onCallAlertEmail).toBe(initial);
 
         // undefined -> skip (value is preserved)
-        const skipped = await kyselyOrgUpdate(deps.KyselyPg, org.id, {
+        const skipped = await kyselyOrgUpdate(deps.PrismaPg, org.id, {
           name: 'unrelated-touch',
         });
         expect(skipped!.onCallAlertEmail).toBe(initial);
 
         // null -> clear
-        const cleared = await kyselyOrgUpdate(deps.KyselyPg, org.id, {
+        const cleared = await kyselyOrgUpdate(deps.PrismaPg, org.id, {
           onCallAlertEmail: null,
         });
         expect(cleared!.onCallAlertEmail).toBeNull();
@@ -200,7 +200,7 @@ describe('orgKyselyPersistence', () => {
         // sub-millisecond updates can produce equal timestamps on fast hosts.
         await new Promise((resolve) => setTimeout(resolve, 5));
 
-        const updated = await kyselyOrgUpdate(deps.KyselyPg, org.id, {
+        const updated = await kyselyOrgUpdate(deps.PrismaPg, org.id, {
           name: newName,
           websiteUrl: newWebsite,
         });

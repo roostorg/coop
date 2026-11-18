@@ -17,7 +17,7 @@ describe('CommentOperations', () => {
       const orgId = uuidv1();
       await createOrg(
         {
-          KyselyPg: deps.KyselyPg,
+          PrismaPg: deps.PrismaPg,
           ModerationConfigService: deps.ModerationConfigService,
           ApiKeyService: deps.ApiKeyService,
         },
@@ -25,7 +25,7 @@ describe('CommentOperations', () => {
       );
 
       // Create test user
-      const { user } = await createUser(deps.KyselyPg, orgId);
+      const { user } = await createUser(deps.PrismaPg, orgId);
 
       // Create a queue (required for job_creations foreign key)
       const queue = await deps.ManualReviewToolService.createManualReviewQueue({

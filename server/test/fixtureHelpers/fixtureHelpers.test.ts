@@ -16,7 +16,7 @@ describe('fixtureHelpers', () => {
   const testWithOrg = makeTransactionalTestWithFixture(async ({ deps }) => {
     const { org } = await createOrg(
       {
-        KyselyPg: deps.KyselyPg,
+        PrismaPg: deps.PrismaPg,
         ModerationConfigService: deps.ModerationConfigService,
         ApiKeyService: deps.ApiKeyService,
       },
@@ -30,7 +30,7 @@ describe('fixtureHelpers', () => {
       'defaults: SAML-only loginMethods, ADMIN role, null password, override id honored',
       async ({ deps, org }) => {
         const overrideId = uid();
-        const { user } = await createUser(deps.KyselyPg, org.id, {
+        const { user } = await createUser(deps.PrismaPg, org.id, {
           id: overrideId,
         });
         expect(user).toMatchObject({
@@ -44,10 +44,10 @@ describe('fixtureHelpers', () => {
     );
 
     testWithOrg('cleanup() actually deletes the row', async ({ deps, org }) => {
-      const { user, cleanup } = await createUser(deps.KyselyPg, org.id);
-      expect(await kyselyUserFindById(deps.KyselyPg, user.id)).toBeDefined();
+      const { user, cleanup } = await createUser(deps.PrismaPg, org.id);
+      expect(await kyselyUserFindById(deps.PrismaPg, user.id)).toBeDefined();
       await cleanup();
-      expect(await kyselyUserFindById(deps.KyselyPg, user.id)).toBeUndefined();
+      expect(await kyselyUserFindById(deps.PrismaPg, user.id)).toBeUndefined();
     });
   });
 
@@ -57,7 +57,7 @@ describe('fixtureHelpers', () => {
       async ({ deps, org }) => {
         const overrideId = uid();
         const overrideName = `RuleFixture_${overrideId}`;
-        const rule = await createRule(deps.KyselyPg, org.id, {
+        const rule = await createRule(deps.PrismaPg, org.id, {
           id: overrideId,
           name: overrideName,
         });
@@ -82,7 +82,7 @@ describe('fixtureHelpers', () => {
     testWithOrg(
       'extra.alarmStatus !== INSUFFICIENT_DATA triggers the follow-up UPDATE',
       async ({ deps, org }) => {
-        const rule = await createRule(deps.KyselyPg, org.id, {
+        const rule = await createRule(deps.PrismaPg, org.id, {
           alarmStatus: RuleAlarmStatus.ALARM,
         });
         expect(rule.alarmStatus).toBe(RuleAlarmStatus.ALARM);
@@ -97,7 +97,7 @@ describe('fixtureHelpers', () => {
     testWithOrg(
       'extra.ruleType: USER persists rule_type=USER (and skips item-type junctions)',
       async ({ deps, org }) => {
-        const rule = await createRule(deps.KyselyPg, org.id, {
+        const rule = await createRule(deps.PrismaPg, org.id, {
           ruleType: RuleType.USER,
         });
         const row = await deps.KyselyPg.selectFrom('public.rules')
@@ -117,7 +117,7 @@ describe('fixtureHelpers', () => {
     );
 
     testWithOrg('destroy() removes the row', async ({ deps, org }) => {
-      const rule = await createRule(deps.KyselyPg, org.id);
+      const rule = await createRule(deps.PrismaPg, org.id);
       const before = await deps.KyselyPg.selectFrom('public.rules')
         .select('id')
         .where('id', '=', rule.id)
@@ -136,8 +136,8 @@ describe('fixtureHelpers', () => {
     testWithOrg(
       'auto-creates a creator user when none is supplied',
       async ({ deps, org }) => {
-        const rule = await createRule(deps.KyselyPg, org.id);
-        const creator = await kyselyUserFindById(deps.KyselyPg, rule.creatorId);
+        const rule = await createRule(deps.PrismaPg, org.id);
+        const creator = await kyselyUserFindById(deps.PrismaPg, rule.creatorId);
         expect(creator).toBeDefined();
         expect(creator?.orgId).toBe(org.id);
       },

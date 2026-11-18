@@ -10,7 +10,7 @@ describe('NcmecReporting.getUsersWithNcmecDecision (integration)', () => {
     const orgId = uid();
     const orgFixture = await createOrg(
       {
-        KyselyPg: deps.KyselyPg,
+        PrismaPg: deps.PrismaPg,
         ModerationConfigService: deps.ModerationConfigService,
         ApiKeyService: deps.ApiKeyService,
       },

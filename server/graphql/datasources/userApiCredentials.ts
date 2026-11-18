@@ -34,19 +34,17 @@ import {
  */
 async function rehashPasswordOnLogin(
   deps: {
-    kyselyPg: Dependencies['KyselyPg'];
+    prisma: Dependencies['PrismaPg'];
   },
   userId: string,
   verifiedHash: string,
   plaintextPassword: string,
 ): Promise<void> {
   const rehashed = await hashPassword(plaintextPassword);
-  await deps.kyselyPg
-    .updateTable('public.users')
-    .set({ password: rehashed, updated_at: new Date() })
-    .where('id', '=', userId)
-    .where('password', '=', verifiedHash)
-    .execute();
+  await deps.prisma.users.updateMany({
+    data: { password: rehashed, updated_at: new Date() },
+    where: { id: userId, password: verifiedHash },
+  });
 }
 
 /**
@@ -64,7 +62,7 @@ async function rehashPasswordOnLogin(
  */
 export async function verifyEmailPasswordCredentials(
   deps: {
-    kyselyPg: Dependencies['KyselyPg'];
+    prisma: Dependencies['PrismaPg'];
     orgSettingsService: Dependencies['OrgSettingsService'];
     tracer: Dependencies['Tracer'];
   },
@@ -72,7 +70,7 @@ export async function verifyEmailPasswordCredentials(
   password: string,
 ): Promise<GraphQLUserParent> {
   try {
-    const user = await kyselyUserFindByEmail(deps.kyselyPg, email);
+    const user = await kyselyUserFindByEmail(deps.prisma, email);
     if (user == null) {
       throw makeLoginUserDoesNotExistError({ shouldErrorSpan: true });
     }

@@ -52,7 +52,7 @@ describe('Item Investigation Service', () => {
 
     await createOrg(
       {
-        KyselyPg: container.KyselyPg,
+        PrismaPg: container.PrismaPg,
         ModerationConfigService: container.ModerationConfigService,
         ApiKeyService: container.ApiKeyService,
       },
@@ -337,7 +337,7 @@ describe('Item Investigation Service', () => {
 
     await createOrg(
       {
-        KyselyPg: container.KyselyPg,
+        PrismaPg: container.PrismaPg,
         ModerationConfigService: container.ModerationConfigService,
         ApiKeyService: container.ApiKeyService,
       },

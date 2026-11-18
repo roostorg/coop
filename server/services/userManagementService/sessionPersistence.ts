@@ -1,4 +1,4 @@
-import { sql, type Kysely } from 'kysely';
+import { type PrismaPgQueryable } from '../../storage/prisma/index.js';
 
 /**
  * Delete connect-pg-simple session rows for a user, to force re-authentication
@@ -10,19 +10,16 @@ import { sql, type Kysely } from 'kysely';
  * a self-service password change, so they aren't logged out mid-request.
  */
 export async function deleteSessionsForUser(
-  // `Kysely<any>` because the session table is managed by connect-pg-simple and
-  // is intentionally absent from our typed schema; injected instances are
-  // themselves `Kysely<any>`.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  db: Kysely<any>,
+  db: PrismaPgQueryable,
   userId: string,
   opts: { exceptSid?: string } = {},
 ): Promise<void> {
-  let query = db
-    .deleteFrom('public.session')
-    .where(sql`sess -> 'passport' ->> 'user'`, '=', userId);
-  if (opts.exceptSid != null) {
-    query = query.where('sid', '!=', opts.exceptSid);
-  }
-  await query.execute();
+  await db.session.deleteMany({
+    where: {
+      // Passport serializes the id as a JSON string, so comparing the value
+      // at the path to the string `userId` matches `->> 'user' = userId`.
+      sess: { path: ['passport', 'user'], equals: userId },
+      ...(opts.exceptSid != null ? { sid: { not: opts.exceptSid } } : {}),
+    },
+  });
 }

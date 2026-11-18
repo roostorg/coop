@@ -1,21 +1,20 @@
 /* eslint-disable max-lines */
 import crypto from 'node:crypto';
-import { type Kysely } from 'kysely';
 
 import type { Dependencies } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
+import { type Prisma, type PrismaPgClient } from '../../storage/prisma/index.js';
 import {
   makeBadRequestError,
   makeNotFoundError,
   makeUnauthorizedError,
 } from '../../utils/errors.js';
-import { makeKyselyTransactionWithRetry } from '../../utils/kyselyTransactionWithRetry.js';
 import { asyncRandomBytes } from '../../utils/misc.js';
+import { makePrismaTransactionWithRetry } from '../../utils/prismaTransactionWithRetry.js';
 import { HOUR_MS } from '../../utils/time.js';
 import { CoopEmailAddress } from '../sendEmailService/sendEmailService.js';
 import { MIN_PASSWORD_LENGTH } from './constants.js';
 import type { MrtChartConfig } from './dbTypes.js';
-import type { UserManagementPg } from './index.js';
 import {
   UserPermission,
   type Invoker,
@@ -26,7 +25,7 @@ import { hashPassword } from './utils.js';
 
 class UserManagementService {
   constructor(
-    private readonly pgQuery: Kysely<UserManagementPg>,
+    private readonly prisma: PrismaPgClient,
     private readonly sendEmail: Dependencies['sendEmail'],
     private readonly configService: Dependencies['ConfigService'],
   ) {}
@@ -35,23 +34,24 @@ class UserManagementService {
     orgId: string;
     role: UserRole;
   }): Promise<string> {
-    const row = await this.pgQuery
-      .selectFrom('public.roles')
-      .select('id')
-      .where('org_id', '=', opts.orgId)
-      .where('key', '=', opts.role)
-      .where('is_system', '=', true)
-      .executeTakeFirstOrThrow();
+    const row = await this.prisma.roles.findFirstOrThrow({
+      select: { id: true },
+      where: { org_id: opts.orgId, key: opts.role, is_system: true },
+    });
     return row.id;
   }
 
   async getUserInterfaceSettings(opts: { userId: string; orgId: string }) {
     const { userId, orgId } = opts;
-    const row = await this.pgQuery
-      .selectFrom('user_management_service.user_interface_settings')
-      .selectAll()
-      .where('user_id', '=', userId)
-      .executeTakeFirst();
+    const row = await this.prisma.user_interface_settings.findUnique({
+      where: { user_id: userId },
+    });
+    // `jsonb[]` comes back as `JsonValue[]`; these are the chart configs this
+    // service wrote.
+    const mrtChartConfigurations = row?.mrt_chart_configurations as
+      | MrtChartConfig[]
+      | null
+      | undefined;
 
     if (
       row &&
@@ -66,7 +66,7 @@ class UserManagementService {
         moderatorSafetyBlurLevel: row.moderator_safety_blur_level,
         moderatorSafetyMuteVideo: row.moderator_safety_mute_video,
         moderatorSafetySepia: row.moderator_safety_sepia,
-        mrtChartConfigurations: row.mrt_chart_configurations ?? [],
+        mrtChartConfigurations: mrtChartConfigurations ?? [],
       };
     }
 
@@ -84,37 +84,44 @@ class UserManagementService {
       moderatorSafetyMuteVideo:
         row?.moderator_safety_mute_video ??
         orgDefaults.moderatorSafetyMuteVideo,
-      mrtChartConfigurations: row?.mrt_chart_configurations ?? [],
+      mrtChartConfigurations: mrtChartConfigurations ?? [],
     };
   }
 
   async getInviteUserToken(opts: { token: string }) {
     const { token } = opts;
-    const tokenRow = await this.pgQuery
-      .selectFrom('public.invite_user_tokens')
-      .innerJoin('public.roles', (join) =>
-        join
-          .onRef('public.roles.id', '=', 'public.invite_user_tokens.role_id')
-          .onRef(
-            'public.roles.org_id',
-            '=',
-            'public.invite_user_tokens.org_id',
-          ),
-      )
-      .selectAll('public.invite_user_tokens')
-      .select('public.roles.key as role')
-      .where('public.invite_user_tokens.token', '=', token)
-      .executeTakeFirst();
+    // The join also required `roles.org_id = invite_user_tokens.org_id`, a
+    // column-to-column condition across the relation that Prisma can't
+    // filter on, so it's applied to the loaded rows.
+    const candidates = await this.prisma.invite_user_tokens.findMany({
+      where: { token },
+      include: { roles: { select: { key: true, org_id: true } } },
+    });
+    const match = candidates.find(
+      (it) => it.org_id != null && it.roles.org_id === it.org_id,
+    );
 
-    if (tokenRow == null) {
+    if (match == null) {
       return null;
     }
+    const { roles, ...inviteColumns } = match;
+    const tokenRow = {
+      ...inviteColumns,
+      // `invite_user_tokens.id` is an int column; its Kysely type was
+      // `string`, which callers (`deleteInvite`) depend on.
+      id: String(inviteColumns.id),
+      // Narrowed by the `it.org_id != null` check above (the join excluded
+      // NULL org ids).
+      org_id: inviteColumns.org_id!,
+      // `roles.key` replaced the legacy `invite_user_tokens.role` column in
+      // the selection.
+      role: roles.key,
+    };
 
-    const orgSettings = await this.pgQuery
-      .selectFrom('public.org_settings')
-      .select('saml_enabled')
-      .where('org_id', '=', tokenRow.org_id)
-      .executeTakeFirst();
+    const orgSettings = await this.prisma.org_settings.findUnique({
+      select: { saml_enabled: true },
+      where: { org_id: tokenRow.org_id },
+    });
 
     return {
       ...tokenRow,
@@ -134,10 +141,9 @@ class UserManagementService {
     const roleId = await this.#lookupSystemRoleId({ orgId, role });
 
     const token = (await asyncRandomBytes(32)).toString('hex');
-    await this.pgQuery
-      .insertInto('public.invite_user_tokens')
-      .values({ token, email, role_id: roleId, org_id: orgId })
-      .execute();
+    await this.prisma.invite_user_tokens.create({
+      data: { token, email, role_id: roleId, org_id: orgId },
+    });
     return token;
   }
 
@@ -146,39 +152,31 @@ class UserManagementService {
   ): Promise<
     Array<{ id: string; email: string; role: UserRole; createdAt: string }>
   > {
-    const result = await this.pgQuery
-      .selectFrom('public.invite_user_tokens')
-      .innerJoin('public.roles', (join) =>
-        join
-          .onRef('public.roles.id', '=', 'public.invite_user_tokens.role_id')
-          .onRef(
-            'public.roles.org_id',
-            '=',
-            'public.invite_user_tokens.org_id',
-          ),
-      )
-      .selectAll('public.invite_user_tokens')
-      .select('public.roles.key as role')
-      .where('public.invite_user_tokens.org_id', '=', orgId)
-      .orderBy('public.invite_user_tokens.created_at', 'desc')
-      .execute();
+    // With `invite_user_tokens.org_id = orgId`, the join's
+    // `roles.org_id = invite_user_tokens.org_id` is `roles.org_id = orgId`.
+    const result = await this.prisma.invite_user_tokens.findMany({
+      where: { org_id: orgId, roles: { org_id: orgId } },
+      include: { roles: { select: { key: true } } },
+      orderBy: { created_at: 'desc' },
+    });
 
     return result.map((row) => ({
-      id: row.id,
+      id: String(row.id),
       email: row.email,
-      role: row.role,
+      // `roles.key` holds `UserRole` values; Prisma types it `string`.
+      role: row.roles.key as UserRole,
       createdAt: row.created_at.toISOString(),
     }));
   }
 
   async deleteInvite(inviteId: string, orgId: string): Promise<boolean> {
-    const result = await this.pgQuery
-      .deleteFrom('public.invite_user_tokens')
-      .where('id', '=', inviteId)
-      .where('org_id', '=', orgId)
-      .execute();
+    await this.prisma.invite_user_tokens.deleteMany({
+      where: { id: Number(inviteId), org_id: orgId },
+    });
 
-    return result.length > 0;
+    // Kysely's `execute()` returned one result object per statement, so this
+    // was always true; kept as-is.
+    return true;
   }
 
   async upsertUserInterfaceSettings(input: {
@@ -212,40 +210,37 @@ class UserManagementService {
         : {}),
       ...(mrtChartConfigurations
         ? {
-            mrt_chart_configurations: [...mrtChartConfigurations],
+            // Chart configs are plain JSON; the domain type isn't assignable to
+            // Prisma's JSON input type.
+            mrt_chart_configurations: [
+              ...mrtChartConfigurations,
+            ] as unknown as Prisma.InputJsonValue[],
           }
         : {}),
     };
 
-    let query = this.pgQuery
-      .insertInto('user_management_service.user_interface_settings')
-      .values({
-        user_id: userId,
-        ...dbFormattedInterfaceSettings,
-      });
-
-    // Only add onConflict if there are fields to update
+    // Only upsert if there are fields to update
     if (Object.keys(dbFormattedInterfaceSettings).length > 0) {
-      query = query.onConflict((oc) =>
-        oc.column('user_id').doUpdateSet({
-          ...dbFormattedInterfaceSettings,
-        }),
-      );
-    } else {
-      // If no update fields, just do nothing on conflict
-      query = query.onConflict((oc) => oc.column('user_id').doNothing());
+      const row = await this.prisma.user_interface_settings.upsert({
+        where: { user_id: userId },
+        create: { user_id: userId, ...dbFormattedInterfaceSettings },
+        update: dbFormattedInterfaceSettings,
+      });
+      return [row];
     }
-
-    return query.returningAll().execute();
+    // If no update fields, just do nothing on conflict (returns no rows then)
+    return this.prisma.user_interface_settings.createManyAndReturn({
+      data: [{ user_id: userId }],
+      skipDuplicates: true,
+    });
   }
 
   async getOrgDefaultUserInterfaceSettings(orgId: string) {
-    const row = await this.pgQuery
-      .selectFrom('user_management_service.org_default_user_interface_settings')
-      .selectAll()
-      .where('org_id', '=', orgId)
+    const row =
       // Every org should have a default interface settings row
-      .executeTakeFirstOrThrow();
+      await this.prisma.org_default_user_interface_settings.findUniqueOrThrow({
+        where: { org_id: orgId },
+      });
 
     return {
       moderatorSafetyGrayscale: row.moderator_safety_grayscale,
@@ -286,31 +281,29 @@ class UserManagementService {
         : {}),
     };
 
-    let query = this.pgQuery
-      .insertInto('user_management_service.org_default_user_interface_settings')
-      .values([
-        {
-          org_id: orgId,
-          moderator_safety_grayscale: moderatorSafetyGrayscale,
-          moderator_safety_sepia: moderatorSafetySepia,
-          moderator_safety_blur_level: moderatorSafetyBlurLevel,
-          moderator_safety_mute_video: moderatorSafetyMuteVideo,
-        },
-      ]);
+    // Undefined values are omitted from the INSERT, so the table defaults apply.
+    const create = {
+      org_id: orgId,
+      moderator_safety_grayscale: moderatorSafetyGrayscale,
+      moderator_safety_sepia: moderatorSafetySepia,
+      moderator_safety_blur_level: moderatorSafetyBlurLevel,
+      moderator_safety_mute_video: moderatorSafetyMuteVideo,
+    };
 
-    // Only add onConflict if there are fields to update
+    // Only upsert if there are fields to update
     if (Object.keys(updateFields).length > 0) {
-      query = query.onConflict((oc) =>
-        // Explicitly check for undefined because these values are booleans and
-        // numbers, so they can be falsey
-        oc.column('org_id').doUpdateSet(updateFields),
-      );
+      await this.prisma.org_default_user_interface_settings.upsert({
+        where: { org_id: orgId },
+        create,
+        update: updateFields,
+      });
     } else {
       // If no update fields, just do nothing on conflict
-      query = query.onConflict((oc) => oc.column('org_id').doNothing());
+      await this.prisma.org_default_user_interface_settings.createMany({
+        data: [create],
+        skipDuplicates: true,
+      });
     }
-
-    await query.execute();
   }
 
   async updateUserRole(input: {
@@ -339,14 +332,12 @@ class UserManagementService {
       role: newRole,
     });
 
-    const result = await this.pgQuery
-      .updateTable('public.users')
-      .set({ role_id: newRoleId })
-      .where('id', '=', userId)
-      .where('org_id', '=', invoker.orgId)
-      .executeTakeFirst();
+    const result = await this.prisma.users.updateMany({
+      data: { role_id: newRoleId },
+      where: { id: userId, org_id: invoker.orgId },
+    });
 
-    if (result.numUpdatedRows === 0n) {
+    if (result.count === 0) {
       throw makeNotFoundError('User not found', { shouldErrorSpan: true });
     }
   }
@@ -360,17 +351,16 @@ class UserManagementService {
   async sendPasswordResetEmail(opts: { email: string }) {
     const { email } = opts;
 
-    const existingUser = await this.pgQuery
-      .selectFrom('public.users')
-      .select(['id as userId', 'org_id as orgId'])
-      .where('email', '=', email)
-      .executeTakeFirst();
+    const existingUser = await this.prisma.users.findUnique({
+      select: { id: true, org_id: true },
+      where: { email },
+    });
 
     if (existingUser == null) {
       return;
     }
 
-    const { userId, orgId } = existingUser;
+    const { id: userId, org_id: orgId } = existingUser;
     const token = await this.#createPasswordResetToken({ userId, orgId });
 
     const url = new URL(`${this.configService.uiUrl}/reset_password/` + token);
@@ -398,11 +388,12 @@ class UserManagementService {
   }) {
     const { userId, invokerOrgId } = opts;
 
-    const existingUser = await this.pgQuery
-      .selectFrom('public.users')
-      .select(['email', 'org_id as orgId'])
-      .where('id', '=', userId)
-      .executeTakeFirst();
+    const userRow = await this.prisma.users.findUnique({
+      select: { email: true, org_id: true },
+      where: { id: userId },
+    });
+    const existingUser =
+      userRow == null ? null : { email: userRow.email, orgId: userRow.org_id };
 
     if (existingUser == null) {
       throw makeNotFoundError('User not found', { shouldErrorSpan: true });
@@ -446,21 +437,19 @@ class UserManagementService {
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
     // delete tokens for the user
-    await this.pgQuery
-      .deleteFrom('user_management_service.password_reset_tokens')
-      .where('user_id', '=', userId)
-      .execute();
+    await this.prisma.password_reset_tokens.deleteMany({
+      where: { user_id: userId },
+    });
 
     // create new token
-    await this.pgQuery
-      .insertInto('user_management_service.password_reset_tokens')
-      .values({
+    await this.prisma.password_reset_tokens.create({
+      data: {
         user_id: userId,
         org_id: orgId,
         hashed_token: hashedToken,
         created_at: new Date(),
-      })
-      .execute();
+      },
+    });
 
     return token;
   }
@@ -479,11 +468,9 @@ class UserManagementService {
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
     // Step 1: Validate token
-    const fetchedToken = await this.pgQuery
-      .selectFrom('user_management_service.password_reset_tokens')
-      .selectAll()
-      .where('hashed_token', '=', hashedToken)
-      .executeTakeFirst();
+    const fetchedToken = await this.prisma.password_reset_tokens.findUnique({
+      where: { hashed_token: hashedToken },
+    });
 
     if (fetchedToken == null) {
       return;
@@ -504,56 +491,60 @@ class UserManagementService {
     const hashedPassword = await hashPassword(newPassword);
     // Atomic: a committed password change must not leave the user's sessions
     // or reset tokens alive.
-    await makeKyselyTransactionWithRetry(this.pgQuery)(async (trx) => {
-      await trx
-        .updateTable('public.users')
-        .set({ password: hashedPassword })
-        .where('id', '=', fetchedToken.user_id)
-        .execute();
-      await deleteSessionsForUser(trx, fetchedToken.user_id);
-      await trx
-        .deleteFrom('user_management_service.password_reset_tokens')
-        .where('user_id', '=', fetchedToken.user_id)
-        .execute();
+    await makePrismaTransactionWithRetry(this.prisma)(async (tx) => {
+      await tx.users.updateMany({
+        data: { password: hashedPassword },
+        where: { id: fetchedToken.user_id },
+      });
+      await deleteSessionsForUser(tx, fetchedToken.user_id);
+      await tx.password_reset_tokens.deleteMany({
+        where: { user_id: fetchedToken.user_id },
+      });
     });
   }
 
   async getUsersForOrg(orgId: string) {
-    return this.pgQuery
-      .selectFrom('public.users')
-      .innerJoin('public.roles', (join) =>
-        join
-          .onRef('public.roles.id', '=', 'public.users.role_id')
-          .onRef('public.roles.org_id', '=', 'public.users.org_id'),
-      )
-      .select([
-        'public.users.id',
-        'public.users.email',
-        'public.users.first_name as firstName',
-        'public.users.last_name as lastName',
-        'public.roles.key as role',
-      ])
-      .where('public.users.org_id', '=', orgId)
-      .where('public.users.rejected_by_admin', '=', false)
-      .where('public.users.approved_by_admin', '=', true)
-      .execute();
+    // With `users.org_id = orgId`, the join's `roles.org_id = users.org_id`
+    // is `roles.org_id = orgId`.
+    const rows = await this.prisma.users.findMany({
+      select: {
+        id: true,
+        email: true,
+        first_name: true,
+        last_name: true,
+        roles: { select: { key: true } },
+      },
+      where: {
+        org_id: orgId,
+        rejected_by_admin: false,
+        approved_by_admin: true,
+        roles: { org_id: orgId },
+      },
+    });
+    return rows.map((row) => ({
+      id: row.id,
+      email: row.email,
+      firstName: row.first_name,
+      lastName: row.last_name,
+      role: row.roles.key,
+    }));
   }
 
   async getUserNamesForOrg(orgId: string) {
-    return this.pgQuery
-      .selectFrom('public.users')
-      .select([
-        'public.users.id',
-        'public.users.first_name as firstName',
-        'public.users.last_name as lastName',
-      ])
-      .where('public.users.org_id', '=', orgId)
-      .execute();
+    const rows = await this.prisma.users.findMany({
+      select: { id: true, first_name: true, last_name: true },
+      where: { org_id: orgId },
+    });
+    return rows.map((row) => ({
+      id: row.id,
+      firstName: row.first_name,
+      lastName: row.last_name,
+    }));
   }
 }
 
 export default inject(
-  ['KyselyPg', 'sendEmail', 'ConfigService'],
+  ['PrismaPg', 'sendEmail', 'ConfigService'],
   UserManagementService,
 );
 export { type UserManagementService };

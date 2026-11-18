@@ -1,14 +1,13 @@
 import { type Exception } from '@opentelemetry/api';
-import { type Kysely } from 'kysely';
 import _ from 'lodash';
 import { type ReadonlyDeep } from 'type-fest';
 import { uid } from 'uid';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
+import { type PrismaPgClient } from '../../storage/prisma/index.js';
 import { type NonEmptyArray } from '../../utils/typescript-types.js';
 import { CoopEmailAddress } from '../sendEmailService/sendEmailService.js';
-import { type NotificationsServicePg } from './dbTypes.js';
 import { formatNotification } from './notificationFormatter.js';
 
 const { omit } = _;
@@ -71,22 +70,29 @@ type CreateNotificationInput<T extends NotificationType> = Pick<
 
 class NotificationsService {
   constructor(
-    private readonly query: Kysely<NotificationsServicePg>,
+    private readonly prisma: PrismaPgClient,
     private readonly sendEmail: Dependencies['sendEmail'],
     private readonly configService: Dependencies['ConfigService'],
     private readonly tracer: Dependencies['Tracer'],
   ) {}
 
   async getNotificationsForUser(userId: string): Promise<Notification[]> {
-    return (
-      this.query
-        .selectFrom('notifications')
-        // Don't select userId since it isn't technically part of the
-        // Notification type and we don't want callers to depend on it.
-        .select(['id', 'type', 'message', 'data', 'readAt', 'createdAt'])
-        .where('userId', '=', userId)
-        .execute()
-    );
+    const rows = await this.prisma.notifications.findMany({
+      // Don't select userId since it isn't technically part of the
+      // Notification type and we don't want callers to depend on it.
+      select: {
+        id: true,
+        type: true,
+        message: true,
+        data: true,
+        readAt: true,
+        createdAt: true,
+      },
+      where: { userId },
+    });
+    // `type` is a varchar and `data` is `JsonValue`; both hold what
+    // `createNotifications` wrote.
+    return rows as Notification[];
   }
 
   async createNotifications<T extends NotificationType>(
@@ -125,11 +131,9 @@ class NotificationsService {
     // gets lost. Ditto for writing the notifications. This is fine for now.
     await Promise.all([
       ...emailMessages.map(async (msg) => this.sendEmail(msg).catch(() => {})),
-      this.query
-        .insertInto('notifications')
-        .values(toUserNotifications)
-        .execute()
-        .catch((e) => {
+      this.prisma.notifications
+        .createMany({ data: toUserNotifications })
+        .catch((e: unknown) => {
           const activeSpan = this.tracer.getActiveSpan();
           if (activeSpan?.isRecording()) {
             activeSpan.recordException(e as Exception);
@@ -140,7 +144,7 @@ class NotificationsService {
 }
 
 export default inject(
-  ['KyselyPg', 'sendEmail', 'ConfigService', 'Tracer'],
+  ['PrismaPg', 'sendEmail', 'ConfigService', 'Tracer'],
   NotificationsService,
 );
 export { type NotificationsService };

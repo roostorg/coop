@@ -1,8 +1,8 @@
-import { type Kysely } from 'kysely';
 import { type JsonObject } from 'type-fest';
 import { type ReadonlyObjectDeep } from 'type-fest/source/readonly-deep.js';
 
 import { inject } from '../../iocContainer/utils.js';
+import { Prisma, type PrismaPgClient } from '../../storage/prisma/index.js';
 import { cached } from '../../utils/caching.js';
 import { MINUTE_MS } from '../../utils/time.js';
 
@@ -32,20 +32,42 @@ export type OrgSettingsPg = {
       }
   );
 };
+type OrgSettingsRow = OrgSettingsPg['public.org_settings'];
+
+// SQL NULL for a nullable JSON column (a plain `null` would be rejected).
+function jsonOrDbNull(value: JsonObject | null) {
+  return value ?? Prisma.DbNull;
+}
+
 type PartialItemsInfo = {
   partialItemsEndpoint?: string;
   partialItemsRequestHeaders: JsonObject | null;
 };
 
-function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
+const APPEAL_SETTINGS_SELECT = {
+  appeal_callback_url: true,
+  appeal_callback_headers: true,
+  appeal_callback_body: true,
+} as const;
+
+function makeOrgSettingsService(prisma: PrismaPgClient) {
   const partialItemsEndpointCache = cached({
     async producer(orgId: string) {
-      const row = await pgQuery
-        .selectFrom('public.org_settings')
-        .select(['partial_items_endpoint', 'partial_items_request_headers'])
-        .where('org_id', '=', orgId)
-        .executeTakeFirst();
-      return row;
+      const row = await prisma.org_settings.findUnique({
+        select: {
+          partial_items_endpoint: true,
+          partial_items_request_headers: true,
+        },
+        where: { org_id: orgId },
+      });
+      return row == null
+        ? undefined
+        : {
+            partial_items_endpoint: row.partial_items_endpoint,
+            // JSON columns come back as `JsonValue`; this one holds an object.
+            partial_items_request_headers:
+              row.partial_items_request_headers as JsonObject | null,
+          };
     },
     // NB: HOUR is in milliseconds but this library uses seconds for maxAge
     directives: { freshUntilAge: (MINUTE_MS * 5) / 1000 },
@@ -55,9 +77,8 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
   // plain UPDATE would silently affect 0 rows. Every settings mutation calls
   // this first to guarantee a row (with defaults) exists.
   async function ensureOrgSettingsRow(orgId: string) {
-    const result = await pgQuery
-      .insertInto('public.org_settings')
-      .values({
+    const result = await prisma.org_settings.createMany({
+      data: {
         org_id: orgId,
         has_reporting_rules_enabled: false,
         has_appeals_enabled: false,
@@ -67,14 +88,14 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
         sso_url: null,
         cert: null,
         appeal_callback_url: null,
-        appeal_callback_headers: null,
-        appeal_callback_body: null,
-      })
-      .onConflict((oc) => oc.column('org_id').doNothing())
-      .executeTakeFirst();
+        appeal_callback_headers: Prisma.DbNull,
+        appeal_callback_body: Prisma.DbNull,
+      },
+      skipDuplicates: true,
+    });
     // If a row was actually inserted, drop the partial-items cache: it may have
     // memoized "no row" as undefined, which is now stale.
-    if (Number(result.numInsertedOrUpdatedRows ?? 0) > 0) {
+    if (result.count > 0) {
       await partialItemsEndpointCache.invalidate?.(orgId);
     }
   }
@@ -84,63 +105,54 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
       await ensureOrgSettingsRow(opts.orgId);
     },
     async hasReportingRulesEnabled(orgId: string) {
-      const rows = await pgQuery
-        .selectFrom('public.org_settings')
-        .select(['has_reporting_rules_enabled'])
-        .where('org_id', '=', orgId)
-        .executeTakeFirst();
+      const rows = await prisma.org_settings.findUnique({
+        select: { has_reporting_rules_enabled: true },
+        where: { org_id: orgId },
+      });
       return rows?.has_reporting_rules_enabled ?? false;
     },
     async hasAppealsEnabled(orgId: string) {
-      const rows = await pgQuery
-        .selectFrom('public.org_settings')
-        .select(['has_appeals_enabled'])
-        .where('org_id', '=', orgId)
-        .executeTakeFirst();
+      const rows = await prisma.org_settings.findUnique({
+        select: { has_appeals_enabled: true },
+        where: { org_id: orgId },
+      });
       return rows?.has_appeals_enabled ?? false;
     },
     async allowMultiplePoliciesPerAction(orgId: string) {
-      const rows = await pgQuery
-        .selectFrom('public.org_settings')
-        .select(['allow_multiple_policies_per_action'])
-        .where('org_id', '=', orgId)
-        .executeTakeFirst();
+      const rows = await prisma.org_settings.findUnique({
+        select: { allow_multiple_policies_per_action: true },
+        where: { org_id: orgId },
+      });
       return rows?.allow_multiple_policies_per_action ?? false;
     },
     async getAppealSettings(orgId: string) {
-      const row = await pgQuery
-        .selectFrom('public.org_settings')
-        .select([
-          'appeal_callback_url',
-          'appeal_callback_headers',
-          'appeal_callback_body',
-        ])
-        .where('org_id', '=', orgId)
-        .executeTakeFirst();
+      const row = await prisma.org_settings.findUnique({
+        select: APPEAL_SETTINGS_SELECT,
+        where: { org_id: orgId },
+      });
       return {
         appealCallbackUrl: row?.appeal_callback_url,
-        appealCallbackHeaders: row?.appeal_callback_headers,
-        appealCallbackBody: row?.appeal_callback_body,
+        appealCallbackHeaders: row?.appeal_callback_headers as
+          JsonObject | null | undefined,
+        appealCallbackBody: row?.appeal_callback_body as
+          JsonObject | null | undefined,
       };
     },
     async userStrikeTTLInDays(orgId: string) {
-      const rows = await pgQuery
-        .selectFrom('public.org_settings')
-        .select(['user_strike_ttl_days'])
-        .where('org_id', '=', orgId)
-        .executeTakeFirst();
+      const rows = await prisma.org_settings.findUnique({
+        select: { user_strike_ttl_days: true },
+        where: { org_id: orgId },
+      });
       return rows?.user_strike_ttl_days ?? 90;
     },
     async updateUserStrikeTTL(input: { orgId: string; ttlDays: number }) {
       await ensureOrgSettingsRow(input.orgId);
-      return pgQuery
-        .updateTable('public.org_settings')
-        .where('org_id', '=', input.orgId)
-        .set({
-          user_strike_ttl_days: input.ttlDays,
-        })
-        .returning(['user_strike_ttl_days'])
-        .executeTakeFirst();
+      const [row] = await prisma.org_settings.updateManyAndReturn({
+        where: { org_id: input.orgId },
+        data: { user_strike_ttl_days: input.ttlDays },
+        select: { user_strike_ttl_days: true },
+      });
+      return row as Pick<OrgSettingsRow, 'user_strike_ttl_days'> | undefined;
     },
     async updateAppealSettings(input: {
       orgId: string;
@@ -149,21 +161,23 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
       callbackBody: JsonObject | null;
     }) {
       await ensureOrgSettingsRow(input.orgId);
-      const row = await pgQuery
-        .updateTable('public.org_settings')
-        .where('org_id', '=', input.orgId)
-        .set({
-          appeal_callback_headers: input.callbackHeaders,
+      const [row] = await prisma.org_settings.updateManyAndReturn({
+        where: { org_id: input.orgId },
+        data: {
+          appeal_callback_headers: jsonOrDbNull(input.callbackHeaders),
           appeal_callback_url: input.callbackUrl,
-          appeal_callback_body: input.callbackBody,
-        })
-        .returning([
-          'appeal_callback_url',
-          'appeal_callback_headers',
-          'appeal_callback_body',
-        ])
-        .executeTakeFirst();
-      return row;
+          appeal_callback_body: jsonOrDbNull(input.callbackBody),
+        },
+        select: APPEAL_SETTINGS_SELECT,
+      });
+      return row as
+        | Pick<
+            OrgSettingsRow,
+            | 'appeal_callback_url'
+            | 'appeal_callback_headers'
+            | 'appeal_callback_body'
+          >
+        | undefined;
     },
     async partialItemsInfo(
       orgId: string,
@@ -184,24 +198,25 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
       requestHeaders: JsonObject | null;
     }) {
       await ensureOrgSettingsRow(input.orgId);
-      await pgQuery
-        .updateTable('public.org_settings')
-        .where('org_id', '=', input.orgId)
-        .set({
+      await prisma.org_settings.updateMany({
+        where: { org_id: input.orgId },
+        data: {
           partial_items_endpoint: input.endpoint,
-          partial_items_request_headers: input.requestHeaders,
-        })
-        .execute();
+          partial_items_request_headers: jsonOrDbNull(input.requestHeaders),
+        },
+      });
       // The read path is cached for 5 minutes; drop the entry so the new
       // values are visible immediately instead of after the TTL.
       await partialItemsEndpointCache.invalidate?.(input.orgId);
     },
     async getSamlSettings(orgId: string) {
-      return pgQuery
-        .selectFrom('public.org_settings')
-        .select(['saml_enabled', 'sso_url', 'cert'])
-        .where('org_id', '=', orgId)
-        .executeTakeFirst();
+      const row = await prisma.org_settings.findUnique({
+        select: { saml_enabled: true, sso_url: true, cert: true },
+        where: { org_id: orgId },
+      });
+      // The DB CHECK constraint guarantees `sso_url`/`cert` are set when
+      // `saml_enabled`; Prisma can't express that union, so restore it here.
+      return (row ?? undefined);
     },
     async updateSamlSettings(input: {
       orgId: string;
@@ -210,11 +225,10 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
     }) {
       try {
         await ensureOrgSettingsRow(input.orgId);
-        await pgQuery
-          .updateTable('public.org_settings')
-          .where('org_id', '=', input.orgId)
-          .set({ sso_url: input.ssoUrl, cert: input.cert })
-          .executeTakeFirst();
+        await prisma.org_settings.updateMany({
+          where: { org_id: input.orgId },
+          data: { sso_url: input.ssoUrl, cert: input.cert },
+        });
         return true;
       } catch (e) {
         return false;
@@ -222,53 +236,48 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
     },
     async updateHasAppealsEnabled(input: { orgId: string; enabled: boolean }) {
       await ensureOrgSettingsRow(input.orgId);
-      await pgQuery
-        .updateTable('public.org_settings')
-        .where('org_id', '=', input.orgId)
-        .set({ has_appeals_enabled: input.enabled })
-        .execute();
+      await prisma.org_settings.updateMany({
+        where: { org_id: input.orgId },
+        data: { has_appeals_enabled: input.enabled },
+      });
     },
     async updateHasReportingRulesEnabled(input: {
       orgId: string;
       enabled: boolean;
     }) {
       await ensureOrgSettingsRow(input.orgId);
-      await pgQuery
-        .updateTable('public.org_settings')
-        .where('org_id', '=', input.orgId)
-        .set({ has_reporting_rules_enabled: input.enabled })
-        .execute();
+      await prisma.org_settings.updateMany({
+        where: { org_id: input.orgId },
+        data: { has_reporting_rules_enabled: input.enabled },
+      });
     },
     async updateAllowMultiplePoliciesPerAction(input: {
       orgId: string;
       enabled: boolean;
     }) {
       await ensureOrgSettingsRow(input.orgId);
-      await pgQuery
-        .updateTable('public.org_settings')
-        .where('org_id', '=', input.orgId)
-        .set({ allow_multiple_policies_per_action: input.enabled })
-        .execute();
+      await prisma.org_settings.updateMany({
+        where: { org_id: input.orgId },
+        data: { allow_multiple_policies_per_action: input.enabled },
+      });
     },
     async updateSamlEnabled(input: { orgId: string; enabled: boolean }) {
       await ensureOrgSettingsRow(input.orgId);
       if (input.enabled) {
-        const settings = await pgQuery
-          .selectFrom('public.org_settings')
-          .select(['sso_url', 'cert'])
-          .where('org_id', '=', input.orgId)
-          .executeTakeFirst();
+        const settings = await prisma.org_settings.findUnique({
+          select: { sso_url: true, cert: true },
+          where: { org_id: input.orgId },
+        });
         if (!settings?.sso_url || !settings?.cert) {
           throw new Error(
             'Cannot enable SAML SSO without configuring SSO URL and certificate first',
           );
         }
       }
-      await pgQuery
-        .updateTable('public.org_settings')
-        .where('org_id', '=', input.orgId)
-        .set({ saml_enabled: input.enabled })
-        .execute();
+      await prisma.org_settings.updateMany({
+        where: { org_id: input.orgId },
+        data: { saml_enabled: input.enabled },
+      });
     },
     async close() {
       await partialItemsEndpointCache.close();
@@ -278,4 +287,4 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
 
 export type OrgSettingsService = ReturnType<typeof makeOrgSettingsService>;
 
-export default inject(['KyselyPg'], makeOrgSettingsService);
+export default inject(['PrismaPg'], makeOrgSettingsService);

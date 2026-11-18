@@ -51,7 +51,7 @@ describe('Refresh MRT decisions materialized view job (integration)', () => {
 
     const orgFixture = await createOrg(
       {
-        KyselyPg: harness.deps.KyselyPg,
+        PrismaPg: harness.deps.PrismaPg,
         ModerationConfigService: harness.deps.ModerationConfigService,
         ApiKeyService: harness.deps.ApiKeyService,
       },
@@ -61,7 +61,7 @@ describe('Refresh MRT decisions materialized view job (integration)', () => {
 
     // Reviewer for the seeded decisions; reviewer_id must reference a real
     // coop user.
-    const userFixture = await createUser(harness.deps.KyselyPg, orgId);
+    const userFixture = await createUser(harness.deps.PrismaPg, orgId);
     reviewerId = userFixture.user.id;
     coopUserCleanup = userFixture.cleanup;
   }, 60_000);
@@ -153,7 +153,7 @@ describe('Detect rule pass rate anomalies job (integration)', () => {
 
     const orgFixture = await createOrg(
       {
-        KyselyPg: harness.deps.KyselyPg,
+        PrismaPg: harness.deps.PrismaPg,
         ModerationConfigService: harness.deps.ModerationConfigService,
         ApiKeyService: harness.deps.ApiKeyService,
       },
@@ -162,7 +162,7 @@ describe('Detect rule pass rate anomalies job (integration)', () => {
     orgCleanup = orgFixture.cleanup;
 
     // Rule creator — gets the in-app notification when alarm state changes.
-    const userFixture = await createUser(harness.deps.KyselyPg, orgId);
+    const userFixture = await createUser(harness.deps.PrismaPg, orgId);
     coopUserId = userFixture.user.id;
     coopUserCleanup = userFixture.cleanup;
 

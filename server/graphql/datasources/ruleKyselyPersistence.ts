@@ -1,7 +1,5 @@
-import { sql, type Insertable, type Kysely, type Updateable } from 'kysely';
 import { type JsonObject } from 'type-fest';
 
-import { type CombinedPg } from '../../services/combinedDbTypes.js';
 import { type BacktestStatusDb } from '../../services/coreAppTables.js';
 import {
   computeRuleStatusFromRow,
@@ -13,6 +11,10 @@ import {
   type PlainRuleWithLatestVersion,
   type Policy,
 } from '../../services/moderationConfigService/index.js';
+import {
+  type Prisma,
+  type PrismaPgQueryable,
+} from '../../storage/prisma/index.js';
 import { makeNotFoundError } from '../../utils/errors.js';
 import { type GraphQLUserParent } from './userKyselyPersistence.js';
 
@@ -50,8 +52,21 @@ export type GraphQLBacktestParent = {
 };
 
 /** Matches `public.backtests.status` when generated value is RUNNING. */
-const backtestRunningPredicate = sql<boolean>`cancelation_date is null
-  and (sampling_complete = false or content_items_processed < sample_actual_size)`;
+function backtestRunningWhere(
+  db: PrismaPgQueryable,
+): Prisma.backtestsWhereInput {
+  return {
+    cancelation_date: null,
+    OR: [
+      { sampling_complete: false },
+      {
+        content_items_processed: {
+          lt: db.backtests.fields.sample_actual_size,
+        },
+      },
+    ],
+  };
+}
 
 /**
  * Applies the legacy `status` virtual-setter semantics from the Sequelize Rule
@@ -82,82 +97,66 @@ function mapRuleStatusToColumns(
 }
 
 async function replaceRuleActions(
-  trx: Kysely<CombinedPg>,
+  trx: PrismaPgQueryable,
   ruleId: string,
   actionIds: readonly string[],
   // Per-action parameters; actions absent from the map are persisted as `{}`.
   actionParameters?: ReadonlyMap<string, JsonObject>,
 ) {
-  await trx
-    .deleteFrom('public.rules_and_actions')
-    .where('rule_id', '=', ruleId)
-    .execute();
+  await trx.rules_and_actions.deleteMany({ where: { rule_id: ruleId } });
   if (actionIds.length === 0) {
     return;
   }
-  await trx
-    .insertInto('public.rules_and_actions')
-    .values(
-      actionIds.map((actionId) => ({
-        rule_id: ruleId,
-        action_id: actionId,
-        action_parameters: actionParameters?.get(actionId) ?? {},
-      })),
-    )
-    .execute();
+  await trx.rules_and_actions.createMany({
+    data: actionIds.map((actionId) => ({
+      rule_id: ruleId,
+      action_id: actionId,
+      // `JsonObject` (type-fest) isn't assignable to Prisma's JSON input type.
+      action_parameters: (actionParameters?.get(actionId) ??
+        {}) as Prisma.InputJsonObject,
+    })),
+  });
 }
 
 async function replaceRulePolicies(
-  trx: Kysely<CombinedPg>,
+  trx: PrismaPgQueryable,
   ruleId: string,
   policyIds: readonly string[],
 ) {
-  await trx
-    .deleteFrom('public.rules_and_policies')
-    .where('rule_id', '=', ruleId)
-    .execute();
+  await trx.rules_and_policies.deleteMany({ where: { rule_id: ruleId } });
   if (policyIds.length === 0) {
     return;
   }
   const now = new Date();
-  await trx
-    .insertInto('public.rules_and_policies')
-    .values(
-      policyIds.map((policyId) => ({
-        rule_id: ruleId,
-        policy_id: policyId,
-        created_at: now,
-        updated_at: now,
-      })),
-    )
-    .execute();
+  await trx.rules_and_policies.createMany({
+    data: policyIds.map((policyId) => ({
+      rule_id: ruleId,
+      policy_id: policyId,
+      created_at: now,
+      updated_at: now,
+    })),
+  });
 }
 
 async function replaceRuleItemTypes(
-  trx: Kysely<CombinedPg>,
+  trx: PrismaPgQueryable,
   ruleId: string,
   itemTypeIds: readonly string[],
 ) {
-  await trx
-    .deleteFrom('public.rules_and_item_types')
-    .where('rule_id', '=', ruleId)
-    .execute();
+  await trx.rules_and_item_types.deleteMany({ where: { rule_id: ruleId } });
   if (itemTypeIds.length === 0) {
     return;
   }
-  await trx
-    .insertInto('public.rules_and_item_types')
-    .values(
-      itemTypeIds.map((itemTypeId) => ({
-        rule_id: ruleId,
-        item_type_id: itemTypeId,
-      })),
-    )
-    .execute();
+  await trx.rules_and_item_types.createMany({
+    data: itemTypeIds.map((itemTypeId) => ({
+      rule_id: ruleId,
+      item_type_id: itemTypeId,
+    })),
+  });
 }
 
 export async function kyselyCreateRule(
-  trx: Kysely<CombinedPg>,
+  trx: PrismaPgQueryable,
   input: {
     id: string;
     name: string;
@@ -183,16 +182,7 @@ export async function kyselyCreateRule(
   );
   const now = new Date();
 
-  // `public.rules.created_at` / `updated_at` are NOT NULL in Postgres; Kysely
-  // `dbTypes` mark them `GeneratedAlways` so they are omitted from
-  // `Insertable`, but inserts must still supply values at runtime. Build the
-  // values against an `Insertable & { created_at; updated_at }` so every
-  // column is still type-checked, then narrow back to `Insertable` at the
-  // call site (a safe widening, not a `never` escape hatch).
-  const ruleValues: Insertable<CombinedPg['public.rules']> & {
-    created_at: Date;
-    updated_at: Date;
-  } = {
+  const ruleValues: Prisma.rulesUncheckedCreateInput = {
     id: input.id,
     name: input.name,
     description: input.description,
@@ -204,7 +194,8 @@ export async function kyselyCreateRule(
     org_id: input.orgId,
     creator_id: input.creatorId,
     expiration_time,
-    condition_set: input.conditionSet,
+    // Domain type isn't assignable to Prisma's JSON input type.
+    condition_set: input.conditionSet as unknown as Prisma.InputJsonObject,
     alarm_status: RuleAlarmStatus.INSUFFICIENT_DATA,
     alarm_status_set_at: now,
     rule_type: input.ruleType,
@@ -212,7 +203,7 @@ export async function kyselyCreateRule(
     created_at: now,
     updated_at: now,
   };
-  await trx.insertInto('public.rules').values(ruleValues).execute();
+  await trx.rules.create({ data: ruleValues });
 
   await replaceRuleActions(
     trx,
@@ -227,7 +218,7 @@ export async function kyselyCreateRule(
 }
 
 export async function kyselyUpdateRule(
-  trx: Kysely<CombinedPg>,
+  trx: PrismaPgQueryable,
   input: {
     id: string;
     orgId: string;
@@ -246,12 +237,15 @@ export async function kyselyUpdateRule(
     contentTypeIds: readonly string[] | undefined;
   },
 ): Promise<void> {
-  const existing = await trx
-    .selectFrom('public.rules')
-    .select(['id', 'status_if_unexpired', 'expiration_time', 'rule_type'])
-    .where('id', '=', input.id)
-    .where('org_id', '=', input.orgId)
-    .executeTakeFirst();
+  const existing = await trx.rules.findFirst({
+    select: {
+      id: true,
+      status_if_unexpired: true,
+      expiration_time: true,
+      rule_type: true,
+    },
+    where: { id: input.id, org_id: input.orgId },
+  });
 
   if (existing == null) {
     throw makeNotFoundError('Rule not found', {
@@ -300,7 +294,7 @@ export async function kyselyUpdateRule(
     expirationTimeChanged = true;
   }
 
-  const patch: Updateable<CombinedPg['public.rules']> = {};
+  const patch: Prisma.rulesUncheckedUpdateManyInput = {};
   if (input.name != null) {
     patch.name = input.name;
   }
@@ -308,7 +302,8 @@ export async function kyselyUpdateRule(
     patch.description = input.description;
   }
   if (input.conditionSet !== undefined) {
-    patch.condition_set = input.conditionSet;
+    // Domain type isn't assignable to Prisma's JSON input type.
+    patch.condition_set = input.conditionSet as unknown as Prisma.InputJsonObject;
   }
   if (input.tags !== undefined) {
     patch.tags = input.tags;
@@ -330,12 +325,10 @@ export async function kyselyUpdateRule(
   }
 
   if (Object.keys(patch).length > 0) {
-    await trx
-      .updateTable('public.rules')
-      .set(patch)
-      .where('id', '=', input.id)
-      .where('org_id', '=', input.orgId)
-      .execute();
+    await trx.rules.updateMany({
+      data: patch,
+      where: { id: input.id, org_id: input.orgId },
+    });
   }
 
   if (input.actionIds != null) {
@@ -355,72 +348,59 @@ export async function kyselyUpdateRule(
 }
 
 export async function kyselyDeleteRule(
-  trx: Kysely<CombinedPg>,
+  trx: PrismaPgQueryable,
   id: string,
   orgId: string,
 ): Promise<boolean> {
-  const row = await trx
-    .selectFrom('public.rules')
-    .select('id')
-    .where('id', '=', id)
-    .where('org_id', '=', orgId)
-    .executeTakeFirst();
+  const row = await trx.rules.findFirst({
+    select: { id: true },
+    where: { id, org_id: orgId },
+  });
   if (row == null) {
     return false;
   }
 
-  await trx.deleteFrom('public.backtests').where('rule_id', '=', id).execute();
-  await trx
-    .deleteFrom('public.users_and_favorite_rules')
-    .where('rule_id', '=', id)
-    .execute();
-  await trx
-    .deleteFrom('public.rules')
-    .where('id', '=', id)
-    .where('org_id', '=', orgId)
-    .execute();
+  await trx.backtests.deleteMany({ where: { rule_id: id } });
+  await trx.users_and_favorite_rules.deleteMany({ where: { rule_id: id } });
+  await trx.rules.deleteMany({ where: { id, org_id: orgId } });
   return true;
 }
 
 export async function kyselyHasRunningBacktestsForRule(
-  kysely: Kysely<CombinedPg>,
+  db: PrismaPgQueryable,
   ruleId: string,
 ): Promise<boolean> {
-  const row = await kysely
-    .selectFrom('public.backtests')
-    .select('id')
-    .where('rule_id', '=', ruleId)
-    .where(backtestRunningPredicate)
-    .executeTakeFirst();
+  const row = await db.backtests.findFirst({
+    select: { id: true },
+    where: { rule_id: ruleId, ...backtestRunningWhere(db) },
+  });
   return row != null;
 }
 
 export async function kyselyCancelRunningBacktestsForRule(
-  trx: Kysely<CombinedPg>,
+  trx: PrismaPgQueryable,
   ruleId: string,
 ): Promise<void> {
   const now = new Date();
-  await trx
-    .updateTable('public.backtests')
-    .set({ cancelation_date: now, updated_at: now })
-    .where('rule_id', '=', ruleId)
-    .where(backtestRunningPredicate)
-    .execute();
+  await trx.backtests.updateMany({
+    data: { cancelation_date: now, updated_at: now },
+    where: { rule_id: ruleId, ...backtestRunningWhere(trx) },
+  });
 }
 
 export async function kyselyListBacktestsForRule(
-  kysely: Kysely<CombinedPg>,
+  db: PrismaPgQueryable,
   ruleId: string,
   backtestIds?: readonly string[] | null,
 ): Promise<GraphQLBacktestParent[]> {
-  let q = kysely
-    .selectFrom('public.backtests')
-    .selectAll()
-    .where('rule_id', '=', ruleId);
-  if (backtestIds != null && backtestIds.length > 0) {
-    q = q.where('id', 'in', [...backtestIds]);
-  }
-  const rows = await q.execute();
+  const rows = await db.backtests.findMany({
+    where: {
+      rule_id: ruleId,
+      ...(backtestIds != null && backtestIds.length > 0
+        ? { id: { in: [...backtestIds] } }
+        : {}),
+    },
+  });
   return rows.map((r) => mapBacktestRowToGqlParent(r));
 }
 

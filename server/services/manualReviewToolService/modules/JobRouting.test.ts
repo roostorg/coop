@@ -24,13 +24,13 @@ describe('JobRouting tests', () => {
       const manualReviewToolService = deps.ManualReviewToolService;
       const { org } = await createOrg(
         {
-          KyselyPg: deps.KyselyPg,
+          PrismaPg: deps.PrismaPg,
           ModerationConfigService: deps.ModerationConfigService,
           ApiKeyService: deps.ApiKeyService,
         },
         uid(),
       );
-      const { user } = await createUser(deps.KyselyPg, org.id);
+      const { user } = await createUser(deps.PrismaPg, org.id);
       const userId = user.id;
       const { itemTypes } = await createContentItemTypes({
         moderationConfigService: deps.ModerationConfigService,
@@ -230,13 +230,13 @@ describe('JobRouting tests', () => {
     async ({ manualReviewToolService, org, deps }) => {
       const { org: otherOrg } = await createOrg(
         {
-          KyselyPg: deps.KyselyPg,
+          PrismaPg: deps.PrismaPg,
           ModerationConfigService: deps.ModerationConfigService,
           ApiKeyService: deps.ApiKeyService,
         },
         uid(),
       );
-      const { user: otherUser } = await createUser(deps.KyselyPg, otherOrg.id);
+      const { user: otherUser } = await createUser(deps.PrismaPg, otherOrg.id);
       const { itemTypes: otherItemTypes } = await createContentItemTypes({
         moderationConfigService: deps.ModerationConfigService,
         orgId: otherOrg.id,

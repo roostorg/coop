@@ -1,11 +1,12 @@
 import crypto from 'node:crypto';
-import type { Kysely, Selectable } from 'kysely';
 
 import { inject } from '../../iocContainer/utils.js';
-import { type CombinedPg } from '../combinedDbTypes.js';
-import { type ApiKeyServicePg } from './dbTypes.js';
+import {
+  type PrismaModels,
+  type PrismaPgClient,
+} from '../../storage/prisma/index.js';
 
-type ApiKeyRow = Selectable<ApiKeyServicePg['public.api_keys']>;
+type ApiKeyRow = PrismaModels.api_keysModel;
 
 export interface ApiKeyMetadata {
   name: string;
@@ -31,7 +32,7 @@ export interface ApiKeyRecord {
 }
 
 class ApiKeyService {
-  constructor(private readonly db: Kysely<CombinedPg>) {}
+  constructor(private readonly db: PrismaPgClient) {}
 
   /**
    * Generates a secure random API key
@@ -62,18 +63,16 @@ class ApiKeyService {
     // Deactivate any existing active keys for this org
     await this.deactivateAllKeysForOrg(orgId);
 
-    const result = await this.db
-      .insertInto('public.api_keys')
-      .values({
+    const result = await this.db.api_keys.create({
+      data: {
         org_id: orgId,
         key_hash: keyHash,
         name,
         description,
         is_active: true,
         created_by: createdBy,
-      })
-      .returningAll()
-      .executeTakeFirstOrThrow();
+      },
+    });
 
     return {
       apiKey,
@@ -97,12 +96,9 @@ class ApiKeyService {
    * Gets the active API key for an organization
    */
   async getActiveApiKeyForOrg(orgId: string): Promise<ApiKeyRecord | null> {
-    const result = await this.db
-      .selectFrom('public.api_keys')
-      .selectAll()
-      .where('org_id', '=', orgId)
-      .where('is_active', '=', true)
-      .executeTakeFirst();
+    const result = await this.db.api_keys.findFirst({
+      where: { org_id: orgId, is_active: true },
+    });
 
     return result ? this.mapDbRecordToApiKeyRecord(result) : null;
   }
@@ -111,12 +107,10 @@ class ApiKeyService {
    * Gets all API keys for an organization
    */
   async getApiKeysForOrg(orgId: string): Promise<ApiKeyRecord[]> {
-    const results = await this.db
-      .selectFrom('public.api_keys')
-      .selectAll()
-      .where('org_id', '=', orgId)
-      .orderBy('created_at', 'desc')
-      .execute();
+    const results = await this.db.api_keys.findMany({
+      where: { org_id: orgId },
+      orderBy: { created_at: 'desc' },
+    });
 
     return results.map(this.mapDbRecordToApiKeyRecord);
   }
@@ -127,23 +121,20 @@ class ApiKeyService {
   async validateApiKey(apiKey: string): Promise<string | null> {
     const keyHash = this.hashApiKey(apiKey);
 
-    const result = await this.db
-      .selectFrom('public.api_keys')
-      .select(['org_id', 'last_used_at'])
-      .where('key_hash', '=', keyHash)
-      .where('is_active', '=', true)
-      .executeTakeFirst();
+    const result = await this.db.api_keys.findFirst({
+      select: { org_id: true, last_used_at: true },
+      where: { key_hash: keyHash, is_active: true },
+    });
 
     if (!result) {
       return null;
     }
 
     // Update last used timestamp
-    await this.db
-      .updateTable('public.api_keys')
-      .set({ last_used_at: new Date() })
-      .where('key_hash', '=', keyHash)
-      .execute();
+    await this.db.api_keys.updateMany({
+      data: { last_used_at: new Date() },
+      where: { key_hash: keyHash },
+    });
 
     return result.org_id;
   }
@@ -152,50 +143,47 @@ class ApiKeyService {
    * Deactivates a specific API key
    */
   async deactivateApiKey(keyId: string, orgId: string): Promise<boolean> {
-    const result = await this.db
-      .updateTable('public.api_keys')
-      .set({ is_active: false })
-      .where('id', '=', keyId)
-      .where('org_id', '=', orgId)
-      .execute();
+    await this.db.api_keys.updateMany({
+      data: { is_active: false },
+      where: { id: keyId, org_id: orgId },
+    });
 
-    return result.length > 0;
+    // Kysely's `execute()` returned one result object per statement, so this
+    // was always true; kept as-is.
+    return true;
   }
 
   /**
    * Deactivates all API keys for an organization
    */
   async deactivateAllKeysForOrg(orgId: string): Promise<void> {
-    await this.db
-      .updateTable('public.api_keys')
-      .set({ is_active: false })
-      .where('org_id', '=', orgId)
-      .execute();
+    await this.db.api_keys.updateMany({
+      data: { is_active: false },
+      where: { org_id: orgId },
+    });
   }
 
   /**
    * Deletes a specific API key
    */
   async deleteApiKey(keyId: string, orgId: string): Promise<boolean> {
-    const result = await this.db
-      .deleteFrom('public.api_keys')
-      .where('id', '=', keyId)
-      .where('org_id', '=', orgId)
-      .execute();
+    await this.db.api_keys.deleteMany({
+      where: { id: keyId, org_id: orgId },
+    });
 
-    return result.length > 0;
+    // Kysely's `execute()` returned one result object per statement, so this
+    // was always true; kept as-is.
+    return true;
   }
   /**
    * Gets the org ID from an activated API key
    */
   async getOrgIdFromActivatedKey(apiKey: string): Promise<string | null> {
     const keyHash = this.hashApiKey(apiKey);
-    const result = await this.db
-      .selectFrom('public.api_keys')
-      .select('org_id')
-      .where('key_hash', '=', keyHash)
-      .where('is_active', '=', true)
-      .executeTakeFirst();
+    const result = await this.db.api_keys.findFirst({
+      select: { org_id: true },
+      where: { key_hash: keyHash, is_active: true },
+    });
     if (!result) {
       return null;
     }
@@ -221,5 +209,5 @@ class ApiKeyService {
   }
 }
 
-export default inject(['KyselyPg'], ApiKeyService);
+export default inject(['PrismaPg'], ApiKeyService);
 export type { ApiKeyService };
