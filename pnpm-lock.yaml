@@ -491,9 +491,6 @@ importers:
       '@adonisjs/core':
         specifier: 6.21.0
         version: 6.21.0(supports-color@10.2.2)
-      '@adonisjs/cors':
-        specifier: 2.2.1
-        version: 2.2.1(@adonisjs/core@6.21.0(supports-color@10.2.2))
       '@apollo/server':
         specifier: ^5.5.0
         version: 5.5.1(graphql@16.15.0)(supports-color@10.2.2)
@@ -883,12 +880,6 @@ packages:
         optional: true
       edge.js:
         optional: true
-
-  '@adonisjs/cors@2.2.1':
-    resolution: {integrity: sha512-qnrSG8ylpgTeZBOYEN3yXxY0PBUEg1KGDhgn9VKVFGxLKT+o9GGVOSZxUK3wG341B1zB9w5vuZN1z4M0Jitb6g==}
-    engines: {node: '>=18.16.0'}
-    peerDependencies:
-      '@adonisjs/core': ^6.2.0
 
   '@adonisjs/encryption@6.0.2':
     resolution: {integrity: sha512-37XqVPsZi6zXMbC0Me1/qlcTP0uE+KAtYOFx7D7Tvtz377NL/6gqxqgpW/BopgOSD+CVDXjzO/Wx3M2UrbkJRQ==}
@@ -10619,10 +10610,6 @@ snapshots:
       youch-terminal: 2.2.3
     transitivePeerDependencies:
       - supports-color
-
-  '@adonisjs/cors@2.2.1(@adonisjs/core@6.21.0(supports-color@10.2.2))':
-    dependencies:
-      '@adonisjs/core': 6.21.0(supports-color@10.2.2)
 
   '@adonisjs/encryption@6.0.2':
     dependencies:

@@ -250,7 +250,7 @@ Dependencies): RouteHandler<SubmitItemsInput, undefined> {
       ctx.response.status(202);
     } else {
       // Return 202 immediately now that validation is complete, then keep executing other code
-      ctx.response.status(202);
+      ctx.response.status(202).header('Content-Length', 0);
       ctx.response.finish();
 
       // Convert the item submission to something that gets accepted by the Rule

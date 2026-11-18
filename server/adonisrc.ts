@@ -17,7 +17,6 @@ export default defineConfig({
   },
   providers: [
     async () => import('@adonisjs/core/providers/app_provider'),
-    async () => import('@adonisjs/cors/cors_provider'),
     async () => import('./providers/coop_provider.js'),
   ],
   commands: [

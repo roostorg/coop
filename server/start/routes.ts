@@ -50,7 +50,15 @@ export function registerRoutes(
                 // Always JSON, as `res.json()` was. AdonisJS' `json()` is an
                 // alias of `send()`, which sends a number or string as
                 // text/plain.
-                if (result !== undefined) {
+                if (
+                  result === undefined &&
+                  ctx.response.isPending &&
+                  !ctx.response.hasLazyBody &&
+                  ctx.response.getStatus() !== 204
+                ) {
+                  // Express' `res.status(202).end()` sent this header.
+                  ctx.response.header('Content-Length', 0);
+                } else if (result !== undefined) {
                   ctx.response
                     .header('Content-Type', 'application/json; charset=utf-8')
                     .send(jsonStringify(result));

@@ -1,6 +1,5 @@
 import { appKey, http } from './app.js';
 import bodyparser from './bodyparser.js';
-import cors from './cors.js';
 import logger from './logger.js';
 
 /**
@@ -10,6 +9,5 @@ import logger from './logger.js';
 export default {
   app: { appKey, http },
   bodyparser,
-  cors,
   logger,
 };

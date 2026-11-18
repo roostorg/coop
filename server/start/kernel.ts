@@ -9,7 +9,7 @@ export function registerKernel(server: Server, router: Router) {
 
   server.use([
     async () => import('../app/middleware/force_https_middleware.js'),
-    async () => import('@adonisjs/cors/cors_middleware'),
+    async () => import('../app/middleware/cors_middleware.js'),
     async () => import('../app/middleware/helmet_middleware.js'),
   ]);
 
@@ -21,7 +21,8 @@ export function registerKernel(server: Server, router: Router) {
 
   // Middleware that routes opt into by name.
   return router.named({
-    session: async () => import('../app/middleware/session_bridge_middleware.js'),
+    session: async () =>
+      import('../app/middleware/session_bridge_middleware.js'),
   });
 }
 

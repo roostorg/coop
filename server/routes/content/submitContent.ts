@@ -186,7 +186,7 @@ Dependencies): RouteHandler<
     // See comment above definition of shouldReturnImmediately - return 202 immediately,
     // then keep executing other code
     if (shouldReturnImmediately) {
-      ctx.response.status(202);
+      ctx.response.status(202).header('Content-Length', 0);
       ctx.response.finish();
     }
 

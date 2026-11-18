@@ -1,5 +1,6 @@
 import { BaseCommand } from '@adonisjs/core/ace';
 import type { CommandOptions } from '@adonisjs/core/types/ace';
+import _ from 'lodash';
 
 import {
   isWorkerOrJobName,
@@ -46,12 +47,25 @@ export default class RunWorkerOrJob extends BaseCommand {
       return;
     }
 
+    process.on('uncaughtException', (error) => {
+      // eslint-disable-next-line no-restricted-syntax
+      logErrorJson({ message: 'UncaughtException', error });
+      process.exit(1);
+    });
+    // Log but don't exit; a stray rejection shouldn't kill the worker.
+    process.on('unhandledRejection', (reason) => {
+      // eslint-disable-next-line no-restricted-syntax
+      logErrorJson({
+        message: 'UnhandledRejection',
+        error: reason instanceof Error ? reason : new Error(String(reason)),
+      });
+    });
+
     const workerOrJob: WorkerOrJob = await this.app.container.make(name);
     const controller = new AbortController();
     let failed = false;
 
-    // `terminate()` runs these hooks; process.exitCode is set from
-    // `this.exitCode` by AdonisJS' ace process.
+    // `terminate()` runs this hook.
     this.app.terminating(async () => {
       try {
         controller.abort();
@@ -76,14 +90,22 @@ export default class RunWorkerOrJob extends BaseCommand {
       }
       this.exitCode = failed ? 1 : 0;
     });
-    this.app.listen('SIGTERM', async () => this.terminate());
-    this.app.listen('SIGINT', async () => this.terminate());
+
+    // Exit explicitly once shut down, as the pre-AdonisJS runner did: open
+    // Redis, BullMQ and pg handles would otherwise keep the process alive,
+    // since a `staysAlive` command relies on the event loop draining.
+    const stop = _.once(async () => {
+      await this.terminate();
+      process.exit(failed ? 1 : 0);
+    });
+    this.app.listen('SIGTERM', stop);
+    this.app.listen('SIGINT', stop);
 
     workerOrJob.run(controller.signal).then(
       // Jobs shut down when run() settles; workers only on error or signal.
       async () => {
         if (workerOrJob.type === 'Job') {
-          await this.terminate();
+          await stop();
         }
       },
       async (error: unknown) => {
@@ -93,7 +115,7 @@ export default class RunWorkerOrJob extends BaseCommand {
           message: 'shutdown worker/job after encountering error during run',
           error,
         });
-        await this.terminate();
+        await stop();
       },
     );
   }
