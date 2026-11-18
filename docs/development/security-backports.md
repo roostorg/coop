@@ -13,6 +13,7 @@ The **Security backports** workflow (`.github/workflows/security-backport.yml`) 
   After a release from `release/x.y` the branch is already at the tag, so it needs no change. Once `x.(y+1).0` is released, the workflow moves on to `release/x.(y+1)` and leaves `release/x.y` alone. Its open backport PRs and its draft release stay too: release `x.y.(z+1)`, or close the PRs and delete the draft.
 
 - **Opens a backport PR** to `release/x.y` for each PR merged to `main` with the `security-update` label, from a `backport/<n>-to-release/x.y` branch. It cherry-picks the PR's merge commit with `git cherry-pick -x`, copies the PR's `## Release notes` section, and labels the backport `security-update`. A PR qualifies whether the label came from the [labeling workflow](https://github.com/roostorg/coop/pull/1519) or from a person, and whether it was added before or after the merge.
+  The section ends with an `<!-- original-credit: … -->` comment. Release Drafter credits the release note to the source PR and its author from it instead of to the backport PR and the app, so keep it as the last line of the section when editing the notes.
 - **Keeps a draft release** for `x.y.(z+1)` targeting `release/x.y`. Release Drafter collects the release notes of the PRs merged into `release/x.y` since `x.y.z`. Draft releases are visible only to people with write access.
 
 It runs when a PR to `main` is merged or labelled `security-update`, when a PR to `release/**` is merged, when a release is published, daily, and on demand. Every run checks all `security-update` PRs merged since `release/x.y` diverged from `main`. A run skips a PR that is already on the branch, that has a backport PR (open, merged or closed), or whose backport already failed.
@@ -37,7 +38,7 @@ If a cherry-pick conflicts or a check fails, the workflow comments on the source
 
 ## What it doesn't handle
 
-- **Fixes from a private GHSA fork.** These aren't PRs in this repository, so the workflow never sees them, and it never publishes anything about an advisory. Follow the private fork path in the runbook: merge the fix into `release/x.y` directly, add its release note to the draft release by hand, and forward-port it to `main` after the release.
+- **Fixes from a private GHSA fork.** Merge the fix into `main` from the advisory. It lands as a commit with no PR in this repository, so the workflow never sees it, and it never publishes anything about an advisory. Cherry-pick it to `release/x.y` by hand with `git cherry-pick -x` in a public backport PR, and add its release note to the draft release by hand, linking only the advisory.
 - **Rebase-merged PRs with several commits.** The workflow cherry-picks only the merge commit GitHub records, so backport these by hand.
 - **Publishing.** Cutting `x.y.(z+1)` stays manual: review the draft release, then publish it with `release/x.y` as its target.
 
