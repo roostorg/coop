@@ -59,6 +59,21 @@ const client = new ApolloClient({
       ConditionInputField: {
         keyFields: false,
       },
+      // Model-card objects are embedded, not entities. ModelCardSection.id is
+      // only unique within a card, so normalizing by it collides across the
+      // model cards of a multi-model integration.
+      ModelCard: {
+        keyFields: false,
+      },
+      ModelCardSection: {
+        keyFields: false,
+      },
+      ModelCardSubsection: {
+        keyFields: false,
+      },
+      ModelCardField: {
+        keyFields: false,
+      },
       Signal: {
         keyFields: (object: Readonly<StoreObject>, _: KeyFieldsContext) =>
           [
@@ -79,6 +94,13 @@ const client = new ApolloClient({
       RuleExecutionResult: {
         keyFields: (object: Readonly<StoreObject>, _: KeyFieldsContext) => {
           return `${object.contentId}.${object.ruleId}.${object.ts}`;
+        },
+      },
+      ReportingRule: {
+        fields: {
+          insights: {
+            merge: true,
+          },
         },
       },
       LeafConditionWithResultSignal: {

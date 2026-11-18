@@ -19,7 +19,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Optional semver version tag to publish (e.g. 1.0.0 or 1.1.0-alpha), for backfilling a release. Leave blank for an SHA-only build; does not move :latest.'
+        description: 'Optional semver version tag to publish (e.g. 1.0.0 or 1.1.0-alpha), for backfilling a release. Leave blank for an SHA-only build. Moves :latest only when run from the highest release tag.'
         required: false
         type: string
 
@@ -27,16 +27,22 @@ permissions:
   contents: read
 
 # Avoid redundant concurrent builds for the same ref (expensive multi-arch).
-# Keyed per-ref so releases (tag refs) never cancel main builds.
+# Keyed per-ref so releases (tag refs) never cancel main builds. Tag builds
+# share one group and never cancel, so they run one at a time and the
+# highest-tag check for `latest` can't be overtaken by an older tag's push.
+# A group holds one pending run, so a third tag build cancels the queued one;
+# re-run it once the others finish.
 concurrency:
-  group: publish-docker-${{ github.ref }}
-  cancel-in-progress: true
+  group: publish-docker-${{ startsWith(github.ref, 'refs/tags/') && 'tags' || github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
 
 env:
   REGISTRY: ghcr.io
-  # Shared tag policy: release -> version tags + auto `latest` (newest
-  # non-prerelease); main -> `edge` + sha; manual dispatch -> sha (+ optional
-  # `version`). Use `github.event.inputs` since `inputs` is unset on push/release.
+  # Shared tag policy: release -> version tags, plus `latest` only when the
+  # release is the highest stable semver tag (see the `latest` step); main ->
+  # `edge` + sha; manual dispatch -> sha (+ optional `version`), and from a
+  # tag also its version tags and, if it's the highest release, `latest`.
+  # Use `github.event.inputs` since `inputs` is unset on push/release.
   TAGS: |
     type=sha,prefix=
     type=edge,branch=main,enable=${{ github.event_name != 'workflow_dispatch' }}
@@ -44,12 +50,6 @@ env:
     type=semver,pattern={{version}}
     type=semver,pattern={{major}}.{{minor}}
     type=raw,value=${{ github.event.inputs.version }},enable=${{ github.event.inputs.version != '' }}
-  # Used by .github/actions/scan-image, which installs Trivy from its release
-  # tarball with a pinned checksum rather than through aquasecurity/trivy-action
-  # or setup-trivy (GHSA-69fq-xp46-6x23).
-  TRIVY_VERSION: 0.76.1
-  TRIVY_SHA256: c7cbe3137fb8a48a17574bede3dd6beb16742d1e9772929940fc90082c39d9c0
-  TRIVY_DB_REPOSITORY: mirror.gcr.io/aquasec/trivy-db:2,ghcr.io/aquasecurity/trivy-db:2
 
 jobs:
   changes:
@@ -58,6 +58,7 @@ jobs:
       server: ${{ steps.filter.outputs.server }}
       client: ${{ steps.filter.outputs.client }}
       db: ${{ steps.filter.outputs.db }}
+      latest: ${{ steps.latest.outputs.latest }}
       scan-channel: ${{ steps.scan-target.outputs.channel }}
       scan-ref: ${{ steps.scan-target.outputs.ref }}
     steps:
@@ -94,6 +95,28 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      # A patch on an older line (e.g. 1.1.2 from release/1.1 after 1.2.0)
+      # must not move `latest` backwards, so it moves only when the tag being
+      # built is the highest stable x.y.z tag in the repo. Covers releases and
+      # dispatches run from a tag.
+      - name: Decide whether to move latest
+        id: latest
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          TAG: ${{ github.ref_name }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+        run: |
+          highest=$(git ls-remote --tags --refs "$REPO_URL" \
+            | sed 's|.*refs/tags/||' \
+            | { grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' || true; } \
+            | sort -V | tail -n 1)
+          if [ "$TAG" = "$highest" ]; then
+            echo "latest=auto" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::$TAG is not the highest x.y.z release (${highest:-none}); not moving latest."
+            echo "latest=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
         id: filter
@@ -146,7 +169,7 @@ jobs:
 
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
-      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -157,6 +180,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}
           tags: ${{ env.TAGS }}
+          flavor: latest=${{ needs.changes.outputs.latest || 'auto' }}
 
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         id: build
@@ -223,7 +247,7 @@ jobs:
 
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
-      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -234,6 +258,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/coop-client
           tags: ${{ env.TAGS }}
+          flavor: latest=${{ needs.changes.outputs.latest || 'auto' }}
 
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         id: build
@@ -294,7 +319,7 @@ jobs:
 
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
-      - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -305,6 +330,7 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ github.repository_owner }}/coop-migrations
           tags: ${{ env.TAGS }}
+          flavor: latest=${{ needs.changes.outputs.latest || 'auto' }}
 
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         id: build

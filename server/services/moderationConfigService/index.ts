@@ -62,6 +62,8 @@ export {
   type PolicyMutationInvoker,
 } from './types/policies.js';
 
+export { makePolicyNameExistsError } from './modules/PolicyOperations.js';
+
 export { UserPenaltySeverity } from './types/shared.js';
 
 export { LocationArea, LocationGeometry } from './types/locationArea.js';

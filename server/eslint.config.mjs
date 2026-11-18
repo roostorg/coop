@@ -29,7 +29,7 @@ export default [
       'eslint.config.mjs',
       '.eslintrc.cjs',
       '.eslintformat.js',
-      'transpiled/**',
+      'build/**',
       'coverage/**',
       'lib/cache/**',
     ],

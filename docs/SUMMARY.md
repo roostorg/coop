@@ -31,6 +31,7 @@
     - [Vulnerability Scanning](development/vulnerability-scanning.md)
   - [Deployment](development/deployment.md)
   - [Email](development/email.md)
+  - [Blocking a PR from Merging](development/blocking-merges.md)
 
 ---
 
@@ -49,6 +50,7 @@
   - [Google Content Safety API](integrations/google-content-safety.md)
   - [Hasher-Matcher-Actioner (HMA)](integrations/hma.md)
   - [NCMEC CyberTipline](integrations/ncmec.md)
+  - [OpenAI CSAM Image Classifier](integrations/openai-csam-classifier.md)
   - [OpenAI Moderation API](integrations/openai-moderation.md)
   - [Zentropi CoPE](integrations/zentropi-cope.md)
   - [Custom](integrations/custom.md)

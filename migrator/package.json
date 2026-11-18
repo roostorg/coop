@@ -23,7 +23,7 @@
     "directory": "migrator"
   },
   "author": "Roostorg",
-  "license": "ISC",
+  "license": "Apache-2.0",
   "dependencies": {
     "@total-typescript/ts-reset": "^0.6.1",
     "cassandra-driver": "^4.8.0",
@@ -34,7 +34,7 @@
   "devDependencies": {
     "@types/node": "^24.19.2",
     "@types/yargs": "^17.0.24",
-    "knip": "^6.44.1",
+    "knip": "^6.44.2",
     "typescript": "^6.0.3"
   },
   "publishConfig": {

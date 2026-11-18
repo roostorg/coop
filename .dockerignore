@@ -19,7 +19,6 @@ server/coverage
 **/node_modules/
 .pnpm-store/
 server/reports
-**/transpiled/
 models-service
 **/build
 **/*.tsbuildinfo

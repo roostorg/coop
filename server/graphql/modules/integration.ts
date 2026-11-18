@@ -34,6 +34,7 @@ const typeDefs = /* GraphQL */ `
 
   type OpenAiIntegrationApiCredential {
     apiKey: String!
+    csamClassifierApiKey: String
   }
 
   enum ZentropiModel {
@@ -91,6 +92,7 @@ const typeDefs = /* GraphQL */ `
     requiresConfig: Boolean!
     logoUrl: String
     logoWithBackgroundUrl: String
+    modelCards: [ModelCard!]!
   }
 
   type PluginIntegrationApiCredential {
@@ -99,8 +101,11 @@ const typeDefs = /* GraphQL */ `
 
   type IntegrationConfig {
     name: String!
+    "Whether a credential with a value has been saved, without exposing it."
+    configured: Boolean!
     apiCredential: IntegrationApiCredential!
     modelCard: ModelCard!
+    modelCards: [ModelCard!]!
     modelCardLearnMoreUrl: String
     title: String!
     docsUrl: String!
@@ -144,6 +149,7 @@ const typeDefs = /* GraphQL */ `
 
   input OpenAiIntegrationApiCredentialInput {
     apiKey: String!
+    csamClassifierApiKey: String
   }
 
   input ZentropiLabelerVersionInput {
