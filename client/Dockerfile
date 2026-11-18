@@ -31,7 +31,7 @@ RUN NODE_OPTIONS="--max-old-space-size=5250" VITE_OTEL_EXPORTER_OTLP_TRACES_ENDP
 # List the client's production dependencies in an SBOM that Trivy picks up.
 RUN pnpm --filter client sbom --sbom-format cyclonedx --prod --lockfile-only > /app/client/coop-client.cdx.json
 
-FROM nginx:1.31.8-alpine AS serve
+FROM nginx:1.31.9-alpine AS serve
 COPY --from=build /app/client/build /usr/share/nginx/html
 # Outside the nginx root so it isn't served.
 COPY --from=build /app/client/coop-client.cdx.json /usr/share/sbom/
