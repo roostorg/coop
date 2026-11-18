@@ -7,14 +7,11 @@
  * logic (i.e. run the queries against replicas, add caching, etc) and makes
  * the consumers much more unit testable.
  */
-import { sql, type Kysely } from 'kysely';
-
 import { inject } from '../iocContainer/utils.js';
-import { type CombinedPg } from '../services/combinedDbTypes.js';
 import { type LocationArea } from '../services/moderationConfigService/index.js';
 import { cached } from '../utils/caching.js';
 import { jsonParse, jsonStringify } from '../utils/encoding.js';
-import { makeKyselyTransactionWithRetry } from '../utils/kyselyTransactionWithRetry.js';
+import { makePrismaTransactionWithRetry } from '../utils/prismaTransactionWithRetry.js';
 import { getUtcDateOnlyString } from '../utils/time.js';
 
 export const makeGetEnabledRulesForItemTypeEventuallyConsistent = inject(
@@ -91,15 +88,13 @@ export type GetActionsForRuleEventuallyConsistent = ReturnType<
 >;
 
 export const makeGetLocationBankLocationsEventuallyConsistent = inject(
-  ['KyselyPgReadReplica'],
+  ['PrismaPgReadReplica'],
   (db) => {
     return cached({
       async producer(bankId: string) {
-        const rows = await db
-          .selectFrom('public.location_bank_locations')
-          .selectAll()
-          .where('bank_id', '=', bankId)
-          .execute();
+        const rows = await db.location_bank_locations.findMany({
+          where: { bank_id: bankId },
+        });
         return rows.map(
           (r) =>
             ({
@@ -167,42 +162,34 @@ export type GetImageBankEventuallyConsistent = ReturnType<
 >;
 
 export const makeRecordRuleActionLimitUsage = inject(
-  ['KyselyPg', 'Tracer'],
+  ['PrismaPg', 'Tracer'],
   (db, tracer) => {
-    const transactionWithRetry = makeKyselyTransactionWithRetry(
-      db as Kysely<CombinedPg>,
-    );
+    const transactionWithRetry = makePrismaTransactionWithRetry(db);
 
     async function recordRuleActionLimitUsage(ruleIds: readonly string[]) {
       if (ruleIds.length === 0) {
         return;
       }
 
-      const today = String(getUtcDateOnlyString());
-      await transactionWithRetry(async (trx) => {
-        await trx
-          .updateTable('public.rules')
-          .set({
-            daily_actions_run: sql`daily_actions_run + 1`,
-          })
-          .where('id', 'in', [...ruleIds])
-          .where('last_action_date', '=', today)
-          .execute();
+      // `last_action_date` is a `date` column; Prisma takes a Date at UTC
+      // midnight for it.
+      const today = new Date(String(getUtcDateOnlyString()));
+      await transactionWithRetry(async (tx) => {
+        await tx.rules.updateMany({
+          data: { daily_actions_run: { increment: 1 } },
+          where: { id: { in: [...ruleIds] }, last_action_date: today },
+        });
 
-        await trx
-          .updateTable('public.rules')
-          .set({
-            daily_actions_run: 1,
-            last_action_date: today,
-          })
-          .where('id', 'in', [...ruleIds])
-          .where((eb) =>
-            eb.or([
-              eb('last_action_date', 'is', null),
-              eb('last_action_date', '!=', today),
-            ]),
-          )
-          .execute();
+        await tx.rules.updateMany({
+          data: { daily_actions_run: 1, last_action_date: today },
+          where: {
+            id: { in: [...ruleIds] },
+            OR: [
+              { last_action_date: null },
+              { last_action_date: { not: today } },
+            ],
+          },
+        });
       });
     }
 

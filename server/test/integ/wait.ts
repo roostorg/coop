@@ -251,7 +251,7 @@ export async function waitForReportInClickHouse(
  * they expect to see.
  */
 export async function waitForJobCreationInPostgres(
-  deps: Pick<Dependencies, 'KyselyPg'>,
+  deps: Pick<Dependencies, 'PrismaPg'>,
   opts: {
     orgId: string;
     itemIdentifier: ItemIdentifier;
@@ -261,25 +261,22 @@ export async function waitForJobCreationInPostgres(
   const { orgId, itemIdentifier } = opts;
   return waitFor(
     `job_creations row for item ${itemIdentifier.id}`,
-    async () => {
-      const row = await deps.KyselyPg.selectFrom(
-        'manual_review_tool.job_creations',
-      )
-        .select([
-          'id',
-          'org_id',
-          'item_id',
-          'item_type_id',
-          'queue_id',
-          'enqueue_source_info',
-        ])
-        .where('org_id', '=', orgId)
-        .where('item_id', '=', itemIdentifier.id)
-        .where('item_type_id', '=', itemIdentifier.typeId)
-        .limit(1)
-        .executeTakeFirst();
-      return row ?? null;
-    },
+    async () =>
+      deps.PrismaPg.job_creations.findFirst({
+        select: {
+          id: true,
+          org_id: true,
+          item_id: true,
+          item_type_id: true,
+          queue_id: true,
+          enqueue_source_info: true,
+        },
+        where: {
+          org_id: orgId,
+          item_id: itemIdentifier.id,
+          item_type_id: itemIdentifier.typeId,
+        },
+      }),
     { timeoutMs: opts.timeoutMs },
   );
 }
