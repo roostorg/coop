@@ -32,6 +32,8 @@ export default [
       'transpiled/**',
       'coverage/**',
       'lib/cache/**',
+      'prisma-generated/**',
+      'prisma.config.ts',
     ],
   },
   ...flatConfigs.map((config) =>

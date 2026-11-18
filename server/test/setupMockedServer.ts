@@ -74,6 +74,7 @@ export async function getBottleContainerWithIOMocks(
     const pool = opts.kyselyPool;
     bottle.factory('KyselyPgPool', () => pool);
     bottle.factory('KyselyPgReadReplica', (container) => container.KyselyPg);
+    bottle.factory('PrismaPgReadReplica', (container) => container.PrismaPg);
   }
 
   // The mutation rule below is a false positive, as we're just doing
