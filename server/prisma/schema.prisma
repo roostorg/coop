@@ -1447,3 +1447,132 @@ enum reporting_rule_status {
 
   @@schema("reporting_rules")
 }
+
+// Materialized views. `prisma db pull` does not introspect these, so they are
+// declared by hand; Prisma never creates, alters or refreshes them.
+
+view appeals_routing_rule_versions {
+  id                   String                       @db.VarChar(255)
+  name                 String?                      @db.VarChar(255)
+  org_id               String?                      @db.VarChar(255)
+  description          String?                      @db.VarChar(255)
+  status               appeals_routing_rule_status?
+  creator_id           String?                      @db.VarChar(255)
+  condition_set        Json?
+  sequence_number      Int?
+  destination_queue_id String?                      @db.VarChar(255)
+  version              DateTime                     @db.Timestamptz(6)
+  is_current           Boolean?
+
+  @@unique([id, version])
+  @@schema("manual_review_tool")
+}
+
+view routing_rule_versions {
+  id                   String               @db.VarChar(255)
+  name                 String?              @db.VarChar(255)
+  org_id               String?              @db.VarChar(255)
+  description          String?              @db.VarChar(255)
+  status               routing_rule_status?
+  creator_id           String?              @db.VarChar(255)
+  condition_set        Json?
+  sequence_number      Int?
+  destination_queue_id String?              @db.VarChar(255)
+  version              DateTime             @db.Timestamptz(6)
+  is_current           Boolean?
+
+  @@unique([id, version])
+  @@schema("manual_review_tool")
+}
+
+view action_versions {
+  id                           String                 @db.VarChar(255)
+  name                         String?                @db.VarChar(255)
+  description                  String?                @db.VarChar(255)
+  callback_url                 String?                @db.VarChar(255)
+  org_id                       String?                @db.VarChar(255)
+  callback_url_headers         Json?
+  callback_url_body            Json?
+  penalty                      user_penalty_severity?
+  applies_to_all_items_of_kind item_type_kind[]
+  version                      DateTime               @db.Timestamptz(6)
+  is_current                   Boolean?
+
+  @@unique([id, version])
+  @@schema("public")
+}
+
+view item_type_versions {
+  id                     String          @db.VarChar(255)
+  name                   String?         @db.VarChar(255)
+  description            String?         @db.VarChar(255)
+  fields                 Json[]
+  org_id                 String?         @db.VarChar(255)
+  kind                   item_type_kind?
+  display_name_field     String?         @db.VarChar(255)
+  creator_id_field       String?         @db.VarChar(255)
+  thread_id_field        String?         @db.VarChar(255)
+  parent_id_field        String?         @db.VarChar(255)
+  created_at_field       String?         @db.VarChar(255)
+  is_deleted_field       String?         @db.VarChar(255)
+  profile_icon_field     String?         @db.VarChar(255)
+  background_image_field String?         @db.VarChar(255)
+  ip_address_field       String?         @db.VarChar(255)
+  email_field            String?         @db.VarChar(255)
+  is_default_user        Boolean?
+  version                DateTime        @db.Timestamptz(6)
+  is_current             Boolean?
+
+  @@unique([id, version])
+  @@schema("public")
+}
+
+view policy_versions {
+  id         String                 @db.VarChar(255)
+  name       String?                @db.VarChar(255)
+  org_id     String?                @db.VarChar(255)
+  parent_id  String?                @db.VarChar(255)
+  penalty    user_penalty_severity?
+  version    DateTime               @db.Timestamptz(6)
+  is_current Boolean?
+
+  @@unique([id, version])
+  @@schema("public")
+}
+
+view rule_versions {
+  id                  String     @db.VarChar(255)
+  name                String?    @db.VarChar(255)
+  description         String?    @db.VarChar(255)
+  status_if_unexpired String?    @db.VarChar(255)
+  tags                String[]   @db.VarChar(255)
+  max_daily_actions   Int?
+  org_id              String?    @db.VarChar(255)
+  creator_id          String?    @db.VarChar(255)
+  expiration_time     DateTime?  @db.Timestamptz(6)
+  rule_type           rule_type?
+  condition_set       Json?
+  is_current          Boolean?
+  action_ids          String[]   @db.VarChar
+  item_type_ids       String[]   @db.VarChar
+  policy_ids          String[]   @db.VarChar
+  version             DateTime   @db.Timestamptz(6)
+
+  @@unique([id, version])
+  @@schema("public")
+}
+
+view reporting_rule_versions {
+  id            String                 @db.VarChar(255)
+  name          String?                @db.VarChar(255)
+  org_id        String?                @db.VarChar(255)
+  description   String?                @db.VarChar(255)
+  status        reporting_rule_status?
+  creator_id    String?                @db.VarChar(255)
+  condition_set Json?
+  version       DateTime               @db.Timestamptz(6)
+  is_current    Boolean?
+
+  @@unique([id, version])
+  @@schema("reporting_rules")
+}

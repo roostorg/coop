@@ -6,7 +6,10 @@
 import pg from 'pg';
 
 import { getPgConnectionParams } from '../../iocContainer/index.js';
-import { makePrismaClient } from '../../storage/prisma/index.js';
+import {
+  isPrismaTransaction,
+  makePrismaClient,
+} from '../../storage/prisma/index.js';
 import { makePrismaTransactionWithRetry } from '../../utils/prismaTransactionWithRetry.js';
 import { createTransactionalTestDb } from './transactionalPgPool.js';
 
@@ -34,10 +37,12 @@ describe('createTransactionalTestDb with Prisma', () => {
     try {
       const prisma = makePrismaClient(tdb.pool);
       const transactionWithRetry = makePrismaTransactionWithRetry(prisma);
+      expect(isPrismaTransaction(prisma)).toBe(false);
 
       await transactionWithRetry(
         { isolationLevel: 'Serializable' },
         async (tx) => {
+          expect(isPrismaTransaction(tx)).toBe(true);
           await tx.scheduled_jobs_info.create({
             data: { job_name: jobName, last_run: new Date(0) },
           });

@@ -1,4 +1,5 @@
 import {
+  markPrismaTransaction,
   Prisma,
   type PrismaPgClient,
   type PrismaPgTransaction,
@@ -62,12 +63,15 @@ export function makePrismaTransactionWithRetry(prisma: PrismaPgClient) {
     while (remainingTries > 0) {
       remainingTries -= 1;
       try {
-        return await prisma.$transaction(callback, {
-          ...(options.isolationLevel
-            ? { isolationLevel: options.isolationLevel }
-            : {}),
-          timeout: options.timeout ?? 30_000,
-        });
+        return await prisma.$transaction(
+          async (tx) => callback(markPrismaTransaction(tx)),
+          {
+            ...(options.isolationLevel
+              ? { isolationLevel: options.isolationLevel }
+              : {}),
+            timeout: options.timeout ?? 30_000,
+          },
+        );
       } catch (e: unknown) {
         if (!isSerializationFailure(e)) {
           throw e;

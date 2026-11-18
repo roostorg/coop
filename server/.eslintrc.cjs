@@ -30,6 +30,10 @@ const logErrorJsonSelector = 'CallExpression[callee.name="logErrorJson"]';
 const rawKyselyTransactionSelector =
   'CallExpression[arguments.length=0] > MemberExpression[property.name="transaction"]';
 
+// Prisma counterpart: `prisma.$transaction(...)` outside the retrying wrapper.
+const rawPrismaTransactionSelector =
+  'CallExpression > MemberExpression[property.name="$transaction"]';
+
 const badHttpClientsImportSelector =
   'ImportDeclaration[source.value=/^(axios|node-fetch)$/]';
 const badHttpClientUseSelector = 'CallExpression[callee.name="fetch"]';
@@ -106,6 +110,13 @@ const restrictedSyntax = [
       'instead of calling `kysely.transaction()` directly — it retries on SQLSTATE 40001. ' +
       'Callbacks must be retry-safe: any non-DB side effects (HTTP, queue publishes, etc.) ' +
       'must be idempotent or deferred until after commit.',
+  },
+  {
+    selector: rawPrismaTransactionSelector,
+    message:
+      'Use `makePrismaTransactionWithRetry` (from utils/prismaTransactionWithRetry.js) ' +
+      'instead of calling `prisma.$transaction()` directly — it retries on SQLSTATE 40001 ' +
+      'and marks the client so `isPrismaTransaction` works.',
   },
   {
     selector: badHttpClientsImportSelector,
@@ -668,12 +679,17 @@ module.exports = {
     },
     {
       // The wrapper itself must call `kysely.transaction().execute(...)`.
-      files: ['./utils/kyselyTransactionWithRetry.ts'],
+      files: [
+        './utils/kyselyTransactionWithRetry.ts',
+        './utils/prismaTransactionWithRetry.ts',
+      ],
       rules: {
         'no-restricted-syntax': [
           'error',
           ...restrictedSyntax.filter(
-            (it) => it.selector != rawKyselyTransactionSelector,
+            (it) =>
+              it.selector != rawKyselyTransactionSelector &&
+              it.selector != rawPrismaTransactionSelector,
           ),
         ],
       },

@@ -26,3 +26,28 @@ export type PrismaPgClient = ReturnType<typeof makePrismaClient>;
 
 /** The client handed to an interactive `$transaction` callback. */
 export type PrismaPgTransaction = Prisma.TransactionClient;
+
+/**
+ * Either the root client or an interactive-transaction client. Modules that
+ * can run inside a caller's transaction take this.
+ */
+export type PrismaPgQueryable = PrismaPgClient | PrismaPgTransaction;
+
+const transactionClients = new WeakSet<object>();
+
+/**
+ * Records `tx` as an interactive-transaction client. Prisma's transaction
+ * client is a proxy that still answers `'$transaction' in tx`, so membership
+ * here is the only reliable test. `makePrismaTransactionWithRetry` calls this.
+ */
+export function markPrismaTransaction<T extends object>(tx: T): T {
+  transactionClients.add(tx);
+  return tx;
+}
+
+/** Prisma's counterpart to Kysely's `db.isTransaction`. */
+export function isPrismaTransaction(
+  client: PrismaPgQueryable,
+): client is PrismaPgTransaction {
+  return transactionClients.has(client);
+}
