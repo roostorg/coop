@@ -1,12 +1,11 @@
 import { faker } from '@faker-js/faker';
-import express, { type ErrorRequestHandler } from 'express';
 import request from 'supertest';
 import { uid } from 'uid';
 
+import { makeBodySchemaTestServer } from '../../test/adonisTestHelpers.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../test/fixtureHelpers/createUser.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
-import { createBodySchemaValidator } from '../../utils/bodySchemaValidation.js';
 import itemRoutes from './ItemRoutes.js';
 
 describe('POST Items', () => {
@@ -153,19 +152,10 @@ describe('POST Items', () => {
 });
 
 test('POST /items/async accepts object data and rejects arrays and null', async () => {
-  const app = express();
-  app.use(express.json());
   const schema = itemRoutes.routes.find(
     ({ method, path }) => method === 'post' && path === '/async/',
   )!.bodySchema!;
-  app.post(
-    '/api/v1/items/async',
-    createBodySchemaValidator(schema),
-    (_req, res) => res.sendStatus(204),
-  );
-  app.use(((error, _req, res, _next) => {
-    res.status(error.status ?? 500).json(error);
-  }) satisfies ErrorRequestHandler);
+  const app = await makeBodySchemaTestServer('/api/v1/items/async', schema);
   const item = { id: 'i', typeId: 't' };
 
   await request(app)
@@ -181,19 +171,10 @@ test('POST /items/async accepts object data and rejects arrays and null', async 
 });
 
 test('POST /items/async requires exactly one valid item type selector branch', async () => {
-  const app = express();
-  app.use(express.json());
   const schema = itemRoutes.routes.find(
     ({ method, path }) => method === 'post' && path === '/async/',
   )!.bodySchema!;
-  app.post(
-    '/api/v1/items/async',
-    createBodySchemaValidator(schema),
-    (_req, res) => res.sendStatus(204),
-  );
-  app.use(((error, _req, res, _next) => {
-    res.status(error.status ?? 500).json(error);
-  }) satisfies ErrorRequestHandler);
+  const app = await makeBodySchemaTestServer('/api/v1/items/async', schema);
   const item = { id: 'item-1', data: {} };
 
   for (const [selector, status] of [

@@ -44,19 +44,18 @@ export type SubmitActionInput = v.InferInput<typeof submitActionInputSchema>;
 export default {
   pathPrefix: '/actions',
   routes: [
-    route.get<GetActionsOutput>('/', (deps) => [
-      createApiKeyMiddleware<never, GetActionsOutput>(deps),
-      getActions(deps),
-    ]),
+    route.get<GetActionsOutput>(
+      '/',
+      { middleware: (deps) => [createApiKeyMiddleware(deps)] },
+      getActions,
+    ),
     route.post<SubmitActionInput, undefined>(
       '/',
       {
         bodySchema: submitActionInputSchema,
+        middleware: (deps) => [createApiKeyMiddleware(deps)],
       },
-      (deps) => [
-        createApiKeyMiddleware<SubmitActionInput, undefined>(deps),
-        submitAction(deps),
-      ],
+      submitAction,
     ),
   ],
 } as Controller;

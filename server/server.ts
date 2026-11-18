@@ -1,54 +1,50 @@
-import express from 'express';
+import {
+  type IncomingMessage,
+  type Server as NodeServer,
+  type ServerResponse,
+} from 'node:http';
+import { type Router } from '@adonisjs/core/http';
+import type { AppEnvironments } from '@adonisjs/core/types/app';
 
-import makeApiApp from './api.js';
+import { createCoopApp } from './adonis/createApp.js';
 import { type Dependencies } from './iocContainer/index.js';
 
-export default async function makeWWWServer(deps: Dependencies) {
-  const { app: apiApp, shutdown } = await makeApiApp(deps);
-  const app = express();
+/**
+ * Boots the AdonisJS application and returns its request handler, which can
+ * be passed to `http.createServer` or supertest. All routes are under
+ * `/api/v1` (see `start/routes.ts`).
+ *
+ * `deps` replaces the service graph the app would otherwise build with
+ * `getBottle()`; the test harness passes a mocked one.
+ */
+export default async function makeWWWServer(
+  deps?: Dependencies,
+  opts: {
+    environment?: Extract<AppEnvironments, 'web' | 'test'>;
+    /** Test-only routes, registered after the app's own. */
+    extraRoutes?: (router: Router) => void;
+  } = {},
+) {
+  const environment = opts.environment ?? 'web';
+  const { app } = await createCoopApp(environment, { deps });
+  await app.boot();
 
-  // Traffic is routed to our app via: NLB -> ALB -> Express. The
-  // NLB terminates TLS, so the NLB -> ALB request is over HTTP. As a
-  // result, when the ALB hits express, it sets the `x-forwarded-proto` header
-  // to `http`. This causes express to think the request is insecure, which
-  // cause express-session to refuse to send a session cookie (since we mark our
-  // session cookies with the `Secure` flag, which is designed to prevent both
-  // server and client from sending the cookie in plaintext over HTTP).
-  // express-session intentionally does not have a way to force it to skip the
-  // secure check and unconditionally send the session cookie (see
-  // https://github.com/expressjs/session/issues/785), so we have two options:
-  //
-  // 1. Override `req.secure` to always return true, so express-session thinks
-  //    the request is secure.
-  //
-  // 2. Actually have the request hit the ALB over HTTPS, which involves either
-  //    having the NLB re-encrypt the traffic on the way to the ALB, or having
-  //    the NLB re-encrypt it and pass that through.
-  //
-  // Option 2 is more complex, so we go with option 1 for now. However, the risk
-  // with option 1 is that different code/middleware will check different things
-  // to determine whether the request is secure, and those checks disagreeing
-  // could lead to subtle bugs. So, we limit that risk by patching as many
-  // things as possible (i.e, also `req.protocol` and `x-forwarded-proto`); we
-  // don't deal with the `Forwarded` header since that's more complicated and
-  // less widely supported, so less likely to be checked by middleware.
-  //
-  // Note: forcing the ALB to set `x-forwarded-proto` to `https` is not an
-  // option, as AWS doesn't support that.
-  app.set('trust proxy', true);
-  app.use((req, _res, next) => {
-    // Define our overrides as getter properties to be consistent with their
-    // definition in express, just in case.
-    Object.defineProperty(req, 'secure', { get: () => true });
-    Object.defineProperty(req, 'protocol', { get: () => 'https' });
-    // NB: we overwrite the x-forwarded-proto, rather than append to it with a
-    // comma, because x-forwarded-proto is a non-standardized header with no spec,
-    // and it's not clear if appending is actually kosher/universally supported.
-    req.headers['x-forwarded-proto'] = 'https';
-    next();
+  let handle!: (req: IncomingMessage, res: ServerResponse) => Promise<void>;
+  let setNodeServer!: (server: NodeServer) => void;
+  await app.start(async () => {
+    const server = await app.container.make('server');
+    opts.extraRoutes?.(await app.container.make('router'));
+    await server.boot();
+    handle = server.handle.bind(server);
+    setNodeServer = server.setNodeServer.bind(server);
   });
 
-  app.use('/api/v1', apiApp);
-
-  return { app, shutdown };
+  return {
+    app: handle,
+    adonisApp: app,
+    setNodeServer,
+    async shutdown() {
+      await app.terminate();
+    },
+  };
 }

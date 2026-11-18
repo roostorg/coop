@@ -8,7 +8,7 @@ import {
 } from '../../services/moderationConfigService/index.js';
 import { hasOrgId } from '../../utils/apiKeyMiddleware.js';
 import { makeUnauthenticatedError } from '../../utils/errors.js';
-import { type RequestHandlerWithBodies } from '../../utils/route-helpers.js';
+import { type RouteHandler } from '../../utils/route-helpers.js';
 
 export type GetActionsOutput = {
   actions: (Pick<
@@ -29,14 +29,14 @@ export default function getActions({
     Dependencies['ModerationConfigService'],
     'getActions' | 'getActionItemTypeIds'
   >;
-}): RequestHandlerWithBodies<never, GetActionsOutput> {
-  return async (req, res, next) => {
-    if (!hasOrgId(req)) {
-      return next(
-        makeUnauthenticatedError('Invalid API Key', { shouldErrorSpan: true }),
-      );
+}): RouteHandler<never, GetActionsOutput> {
+  return async (ctx) => {
+    if (!hasOrgId(ctx)) {
+      throw makeUnauthenticatedError('Invalid API Key', {
+        shouldErrorSpan: true,
+      });
     }
-    const { orgId } = req;
+    const { orgId } = ctx;
     const [actions, itemTypeIds] = await Promise.all([
       ModerationConfigService.getActions({ orgId }),
       ModerationConfigService.getActionItemTypeIds({ orgId }),
@@ -59,6 +59,6 @@ export default function getActions({
         ),
       ),
     }));
-    res.status(200).json({ actions: output });
+    return { actions: output };
   };
 }

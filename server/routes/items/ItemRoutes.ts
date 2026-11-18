@@ -19,11 +19,9 @@ export default {
       '/async/',
       {
         bodySchema: submitItemsInputSchema,
+        middleware: (deps) => [createApiKeyMiddleware(deps)],
       },
-      (deps) => [
-        createApiKeyMiddleware<SubmitItemsInput, undefined>(deps),
-        submitItems(deps),
-      ],
+      submitItems,
     ),
   ],
 } satisfies Controller;

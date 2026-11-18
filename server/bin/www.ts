@@ -3,7 +3,6 @@ import http from 'http';
 import { promisify } from 'util';
 import _ from 'lodash';
 
-import getBottle from '../iocContainer/index.js';
 import makeServer from '../server.js';
 import {
   getIntegrationRegistry,
@@ -13,9 +12,7 @@ import { logErrorJson, logJson } from '../utils/logging.js';
 import { sleep } from '../utils/misc.js';
 import { printStartupBanner } from '../utils/startupBanner.js';
 
-const { app, shutdown } = await getBottle().then(async (bottle) =>
-  makeServer(bottle.container),
-);
+const { app, setNodeServer, shutdown } = await makeServer();
 
 // Eager-load integration registry so config/plugins are read at startup (fail fast, and so logo URLs are set).
 try {
@@ -36,8 +33,10 @@ try {
 }
 
 const port = parsePort(process.env.PORT) ?? 8080;
-app.set('port', port);
 
+// Our own http server rather than AdonisJS' `ignitor.httpServer()`: that one
+// binds to 0.0.0.0 (IPv4 only; Node's default is every interface) and has no
+// keep-alive or connection-draining handling.
 const server = http
   .createServer(app)
   .listen(port, () => {
@@ -74,6 +73,7 @@ const server = http
 // prevent the 502 errors we've been seeing. See this article for more info:
 // https://adamcrowder.net/posts/node-express-api-and-aws-alb-502/
 server.keepAliveTimeout = 65_000;
+setNodeServer(server);
 
 const shutdownOnce = _.once(async () => {
   try {

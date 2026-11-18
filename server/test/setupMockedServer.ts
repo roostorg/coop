@@ -1,3 +1,4 @@
+import { type Router } from '@adonisjs/core/http';
 import { ProxyTracerProvider } from '@opentelemetry/api';
 import type pg from 'pg';
 import * as superTest from 'supertest';
@@ -31,17 +32,22 @@ export function disableConsoleLogging() {
 }
 
 /**
- * Boots the Express app against real Postgres (analytics and queues mocked),
+ * Boots the AdonisJS app against real Postgres (analytics and queues mocked),
  * inside a transaction that `rollback()` discards so tests need no cleanup.
  * Only Postgres is rolled back. Usually used via
  * `makeTransactionalTestWithFixture`.
  */
-export async function makeMockedServer() {
+export async function makeMockedServer(
+  opts: { extraRoutes?: (router: Router) => void } = {},
+) {
   const tdb = createTransactionalTestDb(getPgConnectionParams());
   await tdb.begin();
 
   const deps = await getBottleContainerWithIOMocks({ kyselyPool: tdb.pool });
-  const { app: server, shutdown: shutdownServer } = await makeServer(deps);
+  const { app: server, shutdown: shutdownServer } = await makeServer(
+    deps,
+    { environment: 'test', extraRoutes: opts.extraRoutes },
+  );
   const request = superTest.agent(server);
 
   return {

@@ -33,7 +33,7 @@ import {
   type SerializableError,
 } from '../../utils/errors.js';
 import { safeGet, safePick, sleep } from '../../utils/misc.js';
-import { type RequestHandlerWithBodies } from '../../utils/route-helpers.js';
+import { type RouteHandler } from '../../utils/route-helpers.js';
 import { instantiateOpaqueType } from '../../utils/typescript-types.js';
 import {
   type EvaluateContentInputCamelCase,
@@ -47,11 +47,11 @@ export default function submitContent({
   ModerationConfigService,
   Meter,
 }: // @ts-ignore
-Dependencies): RequestHandlerWithBodies<
+Dependencies): RouteHandler<
   EvaluateContentInputCamelCase,
   EvaluateContentOutput
 > {
-  return async (req, res, next) => {
+  return async (ctx, body) => {
     const replyNowPromise = sleep(24_000);
 
     // Generate an id for this request to correlate logs. It doesn't need to be
@@ -69,14 +69,17 @@ Dependencies): RequestHandlerWithBodies<
       try {
         // NB: here, we parse the url w/ UrlSearchParams for simplicity and
         // safety, as qs has lots of edge cases. We pass a dummy base url
-        // (example.com) because `req.originalUrl` will be a relative url, which
+        // (example.com) because `ctx.request.url(true)` is a relative url, which
         // will cause the URL constructor to throw if no base is given.
         //
         // Rather than make our own syntax for passing an array (with
         // comma-separated lists or some `param[]=` syntax like qs uses), we'll
         // just make callers repeat the query param name, and `getAll` will
         // return an array of the values.
-        return new URL(req.originalUrl, 'http://example.com/').searchParams
+        return new URL(
+          ctx.request.url(true),
+          'http://example.com/',
+        ).searchParams
           .getAll('includeDerivedField')
           .map(
             (it) =>
@@ -98,23 +101,21 @@ Dependencies): RequestHandlerWithBodies<
     })();
 
     if (requestedDerivedFields instanceof CoopError) {
-      return next(requestedDerivedFields);
+      throw requestedDerivedFields;
     }
 
     // Get orgId from request (set by API key middleware)
-    if (!hasOrgId(req)) {
-      return next(
-        makeBadRequestError('Invalid API Key', {
-          detail:
-            'Something went wrong finding or validating your API key. ' +
-            'Make sure the proper key is provided in the x-api-key header.',
-          requestId: fromCorrelationId(requestId),
-          shouldErrorSpan: true,
-        }),
-      );
+    if (!hasOrgId(ctx)) {
+      throw makeBadRequestError('Invalid API Key', {
+        detail:
+          'Something went wrong finding or validating your API key. ' +
+          'Make sure the proper key is provided in the x-api-key header.',
+        requestId: fromCorrelationId(requestId),
+        shouldErrorSpan: true,
+      });
     }
 
-    const { orgId } = req;
+    const { orgId } = ctx;
     const activeSpan = Tracer.getActiveSpan();
     if (activeSpan?.isRecording()) {
       activeSpan.setAttribute('orgId', orgId);
@@ -128,12 +129,9 @@ Dependencies): RequestHandlerWithBodies<
     //    skip batching when we write to the outbox table. This supports our low volume, low latency
     //    requirements for smaller, latency-sensitive users.
 
-    const shouldReturnImmediately =
-      'contentId' in req.body && !Boolean(req.body.sync);
+    const shouldReturnImmediately = 'contentId' in body && !Boolean(body.sync);
     const skipWarehouseEventualWriteBatch =
-      'contentId' in req.body && Boolean(req.body.sync);
-
-    const { body } = req;
+      'contentId' in body && Boolean(body.sync);
 
     // Fetch ContentType from the passed in content_type string
     // TODO: error handling. Our controllers still need much better error
@@ -152,14 +150,12 @@ Dependencies): RequestHandlerWithBodies<
     if (contentItemType == null) {
       // TODO: Also log an error in the cases where we couldn't find the itemType
       // which is when itemSubmission is undefined
-      return next(
-        makeBadRequestError('Content type not found', {
-          type: [ErrorType.UnrecognizedContentType],
-          detail: `We could not find a ContentType created by your organization called ${contentTypeName}`,
-          requestId: fromCorrelationId(requestId),
-          shouldErrorSpan: true,
-        }),
-      );
+      throw makeBadRequestError('Content type not found', {
+        type: [ErrorType.UnrecognizedContentType],
+        detail: `We could not find a ContentType created by your organization called ${contentTypeName}`,
+        requestId: fromCorrelationId(requestId),
+        shouldErrorSpan: true,
+      });
     }
 
     // TODO: Let caller pass in a content type version to use.
@@ -184,13 +180,14 @@ Dependencies): RequestHandlerWithBodies<
         skipWarehouseEventualWriteBatch,
       );
 
-      return next(itemSubmissionOrError.error);
+      throw itemSubmissionOrError.error;
     }
 
     // See comment above definition of shouldReturnImmediately - return 202 immediately,
     // then keep executing other code
     if (shouldReturnImmediately) {
-      res.status(202).end();
+      ctx.response.status(202);
+      ctx.response.finish();
     }
 
     // Run rules
@@ -271,7 +268,7 @@ Dependencies): RequestHandlerWithBodies<
       ]);
 
       if (!shouldReturnImmediately) {
-        return res.status(200).send({
+        return {
           // TODO: make nullable or otherwise able to reflect the reality that
           // this actions list is "best effort" (i.e., we might not have the
           // real list before the time limit's up).
@@ -279,7 +276,7 @@ Dependencies): RequestHandlerWithBodies<
             safePick(it, ['id', 'name']),
           ),
           derivedFields: Object.fromEntries(derivedFieldEntries),
-        });
+        };
       }
     } catch (e: unknown) {
       const activeSpan = Tracer.getActiveSpan();
@@ -298,13 +295,12 @@ Dependencies): RequestHandlerWithBodies<
         skipWarehouseEventualWriteBatch,
       );
 
-      return next(
-        makeInternalServerError(
-          'One or more rules failed to run on the provided content.',
-          { requestId: fromCorrelationId(requestId), shouldErrorSpan: true },
-        ),
+      throw makeInternalServerError(
+        'One or more rules failed to run on the provided content.',
+        { requestId: fromCorrelationId(requestId), shouldErrorSpan: true },
       );
     }
+    return undefined;
   };
 }
 
