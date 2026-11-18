@@ -1,27 +1,28 @@
-import { type Kysely } from 'kysely';
-
+import {
+  managerOf,
+  transactionWithRetry,
+  type TypeormDb,
+} from '../../../storage/typeorm/db.js';
+import {
+  ItemTypes,
+  ManualReviewHiddenItemFields,
+} from '../../../storage/typeorm/entities/index.js';
 import { makeNotFoundError } from '../../../utils/errors.js';
-import { makeKyselyTransactionWithRetry } from '../../../utils/kyselyTransactionWithRetry.js';
-import { type ModerationConfigServicePg } from '../../moderationConfigService/index.js';
 import { assertHiddenFieldsExist } from '../../moderationConfigService/modules/itemTypeSchemaValidation.js';
-import { type ManualReviewToolServicePg } from '../dbTypes.js';
-
-type JobRenderingPg = ManualReviewToolServicePg & ModerationConfigServicePg;
+import { type ItemSchema } from '../../moderationConfigService/types/itemTypes.js';
 
 export default class JobRendering {
-  constructor(readonly pgQuery: Kysely<JobRenderingPg>) {}
+  constructor(readonly db: TypeormDb) {}
 
   async getHiddenFieldsForItemType(opts: {
     orgId: string;
     itemTypeId: string;
   }) {
-    const res = await this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_hidden_item_fields')
-      .select(['hidden_fields'])
-      .where('org_id', '=', opts.orgId)
-      .where('item_type_id', '=', opts.itemTypeId)
-      .executeTakeFirst();
-
+    const manager = await managerOf(this.db);
+    const res = await manager.findOne(ManualReviewHiddenItemFields, {
+      select: { hidden_fields: true },
+      where: { org_id: opts.orgId, item_type_id: opts.itemTypeId },
+    });
     return res?.hidden_fields ?? [];
   }
 
@@ -30,47 +31,39 @@ export default class JobRendering {
     itemTypeId: string;
     hiddenFields: readonly string[];
   }) {
-    const setHiddenFields = async (query: Kysely<JobRenderingPg>) => {
+    return transactionWithRetry(this.db, {}, async (manager) => {
       if (opts.hiddenFields.length === 0) {
-        return query
-          .$extendTables<ManualReviewToolServicePg>()
-          .deleteFrom('manual_review_tool.manual_review_hidden_item_fields')
-          .where('org_id', '=', opts.orgId)
-          .where('item_type_id', '=', opts.itemTypeId)
-          .execute();
+        await manager.delete(ManualReviewHiddenItemFields, {
+          org_id: opts.orgId,
+          item_type_id: opts.itemTypeId,
+        });
+        return;
       }
 
-      const itemType = await query
-        .selectFrom('public.item_types')
-        .select('fields')
-        .where('id', '=', opts.itemTypeId)
-        .where('org_id', '=', opts.orgId)
-        .forUpdate()
-        .executeTakeFirst();
+      const itemType = await manager
+        .createQueryBuilder(ItemTypes, 'it')
+        .select('it.fields', 'fields')
+        .where('it.id = :id AND it.org_id = :orgId', {
+          id: opts.itemTypeId,
+          orgId: opts.orgId,
+        })
+        .setLock('pessimistic_write')
+        .getRawOne<{ fields: ItemSchema }>();
       if (itemType === undefined) {
         throw makeNotFoundError('Item type not found', {
           shouldErrorSpan: false,
         });
       }
       assertHiddenFieldsExist(itemType.fields, opts.hiddenFields);
-      return query
-        .$extendTables<ManualReviewToolServicePg>()
-        .insertInto('manual_review_tool.manual_review_hidden_item_fields')
-        .values({
+      await manager.upsert(
+        ManualReviewHiddenItemFields,
+        {
           org_id: opts.orgId,
           item_type_id: opts.itemTypeId,
           hidden_fields: [...opts.hiddenFields],
-        })
-        .onConflict((oc) =>
-          oc.columns(['org_id', 'item_type_id']).doUpdateSet({
-            hidden_fields: [...opts.hiddenFields],
-          }),
-        )
-        .execute();
-    };
-
-    return this.pgQuery.isTransaction
-      ? setHiddenFields(this.pgQuery)
-      : makeKyselyTransactionWithRetry(this.pgQuery)(setHiddenFields);
+        },
+        ['org_id', 'item_type_id'],
+      );
+    });
   }
 }

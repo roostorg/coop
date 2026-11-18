@@ -1,7 +1,12 @@
-import { sql, type Kysely } from 'kysely';
+import { Brackets, type SelectQueryBuilder } from 'typeorm';
 
+import { managerOf, type TypeormDb } from '../../../storage/typeorm/db.js';
+import {
+  Rules,
+  RulesAndItemTypes,
+  RulesLatestVersionsView,
+} from '../../../storage/typeorm/entities/index.js';
 import { getUtcDateOnlyString } from '../../../utils/time.js';
-import { type ModerationConfigServicePg } from '../dbTypes.js';
 import {
   RuleStatus,
   RuleType,
@@ -13,26 +18,27 @@ import {
   type PlainRuleWithLatestVersion,
 } from '../types/rules.js';
 
+// [column, alias] pairs; aliases are quoted, so camelCase survives.
 const ruleSelect = [
-  'r.id',
-  'r.name',
-  'r.description',
-  'r.status_if_unexpired as statusIfUnexpired',
-  'r.tags',
-  'r.max_daily_actions as maxDailyActions',
-  'r.daily_actions_run as dailyActionsRun',
-  'r.last_action_date as lastActionDate',
-  'r.created_at as createdAt',
-  'r.updated_at as updatedAt',
-  'r.org_id as orgId',
-  'r.creator_id as creatorId',
-  'r.expiration_time as expirationTime',
-  'r.condition_set as conditionSet',
-  'r.alarm_status as alarmStatus',
-  'r.alarm_status_set_at as alarmStatusSetAt',
-  'r.rule_type as ruleType',
-  'r.parent_id as parentId',
-  'rlv.version as latestVersionString',
+  ['r.id', 'id'],
+  ['r.name', 'name'],
+  ['r.description', 'description'],
+  ['r.status_if_unexpired', 'statusIfUnexpired'],
+  ['r.tags', 'tags'],
+  ['r.max_daily_actions', 'maxDailyActions'],
+  ['r.daily_actions_run', 'dailyActionsRun'],
+  ['r.last_action_date', 'lastActionDate'],
+  ['r.created_at', 'createdAt'],
+  ['r.updated_at', 'updatedAt'],
+  ['r.org_id', 'orgId'],
+  ['r.creator_id', 'creatorId'],
+  ['r.expiration_time', 'expirationTime'],
+  ['r.condition_set', 'conditionSet'],
+  ['r.alarm_status', 'alarmStatus'],
+  ['r.alarm_status_set_at', 'alarmStatusSetAt'],
+  ['r.rule_type', 'ruleType'],
+  ['r.parent_id', 'parentId'],
+  ['rlv.version', 'latestVersionString'],
 ] as const;
 
 type RuleRow = {
@@ -50,7 +56,7 @@ type RuleRow = {
   creatorId: string;
   expirationTime: Date | null;
   conditionSet: ConditionSet;
-  // Kysely returns the Postgres enum as a plain string; cast in rowToPlainRuleWithLatest.
+  // Raw rows carry the Postgres enum as a plain string; cast in rowToPlainRuleWithLatest.
   alarmStatus: string;
   alarmStatusSetAt: Date;
   ruleType: RuleType;
@@ -58,8 +64,34 @@ type RuleRow = {
   latestVersionString: string | null;
 };
 
-function enabledQuotaWhere(today: string) {
-  return sql<boolean>`(r.max_daily_actions is null or r.last_action_date is distinct from ${today}::date or (r.max_daily_actions is not null and r.daily_actions_run < r.max_daily_actions))`;
+// Rules with the latest version string, as `RuleRow`s via getRawMany.
+function selectRules(qb: SelectQueryBuilder<Rules>) {
+  const [[firstColumn, firstAlias], ...rest] = ruleSelect;
+  let query = qb
+    .leftJoin(RulesLatestVersionsView, 'rlv', 'rlv.rule_id = r.id')
+    .select(firstColumn, firstAlias);
+  for (const [column, alias] of rest) {
+    query = query.addSelect(column, alias);
+  }
+  return query;
+}
+
+function whereEnabled(qb: SelectQueryBuilder<Rules>, today: string) {
+  return qb
+    .andWhere('(r.expiration_time IS NULL OR r.expiration_time > now())')
+    .andWhere('r.status_if_unexpired IN (:...enabledStatuses)', {
+      enabledStatuses: [RuleStatus.LIVE, RuleStatus.BACKGROUND],
+    })
+    .andWhere(
+      new Brackets((b) =>
+        b
+          .where('r.max_daily_actions IS NULL')
+          .orWhere('r.last_action_date IS DISTINCT FROM CAST(:today AS date)', {
+            today,
+          })
+          .orWhere('r.daily_actions_run < r.max_daily_actions'),
+      ),
+    );
 }
 
 function rowToPlainRuleWithLatest(row: RuleRow): PlainRuleWithLatestVersion {
@@ -94,31 +126,23 @@ function rowToPlainRuleWithLatest(row: RuleRow): PlainRuleWithLatestVersion {
 
 export default class RuleReadOperations {
   constructor(
-    private readonly pgQuery: Kysely<ModerationConfigServicePg>,
-    private readonly pgQueryReplica: Kysely<ModerationConfigServicePg>,
+    private readonly pgQuery: TypeormDb,
+    private readonly pgQueryReplica: TypeormDb,
   ) {}
+
+  async #rules(readFromReplica: boolean) {
+    const manager = await managerOf(
+      readFromReplica ? this.pgQueryReplica : this.pgQuery,
+    );
+    return selectRules(manager.createQueryBuilder(Rules, 'r'));
+  }
 
   async getEnabledRulesForItemType(itemTypeId: string) {
     const today = String(getUtcDateOnlyString());
-    const rows = (await this.pgQueryReplica
-      .selectFrom('public.rules as r')
-      .innerJoin('public.rules_and_item_types as rit', 'rit.rule_id', 'r.id')
-      .leftJoin('public.rules_latest_versions as rlv', 'rlv.rule_id', 'r.id')
-      .select(ruleSelect)
-      .where('rit.item_type_id', '=', itemTypeId)
-      .where((eb) =>
-        eb.or([
-          eb('r.expiration_time', 'is', null),
-          eb('r.expiration_time', '>', sql<Date>`now()`),
-        ]),
-      )
-      .where('r.status_if_unexpired', 'in', [
-        RuleStatus.LIVE,
-        RuleStatus.BACKGROUND,
-      ])
-      .where(enabledQuotaWhere(today))
-      .execute()) as RuleRow[];
-
+    const query = (await this.#rules(true))
+      .innerJoin(RulesAndItemTypes, 'rit', 'rit.rule_id = r.id')
+      .where('rit.item_type_id = :itemTypeId', { itemTypeId });
+    const rows = await whereEnabled(query, today).getRawMany<RuleRow>();
     return rows.map(rowToPlainRuleWithLatest);
   }
 
@@ -133,20 +157,12 @@ export default class RuleReadOperations {
     orgId: string,
     opts?: { readFromReplica?: boolean },
   ): Promise<PlainRuleWithLatestVersion | null> {
-    const readFromReplica = opts?.readFromReplica ?? true;
-    const pg = readFromReplica ? this.pgQueryReplica : this.pgQuery;
-    const row = (await pg
-      .selectFrom('public.rules as r')
-      .leftJoin('public.rules_latest_versions as rlv', 'rlv.rule_id', 'r.id')
-      .select(ruleSelect)
-      .where('r.id', '=', ruleId)
-      .where('r.org_id', '=', orgId)
-      .executeTakeFirst()) as RuleRow | undefined;
-
-    if (row == null) {
-      return null;
-    }
-    return rowToPlainRuleWithLatest(row);
+    const row = await (
+      await this.#rules(opts?.readFromReplica ?? true)
+    )
+      .where('r.id = :ruleId AND r.org_id = :orgId', { ruleId, orgId })
+      .getRawOne<RuleRow>();
+    return row == null ? null : rowToPlainRuleWithLatest(row);
   }
 
   /**
@@ -157,42 +173,29 @@ export default class RuleReadOperations {
     orgId: string,
     opts?: { readFromReplica?: boolean },
   ): Promise<PlainRuleWithLatestVersion[]> {
-    const readFromReplica = opts?.readFromReplica ?? true;
-    const pg = readFromReplica ? this.pgQueryReplica : this.pgQuery;
-    const rows = (await pg
-      .selectFrom('public.rules as r')
-      .leftJoin('public.rules_latest_versions as rlv', 'rlv.rule_id', 'r.id')
-      .select(ruleSelect)
-      .where('r.org_id', '=', orgId)
-      .orderBy('r.name', 'asc')
-      .execute()) as RuleRow[];
-
+    const rows = await (
+      await this.#rules(opts?.readFromReplica ?? true)
+    )
+      .where('r.org_id = :orgId', { orgId })
+      .orderBy('r.name', 'ASC')
+      .getRawMany<RuleRow>();
     return rows.map(rowToPlainRuleWithLatest);
   }
 
   async findEnabledUserRules() {
     const today = String(getUtcDateOnlyString());
-    const rows = (await this.pgQueryReplica
-      .selectFrom('public.rules as r')
-      .leftJoin('public.rules_latest_versions as rlv', 'rlv.rule_id', 'r.id')
-      .select(ruleSelect)
-      .where('r.rule_type', '=', RuleType.USER)
-      .where(
-        sql<boolean>`not exists (select 1 from public.rules_and_item_types rit where rit.rule_id = r.id)`,
-      )
-      .where((eb) =>
-        eb.or([
-          eb('r.expiration_time', 'is', null),
-          eb('r.expiration_time', '>', sql<Date>`now()`),
-        ]),
-      )
-      .where('r.status_if_unexpired', 'in', [
-        RuleStatus.LIVE,
-        RuleStatus.BACKGROUND,
-      ])
-      .where(enabledQuotaWhere(today))
-      .execute()) as RuleRow[];
-
+    const query = (await this.#rules(true))
+      .where('r.rule_type = :ruleType', { ruleType: RuleType.USER })
+      .andWhere(
+        (qb) =>
+          `NOT EXISTS ${qb
+            .subQuery()
+            .select('1')
+            .from(RulesAndItemTypes, 'rit')
+            .where('rit.rule_id = r.id')
+            .getQuery()}`,
+      );
+    const rows = await whereEnabled(query, today).getRawMany<RuleRow>();
     return rows.map(rowToPlainRuleWithLatest);
   }
 }

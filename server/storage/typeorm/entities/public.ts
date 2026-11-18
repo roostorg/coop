@@ -17,6 +17,9 @@ import {
   type Relation,
 } from 'typeorm';
 
+import type { ItemSchema } from '../../../services/moderationConfigService/types/itemTypes.js';
+import type { ConditionSet } from '../../../services/moderationConfigService/types/rules.js';
+
 export type UserPenaltySeverity = 'NONE' | 'LOW' | 'MEDIUM' | 'HIGH' | 'SEVERE';
 export type ItemTypeKind = 'CONTENT' | 'USER' | 'THREAD';
 export type ActionType =
@@ -160,10 +163,10 @@ export class Actions {
   org_id!: string;
 
   @Column({ name: 'callback_url_headers', type: 'jsonb', nullable: true })
-  callback_url_headers!: unknown | null;
+  callback_url_headers!: Record<string, unknown> | null;
 
   @Column({ name: 'callback_url_body', type: 'jsonb', nullable: true })
-  callback_url_body!: unknown | null;
+  callback_url_body!: Record<string, unknown> | null;
 
   @Column({
     name: 'penalty',
@@ -661,7 +664,7 @@ export class ItemTypeVersionsView {
   description!: string | null;
 
   @ViewColumn({ name: 'fields' })
-  fields!: unknown[] | null;
+  fields!: ItemSchema | null;
 
   @ViewColumn({ name: 'org_id' })
   org_id!: string | null;
@@ -774,7 +777,7 @@ export class ItemTypes {
   kind!: ItemTypeKind;
 
   @Column({ name: 'fields', type: 'jsonb', array: true })
-  fields!: unknown[];
+  fields!: ItemSchema;
 
   @Column({
     name: 'created_at',
@@ -906,7 +909,7 @@ export class ItemTypesHistory {
   kind!: ItemTypeKind;
 
   @Column({ name: 'fields', type: 'jsonb', array: true })
-  fields!: unknown[];
+  fields!: ItemSchema;
 
   @Column({
     name: 'display_name_field',
@@ -1619,7 +1622,7 @@ export class RuleVersionsView {
   rule_type!: RuleType | null;
 
   @ViewColumn({ name: 'condition_set' })
-  condition_set!: unknown | null;
+  condition_set!: ConditionSet | null;
 
   @ViewColumn({ name: 'is_current' })
   is_current!: boolean | null;
@@ -1701,7 +1704,7 @@ export class Rules {
   expiration_time!: Date | null;
 
   @Column({ name: 'condition_set', type: 'jsonb' })
-  condition_set!: unknown;
+  condition_set!: ConditionSet;
 
   @Column({
     name: 'alarm_status',
@@ -1801,7 +1804,7 @@ export class RulesAndActions {
   sys_period!: string;
 
   @Column({ name: 'action_parameters', type: 'jsonb', default: () => "'{}'" })
-  action_parameters!: unknown;
+  action_parameters!: Record<string, unknown>;
 
   @ManyToOne('Actions', {
     onDelete: 'CASCADE',
@@ -2024,7 +2027,7 @@ export class RulesHistory {
   expiration_time!: Date | null;
 
   @Column({ name: 'condition_set', type: 'jsonb' })
-  condition_set!: unknown;
+  condition_set!: ConditionSet;
 
   @PrimaryColumn({ name: 'sys_period', type: 'tstzrange' })
   sys_period!: string;
@@ -2092,7 +2095,7 @@ export class SigningKeys {
   org_id!: string;
 
   @Column({ name: 'key_data', type: 'jsonb' })
-  key_data!: unknown;
+  key_data!: Record<string, unknown>;
 
   @Column({ name: 'created_at', type: 'timestamptz', default: () => 'now()' })
   created_at!: Date;
@@ -2209,7 +2212,7 @@ export class UserStrikeThresholds {
   actions!: string[];
 
   @Column({ name: 'action_parameters', type: 'jsonb', default: () => "'{}'" })
-  action_parameters!: unknown;
+  action_parameters!: Record<string, unknown>;
 
   @ManyToOne('Orgs', {
     onDelete: 'CASCADE',

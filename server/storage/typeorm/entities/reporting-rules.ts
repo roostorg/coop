@@ -14,6 +14,8 @@ import {
   type Relation,
 } from 'typeorm';
 
+import type { ConditionSet } from '../../../services/moderationConfigService/types/rules.js';
+
 export type ReportingRuleStatus = 'DRAFT' | 'BACKGROUND' | 'LIVE' | 'ARCHIVED';
 
 // No primary key in the database; ["id","sys_period"] is ORM-only.
@@ -145,7 +147,7 @@ export class ReportingRules {
   creator_id!: string;
 
   @Column({ name: 'condition_set', type: 'jsonb' })
-  condition_set!: unknown;
+  condition_set!: ConditionSet;
 
   @Column({
     name: 'sys_period',

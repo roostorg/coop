@@ -990,8 +990,8 @@ export default async function getBottle(
     'ModerationConfigService',
     (container) =>
       new ModerationConfigService(
-        container.KyselyPg,
-        container.KyselyPgReadReplica,
+        container.TypeormPg,
+        container.TypeormPgReadReplica,
         async (_) => {},
       ),
   );
@@ -1019,6 +1019,7 @@ export default async function getBottle(
       container.RoutingRuleExecutionLogger,
       container.KyselyPg,
       container.KyselyPgReadReplica,
+      container.TypeormPg,
       container.UserStatisticsService,
       container.getActionsByIdEventuallyConsistent,
       container.Tracer,
@@ -1779,7 +1780,7 @@ export default async function getBottle(
   register(bottle, 'SigningKeyPairService', makeSigningKeyPairService);
   bottle.factory(
     'SigningKeyPairStorageService',
-    (container) => new PostgresSigningKeyPairStorage(container.KyselyPg),
+    (container) => new PostgresSigningKeyPairStorage(container.TypeormPg),
   );
   bottle.value('ConfigService', { uiUrl: safeGetEnvVar('UI_URL') });
   bottle.value('S3StoreObjectFactory', s3StoreObjectFactory);

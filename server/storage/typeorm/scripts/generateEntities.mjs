@@ -54,7 +54,49 @@ const PSEUDO_PRIMARY_KEYS = {
 
 // Hand-written TS types for JSON(B) columns, keyed by schema.table.column.
 // Columns not listed here are typed `unknown`.
-const TS_TYPE_OVERRIDES = {};
+// [TS type, module to import it from, imported name]; paths are relative to
+// storage/typeorm/entities.
+const MC = '../../../services/moderationConfigService/types';
+const TS_TYPE_OVERRIDES = {
+  'public.item_types.fields': ['ItemSchema', `${MC}/itemTypes.js`],
+  'public.item_type_versions.fields': ['ItemSchema', `${MC}/itemTypes.js`],
+  'public.item_type_latest_versions.fields': [
+    'ItemSchema',
+    `${MC}/itemTypes.js`,
+  ],
+  'public.item_types_history.fields': ['ItemSchema', `${MC}/itemTypes.js`],
+  'public.rules.condition_set': ['ConditionSet', `${MC}/rules.js`],
+  'public.rules_history.condition_set': ['ConditionSet', `${MC}/rules.js`],
+  'public.rules_latest_versions.condition_set': [
+    'ConditionSet',
+    `${MC}/rules.js`,
+  ],
+  'public.rule_versions.condition_set': ['ConditionSet', `${MC}/rules.js`],
+  'manual_review_tool.routing_rules.condition_set': [
+    'ConditionSet',
+    `${MC}/rules.js`,
+  ],
+  'manual_review_tool.appeals_routing_rules.condition_set': [
+    'ConditionSet',
+    `${MC}/rules.js`,
+  ],
+  'reporting_rules.reporting_rules.condition_set': [
+    'ConditionSet',
+    `${MC}/rules.js`,
+  ],
+  // Free-form JSON columns get non-recursive types: type-fest's recursive
+  // JsonObject/JsonValue make TypeORM's QueryDeepPartialEntity and
+  // FindOptionsWhere hit TS2589 ("type instantiation is excessively deep").
+  'public.rules_and_actions.action_parameters': ['Record<string, unknown>'],
+  'public.user_strike_thresholds.action_parameters': [
+    'Record<string, unknown>',
+  ],
+  'public.actions.callback_url_headers': ['Record<string, unknown>'],
+  'public.actions.callback_url_body': ['Record<string, unknown>'],
+  'public.actions.custom_mrt_api_params': ['unknown[]'],
+  'public.action_versions.custom_mrt_api_params': ['unknown[]'],
+  'public.signing_keys.key_data': ['Record<string, unknown>'],
+};
 
 const pascal = (s) =>
   s
@@ -203,10 +245,15 @@ async function main() {
     const lines = [];
     const enumTypes = [];
     const typeImports = [];
+    const externalImports = [];
 
     const tsTypeOf = (c) => {
       const override = TS_TYPE_OVERRIDES[`${key}.${c.name}`];
-      if (override) return override;
+      if (override) {
+        const [type, from, name = type] = override;
+        if (from) externalImports.push([from, name]);
+        return type;
+      }
       const isArray = c.typcategory === 'A';
       const typtype = isArray ? c.elemtyptype : c.typtype;
       const typname = isArray ? c.elemtypname : c.typname;
@@ -438,8 +485,14 @@ async function main() {
       classes: [],
       enums: new Map(),
       typeImports: new Map(),
+      externalImports: new Map(),
     };
     entry.classes.push({ className, code: lines.join('\n') });
+    for (const [from, name] of externalImports) {
+      const set = entry.externalImports.get(from) ?? new Set();
+      set.add(name);
+      entry.externalImports.set(from, set);
+    }
     for (const [schema, cls] of typeImports) {
       const set = entry.typeImports.get(schema) ?? new Set();
       set.add(cls);
@@ -458,7 +511,7 @@ async function main() {
   const index = [];
   for (const [
     schema,
-    { classes, enums: schemaEnums, typeImports },
+    { classes, enums: schemaEnums, typeImports, externalImports },
   ] of bySchema) {
     const file = schema.replace(/_/g, '-');
     const decorators = new Set();
@@ -468,6 +521,10 @@ async function main() {
     const body = [
       header,
       `import { ${[...decorators].sort().join(', ')}, type Relation } from 'typeorm';`,
+      ...[...externalImports].map(
+        ([from, set]) =>
+          `import type { ${[...set].sort().join(', ')} } from '${from}';`,
+      ),
       ...[...typeImports].map(
         ([s, set]) =>
           `import type { ${[...set].sort().join(', ')} } from './${s.replace(/_/g, '-')}.js';`,

@@ -16,6 +16,7 @@ import {
   type Relation,
 } from 'typeorm';
 
+import type { ConditionSet } from '../../../services/moderationConfigService/types/rules.js';
 import type { Orgs, Roles } from './public.js';
 
 export type AppealsRoutingRuleStatus = 'LIVE';
@@ -169,7 +170,7 @@ export class AppealsRoutingRules {
   creator_id!: string;
 
   @Column({ name: 'condition_set', type: 'jsonb' })
-  condition_set!: unknown;
+  condition_set!: ConditionSet;
 
   @Column({ name: 'sequence_number', type: 'int4' })
   sequence_number!: number;
@@ -1045,7 +1046,7 @@ export class RoutingRules {
   creator_id!: string;
 
   @Column({ name: 'condition_set', type: 'jsonb' })
-  condition_set!: unknown;
+  condition_set!: ConditionSet;
 
   @Column({ name: 'sequence_number', type: 'int4' })
   sequence_number!: number;
