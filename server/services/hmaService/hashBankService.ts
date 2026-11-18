@@ -66,10 +66,12 @@ export class HashBankService {
     orgId: string,
     updates: UpdateHashBankInput,
   ): Promise<HashBank> {
-    const [result] = await this.db.hash_banks.updateManyAndReturn({
-      data: updates,
-      where: { id, org_id: orgId },
-    });
+    const result = (
+      await this.db.hash_banks.updateManyAndReturn({
+        data: updates,
+        where: { id, org_id: orgId },
+      })
+    ).at(0);
     if (result === undefined) {
       throw new Error('no result');
     }

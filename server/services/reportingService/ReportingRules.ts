@@ -149,7 +149,7 @@ export default class ReportingRules {
           name,
           description: replaceEmptyStringWithNull(description),
           status,
-          condition_set: conditionSet as Prisma.InputJsonValue,
+          condition_set: conditionSet,
           creator_id: creatorId,
         },
         select: reportingRuleSelect,
@@ -212,13 +212,11 @@ export default class ReportingRules {
     } = input;
 
     return this.transactionWithRetry(async (tx) => {
-      const [updatedReportingRule] =
+      const updatedReportingRule = (
         await tx.reporting_rules.updateManyAndReturn({
           where: { id, org_id: orgId },
           data: {
-            ...(conditionSet
-              ? { condition_set: conditionSet as Prisma.InputJsonValue }
-              : {}),
+            ...(conditionSet ? { condition_set: conditionSet } : {}),
             ...removeUndefinedKeys({
               name,
               description: replaceEmptyStringWithNull(description),
@@ -226,7 +224,8 @@ export default class ReportingRules {
             }),
           },
           select: reportingRuleSelect,
-        });
+        })
+      ).at(0);
       if (updatedReportingRule === undefined) {
         throw new ReportingRuleNotFound();
       }
