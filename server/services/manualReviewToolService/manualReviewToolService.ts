@@ -373,8 +373,8 @@ export class ManualReviewToolService {
   ) {
     this.priorityRecomputeLock = new PriorityRecomputeLock(this.redis);
     this.queueOps = new QueueOperations(
-      pgQuery,
-      pgQueryReadReplica,
+      prisma,
+      prismaReadReplica,
       moderationConfigService,
       redis,
       tracer,
@@ -385,14 +385,14 @@ export class ManualReviewToolService {
       userStatisticsService,
     );
     this.jobRouting = new JobRouting(
-      pgQuery,
+      prisma,
       this.queueOps,
       moderationConfigService,
       ruleEvaluator,
       routingRuleExecutionLogger,
     );
     this.appealsJobRouting = new AppealsJobRouting(
-      pgQuery,
+      prisma,
       this.queueOps,
       moderationConfigService,
       ruleEvaluator,
