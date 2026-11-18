@@ -250,6 +250,32 @@ describe('NCMEC submitReport (integration)', () => {
   );
 
   testWithFixture(
+    'enqueues the banking jobs even when the preservation request fails',
+    async ({ deps, orgId, reportId, userItemTypeId }) => {
+      const { ncmecReporting, reportedMediaBankingEnqueue } = makeReporting(
+        deps,
+        reportId,
+        async (url) => {
+          if (url === PRESERVATION_URL) {
+            throw new Error('Preservation endpoint is down');
+          }
+        },
+      );
+
+      await ncmecReporting.submitReport(
+        reportWithTwoMedia(orgId, userItemTypeId),
+        false,
+      );
+
+      expect(reportedMediaBankingEnqueue).toHaveBeenCalledWith([
+        expect.objectContaining({ itemId: 'media-1' }),
+        expect.objectContaining({ itemId: 'media-2' }),
+      ]);
+    },
+    60_000,
+  );
+
+  testWithFixture(
     'uses the bank read before submitting, even if the setting is cleared during submission',
     async ({ deps, orgId, reportId, hashBank, userItemTypeId }) => {
       const { ncmecReporting, reportedMediaBankingEnqueue } = makeReporting(

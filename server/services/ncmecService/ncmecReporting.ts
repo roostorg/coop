@@ -1904,21 +1904,9 @@ export default class NcmecReporting {
             })
             .execute();
 
-          if (ncmecConfig?.ncmec_preservation_endpoint && isTest === false) {
-            await this.#sendUserPreservationRequest({
-              orgId: reportParams.orgId,
-              user: {
-                id: reportParams.reportedUser.id,
-                typeId: reportParams.reportedUser.typeId,
-              },
-              reportedMedia: reportParams.media.map((media) => ({
-                id: media.id,
-                typeId: media.typeId,
-              })),
-              reportId: parseInt(reportId),
-            });
-          }
-
+          // Enqueued before the preservation request: that calls the org's
+          // own endpoint, and if it fails the retry job skips this user,
+          // since the report was already accepted.
           const reportedMediaHashBankId =
             ncmecConfig?.reported_media_hash_bank_id;
 
@@ -1937,6 +1925,21 @@ export default class NcmecReporting {
                 url: media.url,
               })),
             );
+          }
+
+          if (ncmecConfig?.ncmec_preservation_endpoint && isTest === false) {
+            await this.#sendUserPreservationRequest({
+              orgId: reportParams.orgId,
+              user: {
+                id: reportParams.reportedUser.id,
+                typeId: reportParams.reportedUser.typeId,
+              },
+              reportedMedia: reportParams.media.map((media) => ({
+                id: media.id,
+                typeId: media.typeId,
+              })),
+              reportId: parseInt(reportId),
+            });
           }
           return 'SUCCESS';
         } catch (e) {
