@@ -66,4 +66,37 @@ describe('NcmecService.updateNcmecOrgSettings (integration)', () => {
       });
     },
   );
+
+  testWithFixture(
+    'getNCMECActionsToRunAndPolicies returns null arrays when none are configured',
+    async ({ deps, orgId }) => {
+      await deps.NcmecService.updateNcmecOrgSettings({
+        orgId,
+        ...filledSettings,
+      });
+      expect(
+        await deps.NcmecService.getNCMECActionsToRunAndPolicies(orgId),
+      ).toEqual({ actionsToRunIds: null, policyIds: null });
+
+      await deps.PrismaPg.ncmec_org_settings.update({
+        where: { org_id: orgId },
+        data: {
+          actions_to_run_upon_report_creation: ['action-1'],
+          policies_applied_to_actions_run_on_report_creation: ['policy-1'],
+        },
+      });
+      expect(
+        await deps.NcmecService.getNCMECActionsToRunAndPolicies(orgId),
+      ).toEqual({ actionsToRunIds: ['action-1'], policyIds: ['policy-1'] });
+    },
+  );
+
+  testWithFixture(
+    'getNCMECActionsToRunAndPolicies returns undefined without settings',
+    async ({ deps, orgId }) => {
+      expect(
+        await deps.NcmecService.getNCMECActionsToRunAndPolicies(orgId),
+      ).toBeUndefined();
+    },
+  );
 });

@@ -54,8 +54,8 @@ describe('NCMEC submitReport (integration)', () => {
       preservationUrl: PRESERVATION_URL,
     });
     const ncmecReporting = new NcmecReporting(
-      deps.KyselyPg,
-      deps.KyselyPgReadReplica,
+      deps.PrismaPg,
+      deps.PrismaPgReadReplica,
       stub.fetchHTTP,
       deps.SigningKeyPairService,
       deps.Tracer,
@@ -137,14 +137,11 @@ describe('NCMEC submitReport (integration)', () => {
       expect(submitCall.headers?.Authorization).toMatch(/^Basic /);
 
       // persisted row
-      const row = await deps.KyselyPg.selectFrom(
-        'ncmec_reporting.ncmec_reports',
-      )
-        .select(['report_id', 'is_test', 'report_xml'])
-        .where('org_id', '=', orgId)
-        .where('report_id', '=', reportId)
-        .executeTakeFirst();
-      expect(row).toBeDefined();
+      const row = await deps.PrismaPg.ncmec_reports.findFirst({
+        select: { report_id: true, is_test: true, report_xml: true },
+        where: { org_id: orgId, report_id: reportId },
+      });
+      expect(row).not.toBeNull();
       expect(row?.is_test).toBe(false);
       expect(String(row?.report_xml)).toContain('jane@example.com');
     },

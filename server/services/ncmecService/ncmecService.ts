@@ -1,5 +1,3 @@
-import { type Kysely } from 'kysely';
-
 import { type Dependencies } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
 import { type PrismaPgClient } from '../../storage/prisma/index.js';
@@ -15,7 +13,6 @@ import {
   type ReportEnqueueSourceInfo,
   type RuleExecutionEnqueueSourceInfo,
 } from '../manualReviewToolService/manualReviewToolService.js';
-import { type NcmecReportingServicePg } from './dbTypes.js';
 import NcmecEnqueueToMrt from './ncmecEnqueueToMrt.js';
 import NcmecReporting, { type NCMECReportParams } from './ncmecReporting.js';
 import { type ValidatedNcmecTarget } from './resolveNcmecTargetUser.js';
@@ -29,9 +26,6 @@ export class NcmecService {
   private readonly ncmecEnqueueToMrt: NcmecEnqueueToMrt;
 
   constructor(
-    // Kysely is still needed by NcmecReporting, which is not ported.
-    readonly pgQuery: Kysely<NcmecReportingServicePg>,
-    readonly pqQueryReadReplica: Kysely<NcmecReportingServicePg>,
     readonly prisma: PrismaPgClient,
     readonly prismaReadReplica: PrismaPgClient,
     readonly fetchHTTP: Dependencies['fetchHTTP'],
@@ -44,8 +38,8 @@ export class NcmecService {
     readonly getItemTypeEventuallyConsistent: Dependencies['getItemTypeEventuallyConsistent'],
   ) {
     this.ncmecReporting = new NcmecReporting(
-      pgQuery,
-      pqQueryReadReplica,
+      prisma,
+      prismaReadReplica,
       fetchHTTP,
       signingKeyPairService,
       tracer,
@@ -315,8 +309,6 @@ export class NcmecService {
 
 export default inject(
   [
-    'KyselyPg',
-    'KyselyPgReadReplica',
     'PrismaPg',
     'PrismaPgReadReplica',
     'fetchHTTP',
