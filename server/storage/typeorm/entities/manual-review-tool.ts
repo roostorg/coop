@@ -267,7 +267,7 @@ export class DimMrtDecisionsView {
   reviewer_id!: string | null;
 
   @ViewColumn({ name: 'ds' })
-  ds!: Date | null;
+  ds!: string | null;
 
   @ViewColumn({ name: 'job_id' })
   job_id!: string | null;
@@ -317,7 +317,7 @@ export class DimMrtDecisionsMaterialized {
   reviewer_id!: string | null;
 
   @Column({ name: 'ds', type: 'date', nullable: true })
-  ds!: Date | null;
+  ds!: string | null;
 
   // Nullable in the database; TypeORM forbids nullable primary columns.
   @PrimaryColumn({ name: 'job_id', type: 'text' })

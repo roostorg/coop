@@ -341,6 +341,7 @@ export interface Dependencies {
   // non-Kysely Postgres consumers (e.g., the express-session store) can
   // share the same pool instead of opening their own.
   KyselyPgPool: pg.Pool;
+  KyselyPgReadReplicaPool: pg.Pool;
 
   // TypeORM PoC: DataSources sharing the Kysely pools. See
   // storage/typeorm/dataSource.ts.
@@ -612,17 +613,23 @@ export default async function getBottle(
       }),
   );
 
+  // Shared by KyselyPgReadReplica (which ends it on shutdown) and
+  // TypeormPgReadReplica, so the two don't each open a replica pool.
+  bottle.factory('KyselyPgReadReplicaPool', () =>
+    createPgPool({
+      ...getPgMasterConnectionInfo(),
+      max: parseInt(process.env.DATABASE_READ_POOL_MAX ?? '150'),
+      host: safeGetEnvVar('DATABASE_READ_ONLY_HOST'),
+    }),
+  );
+
   bottle.factory(
     'KyselyPgReadReplica',
-    () =>
+    (container) =>
       new Kysely<CombinedPg>({
         dialect: new PostgresDialect({
           controlClient: pg.Client,
-          pool: createPgPool({
-            ...getPgMasterConnectionInfo(),
-            max: parseInt(process.env.DATABASE_READ_POOL_MAX ?? '150'),
-            host: safeGetEnvVar('DATABASE_READ_ONLY_HOST'),
-          }),
+          pool: container.KyselyPgReadReplicaPool,
           cursor: Cursor,
         }),
         log: kyselyLogLevels,
@@ -633,21 +640,16 @@ export default async function getBottle(
     'TypeormPg',
     (container) =>
       new TypeormHandle(container.KyselyPgPool, {
-        logging: isEnvTrue('DATABASE_PRINT_LOGS'),
+        printQueries: isEnvTrue('DATABASE_PRINT_LOGS'),
       }),
   );
 
   bottle.factory(
     'TypeormPgReadReplica',
-    () =>
-      new TypeormHandle(
-        createPgPool({
-          ...getPgMasterConnectionInfo(),
-          max: parseInt(process.env.DATABASE_READ_POOL_MAX ?? '150'),
-          host: safeGetEnvVar('DATABASE_READ_ONLY_HOST'),
-        }),
-        { logging: isEnvTrue('DATABASE_PRINT_LOGS') },
-      ),
+    (container) =>
+      new TypeormHandle(container.KyselyPgReadReplicaPool, {
+        printQueries: isEnvTrue('DATABASE_PRINT_LOGS'),
+      }),
   );
 
   // AUTH-enabled Redis (e.g. ElastiCache with an auth token) rejects every

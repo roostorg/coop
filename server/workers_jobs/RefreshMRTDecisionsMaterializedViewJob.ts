@@ -30,9 +30,7 @@ export default inject(
             ? new Date(lastInsertMs - MINUTE_MS)
             : new Date(0);
 
-          // Raw SQL: TypeORM's insert builder has no INSERT ... SELECT, and the
-          // conflict target is a unique expression index (COALESCE over the
-          // columns), which `orIgnore()`/`orUpdate()` can't name.
+          // Raw SQL: TypeORM's insert builder has no INSERT ... SELECT.
           //
           // Since we go back in time by 1 minute, we will likely re-insert
           // some rows, which would violate that unique index. In this case we

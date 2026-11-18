@@ -31,6 +31,10 @@ function isSerializationFailure(error: unknown): boolean {
  * one. New transactions retry up to 3 times on serialization failures
  * (SQLSTATE 40001), so callbacks must be retry-safe, as with
  * `makeKyselyTransactionWithRetry`.
+ *
+ * When joining, `isolationLevel` is not applied: the work runs at the outer
+ * transaction's level. (Kysely threw on nested transactions instead.) A real
+ * migration should reject a stricter requested level here.
  */
 export async function transactionWithRetry<R>(
   db: TypeormDb,

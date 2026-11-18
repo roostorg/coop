@@ -1686,7 +1686,7 @@ export class Rules {
   daily_actions_run!: number | null;
 
   @Column({ name: 'last_action_date', type: 'date', nullable: true })
-  last_action_date!: Date | null;
+  last_action_date!: string | null;
 
   @Column({ name: 'created_at', type: 'timestamptz' })
   created_at!: Date;

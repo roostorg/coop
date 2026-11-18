@@ -14,6 +14,11 @@ const outDir = path.resolve(here, '../entities');
 // Tables without a primary key. TypeORM requires one on every entity, so these
 // get a pseudo-key that exists only in the ORM metadata, and the entity opts
 // out of schema synchronization so TypeORM never tries to create it.
+//
+// Entity reads (`find`, `getMany`) build one entity per key value, so rows
+// that share a pseudo-key (e.g. repeated `moderator_skips` for one job, or
+// NULLs in `dim_mrt_decisions_materialized`) collapse into one. Read these
+// tables with `getRawMany`.
 const PSEUDO_PRIMARY_KEYS = {
   'public.actions_history': ['id', 'sys_period'],
   'public.actions_and_item_types_history': [
@@ -278,7 +283,9 @@ async function main() {
             bool: 'boolean',
             timestamptz: 'Date',
             timestamp: 'Date',
-            date: 'Date',
+            // TypeORM hydrates `date` as a 'YYYY-MM-DD' string on entity
+            // reads (raw query results still get pg's Date).
+            date: 'string',
             json: 'unknown',
             jsonb: 'unknown',
             tstzrange: 'string',

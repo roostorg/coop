@@ -1,10 +1,10 @@
 import { type MigrationInterface, type QueryRunner } from 'typeorm';
 
 /**
- * Hand-off point from the Umzug/SequelizeMeta history. Every SQL migration in
- * db/src/scripts/api-server-pg up to and including the one named below must
- * already be applied; this migration refuses to run otherwise, and does
- * nothing else.
+ * Hand-off point from the Umzug/SequelizeMeta history. Refuses to run unless
+ * the SQL migration named below (the last one before the hand-off) is
+ * recorded in SequelizeMeta, and does nothing else. It doesn't check earlier
+ * migrations individually, or detect SQL migrations applied afterwards.
  */
 export const LAST_SEQUELIZE_MIGRATION =
   '2026.11.17T17.03.20.drop_is_demo_org.sql';

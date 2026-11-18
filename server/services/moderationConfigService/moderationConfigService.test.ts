@@ -72,7 +72,7 @@ async function mutateItemTypeAndHiddenFields<T extends ItemTypeMutationMethod>(
 // use two service instances, each with access only to the db we expect to be
 // hit; the other db is a handle that throws if it's ever used.
 function makeSuts(primary: Sut, replica: Sut) {
-  const kyselyShouldBeUnused = {
+  const dbShouldBeUnused = {
     get: vi.fn(async () => {
       throw new Error('Did not expect this db handle to be used!');
     }),
@@ -81,11 +81,11 @@ function makeSuts(primary: Sut, replica: Sut) {
   return {
     sutWithPrimary: new ModerationConfigService(
       primary,
-      kyselyShouldBeUnused,
+      dbShouldBeUnused,
       async () => {},
     ),
     sutWithReadReplica: new ModerationConfigService(
-      kyselyShouldBeUnused,
+      dbShouldBeUnused,
       replica,
       async () => {},
     ),
@@ -168,6 +168,58 @@ describe('ModerationConfigService', () => {
   const testWithOrg = makeTransactionalTestWithFixture(async ({ deps }) =>
     setupOrg(deps),
   );
+
+  // Behaviour that changed when these methods moved from Kysely to TypeORM.
+  describe('TypeORM port behaviour', () => {
+    testWithOrg(
+      'getActions with an empty id list returns no actions',
+      async ({ sutWithPrimary, org }) => {
+        expect(
+          await sutWithPrimary.getActions({ orgId: org.id, ids: [] }),
+        ).toEqual([]);
+      },
+    );
+
+    testWithOrg(
+      'deleteTextBank reports whether a bank was deleted',
+      async ({ sutWithPrimary, org }) => {
+        const bank = await sutWithPrimary.createTextBank(org.id, {
+          name: `bank-${uid()}`,
+          description: null,
+          type: 'STRING',
+          strings: ['a'],
+        });
+        expect(await sutWithPrimary.deleteTextBank(org.id, bank.id)).toBe(true);
+        expect(await sutWithPrimary.deleteTextBank(org.id, bank.id)).toBe(
+          false,
+        );
+      },
+    );
+
+    testWithOrg(
+      'user strike thresholds have string ids and report deletes',
+      async ({ sutWithPrimary, org }) => {
+        const created = await sutWithPrimary.createUserStrikeThreshold({
+          orgId: org.id,
+          thresholdSettings: { threshold: 3, actions: [] },
+        });
+        expect(typeof created.id).toBe('string');
+        const thresholdSettings = { id: created.id, threshold: 3 };
+        expect(
+          await sutWithPrimary.deleteUserStrikeThreshold({
+            orgId: org.id,
+            thresholdSettings,
+          }),
+        ).toBe(true);
+        expect(
+          await sutWithPrimary.deleteUserStrikeThreshold({
+            orgId: org.id,
+            thresholdSettings,
+          }),
+        ).toBe(false);
+      },
+    );
+  });
 
   describe('#getRuleByIdAndOrg', () => {
     const testWithRuleRow = makeTransactionalTestWithFixture(
@@ -879,7 +931,7 @@ describe('ModerationConfigService', () => {
         testWithOrg(
           'should query from the proper db',
           async ({ sutWithPrimary, sutWithReadReplica, org }) => {
-            // These tests will throw if the wrong db is used (see kyselyShouldBeUnused)
+            // These tests will throw if the wrong db is used (see dbShouldBeUnused)
             await sutWithPrimary.getItemTypesForAction({
               orgId: org.id,
               actionId: 'someId',

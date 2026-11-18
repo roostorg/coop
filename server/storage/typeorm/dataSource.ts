@@ -3,6 +3,7 @@ import 'reflect-metadata';
 import pg from 'pg';
 import { DataSource, type Logger } from 'typeorm';
 
+import { logErrorJson } from '../../utils/logging.js';
 import { entities } from './entities/index.js';
 
 /**
@@ -17,7 +18,7 @@ import { entities } from './entities/index.js';
  */
 export function makeTypeormDataSource(
   pool: pg.Pool,
-  opts: { logger?: Logger; logging?: boolean } = {},
+  opts: { printQueries?: boolean } = {},
 ) {
   const borrowedPool = new Proxy(pool, {
     get(target, prop, receiver) {
@@ -49,9 +50,37 @@ export function makeTypeormDataSource(
     installExtensions: false,
     // Matches the migrations' `DEFAULT gen_random_uuid()`.
     uuidExtension: 'pgcrypto',
-    logging: opts.logging ?? false,
-    ...(opts.logger ? { logger: opts.logger } : {}),
+    logging: true,
+    logger: makeParameterFreeLogger(opts.printQueries ?? false),
   });
+}
+
+/**
+ * TypeORM's built-in loggers append bound parameters (`-- PARAMETERS: [...]`)
+ * to every logged query, which would put secrets such as signing keys and
+ * password hashes in the logs. This logger prints SQL only, and, like
+ * Kysely's default `['error']` level, always logs failed queries.
+ */
+function makeParameterFreeLogger(printQueries: boolean): Logger {
+  return {
+    logQuery(query) {
+      if (printQueries) {
+        // eslint-disable-next-line no-console -- opt-in DATABASE_PRINT_LOGS
+        console.log(query);
+      }
+    },
+    logQueryError(error, query) {
+      // eslint-disable-next-line no-restricted-syntax -- mirrors Kysely's error log level; runs outside spans
+      logErrorJson({
+        message: `Postgres query failed: ${query}`,
+        error: typeof error === 'string' ? error : error.message,
+      });
+    },
+    logQuerySlow() {},
+    logSchemaBuild() {},
+    logMigration() {},
+    log() {},
+  };
 }
 
 /**
@@ -71,7 +100,12 @@ export class TypeormHandle {
   }
 
   async get(): Promise<DataSource> {
-    this.#ready ??= this.#dataSource.initialize();
+    // A failed initialize (e.g. the DB is briefly unreachable) is retried on
+    // the next call rather than cached.
+    this.#ready ??= this.#dataSource.initialize().catch((e: unknown) => {
+      this.#ready = undefined;
+      throw e;
+    });
     return this.#ready;
   }
 

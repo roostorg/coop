@@ -9,7 +9,10 @@ import { type MigrationInterface, type QueryRunner } from 'typeorm';
 import { getPgConnectionParams } from '../../iocContainer/index.js';
 import { createTransactionalTestDb } from '../../test/harness/transactionalPgPool.js';
 import { makeTypeormDataSource } from './dataSource.js';
-import { Baseline1763400000000 } from './migrations/1763400000000-Baseline.js';
+import {
+  Baseline1763400000000,
+  LAST_SEQUELIZE_MIGRATION,
+} from './migrations/1763400000000-Baseline.js';
 
 class AddProbeColumn1763400000001 implements MigrationInterface {
   name = 'AddProbeColumn1763400000001';
@@ -39,7 +42,7 @@ describe('TypeORM migrations on a SequelizeMeta database', () => {
     const hasProbe = async () =>
       (
         await ds.query(
-          `SELECT 1 FROM information_schema.columns WHERE table_name = 'orgs' AND column_name = 'typeorm_probe'`,
+          `SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'orgs' AND column_name = 'typeorm_probe'`,
         )
       ).length === 1;
     try {
@@ -62,6 +65,30 @@ describe('TypeORM migrations on a SequelizeMeta database', () => {
         `SELECT count(*)::int AS count FROM "SequelizeMeta"`,
       );
       expect(count).toBeGreaterThan(0);
+    } finally {
+      await ds.destroy();
+      await tdb.rollback();
+      await tdb.end();
+    }
+  }, 60_000);
+
+  it('refuses to baseline before the last SQL migration is applied', async () => {
+    const tdb = createTransactionalTestDb(getPgConnectionParams());
+    await tdb.begin();
+    const ds = makeTypeormDataSource(tdb.pool);
+    ds.setOptions({
+      migrations: [Baseline1763400000000],
+      migrationsTableName: 'typeorm_migrations',
+      migrationsTransactionMode: 'each',
+    });
+    await ds.initialize();
+    try {
+      await ds.query(`DELETE FROM "SequelizeMeta" WHERE name = $1`, [
+        LAST_SEQUELIZE_MIGRATION,
+      ]);
+      await expect(ds.runMigrations()).rejects.toThrow(
+        LAST_SEQUELIZE_MIGRATION,
+      );
     } finally {
       await ds.destroy();
       await tdb.rollback();
