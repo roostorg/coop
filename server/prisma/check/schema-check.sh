@@ -21,8 +21,9 @@ work=$(mktemp -d)
 
 PRISMA_DATABASE_URL=$umzug_url npx prisma migrate diff \
   --from-config-datasource --to-schema prisma/schema.prisma --script \
-  | grep -vE '^(-- DropForeignKey|-- DropTable|DROP TABLE "SequelizeMeta";|ALTER TABLE "reporting_rules"\."reporting_rules_to_(actions|item_types|policies)" DROP CONSTRAINT "reporting_rules_to_\w+_reporting_rule_id_fkey";)?$' \
-  > "$work/model-drift.sql" || true
+  > "$work/model-diff.sql"
+grep -vE '^(-- DropForeignKey|-- DropTable|DROP TABLE "SequelizeMeta";|ALTER TABLE "reporting_rules"\."reporting_rules_to_(actions|item_types|policies)" DROP CONSTRAINT "reporting_rules_to_\w+_reporting_rule_id_fkey";)?$' \
+  "$work/model-diff.sql" > "$work/model-drift.sql" || true
 if [ -s "$work/model-drift.sql" ]; then
   echo "Prisma model differs from the Umzug-built database:" >&2
   cat "$work/model-drift.sql" >&2

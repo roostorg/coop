@@ -3,10 +3,7 @@ import {
   type UserPermission,
   type UserRole,
 } from '../../services/userManagementService/index.js';
-import {
-  Prisma,
-  type PrismaPgQueryable,
-} from '../../storage/prisma/index.js';
+import { Prisma, type PrismaPgQueryable } from '../../storage/prisma/index.js';
 import {
   validateUserCreateInput,
   validateUserUpdatePatch,
@@ -89,7 +86,7 @@ function rowToGraphQLUserParent(row: UserRow): GraphQLUserParent {
     firstName: row.first_name,
     lastName: row.last_name,
     orgId: row.org_id,
-    role: row.roles.key as UserRole,
+    role: row.roles.key,
     // Nullable in the DB (no NOT NULL constraint), so Prisma types them
     // `boolean | null`; the Kysely types asserted `boolean`.
     approvedByAdmin: row.approved_by_admin as boolean,

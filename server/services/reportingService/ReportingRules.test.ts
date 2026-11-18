@@ -73,6 +73,29 @@ describe('ReportingRules', () => {
   );
 
   testWithRules(
+    'rejects an update with an empty item type or action list instead of dropping every join row',
+    async ({ sut, orgId, makeInput }) => {
+      const created = await sut.createReportingRule(makeInput());
+      await expect(
+        sut.updateReportingRule({
+          id: created.id,
+          orgId,
+          itemTypeIds: [] as unknown as [NonEmptyString],
+        }),
+      ).rejects.toThrow('itemTypeIds must not be empty');
+      await expect(
+        sut.updateReportingRule({ id: created.id, orgId, actionIds: [] }),
+      ).rejects.toThrow('actionIds must not be empty');
+
+      const [rule] = await sut.getReportingRules({ orgId });
+      expect(rule).toMatchObject({
+        itemTypeIds: ['item-type-1'],
+        actionIds: ['action-1'],
+      });
+    },
+  );
+
+  testWithRules(
     'updates fields and replaces join rows, keeping the ones not given',
     async ({ sut, orgId, makeInput }) => {
       const created = await sut.createReportingRule(makeInput());

@@ -10,15 +10,24 @@ import { makePrismaTransactionWithRetry } from '../../utils/prismaTransactionWit
 /**
  * Runs `callback` in `db`'s transaction when `db` is already a transaction
  * client (e.g. a service built by `forTransaction`), otherwise in a new
- * transaction with retry. A joined transaction keeps the caller's isolation
- * level; `isolationLevel` only applies to a new one.
+ * transaction with retry. A joined transaction can't change its isolation
+ * level, so requesting one there throws rather than silently running weaker.
  */
 export async function runInPrismaTransaction<R>(
   db: PrismaPgQueryable,
   options: { isolationLevel?: Prisma.TransactionIsolationLevel },
   callback: (tx: PrismaPgTransaction) => Promise<R>,
 ): Promise<R> {
-  return isPrismaTransaction(db)
-    ? callback(db)
-    : makePrismaTransactionWithRetry(db as PrismaPgClient)(options, callback);
+  if (isPrismaTransaction(db)) {
+    if (options.isolationLevel !== undefined) {
+      throw new Error(
+        `Cannot run at ${options.isolationLevel} inside the caller's transaction`,
+      );
+    }
+    return callback(db);
+  }
+  return makePrismaTransactionWithRetry(db as PrismaPgClient)(
+    options,
+    callback,
+  );
 }

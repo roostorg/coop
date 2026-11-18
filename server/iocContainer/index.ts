@@ -492,6 +492,10 @@ export function getPgConnectionParams(): pg.ClientConfig {
     port: parseInt(process.env.DATABASE_PORT ?? '5432'),
     host: safeGetEnvVar('DATABASE_HOST'),
     ssl: isEnvTrue('DATABASE_SSL') ? { rejectUnauthorized: false } : undefined,
+    // Prisma's pg adapter discards the offset Postgres sends with each
+    // timestamptz and reads it as UTC, and binds Dates as zone-less UTC
+    // strings, so every session must run in UTC.
+    options: '-c TimeZone=UTC',
   };
 }
 

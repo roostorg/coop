@@ -3,7 +3,10 @@ import crypto from 'node:crypto';
 
 import type { Dependencies } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
-import { type Prisma, type PrismaPgClient } from '../../storage/prisma/index.js';
+import {
+  type Prisma,
+  type PrismaPgClient,
+} from '../../storage/prisma/index.js';
 import {
   makeBadRequestError,
   makeNotFoundError,
@@ -49,9 +52,7 @@ class UserManagementService {
     // `jsonb[]` comes back as `JsonValue[]`; these are the chart configs this
     // service wrote.
     const mrtChartConfigurations = row?.mrt_chart_configurations as
-      | MrtChartConfig[]
-      | null
-      | undefined;
+      MrtChartConfig[] | null | undefined;
 
     if (
       row &&
@@ -164,7 +165,7 @@ class UserManagementService {
       id: String(row.id),
       email: row.email,
       // `roles.key` holds `UserRole` values; Prisma types it `string`.
-      role: row.roles.key as UserRole,
+      role: row.roles.key,
       createdAt: row.created_at.toISOString(),
     }));
   }

@@ -4,6 +4,7 @@ import { v1 as uuidv1 } from 'uuid';
 
 import { type ConsumerDirectives } from '../../lib/cache/index.js';
 import {
+  assertNonEmptyIdList,
   Prisma,
   type PrismaPgClient,
   type PrismaPgQueryable,
@@ -231,6 +232,7 @@ export default class ReportingRules {
       }
 
       if (itemTypeIds) {
+        assertNonEmptyIdList('itemTypeIds', itemTypeIds);
         await tx.reporting_rules_to_item_types.deleteMany({
           where: {
             reporting_rule_id: id,
@@ -248,6 +250,7 @@ export default class ReportingRules {
       }
 
       if (actionIds) {
+        assertNonEmptyIdList('actionIds', actionIds);
         await tx.reporting_rules_to_actions.deleteMany({
           where: {
             reporting_rule_id: id,

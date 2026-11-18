@@ -216,7 +216,7 @@ function makeOrgSettingsService(prisma: PrismaPgClient) {
       });
       // The DB CHECK constraint guarantees `sso_url`/`cert` are set when
       // `saml_enabled`; Prisma can't express that union, so restore it here.
-      return (row ?? undefined);
+      return row ?? undefined;
     },
     async updateSamlSettings(input: {
       orgId: string;

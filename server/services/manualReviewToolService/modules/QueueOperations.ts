@@ -10,6 +10,7 @@ import { v1 as uuidv1 } from 'uuid';
 
 import { type Dependencies } from '../../../iocContainer/index.js';
 import {
+  assertNonEmptyIdList,
   type Prisma,
   type PrismaPgClient,
   type PrismaPgQueryable,
@@ -2632,19 +2633,6 @@ async function assertRolesInOrg(
  * Rejects before any write if a target queue or user does not belong to the
  * caller's org.
  */
-/**
- * Kysely compiled `id in ()` for an empty list, which Postgres rejects, so
- * every caller of the org-scoping asserts failed on an empty list before any
- * write. Prisma treats `in: []` as "matches nothing" (and `notIn: []` as
- * "matches everything", which would let updateManualReviewQueue delete every
- * access row), so the rejection is explicit here.
- */
-function assertNonEmptyIdList(name: string, ids: readonly string[]) {
-  if (ids.length === 0) {
-    throw new Error(`${name} must not be empty`);
-  }
-}
-
 async function assertUsersAndQueuesInOrg(
   db: PrismaPgQueryable,
   opts: {

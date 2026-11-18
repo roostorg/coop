@@ -11,6 +11,7 @@ import { type Dependencies } from '../../../iocContainer/index.js';
 import { type ConsumerDirectives } from '../../../lib/cache/index.js';
 import { type RuleExecutionResult } from '../../../rule_engine/RuleEvaluator.js';
 import {
+  assertNonEmptyIdList,
   Prisma,
   type PrismaPgClient,
   type PrismaPgQueryable,
@@ -304,6 +305,7 @@ export default class JobRouting {
       const updatedRoutingRule = toRoutingRuleWithoutItemTypes(updatedRow);
 
       if (itemTypeIds) {
+        assertNonEmptyIdList('itemTypeIds', itemTypeIds);
         // delete item types that will no longer be used
         await trx.routing_rules_to_item_types.deleteMany({
           where: { routing_rule_id: id, item_type_id: { notIn: itemTypeIds } },

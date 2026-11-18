@@ -18,7 +18,7 @@
     "test:e2e:ui": "node --env-file-if-exists=.env node_modules/.bin/playwright test --config e2e/playwright.config.ts --ui",
     "e2e:install-browsers": "playwright install --with-deps chromium",
     "check:prepush": "pnpm run typecheck && pnpm run test:prepush",
-    "lint": "eslint \"./**/*.{ts,tsx,js}\"",
+    "lint": "prisma generate && eslint \"./**/*.{ts,tsx,js}\"",
     "runWorkerOrJob": "node --env-file-if-exists=.env --loader ts-node/esm bin/run-worker-or-job.ts",
     "create-org": "node --env-file-if-exists=.env --loader ts-node/esm bin/create-org-and-user.ts",
     "get-invite": "node --env-file-if-exists=.env --loader ts-node/esm bin/get-invite-token.ts",

@@ -51,3 +51,14 @@ export function isPrismaTransaction(
 ): client is PrismaPgTransaction {
   return transactionClients.has(client);
 }
+
+/**
+ * Prisma reads `in: []` as "matches nothing" and `notIn: []` as "matches
+ * everything", so a `deleteMany` with `notIn: ids` removes every row when
+ * `ids` is empty. Call this before filtering by a caller-supplied id list.
+ */
+export function assertNonEmptyIdList(name: string, ids: readonly unknown[]) {
+  if (ids.length === 0) {
+    throw new Error(`${name} must not be empty`);
+  }
+}

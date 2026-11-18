@@ -1,8 +1,11 @@
 import crypto from 'node:crypto';
 
+import {
+  type Prisma,
+  type PrismaPgClient,
+} from '../../storage/prisma/index.js';
 import { jsonParse, jsonStringify, type JsonOf } from '../../utils/encoding.js';
 import { CoopError, ErrorType } from '../../utils/errors.js';
-import { type Prisma, type PrismaPgClient } from '../../storage/prisma/index.js';
 import {
   type SigningKeyId,
   type SigningKeyPairStorage,

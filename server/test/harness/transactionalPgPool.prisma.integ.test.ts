@@ -81,4 +81,23 @@ describe('createTransactionalTestDb with Prisma', () => {
       await tdb.end();
     }
   });
+
+  it('reads and binds timestamptz correctly on the server connection settings', async () => {
+    const tdb = createTransactionalTestDb(pgConfig);
+    await tdb.begin();
+    try {
+      const prisma = makePrismaClient(tdb.pool);
+      const [row] = await prisma.$queryRaw<
+        { tz: string; t: Date; matches: boolean }[]
+      >`select current_setting('TimeZone') as tz,
+               '2026-01-01T00:00:00+05:00'::timestamptz as t,
+               ${new Date('2025-12-31T19:00:00Z')}::timestamptz
+                 = '2026-01-01T00:00:00+05:00'::timestamptz as matches`;
+      expect(row.t.toISOString()).toBe('2025-12-31T19:00:00.000Z');
+      expect(row.matches).toBe(true);
+      expect(row.tz).toBe('UTC');
+    } finally {
+      await tdb.end();
+    }
+  });
 });

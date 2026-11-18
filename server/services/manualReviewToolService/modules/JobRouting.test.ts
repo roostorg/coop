@@ -279,6 +279,53 @@ describe('JobRouting tests', () => {
   );
 
   jobRoutingTestWithFixtures(
+    'rejects an update with an empty item type list instead of dropping every item type',
+    async ({ manualReviewToolService, org, itemType, anotherQueue }) => {
+      for (const isAppealsRule of [false, true]) {
+        const created = await manualReviewToolService.createRoutingRule({
+          orgId: org.id,
+          name: `empty-item-types-${isAppealsRule}`,
+          status: 'LIVE',
+          itemTypeIds: [itemType.id as NonEmptyString],
+          creatorId: '',
+          conditionSet: {
+            conjunction: 'OR',
+            conditions: [
+              {
+                input: { type: 'CONTENT_COOP_INPUT', name: 'Source' },
+                threshold: 'never-matches',
+                comparator: 'EQUALS',
+              },
+            ],
+          },
+          destinationQueueId: anotherQueue.id,
+          isAppealsRule,
+        });
+        await expect(
+          manualReviewToolService.updateRoutingRule({
+            id: created.id,
+            orgId: org.id,
+            itemTypeIds: [] as unknown as [NonEmptyString],
+            isAppealsRule,
+          }),
+        ).rejects.toThrow('itemTypeIds must not be empty');
+        const rules = isAppealsRule
+          ? await manualReviewToolService.getAppealsRoutingRules({
+              orgId: org.id,
+              directives: { maxAge: 0 },
+            })
+          : await manualReviewToolService.getRoutingRules({
+              orgId: org.id,
+              directives: { maxAge: 0 },
+            });
+        expect(rules.find((it) => it.id === created.id)?.itemTypeIds).toEqual([
+          itemType.id,
+        ]);
+      }
+    },
+  );
+
+  jobRoutingTestWithFixtures(
     "reorderRoutingRules does not change another organization's routing rules",
     async ({ manualReviewToolService, org, deps }) => {
       const { org: otherOrg } = await createOrg(

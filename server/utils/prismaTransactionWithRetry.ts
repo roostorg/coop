@@ -1,30 +1,18 @@
 import {
   markPrismaTransaction,
-  Prisma,
+  type Prisma,
   type PrismaPgClient,
   type PrismaPgTransaction,
 } from '../storage/prisma/index.js';
-import { safeGet } from './misc.js';
+import { getPgErrorDetails } from './kysely.js';
 
 /**
  * Prisma reports both serialization failures (40001) and deadlocks (40P01) as
- * P2034. Only 40001 is retried, matching `makeKyselyTransactionWithRetry`; the
- * original SQLSTATE is on the driver adapter error.
+ * P2034, and a failure raised by COMMIT arrives as a bare DriverAdapterError.
+ * Only 40001 is retried, matching `makeKyselyTransactionWithRetry`.
  */
-function isSerializationFailure(error: unknown): boolean {
-  if (
-    !(error instanceof Prisma.PrismaClientKnownRequestError) ||
-    error.code !== 'P2034'
-  ) {
-    return safeGet(error, ['code']) === '40001';
-  }
-  const originalCode = safeGet(error, [
-    'meta',
-    'driverAdapterError',
-    'cause',
-    'originalCode',
-  ]);
-  return originalCode === undefined || originalCode === '40001';
+export function isSerializationFailure(error: unknown): boolean {
+  return getPgErrorDetails(error)?.code === '40001';
 }
 
 type TransactionWithRetryOptions = {

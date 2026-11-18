@@ -14,15 +14,15 @@ select 'IDX '||schemaname||'.'||indexname||' '||regexp_replace(indexdef,'^CREATE
 union all
 select 'TRG '||n.nspname||'.'||c.relname||' '||t.tgname||' '||pg_get_triggerdef(t.oid) from pg_trigger t join pg_class c on c.oid=t.tgrelid join ns n on n.oid=c.relnamespace where not t.tgisinternal
 union all
-select 'FN '||n.nspname||'.'||p.proname||'('||pg_get_function_identity_arguments(p.oid)||')' from pg_proc p join ns n on n.oid=p.pronamespace
+select 'FN '||n.nspname||'.'||p.proname||'('||pg_get_function_identity_arguments(p.oid)||') '||md5(pg_get_functiondef(p.oid)) from pg_proc p join ns n on n.oid=p.pronamespace where p.prokind <> 'a'
 union all
-select 'VIEW '||schemaname||'.'||viewname from pg_views where schemaname in (select nspname from ns)
+select 'VIEW '||schemaname||'.'||viewname||' '||md5(definition) from pg_views where schemaname in (select nspname from ns)
 union all
-select 'MATVIEW '||schemaname||'.'||matviewname from pg_matviews
+select 'MATVIEW '||schemaname||'.'||matviewname||' '||md5(definition) from pg_matviews
 union all
 select 'ENUM '||n.nspname||'.'||t.typname||' '||string_agg(e.enumlabel, ',' order by e.enumsortorder) from pg_type t join ns n on n.oid=t.typnamespace join pg_enum e on e.enumtypid=t.oid group by n.nspname,t.typname
 union all
-select 'COMMENT '||n.nspname||'.'||c.relname||coalesce('.'||a.attname,'') from pg_description ds join pg_class c on c.oid=ds.objoid join ns n on n.oid=c.relnamespace left join pg_attribute a on a.attrelid=c.oid and a.attnum=ds.objsubid and ds.objsubid>0
+select 'COMMENT '||n.nspname||'.'||c.relname||coalesce('.'||a.attname,'')||' '||md5(ds.description) from pg_description ds join pg_class c on c.oid=ds.objoid join ns n on n.oid=c.relnamespace left join pg_attribute a on a.attrelid=c.oid and a.attnum=ds.objsubid and ds.objsubid>0
 union all
 select 'SEQ '||schemaname||'.'||sequencename from pg_sequences
 union all
