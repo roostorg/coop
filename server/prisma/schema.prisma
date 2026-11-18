@@ -422,14 +422,6 @@ model ncmec_reports_errors {
   @@schema("ncmec_reporting")
 }
 
-model SequelizeMeta {
-  name      String   @id @db.VarChar(255)
-  createdAt DateTime @db.Timestamptz(6)
-  updatedAt DateTime @db.Timestamptz(6)
-
-  @@schema("public")
-}
-
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model actions {
   id                           String                   @id @db.VarChar(255)
