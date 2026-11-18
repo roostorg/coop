@@ -4,14 +4,13 @@ import createOrg from '../../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../../test/fixtureHelpers/createUser.js';
 import { makeTransactionalTestWithFixture } from '../../../test/harness/transactionalTest.js';
 import { UserPermission } from '../../userManagementService/index.js';
-import { type JobId } from '../manualReviewToolService.js';
 import CommentOperations from './CommentOperations.js';
 
 describe('CommentOperations', () => {
   const testWithFixtures = makeTransactionalTestWithFixture(
     async ({ deps }) => {
       const pgQuery = deps.KyselyPg;
-      const commentOps = new CommentOperations(pgQuery);
+      const commentOps = new CommentOperations(deps.PrismaPg);
 
       // Create test org
       const orgId = uuidv1();
@@ -52,7 +51,7 @@ describe('CommentOperations', () => {
         .insertInto('manual_review_tool.job_creations')
         .values([
           {
-            id: jobId1 as JobId,
+            id: jobId1,
             org_id: orgId,
             item_id: itemId,
             item_type_id: itemTypeId,
@@ -61,7 +60,7 @@ describe('CommentOperations', () => {
             enqueue_source_info: {},
           },
           {
-            id: jobId2 as JobId,
+            id: jobId2,
             org_id: orgId,
             item_id: itemId,
             item_type_id: itemTypeId,

@@ -304,7 +304,12 @@ export default class DecisionAnalytics {
 
   async getJobCreations(input: JobCreationsInput) {
     const { groupBy, filterBy, orgId, timeDivision, timeZone } = input;
-    const allowed = new Set(['item_type_id', 'queue_id', 'policy_id', 'source']);
+    const allowed = new Set([
+      'item_type_id',
+      'queue_id',
+      'policy_id',
+      'source',
+    ]);
     const where = and([
       Prisma.sql`org_id = ${orgId}`,
       Prisma.sql`creations.created_at >= ${filterBy.startDate}`,
@@ -616,6 +621,7 @@ function mapDecisionRow(decision: RecentDecisionRow) {
   };
 }
 
+/**
  * These options are meant to be passed to the psql `DATE_TRUNC()`
  * function, so the strings must conform to valid `field`
  * value from the postgres docs:

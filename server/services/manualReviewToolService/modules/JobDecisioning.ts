@@ -1005,26 +1005,20 @@ export default class JobDecisioning {
             })
         : null;
 
-    // The JSON columns are typed `Prisma.InputJsonValue`, which doesn't
-    // accept our domain types (they contain Dates and readonly arrays), so
-    // they're cast at this boundary.
     await this.prisma.manual_review_decisions.create({
       select: { id: true },
       data: {
         id,
-        job_payload: job as unknown as Prisma.InputJsonValue,
+        job_payload: job,
         queue_id: queueId,
         // Automatic decisions (AUTOMATIC_CLOSE) have no human reviewer, but the
         // column is NOT NULL; record a sentinel instead of letting undefined
         // become a null and fail the insert (23502).
         reviewer_id: reviewerId ?? AUTOMATED_DECISION_REVIEWER_ID,
         org_id: orgId,
-        decision_components:
-          decisionComponents as unknown as Prisma.InputJsonValue[],
-        related_actions: relatedActions as unknown as Prisma.InputJsonValue[],
-        enqueue_source_info: enqueueSourceInfo as
-          | Prisma.InputJsonValue
-          | undefined,
+        decision_components: decisionComponents,
+        related_actions: relatedActions,
+        enqueue_source_info: enqueueSourceInfo,
         item_created_at: itemCreatedAt,
         decision_reason: decisionReason,
         assigned_at: assignedAt,

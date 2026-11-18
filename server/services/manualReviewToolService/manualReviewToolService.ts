@@ -8,10 +8,7 @@ import { type Opaque } from 'type-fest';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import { type ConsumerDirectives } from '../../lib/cache/index.js';
-import {
-  type Prisma,
-  type PrismaPgClient,
-} from '../../storage/prisma/index.js';
+import { type PrismaPgClient } from '../../storage/prisma/index.js';
 import { jsonStringify } from '../../utils/encoding.js';
 import {
   isCoopErrorOfType,
@@ -646,8 +643,7 @@ export class ManualReviewToolService {
                   item_id: job.payload.item.itemId,
                   item_type_id: job.payload.item.itemTypeIdentifier.id,
                   queue_id: targetQueueForNewJob,
-                  enqueue_source_info:
-                    input.enqueueSourceInfo as unknown as Prisma.InputJsonValue,
+                  enqueue_source_info: input.enqueueSourceInfo,
                   policy_ids: input.policyIds,
                   created_at: new Date(),
                 },
@@ -767,8 +763,7 @@ export class ManualReviewToolService {
                   item_id: job.payload.item.itemId,
                   item_type_id: job.payload.item.itemTypeIdentifier.id,
                   queue_id: targetQueueForNewJob,
-                  enqueue_source_info:
-                    input.enqueueSourceInfo as unknown as Prisma.InputJsonValue,
+                  enqueue_source_info: input.enqueueSourceInfo,
                   policy_ids: input.policyIds,
                   created_at: new Date(),
                 },

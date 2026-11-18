@@ -18,7 +18,7 @@ describe('JobPriorityWeights', () => {
         uid(),
       );
       return {
-        ops: new JobPriorityWeights(pgQuery),
+        ops: new JobPriorityWeights(deps.PrismaPg),
         pgQuery,
         orgId: org.id,
         mrtService: deps.ManualReviewToolService,
