@@ -8,6 +8,7 @@ import { type Opaque } from 'type-fest';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import { type ConsumerDirectives } from '../../lib/cache/index.js';
+import { type PrismaPgClient } from '../../storage/prisma/index.js';
 import { jsonStringify } from '../../utils/encoding.js';
 import {
   isCoopErrorOfType,
@@ -351,6 +352,8 @@ export class ManualReviewToolService {
     readonly routingRuleExecutionLogger: Dependencies['RoutingRuleExecutionLogger'],
     readonly pgQuery: Kysely<ManualReviewToolServicePg>,
     readonly pgQueryReadReplica: Kysely<ManualReviewToolServicePg>,
+    readonly prisma: PrismaPgClient,
+    readonly prismaReadReplica: PrismaPgClient,
     readonly userStatisticsService: UserStatisticsService,
     readonly getCustomActionsByIds: Dependencies['getActionsByIdEventuallyConsistent'],
     private readonly tracer: Dependencies['Tracer'],
@@ -371,8 +374,8 @@ export class ManualReviewToolService {
   ) {
     this.priorityRecomputeLock = new PriorityRecomputeLock(this.redis);
     this.queueOps = new QueueOperations(
-      pgQuery,
-      pgQueryReadReplica,
+      prisma,
+      prismaReadReplica,
       moderationConfigService,
       redis,
       tracer,
@@ -383,14 +386,14 @@ export class ManualReviewToolService {
       userStatisticsService,
     );
     this.jobRouting = new JobRouting(
-      pgQuery,
+      prisma,
       this.queueOps,
       moderationConfigService,
       ruleEvaluator,
       routingRuleExecutionLogger,
     );
     this.appealsJobRouting = new AppealsJobRouting(
-      pgQuery,
+      prisma,
       this.queueOps,
       moderationConfigService,
       ruleEvaluator,

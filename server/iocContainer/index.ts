@@ -1020,6 +1020,8 @@ export default async function getBottle(
       container.RoutingRuleExecutionLogger,
       container.KyselyPg,
       container.KyselyPgReadReplica,
+      container.PrismaPg,
+      container.PrismaPgReadReplica,
       container.UserStatisticsService,
       container.getActionsByIdEventuallyConsistent,
       container.Tracer,
