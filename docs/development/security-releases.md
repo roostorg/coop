@@ -31,7 +31,7 @@ Proposed response targets:
 
 Reachability and exploitability details stay in the draft advisory or the private triage queue until the fix is released. Never put them in a public issue, PR, commit message or release note.
 
-The steps run in this order: choose the release base (step 2) before merging anything from a private fork; then merge the fix, publish the release, publish the advisories, and announce.
+The steps run in this order: choose the release base (step 2) before merging anything from a private fork; then merge the fix into `main`, backport it on option B, publish the release, publish the advisories, and announce.
 
 ### Finding a release's security fixes
 
@@ -88,26 +88,25 @@ Use this path for a vulnerability in Coop's own code, or any issue not yet publi
 
 1. Choose the release base (step 2). On option B, create `release/x.y` first if it does not exist.
 2. In the draft advisory, select **Start a temporary private fork**. Fine-grained personal access tokens cannot reach the fork, even with it added to the token. Use a short-lived classic token with the `repo` and `workflow` scopes, and revoke it when the release is done.
-3. Bring the fork's target branch up to date. Its branches are a snapshot from when the fork was created, and **Sync fork** does not work on advisory forks, so push the upstream commit to it as a fast-forward, without force:
+3. Bring the fork's `main` up to date. Its branches are a snapshot from when the fork was created, and **Sync fork** does not work on advisory forks, so push the upstream commit to it as a fast-forward, without force:
 
    ```bash
    git push https://github.com/roostorg/<fork>.git <upstream sha>:refs/heads/main
    ```
 
-   Do the same for `release/x.y` on option B. The push is rejected without the `workflow` scope if the new commits change `.github/workflows/`.
+   Do the same for `release/x.y` if you open the second PR in step 4. The push is rejected without the `workflow` scope if the new commits change `.github/workflows/`.
 
-4. Clone the fork and open a PR against it with the fix and a regression test. Target `main` on option A, or `release/x.y` on option B. If on option B you also want the `main` version reviewed in the fork, open it as a second PR and keep both in sync: add every commit to both before review. Only one of them can be merged from the advisory, so before merging, export the other with `git format-patch` for the forward-port in step 8.
+4. Clone the fork and open a PR against its `main` with the fix and a regression test. On option B, if the fix does not cherry-pick cleanly to `release/x.y`, you can have the resolved version reviewed privately as a second PR against the fork's `release/x.y`, kept in sync with the first. Only the `main` PR is merged from the advisory, so before merging, export the other with `git format-patch` for the backport below.
 5. GitHub Actions does not run in temporary private forks. Run the [CI checks](https://github.com/roostorg/coop/blob/main/AGENTS.md#ci) locally and record the results in the PR. The required checks stay at "Expected — Waiting for status to be reported", so merging needs a branch protection bypass. **Pending decision:** a narrow bypass for security releases, or a private mirror repository where Actions runs.
-6. Before merging, update the fork's target branch again as in step 3, rebase the fix onto it, and rerun the local CI checks. The fork checks mergeability against its own stale branch, so a PR it shows as mergeable can still conflict upstream. Force-pushing the rebase does not dismiss existing approvals, so ask for a new review.
+6. Before merging, update the fork's branches again as in step 3, rebase each PR onto its branch, and rerun the local CI checks. The fork checks mergeability against its own stale branch, so a PR it shows as mergeable can still conflict upstream. Force-pushing the rebase does not dismiss existing approvals, so ask for a new review.
 7. Copy anything you need from the fork PR, such as review comments and CI results, into the draft advisory. GitHub deletes the fork when the PR is merged.
-8. Once the PR is reviewed, select **Merge pull request** in the advisory. The fix is public from this point, so publish the release (step 4) straight after.
+8. Once the PR is reviewed, select **Merge pull request** in the advisory. The fix is public from this point, and the response clock runs from it. On option A, publish the release (step 4) straight after. On option B, open the backport below straight away, and publish the release once it merges.
 9. The merge lands as one squashed commit titled "Merge commit from fork", with the PR's title only in the commit body, so `git log --oneline` does not show it as a security fix. Whoever merges it tells the release owner the commit SHA.
 
-If a fork fix for option B merged into `main` instead of `release/x.y`, the fix is public from that merge, and the response clock runs from it. Cherry-pick it to `release/x.y` with `git cherry-pick -x` in a public backport PR:
+On option B, cherry-pick the "Merge commit from fork" commit to `release/x.y` with `git cherry-pick -x` in a public backport PR, resolving any conflicts as in the exported patch:
 
 - Title it `fix(<scope>): backport <sha> to release/x.y`, with the one-line description below, nothing about the vulnerability. The commit's own title, "Merge commit from fork", does not pass the PR title check.
 - Write its entry in the release notes directly (step 3).
-- Skip step 8's forward-port; the fix is already on `main`.
 
 ### Public upstream CVE: normal PR
 
@@ -130,7 +129,7 @@ If `main` has unreleased changes, choose one of the options below. **Pending dec
 **B. Release from `release/x.y`.** Ship only the fixes as `x.y.(z+1)`, from a release branch kept for the latest minor version.
 
 - Create the branch once per minor version, from its first release tag: `git switch -c release/x.y x.y.0`, then push it to `origin`. Only the ruleset's bypass actors can create it.
-- Fixes land on `main` first, then are cherry-picked to `release/x.y` with `git cherry-pick -x`. The exception is a private-fork fix, which merges into `release/x.y` directly and is forward-ported to `main` in step 8.
+- Fixes land on `main` first, then are cherry-picked to `release/x.y` with `git cherry-pick -x`, private-fork fixes included.
 - Clean `-x` cherry-picks of exact `main` commits were already reviewed on `main`, so batch them into one backport PR per release. Open a separate PR for each backport that does not map exactly to a `main` commit: one update split out of a Dependabot group, a lockfile regenerated with `pnpm update`, or a cherry-pick with conflicts resolved by hand.
 - If a security fix adds or bumps a dependency, the backport takes that change as part of the fix, even when the dependency change is not itself a security update. It uses the same specifier and version as `main`, counts among the packages being fixed in the lockfile steps below, and passes the lockfile check, and approving the fix approves it without a separate dependency approval. Check its license and known CVEs as usual, and list the change under **Upgrade notes** if deployers need to know about it.
 - A ruleset on `release/*` requires a PR for every change, allows only rebase merges, requires the server, client, codegen, integration and E2E checks to pass, and blocks force pushes and branch deletion. Only its bypass actors can create or update the branch, so one of them merges each backport PR.
@@ -373,12 +372,9 @@ Coop x.y.z updates <component> to <version>, which fixes <CVE-…>. <What adopte
 Release notes: https://github.com/roostorg/coop/releases/tag/x.y.z
 ```
 
-## 8. Forward-port to `main`
+## 8. Check the draft release for `main`
 
-On option B:
-
-- Cherry-pick any fix that merged into `release/x.y` from a private fork and is not yet on `main`, in a PR to `main` with a blank `## Release notes` section, since the fix shipped in `x.y.z`.
-- Check the draft release for `main` and remove any entry for a fix that shipped in `x.y.z`.
+On option B, remove any entry from the draft release for `main` for a fix that shipped in `x.y.z`.
 
 ## Checklist
 
@@ -391,4 +387,4 @@ On option B:
 - [ ] Advisories published after the pre-publish checks
 - [ ] Hosted vendors notified
 - [ ] security-announce posted, if required
-- [ ] If released from `release/x.y`: private-fork fixes forward-ported to `main`, and its draft release checked
+- [ ] If released from `release/x.y`: the draft release for `main` checked
