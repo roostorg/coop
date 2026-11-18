@@ -13,6 +13,7 @@ import {
   latestStableTag,
   lockfileDelta,
   lockfilePackages,
+  originalCredit,
   releaseNotesSection,
 } from './security-backport.mjs';
 
@@ -154,6 +155,33 @@ test('releaseNotesSection leaves no comment opener behind', () => {
   );
 });
 
+test('releaseNotesSection drops trailing separators', () => {
+  assert.equal(
+    releaseNotesSection('## Release notes\n- Fix x\n\n---\n\n***\n'),
+    '- Fix x',
+  );
+});
+
+test('originalCredit links the source PR and its author', () => {
+  const url = 'https://github.com/roostorg/coop/pull/5';
+  assert.equal(
+    originalCredit({ number: 5, url, author: { login: 'ann', is_bot: false } }),
+    `[#5](${url}) by [@ann](https://github.com/ann)`,
+  );
+  assert.equal(
+    originalCredit({
+      number: 5,
+      url,
+      author: { login: 'app/dependabot', is_bot: true },
+    }),
+    `[#5](${url}) by [@dependabot[bot]](https://github.com/apps/dependabot)`,
+  );
+  assert.equal(
+    originalCredit({ number: 5, url, author: null }),
+    `[#5](${url}) by [@ghost](https://github.com/ghost)`,
+  );
+});
+
 test('backportBody warns when several packages change', () => {
   const target = { branch: 'release/1.2', next: '1.2.2' };
   const one = backportBody(
@@ -161,12 +189,16 @@ test('backportBody warns when several packages change', () => {
       pr: 7,
       sha: 'abc',
       releaseNotes: 'Fix x',
+      credit: '[#7](u) by [@a](v)',
       upgrades: [{ name: 'qs', from: ['6.0.0'], to: '6.0.1' }],
     },
     target,
   );
   assert.match(one, /`qs` 6\.0\.0 → 6\.0\.1/);
-  assert.match(one, /## Release notes\n\nFix x\n$/);
+  assert.match(
+    one,
+    /## Release notes\n\nFix x\n<!-- original-credit: \[#7\]\(u\) by \[@a\]\(v\) -->\n$/,
+  );
   assert.doesNotMatch(one, /WARNING/);
   const many = backportBody(
     {

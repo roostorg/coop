@@ -144,7 +144,22 @@ export function releaseNotesSection(body) {
     prev = text;
     text = text.replace(/<!--[\s\S]*?-->/g, '');
   }
-  return text.replace(/<!--[\s\S]*$/, '').trim();
+  return text
+    .replace(/<!--[\s\S]*$/, '')
+    .replace(/((?:^|\n)[ \t]*(?:-{3,}|\*{3,}|_{3,})\s*)+$/, '')
+    .trim();
+}
+
+// The source PR and its author, in change-template's format. The backport PR
+// carries it in an `original-credit` comment, which release-drafter.yml puts
+// in place of the backport PR's own credit.
+export function originalCredit({ number, url, author }) {
+  if (author?.is_bot) {
+    const app = author.login.replace(/^app\//, '');
+    return `[#${number}](${url}) by [@${app}[bot]](https://github.com/apps/${app})`;
+  }
+  const login = author?.login ?? 'ghost';
+  return `[#${number}](${url}) by [@${login}](https://github.com/${login})`;
 }
 
 // Whether `log` (git log --format=%s%n%b of the release branch since it
@@ -516,7 +531,7 @@ function backportOne({ pr, sha, target, base, workdir, existingRef }) {
     pr: pr.number,
     url: pr.url,
     title: pr.title,
-    author: pr.author?.login,
+    credit: originalCredit(pr),
     sha,
     branch,
     head,
@@ -550,8 +565,14 @@ export function backportBody(b, target) {
       `> This changes ${packages.size} packages. If the source PR grouped security updates with other updates, keep only the security updates (see "Cherry-picking deterministically" in the security release runbook) before marking this ready.`,
     );
   }
-  lines.push('', '## Release notes', '', b.releaseNotes);
-  return `${lines.join('\n').trimEnd()}\n`;
+  lines.push(
+    '',
+    '## Release notes',
+    '',
+    ...(b.releaseNotes ? [b.releaseNotes] : []),
+    `<!-- original-credit: ${b.credit} -->`,
+  );
+  return `${lines.join('\n')}\n`;
 }
 
 function failureComment(f, target) {
