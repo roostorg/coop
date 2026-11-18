@@ -11,7 +11,7 @@ import { safeDepthLimit } from '../graphql/utils/safeDepthLimit.js';
 import { safeGetEnvInt } from '../iocContainer/utils.js';
 
 /**
- * The Apollo server, configured exactly as in the Express app: same SDL and
+ * The Apollo server: the SDL and
  * resolvers, root fields wrapped with the authorization check, depth limit,
  * error formatting, and no landing page or introspection in production.
  */

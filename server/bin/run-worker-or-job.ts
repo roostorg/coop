@@ -4,7 +4,7 @@
  * so existing Kubernetes manifests and compose files work unchanged. Forwards
  * to the `worker:run` ace command (ace_commands/run_worker_or_job.ts).
  */
-import { createCoopApp } from '../adonis/createApp.js';
+import { makeCoopIgnitor } from '../adonis/createApp.js';
 import {
   isWorkerOrJobName,
   WORKER_AND_JOB_NAMES,
@@ -27,5 +27,5 @@ if (!isWorkerOrJobName(workerOrJobName)) {
   process.exit(1);
 }
 
-const { ignitor } = await createCoopApp('console');
+const ignitor = makeCoopIgnitor();
 await ignitor.ace().handle(['worker:run', workerOrJobName]);

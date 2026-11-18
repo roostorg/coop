@@ -4,12 +4,13 @@ import { HeaderMap } from '@apollo/server';
 import { resolve } from '../../adonis/resolve.js';
 import { makeGqlServices } from '../../graphql/services.js';
 import { buildPassportContext } from '../../graphql/utils/passportContext.js';
+import { jsonBody } from '../../utils/bodySchemaValidation.js';
 import { bridgeRequest } from '../middleware/session_bridge_middleware.js';
 
 /**
  * Apollo has no AdonisJS integration, so this is one: it hands the request to
  * `executeHTTPGraphQLRequest` and copies the result onto the AdonisJS
- * response, as `@as-integrations/express5` did for Express.
+ * response.
  */
 export default class GraphqlController {
   async handle(ctx: HttpContext) {
@@ -29,7 +30,9 @@ export default class GraphqlController {
         method: ctx.request.method().toUpperCase(),
         headers,
         search: ctx.request.parsedUrl.search ?? '',
-        body: ctx.request.body(),
+        // Only JSON bodies reach Apollo, so its content-type and CSRF checks
+        // see what the client sent.
+        body: jsonBody(ctx),
       },
       context: async () => ({
         ...buildPassportContext(req, res),

@@ -34,7 +34,7 @@ export default function serveIntegrationLogoWithBackground(
     // than the API.
     ctx.response.header('Cross-Origin-Resource-Policy', 'cross-origin');
     // Adonis streams the file and sets Content-Type, Content-Length,
-    // Last-Modified and ETag. Unlike Express' `res.sendFile`, it doesn't
+    // Last-Modified and ETag. It doesn't
     // answer Range requests.
     ctx.response.download(filePath, true);
   };

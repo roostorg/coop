@@ -1,8 +1,9 @@
 import { defineConfig } from '@adonisjs/core/bodyparser';
 
 /**
- * Mirrors `express.json({ limit: '50mb' })` on every route, plus the
- * `express.urlencoded()` that only the SAML callback used.
+ * JSON on every route, up to 50 MB. URL-encoded bodies are parsed only by the
+ * SAML callback (`app/controllers/saml_controller.ts`), so this parser leaves
+ * them alone.
  *
  * `convertEmptyStringsToNull` defaults to true in AdonisJS. Coop must store
  * submitted item fields exactly as sent, so it's off everywhere.
@@ -15,12 +16,7 @@ export default defineConfig({
     types: ['application/json'],
     convertEmptyStringsToNull: false,
   },
-  form: {
-    limit: '100kb',
-    types: ['application/x-www-form-urlencoded'],
-    convertEmptyStringsToNull: false,
-  },
-  // Express never parsed text or multipart bodies.
+  form: { types: [], convertEmptyStringsToNull: false },
   raw: { types: [] },
   multipart: {
     autoProcess: false,

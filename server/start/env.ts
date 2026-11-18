@@ -49,6 +49,7 @@ export default await Env.create(new URL('../', import.meta.url), {
   DATABASE_IDLE_IN_TRANSACTION_TIMEOUT_MS: optionalString(),
   DATABASE_KEEPALIVE: optionalString(),
   DATABASE_KEEPALIVE_INITIAL_DELAY_MS: optionalString(),
+  DATABASE_PRINT_LOGS: optionalString(),
 
   WAREHOUSE_ADAPTER: optionalString(),
   ANALYTICS_ADAPTER: optionalString(),
@@ -63,6 +64,12 @@ export default await Env.create(new URL('../', import.meta.url), {
   CLICKHOUSE_MAX_THREADS: optionalString(),
   CLICKHOUSE_MAX_BLOCK_SIZE: optionalString(),
   CLICKHOUSE_INSERT_MAX_RETRIES: optionalString(),
+  // Postgres as the data warehouse (DataWarehouseFactory).
+  POSTGRES_HOST: optionalString(),
+  POSTGRES_PORT: optionalString(),
+  POSTGRES_DATABASE: optionalString(),
+  POSTGRES_USERNAME: optionalString(),
+  POSTGRES_PASSWORD: optionalString(),
 
   SCYLLA_ENABLED: optionalString(),
   SCYLLA_HOSTS: optionalString(),

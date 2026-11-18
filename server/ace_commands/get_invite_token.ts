@@ -41,7 +41,7 @@ export default class GetInviteToken extends BaseCommand {
         return;
       }
 
-      const uiUrl = process.env.UI_URL ?? 'http://localhost:3000';
+      const { uiUrl } = await this.app.container.make('ConfigService');
       console.log('\n✅ Invite Token Found!\n');
       console.log(`Email:         ${invite.email}`);
       console.log(`Role:          ${invite.role}`);

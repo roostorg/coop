@@ -9,27 +9,36 @@ import { type Dependencies } from '../iocContainer/index.js';
 export const APP_ROOT = new URL('../', import.meta.url);
 
 /**
- * Creates and initializes an AdonisJS application for one of the server's
- * entry points: `web` (bin/www.ts), `console` (ace commands, workers and
- * jobs) or `test` (the Vitest harness).
- *
- * The rc file and config are passed in rather than read from disk; see the
- * comment in `adonisrc.ts`. `deps` replaces Coop's service graph, which is how
- * the test harness injects mocks.
+ * An Ignitor whose every application gets Coop's rc file and config from
+ * code rather than from disk (see the comment in `adonisrc.ts`), including
+ * the application that `ignitor.ace()` creates for itself. `deps` replaces
+ * Coop's service graph, which is how the test harness injects mocks.
+ */
+export function makeCoopIgnitor(opts: { deps?: Dependencies } = {}) {
+  return new Ignitor(APP_ROOT, {
+    importer: async (filePath) => import(filePath),
+  }).tap((app) => {
+    app.rcContents(rcFile);
+    app.useConfig(config);
+    const { deps } = opts;
+    if (deps) {
+      app.initiating(() => {
+        app.container.bindValue('coop.deps', deps);
+      });
+    }
+  });
+}
+
+/**
+ * Creates and initializes the application for the `web` (bin/www.ts) or
+ * `test` (Vitest harness) entry point. Console entry points call
+ * `makeCoopIgnitor().ace().handle(argv)`, which creates its own.
  */
 export async function createCoopApp(
   environment: AppEnvironments,
   opts: { deps?: Dependencies } = {},
 ) {
-  const ignitor = new Ignitor(APP_ROOT, {
-    importer: async (filePath) => import(filePath),
-  });
-  const app = ignitor.createApp(environment);
-  app.rcContents(rcFile);
-  app.useConfig(config);
+  const app = makeCoopIgnitor(opts).createApp(environment);
   await app.init();
-  if (opts.deps) {
-    app.container.bindValue('coop.deps', opts.deps);
-  }
-  return { ignitor, app };
+  return { app };
 }

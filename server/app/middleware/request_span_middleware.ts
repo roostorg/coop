@@ -10,7 +10,7 @@ import { jsonStringify } from '../../utils/encoding.js';
  * `@opentelemetry/instrumentation-express` did: OpenTelemetry has no AdonisJS
  * instrumentation, so without this every span would be named just `POST`.
  * Also records the request body when LOG_REQUEST_BODY=true, which the express
- * instrumentation's `requestHook` in nodejs-instrumentation used to do.
+ * instrumentation's `requestHook` in nodejs-instrumentation does for Express.
  */
 export default class RequestSpanMiddleware {
   async handle(ctx: HttpContext, next: NextFn) {

@@ -61,7 +61,17 @@ export default class RunWorkerOrJob extends BaseCommand {
       });
     });
 
-    const workerOrJob: WorkerOrJob = await this.app.container.make(name);
+    let workerOrJob: WorkerOrJob;
+    try {
+      workerOrJob = await this.app.container.make(name);
+    } catch (error) {
+      // AdonisJS only records a failure here on the kernel, and a
+      // `staysAlive` command never terminates on its own: exit non-zero, as a
+      // failed `getBottle()` did, so Kubernetes restarts the pod.
+      // eslint-disable-next-line no-restricted-syntax
+      logErrorJson({ message: 'failed to create worker/job', error });
+      process.exit(1);
+    }
     const controller = new AbortController();
     let failed = false;
 
@@ -91,7 +101,7 @@ export default class RunWorkerOrJob extends BaseCommand {
       this.exitCode = failed ? 1 : 0;
     });
 
-    // Exit explicitly once shut down, as the pre-AdonisJS runner did: open
+    // Exit explicitly once shut down: open
     // Redis, BullMQ and pg handles would otherwise keep the process alive,
     // since a `staysAlive` command relies on the event loop draining.
     const stop = _.once(async () => {

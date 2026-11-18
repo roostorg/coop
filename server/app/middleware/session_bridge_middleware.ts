@@ -216,11 +216,14 @@ export async function runConnectMiddleware(
   res: BridgedResponse,
 ): Promise<boolean> {
   return new Promise<boolean>((resolve, reject) => {
+    // 'close' also covers a client that disconnects before the response ends.
     const onFinish = () => resolve(false);
     res.once('finish', onFinish);
+    res.once('close', onFinish);
     try {
       middleware(req, res, (err?: unknown) => {
         res.off('finish', onFinish);
+        res.off('close', onFinish);
         if (err != null) {
           reject(err instanceof Error ? err : (err as Error));
         } else {
@@ -229,6 +232,7 @@ export async function runConnectMiddleware(
       });
     } catch (e) {
       res.off('finish', onFinish);
+      res.off('close', onFinish);
       reject(e);
     }
   });
@@ -241,7 +245,7 @@ export function getSessionUser(ctx: HttpContext): Express.User | undefined {
 
 /**
  * Loads the session and the session user (express-session, then
- * `passport.initialize()` and `passport.session()`), as the Express app did
+ * `passport.initialize()` and `passport.session()`),
  * for every `/api/v1` route except `/ready`.
  */
 export default class SessionBridgeMiddleware {

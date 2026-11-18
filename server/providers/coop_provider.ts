@@ -2,12 +2,14 @@ import type { ApplicationService } from '@adonisjs/core/types';
 import { type ApolloServer } from '@apollo/server';
 
 import { makeApolloServer } from '../adonis/apollo.js';
+import { registerNative } from '../adonis/registerNative.js';
 import {
   makeAuthStack,
   type AuthStack,
 } from '../app/middleware/session_bridge_middleware.js';
 import { type Context } from '../graphql/resolvers.js';
 import getBottle, { type Dependencies } from '../iocContainer/index.js';
+import { makeApiKeyService } from '../services/apiKeyService/index.js';
 import { registerKernel } from '../start/kernel.js';
 import { registerRoutes } from '../start/routes.js';
 
@@ -27,13 +29,15 @@ import { registerRoutes } from '../start/routes.js';
  */
 export default class CoopProvider {
   #apollo?: ApolloServer<Context>;
+  #depsInjected = false;
   #auth?: AuthStack;
 
   constructor(protected app: ApplicationService) {}
 
   register() {
     const { container } = this.app;
-    if (!container.hasBinding('coop.deps')) {
+    this.#depsInjected = container.hasBinding('coop.deps');
+    if (!this.#depsInjected) {
       container.singleton(
         'coop.deps',
         async () => (await getBottle()).container,
@@ -58,6 +62,15 @@ export default class CoopProvider {
       this.app.container.singleton(name, () => deps[name]);
     }
 
+    // Spike: one service built natively by the AdonisJS container rather than
+    // bridged from Bottle (see `adonis/registerNative.ts`). Only when the
+    // graph is Coop's own: an injected graph (tests) keeps its mocks. Bottle
+    // still builds its own instance for consumers of `deps.ApiKeyService`
+    // (GraphQL), so the two graphs coexist until every consumer moves.
+    if (!this.#depsInjected) {
+      registerNative(this.app.container, 'ApiKeyService', makeApiKeyService);
+    }
+
     if (this.#servesHttp() && !process.env.SESSION_SECRET) {
       throw new Error('Missing env var SESSION_SECRET');
     }
@@ -77,7 +90,7 @@ export default class CoopProvider {
     const server = await this.app.container.make('server');
     const router = await this.app.container.make('router');
     registerRoutes(router, deps, registerKernel(server, router));
-    // Start Apollo at boot, as the Express app did, so schema errors fail the
+    // Start Apollo at boot so schema errors fail the
     // deploy rather than the first request.
     await this.app.container.make('coop.apollo');
   }
@@ -85,7 +98,7 @@ export default class CoopProvider {
   async shutdown() {
     // Workers, jobs and CLI commands close what they opened themselves (some
     // jobs call `closeSharedResourcesForShutdown` in their own `shutdown()`),
-    // as they did before AdonisJS; a second close of a pg pool throws.
+    // and a second close of a pg pool throws.
     if (!this.#servesHttp()) {
       return;
     }

@@ -15,7 +15,8 @@ declare module '@adonisjs/core/http' {
 /**
  * A route handler. It returns the response body (`undefined` for an empty
  * response), so the body is type checked against `ResBody` the way
- * `res.json()` was under Express. Status and headers go on `ctx.response`.
+ * an Express `res.json()` call would be. Status and headers go on
+ * `ctx.response`.
  *
  * AdonisJS writes the response only after the handler's promise settles.
  * A handler that must reply first and keep working afterwards calls

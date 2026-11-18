@@ -22,7 +22,7 @@ import {
 
 /**
  * Serializes every error as Coop's `{ errors: [...] }` JSON body and records it
- * on the request's span, as the Express error handler in `api.ts` did.
+ * on the request's span.
  *
  * This is a plain error handler, not a subclass of AdonisJS'
  * `ExceptionHandler`: that one renders HTML/JSON:API pages, status pages and

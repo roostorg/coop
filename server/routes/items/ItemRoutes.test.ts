@@ -58,6 +58,7 @@ describe('POST Items', () => {
           ],
         })
         .expect(202)
+        .expect('Content-Length', '0')
         .expect(({ body }) => {
           expect(body).toMatchInlineSnapshot(`{}`);
         });

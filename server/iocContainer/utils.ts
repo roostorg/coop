@@ -640,6 +640,18 @@ export function register<T extends keyof Deps & string>(
   }
 }
 
+/**
+ * The dependency names and construction style of a factory annotated with
+ * {@link inject}, for registering it in a container other than Bottle (see
+ * `adonis/registerNative.ts`).
+ */
+export function describeInjectedFactory(factory: AnnotatedFactory<unknown>) {
+  return {
+    deps: factory[DEPENDENCIES],
+    isClass: isConstructable(factory),
+  };
+}
+
 // See https://stackoverflow.com/a/49510834/1261879
 function isConstructable(fn: any): fn is new (...args: any[]) => any {
   try {

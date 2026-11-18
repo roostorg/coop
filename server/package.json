@@ -29,7 +29,6 @@
   "dependencies": {
     "@adonisjs/core": "6.21.0",
     "@apollo/server": "^5.5.0",
-    "@as-integrations/express5": "^1.1.2",
     "@aws-sdk/client-s3": "^3.1164.0",
     "@aws-sdk/client-ses": "^3.1164.0",
     "@clickhouse/client": "^1.25.0",
@@ -54,7 +53,6 @@
     "cors": "^2.8.5",
     "dataloader": "^2.1.0",
     "debug": "^4.4.3",
-    "express": "^5.3.0",
     "express-session": "^1.17.2",
     "fast-check": "^4.6.0",
     "form-data-encoder": "^4.0.2",

@@ -1,6 +1,7 @@
 import { type HttpContext } from '@adonisjs/core/http';
 import { v1 as uuidv1 } from 'uuid';
 
+import { resolve } from '../adonis/resolve.js';
 import { type Dependencies } from '../iocContainer/index.js';
 import { fromCorrelationId, toCorrelationId } from './correlationIds.js';
 import {
@@ -23,10 +24,12 @@ export interface RequestWithOrgId {
  * about whether the caller's key is valid.
  */
 export function createApiKeyMiddleware({
-  ApiKeyService,
   Tracer,
-}: Pick<Dependencies, 'ApiKeyService' | 'Tracer'>): RouteMiddleware {
+}: Pick<Dependencies, 'Tracer'>): RouteMiddleware {
   return async (ctx, next) => {
+    // Resolved per request from the AdonisJS container, where it's a native
+    // binding (see providers/coop_provider.ts).
+    const ApiKeyService = await resolve(ctx, 'ApiKeyService');
     const providedKey = ctx.request.header('x-api-key');
     let orgId: string | null;
 

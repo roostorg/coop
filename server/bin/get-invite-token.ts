@@ -8,7 +8,7 @@
  * Forwards to the `coop:get-invite` ace command
  * (ace_commands/get_invite_token.ts).
  */
-import { createCoopApp } from '../adonis/createApp.js';
+import { makeCoopIgnitor } from '../adonis/createApp.js';
 
-const { ignitor } = await createCoopApp('console');
+const ignitor = makeCoopIgnitor();
 await ignitor.ace().handle(['coop:get-invite', ...process.argv.slice(2)]);
