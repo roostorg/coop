@@ -1,7 +1,6 @@
 import { uid } from 'uid';
 
 import getBottle, { type Dependencies } from '../../iocContainer/index.js';
-
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../test/fixtureHelpers/createUser.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
@@ -26,7 +25,7 @@ describe('ReportingRules', () => {
       name,
       description: '',
       status: 'LIVE' as const,
-      itemTypeIds: ['item-type-1' as NonEmptyString],
+      itemTypeIds: ['item-type-1' as NonEmptyString] as [NonEmptyString],
       actionIds: ['action-1'],
       policyIds: ['policy-1'],
       conditionSet,
@@ -81,7 +80,10 @@ describe('ReportingRules', () => {
         id: created.id,
         orgId,
         name: 'renamed',
-        itemTypeIds: ['item-type-1' as NonEmptyString, 'item-type-2'],
+        itemTypeIds: ['item-type-1', 'item-type-2'] as [
+          NonEmptyString,
+          NonEmptyString,
+        ],
         policyIds: [],
       });
       expect(updated).toMatchObject({
@@ -170,7 +172,7 @@ describe('ReportingRules', () => {
         creatorId: 'creator',
         name,
         status: 'LIVE' as const,
-        itemTypeIds: ['item-type-1' as NonEmptyString] as const,
+        itemTypeIds: ['item-type-1' as NonEmptyString] as [NonEmptyString],
         actionIds: ['action-1'],
         policyIds: [],
         conditionSet,

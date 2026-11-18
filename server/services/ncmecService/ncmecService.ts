@@ -1,7 +1,8 @@
-import { sql, type Kysely } from 'kysely';
+import { type Kysely } from 'kysely';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
+import { type PrismaPgClient } from '../../storage/prisma/index.js';
 import { type ActionExecutionCorrelationId } from '../analyticsLoggers/ActionExecutionLogger.js';
 import { type RuleExecutionCorrelationId } from '../analyticsLoggers/ruleExecutionLoggingUtils.js';
 import { type ItemSubmissionWithTypeIdentifier } from '../itemProcessingService/makeItemSubmissionWithTypeIdentifier.js';
@@ -28,8 +29,11 @@ export class NcmecService {
   private readonly ncmecEnqueueToMrt: NcmecEnqueueToMrt;
 
   constructor(
+    // Kysely is still needed by NcmecReporting, which is not ported.
     readonly pgQuery: Kysely<NcmecReportingServicePg>,
     readonly pqQueryReadReplica: Kysely<NcmecReportingServicePg>,
+    readonly prisma: PrismaPgClient,
+    readonly prismaReadReplica: PrismaPgClient,
     readonly fetchHTTP: Dependencies['fetchHTTP'],
     readonly partialItemsService: Dependencies['PartialItemsService'],
     readonly moderationConfigService: Dependencies['ModerationConfigService'],
@@ -150,30 +154,31 @@ export class NcmecService {
     if (jobIds.length === 0) {
       return [];
     }
-    return this.pqQueryReadReplica
-      .selectFrom('ncmec_reporting.ncmec_reports_errors')
-      .select([
-        'job_id',
-        'retry_count',
-        'user_id',
-        'user_type_id',
-        'status',
-        'last_error',
-      ])
-      .where('job_id', 'in', jobIds)
-      .execute();
+    return this.prismaReadReplica.ncmec_reports_errors.findMany({
+      select: {
+        job_id: true,
+        retry_count: true,
+        user_id: true,
+        user_type_id: true,
+        status: true,
+        last_error: true,
+      },
+      where: { job_id: { in: jobIds } },
+    });
   }
 
   /** Returns the `(user_id, user_item_type_id)` pairs that already have a
    * successful NCMEC submission for this org. Used to filter MRT decisions
    * down to "failed" submissions (those without a matching report row). */
   async getSuccessfulSubmissionKeysForOrg(orgId: string) {
-    return this.pqQueryReadReplica
-      .selectFrom('ncmec_reporting.ncmec_reports')
-      .select(['user_id as userId', 'user_item_type_id as userItemTypeId'])
-      .where('org_id', '=', orgId)
-      .groupBy(['user_id', 'user_item_type_id'])
-      .execute();
+    const rows = await this.prismaReadReplica.ncmec_reports.groupBy({
+      by: ['user_id', 'user_item_type_id'],
+      where: { org_id: orgId },
+    });
+    return rows.map((row) => ({
+      userId: row.user_id,
+      userItemTypeId: row.user_item_type_id,
+    }));
   }
 
   async insertOrUpdateNcmecReportError(opts: {
@@ -183,55 +188,77 @@ export class NcmecService {
     status: 'RETRYABLE_ERROR' | 'PERMANENT_ERROR';
     error: string;
   }) {
-    // Atomic increment in `doUpdateSet` avoids the read-modify-write race
-    // when two callers (e.g. background retry job + user-clicked Retry)
-    // attempt to record an error for the same job_id concurrently.
-    return this.pgQuery
-      .insertInto('ncmec_reporting.ncmec_reports_errors')
-      .values({
+    // Prisma runs this as a single INSERT ... ON CONFLICT DO UPDATE (one
+    // model, one unique field in `where`, same value in `create`), so the
+    // atomic increment avoids the read-modify-write race when two callers
+    // (e.g. background retry job + user-clicked Retry) record an error for
+    // the same job_id concurrently.
+    await this.prisma.ncmec_reports_errors.upsert({
+      where: { job_id: opts.jobId },
+      create: {
         job_id: opts.jobId,
         user_id: opts.userId,
         user_type_id: opts.userTypeId,
         status: opts.status,
         last_error: opts.error,
         retry_count: 1,
-      })
-      .onConflict((oc) =>
-        oc.columns(['job_id']).doUpdateSet({
-          retry_count: sql`ncmec_reporting.ncmec_reports_errors.retry_count + 1`,
-          last_error: opts.error,
-          status: opts.status,
-        }),
-      )
-      .execute();
+      },
+      update: {
+        retry_count: { increment: 1 },
+        last_error: opts.error,
+        status: opts.status,
+      },
+    });
   }
 
   async getNcmecOrgSettings(orgId: string) {
-    const result = await this.pgQuery
-      .selectFrom('ncmec_reporting.ncmec_org_settings')
-      .select([
-        'username',
-        'password',
-        'contact_email as contactEmail',
-        'more_info_url as moreInfoUrl',
-        'company_template as companyTemplate',
-        'legal_url as legalUrl',
-        'ncmec_preservation_endpoint as ncmecPreservationEndpoint',
-        'ncmec_additional_info_endpoint as ncmecAdditionalInfoEndpoint',
-        'default_ncmec_queue_id as defaultNcmecQueueId',
-        'default_internet_detail_type as defaultInternetDetailType',
-        'terms_of_service as termsOfService',
-        'contact_person_email as contactPersonEmail',
-        'contact_person_first_name as contactPersonFirstName',
-        'contact_person_last_name as contactPersonLastName',
-        'contact_person_phone as contactPersonPhone',
-        'media_review_requirement as mediaReviewRequirement',
-        'min_media_to_review as minMediaToReview',
-      ])
-      .where('org_id', '=', orgId)
-      .executeTakeFirst();
+    const result = await this.prisma.ncmec_org_settings.findUnique({
+      select: {
+        username: true,
+        password: true,
+        contact_email: true,
+        more_info_url: true,
+        company_template: true,
+        legal_url: true,
+        ncmec_preservation_endpoint: true,
+        ncmec_additional_info_endpoint: true,
+        default_ncmec_queue_id: true,
+        default_internet_detail_type: true,
+        terms_of_service: true,
+        contact_person_email: true,
+        contact_person_first_name: true,
+        contact_person_last_name: true,
+        contact_person_phone: true,
+        media_review_requirement: true,
+        min_media_to_review: true,
+      },
+      where: { org_id: orgId },
+    });
 
-    return result ?? null;
+    if (result === null) {
+      return null;
+    }
+    return {
+      username: result.username,
+      password: result.password,
+      contactEmail: result.contact_email,
+      moreInfoUrl: result.more_info_url,
+      companyTemplate: result.company_template,
+      legalUrl: result.legal_url,
+      ncmecPreservationEndpoint: result.ncmec_preservation_endpoint,
+      ncmecAdditionalInfoEndpoint: result.ncmec_additional_info_endpoint,
+      defaultNcmecQueueId: result.default_ncmec_queue_id,
+      defaultInternetDetailType: result.default_internet_detail_type,
+      termsOfService: result.terms_of_service,
+      contactPersonEmail: result.contact_person_email,
+      contactPersonFirstName: result.contact_person_first_name,
+      contactPersonLastName: result.contact_person_last_name,
+      contactPersonPhone: result.contact_person_phone,
+      // varchar column in the schema; the app only ever writes these values.
+      mediaReviewRequirement: result.media_review_requirement as
+        'ALL' | 'MINIMUM',
+      minMediaToReview: result.min_media_to_review,
+    };
   }
 
   async updateNcmecOrgSettings(params: {
@@ -254,55 +281,35 @@ export class NcmecService {
     mediaReviewRequirement: 'ALL' | 'MINIMUM';
     minMediaToReview: number | null;
   }) {
-    await this.pgQuery
-      .insertInto('ncmec_reporting.ncmec_org_settings')
-      .values({
-        org_id: params.orgId,
-        username: params.username,
-        password: params.password,
-        contact_email: params.contactEmail ?? null,
-        more_info_url: params.moreInfoUrl ?? null,
-        company_template: params.companyTemplate ?? null,
-        legal_url: params.legalUrl ?? null,
-        ncmec_preservation_endpoint: params.ncmecPreservationEndpoint ?? null,
-        ncmec_additional_info_endpoint:
-          params.ncmecAdditionalInfoEndpoint ?? null,
-        default_ncmec_queue_id: params.defaultNcmecQueueId ?? null,
-        default_internet_detail_type: params.defaultInternetDetailType ?? null,
-        terms_of_service: params.termsOfService ?? null,
-        contact_person_email: params.contactPersonEmail ?? null,
-        contact_person_first_name: params.contactPersonFirstName ?? null,
-        contact_person_last_name: params.contactPersonLastName ?? null,
-        contact_person_phone: params.contactPersonPhone ?? null,
-        media_review_requirement: params.mediaReviewRequirement,
-        min_media_to_review: params.minMediaToReview ?? null,
-        actions_to_run_upon_report_creation: null,
-        policies_applied_to_actions_run_on_report_creation: null,
-      })
-      .onConflict((oc) =>
-        oc.column('org_id').doUpdateSet({
-          username: params.username,
-          password: params.password,
-          contact_email: params.contactEmail ?? null,
-          more_info_url: params.moreInfoUrl ?? null,
-          company_template: params.companyTemplate ?? null,
-          legal_url: params.legalUrl ?? null,
-          ncmec_preservation_endpoint: params.ncmecPreservationEndpoint ?? null,
-          ncmec_additional_info_endpoint:
-            params.ncmecAdditionalInfoEndpoint ?? null,
-          default_ncmec_queue_id: params.defaultNcmecQueueId ?? null,
-          default_internet_detail_type:
-            params.defaultInternetDetailType ?? null,
-          terms_of_service: params.termsOfService ?? null,
-          contact_person_email: params.contactPersonEmail ?? null,
-          contact_person_first_name: params.contactPersonFirstName ?? null,
-          contact_person_last_name: params.contactPersonLastName ?? null,
-          contact_person_phone: params.contactPersonPhone ?? null,
-          media_review_requirement: params.mediaReviewRequirement,
-          min_media_to_review: params.minMediaToReview ?? null,
-        }),
-      )
-      .execute();
+    const settings = {
+      username: params.username,
+      password: params.password,
+      contact_email: params.contactEmail ?? null,
+      more_info_url: params.moreInfoUrl ?? null,
+      company_template: params.companyTemplate ?? null,
+      legal_url: params.legalUrl ?? null,
+      ncmec_preservation_endpoint: params.ncmecPreservationEndpoint ?? null,
+      ncmec_additional_info_endpoint:
+        params.ncmecAdditionalInfoEndpoint ?? null,
+      default_ncmec_queue_id: params.defaultNcmecQueueId ?? null,
+      default_internet_detail_type: params.defaultInternetDetailType ?? null,
+      terms_of_service: params.termsOfService ?? null,
+      contact_person_email: params.contactPersonEmail ?? null,
+      contact_person_first_name: params.contactPersonFirstName ?? null,
+      contact_person_last_name: params.contactPersonLastName ?? null,
+      contact_person_phone: params.contactPersonPhone ?? null,
+      media_review_requirement: params.mediaReviewRequirement,
+      min_media_to_review: params.minMediaToReview ?? null,
+    };
+    // `actions_to_run_upon_report_creation` and
+    // `policies_applied_to_actions_run_on_report_creation` are left out of
+    // `create` so they default to NULL: Prisma models Postgres arrays as
+    // non-nullable lists and cannot write NULL to them.
+    await this.prisma.ncmec_org_settings.upsert({
+      where: { org_id: params.orgId },
+      create: { org_id: params.orgId, ...settings },
+      update: settings,
+    });
   }
 }
 
@@ -310,6 +317,8 @@ export default inject(
   [
     'KyselyPg',
     'KyselyPgReadReplica',
+    'PrismaPg',
+    'PrismaPgReadReplica',
     'fetchHTTP',
     'PartialItemsService',
     'ModerationConfigService',

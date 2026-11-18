@@ -1674,8 +1674,7 @@ export default async function getBottle(
   );
 
   bottle.factory('getImageBankEventuallyConsistent', (container) => {
-    const kyselyPg = container.KyselyPg;
-    const hashBankService = new HashBankService(kyselyPg);
+    const hashBankService = new HashBankService(container.PrismaPg);
 
     return cached({
       async producer({ orgId, bankId }) {
