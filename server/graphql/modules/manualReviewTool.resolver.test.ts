@@ -2,7 +2,7 @@ import { vi } from 'vitest';
 
 import { UserPermission } from '../../services/userManagementService/index.js';
 import { CoopError, ErrorType } from '../../utils/errors.js';
-import { resolvers } from './manualReviewTool.js';
+import { resolvers } from './manualReviewTool.resolvers.js';
 
 type ResolverFn = (
   parent: unknown,

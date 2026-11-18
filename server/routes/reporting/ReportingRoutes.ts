@@ -21,7 +21,7 @@ const rawItemBodySchema = rawItemSubmissionSchema as v.GenericSchema<
   RawItemSubmission,
   RawItemSubmission
 >;
-const reportItemInputSchema = v.object({
+export const reportItemInputSchema = v.object({
   reporter: v.object({
     kind: v.pipe(v.literal('user'), v.metadata({ jsonSchemaType: 'string' })),
     typeId: v.string(),
@@ -47,7 +47,7 @@ const reportItemInputSchema = v.object({
   reportedItemsInThread: v.optional(v.array(itemIdentifierSchema)),
   additionalItems: v.optional(v.array(rawItemBodySchema)),
 });
-const appealItemInputSchema = v.pipe(
+export const appealItemInputSchema = v.pipe(
   v.object({
     appealId: v.string(),
     appealedBy: v.object({ typeId: v.string(), id: v.string() }),
