@@ -18,7 +18,10 @@ import {
   makeInternalServerError,
 } from '../../utils/errors.js';
 import { withRetries } from '../../utils/misc.js';
-import { type RouteHandler } from '../../utils/route-helpers.js';
+import {
+  RouteRejection,
+  type RouteHandler,
+} from '../../utils/route-helpers.js';
 import { isValidDate } from '../../utils/time.js';
 import {
   type AppealItemInput,
@@ -51,13 +54,16 @@ export default function submitAppeal({
     try {
       // Get orgId from request (set by API key middleware)
       if (!hasOrgId(ctx)) {
-        throw makeBadRequestError('Invalid API Key', {
-          detail:
-            'Something went wrong finding or validating your API key. ' +
-            'Make sure the proper key is provided in the x-api-key header.',
-          requestId: fromCorrelationId(requestId),
-          shouldErrorSpan: true,
-        });
+        // eslint-disable-next-line @typescript-eslint/only-throw-error -- see RouteRejection
+        throw new RouteRejection(
+          makeBadRequestError('Invalid API Key', {
+            detail:
+              'Something went wrong finding or validating your API key. ' +
+              'Make sure the proper key is provided in the x-api-key header.',
+            requestId: fromCorrelationId(requestId),
+            shouldErrorSpan: true,
+          }),
+        );
       }
 
       const { orgId } = ctx;
@@ -138,41 +144,44 @@ export default function submitAppeal({
         isInvalidAppealedAtDate ||
         invalidActionIds.length > 0
       ) {
-        throw new AggregateError(
-          [
-            submittedItemIsInvalid ? reportedItemSubmission.error : [],
-            hasAdditionalItemsOnThreadSubmission
-              ? [
-                  makeBadRequestError(
-                    `Invalid appeal containing additional items on a Thread type.`,
-                    { shouldErrorSpan: true },
-                  ),
-                ]
-              : [],
-            threadOrAdditionalItemsHadInvalidOrIllegalItems
-              ? [
-                  makeBadRequestError(
-                    `Invalid appeal containing a thread or additional items containing items that aren't entirely Content Types`,
-                    { shouldErrorSpan: true },
-                  ),
-                ]
-              : [],
-            isInvalidAppealedAtDate
-              ? [
-                  makeBadRequestError(`Invalid appealedAt time`, {
-                    shouldErrorSpan: true,
-                  }),
-                ]
-              : [],
-            invalidActionIds.length > 0
-              ? invalidActionIds.map((id) =>
-                  makeBadRequestError(
-                    `Couldn\'t find an Item Type for your org with ID: ${id}`,
-                    { shouldErrorSpan: true },
-                  ),
-                )
-              : [],
-          ].flat(),
+        // eslint-disable-next-line @typescript-eslint/only-throw-error -- see RouteRejection
+        throw new RouteRejection(
+          new AggregateError(
+            [
+              submittedItemIsInvalid ? reportedItemSubmission.error : [],
+              hasAdditionalItemsOnThreadSubmission
+                ? [
+                    makeBadRequestError(
+                      `Invalid appeal containing additional items on a Thread type.`,
+                      { shouldErrorSpan: true },
+                    ),
+                  ]
+                : [],
+              threadOrAdditionalItemsHadInvalidOrIllegalItems
+                ? [
+                    makeBadRequestError(
+                      `Invalid appeal containing a thread or additional items containing items that aren't entirely Content Types`,
+                      { shouldErrorSpan: true },
+                    ),
+                  ]
+                : [],
+              isInvalidAppealedAtDate
+                ? [
+                    makeBadRequestError(`Invalid appealedAt time`, {
+                      shouldErrorSpan: true,
+                    }),
+                  ]
+                : [],
+              invalidActionIds.length > 0
+                ? invalidActionIds.map((id) =>
+                    makeBadRequestError(
+                      `Couldn\'t find an Item Type for your org with ID: ${id}`,
+                      { shouldErrorSpan: true },
+                    ),
+                  )
+                : [],
+            ].flat(),
+          ),
         );
       }
 
@@ -288,6 +297,9 @@ export default function submitAppeal({
       } catch {}
       // this error handling only triggers on errors before the `ctx.response.finish()` call
     } catch (e: unknown) {
+      if (e instanceof RouteRejection) {
+        throw e.error;
+      }
       const activeSpan = Tracer.getActiveSpan();
       if (activeSpan?.isRecording()) {
         activeSpan.recordException(e as Exception);

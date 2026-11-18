@@ -121,3 +121,14 @@ export const route = {
     return (makeRoute as any)('delete', ...args) as Route<never, ResBody>;
   },
 };
+
+/**
+ * An error a handler rejects the request with from inside a `try` block whose
+ * `catch` must not see it. Under Express these were `return next(err)` calls,
+ * which don't throw, so the surrounding `catch` (which turns failures into a
+ * 500) never ran; a plain `throw err` would now reach it. The `catch` rethrows
+ * `rejection.error` instead.
+ */
+export class RouteRejection {
+  constructor(public readonly error: unknown) {}
+}

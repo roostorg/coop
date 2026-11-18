@@ -6,11 +6,13 @@ import {
   createBodySchemaValidator,
   jsonBody,
 } from '../utils/bodySchemaValidation.js';
+import { jsonStringify } from '../utils/encoding.js';
 import { type NamedMiddleware } from './kernel.js';
 
 const GraphqlController = async () =>
   import('../app/controllers/graphql_controller.js');
-const SamlController = async () => import('../app/controllers/saml_controller.js');
+const SamlController = async () =>
+  import('../app/controllers/saml_controller.js');
 
 /**
  * All of the public API, under `/api/v1`. `deps` is passed to each REST
@@ -43,9 +45,17 @@ export function registerRoutes(
             for (const it of controller.routes) {
               const handler = it.handler(deps);
               const pattern = joinPath(controller.pathPrefix, it.path);
-              const route = router[it.method](pattern, async (ctx) =>
-                handler(ctx, jsonBody(ctx) as never),
-              );
+              const route = router[it.method](pattern, async (ctx) => {
+                const result = await handler(ctx, jsonBody(ctx) as never);
+                // Always JSON, as `res.json()` was. AdonisJS' `json()` is an
+                // alias of `send()`, which sends a number or string as
+                // text/plain.
+                if (result !== undefined) {
+                  ctx.response
+                    .header('Content-Type', 'application/json; charset=utf-8')
+                    .send(jsonStringify(result));
+                }
+              });
               // Body validation runs before the route's own middleware (e.g.
               // the API key check), so a malformed body is a 400 even without
               // a valid key, as it was under Express.

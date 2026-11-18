@@ -12,7 +12,7 @@ export default defineConfig({
     deps: { interopDefault: false },
     sequence: { hooks: 'list' },
     hookTimeout: 5_000,
-    setupFiles: ['./test/extendExpect.ts'],
+    setupFiles: ['./test/extendExpect.ts', './test/preloadAdonis.ts'],
     include: ['**/__tests__/**/*.[jt]s?(x)', '**/?(*.)+(spec|test).[tj]s?(x)'],
     exclude: [
       'node_modules/**',

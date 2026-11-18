@@ -18,7 +18,10 @@ import {
   makeInternalServerError,
 } from '../../utils/errors.js';
 import { withRetries } from '../../utils/misc.js';
-import { type RouteHandler } from '../../utils/route-helpers.js';
+import {
+  RouteRejection,
+  type RouteHandler,
+} from '../../utils/route-helpers.js';
 import { isValidDate } from '../../utils/time.js';
 import { addHashesToImageFields } from '../items/hashImageFields.js';
 import {
@@ -58,13 +61,16 @@ export default function submitReport({
     try {
       // Get orgId from request (set by API key middleware)
       if (!hasOrgId(ctx)) {
-        throw makeBadRequestError('Invalid API Key', {
-          detail:
-            'Something went wrong finding or validating your API key. ' +
-            'Make sure the proper key is provided in the x-api-key header.',
-          requestId: fromCorrelationId(requestId),
-          shouldErrorSpan: true,
-        });
+        // eslint-disable-next-line @typescript-eslint/only-throw-error -- see RouteRejection
+        throw new RouteRejection(
+          makeBadRequestError('Invalid API Key', {
+            detail:
+              'Something went wrong finding or validating your API key. ' +
+              'Make sure the proper key is provided in the x-api-key header.',
+            requestId: fromCorrelationId(requestId),
+            shouldErrorSpan: true,
+          }),
+        );
       }
 
       const { orgId } = ctx;
@@ -166,36 +172,41 @@ export default function submitReport({
         hasAdditionalItemsOnThreadSubmission ||
         isInvalidReportedAtDate
       ) {
-        throw new AggregateError(
-          [
-            submittedItemIsInvalid ? reportedItemSubmission.error : [],
-            reportedThreadSubmission
-              ? reportedThreadSubmission.flatMap((it) => it.error?.errors ?? [])
-              : [],
-            hasAdditionalItemsOnThreadSubmission
-              ? [
-                  makeBadRequestError(
-                    `Invalid report containing additional items on a Thread type.`,
-                    { shouldErrorSpan: true },
-                  ),
-                ]
-              : [],
-            threadOrAdditionalItemsHadInvalidOrIllegalItems
-              ? [
-                  makeBadRequestError(
-                    `Invalid report: thread messages must all be valid Content Types, and additional items must all be valid item submissions`,
-                    { shouldErrorSpan: true },
-                  ),
-                ]
-              : [],
-            isInvalidReportedAtDate
-              ? [
-                  makeBadRequestError(`Invalid reportedAt time`, {
-                    shouldErrorSpan: true,
-                  }),
-                ]
-              : [],
-          ].flat(),
+        // eslint-disable-next-line @typescript-eslint/only-throw-error -- see RouteRejection
+        throw new RouteRejection(
+          new AggregateError(
+            [
+              submittedItemIsInvalid ? reportedItemSubmission.error : [],
+              reportedThreadSubmission
+                ? reportedThreadSubmission.flatMap(
+                    (it) => it.error?.errors ?? [],
+                  )
+                : [],
+              hasAdditionalItemsOnThreadSubmission
+                ? [
+                    makeBadRequestError(
+                      `Invalid report containing additional items on a Thread type.`,
+                      { shouldErrorSpan: true },
+                    ),
+                  ]
+                : [],
+              threadOrAdditionalItemsHadInvalidOrIllegalItems
+                ? [
+                    makeBadRequestError(
+                      `Invalid report: thread messages must all be valid Content Types, and additional items must all be valid item submissions`,
+                      { shouldErrorSpan: true },
+                    ),
+                  ]
+                : [],
+              isInvalidReportedAtDate
+                ? [
+                    makeBadRequestError(`Invalid reportedAt time`, {
+                      shouldErrorSpan: true,
+                    }),
+                  ]
+                : [],
+            ].flat(),
+          ),
         );
       }
 
@@ -395,6 +406,9 @@ export default function submitReport({
       }
       // this error handling only triggers on errors before the `ctx.response.finish()` call
     } catch (e: unknown) {
+      if (e instanceof RouteRejection) {
+        throw e.error;
+      }
       const activeSpan = Tracer.getActiveSpan();
       if (activeSpan?.isRecording()) {
         activeSpan.recordException(e as Exception);

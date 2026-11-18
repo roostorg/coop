@@ -1,5 +1,6 @@
 import { type IncomingMessage, type ServerResponse } from 'node:http';
 import BodyParserMiddleware from '@adonisjs/core/bodyparser_middleware';
+import { AppFactory } from '@adonisjs/core/factories/app';
 import {
   HttpContextFactory,
   RequestFactory,
@@ -18,7 +19,12 @@ import { createBodySchemaValidator } from '../utils/bodySchemaValidation.js';
  * with its `status`.
  */
 export async function makeBareServer(register: (router: Router) => void) {
-  const server = new ServerFactory().create();
+  const app = new AppFactory().create(
+    new URL('../', import.meta.url),
+    async (filePath: string) => import(filePath),
+  );
+  await app.init();
+  const server = new ServerFactory().merge({ app }).create();
   const router = server.getRouter();
   const bodyParser = new BodyParserMiddleware(bodyparserConfig);
   router
@@ -33,7 +39,8 @@ export async function makeBareServer(register: (router: Router) => void) {
     },
   }));
   await server.boot();
-  return async (req: IncomingMessage, res: ServerResponse) => server.handle(req, res);
+  return async (req: IncomingMessage, res: ServerResponse) =>
+    server.handle(req, res);
 }
 
 /**
