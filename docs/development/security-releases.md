@@ -106,7 +106,7 @@ Use this path for a vulnerability in Coop's own code, or any issue not yet publi
 On option B, cherry-pick the "Merge commit from fork" commit to `release/x.y` with `git cherry-pick -x` in a public backport PR, resolving any conflicts as in the exported patch:
 
 - Title it `fix(<scope>): backport <sha> to release/x.y`, with the one-line description below, nothing about the vulnerability. The commit's own title, "Merge commit from fork", does not pass the PR title check.
-- Write its entry in the release notes directly (step 3).
+- Its release note links only the advisory (step 3).
 
 ### Public upstream CVE: normal PR
 
@@ -134,7 +134,7 @@ If `main` has unreleased changes, choose one of the options below. **Pending dec
 - If a security fix adds or bumps a dependency, the backport takes that change as part of the fix, even when the dependency change is not itself a security update. It uses the same specifier and version as `main`, counts among the packages being fixed in the lockfile steps below, and passes the lockfile check, and approving the fix approves it without a separate dependency approval. Check its license and known CVEs as usual, and list the change under **Upgrade notes** if deployers need to know about it.
 - A ruleset on `release/*` requires a PR for every change, allows only rebase merges, requires the server, client, codegen, integration and E2E checks to pass, and blocks force pushes and branch deletion. Only its bypass actors can create or update the branch, so one of them merges each backport PR.
 - The [Security backports](security-backports.md) workflow creates `release/x.y` and opens a backport PR for each `security-update`-labelled PR merged to `main`, from a `backport/<n>-to-release/x.y` branch. Its app must be a bypass actor for creating `release/*` branches. It depends on [#1550](https://github.com/roostorg/coop/pull/1550); without it, cherry-pick by hand as below.
-- Open each backport PR with `gh pr create --base release/x.y`; `gh` defaults to `main`. Its description is one line, `Backporting PR #<n> to <x.y> security release branch` (or `Backporting <sha> …` for a fix with no PR), with no template sections; an agent may write this line. Release Drafter does not run on `release/x.y` until [#1548](https://github.com/roostorg/coop/pull/1548) and [#1550](https://github.com/roostorg/coop/pull/1550) are in, so write the release's notes directly in step 3.
+- Open each backport PR with `gh pr create --base release/x.y`; `gh` defaults to `main`. Its description is one line, `Backporting PR #<n> to <x.y> security release branch` (or `Backporting <sha> …` for a fix with no PR), with no template sections except a `## Release notes` section where step 3 calls for one; an agent may write the one-line description. Release Drafter does not run on `release/x.y` until [#1548](https://github.com/roostorg/coop/pull/1548) and [#1550](https://github.com/roostorg/coop/pull/1550) are in, so write the release's notes directly in step 3.
 - Merge backport PRs with **Rebase and merge**. Merge commits are disabled in this repository, and a squash merge uses the PR title with an empty body, which drops the `(cherry picked from commit …)` line that marks a commit as backported.
 - `release/x.y` keeps the `AGENTS.md`, PR template and `CHANGELOG.md` of its `x.y.0` tag, which may predate release notes in PR descriptions. Its release notes go only in the GitHub release: don't add entries to its `CHANGELOG.md`, and don't forward-port any to `main`.
 - A release runs the workflow files at its tag, and PR checks run the workflow files on the PR's base branch, so fixes to `.github/workflows/` on `main` must also be cherry-picked to `release/x.y` before they apply to it. When creating `release/x.y`, check that it has [#1462](https://github.com/roostorg/coop/pull/1462), which runs the server and client checks when `pnpm-lock.yaml` changes.
@@ -182,11 +182,12 @@ Each fix's release note goes in its PR description's `## Release notes` section,
 
 The release itself gets notes written from the [release notes template](#release-notes-template), using these entries as source material:
 
+- Release Drafter regenerates a draft release on every run, so hand edits to it are lost. Make them immediately before publishing in step 4, and check the draft again just before you publish.
 - On option A, edit the draft release for `main`.
-- On option B, edit the draft release for `x.y.(z+1)` that the Security backports workflow keeps for `release/x.y`, and publish it in step 4. Without that draft (it depends on [#1548](https://github.com/roostorg/coop/pull/1548) and [#1550](https://github.com/roostorg/coop/pull/1550)), write the notes in a file for step 4, copying the fixes' entries from the draft release for `main`.
+- On option B, edit the draft release for `x.y.(z+1)` that the Security backports workflow keeps for `release/x.y`, and publish it in step 4. Put each entry that has no note to collect, such as a private-fork fix or a Dependabot update, in its backport PR's `## Release notes` section, and label that PR `security-update` and `has-release-notes` by hand; the labeler runs only on PRs to `main`. Release Drafter then collects it, credited to whoever opened the backport PR. Without that draft (it depends on [#1548](https://github.com/roostorg/coop/pull/1548) and [#1550](https://github.com/roostorg/coop/pull/1550)), write the notes in a file for step 4, copying the fixes' entries from the draft release for `main`.
 - Release Drafter only collects PRs with a `## Release notes` section. Dependabot PRs have none, so write their entries by hand in the format above.
 - [#1548](https://github.com/roostorg/coop/pull/1548) adds a **Security** category for PRs labelled `security-update`, and sets `filter-by-commitish: true` so that the draft release for `main` and the draft for `release/x.y` stay separate. Without it, Release Drafter for `main` updates whichever draft it finds first.
-- A fix from a private fork has no PR in this repository, so write its entry in the release notes directly, linking only the advisory:
+- A fix from a private fork has no PR in this repository, so its entry is written by hand and links only the advisory:
 
 ```markdown
 - Prevent <impact> ([GHSA-xxxx-xxxx-xxxx](https://github.com/roostorg/coop/security/advisories/GHSA-xxxx-xxxx-xxxx))
@@ -374,7 +375,7 @@ Release notes: https://github.com/roostorg/coop/releases/tag/x.y.z
 
 ## 8. Check the draft release for `main`
 
-On option B, remove any entry from the draft release for `main` for a fix that shipped in `x.y.z`.
+On option B, the draft release for `main` keeps listing fixes that shipped in `x.y.z`, and Release Drafter restores entries removed by hand. Remove them when publishing the next release from `main`.
 
 ## Checklist
 
@@ -387,4 +388,3 @@ On option B, remove any entry from the draft release for `main` for a fix that s
 - [ ] Advisories published after the pre-publish checks
 - [ ] Hosted vendors notified
 - [ ] security-announce posted, if required
-- [ ] If released from `release/x.y`: the draft release for `main` checked
