@@ -58,7 +58,7 @@ const sessionStore = connectPgSimple(session);
 export default async function makeApiServer(deps: Dependencies) {
   const app = express();
   const passport = new Passport();
-  const { KyselyPg, KyselyPgPool } = deps;
+  const { DrizzlePg, KyselyPgPool } = deps;
 
   app.use(cors());
 
@@ -119,7 +119,7 @@ export default async function makeApiServer(deps: Dependencies) {
     req: Request,
     profile: Profile | null,
     done: VerifiedCallback,
-  ) => resolveSamlUser(KyselyPg, deps.Tracer, req, profile, done);
+  ) => resolveSamlUser(DrizzlePg, deps.Tracer, req, profile, done);
 
   passport.use(
     new MultiSamlStrategy(
@@ -155,8 +155,8 @@ export default async function makeApiServer(deps: Dependencies) {
             );
 
           done(null, {
-            entryPoint: samlSettings.sso_url as string,
-            idpCert: samlSettings.cert as string,
+            entryPoint: samlSettings.sso_url,
+            idpCert: samlSettings.cert,
             // I could use UI_URL here but technically the API could be hosted
             // on a different domain in the future so hopefully this is more
             // robust, not that it will likely matter.
@@ -193,7 +193,7 @@ export default async function makeApiServer(deps: Dependencies) {
 
   passport.deserializeUser(async (id, done) => {
     try {
-      const user = await kyselyUserFindById(KyselyPg, String(id));
+      const user = await kyselyUserFindById(DrizzlePg, String(id));
       if (user == null) {
         return done(
           makeNotFoundError(`Session user ${String(id)} not found`, {

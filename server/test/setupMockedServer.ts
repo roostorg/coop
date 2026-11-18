@@ -73,7 +73,6 @@ export async function getBottleContainerWithIOMocks(
   if (opts.kyselyPool != null) {
     const pool = opts.kyselyPool;
     bottle.factory('KyselyPgPool', () => pool);
-    bottle.factory('KyselyPgReadReplica', (container) => container.KyselyPg);
     bottle.factory('DrizzlePgReadReplica', (container) => container.DrizzlePg);
   }
 

@@ -66,32 +66,6 @@ describe('resolveSamlUser', () => {
     },
   );
 
-  // `server/api.ts` still passes its Kysely handle.
-  testWithFixture(
-    'resolves the user through a Kysely handle too',
-    async ({ deps, org }) => {
-      const input = samlUserInput(org.id);
-      await kyselyUserInsert({ db: deps.DrizzlePg, ...input });
-      const done = vi.fn();
-      await resolveSamlUser(
-        deps.KyselyPg,
-        deps.Tracer,
-        makeReq(org.id),
-        { email: input.email },
-        done,
-      );
-      const [err, user] = done.mock.calls[0];
-      expect(err).toBeNull();
-      expect(user).toMatchObject({
-        id: input.id,
-        orgId: org.id,
-        role: input.role,
-        loginMethods: ['saml'],
-      });
-      expect(user.getPermissions().length).toBeGreaterThan(0);
-    },
-  );
-
   // Security regression (GHSA-2v93-383c-9fw2): an assertion authenticating one
   // org must never resolve a user who lives in another org.
   testWithFixture(

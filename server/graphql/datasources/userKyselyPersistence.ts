@@ -1,5 +1,4 @@
 import { and, eq, inArray, sql } from 'drizzle-orm';
-import { Kysely, sql as kyselySql } from 'kysely';
 
 import { type LoginMethod } from '../../services/coreAppTables.js';
 import {
@@ -128,63 +127,10 @@ function rowToGraphQLUserParent(row: UserRow): GraphQLUserParent {
   };
 }
 
-// `server/api.ts` passes its Kysely handle to `kyselyUserFindById` (passport
-// deserializeUser) and, via `resolveSamlUser`, `kyselyUserFindByEmailAndOrg`.
-// That file needs human approval to change, so those two keep a Kysely path
-// until it passes `DrizzlePg` instead.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type LegacyKysely = Kysely<any>;
-
-async function legacyKyselyUserFind(
-  db: LegacyKysely,
-  filter: { id: string } | { email: string; orgId: string },
-): Promise<GraphQLUserParent | undefined> {
-  let query = db
-    .selectFrom('public.users')
-    .select([
-      'id',
-      'email',
-      'password',
-      'first_name as firstName',
-      'last_name as lastName',
-      'approved_by_admin as approvedByAdmin',
-      'rejected_by_admin as rejectedByAdmin',
-      'created_at as createdAt',
-      'updated_at as updatedAt',
-      'org_id as orgId',
-    ])
-    .select(
-      kyselySql<UserRole>`(
-        SELECT public.roles.key FROM public.roles
-        WHERE public.roles.id = public.users.role_id
-      )`.as('role'),
-    )
-    // node-postgres has no parser for enum arrays; `text[]` it does parse.
-    .select(kyselySql<LoginMethod[]>`login_methods::text[]`.as('loginMethods'))
-    .select(
-      kyselySql<UserPermission[]>`(
-        SELECT COALESCE(array_agg(rp.permission), ARRAY[]::varchar[])
-        FROM public.role_permissions rp
-        WHERE rp.role_id = public.users.role_id
-      )`.as('permissions'),
-    );
-  query =
-    'id' in filter
-      ? query.where('id', '=', filter.id)
-      : query
-          .where('email', '=', filter.email)
-          .where('org_id', '=', filter.orgId);
-  const row: UserRow | undefined = await query.executeTakeFirst();
-  return row === undefined ? undefined : rowToGraphQLUserParent(row);
-}
-
 export async function kyselyUserFindById(
-  db: UsersDb | LegacyKysely,
+  db: UsersDb,
   id: string,
 ): Promise<GraphQLUserParent | undefined> {
-  if (db instanceof Kysely) {
-    return legacyKyselyUserFind(db, { id });
-  }
   const row = (
     await db.select(USER_FIELDS).from(users).where(eq(users.id, id)).limit(1)
   ).at(0);
@@ -220,12 +166,9 @@ export async function kyselyUserFindByEmail(
 }
 
 export async function kyselyUserFindByEmailAndOrg(
-  db: UsersDb | LegacyKysely,
+  db: UsersDb,
   opts: { email: string; orgId: string },
 ): Promise<GraphQLUserParent | undefined> {
-  if (db instanceof Kysely) {
-    return legacyKyselyUserFind(db, opts);
-  }
   const row = (
     await db
       .select(USER_FIELDS)
