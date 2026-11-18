@@ -40,8 +40,8 @@ export default inject(
             ? new Date(lastInsertMs - MINUTE_MS)
             : new Date(0);
 
-          // Columns listed in the materialized table's order: INSERT ...
-          // SELECT matches them by position.
+          // Drizzle builds the INSERT column list from these selection keys,
+          // so each key must name a column of the materialized table.
           const insertedRows = await tx
             .insert(materialized)
             .select(
