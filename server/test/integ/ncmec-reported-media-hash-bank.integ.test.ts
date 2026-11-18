@@ -103,12 +103,14 @@ describe('updateNcmecOrgSettings reported media hash bank (integration)', () => 
     });
   };
 
-  const readBankId = async () => {
+  // Null means the org has no NCMEC settings row at all.
+  const readSettings = async () => {
     if (!harness) throw new Error('harness was not initialized');
     const res = await harness.request.post('/api/v1/graphql').send({
       query: `query { ncmecOrgSettings { reportedMediaHashBankId } }`,
     });
-    return res.body?.data?.ncmecOrgSettings?.reportedMediaHashBankId ?? null;
+    expect(res.body?.errors).toBeUndefined();
+    return res.body?.data?.ncmecOrgSettings;
   };
 
   test('refuses a bank that belongs to another org and saves nothing', async () => {
@@ -117,7 +119,7 @@ describe('updateNcmecOrgSettings reported media hash bank (integration)', () => 
     expect(res.body?.errors?.[0]?.message).toBe(
       'Selected hash bank was not found.',
     );
-    expect(await readBankId()).toBeNull();
+    expect(await readSettings()).toBeNull();
   });
 
   test('saves a bank that belongs to the org', async () => {
@@ -125,6 +127,8 @@ describe('updateNcmecOrgSettings reported media hash bank (integration)', () => 
 
     expect(res.body?.errors).toBeUndefined();
     expect(res.body?.data?.updateNcmecOrgSettings?.success).toBe(true);
-    expect(await readBankId()).toBe(ownBankId);
+    expect(await readSettings()).toEqual({
+      reportedMediaHashBankId: ownBankId,
+    });
   });
 });
