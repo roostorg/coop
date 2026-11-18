@@ -30,7 +30,13 @@ export function getPgErrorDetails(
   if (typeof error !== 'object' || error === null) {
     return undefined;
   }
-  const cause = safeGet(error, ['meta', 'driverAdapterError', 'cause']);
+  // Errors raised while committing an interactive transaction (e.g. a
+  // DEFERRABLE constraint) reach the caller as a bare `DriverAdapterError`,
+  // not wrapped in a `PrismaClientKnownRequestError`.
+  const cause =
+    error instanceof Error && error.name === 'DriverAdapterError'
+      ? error.cause
+      : safeGet(error, ['meta', 'driverAdapterError', 'cause']);
   if (typeof cause === 'object' && cause !== null) {
     const { originalCode, constraint, table, originalMessage } = cause as {
       originalCode?: unknown;
