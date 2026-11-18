@@ -507,6 +507,7 @@ class ActionPublisher {
 
               const response = await this.fetchHTTP({
                 url: action.callbackUrl,
+                isUntrustedUrl: false,
                 method: 'post',
                 body: jsonStringify(body),
                 logRequestAndResponseBody: 'ALWAYS',

@@ -1,8 +1,8 @@
+/* eslint-disable max-classes-per-file -- Keep the factory's private adapter implementations together. */
 /**
  * Factory for creating data warehouse instances based on configuration
  */
 
-/* eslint-disable max-classes-per-file */
 import { type Kysely } from 'kysely';
 
 import {

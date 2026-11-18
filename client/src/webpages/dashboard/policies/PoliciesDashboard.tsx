@@ -79,6 +79,11 @@ gql`
         ...PolicyFields
       }
       failures
+      failureDetails {
+        name
+        title
+        detail
+      }
     }
   }
 
@@ -90,12 +95,6 @@ gql`
 
   mutation DeletePolicy($id: ID!) {
     deletePolicy(id: $id)
-  }
-
-  query IsDemoOrg {
-    myOrg {
-      isDemoOrg
-    }
   }
 `;
 

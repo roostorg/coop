@@ -82,6 +82,7 @@ gql`
       }
       ... on Error {
         title
+        detail
       }
     }
   }
@@ -94,6 +95,7 @@ gql`
       }
       ... on Error {
         title
+        detail
       }
     }
   }
@@ -106,6 +108,7 @@ gql`
       }
       ... on Error {
         title
+        detail
       }
     }
   }
@@ -118,6 +121,7 @@ gql`
       }
       ... on Error {
         title
+        detail
       }
     }
   }
@@ -130,6 +134,7 @@ gql`
       }
       ... on Error {
         title
+        detail
       }
     }
   }
@@ -142,6 +147,7 @@ gql`
       }
       ... on Error {
         title
+        detail
       }
     }
   }
@@ -179,9 +185,9 @@ export default function ItemTypeForm() {
   });
 
   const [modalInfo, setModalInfo] = useState<{
-    visible: boolean;
-    body: string | undefined;
-  }>({ visible: false, body: '' });
+    status: 'closed' | 'success' | 'error';
+    body?: string;
+  }>({ status: 'closed' });
   const { name, description, itemTypeKind, customFields } = state;
   const setName = (name: string) => setState((prev) => ({ ...prev, name }));
   const setDescription = (description: string) =>
@@ -191,112 +197,139 @@ export default function ItemTypeForm() {
   const setCustomFields = (fields: FieldState[]) =>
     setState((prev) => ({ ...prev, customFields: fields }));
 
-  const showModal = (errorText?: string) =>
-    setModalInfo({ visible: true, body: errorText! });
-  const hideModal = () => setModalInfo({ visible: false, body: undefined });
+  const showSuccessModal = () => setModalInfo({ status: 'success' });
+  const showErrorModal = (body?: string) =>
+    setModalInfo({ status: 'error', body });
+  const hideModal = () => setModalInfo({ status: 'closed' });
 
   const setNameAlreadyExistsError = () => {
-    showModal('An item type with that name already exists. Please try again.');
+    showErrorModal(
+      'An item type with that name already exists. Please try again.',
+    );
   };
 
-  const [
-    createContentType,
-    { loading: createContentTypeLoading, error: createContentTypeError },
-  ] = useGQLCreateContentTypeMutation({
-    onError: (_error) => showModal(),
-    onCompleted: (response) => {
-      switch (response?.createContentItemType.__typename) {
-        case 'MutateContentTypeSuccessResponse':
-          showModal();
-          break;
-        case 'ItemTypeNameAlreadyExistsError':
-          setNameAlreadyExistsError();
-          break;
-      }
-    },
-  });
-  const [
-    updateContentType,
-    { loading: updateContentTypeLoading, error: updateContentTypeError },
-  ] = useGQLUpdateContentTypeMutation({
-    onError: (_error) => showModal(),
-    onCompleted: (response) => {
-      switch (response?.updateContentItemType.__typename) {
-        case 'MutateContentTypeSuccessResponse':
-          showModal();
-          break;
-        case 'ItemTypeNameAlreadyExistsError':
-          setNameAlreadyExistsError();
-          break;
-      }
-    },
-  });
+  const [createContentType, { loading: createContentTypeLoading }] =
+    useGQLCreateContentTypeMutation({
+      onError: (_error) => showErrorModal(),
+      onCompleted: (response) => {
+        const result = response.createContentItemType;
+        switch (result.__typename) {
+          case 'MutateContentTypeSuccessResponse':
+            showSuccessModal();
+            break;
+          case 'ItemTypeNameAlreadyExistsError':
+            setNameAlreadyExistsError();
+            break;
+          case 'InvalidItemTypeSchemaError':
+          case 'InvalidItemTypeHiddenFieldsError':
+          case 'NotFoundError':
+            showErrorModal(result.detail ?? result.title);
+            break;
+        }
+      },
+    });
+  const [updateContentType, { loading: updateContentTypeLoading }] =
+    useGQLUpdateContentTypeMutation({
+      onError: (_error) => showErrorModal(),
+      onCompleted: (response) => {
+        const result = response.updateContentItemType;
+        switch (result.__typename) {
+          case 'MutateContentTypeSuccessResponse':
+            showSuccessModal();
+            break;
+          case 'ItemTypeNameAlreadyExistsError':
+            setNameAlreadyExistsError();
+            break;
+          case 'InvalidItemTypeSchemaError':
+          case 'InvalidItemTypeHiddenFieldsError':
+          case 'NotFoundError':
+            showErrorModal(result.detail ?? result.title);
+            break;
+        }
+      },
+    });
 
-  const [
-    createUserType,
-    { loading: createUserTypeLoading, error: createUserTypeError },
-  ] = useGQLCreateUserTypeMutation({
-    onError: (_error) => showModal(),
-    onCompleted: (response) => {
-      switch (response?.createUserItemType.__typename) {
-        case 'MutateUserTypeSuccessResponse':
-          showModal();
-          break;
-        case 'ItemTypeNameAlreadyExistsError':
-          setNameAlreadyExistsError();
-          break;
-      }
-    },
-  });
-  const [
-    updateUserType,
-    { loading: updateUserTypeLoading, error: updateUserTypeError },
-  ] = useGQLUpdateUserTypeMutation({
-    onError: (_error) => showModal(),
-    onCompleted: (response) => {
-      switch (response?.updateUserItemType.__typename) {
-        case 'MutateUserTypeSuccessResponse':
-          showModal();
-          break;
-        case 'ItemTypeNameAlreadyExistsError':
-          setNameAlreadyExistsError();
-          break;
-      }
-    },
-  });
+  const [createUserType, { loading: createUserTypeLoading }] =
+    useGQLCreateUserTypeMutation({
+      onError: (_error) => showErrorModal(),
+      onCompleted: (response) => {
+        const result = response.createUserItemType;
+        switch (result.__typename) {
+          case 'MutateUserTypeSuccessResponse':
+            showSuccessModal();
+            break;
+          case 'ItemTypeNameAlreadyExistsError':
+            setNameAlreadyExistsError();
+            break;
+          case 'InvalidItemTypeSchemaError':
+          case 'InvalidItemTypeHiddenFieldsError':
+          case 'NotFoundError':
+            showErrorModal(result.detail ?? result.title);
+            break;
+        }
+      },
+    });
+  const [updateUserType, { loading: updateUserTypeLoading }] =
+    useGQLUpdateUserTypeMutation({
+      onError: (_error) => showErrorModal(),
+      onCompleted: (response) => {
+        const result = response.updateUserItemType;
+        switch (result.__typename) {
+          case 'MutateUserTypeSuccessResponse':
+            showSuccessModal();
+            break;
+          case 'ItemTypeNameAlreadyExistsError':
+            setNameAlreadyExistsError();
+            break;
+          case 'InvalidItemTypeSchemaError':
+          case 'InvalidItemTypeHiddenFieldsError':
+          case 'NotFoundError':
+            showErrorModal(result.detail ?? result.title);
+            break;
+        }
+      },
+    });
 
-  const [
-    createThreadType,
-    { loading: createThreadTypeLoading, error: createThreadTypeError },
-  ] = useGQLCreateThreadTypeMutation({
-    onError: (_error) => showModal(),
-    onCompleted: (response) => {
-      switch (response?.createThreadItemType.__typename) {
-        case 'MutateThreadTypeSuccessResponse':
-          showModal();
-          break;
-        case 'ItemTypeNameAlreadyExistsError':
-          setNameAlreadyExistsError();
-          break;
-      }
-    },
-  });
-  const [
-    updateThreadType,
-    { loading: updateThreadTypeLoading, error: updateThreadTypeError },
-  ] = useGQLUpdateThreadTypeMutation({
-    onError: (_error) => showModal(),
-    onCompleted: (response) => {
-      switch (response?.updateThreadItemType.__typename) {
-        case 'MutateThreadTypeSuccessResponse':
-          showModal();
-          break;
-        case 'ItemTypeNameAlreadyExistsError':
-          setNameAlreadyExistsError();
-          break;
-      }
-    },
-  });
+  const [createThreadType, { loading: createThreadTypeLoading }] =
+    useGQLCreateThreadTypeMutation({
+      onError: (_error) => showErrorModal(),
+      onCompleted: (response) => {
+        const result = response.createThreadItemType;
+        switch (result.__typename) {
+          case 'MutateThreadTypeSuccessResponse':
+            showSuccessModal();
+            break;
+          case 'ItemTypeNameAlreadyExistsError':
+            setNameAlreadyExistsError();
+            break;
+          case 'InvalidItemTypeSchemaError':
+          case 'InvalidItemTypeHiddenFieldsError':
+          case 'NotFoundError':
+            showErrorModal(result.detail ?? result.title);
+            break;
+        }
+      },
+    });
+  const [updateThreadType, { loading: updateThreadTypeLoading }] =
+    useGQLUpdateThreadTypeMutation({
+      onError: (_error) => showErrorModal(),
+      onCompleted: (response) => {
+        const result = response.updateThreadItemType;
+        switch (result.__typename) {
+          case 'MutateThreadTypeSuccessResponse':
+            showSuccessModal();
+            break;
+          case 'ItemTypeNameAlreadyExistsError':
+            setNameAlreadyExistsError();
+            break;
+          case 'InvalidItemTypeSchemaError':
+          case 'InvalidItemTypeHiddenFieldsError':
+          case 'NotFoundError':
+            showErrorModal(result.detail ?? result.title);
+            break;
+        }
+      },
+    });
 
   const loading = useMemo(
     () =>
@@ -315,24 +348,6 @@ export default function ItemTypeForm() {
       updateThreadTypeLoading,
     ],
   );
-  const hasError = useMemo(
-    () =>
-      createContentTypeError != null ||
-      updateContentTypeError != null ||
-      createUserTypeError != null ||
-      updateUserTypeError != null ||
-      createThreadTypeError != null ||
-      updateThreadTypeError != null,
-    [
-      createContentTypeError,
-      updateContentTypeError,
-      createUserTypeError,
-      updateUserTypeError,
-      createThreadTypeError,
-      updateThreadTypeError,
-    ],
-  );
-
   const readableKind = useMemo(
     () => capitalize(itemTypeKind ?? 'Item'),
     [itemTypeKind],
@@ -461,7 +476,7 @@ export default function ItemTypeForm() {
   const { modalTitle, modalBody, modalButtonText } = (() => {
     const isCreateForm = id == null;
 
-    return !hasError
+    return modalInfo.status === 'success'
       ? {
           modalTitle: isCreateForm
             ? `${readableKind} Type Created`
@@ -484,7 +499,7 @@ export default function ItemTypeForm() {
 
   const onHideModal = () => {
     hideModal();
-    if (!hasError) {
+    if (modalInfo.status === 'success') {
       if (itemTypeKind) {
         navigate(`/dashboard/item_types?kind=${itemTypeKind}`);
       } else {
@@ -496,7 +511,7 @@ export default function ItemTypeForm() {
   const modal = (
     <CoopModal
       title={modalTitle}
-      visible={modalInfo.visible}
+      visible={modalInfo.status !== 'closed'}
       onClose={onHideModal}
       footer={[
         {

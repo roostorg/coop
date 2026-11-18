@@ -1,4 +1,4 @@
-import { GQLSignal, useGQLIsDemoOrgQuery } from '@/graphql/generated';
+import { GQLSignal } from '@/graphql/generated';
 import { Input } from 'antd';
 import { Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -15,8 +15,6 @@ export default function RuleFormSignalModalSignalGallery(props: {
 }) {
   const { allSignals, onSelectSignal, onSignalInfoSelected, isAutomatedRule } =
     props;
-  const { data: isDemoOrgData } = useGQLIsDemoOrgQuery();
-  const isDemoOrg = isDemoOrgData?.myOrg?.isDemoOrg ?? false;
 
   const [searchTerm, setSearchTerm] = useState<string>('');
 
@@ -40,10 +38,8 @@ export default function RuleFormSignalModalSignalGallery(props: {
           (signal) =>
             signal.name.toLocaleLowerCase().includes(searchTerm) ||
             signal.description.toLocaleLowerCase().includes(searchTerm),
-        )
-        // Filter out 3rd party signals for demo orgs
-        .filter((signal) => !(isDemoOrg && signal.integration)),
-    [allSignals, isDemoOrg, searchTerm],
+        ),
+    [allSignals, searchTerm],
   );
 
   return (

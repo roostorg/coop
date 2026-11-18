@@ -1084,6 +1084,7 @@ export default class JobDecisioning {
         'id',
         'queue_id',
         'reviewer_id',
+        'created_at',
       ])
       .execute();
     // There shouldn't be any decisions from deprecated job payload types, so
