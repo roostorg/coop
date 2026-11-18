@@ -1,14 +1,13 @@
-import { sql, type Kysely } from 'kysely';
 import _ from 'lodash';
 import { type CamelCasedProperties, type Simplify } from 'type-fest';
 
+import { Prisma, type PrismaPgQueryable } from '../../storage/prisma/index.js';
 import { camelToSnakeCase } from '../../utils/misc.js';
 import { type CamelToSnakeCase } from '../../utils/typescript-types.js';
 import {
   type ConditionSet,
   type RuleStatus,
 } from '../moderationConfigService/index.js';
-import { type ReportingServicePg } from './dbTypes.js';
 
 // A rule version as stored in the db.
 type ReportingRuleVersion = {
@@ -39,6 +38,14 @@ type PublicReportingRuleVersion = Simplify<
     exactVersion: string;
   }
 >;
+
+const REPORTING_RULE_VERSION_COLUMNS: ReadonlySet<string> = new Set([
+  'name',
+  'status',
+  'org_id',
+  'creator_id',
+  'condition_set',
+] satisfies (keyof ReportingRuleVersion)[]);
 
 export type VersionedField = Exclude<
   keyof PublicReportingRuleVersion,
@@ -121,21 +128,20 @@ export async function getSimplifiedRuleHistory<K extends VersionedField>(
  * version history of a rule with respect to the given fields.
  *
  * It's really an internal implementation detail, but it's exported for testing,
- * since we don't have a great way to mock kysely right now that'll let us see
- * the query being executed and sub in a mock return value.
+ * since we don't have a great way to mock the db client right now that'll let
+ * us see the query being executed and sub in a mock return value.
  *
  * The return value only exposes the `execute()` and `compile()` methods, which
  * is justified by the fact that we don't want callers to be able to modify the
  * query further (as it is an implementation detail), but is actually motivated
- * by the fact that throwing away all the interim kysely SelectQueryBuilder type
- * params makes it easier for us to make TS happy when we partially apply
+ * by the fact that hiding the query's construction makes it easier for us to make TS happy when we partially apply
  * getSimplifiedRuleHistory with this.
  */
 export function buildSimplifiedHistoryQuery<K extends VersionedField>(
-  db: Kysely<ReportingServicePg>,
+  db: PrismaPgQueryable,
   fields: readonly K[],
   ruleIds?: readonly string[],
-  numVersions?: number,
+  _numVersions?: number,
 ) {
   // To build our query, we convert the camelCased fields from the public
   // interface to their snake_case names in the db. In terms of the types, we:
@@ -152,9 +158,7 @@ export function buildSimplifiedHistoryQuery<K extends VersionedField>(
   //    (except `id` and `exactVersion`). However, we have to throw away some
   //    type information about exactly which fields we're selecting by "up
   //    casting" from CamelToSnakeCase<K>[] to simply (keyof RuleVersion)[],
-  //    because `CamelToSnakeCase<K>` is too dynamic for kysely (which'll try to
-  //    inspect these strings to verify that they're valid column names,
-  //    possibly with aliases).
+  //    because `CamelToSnakeCase<K>` is too dynamic to check statically.
   //
   // The type annotation on `dbFields` has TS verify point (1) above, and the
   // cast on the return type from `execute()` recovers the info about which
@@ -169,6 +173,15 @@ export function buildSimplifiedHistoryQuery<K extends VersionedField>(
       ([dbField]) => dbField,
     ) as readonly CamelToSnakeCase<VersionedField>[];
 
+  // Column names are spliced into the SQL as identifiers, so only accept
+  // ones that exist on reporting_rule_versions.
+  for (const field of dbFields) {
+    if (!REPORTING_RULE_VERSION_COLUMNS.has(field)) {
+      throw new Error(`Unknown reporting_rule_versions column: ${field}`);
+    }
+  }
+  const fieldRefs = dbFields.map((it) => Prisma.raw(`"${it}"`));
+
   // The idea here is to select all version rows for the relevant rules, but
   // then add a column to each result that identifies all rows that have the
   // same values for the consumer's `fields` of interest. This group identifier
@@ -177,20 +190,18 @@ export function buildSimplifiedHistoryQuery<K extends VersionedField>(
   // the first version that had each set of `fields` values with version rows
   // that immediately follow it, when the only changes in the immediately
   // following rows are irrelevant from the POV of our consumer's `fields`.
-  const versionsWithFirstVersionGroupId = db
-    .selectFrom('reporting_rules.reporting_rule_versions')
-    .select([
-      ...dbFields,
-      'id',
-      'version',
-      sql<string>`first_value(version)
+  const versionsWithFirstVersionGroupId = Prisma.sql`select ${Prisma.join(
+    [...fieldRefs, Prisma.raw('"id"'), Prisma.raw('"version"')],
+    ', ',
+  )}, first_value(version)
           OVER (
-            PARTITION BY id, ${sql.join(dbFields.map((it) => sql.ref(it)))}
+            PARTITION BY id, ${Prisma.join(fieldRefs, ', ')}
             ORDER BY version asc
-          )`.as('first_version'),
-    ])
-    .$if(ruleIds != null, (qb) => qb.where('id', 'in', ruleIds!))
-    .orderBy('version', 'asc');
+          ) as "first_version" from "reporting_rules"."reporting_rule_versions"${
+            ruleIds != null
+              ? Prisma.sql` where "id" in (${Prisma.join(ruleIds)})`
+              : Prisma.empty
+          } order by "version" asc`;
 
   // When we build our condensed version history, unfortunately we can't just
   // return the first row that had each set of `fields` values (with
@@ -210,45 +221,40 @@ export function buildSimplifiedHistoryQuery<K extends VersionedField>(
   // salient fields differs between adjacent raw versions), and only track the
   // versions of those moments (setting other rows to have a null version).
   // Then, we discard the null-versioned rows.
-  const simplifiedHistoryQuery = db
-    .selectFrom(
-      db
-        .selectFrom(versionsWithFirstVersionGroupId.as('t1'))
-        .select([
-          'id',
-          ...dbFields,
-          sql<string | null>`CASE
+  //
+  // `numVersions` is not applied: every salient version is returned.
+  //
+  // prisma-raw: window functions (first_value, lag) over nested subqueries
+  const simplifiedHistoryQuery = Prisma.sql`select "id", ${Prisma.join(
+    dbFieldsAndAliases.map(([field, alias]) =>
+      Prisma.raw(`"${field}" as "${alias}"`),
+    ),
+    ', ',
+  )}, version::text as "exactVersion" from (select "id", ${Prisma.join(
+    fieldRefs,
+    ', ',
+  )}, CASE
               WHEN lag(first_version, 1, version)
                       OVER (PARTITION BY id ORDER BY version asc) <> first_version
                 THEN version
               WHEN first_version = version THEN version
               ELSE NULL
-            END`.as('version'),
-        ])
-        .as('t2'),
-    )
-    .select([
-      'id',
-      ...dbFieldsAndAliases.map(([field, alias]) => sql.ref(field).as(alias)),
-      sql<string>`version::text`.as('exactVersion'),
-    ])
-    .where('version', 'is not', null);
-
-  if (numVersions) {
-    simplifiedHistoryQuery.limit(numVersions);
-  }
+            END as "version" from (${versionsWithFirstVersionGroupId}) as "t1") as "t2" where "version" is not null`;
 
   return {
     async execute() {
-      return simplifiedHistoryQuery.execute() as Promise<
-        // NB: this is partial because K could be 'name' | 'tags' when the
-        // fields array is actually just ['name'], for example.
+      // NB: this is partial because K could be 'name' | 'tags' when the
+      // fields array is actually just ['name'], for example.
+      return db.$queryRaw<
         (Partial<Pick<PublicReportingRuleVersion, K>> &
           Pick<PublicReportingRuleVersion, 'id' | 'exactVersion'>)[]
-      >;
+      >(simplifiedHistoryQuery);
     },
     compile() {
-      return simplifiedHistoryQuery.compile();
+      return {
+        sql: simplifiedHistoryQuery.text,
+        parameters: simplifiedHistoryQuery.values,
+      };
     },
   };
 }

@@ -1,5 +1,5 @@
 import { type ItemIdentifier, type ItemTypeKind } from '@roostorg/coop-types';
-import { type ColumnType, type GeneratedAlways } from 'kysely';
+import { type ColumnType } from 'kysely';
 
 import { type RuleEnvironment } from '../../rule_engine/RuleEngine.js';
 import {
@@ -14,7 +14,6 @@ import {
   type SubmissionId,
 } from '../itemProcessingService/index.js';
 import {
-  type ConditionSet,
   type ContentSchemaFieldRoles,
   type ItemSchema,
   type ItemTypeSchemaVariant,
@@ -22,7 +21,6 @@ import {
   type ThreadSchemaFieldRoles,
   type UserSchemaFieldRoles,
 } from '../moderationConfigService/index.js';
-import { type ReportingRuleStatus } from './ReportingRules.js';
 import { type ReporterKind } from './reportingService.js';
 
 // TODO: migrate REPORTING_SERVICE.REPORTS, and the code that writes to it, to
@@ -163,57 +161,4 @@ export type ReportingServiceWarehouseSchema = {
   'REPORTING_SERVICE.APPEALS': AppealSubmissionsRow;
   'REPORTING_SERVICE.REPORTING_RULE_EXECUTIONS': ReportingRuleExecutionsRow;
   'REPORTING_SERVICE.REPORTING_RULE_EXECUTION_STATISTICS': ReportingRuleExecutionStatisticsRow;
-};
-
-export type ReportingServicePg = {
-  'reporting_rules.reporting_rules': {
-    id: string;
-    org_id: string;
-    name: string;
-    description: string | null;
-    status: ReportingRuleStatus;
-    created_at: GeneratedAlways<Date>;
-    creator_id: string;
-    condition_set: ConditionSet;
-  };
-
-  'reporting_rules.reporting_rules_to_item_types': {
-    item_type_id: string;
-    reporting_rule_id: string;
-    created_at: GeneratedAlways<Date>;
-  };
-
-  'reporting_rules.reporting_rules_to_actions': {
-    action_id: string;
-    reporting_rule_id: string;
-    created_at: GeneratedAlways<Date>;
-  };
-
-  'reporting_rules.reporting_rules_to_policies': {
-    policy_id: string;
-    reporting_rule_id: string;
-    created_at: GeneratedAlways<Date>;
-  };
-
-  'reporting_rules.reporting_rule_history': {
-    id: string;
-    org_id: string;
-    name: string;
-    description: string | null;
-    status: ReportingRuleStatus;
-    creator_id: string;
-    condition_set: ConditionSet;
-  };
-
-  'reporting_rules.reporting_rule_versions': {
-    id: GeneratedAlways<string>;
-    name: GeneratedAlways<string>;
-    org_id: GeneratedAlways<string>;
-    description: GeneratedAlways<string | null>;
-    status: GeneratedAlways<ReportingRuleStatus>;
-    creator_id: GeneratedAlways<string>;
-    condition_set: GeneratedAlways<ConditionSet>;
-    is_current: GeneratedAlways<boolean>;
-    version: GeneratedAlways<string>;
-  };
 };

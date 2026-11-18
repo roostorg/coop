@@ -7,17 +7,17 @@ import {
 
 describe('RuleHistory Service', () => {
   describe('getSimplifiedRuleHistory', () => {
-    let db: Dependencies['KyselyPg'];
+    let db: Dependencies['PrismaPg'];
     beforeAll(async () => {
       const deps = await getBottle();
 
       // Scope of this is just the test suite, so reassignment should be ok.
 
-      db = deps.container.KyselyPg;
+      db = deps.container.PrismaPg;
     });
 
     test('should run the expected query', async () => {
-      // TODO: until we set up a mock kysely instance that lets us spy on issued
+      // TODO: until we set up a mock db client that lets us spy on issued
       // queries, we'll just export a separate (should-be-internal) function
       // that builds the query, and test that.
       const { sql, parameters: bindings } = buildSimplifiedHistoryQuery(db, [
@@ -42,7 +42,7 @@ describe('RuleHistory Service', () => {
     });
 
     test('should support filtering by ids, startTime', async () => {
-      // TODO: until we set up a mock kysely instance that lets us spy on issued
+      // TODO: until we set up a mock db client that lets us spy on issued
       // queries, we'll just export a separate (should-be-internal) function
       // that builds the query, and test that.
       const { sql, parameters: bindings } = buildSimplifiedHistoryQuery(
