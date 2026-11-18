@@ -48,6 +48,7 @@
 - [Integrations](integrations/README.md)
   - [Google Content Safety API](integrations/google-content-safety.md)
   - [Hasher-Matcher-Actioner (HMA)](integrations/hma.md)
+    - [HMA with CLIP](integrations/hma-clip.md)
   - [NCMEC CyberTipline](integrations/ncmec.md)
   - [OpenAI CSAM Image Classifier](integrations/openai-csam-classifier.md)
   - [OpenAI Moderation API](integrations/openai-moderation.md)

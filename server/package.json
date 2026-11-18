@@ -21,6 +21,7 @@
     "runWorkerOrJob": "node --env-file-if-exists=.env --loader ts-node/esm bin/run-worker-or-job.ts",
     "create-org": "node --env-file-if-exists=.env --loader ts-node/esm bin/create-org-and-user.ts",
     "get-invite": "node --env-file-if-exists=.env --loader ts-node/esm bin/get-invite-token.ts",
+    "seed-clip-bank": "node --env-file-if-exists=.env --loader ts-node/esm bin/seed-clip-bank.ts",
     "recover-mrt-queue": "node --env-file-if-exists=.env --loader ts-node/esm bin/recover-mrt-queue.ts",
     "knip": "knip"
   },

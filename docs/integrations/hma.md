@@ -62,5 +62,6 @@ Once HMA is connected and hash banks are configured, the image hash signal is av
 
 ## See also
 
+- [HMA with CLIP](hma-clip.md) for optional semantic image matching
 - [Automated Routing & Enforcement](../user/automated-enforcement.md) for more on building rules
 - [NCMEC CyberTipline](ncmec.md) for details on configuring your NCMEC integration
