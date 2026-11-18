@@ -27,9 +27,9 @@
     "types": ["node", "vitest/globals"],
     "skipLibCheck": true,
     "sourceMap": true,
-    // NestJS decorators. Providers name their injection tokens explicitly
-    // (`@Inject(...)`), so nothing depends on emitted design-type metadata,
-    // which Vitest's transform does not produce.
+    // NestJS decorators. tsc emits design-type metadata, but Vitest's transform
+    // does not, so Nest classes name every injection token explicitly
+    // (`@Inject(...)`) and work in both.
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true
   },

@@ -5,12 +5,9 @@ import {
   rawItemSubmissionSchema,
   type RawItemSubmission,
 } from '../../services/itemProcessingService/index.js';
-import { createApiKeyMiddleware } from '../../utils/apiKeyMiddleware.js';
-import { route } from '../../utils/route-helpers.js';
-import { type Controller } from '../index.js';
-import submitAppeal from './submitAppeal.js';
-import submitReport from './submitReport.js';
 
+// Request bodies of POST /api/v1/report and /report/appeal (served by
+// nest/rest/reportingController.ts).
 const itemIdentifierSchema = v.object({
   id: v.string(),
   typeId: v.string(),
@@ -74,30 +71,3 @@ export type AppealItemInput = v.InferOutput<typeof appealItemInputSchema>;
 
 export type ReportItemOutput = { reportId: string };
 export type AppealItemOutput = never;
-
-// eslint-disable-next-line @typescript-eslint/consistent-type-assertions
-export default {
-  pathPrefix: '/report',
-  routes: [
-    route.post<ReportItemInput, ReportItemOutput>(
-      '/',
-      {
-        bodySchema: reportItemInputSchema,
-      },
-      (deps) => [
-        createApiKeyMiddleware<ReportItemInput, ReportItemOutput>(deps),
-        submitReport(deps),
-      ],
-    ),
-    route.post<AppealItemInput, AppealItemOutput>(
-      '/appeal',
-      {
-        bodySchema: appealItemInputSchema,
-      },
-      (deps) => [
-        createApiKeyMiddleware<AppealItemInput, AppealItemOutput>(deps),
-        submitAppeal(deps),
-      ],
-    ),
-  ],
-} as Controller;

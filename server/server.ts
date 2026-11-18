@@ -20,6 +20,7 @@ import { CoopNestLogger } from './nest/coopLogger.js';
 
 // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 const env = process.env.NODE_ENV || 'development';
+const API_PREFIX = '/api/v1';
 
 /**
  * Builds the NestJS app and returns its underlying Express instance, so
@@ -75,12 +76,14 @@ export default async function makeWWWServer(deps: Dependencies) {
     // Nest's own body parser defaults to a 100kb limit; Coop accepts 50mb.
     { bodyParser: false, logger: new CoopNestLogger(), abortOnError: false },
   );
-  nestApp.setGlobalPrefix('api/v1');
+  nestApp.setGlobalPrefix(API_PREFIX);
 
-  // Express middleware, in the order the API has always applied it. It runs
-  // before every Nest route (registered by init() below).
-  nestApp.use(cors());
+  // Express middleware, in the order the API has always applied it, mounted on
+  // /api/v1 like the old API sub-app. It runs before every Nest route
+  // (registered by init() below).
+  nestApp.use(API_PREFIX, cors());
   nestApp.use(
+    API_PREFIX,
     helmet(
       env === 'production'
         ? {}
@@ -99,19 +102,21 @@ export default async function makeWWWServer(deps: Dependencies) {
           },
     ),
   );
-  nestApp.use(express.json({ limit: '50mb' }));
+  nestApp.use(API_PREFIX, express.json({ limit: '50mb' }));
   // The health check stays outside the session, as it was before.
   const sessionMiddleware = makeSessionMiddleware(
     nestApp.get(SESSION_STORE),
     nestApp.get(PASSPORT),
   );
   for (const middleware of sessionMiddleware) {
+    // req.path is relative to the mount point. Express matches routes
+    // case-insensitively and with an optional trailing slash.
     const skipHealthCheck: express.RequestHandler = (req, res, next) =>
-      req.path === '/api/v1/ready' ? next() : middleware(req, res, next);
+      /^\/ready\/?$/i.test(req.path) ? next() : middleware(req, res, next);
     // Keep the inner middleware's name (session, initialize, authenticate):
     // OpenTelemetry's Express instrumentation names spans after it.
     Object.defineProperty(skipHealthCheck, 'name', { value: middleware.name });
-    nestApp.use(skipHealthCheck);
+    nestApp.use(API_PREFIX, skipHealthCheck);
   }
 
   await nestApp.init();

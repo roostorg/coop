@@ -1,4 +1,5 @@
 import { Body, Controller, Inject, Post, Res, UseGuards } from '@nestjs/common';
+import { SpanStatusCode } from '@opentelemetry/api';
 import { type Response } from 'express';
 
 import { type Dependencies } from '../../iocContainer/index.js';
@@ -6,6 +7,7 @@ import {
   submitItemsInputSchema,
   type SubmitItemsInput,
 } from '../../routes/items/ItemRoutes.js';
+import { logErrorJson } from '../../utils/logging.js';
 import { InjectDep } from '../tokens.js';
 import { ApiKeyGuard, BodySchemaGuard, OrgId } from './guards.js';
 import { ItemsService } from './itemsService.js';
@@ -29,11 +31,29 @@ export class ItemsController {
     const { status, processInline } = await this.items.submitItems(orgId, body);
     res.status(status);
     if (processInline) {
-      // Runs after the 202 is sent; failures are recorded, not returned.
-      res.once('finish', () => {
-        processInline().catch((e: unknown) =>
-          this.tracer.logActiveSpanFailedIfAny(e),
-        );
+      // Runs once the 202 is sent, or the client has gone away: 'close' fires
+      // in both cases, 'finish' only in the first. Failures are recorded on a
+      // span, as the Express error handler did.
+      res.once('close', () => {
+        this.tracer
+          .addActiveSpan(
+            { resource: 'SubmitItems', operation: 'processInline' },
+            async (span) => {
+              try {
+                await processInline();
+              } catch (e: unknown) {
+                span.recordException(e instanceof Error ? e : String(e));
+                span.setStatus({ code: SpanStatusCode.ERROR });
+              }
+            },
+          )
+          .catch((e: unknown) => {
+            // eslint-disable-next-line no-restricted-syntax
+            logErrorJson({
+              message: 'inline item processing failed',
+              error: e,
+            });
+          });
       });
     }
   }

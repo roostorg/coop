@@ -21,6 +21,7 @@ import {
   sanitizeError,
   type SerializableError,
 } from '../utils/errors.js';
+import { logErrorJson } from '../utils/logging.js';
 import { safePick } from '../utils/misc.js';
 import {
   isNonEmptyArray,
@@ -56,6 +57,19 @@ export class CoopExceptionFilter implements ExceptionFilter {
           ? exception.cause
           : (exception as Error);
 
+    // Nest does not await catch(), so it must not throw.
+    try {
+      await this.respond(err, res);
+    } catch (e) {
+      // eslint-disable-next-line no-restricted-syntax
+      logErrorJson({ message: 'error handler failed', error: e });
+      if (!res.headersSent) {
+        res.status(500).end();
+      }
+    }
+  }
+
+  private async respond(err: Error, res: Response) {
     await this.tracer.addActiveSpan(
       { resource: 'app', operation: 'handleError' },
       async (span) => {

@@ -16,11 +16,14 @@ export class CoopNestLogger implements LoggerService {
     logJson({ level: 'warn', message: String(message), context });
   }
 
-  error(message: unknown, stackOrContext?: string, context?: string) {
+  error(message: unknown, stack?: string, context?: string) {
     // eslint-disable-next-line no-restricted-syntax
     logErrorJson({
-      message: context ?? stackOrContext,
-      error: message instanceof Error ? message : new Error(String(message)),
+      message: context,
+      error:
+        message instanceof Error
+          ? message
+          : { message: String(message), stack },
     });
   }
 }

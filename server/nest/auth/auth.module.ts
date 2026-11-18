@@ -150,9 +150,14 @@ export function makeSessionMiddleware(
 class SamlController {
   constructor(@InjectDeps() private readonly deps: Dependencies) {}
 
-  // Never reached: passport redirects to the IdP in the middleware.
+  // Passport redirects to the IdP in the middleware. It calls next() only for
+  // a request that already carries a SAML message; that was a 404 before.
   @Get()
-  login() {}
+  login() {
+    throw makeNotFoundError('Requested route not found.', {
+      shouldErrorSpan: true,
+    });
+  }
 
   @Post('callback')
   callback(@Res() res: Response) {

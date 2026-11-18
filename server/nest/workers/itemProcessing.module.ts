@@ -13,6 +13,7 @@ import {
   type SubmissionId,
 } from '../../services/itemProcessingService/index.js';
 import { jsonParse } from '../../utils/encoding.js';
+import { logErrorJson } from '../../utils/logging.js';
 import { withRetries } from '../../utils/misc.js';
 import { COOP_DEPS, InjectDeps } from '../tokens.js';
 
@@ -74,12 +75,15 @@ export class ItemProcessingProcessor
   async onApplicationBootstrap() {
     // Fail fast if Scylla is unreachable, instead of retry-looping per job.
     await this.deps.Scylla.connect();
-    this.closed = new Promise<void>((resolve) => {
+    this.closed = new Promise<void>((resolve, reject) => {
       this.worker.on('closed', () => resolve());
-    });
-    // run() settles when the worker closes; `closed` tracks that.
-    this.worker.run().catch((e: unknown) => {
-      this.tracer.logActiveSpanFailedIfAny(e);
+      // run() settles when the worker closes; a rejection means the run loop
+      // failed and the process should exit rather than sit idle.
+      this.worker.run().catch((e: unknown) => {
+        // eslint-disable-next-line no-restricted-syntax
+        logErrorJson({ message: 'item-processing worker failed', error: e });
+        reject(e instanceof Error ? e : new Error(String(e)));
+      });
     });
     await this.worker.waitUntilReady();
   }

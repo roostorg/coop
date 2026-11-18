@@ -6,22 +6,36 @@ import {
   type ExecutionContext,
   type Type,
 } from '@nestjs/common';
-import { type Request } from 'express';
-import { v1 as uuidv1 } from 'uuid';
-import { safeParse, type GenericSchema } from 'valibot';
+import { type Request, type RequestHandler, type Response } from 'express';
+import { type JsonObject } from 'type-fest';
+import { type GenericSchema } from 'valibot';
 
 import { type Dependencies } from '../../iocContainer/index.js';
-import { formatValidationIssues } from '../../utils/bodySchemaValidation.js';
-import {
-  fromCorrelationId,
-  toCorrelationId,
-} from '../../utils/correlationIds.js';
-import {
-  makeBadRequestError,
-  makeServiceUnavailableError,
-  makeUnauthenticatedError,
-} from '../../utils/errors.js';
+import { createApiKeyMiddleware } from '../../utils/apiKeyMiddleware.js';
+import { createBodySchemaValidator } from '../../utils/bodySchemaValidation.js';
 import { InjectDep } from '../tokens.js';
+
+/**
+ * Runs an Express middleware as a guard: `next()` allows the request and
+ * `next(err)` throws the error for CoopExceptionFilter. The REST guards wrap
+ * the middleware the Express routes use, so both share one implementation.
+ */
+async function runMiddlewareAsGuard(
+  middleware: RequestHandler,
+  context: ExecutionContext,
+): Promise<true> {
+  const http = context.switchToHttp();
+  return new Promise((resolve, reject) => {
+    const next = (err?: unknown) => (err ? reject(err) : resolve(true));
+    Promise.resolve(
+      middleware(
+        http.getRequest<Request>(),
+        http.getResponse<Response>(),
+        next,
+      ),
+    ).catch(reject);
+  });
+}
 
 /**
  * Validates the request body against a Valibot schema.
@@ -31,76 +45,41 @@ import { InjectDep } from '../tokens.js';
  * it before `ApiKeyGuard` in `@UseGuards()`.
  */
 export function BodySchemaGuard(
-  schema: GenericSchema<unknown, unknown>,
+  schema: GenericSchema<JsonObject, unknown>,
 ): Type<CanActivate> {
+  const validate = createBodySchemaValidator(schema);
+
   @Injectable()
   class BodySchemaGuardMixin implements CanActivate {
-    canActivate(context: ExecutionContext) {
-      const { body } = context.switchToHttp().getRequest<Request>();
-      const result = safeParse(schema, body, { abortEarly: false });
-      if (!result.success) {
-        throw makeBadRequestError('Request body failed schema validation.', {
-          shouldErrorSpan: false,
-          ...formatValidationIssues(result.issues, schema, body),
-        });
-      }
-      return true;
+    async canActivate(context: ExecutionContext) {
+      return runMiddlewareAsGuard(validate, context);
     }
   }
   return mixin(BodySchemaGuardMixin);
 }
 
 /**
- * Resolves the org from the `x-api-key` header. Rejects with 401 for a missing
- * or unknown key and 503 when the key could not be checked.
+ * Resolves the org from the `x-api-key` header and stores it on the request.
+ * Rejects with 401 for a missing or unknown key and 503 when the key could not
+ * be checked.
  */
 @Injectable()
 export class ApiKeyGuard implements CanActivate {
+  private readonly middleware: RequestHandler;
+
   constructor(
     @InjectDep('ApiKeyService')
-    private readonly apiKeyService: Dependencies['ApiKeyService'],
-    @InjectDep('Tracer') private readonly tracer: Dependencies['Tracer'],
-  ) {}
+    apiKeyService: Dependencies['ApiKeyService'],
+    @InjectDep('Tracer') tracer: Dependencies['Tracer'],
+  ) {
+    this.middleware = createApiKeyMiddleware({
+      ApiKeyService: apiKeyService,
+      Tracer: tracer,
+    }) as RequestHandler;
+  }
 
   async canActivate(context: ExecutionContext) {
-    const req = context
-      .switchToHttp()
-      .getRequest<Request & { orgId?: string }>();
-    const providedKey = req.header('x-api-key');
-    let orgId: string | null;
-    try {
-      orgId = providedKey
-        ? await this.apiKeyService.validateApiKey(providedKey)
-        : null;
-    } catch (error) {
-      if (error instanceof Error) {
-        this.tracer.getActiveSpan()?.recordException(error);
-      }
-      throw makeServiceUnavailableError('Unable to validate API key', {
-        detail:
-          "Coop couldn't check your API key right now. This is a temporary " +
-          'server-side problem, not a problem with your key; please retry.',
-        requestId: fromCorrelationId(
-          toCorrelationId({ type: 'api-key-validation', id: uuidv1() }),
-        ),
-        cause: error,
-        shouldErrorSpan: true,
-      });
-    }
-
-    if (!orgId) {
-      throw makeUnauthenticatedError('Invalid API Key', {
-        detail:
-          'Something went wrong finding or validating your API key. ' +
-          'Make sure the proper key is provided in the x-api-key header.',
-        requestId: fromCorrelationId(
-          toCorrelationId({ type: 'api-key-validation', id: uuidv1() }),
-        ),
-        shouldErrorSpan: true,
-      });
-    }
-    req.orgId = orgId;
-    return true;
+    return runMiddlewareAsGuard(this.middleware, context);
   }
 }
 
