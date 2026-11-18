@@ -54,7 +54,7 @@ describe('NCMEC report and submission (integration)', () => {
 
     const orgFixture = await createOrg(
       {
-        KyselyPg: harness.deps.KyselyPg,
+        PrismaPg: harness.deps.PrismaPg,
         ModerationConfigService: harness.deps.ModerationConfigService,
         ApiKeyService: harness.deps.ApiKeyService,
       },
@@ -64,7 +64,7 @@ describe('NCMEC report and submission (integration)', () => {
     userItemTypeId = orgFixture.defaultUserItemType.id;
     orgCleanup = orgFixture.cleanup;
 
-    const reviewerFixture = await createUser(harness.deps.KyselyPg, orgId, {
+    const reviewerFixture = await createUser(harness.deps.PrismaPg, orgId, {
       password: REVIEWER_PASSWORD,
       loginMethods: ['password'],
       approvedByAdmin: true,

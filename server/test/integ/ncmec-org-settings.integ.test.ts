@@ -28,7 +28,7 @@ describe('NcmecService.updateNcmecOrgSettings (integration)', () => {
     const orgId = uid();
     await createOrg(
       {
-        KyselyPg: deps.KyselyPg,
+        PrismaPg: deps.PrismaPg,
         ModerationConfigService: deps.ModerationConfigService,
         ApiKeyService: deps.ApiKeyService,
       },

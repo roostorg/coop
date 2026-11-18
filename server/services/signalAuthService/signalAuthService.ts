@@ -1,11 +1,13 @@
-import { type Kysely } from 'kysely';
 import { type ReadonlyDeep } from 'type-fest';
 
 import { inject } from '../../iocContainer/utils.js';
-import { jsonParse, jsonStringify, type JsonOf } from '../../utils/encoding.js';
+import {
+  type Prisma,
+  type PrismaPgClient,
+} from '../../storage/prisma/index.js';
+import { jsonParse, type JsonOf } from '../../utils/encoding.js';
 import { type NonEmptyString } from '../../utils/typescript-types.js';
 import { Integration } from '../signalsService/index.js';
-import { type SignalAuthServicePg } from './dbTypes.js';
 
 export type GetCredentials<T extends ConfigurableIntegration> = (
   orgId: string,
@@ -102,9 +104,9 @@ export type CredentialImplementations = {
  */
 class SignalAuthService {
   private implementations: CredentialImplementations;
-  private pg: Kysely<SignalAuthServicePg>;
+  private pg: PrismaPgClient;
 
-  constructor(pg: Kysely<SignalAuthServicePg>) {
+  constructor(pg: PrismaPgClient) {
     this.pg = pg;
     this.implementations = makeImplementations(pg);
   }
@@ -155,12 +157,12 @@ class SignalAuthService {
         ? { apiKey: c.apiKey, labelerVersions: c.labelerVersions }
         : undefined;
     }
-    const row = await this.pg
-      .selectFrom('signal_auth_service.integration_configs')
-      .select(['config'])
-      .where('org_id', '=', orgId)
-      .where('integration_id', '=', integrationId)
-      .executeTakeFirst();
+    const row = await this.pg.integration_configs.findUnique({
+      select: { config: true },
+      where: {
+        org_id_integration_id: { org_id: orgId, integration_id: integrationId },
+      },
+    });
     if (row == null) return undefined;
     const config = row.config;
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unnecessary-type-assertion -- DB JSON type can be null; cast for API shape
@@ -202,76 +204,66 @@ class SignalAuthService {
       await this.set(Integration.ZENTROPI, orgId, { apiKey, labelerVersions });
       return { apiKey, labelerVersions };
     }
-    await this.pg
-      .insertInto('signal_auth_service.integration_configs')
-      .values({
+    // `Record<string, unknown>` isn't assignable to Prisma's JSON input type;
+    // the value is caller-supplied JSON config.
+    const configJson = config as Prisma.InputJsonObject;
+    await this.pg.integration_configs.upsert({
+      where: {
+        org_id_integration_id: { org_id: orgId, integration_id: integrationId },
+      },
+      create: {
         org_id: orgId,
         integration_id: integrationId,
-        config,
-      })
-      .onConflict((oc) =>
-        oc.columns(['org_id', 'integration_id']).doUpdateSet({ config }),
-      )
-      .execute();
+        config: configJson,
+      },
+      update: { config: configJson },
+    });
     return config;
   }
 }
 
-export default inject(['KyselyPg'], SignalAuthService);
+export default inject(['PrismaPg'], SignalAuthService);
 export { type SignalAuthService };
 
 // Returns the whole CredentialImplementations object inline, with the
 // implementations for all the integrations, which might seem like a lot, but
 // saves us from having a lot of boilerplate with private bottle services and
 // separate dependency lists for each integration.
-function makeImplementations(
-  pg: Kysely<SignalAuthServicePg>,
-): CredentialImplementations {
+function makeImplementations(pg: PrismaPgClient): CredentialImplementations {
   return {
     [Integration.GOOGLE_CONTENT_SAFETY_API]: {
       get: async (orgId: string) => {
-        return pg
-          .selectFrom('signal_auth_service.google_content_safety_configs')
-          .select(['api_key as apiKey'])
-          .where('org_id', '=', orgId)
-          .executeTakeFirst();
+        const row = await pg.google_content_safety_configs.findUnique({
+          select: { api_key: true },
+          where: { org_id: orgId },
+        });
+        return row == null ? undefined : { apiKey: row.api_key };
       },
       set: async (orgId: string, credential: GoogleContentSafetyCredential) => {
-        return pg
-          .insertInto('signal_auth_service.google_content_safety_configs')
-          .values([
-            {
-              org_id: orgId,
-              api_key: credential.apiKey,
-            },
-          ])
-          .onConflict((oc) =>
-            oc.column('org_id').doUpdateSet({ api_key: credential.apiKey }),
-          )
-          .returning(['api_key as apiKey'])
-          .executeTakeFirstOrThrow();
+        const row = await pg.google_content_safety_configs.upsert({
+          select: { api_key: true },
+          where: { org_id: orgId },
+          create: { org_id: orgId, api_key: credential.apiKey },
+          update: { api_key: credential.apiKey },
+        });
+        return { apiKey: row.api_key };
       },
       delete: async (orgId: string) => {
-        await pg
-          .deleteFrom('signal_auth_service.google_content_safety_configs')
-          .where('org_id', '=', orgId)
-          .executeTakeFirst();
+        await pg.google_content_safety_configs.deleteMany({
+          where: { org_id: orgId },
+        });
       },
     },
     [Integration.OPEN_AI]: {
       get: async (orgId: string) => {
-        const row = await pg
-          .selectFrom('signal_auth_service.open_ai_configs')
-          .select([
-            'api_key as apiKey',
-            'csam_classifier_api_key as csamClassifierApiKey',
-          ])
-          .where('org_id', '=', orgId)
-          .executeTakeFirst();
+        const row = await pg.open_ai_configs.findUnique({
+          select: { api_key: true, csam_classifier_api_key: true },
+          where: { org_id: orgId },
+        });
         if (row == null) return undefined;
         return {
-          apiKey: row.apiKey,
-          csamClassifierApiKey: row.csamClassifierApiKey ?? undefined,
+          apiKey: row.api_key,
+          csamClassifierApiKey: row.csam_classifier_api_key ?? undefined,
         };
       },
       set: async (orgId: string, credential: OpenAICredential) => {
@@ -284,45 +276,34 @@ function makeImplementations(
           credential.csamClassifierApiKey !== ''
             ? credential.csamClassifierApiKey
             : null;
-        const row = await pg
-          .insertInto('signal_auth_service.open_ai_configs')
-          .values([
-            {
-              org_id: orgId,
-              api_key: credential.apiKey,
-              csam_classifier_api_key: csamProvided ? csamValue : null,
-            },
-          ])
-          .onConflict((oc) =>
-            oc.column('org_id').doUpdateSet({
-              api_key: credential.apiKey,
-              ...(csamProvided ? { csam_classifier_api_key: csamValue } : {}),
-            }),
-          )
-          .returning([
-            'api_key as apiKey',
-            'csam_classifier_api_key as csamClassifierApiKey',
-          ])
-          .executeTakeFirstOrThrow();
+        const row = await pg.open_ai_configs.upsert({
+          select: { api_key: true, csam_classifier_api_key: true },
+          where: { org_id: orgId },
+          create: {
+            org_id: orgId,
+            api_key: credential.apiKey,
+            csam_classifier_api_key: csamProvided ? csamValue : null,
+          },
+          update: {
+            api_key: credential.apiKey,
+            ...(csamProvided ? { csam_classifier_api_key: csamValue } : {}),
+          },
+        });
         return {
-          apiKey: row.apiKey,
-          csamClassifierApiKey: row.csamClassifierApiKey ?? undefined,
+          apiKey: row.api_key,
+          csamClassifierApiKey: row.csam_classifier_api_key ?? undefined,
         };
       },
       delete: async (orgId: string) => {
-        await pg
-          .deleteFrom('signal_auth_service.open_ai_configs')
-          .where('org_id', '=', orgId)
-          .executeTakeFirst();
+        await pg.open_ai_configs.deleteMany({ where: { org_id: orgId } });
       },
     },
     [Integration.ZENTROPI]: {
       get: async (orgId: string) => {
-        const row = await pg
-          .selectFrom('signal_auth_service.zentropi_configs')
-          .select(['api_key', 'labeler_versions'])
-          .where('org_id', '=', orgId)
-          .executeTakeFirst();
+        const row = await pg.zentropi_configs.findUnique({
+          select: { api_key: true, labeler_versions: true },
+          where: { org_id: orgId },
+        });
         if (row == null) return undefined;
         const labelerVersions = row.labeler_versions;
         return {
@@ -335,26 +316,25 @@ function makeImplementations(
         };
       },
       set: async (orgId: string, credential: ZentropiCredential) => {
-        const labelerVersionsJson = jsonStringify(
-          credential.labelerVersions ?? [],
-        );
-        const row = await pg
-          .insertInto('signal_auth_service.zentropi_configs')
-          .values([
-            {
-              org_id: orgId,
-              api_key: credential.apiKey,
-              labeler_versions: labelerVersionsJson,
-            },
-          ])
-          .onConflict((oc) =>
-            oc.column('org_id').doUpdateSet({
-              api_key: credential.apiKey,
-              labeler_versions: labelerVersionsJson,
-            }),
-          )
-          .returning(['api_key', 'labeler_versions'])
-          .executeTakeFirstOrThrow();
+        // Kysely sent JSON text, which Postgres parsed into a jsonb array;
+        // Prisma takes the array itself (a string would be stored as a JSON
+        // string). Optional `labelerId`/`model` keys may be undefined, which
+        // JSON serialization drops either way.
+        const labelerVersionsJson = (credential.labelerVersions ??
+          []) as Prisma.InputJsonArray;
+        const row = await pg.zentropi_configs.upsert({
+          select: { api_key: true, labeler_versions: true },
+          where: { org_id: orgId },
+          create: {
+            org_id: orgId,
+            api_key: credential.apiKey,
+            labeler_versions: labelerVersionsJson,
+          },
+          update: {
+            api_key: credential.apiKey,
+            labeler_versions: labelerVersionsJson,
+          },
+        });
         const returnedVersions = row.labeler_versions;
         return {
           apiKey: row.api_key,
@@ -366,10 +346,7 @@ function makeImplementations(
         };
       },
       delete: async (orgId: string) => {
-        await pg
-          .deleteFrom('signal_auth_service.zentropi_configs')
-          .where('org_id', '=', orgId)
-          .executeTakeFirst();
+        await pg.zentropi_configs.deleteMany({ where: { org_id: orgId } });
       },
     },
   };

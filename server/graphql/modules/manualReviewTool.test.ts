@@ -33,7 +33,7 @@ describe('manual review job ID limit', () => {
 describe('queue role assignment visibility', () => {
   const testWithQueue = makeTransactionalTestWithFixture(async ({ deps }) => {
     const { org } = await createOrg(deps);
-    const { user: creator } = await createUser(deps.KyselyPg, org.id);
+    const { user: creator } = await createUser(deps.PrismaPg, org.id);
     const assignedRole = await deps.KyselyPg.selectFrom('public.roles')
       .select('id')
       .where('org_id', '=', org.id)
@@ -63,7 +63,7 @@ describe('queue role assignment visibility', () => {
         UserRole.MODERATOR,
         UserRole.MODERATOR_MANAGER,
       ]) {
-        const { user: viewer } = await createUser(deps.KyselyPg, org.id, {
+        const { user: viewer } = await createUser(deps.PrismaPg, org.id, {
           role,
           approvedByAdmin: true,
           loginMethods: ['password'],

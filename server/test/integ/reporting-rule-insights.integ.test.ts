@@ -27,7 +27,7 @@ describe('reporting rule sample details (integration)', () => {
 
     const orgFixture = await createOrg(
       {
-        KyselyPg: harness.deps.KyselyPg,
+        PrismaPg: harness.deps.PrismaPg,
         ModerationConfigService: harness.deps.ModerationConfigService,
         ApiKeyService: harness.deps.ApiKeyService,
       },
@@ -36,7 +36,7 @@ describe('reporting rule sample details (integration)', () => {
     orgCleanup = orgFixture.cleanup;
     itemTypeId = orgFixture.defaultUserItemType.id;
 
-    const userFixture = await createUser(harness.deps.KyselyPg, orgId, {
+    const userFixture = await createUser(harness.deps.PrismaPg, orgId, {
       password: PASSWORD,
       loginMethods: ['password'],
       approvedByAdmin: true,

@@ -18,13 +18,13 @@ describe('DecisionAnalytics', () => {
     makeTransactionalTestWithFixture(async ({ deps }) => {
       const { org } = await createOrg(
         {
-          KyselyPg: deps.KyselyPg,
+          PrismaPg: deps.PrismaPg,
           ModerationConfigService: deps.ModerationConfigService,
           ApiKeyService: deps.ApiKeyService,
         },
         uid(),
       );
-      const { user } = await createUser(deps.KyselyPg, org.id);
+      const { user } = await createUser(deps.PrismaPg, org.id);
       const { queue } = await createMrtQueue({
         orgId: org.id,
         mrtService: deps.ManualReviewToolService,

@@ -27,13 +27,13 @@ describe('kyselyUserFindByEmailAndOrg', () => {
   const testWithFixture = makeTransactionalTestWithFixture(async ({ deps }) => {
     const { org } = await createOrg(
       {
-        KyselyPg: deps.KyselyPg,
+        PrismaPg: deps.PrismaPg,
         ModerationConfigService: deps.ModerationConfigService,
         ApiKeyService: deps.ApiKeyService,
       },
       uid(),
     );
-    await seedSystemRolesForOrg(deps.KyselyPg, org.id);
+    await seedSystemRolesForOrg(deps.PrismaPg, org.id);
     return { org };
   });
 
@@ -41,8 +41,8 @@ describe('kyselyUserFindByEmailAndOrg', () => {
     'returns the row when email and org match',
     async ({ deps, org }) => {
       const input = samlUserInput(org.id);
-      await kyselyUserInsert({ db: deps.KyselyPg, ...input });
-      const result = await kyselyUserFindByEmailAndOrg(deps.KyselyPg, {
+      await kyselyUserInsert({ db: deps.PrismaPg, ...input });
+      const result = await kyselyUserFindByEmailAndOrg(deps.PrismaPg, {
         email: input.email,
         orgId: org.id,
       });
@@ -56,8 +56,8 @@ describe('kyselyUserFindByEmailAndOrg', () => {
     'returns undefined when the email exists in a different org',
     async ({ deps, org }) => {
       const input = samlUserInput(org.id);
-      await kyselyUserInsert({ db: deps.KyselyPg, ...input });
-      const result = await kyselyUserFindByEmailAndOrg(deps.KyselyPg, {
+      await kyselyUserInsert({ db: deps.PrismaPg, ...input });
+      const result = await kyselyUserFindByEmailAndOrg(deps.PrismaPg, {
         email: input.email,
         orgId: `different-org-${uid()}`,
       });
@@ -68,7 +68,7 @@ describe('kyselyUserFindByEmailAndOrg', () => {
   testWithFixture(
     'returns undefined when the email does not exist',
     async ({ deps, org }) => {
-      const result = await kyselyUserFindByEmailAndOrg(deps.KyselyPg, {
+      const result = await kyselyUserFindByEmailAndOrg(deps.PrismaPg, {
         email: `missing-${uid()}@example.com`,
         orgId: org.id,
       });

@@ -13,13 +13,13 @@ describe('OrgAPI', () => {
   const testWithFixture = makeTransactionalTestWithFixture(async ({ deps }) => {
     const { org } = await createOrg(
       {
-        KyselyPg: deps.KyselyPg,
+        PrismaPg: deps.PrismaPg,
         ModerationConfigService: deps.ModerationConfigService,
         ApiKeyService: deps.ApiKeyService,
       },
       uid(),
     );
-    await seedSystemRolesForOrg(deps.KyselyPg, org.id);
+    await seedSystemRolesForOrg(deps.PrismaPg, org.id);
     return { org };
   });
 
@@ -167,7 +167,7 @@ describe('OrgAPI', () => {
       async ({ deps, org }) => {
         const { org: otherOrg } = await createOrg(
           {
-            KyselyPg: deps.KyselyPg,
+            PrismaPg: deps.PrismaPg,
             ModerationConfigService: deps.ModerationConfigService,
             ApiKeyService: deps.ApiKeyService,
           },
@@ -191,7 +191,7 @@ describe('OrgAPI', () => {
         const adminId = uid();
         const analystId = uid();
         await kyselyUserInsert({
-          db: deps.KyselyPg,
+          db: deps.PrismaPg,
           id: adminId,
           orgId: org.id,
           email: faker.internet.email(),
@@ -202,7 +202,7 @@ describe('OrgAPI', () => {
           password: null,
         });
         await kyselyUserInsert({
-          db: deps.KyselyPg,
+          db: deps.PrismaPg,
           id: analystId,
           orgId: org.id,
           email: faker.internet.email(),
@@ -239,16 +239,16 @@ describe('OrgAPI', () => {
       async ({ deps, org }) => {
         const { org: otherOrg } = await createOrg(
           {
-            KyselyPg: deps.KyselyPg,
+            PrismaPg: deps.PrismaPg,
             ModerationConfigService: deps.ModerationConfigService,
             ApiKeyService: deps.ApiKeyService,
           },
           uid(),
         );
-        await seedSystemRolesForOrg(deps.KyselyPg, otherOrg.id);
+        await seedSystemRolesForOrg(deps.PrismaPg, otherOrg.id);
         const otherUserId = uid();
         await kyselyUserInsert({
-          db: deps.KyselyPg,
+          db: deps.PrismaPg,
           id: otherUserId,
           orgId: otherOrg.id,
           email: faker.internet.email(),

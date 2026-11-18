@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 
 import type { Dependencies } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
-import { type PrismaPgClient } from '../../storage/prisma/index.js';
+import { type Prisma, type PrismaPgClient } from '../../storage/prisma/index.js';
 import {
   makeBadRequestError,
   makeNotFoundError,
@@ -210,7 +210,11 @@ class UserManagementService {
         : {}),
       ...(mrtChartConfigurations
         ? {
-            mrt_chart_configurations: [...mrtChartConfigurations],
+            // Chart configs are plain JSON; the domain type isn't assignable to
+            // Prisma's JSON input type.
+            mrt_chart_configurations: [
+              ...mrtChartConfigurations,
+            ] as unknown as Prisma.InputJsonValue[],
           }
         : {}),
     };

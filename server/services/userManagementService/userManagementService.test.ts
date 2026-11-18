@@ -10,13 +10,13 @@ describe('UserManagementService #generatePasswordResetTokenForUser', () => {
   const testWithUsers = makeTransactionalTestWithFixture(async ({ deps }) => {
     const local = await createOrg(deps);
     const foreign = await createOrg(deps);
-    const { user } = await createUser(deps.KyselyPg, local.org.id);
+    const { user } = await createUser(deps.PrismaPg, local.org.id);
     const { user: foreignUser } = await createUser(
-      deps.KyselyPg,
+      deps.PrismaPg,
       foreign.org.id,
     );
     const sendEmail = vi.fn(async () => true);
-    const service = new UserManagementService(deps.KyselyPg, sendEmail, {
+    const service = new UserManagementService(deps.PrismaPg, sendEmail, {
       uiUrl: 'https://example.invalid',
     });
     const initialToken = await service.generatePasswordResetTokenForUser({

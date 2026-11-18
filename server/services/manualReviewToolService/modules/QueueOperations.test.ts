@@ -38,14 +38,14 @@ describe('QueueOperations', () => {
     makeTransactionalTestWithFixture(async ({ deps }) => {
       const { org } = await createOrg(
         {
-          KyselyPg: deps.KyselyPg,
+          PrismaPg: deps.PrismaPg,
           ModerationConfigService: deps.ModerationConfigService,
           ApiKeyService: deps.ApiKeyService,
         },
         uid(),
       );
 
-      const { user } = await createUser(deps.KyselyPg, org.id);
+      const { user } = await createUser(deps.PrismaPg, org.id);
       const { itemTypes } = await createContentItemTypes({
         moderationConfigService: deps.ModerationConfigService,
         orgId: org.id,
@@ -194,7 +194,7 @@ describe('QueueOperations', () => {
   testWithQueueAndActions()(
     'getReviewableQueuesForUser excludes a queue the user is not a member of',
     async ({ org, queue, mrtService, deps }) => {
-      const { user: outsider } = await createUser(deps.KyselyPg, org.id);
+      const { user: outsider } = await createUser(deps.PrismaPg, org.id);
       const reviewable = await mrtService.getReviewableQueuesForUser({
         invoker: {
           userId: outsider.id,
@@ -233,7 +233,7 @@ describe('QueueOperations', () => {
   testWithQueueAndActions()(
     'getReviewableQueuesForUser lets EDIT_MRT_QUEUES holders view every queue',
     async ({ org, queue, mrtService, deps }) => {
-      const { user: outsider } = await createUser(deps.KyselyPg, org.id);
+      const { user: outsider } = await createUser(deps.PrismaPg, org.id);
       const reviewable = await mrtService.getReviewableQueuesForUser({
         invoker: {
           userId: outsider.id,
@@ -248,7 +248,7 @@ describe('QueueOperations', () => {
   testWithQueueAndActions()(
     'getReviewableQueuesForUser filters requested queue IDs by reviewer access',
     async ({ org, queue, user, mrtService, deps }) => {
-      const { user: outsider } = await createUser(deps.KyselyPg, org.id);
+      const { user: outsider } = await createUser(deps.PrismaPg, org.id);
       await expect(
         mrtService.getReviewableQueuesForUser({
           invoker: {
@@ -275,7 +275,7 @@ describe('QueueOperations', () => {
   testWithQueueAndActions()(
     'getReviewableQueuesForUser lets a queue manager filter without membership',
     async ({ org, queue, mrtService, deps }) => {
-      const { user: outsider } = await createUser(deps.KyselyPg, org.id);
+      const { user: outsider } = await createUser(deps.PrismaPg, org.id);
       await expect(
         mrtService.getReviewableQueuesForUser({
           invoker: {
@@ -419,13 +419,13 @@ describe('QueueOperations', () => {
       const buildOrg = async () => {
         const { org } = await createOrg(
           {
-            KyselyPg: deps.KyselyPg,
+            PrismaPg: deps.PrismaPg,
             ModerationConfigService: deps.ModerationConfigService,
             ApiKeyService: deps.ApiKeyService,
           },
           uid(),
         );
-        const { user } = await createUser(deps.KyselyPg, org.id);
+        const { user } = await createUser(deps.PrismaPg, org.id);
         const { queue } = await createMrtQueue({
           orgId: org.id,
           mrtService: deps.ManualReviewToolService,
@@ -445,11 +445,11 @@ describe('QueueOperations', () => {
     'grants and revokes queue access only for users and queues in the caller’s org',
     async ({ attacker, victim, mrtService, deps }) => {
       const { user: attackerMember } = await createUser(
-        deps.KyselyPg,
+        deps.PrismaPg,
         attacker.org.id,
       );
       const { user: victimMember } = await createUser(
-        deps.KyselyPg,
+        deps.PrismaPg,
         victim.org.id,
       );
       const tenants = [
@@ -723,16 +723,16 @@ describe('QueueOperations', () => {
     makeTransactionalTestWithFixture(async ({ deps }) => {
       const { org } = await createOrg(
         {
-          KyselyPg: deps.KyselyPg,
+          PrismaPg: deps.PrismaPg,
           ModerationConfigService: deps.ModerationConfigService,
           ApiKeyService: deps.ApiKeyService,
         },
         uid(),
       );
-      const { user: creator } = await createUser(deps.KyselyPg, org.id, {
+      const { user: creator } = await createUser(deps.PrismaPg, org.id, {
         role: UserRole.ADMIN,
       });
-      const { user: moderator } = await createUser(deps.KyselyPg, org.id, {
+      const { user: moderator } = await createUser(deps.PrismaPg, org.id, {
         role: UserRole.MODERATOR,
       });
       return {
@@ -742,6 +742,7 @@ describe('QueueOperations', () => {
         apiKeyService: deps.ApiKeyService,
         moderationConfigService: deps.ModerationConfigService,
         kyselyPg: deps.KyselyPg,
+        prismaPg: deps.PrismaPg,
         mrtService: deps.ManualReviewToolService,
       };
     });
@@ -958,7 +959,7 @@ describe('QueueOperations', () => {
         });
       }
       const { org: otherOrg } = await createOrg(deps);
-      const { user: otherUser } = await createUser(kyselyPg, otherOrg.id);
+      const { user: otherUser } = await createUser(deps.PrismaPg, otherOrg.id);
       const foreignQueue = await createQueueWithRoles(
         mrtService,
         otherOrg,
@@ -1035,6 +1036,7 @@ describe('QueueOperations', () => {
       moderator,
       mrtService,
       kyselyPg,
+      prismaPg,
       moderationConfigService,
       apiKeyService,
     }) => {
@@ -1044,13 +1046,13 @@ describe('QueueOperations', () => {
       ]);
       const { org: otherOrg } = await createOrg(
         {
-          KyselyPg: kyselyPg,
+          PrismaPg: prismaPg,
           ModerationConfigService: moderationConfigService,
           ApiKeyService: apiKeyService,
         },
         uid(),
       );
-      await createUser(kyselyPg, otherOrg.id, { role: UserRole.MODERATOR });
+      await createUser(prismaPg, otherOrg.id, { role: UserRole.MODERATOR });
       const otherRoleId = await getRoleId(
         kyselyPg,
         otherOrg.id,

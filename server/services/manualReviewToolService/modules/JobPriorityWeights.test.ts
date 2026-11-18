@@ -11,7 +11,7 @@ describe('JobPriorityWeights', () => {
       const pgQuery = deps.KyselyPg;
       const { org } = await createOrg(
         {
-          KyselyPg: pgQuery,
+          PrismaPg: deps.PrismaPg,
           ModerationConfigService: deps.ModerationConfigService,
           ApiKeyService: deps.ApiKeyService,
         },
@@ -71,7 +71,7 @@ describe('JobPriorityWeights', () => {
       async ({ ops, orgId, deps }) => {
         const { org: otherOrg } = await createOrg(
           {
-            KyselyPg: deps.KyselyPg,
+            PrismaPg: deps.PrismaPg,
             ModerationConfigService: deps.ModerationConfigService,
             ApiKeyService: deps.ApiKeyService,
           },

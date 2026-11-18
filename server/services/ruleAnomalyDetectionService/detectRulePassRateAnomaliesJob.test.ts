@@ -72,7 +72,7 @@ describe('Detect Rule Anomalies', () => {
   describe('worker', () => {
     const testWithFixture = makeTransactionalTestWithFixture(
       async ({ deps }) => {
-        const { ModerationConfigService, ApiKeyService, KyselyPg } = deps;
+        const { ModerationConfigService, ApiKeyService, PrismaPg } = deps;
 
         // Make some fake rules (w/ stable ids so we can match them in a snapshot)
         // in different initial alarm statuses, to test all 9 combinations [i.e.,
@@ -81,69 +81,69 @@ describe('Detect Rule Anomalies', () => {
         // the test transaction and rolled back afterward, so the stable ids never
         // leak across runs.
         const { org } = await createOrg({
-          KyselyPg,
+          PrismaPg,
           ModerationConfigService,
           ApiKeyService,
         });
         const { org: org2 } = await createOrg(
           {
-            KyselyPg,
+            PrismaPg,
             ModerationConfigService,
             ApiKeyService,
           },
           undefined,
           { onCallAlertEmail: 'test@gmail.com' },
         );
-        const { user: ruleOwner } = await createUser(KyselyPg, org.id, {
+        const { user: ruleOwner } = await createUser(PrismaPg, org.id, {
           id: 'cb34377bcc3',
         });
-        const { user: ruleOwner2 } = await createUser(KyselyPg, org.id, {
+        const { user: ruleOwner2 } = await createUser(PrismaPg, org.id, {
           id: 'cb34377bcc4',
         });
         const fakeRules = await Promise.all([
-          createRule(KyselyPg, org.id, {
+          createRule(PrismaPg, org.id, {
             alarmStatus: RuleAlarmStatus.ALARM,
             id: '9d237a650c1',
             creator: ruleOwner,
           }),
-          createRule(KyselyPg, org.id, {
+          createRule(PrismaPg, org.id, {
             alarmStatus: RuleAlarmStatus.ALARM,
             id: '386da8abc3b',
             creator: ruleOwner,
           }),
-          createRule(KyselyPg, org.id, {
+          createRule(PrismaPg, org.id, {
             alarmStatus: RuleAlarmStatus.ALARM,
             id: 'd237a650c13',
             creator: ruleOwner,
           }),
 
-          createRule(KyselyPg, org.id, {
+          createRule(PrismaPg, org.id, {
             alarmStatus: RuleAlarmStatus.OK,
             id: '86da8abc3b6',
             creator: ruleOwner,
           }),
-          createRule(KyselyPg, org.id, {
+          createRule(PrismaPg, org.id, {
             alarmStatus: RuleAlarmStatus.OK,
             id: 'fdb4ee86f93',
             creator: ruleOwner,
           }),
-          createRule(KyselyPg, org.id, {
+          createRule(PrismaPg, org.id, {
             alarmStatus: RuleAlarmStatus.OK,
             id: '237a650c134',
             creator: ruleOwner,
           }),
 
-          createRule(KyselyPg, org2.id, {
+          createRule(PrismaPg, org2.id, {
             alarmStatus: RuleAlarmStatus.INSUFFICIENT_DATA,
             id: 'db4ee86f938',
             creator: ruleOwner2,
           }),
-          createRule(KyselyPg, org2.id, {
+          createRule(PrismaPg, org2.id, {
             alarmStatus: RuleAlarmStatus.INSUFFICIENT_DATA,
             id: '37a650c1342',
             creator: ruleOwner2,
           }),
-          createRule(KyselyPg, org2.id, {
+          createRule(PrismaPg, org2.id, {
             alarmStatus: RuleAlarmStatus.INSUFFICIENT_DATA,
             id: 'b4ee86f9386',
             creator: ruleOwner2,

@@ -1,20 +1,22 @@
 import { type Exception } from '@opentelemetry/api';
-import { type Kysely } from 'kysely';
 import { uid } from 'uid';
 import { v1 as uuidV1 } from 'uuid';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
-import { type CombinedPg } from '../../services/combinedDbTypes.js';
 import {
   makeLocationBankNameExistsError,
   type LocationArea,
 } from '../../services/moderationConfigService/index.js';
 import { type PlacesApiService } from '../../services/placesApiService/index.js';
+import { Prisma, type PrismaPgClient } from '../../storage/prisma/index.js';
 import { makeNotFoundError } from '../../utils/errors.js';
 import { isUniqueViolationError } from '../../utils/kysely.js';
-import { makeKyselyTransactionWithRetry } from '../../utils/kyselyTransactionWithRetry.js';
 import { safePick } from '../../utils/misc.js';
+import {
+  makePrismaTransactionWithRetry,
+  type PrismaTransactionWithRetry,
+} from '../../utils/prismaTransactionWithRetry.js';
 import {
   type GQLCreateLocationBankInput,
   type GQLLocationAreaInput,
@@ -42,21 +44,27 @@ export type LocationBankWithoutFullPlacesAPIResponse = {
   getLocations: () => Promise<LocationArea[]>;
 };
 
+const LOCATION_BANK_ROW_SELECT = {
+  id: true,
+  name: true,
+  description: true,
+  org_id: true,
+  owner_id: true,
+} as const;
+
 class LocationBankAPI {
   private lookupPlaceId: PlacesApiService['lookupPlaceId'];
-  private readonly db: Kysely<CombinedPg>;
-  private readonly transactionWithRetry: ReturnType<
-    typeof makeKyselyTransactionWithRetry<CombinedPg>
-  >;
+  private readonly db: PrismaPgClient;
+  private readonly transactionWithRetry: PrismaTransactionWithRetry;
 
   constructor(
     placesApiService: PlacesApiService,
-    db: Dependencies['KyselyPg'],
+    db: Dependencies['PrismaPg'],
     private readonly tracer: Dependencies['Tracer'],
   ) {
     this.lookupPlaceId = placesApiService.lookupPlaceId.bind(placesApiService);
-    this.db = db as Kysely<CombinedPg>;
-    this.transactionWithRetry = makeKyselyTransactionWithRetry(this.db);
+    this.db = db;
+    this.transactionWithRetry = makePrismaTransactionWithRetry(this.db);
   }
 
   #rowToParent(row: LocationBankRow): LocationBankWithoutFullPlacesAPIResponse {
@@ -71,22 +79,18 @@ class LocationBankAPI {
   }
 
   async #loadLocationsForBank(bankId: string): Promise<LocationArea[]> {
-    const rows = await this.db
-      .selectFrom('public.location_bank_locations')
-      .selectAll()
-      .where('bank_id', '=', bankId)
-      .execute();
+    const rows = await this.db.location_bank_locations.findMany({
+      where: { bank_id: bankId },
+    });
     return rows.map(locationRowToLocationArea);
   }
 
   async getGraphQLLocationBankFromId(opts: { id: string; orgId: string }) {
     const { id, orgId } = opts;
-    const row = await this.db
-      .selectFrom('public.location_banks')
-      .select(['id', 'name', 'description', 'org_id', 'owner_id'])
-      .where('id', '=', id)
-      .where('org_id', '=', orgId)
-      .executeTakeFirst();
+    const row = await this.db.location_banks.findFirst({
+      select: LOCATION_BANK_ROW_SELECT,
+      where: { id, org_id: orgId },
+    });
 
     if (row == null) {
       throw makeNotFoundError('Location bank not found', {
@@ -98,11 +102,10 @@ class LocationBankAPI {
   }
 
   async getGraphQLLocationBanksForOrg(orgId: string) {
-    const rows = (await this.db
-      .selectFrom('public.location_banks')
-      .select(['id', 'name', 'description', 'org_id', 'owner_id'])
-      .where('org_id', '=', orgId)
-      .execute()) as LocationBankRow[];
+    const rows: LocationBankRow[] = await this.db.location_banks.findMany({
+      select: LOCATION_BANK_ROW_SELECT,
+      where: { org_id: orgId },
+    });
 
     return rows.map((r) => this.#rowToParent(r));
   }
@@ -122,9 +125,8 @@ class LocationBankAPI {
 
     try {
       return await this.transactionWithRetry(async (trx) => {
-        await trx
-          .insertInto('public.location_banks')
-          .values({
+        await trx.location_banks.create({
+          data: {
             id: newBankId,
             name,
             description: description ?? null,
@@ -132,18 +134,15 @@ class LocationBankAPI {
             owner_id: ownerId,
             updated_at: new Date(),
             full_places_api_responses: [],
-          })
-          .execute();
+          },
+        });
 
         if (expandedLocations.length > 0) {
-          await trx
-            .insertInto('public.location_bank_locations')
-            .values(
-              expandedLocations.map((loc) =>
-                locationAreaToLocationInsertRow(loc.bankId, loc),
-              ),
-            )
-            .execute();
+          await trx.location_bank_locations.createMany({
+            data: expandedLocations.map((loc) =>
+              locationAreaToLocationInsertRow(loc.bankId, loc),
+            ),
+          });
         }
 
         return this.#rowToParent({
@@ -168,12 +167,10 @@ class LocationBankAPI {
       ? await this.expandLocationAreaInputs(id, locationsToAdd)
       : undefined;
 
-    const row = await this.db
-      .selectFrom('public.location_banks')
-      .select(['id', 'name', 'description', 'org_id', 'owner_id'])
-      .where('id', '=', id)
-      .where('org_id', '=', orgId)
-      .executeTakeFirst();
+    const row = await this.db.location_banks.findFirst({
+      select: LOCATION_BANK_ROW_SELECT,
+      where: { id, org_id: orgId },
+    });
 
     if (row == null) {
       throw makeNotFoundError('Location bank not found', {
@@ -191,34 +188,27 @@ class LocationBankAPI {
 
     try {
       return await this.transactionWithRetry(async (trx) => {
-        await trx
-          .updateTable('public.location_banks')
-          .set({
+        await trx.location_banks.updateMany({
+          data: {
             name: nextName,
             description: nextDescription,
             updated_at: new Date(),
-          })
-          .where('id', '=', id)
-          .where('org_id', '=', orgId)
-          .execute();
+          },
+          where: { id, org_id: orgId },
+        });
 
         if (locationsToDelete?.length) {
-          await trx
-            .deleteFrom('public.location_bank_locations')
-            .where('bank_id', '=', id)
-            .where('id', 'in', [...locationsToDelete])
-            .execute();
+          await trx.location_bank_locations.deleteMany({
+            where: { bank_id: id, id: { in: [...locationsToDelete] } },
+          });
         }
 
         if (expandedLocationsToAdd?.length) {
-          await trx
-            .insertInto('public.location_bank_locations')
-            .values(
-              expandedLocationsToAdd.map((loc) =>
-                locationAreaToLocationInsertRow(loc.bankId, loc),
-              ),
-            )
-            .execute();
+          await trx.location_bank_locations.createMany({
+            data: expandedLocationsToAdd.map((loc) =>
+              locationAreaToLocationInsertRow(loc.bankId, loc),
+            ),
+          });
         }
 
         return this.#rowToParent({
@@ -241,29 +231,22 @@ class LocationBankAPI {
 
     try {
       const result = await this.transactionWithRetry(async (trx) => {
-        const bank = await trx
-          .selectFrom('public.location_banks')
-          .select('id')
-          .where('id', '=', id)
-          .where('org_id', '=', orgId)
-          .executeTakeFirst();
+        const bank = await trx.location_banks.findFirst({
+          select: { id: true },
+          where: { id, org_id: orgId },
+        });
 
         if (!bank) {
-          return { numDeletedRows: BigInt(0) };
+          return { count: 0 };
         }
 
-        await trx
-          .deleteFrom('public.location_bank_locations')
-          .where('bank_id', '=', id)
-          .execute();
-        return trx
-          .deleteFrom('public.location_banks')
-          .where('id', '=', id)
-          .where('org_id', '=', orgId)
-          .executeTakeFirst();
+        await trx.location_bank_locations.deleteMany({
+          where: { bank_id: id },
+        });
+        return trx.location_banks.deleteMany({ where: { id, org_id: orgId } });
       });
 
-      if (!result.numDeletedRows) {
+      if (!result.count) {
         return false;
       }
     } catch (exception) {
@@ -325,19 +308,24 @@ function locationRowToLocationArea(
 function locationAreaToLocationInsertRow(
   bankId: string,
   area: LocationArea & { bankId?: string },
-) {
+): Prisma.location_bank_locationsCreateManyInput {
+  // `LocationArea`'s nested types aren't assignable to Prisma's JSON input
+  // type; they are plain JSON. A missing value is SQL NULL (`DbNull`), as the
+  // plain `null` written through Kysely was.
   return {
     id: area.id,
     bank_id: bankId,
-    geometry: area.geometry,
-    bounds: area.bounds ?? null,
+    geometry: area.geometry as Prisma.InputJsonValue,
+    bounds: (area.bounds as Prisma.InputJsonValue | undefined) ?? Prisma.DbNull,
     name: area.name ?? null,
-    google_place_info: area.googlePlaceInfo ?? null,
+    google_place_info:
+      (area.googlePlaceInfo as Prisma.InputJsonValue | undefined) ??
+      Prisma.DbNull,
   };
 }
 
 export default inject(
-  ['PlacesApiService', 'KyselyPg', 'Tracer'],
+  ['PlacesApiService', 'PrismaPg', 'Tracer'],
   LocationBankAPI,
 );
 export type { LocationBankAPI };

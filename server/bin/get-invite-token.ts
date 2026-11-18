@@ -27,21 +27,16 @@ async function getInviteToken() {
   const container = bottle.container;
 
   try {
-    const result = await container.KyselyPg.selectFrom(
-      'public.invite_user_tokens',
-    )
-      .selectAll()
-      .where('email', '=', argv.email)
-      .orderBy('created_at', 'desc')
-      .limit(1)
-      .execute();
+    const invite = await container.PrismaPg.invite_user_tokens.findFirst({
+      where: { email: argv.email },
+      orderBy: { created_at: 'desc' },
+    });
 
-    if (result.length === 0) {
+    if (invite == null) {
       console.log(`\n❌ No invite token found for email: ${argv.email}\n`);
       process.exit(1);
     }
 
-    const invite = result[0];
     const uiUrl = process.env.UI_URL ?? 'http://localhost:3000';
     const signupUrl = `${uiUrl}/signup/${invite.token}`;
 

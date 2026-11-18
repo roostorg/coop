@@ -105,7 +105,7 @@ async function setupOrg(deps: TestDeps) {
   const suts = makeSuts(deps.KyselyPg, deps.KyselyPgReadReplica);
   const { org, defaultUserItemType } = await createOrg(
     {
-      KyselyPg: deps.KyselyPg,
+      PrismaPg: deps.PrismaPg,
       ModerationConfigService: deps.ModerationConfigService,
       ApiKeyService: deps.ApiKeyService,
     },
@@ -182,8 +182,8 @@ describe('ModerationConfigService', () => {
     const testWithRuleRow = makeTransactionalTestWithFixture(
       async ({ deps }) => {
         const base = await setupOrg(deps);
-        const { user } = await createUser(deps.KyselyPg, base.org.id);
-        const rule = await createRule(deps.KyselyPg, base.org.id, {
+        const { user } = await createUser(deps.PrismaPg, base.org.id);
+        const rule = await createRule(deps.PrismaPg, base.org.id, {
           creator: user,
           name: 'getRuleByIdAndOrg fixture rule',
           ruleType: RuleType.USER,
@@ -212,7 +212,7 @@ describe('ModerationConfigService', () => {
       async ({ sutWithPrimary, deps, ruleId }) => {
         const { org: otherOrg } = await createOrg(
           {
-            KyselyPg: deps.KyselyPg,
+            PrismaPg: deps.PrismaPg,
             ModerationConfigService: deps.ModerationConfigService,
             ApiKeyService: deps.ApiKeyService,
           },
@@ -279,7 +279,7 @@ describe('ModerationConfigService', () => {
 
           const { org: otherOrg } = await createOrg(
             {
-              KyselyPg: deps.KyselyPg,
+              PrismaPg: deps.PrismaPg,
               ModerationConfigService: deps.ModerationConfigService,
               ApiKeyService: deps.ApiKeyService,
             },
@@ -466,7 +466,7 @@ describe('ModerationConfigService', () => {
           });
           const { org: otherOrg } = await createOrg(
             {
-              KyselyPg: deps.KyselyPg,
+              PrismaPg: deps.PrismaPg,
               ModerationConfigService: deps.ModerationConfigService,
               ApiKeyService: deps.ApiKeyService,
             },
@@ -1363,7 +1363,7 @@ describe('ModerationConfigService', () => {
           async ({ sutWithPrimary, deps, action }) => {
             const { org: otherOrg } = await createOrg(
               {
-                KyselyPg: deps.KyselyPg,
+                PrismaPg: deps.PrismaPg,
                 ModerationConfigService: deps.ModerationConfigService,
                 ApiKeyService: deps.ApiKeyService,
               },
@@ -1650,7 +1650,7 @@ describe('ModerationConfigService', () => {
           async ({ sutWithPrimary, deps, org, action }) => {
             const { org: otherOrg } = await createOrg(
               {
-                KyselyPg: deps.KyselyPg,
+                PrismaPg: deps.PrismaPg,
                 ModerationConfigService: deps.ModerationConfigService,
                 ApiKeyService: deps.ApiKeyService,
               },
@@ -1678,7 +1678,7 @@ describe('ModerationConfigService', () => {
               name: faker.string.alphanumeric(16),
               schemaFieldRoles: { displayName: 'fakeField' },
             });
-            const rule = await createRule(deps.KyselyPg, org.id);
+            const rule = await createRule(deps.PrismaPg, org.id);
 
             await deps.KyselyPg.insertInto('public.actions_and_item_types')
               .values({ action_id: action.id, item_type_id: itemType.id })
@@ -1808,7 +1808,7 @@ describe('ModerationConfigService', () => {
           // ANY(...) predicate alone has no tenant scope).
           const { org: otherOrg } = await createOrg(
             {
-              KyselyPg: deps.KyselyPg,
+              PrismaPg: deps.PrismaPg,
               ModerationConfigService: deps.ModerationConfigService,
               ApiKeyService: deps.ApiKeyService,
             },
@@ -1833,7 +1833,7 @@ describe('ModerationConfigService', () => {
           const base = await setupOrg(deps);
           const { sutWithPrimary, org } = base;
 
-          const rule = await createRule(deps.KyselyPg, org.id);
+          const rule = await createRule(deps.PrismaPg, org.id);
           const action = await sutWithPrimary.createAction(org.id, {
             name: faker.string.alphanumeric(16),
             description: null,
@@ -1866,7 +1866,7 @@ describe('ModerationConfigService', () => {
         async ({ sutWithPrimary, deps, rule }) => {
           const { org: otherOrg } = await createOrg(
             {
-              KyselyPg: deps.KyselyPg,
+              PrismaPg: deps.PrismaPg,
               ModerationConfigService: deps.ModerationConfigService,
               ApiKeyService: deps.ApiKeyService,
             },
@@ -1911,7 +1911,7 @@ describe('ModerationConfigService', () => {
       const testWithUserAndOrg = makeTransactionalTestWithFixture(
         async ({ deps }) => {
           const base = await setupOrg(deps);
-          const { user } = await createUser(deps.KyselyPg, base.org.id);
+          const { user } = await createUser(deps.PrismaPg, base.org.id);
           return { ...base, user, deps };
         },
       );
@@ -2084,7 +2084,7 @@ describe('ModerationConfigService', () => {
         async ({ sutWithPrimary, org, user, deps }) => {
           const other = await setupOrg(deps);
           const { user: otherUser } = await createUser(
-            deps.KyselyPg,
+            deps.PrismaPg,
             other.org.id,
           );
           const otherParent = await other.sutWithPrimary.createPolicy({
@@ -2529,7 +2529,7 @@ describe('ModerationConfigService', () => {
       );
       const { org, cleanup: orgCleanup } = await createOrg(
         {
-          KyselyPg: container.KyselyPg,
+          PrismaPg: container.PrismaPg,
           ModerationConfigService: container.ModerationConfigService,
           ApiKeyService: container.ApiKeyService,
         },
