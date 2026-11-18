@@ -8,6 +8,7 @@ import createOrg from '../../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../../test/fixtureHelpers/createUser.js';
 import makeDummyMrtJobPayload from '../../../test/fixtureHelpers/makeDummyMrtJobPayload.js';
 import { makeTransactionalTestWithFixture } from '../../../test/harness/transactionalTest.js';
+import { jsonStringify } from '../../../utils/encoding.js';
 import {
   type JobId,
   type ManualReviewJob,
@@ -296,14 +297,14 @@ describe('DecisionAnalytics aggregations', () => {
               (id, org_id, queue_id, item_id, item_type_id, created_at, enqueue_source_info, policy_ids)
             values (${job.id}, ${org.id}, ${queue.id}, ${job.payload.item.itemId},
               ${job.payload.item.itemTypeIdentifier.id}, ${day},
-              ${JSON.stringify({ kind: 'REPORT' })}::jsonb, '{}')
+              ${jsonStringify({ kind: 'REPORT' })}::jsonb, '{}')
           `.execute(db);
           await sql`
             insert into manual_review_tool.manual_review_decisions
               (id, job_payload, queue_id, reviewer_id, org_id, created_at, assigned_at, decision_components, related_actions)
-            values (${decisionId}, ${JSON.stringify(job)}::jsonb, ${queue.id}, ${user.id}, ${org.id},
+            values (${decisionId}, ${jsonStringify(job)}::jsonb, ${queue.id}, ${user.id}, ${org.id},
               ${at(decidedAfterMinutes)}, ${at(decidedAfterMinutes - 10)},
-              array[${JSON.stringify({ type: 'IGNORE' })}::jsonb], '{}')
+              array[${jsonStringify({ type: 'IGNORE' })}::jsonb], '{}')
           `.execute(db);
           return { decisionId, job };
         }),
