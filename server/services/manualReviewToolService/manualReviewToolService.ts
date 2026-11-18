@@ -2,13 +2,16 @@
 
 import { SpanStatusCode } from '@opentelemetry/api';
 import { type ItemIdentifier } from '@roostorg/coop-types';
-import { type Kysely, type Transaction } from 'kysely';
+import { type Kysely } from 'kysely';
 import _ from 'lodash';
 import { type Opaque } from 'type-fest';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import { type ConsumerDirectives } from '../../lib/cache/index.js';
-import { type PrismaPgClient } from '../../storage/prisma/index.js';
+import {
+  type PrismaPgClient,
+  type PrismaPgTransaction,
+} from '../../storage/prisma/index.js';
 import { jsonStringify } from '../../utils/encoding.js';
 import {
   isCoopErrorOfType,
@@ -17,7 +20,6 @@ import {
 } from '../../utils/errors.js';
 import { isUniqueViolationError } from '../../utils/kysely.js';
 import type { OmitEach, ReplaceDeep } from '../../utils/typescript-types.js';
-import { type CombinedPg } from '../combinedDbTypes.js';
 import {
   getFieldValueForRole,
   getFieldValueOrValues,
@@ -29,10 +31,7 @@ import {
   resolveManualReviewContentSafely,
   type ManualReviewContentResolver,
 } from '../manualReviewContentResolver.js';
-import {
-  type ModerationConfigService,
-  type ModerationConfigServicePg,
-} from '../moderationConfigService/index.js';
+import { type ModerationConfigService } from '../moderationConfigService/index.js';
 import { type PartialItemsService } from '../partialItemsService/index.js';
 import {
   UserPermission,
@@ -413,9 +412,7 @@ export class ManualReviewToolService {
       getUserHasExistingNcmecReport,
       meter,
     );
-    this.jobRendering = new JobRendering(
-      pgQuery.$extendTables<ModerationConfigServicePg>(),
-    );
+    this.jobRendering = new JobRendering(prisma);
     this.jobPriorityWeights = new JobPriorityWeights(prisma);
     this.decisionAnalytics = new DecisionAnalytics(prismaReadReplica);
     this.commentOps = new CommentOperations(prisma);
@@ -433,18 +430,12 @@ export class ManualReviewToolService {
   }
 
   forTransaction(
-    trx: Transaction<CombinedPg>,
+    trx: PrismaPgTransaction,
   ): Pick<
     ManualReviewToolService,
     'getHiddenFieldsForItemType' | 'setHiddenFieldsForItemType'
   > {
-    return new JobRendering(
-      trx
-        .$extendTables<ManualReviewToolServicePg>()
-        .$pickTables<
-          keyof (ManualReviewToolServicePg & ModerationConfigServicePg)
-        >(),
-    );
+    return new JobRendering(trx);
   }
 
   /**

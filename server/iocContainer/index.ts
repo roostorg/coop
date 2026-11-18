@@ -991,8 +991,8 @@ export default async function getBottle(
     'ModerationConfigService',
     (container) =>
       new ModerationConfigService(
-        container.KyselyPg,
-        container.KyselyPgReadReplica,
+        container.PrismaPg,
+        container.PrismaPgReadReplica,
         async (_) => {},
       ),
   );
@@ -1018,8 +1018,8 @@ export default async function getBottle(
       container.IORedis,
       container.RuleEvaluator,
       container.RoutingRuleExecutionLogger,
-      // Still needed by QueueOperations, JobRouting, AppealsJobRouting and
-      // JobRendering until they are ported.
+      // Still needed by QueueOperations, JobRouting and AppealsJobRouting
+      // until they are ported.
       container.KyselyPg,
       container.KyselyPgReadReplica,
       container.PrismaPg,
