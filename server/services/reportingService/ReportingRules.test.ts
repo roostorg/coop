@@ -17,7 +17,7 @@ const conditionSet = {
 describe('ReportingRules', () => {
   const testWithRules = makeTransactionalTestWithFixture(async ({ deps }) => {
     const { org } = await createOrg(deps, uid());
-    const { user } = await createUser(deps.KyselyPg, org.id);
+    const { user } = await createUser(deps.PrismaPg, org.id);
     const sut = new ReportingRules(deps.PrismaPg);
     const makeInput = (name = `rule-${uid()}`) => ({
       orgId: org.id,

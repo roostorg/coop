@@ -9,8 +9,8 @@ describe('recordRuleActionLimitUsage', () => {
   const testWithRules = makeTransactionalTestWithFixture(async ({ deps }) => {
     const { org } = await createOrg(deps, uid());
     const [ruleA, ruleB] = await Promise.all([
-      createRule(deps.KyselyPg, org.id),
-      createRule(deps.KyselyPg, org.id),
+      createRule(deps.PrismaPg, org.id),
+      createRule(deps.PrismaPg, org.id),
     ]);
     const readUsage = async (id: string) =>
       deps.PrismaPg.rules.findUniqueOrThrow({

@@ -271,13 +271,13 @@ describe('DecisionAnalytics aggregations', () => {
       const db = deps.KyselyPg;
       const { org } = await createOrg(
         {
-          KyselyPg: db,
+          PrismaPg: deps.PrismaPg,
           ModerationConfigService: deps.ModerationConfigService,
           ApiKeyService: deps.ApiKeyService,
         },
         uid(),
       );
-      const { user } = await createUser(db, org.id);
+      const { user } = await createUser(deps.PrismaPg, org.id);
       const { queue } = await createMrtQueue({
         orgId: org.id,
         mrtService: deps.ManualReviewToolService,
