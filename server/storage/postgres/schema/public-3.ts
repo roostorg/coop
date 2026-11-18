@@ -16,6 +16,7 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 
+import { type SigningKeyData } from './json-types.js';
 import { orgs, roles, rules } from './public-2.js';
 import { loginMethodEnum, ruleType, textBankType, tstzrange } from './types.js';
 
@@ -58,7 +59,7 @@ export const signingKeys = pgTable(
   'signing_keys',
   {
     orgId: varchar('org_id', { length: 255 }).primaryKey(),
-    keyData: jsonb('key_data').notNull(),
+    keyData: jsonb('key_data').$type<SigningKeyData>().notNull(),
     createdAt: timestamp('created_at', { withTimezone: true })
       .default(sql`now()`)
       .notNull(),

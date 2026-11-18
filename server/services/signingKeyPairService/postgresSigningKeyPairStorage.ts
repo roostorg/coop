@@ -1,29 +1,22 @@
 import crypto from 'node:crypto';
-import type { Kysely } from 'kysely';
+import { eq } from 'drizzle-orm';
 
+import { schema, type CoopDb } from '../../storage/postgres/drizzle.js';
+import { type SigningKeyData } from '../../storage/postgres/schema/json-types.js';
 import { jsonParse, jsonStringify, type JsonOf } from '../../utils/encoding.js';
 import { CoopError, ErrorType } from '../../utils/errors.js';
-import { type CombinedPg } from '../combinedDbTypes.js';
 import {
   type SigningKeyId,
   type SigningKeyPairStorage,
 } from './signingKeyPairService.js';
 
-type JWTWithAlgorithm = {
-  key: JsonWebKey;
-  algorithm: KeyAlgorithm;
-};
-
-type JWTCryptoKeyPairWithAlgorithm = {
-  publicKeyWithAlgorithm: JWTWithAlgorithm;
-  privateKeyWithAlgorithm: JWTWithAlgorithm;
-};
+type JWTCryptoKeyPairWithAlgorithm = SigningKeyData;
 
 /**
  * PostgreSQL storage for signing key pairs
  */
 export class PostgresSigningKeyPairStorage implements SigningKeyPairStorage {
-  constructor(private readonly db: Kysely<CombinedPg>) {}
+  constructor(private readonly db: CoopDb) {}
 
   async storeKeyPair(
     keyId: SigningKeyId,
@@ -45,29 +38,25 @@ export class PostgresSigningKeyPairStorage implements SigningKeyPairStorage {
       },
     };
 
-    // Store in PostgreSQL as JSONB
+    // Drizzle serializes jsonb values itself, so pass the object, not a
+    // pre-stringified string (which would be stored as a JSON string scalar).
     await this.db
-      .insertInto('public.signing_keys')
-      .values({
-        org_id: keyId.orgId,
-        key_data: jsonStringify(keyData),
-      })
-      .onConflict((oc) =>
-        oc.column('org_id').doUpdateSet({
-          key_data: jsonStringify(keyData),
-        }),
-      )
-      .execute();
+      .insert(schema.signingKeys)
+      .values({ orgId: keyId.orgId, keyData })
+      .onConflictDoUpdate({
+        target: schema.signingKeys.orgId,
+        set: { keyData },
+      });
   }
 
   private async fetchKeyPair(
     keyId: SigningKeyId,
   ): Promise<crypto.webcrypto.CryptoKeyPair> {
-    const result = await this.db
-      .selectFrom('public.signing_keys')
-      .select(['key_data'])
-      .where('org_id', '=', keyId.orgId)
-      .executeTakeFirst();
+    const [result] = await this.db
+      .select({ keyData: schema.signingKeys.keyData })
+      .from(schema.signingKeys)
+      .where(eq(schema.signingKeys.orgId, keyId.orgId))
+      .limit(1);
 
     if (!result) {
       throw new CoopError({
@@ -80,10 +69,11 @@ export class PostgresSigningKeyPairStorage implements SigningKeyPairStorage {
       });
     }
 
-    const keyData: JWTCryptoKeyPairWithAlgorithm =
-      typeof result.key_data === 'string'
-        ? jsonParse(result.key_data as JsonOf<JWTCryptoKeyPairWithAlgorithm>)
-        : result.key_data;
+    // Older rows may hold a JSON string scalar rather than an object.
+    const keyData =
+      typeof result.keyData === 'string'
+        ? jsonParse(result.keyData as JsonOf<JWTCryptoKeyPairWithAlgorithm>)
+        : result.keyData;
     const { privateKeyWithAlgorithm, publicKeyWithAlgorithm } = keyData;
 
     return {

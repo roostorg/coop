@@ -1774,7 +1774,7 @@ export default async function getBottle(
   register(bottle, 'SigningKeyPairService', makeSigningKeyPairService);
   bottle.factory(
     'SigningKeyPairStorageService',
-    (container) => new PostgresSigningKeyPairStorage(container.KyselyPg),
+    (container) => new PostgresSigningKeyPairStorage(container.DrizzlePg),
   );
   bottle.value('ConfigService', { uiUrl: safeGetEnvVar('UI_URL') });
   bottle.value('S3StoreObjectFactory', s3StoreObjectFactory);
