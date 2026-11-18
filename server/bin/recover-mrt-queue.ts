@@ -99,7 +99,7 @@ const argv = await yargs(hideBin(process.argv))
   .parse();
 
 // Fail fast on obviously bad ids before issuing DB queries. SQL safety
-// itself comes from Kysely parameterization, not this check.
+// itself comes from Prisma parameterization, not this check.
 const ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 function assertIdShape(name: string, value: string) {
   if (!ID_PATTERN.test(value)) {
@@ -189,28 +189,39 @@ async function loadCandidates(
   };
 
   while (true) {
-    let q = container.KyselyPg.selectFrom('manual_review_tool.job_creations')
-      .select(['id', 'item_id', 'item_type_id', 'created_at', 'policy_ids'])
-      .where('org_id', '=', argv.orgId)
-      .where('queue_id', '=', argv.queueId)
-      .where('created_at', '>=', since);
-
-    if (cursorCreatedAt != null && cursorId != null) {
-      const cAt = cursorCreatedAt;
-      const cId = cursorId;
-      q = q.where((eb) =>
-        eb.or([
-          eb('created_at', '<', cAt),
-          eb.and([eb('created_at', '=', cAt), eb('id', '<', cId)]),
-        ]),
-      );
-    }
-
-    const page = await q
-      .orderBy('created_at', 'desc')
-      .orderBy('id', 'desc')
-      .limit(PAGE_SIZE)
-      .execute();
+    const cAt: Date | null = cursorCreatedAt;
+    const cId: string | null = cursorId;
+    // Annotated: TS can't infer it through the loop-carried cursor.
+    const page: {
+      id: string;
+      item_id: string;
+      item_type_id: string;
+      created_at: Date;
+      policy_ids: string[];
+    }[] = await container.PrismaPg.job_creations.findMany({
+      select: {
+        id: true,
+        item_id: true,
+        item_type_id: true,
+        created_at: true,
+        policy_ids: true,
+      },
+      where: {
+        org_id: argv.orgId,
+        queue_id: argv.queueId,
+        created_at: { gte: since },
+        ...(cAt != null && cId != null
+          ? {
+              OR: [
+                { created_at: { lt: cAt } },
+                { created_at: cAt, id: { lt: cId } },
+              ],
+            }
+          : {}),
+      },
+      orderBy: [{ created_at: 'desc' }, { id: 'desc' }],
+      take: PAGE_SIZE,
+    });
 
     if (page.length === 0) break;
     totalRowsLoaded += page.length;
@@ -248,13 +259,11 @@ async function loadCandidates(
     }
     for (let i = 0; i < newGuids.length; i += DECISION_CHUNK) {
       const chunk = newGuids.slice(i, i + DECISION_CHUNK);
-      const decisionRows = await container.KyselyPg.selectFrom(
-        'manual_review_tool.manual_review_decisions',
-      )
-        .select(['id'])
-        .where('org_id', '=', argv.orgId)
-        .where('id', 'in', chunk)
-        .execute();
+      const decisionRows =
+        await container.PrismaPg.manual_review_decisions.findMany({
+          select: { id: true },
+          where: { org_id: argv.orgId, id: { in: chunk } },
+        });
       for (const r of decisionRows) decidedGuids.add(r.id);
     }
 
