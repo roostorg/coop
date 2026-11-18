@@ -17,6 +17,7 @@ import { itemSubmissionToItemSubmissionWithTypeIdentifier } from '../../itemProc
 import { toNormalizedItemDataOrErrors } from '../../itemProcessingService/toNormalizedItemDataOrErrors.js';
 import { SignalType } from '../../signalsService/index.js';
 import { UserPermission } from '../../userManagementService/index.js';
+import { type CreateRoutingRuleInput } from './JobRouting.js';
 
 describe('JobRouting tests', () => {
   const jobRoutingTestWithFixtures = makeTransactionalTestWithFixture(
@@ -229,13 +230,22 @@ describe('JobRouting tests', () => {
     'maps duplicate names and unknown rules to routing rule errors',
     async ({ manualReviewToolService, org, itemType, anotherQueue }) => {
       for (const isAppealsRule of [false, true]) {
-        const input = {
+        const input: CreateRoutingRuleInput = {
           orgId: org.id,
           name: `dup-${isAppealsRule}`,
-          status: 'LIVE' as const,
-          itemTypeIds: [itemType.id as NonEmptyString] as [NonEmptyString],
+          status: 'LIVE',
+          itemTypeIds: [itemType.id as NonEmptyString],
           creatorId: '',
-          conditionSet: { conjunction: 'AND' as const, conditions: [] },
+          conditionSet: {
+            conjunction: 'OR',
+            conditions: [
+              {
+                input: { type: 'CONTENT_COOP_INPUT', name: 'Source' },
+                threshold: 'never-matches',
+                comparator: 'EQUALS',
+              },
+            ],
+          },
           destinationQueueId: anotherQueue.id,
           isAppealsRule,
         };
