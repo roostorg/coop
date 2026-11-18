@@ -17,16 +17,16 @@ describe('NcmecReporting.getUsersWithNcmecDecision (integration)', () => {
       orgId,
     );
     const ncmecReporting = new NcmecReporting(
-      deps.KyselyPg,
-      deps.KyselyPgReadReplica,
+      deps.PrismaPg,
+      deps.PrismaPgReadReplica,
       makeStubFetchHTTP(uid(), 'f1').fetchHTTP,
       deps.SigningKeyPairService,
       deps.Tracer,
     );
     const userItemTypeId = orgFixture.defaultUserItemType.id;
     const insertReport = async (userId: string, isTest: boolean | null) =>
-      deps.KyselyPg.insertInto('ncmec_reporting.ncmec_reports')
-        .values({
+      deps.PrismaPg.ncmec_reports.create({
+        data: {
           org_id: orgId,
           report_id: uid(),
           user_id: userId,
@@ -43,8 +43,8 @@ describe('NcmecReporting.getUsersWithNcmecDecision (integration)', () => {
           additional_files: [],
           reported_messages: [],
           ...(isTest === null ? {} : { is_test: isTest }),
-        })
-        .execute();
+        },
+      });
     return { orgId, ncmecReporting, insertReport };
   });
 

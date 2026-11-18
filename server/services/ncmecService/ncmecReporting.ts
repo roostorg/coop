@@ -2,18 +2,17 @@
 import { type ReadableStream } from 'node:stream/web';
 import type { Exception } from '@opentelemetry/api';
 import { makeEnumLike, type ItemIdentifier } from '@roostorg/coop-types';
-import { sql, type Kysely } from 'kysely';
 import _ from 'lodash';
 import { FormData } from 'undici';
 import * as v from 'valibot';
 import { js2xml } from 'xml-js';
 
 import { type Dependencies } from '../../iocContainer/index.js';
+import { Prisma, type PrismaPgClient } from '../../storage/prisma/index.js';
 import { jsonStringify } from '../../utils/encoding.js';
-import { type FixKyselyRowCorrelation } from '../../utils/kysely.js';
 import { logErrorJson } from '../../utils/logging.js';
 import { assertUnreachable, withRetries } from '../../utils/misc.js';
-import { type CollapseCases } from '../../utils/typescript-types.js';
+import { type NonEmptyArray } from '../../utils/typescript-types.js';
 import { rawItemDataSchema } from '../itemProcessingService/index.js';
 import { type RawItemData } from '../itemProcessingService/toNormalizedItemDataOrErrors.js';
 import type {
@@ -26,7 +25,6 @@ import {
   type FetchHTTP,
   type FormDataLikeWithStreams,
 } from '../networkingService/index.js';
-import { type NcmecReportingServicePg } from './dbTypes.js';
 import {
   ncmecDebugDump,
   ncmecDebugEnabled,
@@ -1278,63 +1276,91 @@ export type NcmecMessagesReport = {
   fileName: string;
 };
 
+const ncmecReportSelect = {
+  created_at: true,
+  report_id: true,
+  user_id: true,
+  user_item_type_id: true,
+  reviewer_id: true,
+  reported_media: true,
+  report_xml: true,
+  additional_files: true,
+  reported_messages: true,
+} satisfies Prisma.ncmec_reportsSelect;
+
+function toNcmecReport(
+  row: Prisma.ncmec_reportsGetPayload<{ select: typeof ncmecReportSelect }>,
+) {
+  return {
+    ts: row.created_at,
+    reportId: row.report_id,
+    userId: row.user_id,
+    userItemTypeId: row.user_item_type_id,
+    reviewerId: row.reviewer_id,
+    // jsonb[] columns; this service is their only writer. Prisma reads a NULL
+    // array (rows written before these columns existed) as [].
+    reportedMedia: row.reported_media as unknown as NcmecMediaReport[],
+    reportXml: row.report_xml,
+    additionalFiles: row.additional_files as unknown as
+      NcmecAdditionalFile[] | null,
+    reportedMessages: row.reported_messages as unknown as
+      NcmecMessagesReport[] | null,
+  };
+}
+
 type NcmecReportResult =
   'ALL_MEDIA_MISSING' | 'SUCCESS' | 'UNSUPPORTED_ORG' | 'FAILURE';
 
-const actionsOnReportCreationAndPoliciesSelection = [
-  'actions_to_run_upon_report_creation as actionsToRunIds',
-  'policies_applied_to_actions_run_on_report_creation as policyIds',
-] as const;
-
+/** The two columns are written together: both NULL, or both non-empty. */
 type ActionsOnReportCreationAndPoliciesSelectionResult =
-  FixKyselyRowCorrelation<
-    NcmecReportingServicePg['ncmec_reporting.ncmec_org_settings'],
-    typeof actionsOnReportCreationAndPoliciesSelection
-  >;
+  | {
+      actionsToRunIds: NonEmptyArray<string>;
+      policyIds: NonEmptyArray<string>;
+    }
+  | { actionsToRunIds: null; policyIds: null };
 
 export default class NcmecReporting {
   constructor(
-    private pgQuery: Kysely<NcmecReportingServicePg>,
-    private pqQueryReadReplica: Kysely<NcmecReportingServicePg>,
+    private prisma: PrismaPgClient,
+    private prismaReadReplica: PrismaPgClient,
     private fetchHTTP: Dependencies['fetchHTTP'],
     private signingKeyPairService: Dependencies['SigningKeyPairService'],
     private readonly tracer: Dependencies['Tracer'],
   ) {}
   async hasNCMECReportingEnabled(orgId: string) {
-    const ncmecOrgSettings = await this.pgQuery
-      .selectFrom('ncmec_reporting.ncmec_org_settings')
-      .select(['org_id'])
-      .where('org_id', '=', orgId)
-      .executeTakeFirst();
+    const ncmecOrgSettings = await this.prisma.ncmec_org_settings.findUnique({
+      select: { org_id: true },
+      where: { org_id: orgId },
+    });
     return ncmecOrgSettings?.org_id != null;
   }
 
-  async getNCMECConfig(
-    orgId: string,
-  ): Promise<
-    NcmecReportingServicePg['ncmec_reporting.ncmec_org_settings'] | undefined
-  > {
-    const row = await this.pgQuery
-      .selectFrom('ncmec_reporting.ncmec_org_settings')
-      .selectAll()
-      .where('org_id', '=', orgId)
-      .executeTakeFirst();
-    return row as
-      NcmecReportingServicePg['ncmec_reporting.ncmec_org_settings'] | undefined;
+  /** Note: Prisma reads the NULL `varchar[]` columns
+   * (`actions_to_run_upon_report_creation`,
+   * `policies_applied_to_actions_run_on_report_creation`) as `[]`; use
+   * `getNCMECActionsToRunAndPolicies` when NULL matters. */
+  async getNCMECConfig(orgId: string) {
+    const row = await this.prisma.ncmec_org_settings.findUnique({
+      where: { org_id: orgId },
+    });
+    return row ?? undefined;
   }
 
   async getNCMECActionsToRunAndPolicies(
     orgId: string,
   ): Promise<ActionsOnReportCreationAndPoliciesSelectionResult | undefined> {
-    const row = await this.pgQuery
-      .selectFrom('ncmec_reporting.ncmec_org_settings')
-      .select(actionsOnReportCreationAndPoliciesSelection)
-      .where('org_id', '=', orgId)
-      .executeTakeFirst();
-
-    return row
-      ? (row satisfies CollapseCases<ActionsOnReportCreationAndPoliciesSelectionResult> as ActionsOnReportCreationAndPoliciesSelectionResult)
-      : undefined;
+    // prisma-raw: Prisma reads a NULL varchar[] as [], but callers treat NULL
+    // ("no actions configured") differently from an array.
+    const rows = await this.prisma.$queryRaw<
+      ActionsOnReportCreationAndPoliciesSelectionResult[]
+    >(Prisma.sql`
+      SELECT
+        actions_to_run_upon_report_creation AS "actionsToRunIds",
+        policies_applied_to_actions_run_on_report_creation AS "policyIds"
+      FROM ncmec_reporting.ncmec_org_settings
+      WHERE org_id = ${orgId}
+    `);
+    return rows.at(0);
   }
 
   async getNCMECAdditionalInfo(
@@ -1442,34 +1468,21 @@ export default class NcmecReporting {
 
   async getNcmecReports(opts: { orgId: string; reviewerId: string }) {
     const { orgId, reviewerId } = opts;
-    return (
-      this.pqQueryReadReplica
-        .selectFrom('ncmec_reporting.ncmec_reports')
-        .select([
-          'created_at as ts',
-          'report_id as reportId',
-          'user_id as userId',
-          'user_item_type_id as userItemTypeId',
-          'reviewer_id as reviewerId',
-          'reported_media as reportedMedia',
-          'report_xml as reportXml',
-          'additional_files as additionalFiles',
-          'reported_messages as reportedMessages',
-          'is_test as isTest',
-        ])
-        .where('org_id', '=', orgId)
-        .where((eb) =>
-          eb.or([
-            eb('is_test', '=', false),
-            eb('reviewer_id', '=', reviewerId),
-          ]),
-        )
-        .orderBy('ts', 'desc')
-        // TODO: Paginate the NCMEC Reports page and make the search function
-        // issue a new query.
-        .limit(300)
-        .execute()
-    );
+    const rows = await this.prismaReadReplica.ncmec_reports.findMany({
+      select: { ...ncmecReportSelect, is_test: true },
+      where: {
+        org_id: orgId,
+        OR: [{ is_test: false }, { reviewer_id: reviewerId }],
+      },
+      orderBy: { created_at: 'desc' },
+      // TODO: Paginate the NCMEC Reports page and make the search function
+      // issue a new query.
+      take: 300,
+    });
+    return rows.map((row) => ({
+      ...toNcmecReport(row),
+      isTest: row.is_test,
+    }));
   }
 
   // Retrieves a list of all users with a valid NCMEC decision, in the trio of
@@ -1482,40 +1495,38 @@ export default class NcmecReporting {
   // null is_test predate the column and count as production.
   async getUsersWithNcmecDecision(opts: { startDate: Date }) {
     const { startDate } = opts;
-    return this.pqQueryReadReplica
-      .selectFrom('ncmec_reporting.ncmec_reports')
-      .select([
-        'user_id as userId',
-        'user_item_type_id as userItemTypeId',
-        'org_id as orgId',
-        sql<boolean>`bool_or(is_test is not true)`.as('hasProductionReport'),
-        sql<Date | null>`max(created_at) filter (where is_test)`.as(
-          'latestTestReportAt',
-        ),
-      ])
-      .where('created_at', '>=', startDate)
-      .groupBy(['user_id', 'user_item_type_id', 'org_id'])
-      .execute();
+    // prisma-raw: aggregates with FILTER and bool_or (groupBy can't express
+    // them). startDate is sent as an ISO string with an explicit zone: the
+    // adapter formats a Date param as zone-less UTC, which Postgres would read
+    // in the session time zone.
+    return this.prismaReadReplica.$queryRaw<
+      {
+        userId: string;
+        userItemTypeId: string;
+        orgId: string;
+        hasProductionReport: boolean;
+        latestTestReportAt: Date | null;
+      }[]
+    >(Prisma.sql`
+      SELECT
+        user_id AS "userId",
+        user_item_type_id AS "userItemTypeId",
+        org_id AS "orgId",
+        bool_or(is_test IS NOT TRUE) AS "hasProductionReport",
+        max(created_at) FILTER (WHERE is_test) AS "latestTestReportAt"
+      FROM ncmec_reporting.ncmec_reports
+      WHERE created_at >= ${startDate.toISOString()}::timestamptz
+      GROUP BY user_id, user_item_type_id, org_id
+    `);
   }
 
   async getNcmecReportById(opts: { orgId: string; reportId: string }) {
     const { orgId, reportId } = opts;
-    return this.pqQueryReadReplica
-      .selectFrom('ncmec_reporting.ncmec_reports')
-      .select([
-        'created_at as ts',
-        'report_id as reportId',
-        'user_id as userId',
-        'user_item_type_id as userItemTypeId',
-        'reviewer_id as reviewerId',
-        'reported_media as reportedMedia',
-        'report_xml as reportXml',
-        'additional_files as additionalFiles',
-        'reported_messages as reportedMessages',
-      ])
-      .where('org_id', '=', orgId)
-      .where('report_id', '=', reportId)
-      .executeTakeFirst();
+    const row = await this.prismaReadReplica.ncmec_reports.findUnique({
+      select: ncmecReportSelect,
+      where: { org_id: orgId, report_id: reportId },
+    });
+    return row ? toNcmecReport(row) : undefined;
   }
 
   async #sendUserPreservationRequest(input: {
@@ -1567,22 +1578,20 @@ export default class NcmecReporting {
   }
 
   async ncmecPreservationEndpoint(orgId: string): Promise<string | undefined> {
-    const rows = await this.pgQuery
-      .selectFrom('ncmec_reporting.ncmec_org_settings')
-      .select(['ncmec_preservation_endpoint'])
-      .where('org_id', '=', orgId)
-      .executeTakeFirst();
+    const rows = await this.prisma.ncmec_org_settings.findUnique({
+      select: { ncmec_preservation_endpoint: true },
+      where: { org_id: orgId },
+    });
     return rows?.ncmec_preservation_endpoint ?? undefined;
   }
 
   async ncmecAdditionalInfoEndpoint(
     orgId: string,
   ): Promise<string | undefined> {
-    const rows = await this.pgQuery
-      .selectFrom('ncmec_reporting.ncmec_org_settings')
-      .select(['ncmec_additional_info_endpoint'])
-      .where('org_id', '=', orgId)
-      .executeTakeFirst();
+    const rows = await this.prisma.ncmec_org_settings.findUnique({
+      select: { ncmec_additional_info_endpoint: true },
+      where: { org_id: orgId },
+    });
     return rows?.ncmec_additional_info_endpoint ?? undefined;
   }
 
@@ -1592,14 +1601,15 @@ export default class NcmecReporting {
     userItemTypeId: string;
   }) {
     const { orgId, userId, userItemTypeId } = params;
-    const firstReport = await this.pgQuery
-      .selectFrom('ncmec_reporting.ncmec_reports')
-      .select(['report_id'])
-      .where('org_id', '=', orgId)
-      .where('user_id', '=', userId)
-      .where('user_item_type_id', '=', userItemTypeId)
-      .where('is_test', '=', false)
-      .executeTakeFirst();
+    const firstReport = await this.prisma.ncmec_reports.findFirst({
+      select: { report_id: true },
+      where: {
+        org_id: orgId,
+        user_id: userId,
+        user_item_type_id: userItemTypeId,
+        is_test: false,
+      },
+    });
     return firstReport != null;
   }
 
@@ -1611,15 +1621,16 @@ export default class NcmecReporting {
     userItemTypeId: string;
   }): Promise<number[]> {
     const { orgId, userId, userItemTypeId } = params;
-    const rows = await this.pgQuery
-      .selectFrom('ncmec_reporting.ncmec_reports')
-      .select(['report_id'])
-      .where('org_id', '=', orgId)
-      .where('user_id', '=', userId)
-      .where('user_item_type_id', '=', userItemTypeId)
-      .where('is_test', '=', false)
-      .orderBy('created_at', 'desc')
-      .execute();
+    const rows = await this.prisma.ncmec_reports.findMany({
+      select: { report_id: true },
+      where: {
+        org_id: orgId,
+        user_id: userId,
+        user_item_type_id: userItemTypeId,
+        is_test: false,
+      },
+      orderBy: { created_at: 'desc' },
+    });
     return rows
       .map((r) => parseInt(r.report_id, 10))
       .filter((n) => Number.isFinite(n));
@@ -1687,20 +1698,29 @@ export default class NcmecReporting {
             throw new Error('org id not found');
           }
 
-          const queryResponse = await this.pgQuery
-            .selectFrom('ncmec_reporting.ncmec_org_settings')
-            .select([
-              'company_template as companyTemplate',
-              'legal_url as legalURL',
-              'default_internet_detail_type as defaultInternetDetailType',
-              'terms_of_service as termsOfService',
-              'contact_person_email as contactPersonEmail',
-              'contact_person_first_name as contactPersonFirstName',
-              'contact_person_last_name as contactPersonLastName',
-              'contact_person_phone as contactPersonPhone',
-            ])
-            .where('org_id', '=', reportParams.orgId)
-            .executeTakeFirst();
+          const settingsRow = await this.prisma.ncmec_org_settings.findUnique({
+            select: {
+              company_template: true,
+              legal_url: true,
+              default_internet_detail_type: true,
+              terms_of_service: true,
+              contact_person_email: true,
+              contact_person_first_name: true,
+              contact_person_last_name: true,
+              contact_person_phone: true,
+            },
+            where: { org_id: reportParams.orgId },
+          });
+          const queryResponse = settingsRow && {
+            companyTemplate: settingsRow.company_template,
+            legalURL: settingsRow.legal_url,
+            defaultInternetDetailType: settingsRow.default_internet_detail_type,
+            termsOfService: settingsRow.terms_of_service,
+            contactPersonEmail: settingsRow.contact_person_email,
+            contactPersonFirstName: settingsRow.contact_person_first_name,
+            contactPersonLastName: settingsRow.contact_person_last_name,
+            contactPersonPhone: settingsRow.contact_person_phone,
+          };
 
           if (
             !queryResponse ||
@@ -1884,9 +1904,9 @@ export default class NcmecReporting {
             isTest,
           );
 
-          await this.pgQuery
-            .insertInto('ncmec_reporting.ncmec_reports')
-            .values({
+          await this.prisma.ncmec_reports.create({
+            select: { report_id: true },
+            data: {
               org_id: reportParams.orgId,
               report_id: reportId,
               user_id: reportParams.reportedUser.id,
@@ -1899,8 +1919,8 @@ export default class NcmecReporting {
               reported_messages: threadCsvs,
               incident_type: reportParams.incidentType,
               is_test: isTest,
-            })
-            .execute();
+            },
+          });
 
           if (ncmecConfig?.ncmec_preservation_endpoint && isTest === false) {
             await this.#sendUserPreservationRequest({
@@ -2275,26 +2295,27 @@ export default class NcmecReporting {
   }) {
     try {
       const status = opts.status ?? 'RETRYABLE_ERROR';
-      // Atomic increment in `doUpdateSet` avoids the read-modify-write race
-      // when two retries land on the same job_id concurrently.
-      await this.pgQuery
-        .insertInto('ncmec_reporting.ncmec_reports_errors')
-        .values({
+      // Prisma runs this as a single INSERT ... ON CONFLICT DO UPDATE (one
+      // unique field in `where`, same value in `create`), so the atomic
+      // increment avoids the read-modify-write race when two retries land on
+      // the same job_id concurrently.
+      await this.prisma.ncmec_reports_errors.upsert({
+        select: { job_id: true },
+        where: { job_id: opts.jobId },
+        create: {
           job_id: opts.jobId,
           user_id: opts.userId,
           user_type_id: opts.userTypeId,
           status,
           last_error: opts.error,
           retry_count: 1,
-        })
-        .onConflict((oc) =>
-          oc.columns(['job_id']).doUpdateSet({
-            retry_count: sql`ncmec_reporting.ncmec_reports_errors.retry_count + 1`,
-            last_error: opts.error,
-            status,
-          }),
-        )
-        .execute();
+        },
+        update: {
+          retry_count: { increment: 1 },
+          last_error: opts.error,
+          status,
+        },
+      });
     } catch (e: unknown) {
       // eslint-disable-next-line no-restricted-syntax
       logErrorJson({
@@ -2384,10 +2405,10 @@ export default class NcmecReporting {
   }
 
   async getCybertipAuthenticationCredentials(orgId: string) {
-    return this.pgQuery
-      .selectFrom('ncmec_reporting.ncmec_org_settings')
-      .select(['username', 'password'])
-      .where('org_id', '=', orgId)
-      .executeTakeFirst();
+    const row = await this.prisma.ncmec_org_settings.findUnique({
+      select: { username: true, password: true },
+      where: { org_id: orgId },
+    });
+    return row ?? undefined;
   }
 }
