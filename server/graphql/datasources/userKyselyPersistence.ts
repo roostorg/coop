@@ -1,11 +1,12 @@
-import { sql, type Kysely } from 'kysely';
-
-import { type CombinedPg } from '../../services/combinedDbTypes.js';
 import { type LoginMethod } from '../../services/coreAppTables.js';
 import {
   type UserPermission,
   type UserRole,
 } from '../../services/userManagementService/index.js';
+import {
+  Prisma,
+  type PrismaPgQueryable,
+} from '../../storage/prisma/index.js';
 import {
   validateUserCreateInput,
   validateUserUpdatePatch,
@@ -17,13 +18,10 @@ async function lookupSystemRoleIdForUserRow(
   db: UsersDb,
   opts: { orgId: string; role: UserRole },
 ): Promise<string> {
-  const row = await db
-    .selectFrom('public.roles')
-    .select('id')
-    .where('org_id', '=', opts.orgId)
-    .where('key', '=', opts.role)
-    .where('is_system', '=', true)
-    .executeTakeFirstOrThrow();
+  const row = await db.roles.findFirstOrThrow({
+    select: { id: true },
+    where: { org_id: opts.orgId, key: opts.role, is_system: true },
+  });
   return row.id;
 }
 
@@ -52,69 +50,38 @@ export type GraphQLUserParent = {
   getPermissions(): UserPermission[];
 };
 
-// Aligns with `ruleKyselyPersistence.ts`: persistence helpers operate on the
-// full app schema. Lets fixtures and `kyselyCreateRule` callers share a single
-// `Kysely<CombinedPg>` handle without running into Kysely's invariant generic.
-export type UsersDb = Kysely<CombinedPg>;
+// Accepts the root client or a transaction client so callers inside a
+// transaction (e.g. `UserAPI.changePassword`) share it.
+export type UsersDb = PrismaPgQueryable;
 
-type UserRow = {
-  id: string;
-  email: string;
-  password: string | null;
-  first_name: string;
-  last_name: string;
-  role: UserRole;
-  approved_by_admin: boolean;
-  rejected_by_admin: boolean;
-  login_methods: LoginMethod[];
-  created_at: Date;
-  updated_at: Date;
-  org_id: string;
-  permissions: UserPermission[];
-};
+// `roles.key` and its permissions are loaded through the `role_id` relation in
+// the same Prisma query, standing in for the correlated subqueries the user
+// row used to carry.
+const USER_SELECT = {
+  id: true,
+  email: true,
+  password: true,
+  first_name: true,
+  last_name: true,
+  approved_by_admin: true,
+  rejected_by_admin: true,
+  created_at: true,
+  updated_at: true,
+  org_id: true,
+  login_methods: true,
+  roles: {
+    select: { key: true, role_permissions: { select: { permission: true } } },
+  },
+} satisfies Prisma.usersSelect;
 
-// `public.users.login_methods` is a `login_method_enum[]`. Node-postgres ships
-// parsers for built-in array types (`text[]`, `int[]`, etc.) but not for
-// user-defined enum arrays, so without an explicit cast we get the raw
-// `"{password,saml}"` string back and GraphQL fails with
-// "Expected Iterable, but did not find one for field User.loginMethods".
-// Casting to `text[]` leans on the stock array parser and keeps the column
-// type aligned with our `LoginMethod` union (validated before writes).
-const loginMethodsAsTextArray = sql<LoginMethod[]>`login_methods::text[]`.as(
-  'login_methods',
-);
-
-// Effective permission set as varchar[], inlined in the user-load query
-// to avoid a follow-up round-trip. Correlated subquery (rather than LEFT
-// JOIN) preserves the existing INSERT/UPDATE...RETURNING shape, which a
-// JOIN would break by forcing GROUP BY across every selected column.
-const roleKey = sql<UserRole>`(
-  SELECT public.roles.key
-  FROM public.roles
-  WHERE public.roles.id = public.users.role_id
-)`.as('role');
-
-const permissionsArray = sql<UserPermission[]>`(
-  SELECT COALESCE(array_agg(rp.permission), ARRAY[]::varchar[])
-  FROM public.role_permissions rp
-  WHERE rp.role_id = public.users.role_id
-)`.as('permissions');
-
-const USER_COLUMNS = [
-  'id',
-  'email',
-  'password',
-  'first_name',
-  'last_name',
-  'approved_by_admin',
-  'rejected_by_admin',
-  'created_at',
-  'updated_at',
-  'org_id',
-] as const;
+type UserRow = Prisma.usersGetPayload<{ select: typeof USER_SELECT }>;
 
 function rowToGraphQLUserParent(row: UserRow): GraphQLUserParent {
-  const permissions = row.permissions;
+  // Prisma types these strings as plain `string`; the DB holds the same
+  // values the old `sql<UserRole>` / `sql<UserPermission[]>` casts asserted.
+  const permissions = row.roles.role_permissions.map(
+    (p) => p.permission as UserPermission,
+  );
   return {
     id: row.id,
     email: row.email,
@@ -122,9 +89,11 @@ function rowToGraphQLUserParent(row: UserRow): GraphQLUserParent {
     firstName: row.first_name,
     lastName: row.last_name,
     orgId: row.org_id,
-    role: row.role,
-    approvedByAdmin: row.approved_by_admin,
-    rejectedByAdmin: row.rejected_by_admin,
+    role: row.roles.key as UserRole,
+    // Nullable in the DB (no NOT NULL constraint), so Prisma types them
+    // `boolean | null`; the Kysely types asserted `boolean`.
+    approvedByAdmin: row.approved_by_admin as boolean,
+    rejectedByAdmin: row.rejected_by_admin as boolean,
     loginMethods: row.login_methods,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -138,62 +107,44 @@ export async function kyselyUserFindById(
   db: UsersDb,
   id: string,
 ): Promise<GraphQLUserParent | undefined> {
-  const row = await db
-    .selectFrom('public.users')
-    .select(USER_COLUMNS)
-    .select(roleKey)
-    .select(loginMethodsAsTextArray)
-    .select(permissionsArray)
-    .where('id', '=', id)
-    .executeTakeFirst();
-  return row === undefined ? undefined : rowToGraphQLUserParent(row);
+  const row = await db.users.findFirst({
+    select: USER_SELECT,
+    where: { id },
+  });
+  return row === null ? undefined : rowToGraphQLUserParent(row);
 }
 
 export async function kyselyUserFindByIdAndOrg(
   db: UsersDb,
   opts: { id: string; orgId: string },
 ): Promise<GraphQLUserParent | undefined> {
-  const row = await db
-    .selectFrom('public.users')
-    .select(USER_COLUMNS)
-    .select(roleKey)
-    .select(loginMethodsAsTextArray)
-    .select(permissionsArray)
-    .where('id', '=', opts.id)
-    .where('org_id', '=', opts.orgId)
-    .executeTakeFirst();
-  return row === undefined ? undefined : rowToGraphQLUserParent(row);
+  const row = await db.users.findFirst({
+    select: USER_SELECT,
+    where: { id: opts.id, org_id: opts.orgId },
+  });
+  return row === null ? undefined : rowToGraphQLUserParent(row);
 }
 
 export async function kyselyUserFindByEmail(
   db: UsersDb,
   email: string,
 ): Promise<GraphQLUserParent | undefined> {
-  const row = await db
-    .selectFrom('public.users')
-    .select(USER_COLUMNS)
-    .select(roleKey)
-    .select(loginMethodsAsTextArray)
-    .select(permissionsArray)
-    .where('email', '=', email)
-    .executeTakeFirst();
-  return row === undefined ? undefined : rowToGraphQLUserParent(row);
+  const row = await db.users.findFirst({
+    select: USER_SELECT,
+    where: { email },
+  });
+  return row === null ? undefined : rowToGraphQLUserParent(row);
 }
 
 export async function kyselyUserFindByEmailAndOrg(
   db: UsersDb,
   opts: { email: string; orgId: string },
 ): Promise<GraphQLUserParent | undefined> {
-  const row = await db
-    .selectFrom('public.users')
-    .select(USER_COLUMNS)
-    .select(roleKey)
-    .select(loginMethodsAsTextArray)
-    .select(permissionsArray)
-    .where('email', '=', opts.email)
-    .where('org_id', '=', opts.orgId)
-    .executeTakeFirst();
-  return row === undefined ? undefined : rowToGraphQLUserParent(row);
+  const row = await db.users.findFirst({
+    select: USER_SELECT,
+    where: { email: opts.email, org_id: opts.orgId },
+  });
+  return row === null ? undefined : rowToGraphQLUserParent(row);
 }
 
 export async function kyselyUserFindByIds(
@@ -203,14 +154,10 @@ export async function kyselyUserFindByIds(
   if (ids.length === 0) {
     return [];
   }
-  const rows = await db
-    .selectFrom('public.users')
-    .select(USER_COLUMNS)
-    .select(roleKey)
-    .select(loginMethodsAsTextArray)
-    .select(permissionsArray)
-    .where('id', 'in', ids)
-    .execute();
+  const rows = await db.users.findMany({
+    select: USER_SELECT,
+    where: { id: { in: [...ids] } },
+  });
   return rows.map(rowToGraphQLUserParent);
 }
 
@@ -218,14 +165,10 @@ export async function kyselyUserListByOrg(
   db: UsersDb,
   orgId: string,
 ): Promise<GraphQLUserParent[]> {
-  const rows = await db
-    .selectFrom('public.users')
-    .select(USER_COLUMNS)
-    .select(roleKey)
-    .select(loginMethodsAsTextArray)
-    .select(permissionsArray)
-    .where('org_id', '=', orgId)
-    .execute();
+  const rows = await db.users.findMany({
+    select: USER_SELECT,
+    where: { org_id: orgId },
+  });
   return rows.map(rowToGraphQLUserParent);
 }
 
@@ -264,9 +207,9 @@ export async function kyselyUserInsert(opts: {
   });
 
   const now = new Date();
-  const row = await opts.db
-    .insertInto('public.users')
-    .values({
+  const row = await opts.db.users.create({
+    select: USER_SELECT,
+    data: {
       id: opts.id,
       org_id: opts.orgId,
       email: opts.email,
@@ -279,12 +222,8 @@ export async function kyselyUserInsert(opts: {
       login_methods: [...opts.loginMethods],
       created_at: now,
       updated_at: now,
-    })
-    .returning(USER_COLUMNS)
-    .returning(roleKey)
-    .returning(loginMethodsAsTextArray)
-    .returning(permissionsArray)
-    .executeTakeFirstOrThrow();
+    },
+  });
   return rowToGraphQLUserParent(row);
 }
 
@@ -333,11 +272,10 @@ export async function kyselyUserUpdate(
   if (patch.role != null) {
     // Resolve the role's org via the user row first; the patch doesn't
     // carry orgId, and roles are scoped per org.
-    const userOrg = await db
-      .selectFrom('public.users')
-      .select('org_id')
-      .where('id', '=', userId)
-      .executeTakeFirst();
+    const userOrg = await db.users.findUnique({
+      select: { org_id: true },
+      where: { id: userId },
+    });
     if (userOrg == null) {
       return undefined;
     }
@@ -356,24 +294,31 @@ export async function kyselyUserUpdate(
     update.rejected_by_admin = patch.rejectedByAdmin;
   }
 
-  const row = await db
-    .updateTable('public.users')
-    .set(update)
-    .where('id', '=', userId)
-    .returning(USER_COLUMNS)
-    .returning(roleKey)
-    .returning(loginMethodsAsTextArray)
-    .returning(permissionsArray)
-    .executeTakeFirst();
-
-  return row === undefined ? undefined : rowToGraphQLUserParent(row);
+  try {
+    const row = await db.users.update({
+      select: USER_SELECT,
+      data: update,
+      where: { id: userId },
+    });
+    return rowToGraphQLUserParent(row);
+  } catch (e) {
+    // `update` throws P2025 when no row matches; the contract here is
+    // "undefined when the user is missing".
+    if (
+      e instanceof Prisma.PrismaClientKnownRequestError &&
+      e.code === 'P2025'
+    ) {
+      return undefined;
+    }
+    throw e;
+  }
 }
 
 export async function kyselyUserDeleteById(
   db: UsersDb,
   userId: string,
 ): Promise<void> {
-  await db.deleteFrom('public.users').where('id', '=', userId).execute();
+  await db.users.deleteMany({ where: { id: userId } });
 }
 
 /**
@@ -386,11 +331,10 @@ export async function kyselyUserListFavoriteRuleIds(
   db: UsersDb,
   userId: string,
 ): Promise<string[]> {
-  const rows = await db
-    .selectFrom('public.users_and_favorite_rules')
-    .select('rule_id')
-    .where('user_id', '=', userId)
-    .execute();
+  const rows = await db.users_and_favorite_rules.findMany({
+    select: { rule_id: true },
+    where: { user_id: userId },
+  });
   return rows.map((r) => r.rule_id);
 }
 
@@ -399,19 +343,14 @@ export async function kyselyUserAddFavoriteRule(
   userId: string,
   ruleId: string,
 ): Promise<void> {
-  // `onConflict().doNothing()` matches Sequelize's `addFavoriteRules` semantics
-  // when a favorite already exists (the composite PK on (user_id, rule_id) is
-  // what de-duplicates).
+  // `skipDuplicates` (ON CONFLICT DO NOTHING) matches Sequelize's
+  // `addFavoriteRules` semantics when a favorite already exists (the
+  // composite PK on (user_id, rule_id) is what de-duplicates).
   const now = new Date();
-  await db
-    .insertInto('public.users_and_favorite_rules')
-    .values({
-      user_id: userId,
-      rule_id: ruleId,
-      updated_at: now,
-    })
-    .onConflict((oc) => oc.columns(['user_id', 'rule_id']).doNothing())
-    .execute();
+  await db.users_and_favorite_rules.createMany({
+    data: { user_id: userId, rule_id: ruleId, updated_at: now },
+    skipDuplicates: true,
+  });
 }
 
 export async function kyselyUserRemoveFavoriteRule(
@@ -419,9 +358,7 @@ export async function kyselyUserRemoveFavoriteRule(
   userId: string,
   ruleId: string,
 ): Promise<void> {
-  await db
-    .deleteFrom('public.users_and_favorite_rules')
-    .where('user_id', '=', userId)
-    .where('rule_id', '=', ruleId)
-    .execute();
+  await db.users_and_favorite_rules.deleteMany({
+    where: { user_id: userId, rule_id: ruleId },
+  });
 }

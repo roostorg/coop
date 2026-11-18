@@ -1,6 +1,3 @@
-import { type Kysely } from 'kysely';
-
-import { type CombinedPg } from '../../services/combinedDbTypes.js';
 import {
   getPermissionGroups,
   getPermissionsForRole,
@@ -9,42 +6,40 @@ import {
   UserRole,
   type PermissionGroup,
 } from '../../services/userManagementService/index.js';
-import { makeKyselyTransactionWithRetry } from '../../utils/kyselyTransactionWithRetry.js';
-
-type RolesKysely = Kysely<CombinedPg>;
+import {
+  type PrismaPgClient,
+  type PrismaPgQueryable,
+} from '../../storage/prisma/index.js';
+import { makePrismaTransactionWithRetry } from '../../utils/prismaTransactionWithRetry.js';
 
 /** Inserts any missing system roles and their initial permissions for an org. */
 export async function seedSystemRolesForOrg(
-  kysely: RolesKysely,
+  prisma: PrismaPgClient,
   orgId: string,
 ): Promise<void> {
-  await makeKyselyTransactionWithRetry(kysely)(async (tx) => {
-    const insertedRoles = await tx
-      .insertInto('public.roles')
-      .values(
-        Object.values(UserRole).map((roleKey) => ({
-          org_id: orgId,
-          key: roleKey,
-          display_name: SystemRoleDefaults[roleKey].displayName,
-          description: SystemRoleDefaults[roleKey].description,
-          is_system: true,
-        })),
-      )
-      .onConflict((oc) => oc.columns(['org_id', 'key']).doNothing())
-      .returning(['id', 'key'])
-      .execute();
+  await makePrismaTransactionWithRetry(prisma)(async (tx) => {
+    // ON CONFLICT DO NOTHING ... RETURNING: only newly inserted roles come back.
+    const insertedRoles = await tx.roles.createManyAndReturn({
+      data: Object.values(UserRole).map((roleKey) => ({
+        org_id: orgId,
+        key: roleKey,
+        display_name: SystemRoleDefaults[roleKey].displayName,
+        description: SystemRoleDefaults[roleKey].description,
+        is_system: true,
+      })),
+      skipDuplicates: true,
+      select: { id: true, key: true },
+    });
 
     const permissions = insertedRoles.flatMap(({ id, key }) =>
-      getPermissionsForRole(key).map((permission) => ({
+      // `key` is one of the `UserRole` values inserted above.
+      getPermissionsForRole(key as UserRole).map((permission) => ({
         role_id: id,
         permission,
       })),
     );
     if (permissions.length > 0) {
-      await tx
-        .insertInto('public.role_permissions')
-        .values(permissions)
-        .execute();
+      await tx.role_permissions.createMany({ data: permissions });
     }
   });
 }
@@ -69,17 +64,23 @@ type RoleRow = {
   is_system: boolean;
 };
 
+const ROLE_ROW_SELECT = {
+  id: true,
+  key: true,
+  display_name: true,
+  description: true,
+  is_system: true,
+} as const;
+
 /** Lists every persisted system role for an org. */
 export async function kyselyListRolesForOrg(
-  kysely: RolesKysely,
+  prisma: PrismaPgQueryable,
   orgId: string,
 ): Promise<RoleParent[]> {
-  const persistedRows: ReadonlyArray<RoleRow> = await kysely
-    .selectFrom('public.roles')
-    .select(['id', 'key', 'display_name', 'description', 'is_system'])
-    .where('org_id', '=', orgId)
-    .where('is_system', '=', true)
-    .execute();
+  const persistedRows: ReadonlyArray<RoleRow> = await prisma.roles.findMany({
+    select: ROLE_ROW_SELECT,
+    where: { org_id: orgId, is_system: true },
+  });
 
   const persistedIds = persistedRows.map((r) => r.id);
 
@@ -89,11 +90,10 @@ export async function kyselyListRolesForOrg(
   }> =
     persistedIds.length === 0
       ? []
-      : await kysely
-          .selectFrom('public.role_permissions')
-          .select(['role_id', 'permission'])
-          .where('role_id', 'in', persistedIds)
-          .execute();
+      : await prisma.role_permissions.findMany({
+          select: { role_id: true, permission: true },
+          where: { role_id: { in: persistedIds } },
+        });
 
   const permissionsByRoleId = new Map<string, UserPermission[]>();
   for (const row of permissionRows) {
@@ -116,7 +116,7 @@ export async function kyselyListRolesForOrg(
     }
   }
 
-  const userCountRows = await countApprovedUsersByRole(kysely, orgId);
+  const userCountRows = await countApprovedUsersByRole(prisma, orgId);
   const userCountsByRole = new Map<string, number>();
   for (const r of userCountRows) {
     userCountsByRole.set(r.roleId, r.count);
@@ -137,33 +137,28 @@ export async function kyselyListRolesForOrg(
 }
 
 async function countApprovedUsersByRole(
-  kysely: RolesKysely,
+  prisma: PrismaPgQueryable,
   orgId: string,
 ): Promise<ReadonlyArray<{ roleId: string; count: number }>> {
-  const rows = await kysely
-    .selectFrom('public.users as users')
-    .innerJoin('public.roles as roles', (join) =>
-      join
-        .onRef('roles.id', '=', 'users.role_id')
-        .onRef('roles.org_id', '=', 'users.org_id'),
-    )
-    .select((eb) => [
-      'roles.id as roleId',
-      eb.fn.countAll<string>().as('count'),
-    ])
-    .where('users.org_id', '=', orgId)
-    .where('roles.org_id', '=', orgId)
-    .where('users.rejected_by_admin', '=', false)
-    .groupBy('roles.id')
-    .execute();
-  return rows.map((r) => ({ roleId: r.roleId, count: Number(r.count) }));
+  // Grouping users by `role_id` with a relation filter on the role's org is
+  // equivalent to users JOIN roles ON (id, org_id) ... GROUP BY roles.id.
+  const rows = await prisma.users.groupBy({
+    by: ['role_id'],
+    where: {
+      org_id: orgId,
+      rejected_by_admin: false,
+      roles: { org_id: orgId },
+    },
+    _count: { _all: true },
+  });
+  return rows.map((r) => ({ roleId: r.role_id, count: r._count._all }));
 }
 
 /**
  * Atomically replaces the permission set for `(orgId, roleKey)`.
  */
 export async function kyselyUpdateRolePermissions(
-  kysely: RolesKysely,
+  prisma: PrismaPgClient,
   opts: {
     orgId: string;
     roleKey: UserRole;
@@ -171,23 +166,17 @@ export async function kyselyUpdateRolePermissions(
   },
 ): Promise<RoleParent> {
   const { orgId, roleKey, permissions } = opts;
-  return makeKyselyTransactionWithRetry(kysely)(async (tx) => {
+  return makePrismaTransactionWithRetry(prisma)(async (tx) => {
     const roleId = await getSystemRoleId(tx, { orgId, roleKey });
-    await tx
-      .deleteFrom('public.role_permissions')
-      .where('role_id', '=', roleId)
-      .execute();
+    await tx.role_permissions.deleteMany({ where: { role_id: roleId } });
     if (permissions.length > 0) {
       const dedupedPermissions = Array.from(new Set(permissions));
-      await tx
-        .insertInto('public.role_permissions')
-        .values(
-          dedupedPermissions.map((permission) => ({
-            role_id: roleId,
-            permission,
-          })),
-        )
-        .execute();
+      await tx.role_permissions.createMany({
+        data: dedupedPermissions.map((permission) => ({
+          role_id: roleId,
+          permission,
+        })),
+      });
     }
     return readRoleAfterWrite(tx, { orgId, roleKey, roleId });
   });
@@ -197,7 +186,7 @@ export async function kyselyUpdateRolePermissions(
  * Renames a role's display name and optionally its description.
  */
 export async function kyselyRenameRole(
-  kysely: RolesKysely,
+  prisma: PrismaPgClient,
   opts: {
     orgId: string;
     roleKey: UserRole;
@@ -206,17 +195,16 @@ export async function kyselyRenameRole(
   },
 ): Promise<RoleParent> {
   const { orgId, roleKey, displayName, description } = opts;
-  return makeKyselyTransactionWithRetry(kysely)(async (tx) => {
+  return makePrismaTransactionWithRetry(prisma)(async (tx) => {
     const roleId = await getSystemRoleId(tx, { orgId, roleKey });
-    await tx
-      .updateTable('public.roles')
-      .set({
+    await tx.roles.updateMany({
+      data: {
         display_name: displayName,
         ...(description !== undefined ? { description } : {}),
         updated_at: new Date(),
-      })
-      .where('id', '=', roleId)
-      .execute();
+      },
+      where: { id: roleId },
+    });
     return readRoleAfterWrite(tx, { orgId, roleKey, roleId });
   });
 }
@@ -226,33 +214,28 @@ export function kyselyGetPermissionGroups(): readonly PermissionGroup[] {
 }
 
 async function getSystemRoleId(
-  tx: RolesKysely,
+  tx: PrismaPgQueryable,
   opts: { orgId: string; roleKey: UserRole },
 ): Promise<string> {
-  const existing = await tx
-    .selectFrom('public.roles')
-    .select('id')
-    .where('org_id', '=', opts.orgId)
-    .where('key', '=', opts.roleKey)
-    .where('is_system', '=', true)
-    .executeTakeFirstOrThrow();
+  const existing = await tx.roles.findFirstOrThrow({
+    select: { id: true },
+    where: { org_id: opts.orgId, key: opts.roleKey, is_system: true },
+  });
   return existing.id;
 }
 
 async function readRoleAfterWrite(
-  tx: RolesKysely,
+  tx: PrismaPgQueryable,
   opts: { orgId: string; roleKey: UserRole; roleId: string },
 ): Promise<RoleParent> {
-  const row = await tx
-    .selectFrom('public.roles')
-    .select(['id', 'key', 'display_name', 'description', 'is_system'])
-    .where('id', '=', opts.roleId)
-    .executeTakeFirstOrThrow();
-  const permissionRows = await tx
-    .selectFrom('public.role_permissions')
-    .select('permission')
-    .where('role_id', '=', opts.roleId)
-    .execute();
+  const row = await tx.roles.findUniqueOrThrow({
+    select: ROLE_ROW_SELECT,
+    where: { id: opts.roleId },
+  });
+  const permissionRows = await tx.role_permissions.findMany({
+    select: { permission: true },
+    where: { role_id: opts.roleId },
+  });
   const permissions = permissionRows
     .map((p) => p.permission)
     .filter(isUserPermission);
