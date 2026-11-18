@@ -1,16 +1,14 @@
-import { sql, type Kysely } from 'kysely';
-
 import { type Dependencies } from '../../../iocContainer/index.js';
+import { Prisma, type PrismaPgClient } from '../../../storage/prisma/index.js';
 import { makeNotFoundError } from '../../../utils/errors.js';
 import { isForeignKeyViolationError } from '../../../utils/kysely.js';
 import type { ReadonlyDeep } from '../../../utils/typescript-types.js';
-import { type ManualReviewToolServicePg } from '../dbTypes.js';
 import type { RecentDecisionsFilterInput } from './DecisionAnalytics.js';
 import type QueueOperations from './QueueOperations.js';
 
 export default class SkipOperations {
   constructor(
-    private readonly pgQuery: Kysely<ManualReviewToolServicePg>,
+    private readonly prisma: PrismaPgClient,
     private readonly queueOps: QueueOperations,
     private readonly meter?: Dependencies['Meter'],
   ) {}
@@ -23,17 +21,11 @@ export default class SkipOperations {
   }) {
     const { orgId, jobId, queueId, userId } = opts;
     try {
-      await this.pgQuery
-        .insertInto('manual_review_tool.moderator_skips')
-        .values([
-          {
-            org_id: orgId,
-            job_id: jobId,
-            queue_id: queueId,
-            user_id: userId,
-          },
-        ])
-        .executeTakeFirst();
+      // prisma-raw: moderator_skips has no PK (@@ignore)
+      await this.prisma.$executeRaw(Prisma.sql`
+        INSERT INTO manual_review_tool.moderator_skips (org_id, job_id, queue_id, user_id)
+        VALUES (${orgId}, ${jobId}, ${queueId}, ${userId})
+      `);
 
       this.meter?.recordManualReviewEvent('skip_recorded', {
         queue_id: queueId,
@@ -57,37 +49,27 @@ export default class SkipOperations {
   async getSkippedJobCount(input: SkippedJobCountInput) {
     const { orgId, groupBy, filterBy, timeDivision, timeZone } = input;
     const { queueIds, userIds, startDate, endDate } = filterBy;
-    const { ref } = this.pgQuery.dynamic;
-    return this.pgQuery
-      .selectFrom('manual_review_tool.moderator_skips')
-      .select([
-        sql<string>`date_trunc(${timeDivision}, ts, ${timeZone})`.as('time'),
-        sql<number>`COUNT(*)`.as('count'),
-      ])
-      .$if(groupBy.includes('queue_id'), (qb) => qb.select('queue_id'))
-      .$if(groupBy.includes('reviewer_id'), (qb) => qb.select('user_id'))
-      .where('org_id', '=', orgId)
-      .where((eb) => {
-        return eb.and([
-          eb(sql`ts AT TIME ZONE ${timeZone}`, '>=', startDate),
-          eb(sql`ts AT TIME ZONE ${timeZone}`, '<=', endDate),
-        ]);
-      })
-      .where(({ eb }) => {
-        return eb.and([
-          ...(queueIds.length > 0 ? [eb('queue_id', 'in', queueIds)] : []),
-          ...(userIds.length > 0 ? [eb('user_id', 'in', userIds)] : []),
-        ]);
-      })
-      .groupBy([
-        'time',
-        ...groupBy
-          .map((it) =>
-            it === 'reviewer_id' ? ref('user_id') : ref(it as string),
-          )
-          .flat(),
-      ])
-      .execute();
+    const groupColumns = [
+      ...(groupBy.includes('queue_id') ? ['queue_id'] : []),
+      ...(groupBy.includes('reviewer_id') ? ['user_id'] : []),
+    ];
+    const extraSelect = groupColumns.map((c) => Prisma.sql`, ${Prisma.raw(c)}`);
+    // prisma-raw: moderator_skips has no PK (@@ignore); date_trunc with time
+    // zone, dynamic GROUP BY
+    return this.prisma.$queryRaw<
+      { time: string; count: number; queue_id?: string; user_id?: string }[]
+    >(Prisma.sql`
+      SELECT date_trunc(${timeDivision}, ts, ${timeZone}) AS "time",
+        COUNT(*)::int AS count
+        ${extraSelect.length > 0 ? Prisma.join(extraSelect, '') : Prisma.empty}
+      FROM manual_review_tool.moderator_skips
+      WHERE org_id = ${orgId}
+        AND ts AT TIME ZONE ${timeZone} >= ${startDate}
+        AND ts AT TIME ZONE ${timeZone} <= ${endDate}
+        ${queueIds.length > 0 ? Prisma.sql`AND queue_id IN (${Prisma.join(queueIds)})` : Prisma.empty}
+        ${userIds.length > 0 ? Prisma.sql`AND user_id IN (${Prisma.join(userIds)})` : Prisma.empty}
+      GROUP BY ${Prisma.join([Prisma.raw('"time"'), ...groupColumns.map((c) => Prisma.raw(c))])}
+    `);
   }
 
   async getSkippedJobsForRecentDecisions(opts: {
@@ -110,43 +92,18 @@ export default class SkipOperations {
     // Return all of the skips since they're not interleaved in the
     // decisions table and aren't too many of them, and filter on the
     // front end.
-    return this.pgQuery
-      .selectFrom('manual_review_tool.moderator_skips')
-      .select([
-        'job_id as jobId',
-        'queue_id as queueId',
-        'user_id as userId',
-        'ts',
-      ])
-      .where('org_id', '=', orgId)
-      .where((eb) => {
-        return eb.and([
-          ...(queueIds && queueIds.length > 0
-            ? [eb('queue_id', 'in', queueIds)]
-            : []),
-          ...(reviewerIds && reviewerIds.length > 0
-            ? [eb('user_id', 'in', reviewerIds)]
-            : []),
-        ]);
-      })
-      .$if(userSearchString !== undefined, (qb) =>
-        // See https://stackoverflow.com/a/55607847
-        qb.where(({ and, eb, val }) =>
-          and([
-            eb(
-              'user_id',
-              '=',
-              // Above, the 'itemId' field is of type jsonb, so we cast it to a string using ::text, but that
-              // cast will leave quotes around the resulting string because it's just stringifying what it thinks
-              // is a jsonb object. The easiest way to handle this is to just add quotes around the userSearchString
-              // to match the quotes in the value above.
-              val(`${userSearchString}`),
-            ),
-          ]),
-        ),
-      )
-      .limit(1000)
-      .execute();
+    // prisma-raw: moderator_skips has no PK (@@ignore)
+    return this.prisma.$queryRaw<
+      { jobId: string; queueId: string; userId: string; ts: Date }[]
+    >(Prisma.sql`
+      SELECT job_id AS "jobId", queue_id AS "queueId", user_id AS "userId", ts
+      FROM manual_review_tool.moderator_skips
+      WHERE org_id = ${orgId}
+        ${queueIds && queueIds.length > 0 ? Prisma.sql`AND queue_id IN (${Prisma.join(queueIds)})` : Prisma.empty}
+        ${reviewerIds && reviewerIds.length > 0 ? Prisma.sql`AND user_id IN (${Prisma.join(reviewerIds)})` : Prisma.empty}
+        ${userSearchString !== undefined ? Prisma.sql`AND user_id = ${userSearchString}` : Prisma.empty}
+      LIMIT 1000
+    `);
   }
 }
 

@@ -1,57 +1,53 @@
-import { type Kysely } from 'kysely';
-import _ from 'lodash';
-
 import { inject } from '../iocContainer/utils.js';
-import { type ManualReviewToolServicePg } from '../services/manualReviewToolService/index.js';
-import { makeKyselyTransactionWithRetry } from '../utils/kyselyTransactionWithRetry.js';
+import { Prisma } from '../storage/prisma/index.js';
+import { makePrismaTransactionWithRetry } from '../utils/prismaTransactionWithRetry.js';
 import { MINUTE_MS } from '../utils/time.js';
 
+const MATERIALIZED_TABLE_NAME =
+  'manual_review_tool.dim_mrt_decisions_materialized';
+
 export default inject(
-  ['closeSharedResourcesForShutdown', 'KyselyPg'],
-  (sharedResourceShutdown, pgQuery: Kysely<ManualReviewToolServicePg>) => {
-    const transactionWithRetry = makeKyselyTransactionWithRetry(pgQuery);
+  ['closeSharedResourcesForShutdown', 'PrismaPg'],
+  (sharedResourceShutdown, prisma) => {
+    const transactionWithRetry = makePrismaTransactionWithRetry(prisma);
     return {
       type: 'Job' as const,
       async run() {
-        await transactionWithRetry(async (trx) => {
-          const lastTimestamp = await trx
-            .selectFrom('public.view_maintenance_metadata')
-            .select('last_insert')
-            .where(
-              'table_name',
-              '=',
-              'manual_review_tool.dim_mrt_decisions_materialized',
-            )
-            .executeTakeFirst();
+        // A full backfill (first run) can take far longer than the default
+        // 30 s interactive-transaction timeout.
+        await transactionWithRetry({ timeout: 30 * MINUTE_MS }, async (tx) => {
+          const lastTimestamp = await tx.view_maintenance_metadata.findUnique({
+            select: { last_insert: true },
+            where: { table_name: MATERIALIZED_TABLE_NAME },
+          });
 
           if (!lastTimestamp) {
             throw new Error('No last_insert timestamp found for the table');
           }
 
           // On a fresh deploy the row is seeded with Postgres `-infinity`,
-          // which `pg-types` parses to the JS number `-Infinity`. In that case
-          // `new Date(-Infinity - MINUTE_MS)` would be an Invalid Date, so fall
-          // back to epoch and do a full backfill.
+          // which Prisma returns as an Invalid Date (`valueOf()` is NaN). In
+          // that case `new Date(NaN - MINUTE_MS)` would also be invalid, so
+          // fall back to epoch and do a full backfill.
           const lastInsertMs = lastTimestamp.last_insert.valueOf();
           const oneMinutePrevious = Number.isFinite(lastInsertMs)
             ? new Date(lastInsertMs - MINUTE_MS)
             : new Date(0);
 
-          const insertedRows = await trx
-            .insertInto('manual_review_tool.dim_mrt_decisions_materialized')
-            .expression(
-              trx
-                .selectFrom('manual_review_tool.dim_mrt_decisions')
-                .selectAll()
-                .where('decided_at', '>', oneMinutePrevious),
-            )
-            // since we are going back in time by 1 minute, we will likely be
-            // re-inserting some rows, which should lead to unique constraint
-            // violations. In this case we just want to ignore those rows to avoid
-            // duplicate data
-            .onConflict((oc) => oc.doNothing())
-            .returning('decided_at')
-            .execute();
+          // since we are going back in time by 1 minute, we will likely be
+          // re-inserting some rows, which should lead to unique constraint
+          // violations. In this case we just want to ignore those rows to avoid
+          // duplicate data
+          // prisma-raw: INSERT ... SELECT into an @@ignore'd table (no PK), ON CONFLICT DO NOTHING RETURNING
+          const insertedRows = await tx.$queryRaw<{ decided_at: Date }[]>(
+            Prisma.sql`
+              INSERT INTO manual_review_tool.dim_mrt_decisions_materialized
+              SELECT * FROM manual_review_tool.dim_mrt_decisions
+              WHERE decided_at > ${oneMinutePrevious}
+              ON CONFLICT DO NOTHING
+              RETURNING decided_at
+            `,
+          );
 
           if (insertedRows.length === 0) {
             return;
@@ -62,17 +58,10 @@ export default inject(
             insertedRows[0].decided_at,
           );
 
-          await trx
-            .updateTable('public.view_maintenance_metadata')
-            .set({
-              last_insert: latestDecidedAt,
-            })
-            .where(
-              'table_name',
-              '=',
-              'manual_review_tool.dim_mrt_decisions_materialized',
-            )
-            .execute();
+          await tx.view_maintenance_metadata.updateMany({
+            data: { last_insert: latestDecidedAt },
+            where: { table_name: MATERIALIZED_TABLE_NAME },
+          });
         });
       },
       async shutdown() {

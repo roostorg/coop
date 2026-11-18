@@ -1,12 +1,10 @@
-import { type Kysely } from 'kysely';
-
+import { Prisma, type PrismaPgClient } from '../../../storage/prisma/index.js';
 import { makeNotFoundError } from '../../../utils/errors.js';
 import { isForeignKeyViolationError } from '../../../utils/kysely.js';
-import { type ManualReviewToolServicePg } from '../dbTypes.js';
 import { type JobId } from '../manualReviewToolService.js';
 
 export default class ClaimOperations {
-  constructor(private readonly pgQuery: Kysely<ManualReviewToolServicePg>) {}
+  constructor(private readonly prisma: PrismaPgClient) {}
 
   async logClaim(opts: {
     orgId: string;
@@ -16,15 +14,11 @@ export default class ClaimOperations {
   }) {
     const { orgId, jobId, queueId, userId } = opts;
     try {
-      await this.pgQuery
-        .insertInto('manual_review_tool.job_claims')
-        .values({
-          org_id: orgId,
-          job_id: jobId,
-          queue_id: queueId,
-          user_id: userId,
-        })
-        .executeTakeFirst();
+      // prisma-raw: job_claims has no PK (@@ignore)
+      await this.prisma.$executeRaw(Prisma.sql`
+        INSERT INTO manual_review_tool.job_claims (org_id, job_id, queue_id, user_id)
+        VALUES (${orgId}, ${jobId}, ${queueId}, ${userId})
+      `);
     } catch (e) {
       if (isForeignKeyViolationError(e)) {
         throw makeNotFoundError('Queue not found', { shouldErrorSpan: true });
@@ -40,21 +34,19 @@ export default class ClaimOperations {
     userId?: string;
   }): Promise<Date | null> {
     const { orgId, jobId, userId } = opts;
-    let query = this.pgQuery
-      .selectFrom('manual_review_tool.job_claims')
-      .select('claimed_at')
-      .where('org_id', '=', orgId)
-      .where('job_id', '=', jobId);
+    // prisma-raw: job_claims has no PK (@@ignore)
+    const rows = await this.prisma.$queryRaw<{ claimed_at: Date }[]>(
+      Prisma.sql`
+        SELECT claimed_at
+        FROM manual_review_tool.job_claims
+        WHERE org_id = ${orgId}
+          AND job_id = ${jobId}
+          ${userId != null ? Prisma.sql`AND user_id = ${userId}` : Prisma.empty}
+        ORDER BY claimed_at DESC
+        LIMIT 1
+      `,
+    );
 
-    if (userId != null) {
-      query = query.where('user_id', '=', userId);
-    }
-
-    const row = await query
-      .orderBy('claimed_at', 'desc')
-      .limit(1)
-      .executeTakeFirst();
-
-    return row?.claimed_at ?? null;
+    return rows[0]?.claimed_at ?? null;
   }
 }
