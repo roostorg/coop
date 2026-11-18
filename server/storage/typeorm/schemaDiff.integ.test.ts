@@ -40,12 +40,6 @@ describe('TypeORM entities vs migration-built schema', () => {
       );
       const sqlInMemory = await ds.driver.createSchemaBuilder().log();
       const up = sqlInMemory.upQueries.map((q) => q.query);
-      if (process.env.TYPEORM_SCHEMA_DIFF_OUT) {
-        fs.writeFileSync(
-          process.env.TYPEORM_SCHEMA_DIFF_OUT,
-          up.join(';\n') + ';\n',
-        );
-      }
       const known = fs
         .readFileSync(
           path.join(
