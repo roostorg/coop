@@ -14,7 +14,7 @@ type OrgAlertRow = {
 
 export default inject(
   [
-    'KyselyPg',
+    'PrismaPg',
     'NotificationsService',
     'getCurrentPeriodRuleAlarmStatuses',
     'closeSharedResourcesForShutdown',
@@ -35,18 +35,17 @@ export default inject(
         return;
       }
 
-      const rules = await db
-        .selectFrom('public.rules')
-        .select([
-          'id',
-          'org_id',
-          'creator_id',
-          'name',
-          'alarm_status',
-          'status_if_unexpired',
-        ])
-        .where('id', 'in', ruleIds)
-        .execute();
+      const rules = await db.rules.findMany({
+        select: {
+          id: true,
+          org_id: true,
+          creator_id: true,
+          name: true,
+          alarm_status: true,
+          status_if_unexpired: true,
+        },
+        where: { id: { in: ruleIds } },
+      });
 
       const alarmStatusChangedRules = rules.filter(
         (rule) => rule.alarm_status !== newAlarmStatusByRule[rule.id].status,
@@ -55,11 +54,10 @@ export default inject(
       const changedRuleOrgIds = alarmStatusChangedRules.map((it) => it.org_id);
       let orgsForChangedRules: Record<string, OrgAlertRow> = {};
       if (changedRuleOrgIds.length > 0) {
-        const orgRows = (await db
-          .selectFrom('public.orgs')
-          .select(['id', 'on_call_alert_email'])
-          .where('id', 'in', [...new Set(changedRuleOrgIds)])
-          .execute()) as OrgAlertRow[];
+        const orgRows: OrgAlertRow[] = await db.orgs.findMany({
+          select: { id: true, on_call_alert_email: true },
+          where: { id: { in: [...new Set(changedRuleOrgIds)] } },
+        });
         orgsForChangedRules = keyBy(orgRows, (r) => r.id);
       }
 
@@ -120,14 +118,13 @@ export default inject(
         });
 
       const ruleUpdateTasks = alarmStatusChangedRules.map(async (rule) => {
-        await db
-          .updateTable('public.rules')
-          .set({
+        await db.rules.updateMany({
+          data: {
             alarm_status: newAlarmStatusByRule[rule.id].status,
             alarm_status_set_at: now,
-          })
-          .where('id', '=', rule.id)
-          .execute();
+          },
+          where: { id: rule.id },
+        });
       });
 
       await Promise.all([

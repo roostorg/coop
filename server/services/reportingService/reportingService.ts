@@ -1,5 +1,4 @@
 import { type ItemIdentifier } from '@roostorg/coop-types';
-import { type Kysely } from 'kysely';
 import { match } from 'ts-pattern';
 
 import { type Dependencies } from '../../iocContainer/index.js';
@@ -10,6 +9,7 @@ import {
   type ReportingRulePassingContentSampleInput,
   type ReportingRulePassRateInput,
 } from '../../plugins/warehouse/queries/IReportingAnalyticsAdapter.js';
+import { type PrismaPgClient } from '../../storage/prisma/index.js';
 import {
   fromCorrelationId,
   type CorrelationId,
@@ -21,7 +21,6 @@ import {
   itemSubmissionToItemSubmissionWithTypeIdentifier,
   type ItemSubmission,
 } from '../itemProcessingService/index.js';
-import { type ReportingServicePg } from './dbTypes.js';
 import ReportingRuleEngine from './reportingRuleEngine.js';
 import {
   buildSimplifiedHistoryQuery,
@@ -76,7 +75,7 @@ export type ReportingRuleExecutionCorrelationId =
 function makeReportingService(
   dataWarehouseAnalytics: Dependencies['DataWarehouseAnalytics'],
   reportingAnalyticsAdapter: IReportingAnalyticsAdapter,
-  pgQuery: Kysely<ReportingServicePg>,
+  prisma: PrismaPgClient,
   ruleEvaluator: Dependencies['RuleEvaluator'],
   reportingRuleExecutionLogger: Dependencies['ReportingRuleExecutionLogger'],
   actionPublisher: Dependencies['ActionPublisher'],
@@ -84,7 +83,7 @@ function makeReportingService(
   getPoliciesByIdEventuallyConsistent: Dependencies['getPoliciesByIdEventuallyConsistent'],
   tracer: Dependencies['Tracer'],
 ) {
-  const reportingRules = new ReportingRules(pgQuery);
+  const reportingRules = new ReportingRules(prisma);
   const reportingRuleEngine = new ReportingRuleEngine(
     ruleEvaluator,
     reportingRuleExecutionLogger,
@@ -272,7 +271,7 @@ function makeReportingService(
     ) {
       return getSimplifiedRuleHistory<K>(
         async (...buildQueryArgs) =>
-          buildSimplifiedHistoryQuery(pgQuery, ...buildQueryArgs).execute(),
+          buildSimplifiedHistoryQuery(prisma, ...buildQueryArgs).execute(),
         ...getHistoryArgs,
       );
     },
@@ -408,7 +407,7 @@ export default inject(
   [
     'DataWarehouseAnalytics',
     'ReportingAnalyticsAdapter',
-    'KyselyPg',
+    'PrismaPg',
     'RuleEvaluator',
     'ReportingRuleExecutionLogger',
     'ActionPublisher',

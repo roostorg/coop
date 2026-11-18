@@ -1,19 +1,4 @@
-import { type Generated, type GeneratedAlways } from 'kysely';
-
-export type HmaServicePg = {
-  'public.hash_banks': {
-    id: Generated<number>;
-    name: string;
-    hma_name: string;
-    description: string | null;
-    enabled_ratio: number;
-    org_id: string;
-    created_at: GeneratedAlways<Date>;
-    updated_at: GeneratedAlways<Date>;
-  };
-};
-
-// Type for data returned from database (Generated types are resolved to actual types)
+// A hash_banks row as returned from the database.
 export interface HashBank {
   id: number;
   name: string;

@@ -1,9 +1,13 @@
 import { makeEnumLike } from '@roostorg/coop-types';
-import { sql, type Kysely, type Transaction } from 'kysely';
 import { type ReadonlyDeep } from 'type-fest';
 import { v1 as uuidv1 } from 'uuid';
 
 import { type ConsumerDirectives } from '../../lib/cache/index.js';
+import {
+  Prisma,
+  type PrismaPgClient,
+  type PrismaPgQueryable,
+} from '../../storage/prisma/index.js';
 import { cached } from '../../utils/caching.js';
 import { filterNullOrUndefined } from '../../utils/collections.js';
 import {
@@ -11,18 +15,18 @@ import {
   ErrorType,
   type ErrorInstanceData,
 } from '../../utils/errors.js';
-import {
-  makeKyselyTransactionWithRetry,
-  type KyselyTransactionWithRetry,
-} from '../../utils/kyselyTransactionWithRetry.js';
+import { getPgErrorDetails } from '../../utils/kysely.js';
 import { removeUndefinedKeys } from '../../utils/misc.js';
+import {
+  makePrismaTransactionWithRetry,
+  type PrismaTransactionWithRetry,
+} from '../../utils/prismaTransactionWithRetry.js';
 import { replaceEmptyStringWithNull } from '../../utils/string.js';
 import {
   type NonEmptyArray,
   type NonEmptyString,
 } from '../../utils/typescript-types.js';
 import { type ConditionSet } from '../moderationConfigService/index.js';
-import { type ReportingServicePg } from './dbTypes.js';
 
 export const ReportingRuleStatus = makeEnumLike([
   'DRAFT',
@@ -71,27 +75,47 @@ export type UpdateReportingRuleInput = Readonly<{
   conditionSet?: ConditionSet;
 }>;
 
-const reportingRuleSelection = [
-  'id',
-  'org_id as orgId',
-  'creator_id as creatorId',
-  'name',
-  'description',
-  'status',
-  'condition_set as conditionSet',
-] as const;
+const reportingRuleSelect = {
+  id: true,
+  org_id: true,
+  creator_id: true,
+  name: true,
+  description: true,
+  status: true,
+  condition_set: true,
+} as const satisfies Prisma.reporting_rulesSelect;
+
+type SelectedReportingRuleRow = Prisma.reporting_rulesGetPayload<{
+  select: typeof reportingRuleSelect;
+}>;
+
+function toReportingRule(row: SelectedReportingRuleRow) {
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    creatorId: row.creator_id,
+    name: row.name,
+    description: row.description,
+    status: row.status,
+    // JSON columns come back as Prisma.JsonValue; the column only ever holds
+    // a ConditionSet.
+    conditionSet: row.condition_set as ConditionSet,
+  };
+}
+
+class ReportingRuleNotFound extends Error {}
 
 export default class ReportingRules {
   private readonly reportingRulesCache;
-  private readonly transactionWithRetry: KyselyTransactionWithRetry<ReportingServicePg>;
+  private readonly transactionWithRetry: PrismaTransactionWithRetry;
 
-  constructor(private readonly pgQuery: Kysely<ReportingServicePg>) {
+  constructor(private readonly prisma: PrismaPgClient) {
     this.reportingRulesCache = cached({
       producer: async (orgId: string) =>
-        this.#getReportingRulesBypassCache(orgId, pgQuery),
+        this.#getReportingRulesBypassCache(orgId, prisma),
       directives: { freshUntilAge: 10 },
     });
-    this.transactionWithRetry = makeKyselyTransactionWithRetry(this.pgQuery);
+    this.transactionWithRetry = makePrismaTransactionWithRetry(this.prisma);
   }
 
   async getReportingRules(opts: {
@@ -117,10 +141,9 @@ export default class ReportingRules {
       policyIds,
     } = input;
 
-    return this.transactionWithRetry(async (trx) => {
-      const reportingRule = await trx
-        .insertInto('reporting_rules.reporting_rules')
-        .values({
+    return this.transactionWithRetry(async (tx) => {
+      const reportingRule = await tx.reporting_rules.create({
+        data: {
           id: uuidv1(),
           org_id: orgId,
           name,
@@ -128,44 +151,35 @@ export default class ReportingRules {
           status,
           condition_set: conditionSet,
           creator_id: creatorId,
-        })
-        .returning(reportingRuleSelection)
-        .executeTakeFirstOrThrow();
+        },
+        select: reportingRuleSelect,
+      });
 
-      await trx
-        .insertInto('reporting_rules.reporting_rules_to_item_types')
-        .values(
-          itemTypeIds.map((itemTypeId) => ({
-            reporting_rule_id: reportingRule.id,
-            item_type_id: itemTypeId,
-          })),
-        )
-        .execute();
+      await tx.reporting_rules_to_item_types.createMany({
+        data: itemTypeIds.map((itemTypeId) => ({
+          reporting_rule_id: reportingRule.id,
+          item_type_id: itemTypeId,
+        })),
+      });
 
-      await trx
-        .insertInto('reporting_rules.reporting_rules_to_actions')
-        .values(
-          actionIds.map((actionId) => ({
-            action_id: actionId,
-            reporting_rule_id: reportingRule.id,
-          })),
-        )
-        .execute();
+      await tx.reporting_rules_to_actions.createMany({
+        data: actionIds.map((actionId) => ({
+          action_id: actionId,
+          reporting_rule_id: reportingRule.id,
+        })),
+      });
 
       if (policyIds.length > 0) {
-        await trx
-          .insertInto('reporting_rules.reporting_rules_to_policies')
-          .values(
-            policyIds.map((policyId) => ({
-              policy_id: policyId,
-              reporting_rule_id: reportingRule.id,
-            })),
-          )
-          .execute();
+        await tx.reporting_rules_to_policies.createMany({
+          data: policyIds.map((policyId) => ({
+            policy_id: policyId,
+            reporting_rule_id: reportingRule.id,
+          })),
+        });
       }
 
       return {
-        ...reportingRule,
+        ...toReportingRule(reportingRule),
         itemTypeIds,
         actionIds,
         policyIds,
@@ -197,103 +211,84 @@ export default class ReportingRules {
       policyIds,
     } = input;
 
-    return this.transactionWithRetry(async (trx) => {
-      const updatedReportingRule = await trx
-        .updateTable('reporting_rules.reporting_rules')
-        .set({
-          ...(conditionSet ? { condition_set: conditionSet } : {}),
-          ...removeUndefinedKeys({
-            name,
-            description: replaceEmptyStringWithNull(description),
-            status,
-          }),
+    return this.transactionWithRetry(async (tx) => {
+      const updatedReportingRule = (
+        await tx.reporting_rules.updateManyAndReturn({
+          where: { id, org_id: orgId },
+          data: {
+            ...(conditionSet ? { condition_set: conditionSet } : {}),
+            ...removeUndefinedKeys({
+              name,
+              description: replaceEmptyStringWithNull(description),
+              status,
+            }),
+          },
+          select: reportingRuleSelect,
         })
-        .where('id', '=', id)
-        .where('org_id', '=', orgId)
-        .returning(reportingRuleSelection)
-        .executeTakeFirstOrThrow();
+      ).at(0);
+      if (updatedReportingRule === undefined) {
+        throw new ReportingRuleNotFound();
+      }
 
       if (itemTypeIds) {
-        await trx
-          .deleteFrom('reporting_rules.reporting_rules_to_item_types')
-          .where(({ eb, and }) =>
-            and([
-              eb('reporting_rule_id', '=', id),
-              eb('item_type_id', 'not in', itemTypeIds),
-            ]),
-          )
-          .execute();
+        await tx.reporting_rules_to_item_types.deleteMany({
+          where: {
+            reporting_rule_id: id,
+            item_type_id: { notIn: itemTypeIds },
+          },
+        });
 
-        await trx
-          .insertInto('reporting_rules.reporting_rules_to_item_types')
-          .values(
-            itemTypeIds.map((itemTypeId) => ({
-              reporting_rule_id: id,
-              item_type_id: itemTypeId,
-            })),
-          )
-          .onConflict((oc) =>
-            oc.columns(['reporting_rule_id', 'item_type_id']).doNothing(),
-          )
-          .execute();
+        await tx.reporting_rules_to_item_types.createMany({
+          data: itemTypeIds.map((itemTypeId) => ({
+            reporting_rule_id: id,
+            item_type_id: itemTypeId,
+          })),
+          skipDuplicates: true,
+        });
       }
 
       if (actionIds) {
-        await trx
-          .deleteFrom('reporting_rules.reporting_rules_to_actions')
-          .where(({ eb, and }) =>
-            and([
-              eb('reporting_rule_id', '=', id),
-              eb('action_id', 'not in', actionIds),
-            ]),
-          )
-          .execute();
+        await tx.reporting_rules_to_actions.deleteMany({
+          where: {
+            reporting_rule_id: id,
+            action_id: { notIn: [...actionIds] },
+          },
+        });
 
-        await trx
-          .insertInto('reporting_rules.reporting_rules_to_actions')
-          .values(
-            actionIds.map((actionId) => ({
-              reporting_rule_id: id,
-              action_id: actionId,
-            })),
-          )
-          .onConflict((oc) =>
-            oc.columns(['reporting_rule_id', 'action_id']).doNothing(),
-          )
-          .execute();
+        await tx.reporting_rules_to_actions.createMany({
+          data: actionIds.map((actionId) => ({
+            reporting_rule_id: id,
+            action_id: actionId,
+          })),
+          skipDuplicates: true,
+        });
       }
 
       if (policyIds) {
-        await trx
-          .deleteFrom('reporting_rules.reporting_rules_to_policies')
-          .where('reporting_rule_id', '=', id)
-          .execute();
+        await tx.reporting_rules_to_policies.deleteMany({
+          where: { reporting_rule_id: id },
+        });
 
         if (policyIds.length > 0) {
-          await trx
-            .insertInto('reporting_rules.reporting_rules_to_policies')
-            .values(
-              policyIds.map((policyId) => ({
-                reporting_rule_id: id,
-                policy_id: policyId,
-              })),
-            )
-            .onConflict((oc) =>
-              oc.columns(['reporting_rule_id', 'policy_id']).doNothing(),
-            )
-            .execute();
+          await tx.reporting_rules_to_policies.createMany({
+            data: policyIds.map((policyId) => ({
+              reporting_rule_id: id,
+              policy_id: policyId,
+            })),
+            skipDuplicates: true,
+          });
         }
       }
 
-      // Fallback reads go through `trx` and key on the rule's `id`.
+      // Fallback reads go through `tx` and key on the rule's `id`.
       return {
-        ...updatedReportingRule,
+        ...toReportingRule(updatedReportingRule),
         itemTypeIds:
-          itemTypeIds ?? (await this.#getItemTypeIdsForReportingRule(id, trx)),
+          itemTypeIds ?? (await this.#getItemTypeIdsForReportingRule(id, tx)),
         actionIds:
-          actionIds ?? (await this.#getActionIdsForReportingRule(id, trx)),
+          actionIds ?? (await this.#getActionIdsForReportingRule(id, tx)),
         policyIds:
-          policyIds ?? (await this.#getPolicyIdsForReportingRule(id, trx)),
+          policyIds ?? (await this.#getPolicyIdsForReportingRule(id, tx)),
       };
     }).catch((e) => {
       if (isReportingRuleNameExistsError(e)) {
@@ -305,7 +300,7 @@ export default class ReportingRules {
         });
       }
 
-      if (isReportingRuleNotFoundError(e)) {
+      if (e instanceof ReportingRuleNotFound) {
         throw makeReportingRuleNotFoundError({
           detail: 'The reporting rule does not exist.',
           cause: e,
@@ -323,93 +318,90 @@ export default class ReportingRules {
   }): Promise<boolean> {
     const { id, orgId } = input;
 
-    return this.transactionWithRetry(async (trx) => {
+    return this.transactionWithRetry(async (tx) => {
       // Verify ownership inside the txn before touching any join rows.
       // Skipping this would let a foreign-org `id` wipe that other org's
       // join rows (the join tables have no org column) before the scoped
       // parent delete no-ops.
-      const owned = await trx
-        .selectFrom('reporting_rules.reporting_rules')
-        .select('id')
-        .where('id', '=', id)
-        .where('org_id', '=', orgId)
-        .executeTakeFirst();
-      if (owned === undefined) {
+      const owned = await tx.reporting_rules.findFirst({
+        select: { id: true },
+        where: { id, org_id: orgId },
+      });
+      if (owned === null) {
         return false;
       }
 
-      await trx
-        .deleteFrom('reporting_rules.reporting_rules_to_item_types')
-        .where('reporting_rule_id', '=', id)
-        .execute();
+      await tx.reporting_rules_to_item_types.deleteMany({
+        where: { reporting_rule_id: id },
+      });
 
-      await trx
-        .deleteFrom('reporting_rules.reporting_rules_to_actions')
-        .where('reporting_rule_id', '=', id)
-        .execute();
+      await tx.reporting_rules_to_actions.deleteMany({
+        where: { reporting_rule_id: id },
+      });
 
-      await trx
-        .deleteFrom('reporting_rules.reporting_rules_to_policies')
-        .where('reporting_rule_id', '=', id)
-        .execute();
+      await tx.reporting_rules_to_policies.deleteMany({
+        where: { reporting_rule_id: id },
+      });
 
-      const deleteResult = await trx
-        .deleteFrom('reporting_rules.reporting_rules')
-        .where('id', '=', id)
-        .where('org_id', '=', orgId)
-        .executeTakeFirst();
+      const deleteResult = await tx.reporting_rules.deleteMany({
+        where: { id, org_id: orgId },
+      });
 
-      return deleteResult.numDeletedRows === 1n;
+      return deleteResult.count === 1;
     });
   }
 
   async #getReportingRulesBypassCache(
     orgId: string,
-    db: Transaction<ReportingServicePg> | Kysely<ReportingServicePg>,
+    db: PrismaPgQueryable,
   ): Promise<ReportingRule[]> {
-    const reportingRules = await db
-      .selectFrom('reporting_rules.reporting_rule_versions as reporting_rules')
-      .innerJoin(
-        'reporting_rules.reporting_rules_to_item_types as rules_to_item_types',
-        'reporting_rules.id',
-        'rules_to_item_types.reporting_rule_id',
-      )
-      .innerJoin(
-        'reporting_rules.reporting_rules_to_actions as rules_to_actions',
-        'reporting_rules.id',
-        'rules_to_actions.reporting_rule_id',
-      )
-      .leftJoin(
-        'reporting_rules.reporting_rules_to_policies as rules_to_policies',
-        'reporting_rules.id',
-        'rules_to_policies.reporting_rule_id',
-      )
-      .where('reporting_rules.org_id', '=', orgId)
-      .where('reporting_rules.is_current', '=', true)
-      .select([
-        ...reportingRuleSelection,
-        sql<string[]>`json_agg(distinct rules_to_item_types.item_type_id)`.as(
-          'itemTypeIds',
-        ),
-        sql<string[]>`json_agg(distinct rules_to_actions.action_id)`.as(
-          'actionIds',
-        ),
-        sql<string[]>`json_agg(distinct rules_to_policies.policy_id)`.as(
-          'policyIds',
-        ),
-        'version',
-      ])
-      .groupBy([
-        'reporting_rules.id',
-        'reporting_rules.org_id',
-        'reporting_rules.creator_id',
-        'reporting_rules.name',
-        'reporting_rules.description',
-        'reporting_rules.status',
-        'reporting_rules.condition_set',
-        'reporting_rules.version',
-      ])
-      .execute();
+    // prisma-raw: json_agg(distinct ...) aggregates over joins onto a matview
+    const reportingRules = await db.$queryRaw<
+      {
+        id: string;
+        orgId: string;
+        creatorId: string;
+        name: string;
+        description: string | null;
+        status: ReportingRuleStatus;
+        conditionSet: ConditionSet;
+        itemTypeIds: string[];
+        actionIds: string[];
+        policyIds: (string | null)[];
+        version: string;
+      }[]
+    >(Prisma.sql`
+      SELECT
+        reporting_rules.id,
+        reporting_rules.org_id AS "orgId",
+        reporting_rules.creator_id AS "creatorId",
+        reporting_rules.name,
+        reporting_rules.description,
+        reporting_rules.status::text AS status,
+        reporting_rules.condition_set AS "conditionSet",
+        json_agg(DISTINCT rules_to_item_types.item_type_id) AS "itemTypeIds",
+        json_agg(DISTINCT rules_to_actions.action_id) AS "actionIds",
+        json_agg(DISTINCT rules_to_policies.policy_id) AS "policyIds",
+        reporting_rules.version
+      FROM reporting_rules.reporting_rule_versions AS reporting_rules
+      INNER JOIN reporting_rules.reporting_rules_to_item_types AS rules_to_item_types
+        ON reporting_rules.id = rules_to_item_types.reporting_rule_id
+      INNER JOIN reporting_rules.reporting_rules_to_actions AS rules_to_actions
+        ON reporting_rules.id = rules_to_actions.reporting_rule_id
+      LEFT JOIN reporting_rules.reporting_rules_to_policies AS rules_to_policies
+        ON reporting_rules.id = rules_to_policies.reporting_rule_id
+      WHERE reporting_rules.org_id = ${orgId}
+        AND reporting_rules.is_current = true
+      GROUP BY
+        reporting_rules.id,
+        reporting_rules.org_id,
+        reporting_rules.creator_id,
+        reporting_rules.name,
+        reporting_rules.description,
+        reporting_rules.status,
+        reporting_rules.condition_set,
+        reporting_rules.version
+    `);
 
     return reportingRules.map((it) => ({
       ...it,
@@ -419,44 +411,38 @@ export default class ReportingRules {
 
   async #getItemTypeIdsForReportingRule(
     reportingRuleId: string,
-    db: Transaction<ReportingServicePg> | Kysely<ReportingServicePg> = this
-      .pgQuery,
+    db: PrismaPgQueryable = this.prisma,
   ) {
-    const results = await db
-      .selectFrom('reporting_rules.reporting_rules_to_item_types')
-      .select('item_type_id as itemTypeId')
-      .where('reporting_rule_id', '=', reportingRuleId)
-      .execute();
+    const results = await db.reporting_rules_to_item_types.findMany({
+      select: { item_type_id: true },
+      where: { reporting_rule_id: reportingRuleId },
+    });
 
-    return results.map((row) => row.itemTypeId);
+    return results.map((row) => row.item_type_id);
   }
 
   async #getActionIdsForReportingRule(
     reportingRuleId: string,
-    db: Transaction<ReportingServicePg> | Kysely<ReportingServicePg> = this
-      .pgQuery,
+    db: PrismaPgQueryable = this.prisma,
   ) {
-    const results = await db
-      .selectFrom('reporting_rules.reporting_rules_to_actions')
-      .select('action_id as actionId')
-      .where('reporting_rule_id', '=', reportingRuleId)
-      .execute();
+    const results = await db.reporting_rules_to_actions.findMany({
+      select: { action_id: true },
+      where: { reporting_rule_id: reportingRuleId },
+    });
 
-    return results.map((row) => row.actionId);
+    return results.map((row) => row.action_id);
   }
 
   async #getPolicyIdsForReportingRule(
     reportingRuleId: string,
-    db: Transaction<ReportingServicePg> | Kysely<ReportingServicePg> = this
-      .pgQuery,
+    db: PrismaPgQueryable = this.prisma,
   ) {
-    const results = await db
-      .selectFrom('reporting_rules.reporting_rules_to_policies')
-      .select('policy_id as policyId')
-      .where('reporting_rule_id', '=', reportingRuleId)
-      .execute();
+    const results = await db.reporting_rules_to_policies.findMany({
+      select: { policy_id: true },
+      where: { reporting_rule_id: reportingRuleId },
+    });
 
-    return results.map((row) => row.policyId);
+    return results.map((row) => row.policy_id);
   }
 }
 
@@ -464,16 +450,11 @@ export type ReportingRuleErrorType =
   'ReportingRuleNameExistsError' | 'NotFoundError';
 
 function isReportingRuleNameExistsError(error: unknown) {
+  const details = getPgErrorDetails(error);
   return (
-    error instanceof Error &&
-    error.message.includes(
-      'duplicate key value violates unique constraint "reporting_rules_org_id_name_key"',
-    )
+    details?.code === '23505' &&
+    details.constraint === 'reporting_rules_org_id_name_key'
   );
-}
-
-function isReportingRuleNotFoundError(error: unknown) {
-  return error instanceof Error && error.message.includes('no result');
 }
 
 export const makeReportingRuleNameExistsError = (data: ErrorInstanceData) =>

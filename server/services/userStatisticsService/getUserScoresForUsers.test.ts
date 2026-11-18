@@ -1,14 +1,12 @@
-import { type Kysely } from 'kysely';
 import { uid } from 'uid';
 
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
-import { type UserStatisticsServicePg } from './dbTypes.js';
 import { internalMakeUserStatisticsService } from './userStatisticsService.js';
 
 describe('UserStatisticsService.getUserScoresForUsers', () => {
   const testWithFixtures = makeTransactionalTestWithFixture(
     async ({ deps }) => {
-      const pgQuery = deps.KyselyPg as Kysely<UserStatisticsServicePg>;
+      const pgQuery = deps.PrismaPg;
       const sut = internalMakeUserStatisticsService(
         pgQuery,
         pgQuery,
@@ -23,15 +21,14 @@ describe('UserStatisticsService.getUserScoresForUsers', () => {
         typeId: string;
         score: number;
       }) =>
-        pgQuery
-          .insertInto('user_statistics_service.user_scores')
-          .values({
+        pgQuery.user_scores.create({
+          data: {
             org_id: row.orgId ?? orgId,
             user_id: row.userId,
             user_type_id: row.typeId,
             score: row.score,
-          })
-          .execute();
+          },
+        });
       return { sut, orgId, insertScore };
     },
   );
