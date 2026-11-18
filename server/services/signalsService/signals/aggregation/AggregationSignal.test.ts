@@ -24,15 +24,15 @@ describe('AggregationSignal', () => {
       RuleAPIDataSource,
       ActionAPIDataSource,
       ApiKeyService,
-      KyselyPg,
+      DrizzlePg,
     } = deps;
 
     const { org } = await createOrg(
-      { KyselyPg, ModerationConfigService, ApiKeyService },
+      { DrizzlePg, ModerationConfigService, ApiKeyService },
       uid(),
     );
 
-    const { user } = await createUser(KyselyPg, org.id);
+    const { user } = await createUser(DrizzlePg, org.id);
 
     const { itemTypes } = await createContentItemTypes({
       moderationConfigService: ModerationConfigService,

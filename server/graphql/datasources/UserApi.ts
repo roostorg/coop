@@ -1,9 +1,9 @@
 import { type Exception } from '@opentelemetry/api';
+import { and, eq } from 'drizzle-orm';
 import { uid } from 'uid';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
-import { type CombinedPg } from '../../services/combinedDbTypes.js';
 import { type LoginMethod } from '../../services/coreAppTables.js';
 import {
   deleteSessionsForUser,
@@ -12,11 +12,14 @@ import {
   passwordMatchesHash,
 } from '../../services/userManagementService/index.js';
 import {
+  schema,
+  transactionWithRetry,
+} from '../../storage/postgres/drizzle.js';
+import {
   makeBadRequestError,
   makeNotFoundError,
   makeUnauthorizedError,
 } from '../../utils/errors.js';
-import { makeKyselyTransactionWithRetry } from '../../utils/kyselyTransactionWithRetry.js';
 import { safePick } from '../../utils/misc.js';
 import { WEEK_MS } from '../../utils/time.js';
 import {
@@ -55,7 +58,7 @@ import {
  */
 class UserAPI {
   constructor(
-    private readonly kyselyPg: Dependencies['KyselyPg'],
+    private readonly db: Dependencies['DrizzlePg'],
     private readonly tracer: Dependencies['Tracer'],
     private readonly userManagementService: Dependencies['UserManagementService'],
     private readonly moderationConfigService: Dependencies['ModerationConfigService'],
@@ -66,7 +69,7 @@ class UserAPI {
     id: string;
     orgId: string;
   }): Promise<GraphQLUserParent> {
-    const user = await kyselyUserFindByIdAndOrg(this.kyselyPg, opts);
+    const user = await kyselyUserFindByIdAndOrg(this.db, opts);
     if (user === undefined) {
       // Matches the `rejectOnEmpty: true` semantics of the Sequelize call
       // this method replaced (callers rely on a throw when the row is
@@ -80,7 +83,7 @@ class UserAPI {
   }
 
   async getGraphQLUsersFromIds(ids: string[]): Promise<GraphQLUserParent[]> {
-    return kyselyUserFindByIds(this.kyselyPg, ids);
+    return kyselyUserFindByIds(this.db, ids);
   }
 
   async login(params: GQLMutationLoginArgs, context: PassportGqlContext) {
@@ -100,7 +103,7 @@ class UserAPI {
 
     const user = await verifyEmailPasswordCredentials(
       {
-        kyselyPg: this.kyselyPg,
+        db: this.db,
         orgSettingsService: this.orgSettingsService,
         tracer: this.tracer,
       },
@@ -156,7 +159,7 @@ class UserAPI {
         { shouldErrorSpan: true, pointer: '/input/password' },
       );
 
-    const existingUser = await kyselyUserFindByEmail(this.kyselyPg, email);
+    const existingUser = await kyselyUserFindByEmail(this.db, email);
     if (existingUser != null) {
       throw makeSignUpUserExistsError({ shouldErrorSpan: true });
     }
@@ -199,7 +202,7 @@ class UserAPI {
     }
 
     const user = await kyselyUserInsert({
-      db: this.kyselyPg,
+      db: this.db,
       id: uid(),
       orgId,
       email,
@@ -231,7 +234,7 @@ class UserAPI {
       throw userValidationFailureToBadRequestError(validation.failure);
     }
 
-    const updated = await kyselyUserUpdate(this.kyselyPg, user.id, patch);
+    const updated = await kyselyUserUpdate(this.db, user.id, patch);
     if (updated == null) {
       // Row went missing between load and update (e.g. concurrent delete).
       throw makeNotFoundError(`User ${user.id} not found`, {
@@ -285,21 +288,19 @@ class UserAPI {
     // Update the password and invalidate the user's other sessions atomically:
     // if the session purge failed independently, a phished/attacker session
     // could outlive the password change. Keep the caller's own session.
-    await makeKyselyTransactionWithRetry<CombinedPg>(this.kyselyPg)(
-      async (trx) => {
-        const updated = await kyselyUserUpdate(trx, user.id, {
-          password: hashedNewPassword,
+    await transactionWithRetry(this.db, async (tx) => {
+      const updated = await kyselyUserUpdate(tx, user.id, {
+        password: hashedNewPassword,
+      });
+      if (updated == null) {
+        // Row went missing between load and update (e.g. concurrent delete).
+        throw makeNotFoundError(`User ${user.id} not found`, {
+          shouldErrorSpan: true,
         });
-        if (updated == null) {
-          // Row went missing between load and update (e.g. concurrent delete).
-          throw makeNotFoundError(`User ${user.id} not found`, {
-            shouldErrorSpan: true,
-          });
-        }
+      }
 
-        await deleteSessionsForUser(trx, user.id, { exceptSid: currentSid });
-      },
-    );
+      await deleteSessionsForUser(tx, user.id, { exceptSid: currentSid });
+    });
 
     return {
       __typename: 'ChangePasswordSuccessResponse' as const,
@@ -310,16 +311,15 @@ class UserAPI {
   async deleteUser(opts: { id: string; orgId: string }) {
     const { id, orgId } = opts;
     try {
-      const user = await kyselyUserFindByIdAndOrg(this.kyselyPg, {
+      const user = await kyselyUserFindByIdAndOrg(this.db, {
         id,
         orgId,
       });
       if (user != null) {
-        await this.kyselyPg
-          .deleteFrom('public.users')
-          .where('id', '=', id)
-          .where('org_id', '=', orgId)
-          .execute();
+        const { users } = schema;
+        await this.db
+          .delete(users)
+          .where(and(eq(users.id, id), eq(users.orgId, orgId)));
       }
     } catch (exception) {
       const activeSpan = this.tracer.getActiveSpan();
@@ -332,7 +332,7 @@ class UserAPI {
   }
 
   async approveUser(id: string, invokerOrgId: string) {
-    const user = await kyselyUserFindById(this.kyselyPg, id);
+    const user = await kyselyUserFindById(this.db, id);
     if (user == null) {
       throw makeNotFoundError(`User ${id} not found`, {
         shouldErrorSpan: true,
@@ -347,7 +347,7 @@ class UserAPI {
       );
     }
 
-    const updated = await kyselyUserUpdate(this.kyselyPg, id, {
+    const updated = await kyselyUserUpdate(this.db, id, {
       approvedByAdmin: true,
     });
     if (updated == null) {
@@ -360,7 +360,7 @@ class UserAPI {
   }
 
   async rejectUser(id: string, invokerOrgId: string) {
-    const user = await kyselyUserFindById(this.kyselyPg, id);
+    const user = await kyselyUserFindById(this.db, id);
     if (user == null) {
       throw makeNotFoundError(`User ${id} not found`, {
         shouldErrorSpan: true,
@@ -375,7 +375,7 @@ class UserAPI {
       );
     }
 
-    const updated = await kyselyUserUpdate(this.kyselyPg, id, {
+    const updated = await kyselyUserUpdate(this.db, id, {
       rejectedByAdmin: true,
     });
     if (updated == null) {
@@ -395,7 +395,7 @@ class UserAPI {
     // always passes the invoker's orgId), then scope rule lookups to that
     // org so cross-org data can't leak even if stale favorites exist.
     await this.getGraphQLUserFromId({ id, orgId });
-    const ruleIds = await kyselyUserListFavoriteRuleIds(this.kyselyPg, id);
+    const ruleIds = await kyselyUserListFavoriteRuleIds(this.db, id);
     const plains = (
       await Promise.all(
         ruleIds.map(async (ruleId) =>
@@ -407,7 +407,7 @@ class UserAPI {
       buildGraphqlRuleParent(plain, {
         moderationConfigService: this.moderationConfigService,
         findUserByIdAndOrg: async (opts) =>
-          kyselyUserFindByIdAndOrg(this.kyselyPg, opts),
+          kyselyUserFindByIdAndOrg(this.db, opts),
       }),
     );
   }
@@ -425,12 +425,12 @@ class UserAPI {
         shouldErrorSpan: true,
       });
     }
-    await kyselyUserAddFavoriteRule(this.kyselyPg, userId, ruleId);
+    await kyselyUserAddFavoriteRule(this.db, userId, ruleId);
   }
 
   async removeFavoriteRule(userId: string, ruleId: string, orgId: string) {
     await this.getGraphQLUserFromId({ id: userId, orgId });
-    await kyselyUserRemoveFavoriteRule(this.kyselyPg, userId, ruleId);
+    await kyselyUserRemoveFavoriteRule(this.db, userId, ruleId);
   }
 }
 
@@ -445,7 +445,7 @@ function userValidationFailureToBadRequestError(
 
 export default inject(
   [
-    'KyselyPg',
+    'DrizzlePg',
     'Tracer',
     'UserManagementService',
     'ModerationConfigService',

@@ -1,7 +1,6 @@
-import { sql, type Insertable, type Kysely, type Updateable } from 'kysely';
+import { and, eq, inArray, isNull, lt, or } from 'drizzle-orm';
 import { type JsonObject } from 'type-fest';
 
-import { type CombinedPg } from '../../services/combinedDbTypes.js';
 import { type BacktestStatusDb } from '../../services/coreAppTables.js';
 import {
   computeRuleStatusFromRow,
@@ -13,6 +12,7 @@ import {
   type PlainRuleWithLatestVersion,
   type Policy,
 } from '../../services/moderationConfigService/index.js';
+import { schema, type CoopDbOrTx } from '../../storage/postgres/drizzle.js';
 import { makeNotFoundError } from '../../utils/errors.js';
 import { type GraphQLUserParent } from './userKyselyPersistence.js';
 
@@ -49,9 +49,23 @@ export type GraphQLBacktestParent = {
   correctedContentItemsMatched: number;
 };
 
+const {
+  backtests,
+  rules,
+  rulesAndActions,
+  rulesAndItemTypes,
+  rulesAndPolicies,
+  usersAndFavoriteRules,
+} = schema;
+
 /** Matches `public.backtests.status` when generated value is RUNNING. */
-const backtestRunningPredicate = sql<boolean>`cancelation_date is null
-  and (sampling_complete = false or content_items_processed < sample_actual_size)`;
+const backtestRunningPredicate = and(
+  isNull(backtests.cancelationDate),
+  or(
+    eq(backtests.samplingComplete, false),
+    lt(backtests.contentItemsProcessed, backtests.sampleActualSize),
+  ),
+);
 
 /**
  * Applies the legacy `status` virtual-setter semantics from the Sequelize Rule
@@ -82,82 +96,63 @@ function mapRuleStatusToColumns(
 }
 
 async function replaceRuleActions(
-  trx: Kysely<CombinedPg>,
+  trx: CoopDbOrTx,
   ruleId: string,
   actionIds: readonly string[],
   // Per-action parameters; actions absent from the map are persisted as `{}`.
   actionParameters?: ReadonlyMap<string, JsonObject>,
 ) {
-  await trx
-    .deleteFrom('public.rules_and_actions')
-    .where('rule_id', '=', ruleId)
-    .execute();
+  await trx.delete(rulesAndActions).where(eq(rulesAndActions.ruleId, ruleId));
   if (actionIds.length === 0) {
     return;
   }
-  await trx
-    .insertInto('public.rules_and_actions')
-    .values(
-      actionIds.map((actionId) => ({
-        rule_id: ruleId,
-        action_id: actionId,
-        action_parameters: actionParameters?.get(actionId) ?? {},
-      })),
-    )
-    .execute();
+  await trx.insert(rulesAndActions).values(
+    actionIds.map((actionId) => ({
+      ruleId,
+      actionId,
+      actionParameters: actionParameters?.get(actionId) ?? {},
+    })),
+  );
 }
 
 async function replaceRulePolicies(
-  trx: Kysely<CombinedPg>,
+  trx: CoopDbOrTx,
   ruleId: string,
   policyIds: readonly string[],
 ) {
-  await trx
-    .deleteFrom('public.rules_and_policies')
-    .where('rule_id', '=', ruleId)
-    .execute();
+  await trx.delete(rulesAndPolicies).where(eq(rulesAndPolicies.ruleId, ruleId));
   if (policyIds.length === 0) {
     return;
   }
   const now = new Date();
-  await trx
-    .insertInto('public.rules_and_policies')
-    .values(
-      policyIds.map((policyId) => ({
-        rule_id: ruleId,
-        policy_id: policyId,
-        created_at: now,
-        updated_at: now,
-      })),
-    )
-    .execute();
+  await trx.insert(rulesAndPolicies).values(
+    policyIds.map((policyId) => ({
+      ruleId,
+      policyId,
+      createdAt: now,
+      updatedAt: now,
+    })),
+  );
 }
 
 async function replaceRuleItemTypes(
-  trx: Kysely<CombinedPg>,
+  trx: CoopDbOrTx,
   ruleId: string,
   itemTypeIds: readonly string[],
 ) {
   await trx
-    .deleteFrom('public.rules_and_item_types')
-    .where('rule_id', '=', ruleId)
-    .execute();
+    .delete(rulesAndItemTypes)
+    .where(eq(rulesAndItemTypes.ruleId, ruleId));
   if (itemTypeIds.length === 0) {
     return;
   }
   await trx
-    .insertInto('public.rules_and_item_types')
-    .values(
-      itemTypeIds.map((itemTypeId) => ({
-        rule_id: ruleId,
-        item_type_id: itemTypeId,
-      })),
-    )
-    .execute();
+    .insert(rulesAndItemTypes)
+    .values(itemTypeIds.map((itemTypeId) => ({ ruleId, itemTypeId })));
 }
 
 export async function kyselyCreateRule(
-  trx: Kysely<CombinedPg>,
+  trx: CoopDbOrTx,
   input: {
     id: string;
     name: string;
@@ -183,36 +178,26 @@ export async function kyselyCreateRule(
   );
   const now = new Date();
 
-  // `public.rules.created_at` / `updated_at` are NOT NULL in Postgres; Kysely
-  // `dbTypes` mark them `GeneratedAlways` so they are omitted from
-  // `Insertable`, but inserts must still supply values at runtime. Build the
-  // values against an `Insertable & { created_at; updated_at }` so every
-  // column is still type-checked, then narrow back to `Insertable` at the
-  // call site (a safe widening, not a `never` escape hatch).
-  const ruleValues: Insertable<CombinedPg['public.rules']> & {
-    created_at: Date;
-    updated_at: Date;
-  } = {
+  await trx.insert(rules).values({
     id: input.id,
     name: input.name,
     description: input.description,
-    status_if_unexpired,
+    statusIfUnexpired: status_if_unexpired,
     tags: [...input.tags],
-    max_daily_actions: input.maxDailyActions,
-    daily_actions_run: 0,
-    last_action_date: null,
-    org_id: input.orgId,
-    creator_id: input.creatorId,
-    expiration_time,
-    condition_set: input.conditionSet,
-    alarm_status: RuleAlarmStatus.INSUFFICIENT_DATA,
-    alarm_status_set_at: now,
-    rule_type: input.ruleType,
-    parent_id: input.parentId ?? null,
-    created_at: now,
-    updated_at: now,
-  };
-  await trx.insertInto('public.rules').values(ruleValues).execute();
+    maxDailyActions: input.maxDailyActions,
+    dailyActionsRun: 0,
+    lastActionDate: null,
+    orgId: input.orgId,
+    creatorId: input.creatorId,
+    expirationTime: expiration_time,
+    conditionSet: input.conditionSet,
+    alarmStatus: RuleAlarmStatus.INSUFFICIENT_DATA,
+    alarmStatusSetAt: now,
+    ruleType: input.ruleType,
+    parentId: input.parentId ?? null,
+    createdAt: now,
+    updatedAt: now,
+  });
 
   await replaceRuleActions(
     trx,
@@ -227,7 +212,7 @@ export async function kyselyCreateRule(
 }
 
 export async function kyselyUpdateRule(
-  trx: Kysely<CombinedPg>,
+  trx: CoopDbOrTx,
   input: {
     id: string;
     orgId: string;
@@ -246,12 +231,18 @@ export async function kyselyUpdateRule(
     contentTypeIds: readonly string[] | undefined;
   },
 ): Promise<void> {
-  const existing = await trx
-    .selectFrom('public.rules')
-    .select(['id', 'status_if_unexpired', 'expiration_time', 'rule_type'])
-    .where('id', '=', input.id)
-    .where('org_id', '=', input.orgId)
-    .executeTakeFirst();
+  const existing = (
+    await trx
+      .select({
+        id: rules.id,
+        statusIfUnexpired: rules.statusIfUnexpired,
+        expirationTime: rules.expirationTime,
+        ruleType: rules.ruleType,
+      })
+      .from(rules)
+      .where(and(eq(rules.id, input.id), eq(rules.orgId, input.orgId)))
+      .limit(1)
+  ).at(0);
 
   if (existing == null) {
     throw makeNotFoundError('Rule not found', {
@@ -260,7 +251,7 @@ export async function kyselyUpdateRule(
     });
   }
 
-  const existingStatusIfUnexpired = existing.status_if_unexpired as Exclude<
+  const existingStatusIfUnexpired = existing.statusIfUnexpired as Exclude<
     RuleStatus,
     typeof RuleStatus.EXPIRED
   >;
@@ -274,15 +265,15 @@ export async function kyselyUpdateRule(
   let status_if_unexpired: Exclude<RuleStatus, typeof RuleStatus.EXPIRED> =
     existingStatusIfUnexpired;
   let expirationTimeChanged = false;
-  let expiration_time: Date | null = existing.expiration_time;
+  let expiration_time: Date | null = existing.expirationTime;
 
   const { status, expirationTime: expirationTimeInput } = input;
   const existingStatus = computeRuleStatusFromRow(
-    existing.expiration_time,
+    existing.expirationTime,
     existingStatusIfUnexpired,
   );
   if (status && existingStatus !== status) {
-    const mapped = mapRuleStatusToColumns(status, existing.expiration_time);
+    const mapped = mapRuleStatusToColumns(status, existing.expirationTime);
     if (status === RuleStatus.EXPIRED) {
       expiration_time = mapped.expiration_time;
       expirationTimeChanged = true;
@@ -300,7 +291,7 @@ export async function kyselyUpdateRule(
     expirationTimeChanged = true;
   }
 
-  const patch: Updateable<CombinedPg['public.rules']> = {};
+  const patch: Partial<typeof rules.$inferInsert> = {};
   if (input.name != null) {
     patch.name = input.name;
   }
@@ -308,34 +299,32 @@ export async function kyselyUpdateRule(
     patch.description = input.description;
   }
   if (input.conditionSet !== undefined) {
-    patch.condition_set = input.conditionSet;
+    patch.conditionSet = input.conditionSet;
   }
   if (input.tags !== undefined) {
     patch.tags = input.tags;
   }
   if (input.maxDailyActions !== undefined) {
-    patch.max_daily_actions = input.maxDailyActions;
+    patch.maxDailyActions = input.maxDailyActions;
   }
   if (input.parentId !== undefined) {
-    patch.parent_id = input.parentId;
+    patch.parentId = input.parentId;
   }
-  if (input.ruleType !== existing.rule_type) {
-    patch.rule_type = input.ruleType;
+  if (input.ruleType !== existing.ruleType) {
+    patch.ruleType = input.ruleType;
   }
   if (statusIfUnexpiredChanged) {
-    patch.status_if_unexpired = status_if_unexpired;
+    patch.statusIfUnexpired = status_if_unexpired;
   }
   if (expirationTimeChanged) {
-    patch.expiration_time = expiration_time;
+    patch.expirationTime = expiration_time;
   }
 
   if (Object.keys(patch).length > 0) {
     await trx
-      .updateTable('public.rules')
+      .update(rules)
       .set(patch)
-      .where('id', '=', input.id)
-      .where('org_id', '=', input.orgId)
-      .execute();
+      .where(and(eq(rules.id, input.id), eq(rules.orgId, input.orgId)));
   }
 
   if (input.actionIds != null) {
@@ -355,116 +344,101 @@ export async function kyselyUpdateRule(
 }
 
 export async function kyselyDeleteRule(
-  trx: Kysely<CombinedPg>,
+  trx: CoopDbOrTx,
   id: string,
   orgId: string,
 ): Promise<boolean> {
-  const row = await trx
-    .selectFrom('public.rules')
-    .select('id')
-    .where('id', '=', id)
-    .where('org_id', '=', orgId)
-    .executeTakeFirst();
+  const row = (
+    await trx
+      .select({ id: rules.id })
+      .from(rules)
+      .where(and(eq(rules.id, id), eq(rules.orgId, orgId)))
+      .limit(1)
+  ).at(0);
   if (row == null) {
     return false;
   }
 
-  await trx.deleteFrom('public.backtests').where('rule_id', '=', id).execute();
+  await trx.delete(backtests).where(eq(backtests.ruleId, id));
   await trx
-    .deleteFrom('public.users_and_favorite_rules')
-    .where('rule_id', '=', id)
-    .execute();
-  await trx
-    .deleteFrom('public.rules')
-    .where('id', '=', id)
-    .where('org_id', '=', orgId)
-    .execute();
+    .delete(usersAndFavoriteRules)
+    .where(eq(usersAndFavoriteRules.ruleId, id));
+  await trx.delete(rules).where(and(eq(rules.id, id), eq(rules.orgId, orgId)));
   return true;
 }
 
 export async function kyselyHasRunningBacktestsForRule(
-  kysely: Kysely<CombinedPg>,
+  db: CoopDbOrTx,
   ruleId: string,
 ): Promise<boolean> {
-  const row = await kysely
-    .selectFrom('public.backtests')
-    .select('id')
-    .where('rule_id', '=', ruleId)
-    .where(backtestRunningPredicate)
-    .executeTakeFirst();
+  const row = (
+    await db
+      .select({ id: backtests.id })
+      .from(backtests)
+      .where(and(eq(backtests.ruleId, ruleId), backtestRunningPredicate))
+      .limit(1)
+  ).at(0);
   return row != null;
 }
 
 export async function kyselyCancelRunningBacktestsForRule(
-  trx: Kysely<CombinedPg>,
+  trx: CoopDbOrTx,
   ruleId: string,
 ): Promise<void> {
   const now = new Date();
   await trx
-    .updateTable('public.backtests')
-    .set({ cancelation_date: now, updated_at: now })
-    .where('rule_id', '=', ruleId)
-    .where(backtestRunningPredicate)
-    .execute();
+    .update(backtests)
+    .set({ cancelationDate: now, updatedAt: now })
+    .where(and(eq(backtests.ruleId, ruleId), backtestRunningPredicate));
 }
 
 export async function kyselyListBacktestsForRule(
-  kysely: Kysely<CombinedPg>,
+  db: CoopDbOrTx,
   ruleId: string,
   backtestIds?: readonly string[] | null,
 ): Promise<GraphQLBacktestParent[]> {
-  let q = kysely
-    .selectFrom('public.backtests')
-    .selectAll()
-    .where('rule_id', '=', ruleId);
-  if (backtestIds != null && backtestIds.length > 0) {
-    q = q.where('id', 'in', [...backtestIds]);
-  }
-  const rows = await q.execute();
+  const rows = await db
+    .select()
+    .from(backtests)
+    .where(
+      and(
+        eq(backtests.ruleId, ruleId),
+        backtestIds != null && backtestIds.length > 0
+          ? inArray(backtests.id, [...backtestIds])
+          : undefined,
+      ),
+    );
   return rows.map((r) => mapBacktestRowToGqlParent(r));
 }
 
-export function mapBacktestRowToGqlParent(r: {
-  id: string;
-  rule_id: string;
-  creator_id: string;
-  sample_desired_size: number;
-  sample_actual_size: number;
-  sample_start_at: Date;
-  sample_end_at: Date;
-  sampling_complete: boolean;
-  content_items_processed: number;
-  content_items_matched: number;
-  status: BacktestStatusDb;
-  created_at: Date;
-  updated_at: Date;
-  cancelation_date: Date | null;
-}): GraphQLBacktestParent {
+export function mapBacktestRowToGqlParent(
+  r: typeof backtests.$inferSelect,
+): GraphQLBacktestParent {
   // Queues deliver sampled items at-least-once, so processed/matched counters
   // can rarely exceed sample_actual_size. Clamp the values exposed to clients.
   const correctedContentItemsProcessed = Math.min(
-    r.sample_actual_size,
-    r.content_items_processed,
+    r.sampleActualSize,
+    r.contentItemsProcessed,
   );
   const correctedContentItemsMatched = Math.min(
     correctedContentItemsProcessed,
-    r.content_items_matched,
+    r.contentItemsMatched,
   );
   return {
     id: r.id,
-    ruleId: r.rule_id,
-    creatorId: r.creator_id,
-    sampleDesiredSize: r.sample_desired_size,
-    sampleActualSize: r.sample_actual_size,
-    sampleStartAt: r.sample_start_at,
-    sampleEndAt: r.sample_end_at,
-    samplingComplete: r.sampling_complete,
-    contentItemsProcessed: r.content_items_processed,
-    contentItemsMatched: r.content_items_matched,
+    ruleId: r.ruleId,
+    creatorId: r.creatorId,
+    sampleDesiredSize: r.sampleDesiredSize,
+    sampleActualSize: r.sampleActualSize,
+    sampleStartAt: r.sampleStartAt,
+    sampleEndAt: r.sampleEndAt,
+    samplingComplete: r.samplingComplete,
+    contentItemsProcessed: r.contentItemsProcessed,
+    contentItemsMatched: r.contentItemsMatched,
     status: r.status,
-    createdAt: r.created_at,
-    updatedAt: r.updated_at,
-    cancelationDate: r.cancelation_date,
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+    cancelationDate: r.cancelationDate,
     correctedContentItemsProcessed,
     correctedContentItemsMatched,
   };

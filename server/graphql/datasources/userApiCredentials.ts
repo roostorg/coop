@@ -1,9 +1,12 @@
+import { and, eq } from 'drizzle-orm';
+
 import { type Dependencies } from '../../iocContainer/index.js';
 import {
   hashPassword,
   passwordMatchesHash,
   passwordNeedsRehash,
 } from '../../services/userManagementService/index.js';
+import { schema } from '../../storage/postgres/drizzle.js';
 import { CoopError, makeInternalServerError } from '../../utils/errors.js';
 import {
   makeLoginIncorrectPasswordError,
@@ -34,19 +37,18 @@ import {
  */
 async function rehashPasswordOnLogin(
   deps: {
-    kyselyPg: Dependencies['KyselyPg'];
+    db: Dependencies['DrizzlePg'];
   },
   userId: string,
   verifiedHash: string,
   plaintextPassword: string,
 ): Promise<void> {
   const rehashed = await hashPassword(plaintextPassword);
-  await deps.kyselyPg
-    .updateTable('public.users')
-    .set({ password: rehashed, updated_at: new Date() })
-    .where('id', '=', userId)
-    .where('password', '=', verifiedHash)
-    .execute();
+  const { users } = schema;
+  await deps.db
+    .update(users)
+    .set({ password: rehashed, updatedAt: new Date() })
+    .where(and(eq(users.id, userId), eq(users.password, verifiedHash)));
 }
 
 /**
@@ -64,7 +66,7 @@ async function rehashPasswordOnLogin(
  */
 export async function verifyEmailPasswordCredentials(
   deps: {
-    kyselyPg: Dependencies['KyselyPg'];
+    db: Dependencies['DrizzlePg'];
     orgSettingsService: Dependencies['OrgSettingsService'];
     tracer: Dependencies['Tracer'];
   },
@@ -72,7 +74,7 @@ export async function verifyEmailPasswordCredentials(
   password: string,
 ): Promise<GraphQLUserParent> {
   try {
-    const user = await kyselyUserFindByEmail(deps.kyselyPg, email);
+    const user = await kyselyUserFindByEmail(deps.db, email);
     if (user == null) {
       throw makeLoginUserDoesNotExistError({ shouldErrorSpan: true });
     }

@@ -8,6 +8,9 @@ export {
   NCMECFileAnnotation,
   NCMECIndustryClassification,
   type NCMECReportParams,
+  type NcmecAdditionalFile,
+  type NcmecMediaReport,
+  type NcmecMessagesReport,
   default as NcmecReporting,
 } from './ncmecReporting.js';
 export { isNcmecTestMode } from './ncmecEnv.js';

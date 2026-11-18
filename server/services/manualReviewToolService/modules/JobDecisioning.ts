@@ -1,9 +1,10 @@
 /* eslint-disable max-lines */
-import { sql, type Kysely } from 'kysely';
+import { and, desc, eq, gte, lte, sql } from 'drizzle-orm';
 import { match } from 'ts-pattern';
 import { type JsonObject } from 'type-fest';
 
 import { type Dependencies } from '../../../iocContainer/index.js';
+import { schema, type CoopDb } from '../../../storage/postgres/drizzle.js';
 import { filterNullOrUndefined } from '../../../utils/collections.js';
 import { jsonStringify } from '../../../utils/encoding.js';
 import {
@@ -22,10 +23,7 @@ import {
   resolveNcmecTargetUser,
   type ValidatedNcmecTarget,
 } from '../../ncmecService/resolveNcmecTargetUser.js';
-import {
-  type ClearReportsDisposition,
-  type ManualReviewToolServicePg,
-} from '../dbTypes.js';
+import { type ClearReportsDisposition } from '../dbTypes.js';
 import { type GetActionsByIdEventuallyConsistent } from '../manualReviewToolQueries.js';
 import {
   type JobId,
@@ -33,8 +31,10 @@ import {
   type ManualReviewJob,
   type ManualReviewJobEnqueueSourceInfo,
   type ReportHistory,
+  type StoredManualReviewJob,
 } from '../manualReviewToolService.js';
 import type ClaimOperations from './ClaimOperations.js';
+import { isUniqueViolationOnConstraint } from './JobRouting.js';
 import type ManualReviewToolSettings from './ManualReviewToolSettings.js';
 import type QueueOperations from './QueueOperations.js';
 import { jobIdToGuid } from './QueueOperations.js';
@@ -159,6 +159,34 @@ type MRTJobAutoCloseReason =
  */
 export const AUTOMATED_DECISION_REVIEWER_ID = '';
 
+const decisionsTable = schema.manualReviewDecisions;
+
+const ncmecDecisionSelection = {
+  org_id: decisionsTable.orgId,
+  decision_components: decisionsTable.decisionComponents,
+  job_payload: decisionsTable.jobPayload,
+  id: decisionsTable.id,
+  queue_id: decisionsTable.queueId,
+  reviewer_id: decisionsTable.reviewerId,
+  created_at: decisionsTable.createdAt,
+};
+
+type NcmecDecisionRow = {
+  org_id: string;
+  decision_components: ManualReviewDecisionComponent[];
+  job_payload: StoredManualReviewJob | ManualReviewAppealJob;
+  id: string;
+  queue_id: string;
+  reviewer_id: string;
+  created_at: Date;
+};
+
+const hasNcmecReportComponent = sql`exists (
+  select 1
+  from unnest(${decisionsTable.decisionComponents}) as decision_component
+  where decision_component->>'type' = ${'SUBMIT_NCMEC_REPORT'}
+)`;
+
 /**
  * Normalizes an item's createdAt field value into a Date for the
  * `item_created_at` column. A truthy-but-unparseable value (whitespace, or a
@@ -271,7 +299,7 @@ export const NCMEC_ESCALATION_SKIP_WARNING =
 export default class JobDecisioning {
   constructor(
     private readonly queueOps: QueueOperations,
-    private readonly pgQuery: Kysely<ManualReviewToolServicePg>,
+    private readonly db: CoopDb,
     readonly getCustomActionsByIds: GetActionsByIdEventuallyConsistent,
     readonly onRecordDecision: (params: OnRecordDecisionInput) => Promise<void>,
     private readonly moderationConfigService: Dependencies['ModerationConfigService'],
@@ -1004,25 +1032,22 @@ export default class JobDecisioning {
             })
         : null;
 
-    await this.pgQuery
-      .insertInto('manual_review_tool.manual_review_decisions')
-      .values({
-        id,
-        job_payload: job,
-        queue_id: queueId,
-        // Automatic decisions (AUTOMATIC_CLOSE) have no human reviewer, but the
-        // column is NOT NULL; record a sentinel instead of letting undefined
-        // become a null and fail the insert (23502).
-        reviewer_id: reviewerId ?? AUTOMATED_DECISION_REVIEWER_ID,
-        org_id: orgId,
-        decision_components: decisionComponents,
-        related_actions: relatedActions,
-        enqueue_source_info: enqueueSourceInfo,
-        item_created_at: itemCreatedAt,
-        decision_reason: decisionReason,
-        assigned_at: assignedAt,
-      })
-      .execute();
+    await this.db.insert(decisionsTable).values({
+      id,
+      jobPayload: job,
+      queueId,
+      // Automatic decisions (AUTOMATIC_CLOSE) have no human reviewer, but the
+      // column is NOT NULL; record a sentinel instead of letting undefined
+      // become a null and fail the insert (23502).
+      reviewerId: reviewerId ?? AUTOMATED_DECISION_REVIEWER_ID,
+      orgId,
+      decisionComponents,
+      relatedActions,
+      enqueueSourceInfo,
+      itemCreatedAt,
+      decisionReason,
+      assignedAt,
+    });
 
     const attributes = {
       queue_id: queueId,
@@ -1058,35 +1083,16 @@ export default class JobDecisioning {
 
   async getNcmecDecisions(opts: { startDate: Date; endDate: Date }) {
     const { startDate, endDate } = opts;
-    const allNcmecDecisions = await this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_decisions')
-      .where(({ eb, selectFrom }) => {
-        return eb.exists(
-          selectFrom(
-            sql`unnest(manual_review_tool.manual_review_decisions.decision_components)`.as(
-              'decision_component',
-            ),
-          )
-            .selectAll()
-            .where(
-              sql<string>`decision_component->>'type'`,
-              '=',
-              'SUBMIT_NCMEC_REPORT',
-            ),
-        );
-      })
-      .where('created_at', '>=', startDate)
-      .where('created_at', '<=', endDate)
-      .select([
-        'org_id',
-        'decision_components',
-        'job_payload',
-        'id',
-        'queue_id',
-        'reviewer_id',
-        'created_at',
-      ])
-      .execute();
+    const allNcmecDecisions = (await this.db
+      .select(ncmecDecisionSelection)
+      .from(decisionsTable)
+      .where(
+        and(
+          hasNcmecReportComponent,
+          gte(decisionsTable.createdAt, startDate),
+          lte(decisionsTable.createdAt, endDate),
+        ),
+      )) as NcmecDecisionRow[];
     // There shouldn't be any decisions from deprecated job payload types, so
     // filter them out to satisfy ts
     return filterNullOrUndefined(
@@ -1115,36 +1121,12 @@ export default class JobDecisioning {
       Number.isFinite(requestedLimit) && requestedLimit > 0
         ? Math.min(Math.floor(requestedLimit), 500)
         : 500;
-    const allNcmecDecisions = await this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_decisions')
-      .where('org_id', '=', orgId)
-      .where(({ eb, selectFrom }) => {
-        return eb.exists(
-          selectFrom(
-            sql`unnest(manual_review_tool.manual_review_decisions.decision_components)`.as(
-              'decision_component',
-            ),
-          )
-            .selectAll()
-            .where(
-              sql<string>`decision_component->>'type'`,
-              '=',
-              'SUBMIT_NCMEC_REPORT',
-            ),
-        );
-      })
-      .select([
-        'org_id',
-        'decision_components',
-        'job_payload',
-        'id',
-        'queue_id',
-        'reviewer_id',
-        'created_at',
-      ])
-      .orderBy('created_at', 'desc')
-      .limit(safeLimit)
-      .execute();
+    const allNcmecDecisions = (await this.db
+      .select(ncmecDecisionSelection)
+      .from(decisionsTable)
+      .where(and(eq(decisionsTable.orgId, orgId), hasNcmecReportComponent))
+      .orderBy(desc(decisionsTable.createdAt))
+      .limit(safeLimit)) as NcmecDecisionRow[];
     return filterNullOrUndefined(
       allNcmecDecisions.map((it) => {
         if (
@@ -1166,20 +1148,13 @@ export default class JobDecisioning {
     decisionId: string;
   }) {
     const { orgId, decisionId } = opts;
-    const row = await this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_decisions')
-      .where('id', '=', decisionId)
-      .where('org_id', '=', orgId)
-      .select([
-        'org_id',
-        'decision_components',
-        'job_payload',
-        'id',
-        'queue_id',
-        'reviewer_id',
-        'created_at',
-      ])
-      .executeTakeFirst();
+    const [row] = (await this.db
+      .select(ncmecDecisionSelection)
+      .from(decisionsTable)
+      .where(
+        and(eq(decisionsTable.id, decisionId), eq(decisionsTable.orgId, orgId)),
+      )
+      .limit(1)) as (NcmecDecisionRow | undefined)[];
     if (!row) {
       return undefined;
     }
@@ -1202,12 +1177,13 @@ export default class JobDecisioning {
   }
 
   async getIgnoreCallbackForOrg(orgId: string): Promise<string | undefined> {
-    const settings = await this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_tool_settings')
-      .where('org_id', '=', orgId)
-      .select('ignore_callback_url as ignoreCallback')
-      .executeTakeFirst();
-    return settings?.ignoreCallback ?? undefined;
+    const settings = schema.manualReviewToolSettings;
+    const [row] = await this.db
+      .select({ ignoreCallback: settings.ignoreCallbackUrl })
+      .from(settings)
+      .where(eq(settings.orgId, orgId))
+      .limit(1);
+    return row?.ignoreCallback ?? undefined;
   }
 }
 
@@ -1216,12 +1192,7 @@ export default class JobDecisioning {
  * already been logged.
  */
 function isDecisionAlreadyLoggedError(error: unknown) {
-  return (
-    error instanceof Error &&
-    error.message.includes(
-      'duplicate key value violates unique constraint "manual_review_decisions_pkey"',
-    )
-  );
+  return isUniqueViolationOnConstraint(error, 'manual_review_decisions_pkey');
 }
 
 export type SubmitDecisionErrorType =

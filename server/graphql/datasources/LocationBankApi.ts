@@ -1,19 +1,22 @@
 import { type Exception } from '@opentelemetry/api';
-import { type Kysely } from 'kysely';
+import { and, eq, inArray } from 'drizzle-orm';
 import { uid } from 'uid';
 import { v1 as uuidV1 } from 'uuid';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
-import { type CombinedPg } from '../../services/combinedDbTypes.js';
 import {
   makeLocationBankNameExistsError,
   type LocationArea,
 } from '../../services/moderationConfigService/index.js';
 import { type PlacesApiService } from '../../services/placesApiService/index.js';
+import {
+  schema,
+  transactionWithRetry,
+  type CoopDb,
+} from '../../storage/postgres/drizzle.js';
 import { makeNotFoundError } from '../../utils/errors.js';
 import { isUniqueViolationError } from '../../utils/kysely.js';
-import { makeKyselyTransactionWithRetry } from '../../utils/kyselyTransactionWithRetry.js';
 import { safePick } from '../../utils/misc.js';
 import {
   type GQLCreateLocationBankInput,
@@ -21,12 +24,22 @@ import {
   type GQLUpdateLocationBankInput,
 } from '../generated.js';
 
+const { locationBanks, locationBankLocations } = schema;
+
 type LocationBankRow = {
   id: string;
   name: string;
   description: string | null;
-  org_id: string;
-  owner_id: string;
+  orgId: string;
+  ownerId: string;
+};
+
+const LOCATION_BANK_FIELDS = {
+  id: locationBanks.id,
+  name: locationBanks.name,
+  description: locationBanks.description,
+  orgId: locationBanks.orgId,
+  ownerId: locationBanks.ownerId,
 };
 
 /**
@@ -44,19 +57,13 @@ export type LocationBankWithoutFullPlacesAPIResponse = {
 
 class LocationBankAPI {
   private lookupPlaceId: PlacesApiService['lookupPlaceId'];
-  private readonly db: Kysely<CombinedPg>;
-  private readonly transactionWithRetry: ReturnType<
-    typeof makeKyselyTransactionWithRetry<CombinedPg>
-  >;
 
   constructor(
     placesApiService: PlacesApiService,
-    db: Dependencies['KyselyPg'],
+    private readonly db: CoopDb,
     private readonly tracer: Dependencies['Tracer'],
   ) {
     this.lookupPlaceId = placesApiService.lookupPlaceId.bind(placesApiService);
-    this.db = db as Kysely<CombinedPg>;
-    this.transactionWithRetry = makeKyselyTransactionWithRetry(this.db);
   }
 
   #rowToParent(row: LocationBankRow): LocationBankWithoutFullPlacesAPIResponse {
@@ -64,29 +71,29 @@ class LocationBankAPI {
       id: row.id,
       name: row.name,
       description: row.description,
-      orgId: row.org_id,
-      ownerId: row.owner_id,
+      orgId: row.orgId,
+      ownerId: row.ownerId,
       getLocations: async () => this.#loadLocationsForBank(row.id),
     };
   }
 
   async #loadLocationsForBank(bankId: string): Promise<LocationArea[]> {
     const rows = await this.db
-      .selectFrom('public.location_bank_locations')
-      .selectAll()
-      .where('bank_id', '=', bankId)
-      .execute();
+      .select()
+      .from(locationBankLocations)
+      .where(eq(locationBankLocations.bankId, bankId));
     return rows.map(locationRowToLocationArea);
   }
 
   async getGraphQLLocationBankFromId(opts: { id: string; orgId: string }) {
     const { id, orgId } = opts;
-    const row = await this.db
-      .selectFrom('public.location_banks')
-      .select(['id', 'name', 'description', 'org_id', 'owner_id'])
-      .where('id', '=', id)
-      .where('org_id', '=', orgId)
-      .executeTakeFirst();
+    const row = (
+      await this.db
+        .select(LOCATION_BANK_FIELDS)
+        .from(locationBanks)
+        .where(and(eq(locationBanks.id, id), eq(locationBanks.orgId, orgId)))
+        .limit(1)
+    ).at(0);
 
     if (row == null) {
       throw makeNotFoundError('Location bank not found', {
@@ -98,11 +105,10 @@ class LocationBankAPI {
   }
 
   async getGraphQLLocationBanksForOrg(orgId: string) {
-    const rows = (await this.db
-      .selectFrom('public.location_banks')
-      .select(['id', 'name', 'description', 'org_id', 'owner_id'])
-      .where('org_id', '=', orgId)
-      .execute()) as LocationBankRow[];
+    const rows = await this.db
+      .select(LOCATION_BANK_FIELDS)
+      .from(locationBanks)
+      .where(eq(locationBanks.orgId, orgId));
 
     return rows.map((r) => this.#rowToParent(r));
   }
@@ -121,37 +127,33 @@ class LocationBankAPI {
     );
 
     try {
-      return await this.transactionWithRetry(async (trx) => {
-        await trx
-          .insertInto('public.location_banks')
-          .values({
-            id: newBankId,
-            name,
-            description: description ?? null,
-            org_id: orgId,
-            owner_id: ownerId,
-            updated_at: new Date(),
-            full_places_api_responses: [],
-          })
-          .execute();
+      return await transactionWithRetry(this.db, async (trx) => {
+        await trx.insert(locationBanks).values({
+          id: newBankId,
+          name,
+          description: description ?? null,
+          orgId,
+          ownerId,
+          updatedAt: new Date(),
+          fullPlacesApiResponses: [],
+        });
 
         if (expandedLocations.length > 0) {
           await trx
-            .insertInto('public.location_bank_locations')
+            .insert(locationBankLocations)
             .values(
               expandedLocations.map((loc) =>
                 locationAreaToLocationInsertRow(loc.bankId, loc),
               ),
-            )
-            .execute();
+            );
         }
 
         return this.#rowToParent({
           id: newBankId,
           name,
           description: description ?? null,
-          org_id: orgId,
-          owner_id: ownerId,
+          orgId,
+          ownerId,
         });
       });
     } catch (e: unknown) {
@@ -168,12 +170,13 @@ class LocationBankAPI {
       ? await this.expandLocationAreaInputs(id, locationsToAdd)
       : undefined;
 
-    const row = await this.db
-      .selectFrom('public.location_banks')
-      .select(['id', 'name', 'description', 'org_id', 'owner_id'])
-      .where('id', '=', id)
-      .where('org_id', '=', orgId)
-      .executeTakeFirst();
+    const row = (
+      await this.db
+        .select(LOCATION_BANK_FIELDS)
+        .from(locationBanks)
+        .where(and(eq(locationBanks.id, id), eq(locationBanks.orgId, orgId)))
+        .limit(1)
+    ).at(0);
 
     if (row == null) {
       throw makeNotFoundError('Location bank not found', {
@@ -190,43 +193,43 @@ class LocationBankAPI {
       description !== undefined ? (description ?? null) : row.description;
 
     try {
-      return await this.transactionWithRetry(async (trx) => {
+      return await transactionWithRetry(this.db, async (trx) => {
         await trx
-          .updateTable('public.location_banks')
+          .update(locationBanks)
           .set({
             name: nextName,
             description: nextDescription,
-            updated_at: new Date(),
+            updatedAt: new Date(),
           })
-          .where('id', '=', id)
-          .where('org_id', '=', orgId)
-          .execute();
+          .where(and(eq(locationBanks.id, id), eq(locationBanks.orgId, orgId)));
 
         if (locationsToDelete?.length) {
           await trx
-            .deleteFrom('public.location_bank_locations')
-            .where('bank_id', '=', id)
-            .where('id', 'in', [...locationsToDelete])
-            .execute();
+            .delete(locationBankLocations)
+            .where(
+              and(
+                eq(locationBankLocations.bankId, id),
+                inArray(locationBankLocations.id, [...locationsToDelete]),
+              ),
+            );
         }
 
         if (expandedLocationsToAdd?.length) {
           await trx
-            .insertInto('public.location_bank_locations')
+            .insert(locationBankLocations)
             .values(
               expandedLocationsToAdd.map((loc) =>
                 locationAreaToLocationInsertRow(loc.bankId, loc),
               ),
-            )
-            .execute();
+            );
         }
 
         return this.#rowToParent({
           id: row.id,
           name: nextName,
           description: nextDescription,
-          org_id: row.org_id,
-          owner_id: row.owner_id,
+          orgId: row.orgId,
+          ownerId: row.ownerId,
         });
       });
     } catch (e: unknown) {
@@ -240,30 +243,36 @@ class LocationBankAPI {
     const { id, orgId } = opts;
 
     try {
-      const result = await this.transactionWithRetry(async (trx) => {
-        const bank = await trx
-          .selectFrom('public.location_banks')
-          .select('id')
-          .where('id', '=', id)
-          .where('org_id', '=', orgId)
-          .executeTakeFirst();
+      const numDeletedRows = await transactionWithRetry(
+        this.db,
+        async (trx) => {
+          const bank = (
+            await trx
+              .select({ id: locationBanks.id })
+              .from(locationBanks)
+              .where(
+                and(eq(locationBanks.id, id), eq(locationBanks.orgId, orgId)),
+              )
+              .limit(1)
+          ).at(0);
 
-        if (!bank) {
-          return { numDeletedRows: BigInt(0) };
-        }
+          if (!bank) {
+            return 0;
+          }
 
-        await trx
-          .deleteFrom('public.location_bank_locations')
-          .where('bank_id', '=', id)
-          .execute();
-        return trx
-          .deleteFrom('public.location_banks')
-          .where('id', '=', id)
-          .where('org_id', '=', orgId)
-          .executeTakeFirst();
-      });
+          await trx
+            .delete(locationBankLocations)
+            .where(eq(locationBankLocations.bankId, id));
+          const result = await trx
+            .delete(locationBanks)
+            .where(
+              and(eq(locationBanks.id, id), eq(locationBanks.orgId, orgId)),
+            );
+          return result.rowCount ?? 0;
+        },
+      );
 
-      if (!result.numDeletedRows) {
+      if (!numDeletedRows) {
         return false;
       }
     } catch (exception) {
@@ -304,21 +313,14 @@ class LocationBankAPI {
 }
 
 function locationRowToLocationArea(
-  r: Record<string, unknown> & {
-    id: string;
-    bank_id: string;
-    geometry: unknown;
-    bounds: unknown | null;
-    name: string | null;
-    google_place_info: unknown | null;
-  },
+  r: typeof locationBankLocations.$inferSelect,
 ): LocationArea {
   return {
     id: r.id,
     name: r.name ?? undefined,
     geometry: r.geometry as LocationArea['geometry'],
     bounds: (r.bounds as LocationArea['bounds']) ?? undefined,
-    googlePlaceInfo: r.google_place_info as LocationArea['googlePlaceInfo'],
+    googlePlaceInfo: r.googlePlaceInfo as LocationArea['googlePlaceInfo'],
   };
 }
 
@@ -328,16 +330,16 @@ function locationAreaToLocationInsertRow(
 ) {
   return {
     id: area.id,
-    bank_id: bankId,
+    bankId,
     geometry: area.geometry,
     bounds: area.bounds ?? null,
     name: area.name ?? null,
-    google_place_info: area.googlePlaceInfo ?? null,
+    googlePlaceInfo: area.googlePlaceInfo ?? null,
   };
 }
 
 export default inject(
-  ['PlacesApiService', 'KyselyPg', 'Tracer'],
+  ['PlacesApiService', 'DrizzlePg', 'Tracer'],
   LocationBankAPI,
 );
 export type { LocationBankAPI };

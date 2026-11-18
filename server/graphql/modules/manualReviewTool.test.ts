@@ -1,9 +1,11 @@
+import { and, eq } from 'drizzle-orm';
 import { uid } from 'uid';
 
 import {
   UserPermission,
   UserRole,
 } from '../../services/userManagementService/index.js';
+import { schema } from '../../storage/postgres/drizzle.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../test/fixtureHelpers/createUser.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
@@ -33,12 +35,14 @@ describe('manual review job ID limit', () => {
 describe('queue role assignment visibility', () => {
   const testWithQueue = makeTransactionalTestWithFixture(async ({ deps }) => {
     const { org } = await createOrg(deps);
-    const { user: creator } = await createUser(deps.KyselyPg, org.id);
-    const assignedRole = await deps.KyselyPg.selectFrom('public.roles')
-      .select('id')
-      .where('org_id', '=', org.id)
-      .where('key', '=', UserRole.MODERATOR)
-      .executeTakeFirstOrThrow();
+    const { user: creator } = await createUser(deps.DrizzlePg, org.id);
+    const roles = schema.roles;
+    const [assignedRole] = await deps.DrizzlePg.select({ id: roles.id })
+      .from(roles)
+      .where(and(eq(roles.orgId, org.id), eq(roles.key, UserRole.MODERATOR)));
+    if (!assignedRole) {
+      throw new Error('expected a moderator role');
+    }
     const queue = await deps.ManualReviewToolService.createManualReviewQueue({
       name: `queue-${uid()}`,
       description: null,
@@ -63,7 +67,7 @@ describe('queue role assignment visibility', () => {
         UserRole.MODERATOR,
         UserRole.MODERATOR_MANAGER,
       ]) {
-        const { user: viewer } = await createUser(deps.KyselyPg, org.id, {
+        const { user: viewer } = await createUser(deps.DrizzlePg, org.id, {
           role,
           approvedByAdmin: true,
           loginMethods: ['password'],

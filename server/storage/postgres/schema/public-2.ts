@@ -17,6 +17,12 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 
+import { type ActionParametersJson } from './json-types/moderation-config.js';
+import {
+  type NotificationDataColumn,
+  type NotificationTypeColumn,
+  type OrgSettingsJsonObject,
+} from './json-types/services-misc.js';
 import { actions, itemTypes } from './public-1.js';
 import { users } from './public-3.js';
 import {
@@ -93,8 +99,8 @@ export const notifications = pgTable(
   {
     id: varchar({ length: 255 }).primaryKey(),
     userId: varchar({ length: 255 }).notNull(),
-    type: varchar({ length: 255 }).notNull(),
-    data: jsonb().notNull(),
+    type: varchar({ length: 255 }).$type<NotificationTypeColumn>().notNull(),
+    data: jsonb().$type<NotificationDataColumn>().notNull(),
     message: text().notNull(),
     createdAt: timestamp({ withTimezone: true })
       .default(sql`now()`)
@@ -120,8 +126,12 @@ export const orgSettings = pgTable(
     ),
     hasAppealsEnabled: bool('has_appeals_enabled').default(false),
     appealCallbackUrl: text('appeal_callback_url'),
-    appealCallbackHeaders: jsonb('appeal_callback_headers'),
-    appealCallbackBody: jsonb('appeal_callback_body'),
+    appealCallbackHeaders: jsonb(
+      'appeal_callback_headers',
+    ).$type<OrgSettingsJsonObject>(),
+    appealCallbackBody: jsonb(
+      'appeal_callback_body',
+    ).$type<OrgSettingsJsonObject>(),
     allowMultiplePoliciesPerAction: bool(
       'allow_multiple_policies_per_action',
     ).default(false),
@@ -130,7 +140,9 @@ export const orgSettings = pgTable(
     ssoUrl: varchar('sso_url', { length: 255 }),
     cert: text(),
     showUsageStatistics: bool('show_usage_statistics').default(false).notNull(),
-    partialItemsRequestHeaders: jsonb('partial_items_request_headers'),
+    partialItemsRequestHeaders: jsonb(
+      'partial_items_request_headers',
+    ).$type<OrgSettingsJsonObject>(),
   },
   () => [
     check(
@@ -328,7 +340,10 @@ export const rulesAndActions = pgTable(
     sysPeriod: tstzrange('sys_period')
       .default('tstzrange(CURRENT_TIMESTAMP, NULL::timestamp with time zone)')
       .notNull(),
-    actionParameters: jsonb('action_parameters').default({}).notNull(),
+    actionParameters: jsonb('action_parameters')
+      .$type<ActionParametersJson>()
+      .default({})
+      .notNull(),
   },
   (table) => [
     primaryKey({

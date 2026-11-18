@@ -1,21 +1,24 @@
 /* eslint-disable max-lines */
 import crypto from 'node:crypto';
-import { type Kysely } from 'kysely';
+import { and, desc, eq, sql } from 'drizzle-orm';
 
 import type { Dependencies } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
+import {
+  schema,
+  transactionWithRetry,
+  type CoopDb,
+} from '../../storage/postgres/drizzle.js';
 import {
   makeBadRequestError,
   makeNotFoundError,
   makeUnauthorizedError,
 } from '../../utils/errors.js';
-import { makeKyselyTransactionWithRetry } from '../../utils/kyselyTransactionWithRetry.js';
 import { asyncRandomBytes } from '../../utils/misc.js';
 import { HOUR_MS } from '../../utils/time.js';
 import { CoopEmailAddress } from '../sendEmailService/sendEmailService.js';
 import { MIN_PASSWORD_LENGTH } from './constants.js';
 import type { MrtChartConfig } from './dbTypes.js';
-import type { UserManagementPg } from './index.js';
 import {
   UserPermission,
   type Invoker,
@@ -24,9 +27,42 @@ import {
 import { deleteSessionsForUser } from './sessionPersistence.js';
 import { hashPassword } from './utils.js';
 
+const {
+  inviteUserTokens,
+  orgDefaultUserInterfaceSettings,
+  orgSettings,
+  passwordResetTokens,
+  roles,
+  userInterfaceSettings: userInterfaceSettingsTable,
+  users,
+} = schema;
+
+// The invite row (snake_case keys, as callers read them) with `role` taken
+// from the joined role's key. `id` is a serial, but our API treats it as an
+// opaque string id.
+const INVITE_TOKEN_FIELDS = {
+  id: sql<string>`${inviteUserTokens.id}::text`,
+  token: inviteUserTokens.token,
+  email: inviteUserTokens.email,
+  role: sql<UserRole>`${roles.key}`,
+  created_at: inviteUserTokens.createdAt,
+  updated_at: inviteUserTokens.updatedAt,
+  org_id: inviteUserTokens.orgId,
+  role_id: inviteUserTokens.roleId,
+};
+
+const inviteTokenRoleJoin = and(
+  eq(roles.id, inviteUserTokens.roleId),
+  eq(roles.orgId, inviteUserTokens.orgId),
+);
+
+function inviteIdAsColumnValue(inviteId: string) {
+  return Number(inviteId);
+}
+
 class UserManagementService {
   constructor(
-    private readonly pgQuery: Kysely<UserManagementPg>,
+    private readonly db: CoopDb,
     private readonly sendEmail: Dependencies['sendEmail'],
     private readonly configService: Dependencies['ConfigService'],
   ) {}
@@ -35,38 +71,50 @@ class UserManagementService {
     orgId: string;
     role: UserRole;
   }): Promise<string> {
-    const row = await this.pgQuery
-      .selectFrom('public.roles')
-      .select('id')
-      .where('org_id', '=', opts.orgId)
-      .where('key', '=', opts.role)
-      .where('is_system', '=', true)
-      .executeTakeFirstOrThrow();
+    const row = (
+      await this.db
+        .select({ id: roles.id })
+        .from(roles)
+        .where(
+          and(
+            eq(roles.orgId, opts.orgId),
+            eq(roles.key, opts.role),
+            eq(roles.isSystem, true),
+          ),
+        )
+        .limit(1)
+    ).at(0);
+    if (row === undefined) {
+      throw new Error(`No system role ${opts.role} for org ${opts.orgId}`);
+    }
     return row.id;
   }
 
   async getUserInterfaceSettings(opts: { userId: string; orgId: string }) {
     const { userId, orgId } = opts;
-    const row = await this.pgQuery
-      .selectFrom('user_management_service.user_interface_settings')
-      .selectAll()
-      .where('user_id', '=', userId)
-      .executeTakeFirst();
+    const row = (
+      await this.db
+        .select()
+        .from(userInterfaceSettingsTable)
+        .where(eq(userInterfaceSettingsTable.userId, userId))
+        .limit(1)
+    ).at(0);
 
     if (
       row &&
-      row.moderator_safety_grayscale != null &&
-      row.moderator_safety_blur_level != null &&
-      row.moderator_safety_mute_video != null &&
-      row.moderator_safety_sepia != null
+      row.moderatorSafetyGrayscale != null &&
+      row.moderatorSafetyBlurLevel != null &&
+      row.moderatorSafetyMuteVideo != null &&
+      row.moderatorSafetySepia != null
     ) {
       // If all the user's settings have been set, just return them
       return {
-        moderatorSafetyGrayscale: row.moderator_safety_grayscale,
-        moderatorSafetyBlurLevel: row.moderator_safety_blur_level,
-        moderatorSafetyMuteVideo: row.moderator_safety_mute_video,
-        moderatorSafetySepia: row.moderator_safety_sepia,
-        mrtChartConfigurations: row.mrt_chart_configurations ?? [],
+        moderatorSafetyGrayscale: row.moderatorSafetyGrayscale,
+        moderatorSafetyBlurLevel: row.moderatorSafetyBlurLevel,
+        moderatorSafetyMuteVideo: row.moderatorSafetyMuteVideo,
+        moderatorSafetySepia: row.moderatorSafetySepia,
+        mrtChartConfigurations: (row.mrtChartConfigurations ??
+          []) as MrtChartConfig[],
       };
     }
 
@@ -75,52 +123,48 @@ class UserManagementService {
     const orgDefaults = await this.getOrgDefaultUserInterfaceSettings(orgId);
     return {
       moderatorSafetyGrayscale:
-        row?.moderator_safety_grayscale ?? orgDefaults.moderatorSafetyGrayscale,
+        row?.moderatorSafetyGrayscale ?? orgDefaults.moderatorSafetyGrayscale,
       moderatorSafetySepia:
-        row?.moderator_safety_sepia ?? orgDefaults.moderatorSafetySepia,
+        row?.moderatorSafetySepia ?? orgDefaults.moderatorSafetySepia,
       moderatorSafetyBlurLevel:
-        row?.moderator_safety_blur_level ??
-        orgDefaults.moderatorSafetyBlurLevel,
+        row?.moderatorSafetyBlurLevel ?? orgDefaults.moderatorSafetyBlurLevel,
       moderatorSafetyMuteVideo:
-        row?.moderator_safety_mute_video ??
-        orgDefaults.moderatorSafetyMuteVideo,
-      mrtChartConfigurations: row?.mrt_chart_configurations ?? [],
+        row?.moderatorSafetyMuteVideo ?? orgDefaults.moderatorSafetyMuteVideo,
+      mrtChartConfigurations: (row?.mrtChartConfigurations ??
+        []) as MrtChartConfig[],
     };
   }
 
   async getInviteUserToken(opts: { token: string }) {
     const { token } = opts;
-    const tokenRow = await this.pgQuery
-      .selectFrom('public.invite_user_tokens')
-      .innerJoin('public.roles', (join) =>
-        join
-          .onRef('public.roles.id', '=', 'public.invite_user_tokens.role_id')
-          .onRef(
-            'public.roles.org_id',
-            '=',
-            'public.invite_user_tokens.org_id',
-          ),
-      )
-      .selectAll('public.invite_user_tokens')
-      .select('public.roles.key as role')
-      .where('public.invite_user_tokens.token', '=', token)
-      .executeTakeFirst();
+    const tokenRow = (
+      await this.db
+        .select(INVITE_TOKEN_FIELDS)
+        .from(inviteUserTokens)
+        .innerJoin(roles, inviteTokenRoleJoin)
+        .where(eq(inviteUserTokens.token, token))
+        .limit(1)
+    ).at(0);
 
     if (tokenRow == null) {
       return null;
     }
 
-    const orgSettings = await this.pgQuery
-      .selectFrom('public.org_settings')
-      .select('saml_enabled')
-      .where('org_id', '=', tokenRow.org_id)
-      .executeTakeFirst();
+    const settings = (
+      await this.db
+        .select({ samlEnabled: orgSettings.samlEnabled })
+        .from(orgSettings)
+        // The join on `roles.org_id = invite_user_tokens.org_id` guarantees
+        // `org_id` is non-null here.
+        .where(eq(orgSettings.orgId, tokenRow.org_id!))
+        .limit(1)
+    ).at(0);
 
     return {
       ...tokenRow,
-      orgId: tokenRow.org_id,
+      orgId: tokenRow.org_id!,
       createdAt: tokenRow.created_at,
-      samlEnabled: orgSettings?.saml_enabled ?? false,
+      samlEnabled: settings?.samlEnabled ?? false,
     };
   }
 
@@ -134,10 +178,9 @@ class UserManagementService {
     const roleId = await this.#lookupSystemRoleId({ orgId, role });
 
     const token = (await asyncRandomBytes(32)).toString('hex');
-    await this.pgQuery
-      .insertInto('public.invite_user_tokens')
-      .values({ token, email, role_id: roleId, org_id: orgId })
-      .execute();
+    await this.db
+      .insert(inviteUserTokens)
+      .values({ token, email, roleId, orgId });
     return token;
   }
 
@@ -146,22 +189,12 @@ class UserManagementService {
   ): Promise<
     Array<{ id: string; email: string; role: UserRole; createdAt: string }>
   > {
-    const result = await this.pgQuery
-      .selectFrom('public.invite_user_tokens')
-      .innerJoin('public.roles', (join) =>
-        join
-          .onRef('public.roles.id', '=', 'public.invite_user_tokens.role_id')
-          .onRef(
-            'public.roles.org_id',
-            '=',
-            'public.invite_user_tokens.org_id',
-          ),
-      )
-      .selectAll('public.invite_user_tokens')
-      .select('public.roles.key as role')
-      .where('public.invite_user_tokens.org_id', '=', orgId)
-      .orderBy('public.invite_user_tokens.created_at', 'desc')
-      .execute();
+    const result = await this.db
+      .select(INVITE_TOKEN_FIELDS)
+      .from(inviteUserTokens)
+      .innerJoin(roles, inviteTokenRoleJoin)
+      .where(eq(inviteUserTokens.orgId, orgId))
+      .orderBy(desc(inviteUserTokens.createdAt));
 
     return result.map((row) => ({
       id: row.id,
@@ -172,13 +205,17 @@ class UserManagementService {
   }
 
   async deleteInvite(inviteId: string, orgId: string): Promise<boolean> {
-    const result = await this.pgQuery
-      .deleteFrom('public.invite_user_tokens')
-      .where('id', '=', inviteId)
-      .where('org_id', '=', orgId)
-      .execute();
+    await this.db
+      .delete(inviteUserTokens)
+      .where(
+        and(
+          eq(inviteUserTokens.id, inviteIdAsColumnValue(inviteId)),
+          eq(inviteUserTokens.orgId, orgId),
+        ),
+      );
 
-    return result.length > 0;
+    // NB: true even when no row matched (PoC keeps the existing contract).
+    return true;
   }
 
   async upsertUserInterfaceSettings(input: {
@@ -200,59 +237,61 @@ class UserManagementService {
     const dbFormattedInterfaceSettings = {
       ...(moderatorSafetySettings
         ? {
-            moderator_safety_grayscale:
+            moderatorSafetyGrayscale:
               moderatorSafetySettings.moderatorSafetyGrayscale,
-            moderator_safety_sepia:
-              moderatorSafetySettings.moderatorSafetySepia,
-            moderator_safety_blur_level:
+            moderatorSafetySepia: moderatorSafetySettings.moderatorSafetySepia,
+            moderatorSafetyBlurLevel:
               moderatorSafetySettings.moderatorSafetyBlurLevel,
-            moderator_safety_mute_video:
+            moderatorSafetyMuteVideo:
               moderatorSafetySettings.moderatorSafetyMuteVideo,
           }
         : {}),
       ...(mrtChartConfigurations
-        ? {
-            mrt_chart_configurations: [...mrtChartConfigurations],
-          }
+        ? { mrtChartConfigurations: [...mrtChartConfigurations] }
         : {}),
     };
 
-    let query = this.pgQuery
-      .insertInto('user_management_service.user_interface_settings')
-      .values({
-        user_id: userId,
-        ...dbFormattedInterfaceSettings,
-      });
+    const insert = this.db
+      .insert(userInterfaceSettingsTable)
+      .values({ userId, ...dbFormattedInterfaceSettings });
 
-    // Only add onConflict if there are fields to update
-    if (Object.keys(dbFormattedInterfaceSettings).length > 0) {
-      query = query.onConflict((oc) =>
-        oc.column('user_id').doUpdateSet({
-          ...dbFormattedInterfaceSettings,
-        }),
-      );
-    } else {
-      // If no update fields, just do nothing on conflict
-      query = query.onConflict((oc) => oc.column('user_id').doNothing());
-    }
+    // Only update on conflict if there are fields to update
+    const upsert =
+      Object.keys(dbFormattedInterfaceSettings).length > 0
+        ? insert.onConflictDoUpdate({
+            target: userInterfaceSettingsTable.userId,
+            set: dbFormattedInterfaceSettings,
+          })
+        : insert.onConflictDoNothing({
+            target: userInterfaceSettingsTable.userId,
+          });
 
-    return query.returningAll().execute();
+    return upsert.returning();
   }
 
   async getOrgDefaultUserInterfaceSettings(orgId: string) {
-    const row = await this.pgQuery
-      .selectFrom('user_management_service.org_default_user_interface_settings')
-      .selectAll()
-      .where('org_id', '=', orgId)
-      // Every org should have a default interface settings row
-      .executeTakeFirstOrThrow();
+    const row = (
+      await this.db
+        .select({
+          moderatorSafetyGrayscale:
+            orgDefaultUserInterfaceSettings.moderatorSafetyGrayscale,
+          moderatorSafetySepia:
+            orgDefaultUserInterfaceSettings.moderatorSafetySepia,
+          moderatorSafetyBlurLevel:
+            orgDefaultUserInterfaceSettings.moderatorSafetyBlurLevel,
+          moderatorSafetyMuteVideo:
+            orgDefaultUserInterfaceSettings.moderatorSafetyMuteVideo,
+        })
+        .from(orgDefaultUserInterfaceSettings)
+        .where(eq(orgDefaultUserInterfaceSettings.orgId, orgId))
+        .limit(1)
+    ).at(0);
 
-    return {
-      moderatorSafetyGrayscale: row.moderator_safety_grayscale,
-      moderatorSafetySepia: row.moderator_safety_sepia,
-      moderatorSafetyBlurLevel: row.moderator_safety_blur_level,
-      moderatorSafetyMuteVideo: row.moderator_safety_mute_video,
-    };
+    // Every org should have a default interface settings row
+    if (row === undefined) {
+      throw new Error('no result');
+    }
+    return row;
   }
 
   async upsertOrgDefaultUserInterfaceSettings(opts: {
@@ -271,46 +310,36 @@ class UserManagementService {
       moderatorSafetyBlurLevel,
       moderatorSafetyMuteVideo,
     } = opts;
+    // Explicitly check for undefined because these values are booleans and
+    // numbers, so they can be falsey
     const updateFields = {
       ...(moderatorSafetyGrayscale !== undefined
-        ? { moderator_safety_grayscale: moderatorSafetyGrayscale }
+        ? { moderatorSafetyGrayscale }
         : {}),
-      ...(moderatorSafetySepia !== undefined
-        ? { moderator_safety_sepia: moderatorSafetySepia }
-        : {}),
+      ...(moderatorSafetySepia !== undefined ? { moderatorSafetySepia } : {}),
       ...(moderatorSafetyBlurLevel !== undefined
-        ? { moderator_safety_blur_level: moderatorSafetyBlurLevel }
+        ? { moderatorSafetyBlurLevel }
         : {}),
       ...(moderatorSafetyMuteVideo !== undefined
-        ? { moderator_safety_mute_video: moderatorSafetyMuteVideo }
+        ? { moderatorSafetyMuteVideo }
         : {}),
     };
 
-    let query = this.pgQuery
-      .insertInto('user_management_service.org_default_user_interface_settings')
-      .values([
-        {
-          org_id: orgId,
-          moderator_safety_grayscale: moderatorSafetyGrayscale,
-          moderator_safety_sepia: moderatorSafetySepia,
-          moderator_safety_blur_level: moderatorSafetyBlurLevel,
-          moderator_safety_mute_video: moderatorSafetyMuteVideo,
-        },
-      ]);
+    // Omitted (undefined) columns are left out of the INSERT, so the table
+    // defaults apply.
+    const insert = this.db
+      .insert(orgDefaultUserInterfaceSettings)
+      .values({ orgId, ...updateFields });
 
-    // Only add onConflict if there are fields to update
-    if (Object.keys(updateFields).length > 0) {
-      query = query.onConflict((oc) =>
-        // Explicitly check for undefined because these values are booleans and
-        // numbers, so they can be falsey
-        oc.column('org_id').doUpdateSet(updateFields),
-      );
-    } else {
-      // If no update fields, just do nothing on conflict
-      query = query.onConflict((oc) => oc.column('org_id').doNothing());
-    }
-
-    await query.execute();
+    // Only update on conflict if there are fields to update
+    await (Object.keys(updateFields).length > 0
+      ? insert.onConflictDoUpdate({
+          target: orgDefaultUserInterfaceSettings.orgId,
+          set: updateFields,
+        })
+      : insert.onConflictDoNothing({
+          target: orgDefaultUserInterfaceSettings.orgId,
+        }));
   }
 
   async updateUserRole(input: {
@@ -339,14 +368,12 @@ class UserManagementService {
       role: newRole,
     });
 
-    const result = await this.pgQuery
-      .updateTable('public.users')
-      .set({ role_id: newRoleId })
-      .where('id', '=', userId)
-      .where('org_id', '=', invoker.orgId)
-      .executeTakeFirst();
+    const result = await this.db
+      .update(users)
+      .set({ roleId: newRoleId })
+      .where(and(eq(users.id, userId), eq(users.orgId, invoker.orgId)));
 
-    if (result.numUpdatedRows === 0n) {
+    if (result.rowCount === 0) {
       throw makeNotFoundError('User not found', { shouldErrorSpan: true });
     }
   }
@@ -360,11 +387,13 @@ class UserManagementService {
   async sendPasswordResetEmail(opts: { email: string }) {
     const { email } = opts;
 
-    const existingUser = await this.pgQuery
-      .selectFrom('public.users')
-      .select(['id as userId', 'org_id as orgId'])
-      .where('email', '=', email)
-      .executeTakeFirst();
+    const existingUser = (
+      await this.db
+        .select({ userId: users.id, orgId: users.orgId })
+        .from(users)
+        .where(eq(users.email, email))
+        .limit(1)
+    ).at(0);
 
     if (existingUser == null) {
       return;
@@ -398,11 +427,13 @@ class UserManagementService {
   }) {
     const { userId, invokerOrgId } = opts;
 
-    const existingUser = await this.pgQuery
-      .selectFrom('public.users')
-      .select(['email', 'org_id as orgId'])
-      .where('id', '=', userId)
-      .executeTakeFirst();
+    const existingUser = (
+      await this.db
+        .select({ email: users.email, orgId: users.orgId })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1)
+    ).at(0);
 
     if (existingUser == null) {
       throw makeNotFoundError('User not found', { shouldErrorSpan: true });
@@ -446,21 +477,17 @@ class UserManagementService {
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
     // delete tokens for the user
-    await this.pgQuery
-      .deleteFrom('user_management_service.password_reset_tokens')
-      .where('user_id', '=', userId)
-      .execute();
+    await this.db
+      .delete(passwordResetTokens)
+      .where(eq(passwordResetTokens.userId, userId));
 
     // create new token
-    await this.pgQuery
-      .insertInto('user_management_service.password_reset_tokens')
-      .values({
-        user_id: userId,
-        org_id: orgId,
-        hashed_token: hashedToken,
-        created_at: new Date(),
-      })
-      .execute();
+    await this.db.insert(passwordResetTokens).values({
+      userId,
+      orgId,
+      hashedToken,
+      createdAt: new Date(),
+    });
 
     return token;
   }
@@ -479,18 +506,20 @@ class UserManagementService {
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
     // Step 1: Validate token
-    const fetchedToken = await this.pgQuery
-      .selectFrom('user_management_service.password_reset_tokens')
-      .selectAll()
-      .where('hashed_token', '=', hashedToken)
-      .executeTakeFirst();
+    const fetchedToken = (
+      await this.db
+        .select()
+        .from(passwordResetTokens)
+        .where(eq(passwordResetTokens.hashedToken, hashedToken))
+        .limit(1)
+    ).at(0);
 
     if (fetchedToken == null) {
       return;
     }
 
     // NB: Tokens expire one hour after creation
-    if (Date.now() - new Date(fetchedToken.created_at).getTime() > HOUR_MS) {
+    if (Date.now() - fetchedToken.createdAt.getTime() > HOUR_MS) {
       return;
     }
 
@@ -504,56 +533,55 @@ class UserManagementService {
     const hashedPassword = await hashPassword(newPassword);
     // Atomic: a committed password change must not leave the user's sessions
     // or reset tokens alive.
-    await makeKyselyTransactionWithRetry(this.pgQuery)(async (trx) => {
-      await trx
-        .updateTable('public.users')
+    await transactionWithRetry(this.db, async (tx) => {
+      await tx
+        .update(users)
         .set({ password: hashedPassword })
-        .where('id', '=', fetchedToken.user_id)
-        .execute();
-      await deleteSessionsForUser(trx, fetchedToken.user_id);
-      await trx
-        .deleteFrom('user_management_service.password_reset_tokens')
-        .where('user_id', '=', fetchedToken.user_id)
-        .execute();
+        .where(eq(users.id, fetchedToken.userId));
+      await deleteSessionsForUser(tx, fetchedToken.userId);
+      await tx
+        .delete(passwordResetTokens)
+        .where(eq(passwordResetTokens.userId, fetchedToken.userId));
     });
   }
 
   async getUsersForOrg(orgId: string) {
-    return this.pgQuery
-      .selectFrom('public.users')
-      .innerJoin('public.roles', (join) =>
-        join
-          .onRef('public.roles.id', '=', 'public.users.role_id')
-          .onRef('public.roles.org_id', '=', 'public.users.org_id'),
+    return this.db
+      .select({
+        id: users.id,
+        email: users.email,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        role: roles.key,
+      })
+      .from(users)
+      .innerJoin(
+        roles,
+        and(eq(roles.id, users.roleId), eq(roles.orgId, users.orgId)),
       )
-      .select([
-        'public.users.id',
-        'public.users.email',
-        'public.users.first_name as firstName',
-        'public.users.last_name as lastName',
-        'public.roles.key as role',
-      ])
-      .where('public.users.org_id', '=', orgId)
-      .where('public.users.rejected_by_admin', '=', false)
-      .where('public.users.approved_by_admin', '=', true)
-      .execute();
+      .where(
+        and(
+          eq(users.orgId, orgId),
+          eq(users.rejectedByAdmin, false),
+          eq(users.approvedByAdmin, true),
+        ),
+      );
   }
 
   async getUserNamesForOrg(orgId: string) {
-    return this.pgQuery
-      .selectFrom('public.users')
-      .select([
-        'public.users.id',
-        'public.users.first_name as firstName',
-        'public.users.last_name as lastName',
-      ])
-      .where('public.users.org_id', '=', orgId)
-      .execute();
+    return this.db
+      .select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+      })
+      .from(users)
+      .where(eq(users.orgId, orgId));
   }
 }
 
 export default inject(
-  ['KyselyPg', 'sendEmail', 'ConfigService'],
+  ['DrizzlePg', 'sendEmail', 'ConfigService'],
   UserManagementService,
 );
 export { type UserManagementService };

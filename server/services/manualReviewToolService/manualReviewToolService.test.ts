@@ -1,15 +1,15 @@
-import { sql } from 'kysely';
+import { and, eq, sql } from 'drizzle-orm';
 import { uid } from 'uid';
 import { v1 as uuidv1 } from 'uuid';
 import { vi } from 'vitest';
 
+import { schema, type CoopDb } from '../../storage/postgres/drizzle.js';
 import createContentItemTypes from '../../test/fixtureHelpers/createContentItemTypes.js';
 import createMrtQueue from '../../test/fixtureHelpers/createMrtQueue.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../test/fixtureHelpers/createUser.js';
 import makeDummyMrtJobPayload from '../../test/fixtureHelpers/makeDummyMrtJobPayload.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
-import { type MockedServer } from '../../test/setupMockedServer.js';
 import { instantiateOpaqueType } from '../../utils/typescript-types.js';
 import {
   makeSubmissionId,
@@ -24,8 +24,6 @@ import {
 } from './manualReviewToolService.js';
 import { AUTOMATED_DECISION_REVIEWER_ID } from './modules/JobDecisioning.js';
 import { jobIdToGuid } from './modules/QueueOperations.js';
-
-type TestDeps = MockedServer['deps'];
 
 function makeDummyNcmecJob() {
   return {
@@ -74,16 +72,57 @@ async function configureDecisionReasonRequirements(
 
 async function setRequiresPolicyForDecisions(
   mrtService: ManualReviewToolService,
-  db: TestDeps['KyselyPg'],
+  db: CoopDb,
   orgId: string,
   value: boolean,
 ) {
   await mrtService.upsertDefaultSettings({ orgId });
+  const settings = schema.manualReviewToolSettings;
   await db
-    .updateTable('manual_review_tool.manual_review_tool_settings')
-    .set({ requires_policy_for_decisions: value })
-    .where('org_id', '=', orgId)
-    .execute();
+    .update(settings)
+    .set({ requiresPolicyForDecisions: value })
+    .where(eq(settings.orgId, orgId));
+}
+
+async function getJobClaims(
+  db: CoopDb,
+  orgId: string,
+  jobId: string,
+  userId?: string,
+) {
+  const claims = schema.jobClaims;
+  return db
+    .select({ user_id: claims.userId, claimed_at: claims.claimedAt })
+    .from(claims)
+    .where(
+      and(
+        eq(claims.orgId, orgId),
+        eq(claims.jobId, jobId),
+        userId === undefined ? undefined : eq(claims.userId, userId),
+      ),
+    )
+    .orderBy(claims.claimedAt);
+}
+
+async function getDecisionForJob(db: CoopDb, orgId: string, jobId: string) {
+  const mrd = schema.manualReviewDecisions;
+  const [decision] = await db
+    .select({
+      assigned_at: mrd.assignedAt,
+      created_at: mrd.createdAt,
+      reviewer_id: mrd.reviewerId,
+    })
+    .from(mrd)
+    .where(
+      and(
+        eq(mrd.orgId, orgId),
+        sql`(${mrd.jobPayload}->>'id')::text = ${jobId}`,
+      ),
+    );
+  if (!decision) {
+    throw new Error(`no decision for job ${jobId}`);
+  }
+  return decision;
 }
 
 describe('Manual Review Tool Service', () => {
@@ -100,13 +139,13 @@ describe('Manual Review Tool Service', () => {
     const mrtService = deps.ManualReviewToolService;
     const { org } = await createOrg(
       {
-        KyselyPg: deps.KyselyPg,
+        DrizzlePg: deps.DrizzlePg,
         ModerationConfigService: deps.ModerationConfigService,
         ApiKeyService: deps.ApiKeyService,
       },
       uid(),
     );
-    const { user } = await createUser(deps.KyselyPg, org.id);
+    const { user } = await createUser(deps.DrizzlePg, org.id);
     const { queue } = await createMrtQueue({
       orgId: org.id,
       mrtService,
@@ -428,12 +467,16 @@ describe('Manual Review Tool Service', () => {
           },
         });
 
-        const row = await mrtService['pgQuery']
-          .selectFrom('manual_review_tool.manual_review_decisions')
-          .where('id', '=', jobIdToGuid(dequeuedJob.job.id))
-          .where('org_id', '=', orgId)
-          .select(['reviewer_id', 'assigned_at'])
-          .executeTakeFirst();
+        const mrd = schema.manualReviewDecisions;
+        const [row] = await mrtService['drizzle']
+          .select({ reviewer_id: mrd.reviewerId, assigned_at: mrd.assignedAt })
+          .from(mrd)
+          .where(
+            and(
+              eq(mrd.id, jobIdToGuid(dequeuedJob.job.id)),
+              eq(mrd.orgId, orgId),
+            ),
+          );
 
         expect(row?.reviewer_id).toBe(AUTOMATED_DECISION_REVIEWER_ID);
         expect(row?.assigned_at).toBeNull();
@@ -822,7 +865,7 @@ describe('Manual Review Tool Service', () => {
       async ({ mrtService, deps, org, queue, actionId }) => {
         await setRequiresPolicyForDecisions(
           mrtService,
-          deps.KyselyPg,
+          deps.DrizzlePg,
           org.id,
           true,
         );
@@ -881,7 +924,7 @@ describe('Manual Review Tool Service', () => {
       async ({ mrtService, deps, org, queue, actionId, contentItemTypeId }) => {
         await setRequiresPolicyForDecisions(
           mrtService,
-          deps.KyselyPg,
+          deps.DrizzlePg,
           org.id,
           true,
         );
@@ -947,7 +990,7 @@ describe('Manual Review Tool Service', () => {
       async ({ mrtService, deps, org, queue, actionId, contentItemTypeId }) => {
         await setRequiresPolicyForDecisions(
           mrtService,
-          deps.KyselyPg,
+          deps.DrizzlePg,
           org.id,
           false,
         );
@@ -1013,7 +1056,7 @@ describe('Manual Review Tool Service', () => {
       async ({ mrtService, deps, org, queue, actionId }) => {
         await setRequiresPolicyForDecisions(
           mrtService,
-          deps.KyselyPg,
+          deps.DrizzlePg,
           org.id,
           true,
         );
@@ -1068,7 +1111,7 @@ describe('Manual Review Tool Service', () => {
       async ({ mrtService, deps, org, queue, actionId }) => {
         await setRequiresPolicyForDecisions(
           mrtService,
-          deps.KyselyPg,
+          deps.DrizzlePg,
           org.id,
           false,
         );
@@ -1196,13 +1239,11 @@ describe('Manual Review Tool Service', () => {
           throw new Error('expected a dequeued job');
         }
 
-        const claims = await deps.KyselyPg.selectFrom(
-          'manual_review_tool.job_claims',
-        )
-          .selectAll()
-          .where('org_id', '=', orgId)
-          .where('job_id', '=', dequeuedJob.job.id)
-          .execute();
+        const claims = await getJobClaims(
+          deps.DrizzlePg,
+          orgId,
+          dequeuedJob.job.id,
+        );
         expect(claims).toHaveLength(1);
         expect(claims[0].user_id).toBe(reviewerId);
 
@@ -1226,17 +1267,11 @@ describe('Manual Review Tool Service', () => {
           orgId,
         });
 
-        const decision = await deps.KyselyPg.selectFrom(
-          'manual_review_tool.manual_review_decisions',
-        )
-          .select(['assigned_at', 'created_at', 'reviewer_id'])
-          .where('org_id', '=', orgId)
-          .where(
-            sql<string>`(job_payload->>'id')::text`,
-            '=',
-            dequeuedJob.job.id,
-          )
-          .executeTakeFirstOrThrow();
+        const decision = await getDecisionForJob(
+          deps.DrizzlePg,
+          orgId,
+          dequeuedJob.job.id,
+        );
 
         expect(decision.reviewer_id).toBe(reviewerId);
         expect(decision.assigned_at).toEqual(claims[0].claimed_at);
@@ -1326,14 +1361,11 @@ describe('Manual Review Tool Service', () => {
         }
         expect(secondClaim.job.id).toBe(firstClaim.job.id);
 
-        const claims = await deps.KyselyPg.selectFrom(
-          'manual_review_tool.job_claims',
-        )
-          .selectAll()
-          .where('org_id', '=', orgId)
-          .where('job_id', '=', firstClaim.job.id)
-          .orderBy('claimed_at', 'asc')
-          .execute();
+        const claims = await getJobClaims(
+          deps.DrizzlePg,
+          orgId,
+          firstClaim.job.id,
+        );
         expect(claims).toHaveLength(2);
         expect(claims[0].user_id).toBe(firstReviewerId);
         expect(claims[1].user_id).toBe(secondReviewerId);
@@ -1358,17 +1390,11 @@ describe('Manual Review Tool Service', () => {
           orgId,
         });
 
-        const decision = await deps.KyselyPg.selectFrom(
-          'manual_review_tool.manual_review_decisions',
-        )
-          .select(['assigned_at'])
-          .where('org_id', '=', orgId)
-          .where(
-            sql<string>`(job_payload->>'id')::text`,
-            '=',
-            secondClaim.job.id,
-          )
-          .executeTakeFirstOrThrow();
+        const decision = await getDecisionForJob(
+          deps.DrizzlePg,
+          orgId,
+          secondClaim.job.id,
+        );
 
         expect(decision.assigned_at).toEqual(claims[1].claimed_at);
       },
@@ -1398,13 +1424,11 @@ describe('Manual Review Tool Service', () => {
           throw new Error('expected a dequeued job');
         }
 
-        const claims = await deps.KyselyPg.selectFrom(
-          'manual_review_tool.job_claims',
-        )
-          .selectAll()
-          .where('org_id', '=', orgId)
-          .where('job_id', '=', dequeuedJob.job.id)
-          .execute();
+        const claims = await getJobClaims(
+          deps.DrizzlePg,
+          orgId,
+          dequeuedJob.job.id,
+        );
         expect(claims).toHaveLength(1);
 
         await mrtService.submitDecision({
@@ -1420,17 +1444,11 @@ describe('Manual Review Tool Service', () => {
           },
         });
 
-        const decision = await deps.KyselyPg.selectFrom(
-          'manual_review_tool.manual_review_decisions',
-        )
-          .select(['assigned_at', 'reviewer_id'])
-          .where('org_id', '=', orgId)
-          .where(
-            sql<string>`(job_payload->>'id')::text`,
-            '=',
-            dequeuedJob.job.id,
-          )
-          .executeTakeFirstOrThrow();
+        const decision = await getDecisionForJob(
+          deps.DrizzlePg,
+          orgId,
+          dequeuedJob.job.id,
+        );
 
         expect(decision.reviewer_id).toBe(AUTOMATED_DECISION_REVIEWER_ID);
         expect(decision.assigned_at).toBeNull();
@@ -1496,13 +1514,11 @@ describe('Manual Review Tool Service', () => {
         });
         expect(outcome).toBe('logged');
 
-        const decision = await deps.KyselyPg.selectFrom(
-          'manual_review_tool.manual_review_decisions',
-        )
-          .select(['assigned_at', 'reviewer_id'])
-          .where('org_id', '=', orgId)
-          .where(sql<string>`(job_payload->>'id')::text`, '=', claimed.job.id)
-          .executeTakeFirstOrThrow();
+        const decision = await getDecisionForJob(
+          deps.DrizzlePg,
+          orgId,
+          claimed.job.id,
+        );
 
         expect(decision.reviewer_id).toBe(triggerReviewerId);
         expect(decision.assigned_at).toBeNull();
@@ -1565,13 +1581,11 @@ describe('Manual Review Tool Service', () => {
         });
         expect(outcome).toBe('logged');
 
-        const decision = await deps.KyselyPg.selectFrom(
-          'manual_review_tool.manual_review_decisions',
-        )
-          .select(['assigned_at', 'reviewer_id'])
-          .where('org_id', '=', orgId)
-          .where(sql<string>`(job_payload->>'id')::text`, '=', claimed.job.id)
-          .executeTakeFirstOrThrow();
+        const decision = await getDecisionForJob(
+          deps.DrizzlePg,
+          orgId,
+          claimed.job.id,
+        );
 
         expect(decision.reviewer_id).toBe(triggerReviewerId);
         expect(decision.assigned_at).toBeNull();
@@ -1612,14 +1626,12 @@ describe('Manual Review Tool Service', () => {
           lockToken: claimed.lockToken,
         });
 
-        const claims = await deps.KyselyPg.selectFrom(
-          'manual_review_tool.job_claims',
-        )
-          .selectAll()
-          .where('org_id', '=', orgId)
-          .where('job_id', '=', claimed.job.id)
-          .where('user_id', '=', triggerReviewerId)
-          .execute();
+        const claims = await getJobClaims(
+          deps.DrizzlePg,
+          orgId,
+          claimed.job.id,
+          triggerReviewerId,
+        );
         expect(claims).toHaveLength(1);
 
         const outcome = await mrtService[
@@ -1643,13 +1655,11 @@ describe('Manual Review Tool Service', () => {
         });
         expect(outcome).toBe('logged');
 
-        const decision = await deps.KyselyPg.selectFrom(
-          'manual_review_tool.manual_review_decisions',
-        )
-          .select(['assigned_at', 'reviewer_id'])
-          .where('org_id', '=', orgId)
-          .where(sql<string>`(job_payload->>'id')::text`, '=', claimed.job.id)
-          .executeTakeFirstOrThrow();
+        const decision = await getDecisionForJob(
+          deps.DrizzlePg,
+          orgId,
+          claimed.job.id,
+        );
 
         expect(decision.reviewer_id).toBe(triggerReviewerId);
         expect(decision.assigned_at).toBeNull();

@@ -1,24 +1,25 @@
 import { faker } from '@faker-js/faker';
-import { Kysely } from 'kysely';
+import { and, eq } from 'drizzle-orm';
+import type pg from 'pg';
 import { type UnionToIntersection } from 'type-fest';
 import { uid } from 'uid';
 import { vi } from 'vitest';
 
 import getBottle from '../../iocContainer/index.js';
+import {
+  schema as dbSchema,
+  makeDrizzle,
+  transactionWithRetry,
+  type CoopDb,
+} from '../../storage/postgres/drizzle.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import createRule from '../../test/fixtureHelpers/createRule.js';
 import createUser from '../../test/fixtureHelpers/createUser.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
 import { type MockedServer } from '../../test/setupMockedServer.js';
-import {
-  makeMockPgDialect,
-  type MockPgExecute,
-} from '../../test/stubs/KyselyPg.js';
 import { makeTestWithFixture } from '../../test/utils.js';
 import { ErrorType } from '../../utils/errors.js';
-import { makeKyselyTransactionWithRetry } from '../../utils/kyselyTransactionWithRetry.js';
 import { type Satisfies } from '../../utils/typescript-types.js';
-import { type ModerationConfigServicePg } from './dbTypes.js';
 import {
   RuleStatus,
   RuleType,
@@ -42,29 +43,27 @@ type ItemTypeMutationMethod =
 
 async function mutateItemTypeAndHiddenFields<T extends ItemTypeMutationMethod>(
   config: ModerationConfigService,
-  deps: Pick<TestDeps, 'KyselyPg' | 'ManualReviewToolService'>,
+  deps: Pick<TestDeps, 'DrizzlePg' | 'ManualReviewToolService'>,
   orgId: string,
   method: T,
   input: Parameters<ModerationConfigService[T]>[1],
   hiddenFields: readonly string[],
 ) {
-  const item = await makeKyselyTransactionWithRetry(deps.KyselyPg)(
-    async (trx) => {
-      const transactionConfig = config.forTransaction(trx);
-      const review = deps.ManualReviewToolService.forTransaction(trx);
-      try {
-        const item = await transactionConfig[method](orgId, input as never);
-        await review.setHiddenFieldsForItemType({
-          orgId,
-          itemTypeId: item.id,
-          hiddenFields,
-        });
-        return item;
-      } finally {
-        await transactionConfig.close();
-      }
-    },
-  );
+  const item = await transactionWithRetry(deps.DrizzlePg, async (trx) => {
+    const transactionConfig = config.forTransaction(trx);
+    const review = deps.ManualReviewToolService.forTransaction(trx);
+    try {
+      const item = await transactionConfig[method](orgId, input as never);
+      await review.setHiddenFieldsForItemType({
+        orgId,
+        itemTypeId: item.id,
+        hiddenFields,
+      });
+      return item;
+    } finally {
+      await transactionConfig.close();
+    }
+  });
   await config.invalidateLatestItemTypesCache(orgId);
   return item;
 }
@@ -77,35 +76,54 @@ async function mutateItemTypeAndHiddenFields<T extends ItemTypeMutationMethod>(
 //
 // To test that the correct db is queried (i.e., replicas vs the primary), we
 // use two service instances, each with access only to the db we expect to be
-// hit; the other db is a kysely instance that throws if it's ever used.
+// hit; the other db is a drizzle instance that throws if it's ever used.
 function makeSuts(primary: Sut, replica: Sut) {
-  const kyselyShouldBeUnused = new Kysely<ModerationConfigServicePg>({
-    dialect: makeMockPgDialect(
-      vi.fn<MockPgExecute>().mockImplementation(async () => {
-        throw new Error('Did not expect this kysely instance to be used!');
-      }),
-    ),
+  const fail = vi.fn().mockImplementation(async () => {
+    throw new Error('Did not expect this drizzle instance to be used!');
   });
+  const drizzleShouldBeUnused = makeDrizzle({
+    query: fail,
+    connect: fail,
+  } as unknown as pg.Pool);
 
   return {
     sutWithPrimary: new ModerationConfigService(
       primary,
-      kyselyShouldBeUnused,
+      drizzleShouldBeUnused,
       async () => {},
     ),
     sutWithReadReplica: new ModerationConfigService(
-      kyselyShouldBeUnused,
+      drizzleShouldBeUnused,
       replica,
       async () => {},
     ),
   };
 }
 
+async function getActionRow(db: CoopDb, id: string) {
+  const [row] = await db
+    .select()
+    .from(dbSchema.actions)
+    .where(eq(dbSchema.actions.id, id));
+  if (row === undefined) {
+    throw new Error(`No action ${id}`);
+  }
+  return row;
+}
+
+async function getActionItemTypeIds(db: CoopDb, actionId: string) {
+  const ait = dbSchema.actionsAndItemTypes;
+  return db
+    .select({ item_type_id: ait.itemTypeId })
+    .from(ait)
+    .where(eq(ait.actionId, actionId));
+}
+
 async function setupOrg(deps: TestDeps) {
-  const suts = makeSuts(deps.KyselyPg, deps.KyselyPgReadReplica);
+  const suts = makeSuts(deps.DrizzlePg, deps.DrizzlePgReadReplica);
   const { org, defaultUserItemType } = await createOrg(
     {
-      KyselyPg: deps.KyselyPg,
+      DrizzlePg: deps.DrizzlePg,
       ModerationConfigService: deps.ModerationConfigService,
       ApiKeyService: deps.ApiKeyService,
     },
@@ -182,8 +200,8 @@ describe('ModerationConfigService', () => {
     const testWithRuleRow = makeTransactionalTestWithFixture(
       async ({ deps }) => {
         const base = await setupOrg(deps);
-        const { user } = await createUser(deps.KyselyPg, base.org.id);
-        const rule = await createRule(deps.KyselyPg, base.org.id, {
+        const { user } = await createUser(deps.DrizzlePg, base.org.id);
+        const rule = await createRule(deps.DrizzlePg, base.org.id, {
           creator: user,
           name: 'getRuleByIdAndOrg fixture rule',
           ruleType: RuleType.USER,
@@ -212,7 +230,7 @@ describe('ModerationConfigService', () => {
       async ({ sutWithPrimary, deps, ruleId }) => {
         const { org: otherOrg } = await createOrg(
           {
-            KyselyPg: deps.KyselyPg,
+            DrizzlePg: deps.DrizzlePg,
             ModerationConfigService: deps.ModerationConfigService,
             ApiKeyService: deps.ApiKeyService,
           },
@@ -279,7 +297,7 @@ describe('ModerationConfigService', () => {
 
           const { org: otherOrg } = await createOrg(
             {
-              KyselyPg: deps.KyselyPg,
+              DrizzlePg: deps.DrizzlePg,
               ModerationConfigService: deps.ModerationConfigService,
               ApiKeyService: deps.ApiKeyService,
             },
@@ -316,15 +334,17 @@ describe('ModerationConfigService', () => {
               itemTypeId: itemType.id,
             }),
           ).resolves.toEqual([]);
+          const hidden = dbSchema.manualReviewHiddenItemFields;
           await expect(
-            deps.KyselyPg.selectFrom(
-              'manual_review_tool.manual_review_hidden_item_fields',
-            )
-              .select('item_type_id')
-              .where('org_id', '=', org.id)
-              .where('item_type_id', '=', itemType.id)
-              .executeTakeFirst(),
-          ).resolves.toBeUndefined();
+            deps.DrizzlePg.select({ itemTypeId: hidden.itemTypeId })
+              .from(hidden)
+              .where(
+                and(
+                  eq(hidden.orgId, org.id),
+                  eq(hidden.itemTypeId, itemType.id),
+                ),
+              ),
+          ).resolves.toEqual([]);
         },
       );
     });
@@ -466,7 +486,7 @@ describe('ModerationConfigService', () => {
           });
           const { org: otherOrg } = await createOrg(
             {
-              KyselyPg: deps.KyselyPg,
+              DrizzlePg: deps.DrizzlePg,
               ModerationConfigService: deps.ModerationConfigService,
               ApiKeyService: deps.ApiKeyService,
             },
@@ -525,7 +545,7 @@ describe('ModerationConfigService', () => {
             schemaFieldRoles: {},
           });
           await expect(
-            makeKyselyTransactionWithRetry(deps.KyselyPg)(async (trx) => {
+            transactionWithRetry(deps.DrizzlePg, async (trx) => {
               const transactionConfig = sutWithPrimary.forTransaction(trx);
               const review = deps.ManualReviewToolService.forTransaction(trx);
               try {
@@ -1153,18 +1173,21 @@ describe('ModerationConfigService', () => {
               callbackUrlBody: null,
             });
 
-            // Legacy shape pre-dating the typed parameter spec — set it via raw
-            // Kysely to verify the read mapping still surfaces older rows
+            // Legacy shape pre-dating the typed parameter spec — set it
+            // directly to verify the read mapping still surfaces older rows
             // unchanged for back-compat.
             const params = [
               { key: 'foo', value: 'bar' },
               { key: 'baz', value: 'qux' },
             ];
-            await deps.KyselyPg.updateTable('public.actions')
-              .set({ custom_mrt_api_params: params })
-              .where('id', '=', action.id)
-              .where('org_id', '=', org.id)
-              .execute();
+            await deps.DrizzlePg.update(dbSchema.actions)
+              .set({ customMrtApiParams: params })
+              .where(
+                and(
+                  eq(dbSchema.actions.id, action.id),
+                  eq(dbSchema.actions.orgId, org.id),
+                ),
+              );
 
             const [fetched] = await sutWithPrimary.getActions({
               orgId: org.id,
@@ -1299,10 +1322,7 @@ describe('ModerationConfigService', () => {
         testWithAction(
           'should update user-editable fields and bump updated_at',
           async ({ sutWithPrimary, deps, org, action }) => {
-            const before = await deps.KyselyPg.selectFrom('public.actions')
-              .select(['updated_at'])
-              .where('id', '=', action.id)
-              .executeTakeFirstOrThrow();
+            const before = await getActionRow(deps.DrizzlePg, action.id);
 
             // Wait briefly so updated_at can advance even on fast clocks.
             await new Promise((resolve) => setTimeout(resolve, 5));
@@ -1321,13 +1341,10 @@ describe('ModerationConfigService', () => {
             expect(updated.callbackUrl).toBe('https://after.example.com');
             expect(updated.applyUserStrikes).toBe(true);
 
-            const after = await deps.KyselyPg.selectFrom('public.actions')
-              .select(['updated_at', 'description'])
-              .where('id', '=', action.id)
-              .executeTakeFirstOrThrow();
+            const after = await getActionRow(deps.DrizzlePg, action.id);
             expect(after.description).toBe('after');
-            expect(after.updated_at.getTime()).toBeGreaterThan(
-              before.updated_at.getTime(),
+            expect(after.updatedAt.getTime()).toBeGreaterThan(
+              before.updatedAt.getTime(),
             );
           },
         );
@@ -1335,10 +1352,7 @@ describe('ModerationConfigService', () => {
         testWithAction(
           'should not bump updated_at for an empty patch with no itemTypeIds',
           async ({ sutWithPrimary, deps, org, action }) => {
-            const before = await deps.KyselyPg.selectFrom('public.actions')
-              .select(['updated_at'])
-              .where('id', '=', action.id)
-              .executeTakeFirstOrThrow();
+            const before = await getActionRow(deps.DrizzlePg, action.id);
 
             await new Promise((resolve) => setTimeout(resolve, 5));
 
@@ -1347,13 +1361,8 @@ describe('ModerationConfigService', () => {
               patch: {},
             });
 
-            const after = await deps.KyselyPg.selectFrom('public.actions')
-              .select(['updated_at'])
-              .where('id', '=', action.id)
-              .executeTakeFirstOrThrow();
-            expect(after.updated_at.getTime()).toBe(
-              before.updated_at.getTime(),
-            );
+            const after = await getActionRow(deps.DrizzlePg, action.id);
+            expect(after.updatedAt.getTime()).toBe(before.updatedAt.getTime());
             expect(result.id).toBe(action.id);
           },
         );
@@ -1363,7 +1372,7 @@ describe('ModerationConfigService', () => {
           async ({ sutWithPrimary, deps, action }) => {
             const { org: otherOrg } = await createOrg(
               {
-                KyselyPg: deps.KyselyPg,
+                DrizzlePg: deps.DrizzlePg,
                 ModerationConfigService: deps.ModerationConfigService,
                 ApiKeyService: deps.ApiKeyService,
               },
@@ -1379,10 +1388,7 @@ describe('ModerationConfigService', () => {
             );
 
             // The action's row in the original org must be untouched.
-            const row = await deps.KyselyPg.selectFrom('public.actions')
-              .select(['description'])
-              .where('id', '=', action.id)
-              .executeTakeFirstOrThrow();
+            const row = await getActionRow(deps.DrizzlePg, action.id);
             expect(row.description).toBe('before');
           },
         );
@@ -1520,10 +1526,7 @@ describe('ModerationConfigService', () => {
               itemTypeIds: [itemTypeA.id],
             });
             expect(
-              await deps.KyselyPg.selectFrom('public.actions_and_item_types')
-                .select(['item_type_id'])
-                .where('action_id', '=', action.id)
-                .execute(),
+              await getActionItemTypeIds(deps.DrizzlePg, action.id),
             ).toEqual([{ item_type_id: itemTypeA.id }]);
 
             await sutWithPrimary.updateCustomAction(org.id, {
@@ -1532,10 +1535,7 @@ describe('ModerationConfigService', () => {
               itemTypeIds: [itemTypeB.id],
             });
             expect(
-              await deps.KyselyPg.selectFrom('public.actions_and_item_types')
-                .select(['item_type_id'])
-                .where('action_id', '=', action.id)
-                .execute(),
+              await getActionItemTypeIds(deps.DrizzlePg, action.id),
             ).toEqual([{ item_type_id: itemTypeB.id }]);
 
             await sutWithPrimary.updateCustomAction(org.id, {
@@ -1544,10 +1544,7 @@ describe('ModerationConfigService', () => {
               itemTypeIds: [],
             });
             expect(
-              await deps.KyselyPg.selectFrom('public.actions_and_item_types')
-                .select(['item_type_id'])
-                .where('action_id', '=', action.id)
-                .execute(),
+              await getActionItemTypeIds(deps.DrizzlePg, action.id),
             ).toEqual([]);
           },
         );
@@ -1583,16 +1580,10 @@ describe('ModerationConfigService', () => {
                 title: 'Invalid action item type IDs',
                 detail: 'One or more item type IDs are invalid',
               });
-              const row = await deps.KyselyPg.selectFrom('public.actions')
-                .select('description')
-                .where('id', '=', action.id)
-                .executeTakeFirstOrThrow();
+              const row = await getActionRow(deps.DrizzlePg, action.id);
               expect(row.description).toBe('before');
               expect(
-                await deps.KyselyPg.selectFrom('public.actions_and_item_types')
-                  .select('item_type_id')
-                  .where('action_id', '=', action.id)
-                  .execute(),
+                await getActionItemTypeIds(deps.DrizzlePg, action.id),
               ).toEqual([{ item_type_id: defaultUserItemType.id }]);
             },
           );
@@ -1650,7 +1641,7 @@ describe('ModerationConfigService', () => {
           async ({ sutWithPrimary, deps, org, action }) => {
             const { org: otherOrg } = await createOrg(
               {
-                KyselyPg: deps.KyselyPg,
+                DrizzlePg: deps.DrizzlePg,
                 ModerationConfigService: deps.ModerationConfigService,
                 ApiKeyService: deps.ApiKeyService,
               },
@@ -1678,14 +1669,16 @@ describe('ModerationConfigService', () => {
               name: faker.string.alphanumeric(16),
               schemaFieldRoles: { displayName: 'fakeField' },
             });
-            const rule = await createRule(deps.KyselyPg, org.id);
+            const rule = await createRule(deps.DrizzlePg, org.id);
 
-            await deps.KyselyPg.insertInto('public.actions_and_item_types')
-              .values({ action_id: action.id, item_type_id: itemType.id })
-              .execute();
-            await deps.KyselyPg.insertInto('public.rules_and_actions')
-              .values({ action_id: action.id, rule_id: rule.id })
-              .execute();
+            await deps.DrizzlePg.insert(dbSchema.actionsAndItemTypes).values({
+              actionId: action.id,
+              itemTypeId: itemType.id,
+            });
+            await deps.DrizzlePg.insert(dbSchema.rulesAndActions).values({
+              actionId: action.id,
+              ruleId: rule.id,
+            });
 
             const result = await sutWithPrimary.deleteCustomAction({
               orgId: org.id,
@@ -1693,16 +1686,14 @@ describe('ModerationConfigService', () => {
             });
             expect(result).toBe(true);
             expect(
-              await deps.KyselyPg.selectFrom('public.actions_and_item_types')
-                .select(['action_id'])
-                .where('action_id', '=', action.id)
-                .execute(),
+              await getActionItemTypeIds(deps.DrizzlePg, action.id),
             ).toEqual([]);
             expect(
-              await deps.KyselyPg.selectFrom('public.rules_and_actions')
-                .select(['action_id'])
-                .where('action_id', '=', action.id)
-                .execute(),
+              await deps.DrizzlePg.select({
+                actionId: dbSchema.rulesAndActions.actionId,
+              })
+                .from(dbSchema.rulesAndActions)
+                .where(eq(dbSchema.rulesAndActions.actionId, action.id)),
             ).toEqual([]);
           },
         );
@@ -1743,10 +1734,9 @@ describe('ModerationConfigService', () => {
               callbackUrlBody: null,
             },
           );
-          await deps.KyselyPg.updateTable('public.actions')
-            .set({ applies_to_all_items_of_kind: ['CONTENT'] })
-            .where('id', '=', viaAppliesAllAction.id)
-            .execute();
+          await deps.DrizzlePg.update(dbSchema.actions)
+            .set({ appliesToAllItemsOfKind: ['CONTENT'] })
+            .where(eq(dbSchema.actions.id, viaAppliesAllAction.id));
 
           // Action satisfying both branches; result should still include it once.
           const viaBothAction = await sutWithPrimary.createAction(org.id, {
@@ -1758,10 +1748,9 @@ describe('ModerationConfigService', () => {
             callbackUrlBody: null,
             itemTypeIds: [itemType.id],
           });
-          await deps.KyselyPg.updateTable('public.actions')
-            .set({ applies_to_all_items_of_kind: ['CONTENT'] })
-            .where('id', '=', viaBothAction.id)
-            .execute();
+          await deps.DrizzlePg.update(dbSchema.actions)
+            .set({ appliesToAllItemsOfKind: ['CONTENT'] })
+            .where(eq(dbSchema.actions.id, viaBothAction.id));
 
           return {
             ...base,
@@ -1808,7 +1797,7 @@ describe('ModerationConfigService', () => {
           // ANY(...) predicate alone has no tenant scope).
           const { org: otherOrg } = await createOrg(
             {
-              KyselyPg: deps.KyselyPg,
+              DrizzlePg: deps.DrizzlePg,
               ModerationConfigService: deps.ModerationConfigService,
               ApiKeyService: deps.ApiKeyService,
             },
@@ -1833,7 +1822,7 @@ describe('ModerationConfigService', () => {
           const base = await setupOrg(deps);
           const { sutWithPrimary, org } = base;
 
-          const rule = await createRule(deps.KyselyPg, org.id);
+          const rule = await createRule(deps.DrizzlePg, org.id);
           const action = await sutWithPrimary.createAction(org.id, {
             name: faker.string.alphanumeric(16),
             description: null,
@@ -1842,9 +1831,10 @@ describe('ModerationConfigService', () => {
             callbackUrlHeaders: null,
             callbackUrlBody: null,
           });
-          await deps.KyselyPg.insertInto('public.rules_and_actions')
-            .values({ action_id: action.id, rule_id: rule.id })
-            .execute();
+          await deps.DrizzlePg.insert(dbSchema.rulesAndActions).values({
+            actionId: action.id,
+            ruleId: rule.id,
+          });
           return { ...base, rule, action };
         },
       );
@@ -1866,7 +1856,7 @@ describe('ModerationConfigService', () => {
         async ({ sutWithPrimary, deps, rule }) => {
           const { org: otherOrg } = await createOrg(
             {
-              KyselyPg: deps.KyselyPg,
+              DrizzlePg: deps.DrizzlePg,
               ModerationConfigService: deps.ModerationConfigService,
               ApiKeyService: deps.ApiKeyService,
             },
@@ -1911,7 +1901,7 @@ describe('ModerationConfigService', () => {
       const testWithUserAndOrg = makeTransactionalTestWithFixture(
         async ({ deps }) => {
           const base = await setupOrg(deps);
-          const { user } = await createUser(deps.KyselyPg, base.org.id);
+          const { user } = await createUser(deps.DrizzlePg, base.org.id);
           return { ...base, user, deps };
         },
       );
@@ -2084,7 +2074,7 @@ describe('ModerationConfigService', () => {
         async ({ sutWithPrimary, org, user, deps }) => {
           const other = await setupOrg(deps);
           const { user: otherUser } = await createUser(
-            deps.KyselyPg,
+            deps.DrizzlePg,
             other.org.id,
           );
           const otherParent = await other.sutWithPrimary.createPolicy({
@@ -2523,13 +2513,13 @@ describe('ModerationConfigService', () => {
     const testWithHistoricalItemType = makeTestWithFixture(async () => {
       const { container } = await getBottle();
       const sut = new ModerationConfigService(
-        container.KyselyPg,
-        container.KyselyPgReadReplica,
+        container.DrizzlePg,
+        container.DrizzlePgReadReplica,
         async () => {},
       );
       const { org, cleanup: orgCleanup } = await createOrg(
         {
-          KyselyPg: container.KyselyPg,
+          DrizzlePg: container.DrizzlePg,
           ModerationConfigService: container.ModerationConfigService,
           ApiKeyService: container.ApiKeyService,
         },
@@ -2549,8 +2539,8 @@ describe('ModerationConfigService', () => {
         async cleanup() {
           await orgCleanup();
           await Promise.all([
-            container.KyselyPg.destroy(),
-            container.KyselyPgReadReplica.destroy(),
+            container.KyselyPgPool.end(),
+            container.PgReadReplicaPool.end(),
           ]);
         },
       };

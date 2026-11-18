@@ -1,11 +1,10 @@
-import { type Kysely } from 'kysely';
+import { and, eq } from 'drizzle-orm';
 import { uid } from 'uid';
 
 import {
   kyselyCreateRule,
   kyselyDeleteRule,
 } from '../../graphql/datasources/ruleKyselyPersistence.js';
-import { type CombinedPg } from '../../services/combinedDbTypes.js';
 import {
   ConditionConjunction,
   RuleAlarmStatus,
@@ -14,6 +13,7 @@ import {
   type ConditionSet,
 } from '../../services/moderationConfigService/index.js';
 import { SignalType } from '../../services/signalsService/index.js';
+import { schema, type CoopDb } from '../../storage/postgres/drizzle.js';
 import { jsonStringify } from '../../utils/encoding.js';
 import { logErrorAndThrow } from '../utils.js';
 import createUser from './createUser.js';
@@ -37,7 +37,7 @@ const DEFAULT_CONDITION_SET: ConditionSet = {
 };
 
 export default async function createRule(
-  db: Kysely<CombinedPg>,
+  db: CoopDb,
   orgId: string,
   extra: {
     creatorId?: string;
@@ -84,11 +84,9 @@ export default async function createRule(
   const alarmStatus = extra.alarmStatus ?? RuleAlarmStatus.INSUFFICIENT_DATA;
   if (alarmStatus !== RuleAlarmStatus.INSUFFICIENT_DATA) {
     await db
-      .updateTable('public.rules')
-      .set({ alarm_status: alarmStatus, alarm_status_set_at: new Date() })
-      .where('id', '=', ruleId)
-      .where('org_id', '=', orgId)
-      .execute();
+      .update(schema.rules)
+      .set({ alarmStatus, alarmStatusSetAt: new Date() })
+      .where(and(eq(schema.rules.id, ruleId), eq(schema.rules.orgId, orgId)));
   }
 
   return {

@@ -1,7 +1,24 @@
 /* eslint-disable max-lines */
-import { sql, type InferResult, type Kysely } from 'kysely';
+import {
+  and,
+  desc,
+  eq,
+  gt,
+  gte,
+  inArray,
+  isNotNull,
+  lt,
+  lte,
+  notInArray,
+  or,
+  sql,
+  type SQL,
+  type SQLWrapper,
+} from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
 import { type ReadonlyDeep } from 'type-fest';
 
+import { schema, type CoopDb } from '../../../storage/postgres/drizzle.js';
 import { MONTH_MS } from '../../../utils/time.js';
 import { UserPermission } from '../../userManagementService/index.js';
 import { type ManualReviewToolServicePg } from '../dbTypes.js';
@@ -9,7 +26,11 @@ import {
   type ManualReviewJob,
   type ManualReviewJobEnqueueSource,
 } from '../manualReviewToolService.js';
-import { type ManualReviewDecisionType } from './JobDecisioning.js';
+import {
+  type ManualReviewDecisionComponent,
+  type ManualReviewDecisionRelatedAction,
+  type ManualReviewDecisionType,
+} from './JobDecisioning.js';
 
 export type RecentDecisionsFilterInput = {
   userSearchString?: string;
@@ -40,258 +61,373 @@ export type ActivityFeedDecisionCursor = { ts: Date; id: string | null };
 
 const MAX_DECISIONS_LIMIT = 200;
 
-export default class DecisionAnalytics {
-  constructor(private readonly pgQuery: Kysely<ManualReviewToolServicePg>) {}
+const dimDecisions = schema.dimMrtDecisionsMaterialized;
+const mrtDecisions = schema.manualReviewDecisions;
+const flattenedJobCreations = schema.flattenedJobCreations;
+// The time-to-action and handle-time queries group by `decisions.<column>`
+// names that come from the caller, so they need the `decisions` alias.
+const decisionsAlias = alias(schema.manualReviewDecisions, 'decisions');
+const creationsAlias = alias(schema.jobCreations, 'creations');
 
-  async getDecisionCounts(input: DecisionCountsInput) {
+/** Kysely's `eb.or([])` rendered `false`; Drizzle's `or()` renders nothing. */
+function orOrFalse(conditions: (SQL | undefined)[]): SQL {
+  return conditions.length === 0 ? sql`false` : or(...conditions)!;
+}
+
+/**
+ * `date_trunc(...)` selected as `time`. Grouping by the alias (rather than
+ * repeating the expression) is required: the repeated expression would carry
+ * fresh bind parameters, which Postgres doesn't treat as the same expression.
+ * `mapWith` decodes it to a Date, as pg's default parser did under Kysely.
+ */
+function truncatedTime(
+  timeDivision: string,
+  column: SQLWrapper,
+  timeZone: string,
+) {
+  return sql<string>`date_trunc(${timeDivision}, ${column}, ${timeZone})`
+    .mapWith(dimDecisions.decidedAt)
+    .as('time');
+}
+
+/** Unqualified column (or output alias) reference, like Kysely's `ref()`. */
+const ident = (name: string): SQL => sql`${sql.identifier(name)}`;
+
+type DecisionCountRow = {
+  time: string;
+  count: number;
+  action_id?: string | null;
+  queue_id?: string;
+  type?: ManualReviewDecisionType;
+  reviewer_id?: string;
+  policy_id?: string | null;
+};
+
+type DecisionCountTableRow = {
+  count: number;
+  action_id: string | null;
+  type: ManualReviewDecisionType;
+  queue_id?: string;
+  reviewer_id?: string;
+};
+
+type JobCreationCountRow = {
+  time: string;
+  count: number;
+  item_type_id?: string;
+  queue_id?: string;
+  policy_id?: string;
+  source?: ManualReviewJobEnqueueSource;
+  rule_id?: string;
+};
+
+type ResolvedJobCountRow = {
+  time: string;
+  count: number;
+  queue_id?: string;
+  reviewer_id?: string | null;
+};
+
+const recentDecisionSelection = {
+  id: mrtDecisions.id,
+  queue_id: mrtDecisions.queueId,
+  reviewer_id: mrtDecisions.reviewerId,
+  decision_components: mrtDecisions.decisionComponents,
+  related_actions: mrtDecisions.relatedActions,
+  created_at: mrtDecisions.createdAt,
+  item_id: sql<string>`((${mrtDecisions.jobPayload}->'payload'::text)->'item'::text) -> 'itemId'::text`,
+  item_type_id: sql<string>`(((${mrtDecisions.jobPayload}->'payload'::text)->'item'::text) -> 'itemTypeIdentifier'::text) ->> 'id'::text`,
+  decision_reason: mrtDecisions.decisionReason,
+  assigned_at: mrtDecisions.assignedAt,
+  job_created_at: sql<string | null>`${mrtDecisions.jobPayload}->>'createdAt'`,
+  job_id: sql<string>`(${mrtDecisions.jobPayload}->>'id')::text`,
+};
+
+type RecentDecisionRow = {
+  id: string;
+  queue_id: string;
+  reviewer_id: string | null;
+  decision_components: ManualReviewDecisionComponent[];
+  related_actions: ManualReviewDecisionRelatedAction[];
+  created_at: Date;
+  item_id: string;
+  item_type_id: string;
+  decision_reason: string | null;
+  assigned_at: Date | null;
+  job_created_at: string | null;
+  job_id: string;
+};
+
+/** Excludes NCMEC jobs for users without VIEW_CHILD_SAFETY_DATA. */
+function ncmecVisibilityCondition(userPermissions: UserPermission[]) {
+  return userPermissions.includes(UserPermission.VIEW_CHILD_SAFETY_DATA)
+    ? undefined
+    : sql`(${mrtDecisions.jobPayload}->'payload'->'kind')::text != ${'"NCMEC"'}`;
+}
+
+export default class DecisionAnalytics {
+  constructor(private readonly db: CoopDb) {}
+
+  async getDecisionCounts(
+    input: DecisionCountsInput,
+  ): Promise<DecisionCountRow[]> {
     const { orgId, groupBy, filterBy, timeDivision, timeZone } = input;
-    const { ref } = this.pgQuery.dynamic;
-    return this.pgQuery
-      .selectFrom('manual_review_tool.dim_mrt_decisions_materialized')
-      .select([
-        sql<string>`DATE_TRUNC(${timeDivision}, decided_at, ${timeZone})`.as(
-          'time',
-        ),
-        sql<number>`COUNT(DISTINCT (item_id, item_type_id))`.as('count'),
-      ])
-      .$if(groupBy.includes('action_id'), (qb) => qb.select('action_id'))
-      .$if(groupBy.includes('queue_id'), (qb) => qb.select('queue_id'))
-      .$if(groupBy.includes('type'), (qb) => qb.select(['action_id', 'type']))
-      .$if(groupBy.includes('reviewer_id'), (qb) => qb.select('reviewer_id'))
-      .$if(groupBy.includes('policy_id'), (qb) => qb.select('policy_id'))
-      .where((eb) => {
-        return eb.and([
-          eb('org_id', '=', orgId),
-          eb(
-            sql`decided_at AT TIME ZONE ${timeZone}`,
-            '>=',
-            filterBy.startDate,
-          ),
-          eb(sql`decided_at AT TIME ZONE ${timeZone}`, '<=', filterBy.endDate),
-          ...(filterBy.actionIds.length > 0 || filterBy.type.length > 0
-            ? [
-                eb.or([
-                  ...(filterBy.actionIds.length > 0
-                    ? [eb('action_id', 'in', filterBy.actionIds)]
-                    : []),
-                  ...(filterBy.type.length > 0
-                    ? [eb('type', 'in', filterBy.type)]
-                    : []),
-                ]),
-              ]
-            : []),
-          ...(filterBy.itemTypeIds.length > 0
-            ? [eb('item_type_id', 'in', filterBy.itemTypeIds)]
-            : []),
-          ...(filterBy.policyIds.length > 0
-            ? [eb('policy_id', 'in', filterBy.policyIds)]
-            : []),
-          ...(filterBy.reviewerIds.length > 0
-            ? [eb('reviewer_id', 'in', filterBy.reviewerIds)]
-            : []),
-          ...(filterBy.queueIds.length > 0
-            ? [eb('queue_id', 'in', filterBy.queueIds)]
-            : []),
+    const t = dimDecisions;
+    const decidedAtInZone = sql`${t.decidedAt} AT TIME ZONE ${timeZone}`;
+    const rows = await this.db
+      .select({
+        time: truncatedTime(timeDivision, t.decidedAt, timeZone),
+        count: sql<number>`COUNT(DISTINCT (${t.itemId}, ${t.itemTypeId}))`,
+        ...(groupBy.includes('action_id') || groupBy.includes('type')
+          ? { action_id: t.actionId }
+          : {}),
+        ...(groupBy.includes('queue_id') ? { queue_id: t.queueId } : {}),
+        ...(groupBy.includes('type') ? { type: t.type } : {}),
+        ...(groupBy.includes('reviewer_id')
+          ? { reviewer_id: t.reviewerId }
+          : {}),
+        ...(groupBy.includes('policy_id') ? { policy_id: t.policyId } : {}),
+      })
+      .from(t)
+      .where(
+        and(
+          eq(t.orgId, orgId),
+          sql`${decidedAtInZone} >= ${filterBy.startDate}`,
+          sql`${decidedAtInZone} <= ${filterBy.endDate}`,
+          filterBy.actionIds.length > 0 || filterBy.type.length > 0
+            ? or(
+                filterBy.actionIds.length > 0
+                  ? inArray(t.actionId, [...filterBy.actionIds])
+                  : undefined,
+                filterBy.type.length > 0
+                  ? inArray(t.type, [...filterBy.type])
+                  : undefined,
+              )
+            : undefined,
+          filterBy.itemTypeIds.length > 0
+            ? inArray(t.itemTypeId, [...filterBy.itemTypeIds])
+            : undefined,
+          filterBy.policyIds.length > 0
+            ? inArray(t.policyId, [...filterBy.policyIds])
+            : undefined,
+          filterBy.reviewerIds.length > 0
+            ? inArray(t.reviewerId, [...filterBy.reviewerIds])
+            : undefined,
+          filterBy.queueIds.length > 0
+            ? inArray(t.queueId, [...filterBy.queueIds])
+            : undefined,
           // Ignores, NCMEC reports and re-enqueueing don't make any sense when
           // grouping by policy ID
-          ...(groupBy.includes('policy_id')
-            ? [eb('type', 'in', ['CUSTOM_ACTION', 'RELATED_ACTION'])]
-            : []),
-          ...(filterBy.filteredDecisionActionType &&
-          filterBy.filteredDecisionActionType.includes('RELATED_ACTION')
-            ? [eb('type', 'not in', filterBy.filteredDecisionActionType)]
-            : []),
-          ...(filterBy.filteredDecisionActionType?.includes('CUSTOM_ACTION')
-            ? [eb('type', 'not in', filterBy.filteredDecisionActionType)]
-            : []),
-        ]);
-      })
-      .groupBy([
-        ...groupBy.map((it) => ref(it as string)).flat(),
-        'time',
-        ...(groupBy.includes('type') ? [ref('action_id')] : []),
-      ])
-      .execute();
+          groupBy.includes('policy_id')
+            ? inArray(t.type, ['CUSTOM_ACTION', 'RELATED_ACTION'])
+            : undefined,
+          filterBy.filteredDecisionActionType &&
+            filterBy.filteredDecisionActionType.includes('RELATED_ACTION')
+            ? notInArray(t.type, [...filterBy.filteredDecisionActionType])
+            : undefined,
+          filterBy.filteredDecisionActionType?.includes('CUSTOM_ACTION')
+            ? notInArray(t.type, [...filterBy.filteredDecisionActionType])
+            : undefined,
+        ),
+      )
+      .groupBy(
+        ...[
+          ...groupBy.map((it) => ident(it as string)),
+          ident('time'),
+          ...(groupBy.includes('type') ? [ident('action_id')] : []),
+        ],
+      );
+    return rows as unknown as DecisionCountRow[];
   }
 
-  async getDecisionCountsTable(input: DecisionCountsTableInput) {
+  async getDecisionCountsTable(
+    input: DecisionCountsTableInput,
+  ): Promise<DecisionCountTableRow[]> {
     const { orgId, groupBy, filterBy, timeZone } = input;
-    return this.pgQuery
-      .selectFrom('manual_review_tool.dim_mrt_decisions_materialized')
-      .select([
-        sql<number>`COUNT(DISTINCT (item_id, item_type_id))`.as('count'),
-        'action_id',
-        'type',
-      ])
-      .$if(groupBy.includes('queue_id'), (qb) => qb.select('queue_id'))
-      .$if(groupBy.includes('reviewer_id'), (qb) => qb.select('reviewer_id'))
-      .where((eb) => {
-        return eb.and([
-          eb('org_id', '=', orgId),
-          eb(
-            sql`decided_at AT TIME ZONE ${timeZone}`,
-            '>=',
-            filterBy.startDate,
-          ),
-          eb(sql`decided_at AT TIME ZONE ${timeZone}`, '<=', filterBy.endDate),
-          ...(filterBy.reviewerIds.length > 0
-            ? [eb('reviewer_id', 'in', filterBy.reviewerIds)]
-            : []),
-          ...(filterBy.queueIds.length > 0
-            ? [eb('queue_id', 'in', filterBy.queueIds)]
-            : []),
-        ]);
+    const t = dimDecisions;
+    const decidedAtInZone = sql`${t.decidedAt} AT TIME ZONE ${timeZone}`;
+    const rows = await this.db
+      .select({
+        count: sql<number>`COUNT(DISTINCT (${t.itemId}, ${t.itemTypeId}))`,
+        action_id: t.actionId,
+        type: t.type,
+        ...(groupBy.includes('queue_id') ? { queue_id: t.queueId } : {}),
+        ...(groupBy.includes('reviewer_id')
+          ? { reviewer_id: t.reviewerId }
+          : {}),
       })
-      .groupBy([groupBy, 'action_id', 'type'])
-      .execute();
+      .from(t)
+      .where(
+        and(
+          eq(t.orgId, orgId),
+          sql`${decidedAtInZone} >= ${filterBy.startDate}`,
+          sql`${decidedAtInZone} <= ${filterBy.endDate}`,
+          filterBy.reviewerIds.length > 0
+            ? inArray(t.reviewerId, [...filterBy.reviewerIds])
+            : undefined,
+          filterBy.queueIds.length > 0
+            ? inArray(t.queueId, [...filterBy.queueIds])
+            : undefined,
+        ),
+      )
+      .groupBy(ident(groupBy), t.actionId, t.type);
+    return rows as unknown as DecisionCountTableRow[];
   }
 
   async getTimeToAction(input: TimeToActionInput) {
     const { orgId, groupBy, filterBy } = input;
-    const { ref } = this.pgQuery.dynamic;
-    return this.pgQuery
-      .selectFrom('manual_review_tool.job_creations as creations')
-      .innerJoin(
-        'manual_review_tool.manual_review_decisions as decisions',
-        (join) =>
-          join.on((eb) =>
-            eb(
-              'creations.id',
-              '=',
-              eb.ref('decisions.job_payload', '->>').key('id'),
-            ),
-          ),
-      )
-      .select(({ fn, val }) =>
-        fn<number | null>('date_part', [
-          val('EPOCH'),
-          fn.avg<number | null>(({ eb, ref }) =>
-            eb('decisions.created_at', '-', ref('creations.created_at')),
-          ),
-        ]).as('time_to_action'),
-      )
-      .$if(groupBy.includes('queue_id'), (qb) =>
-        qb.select('decisions.queue_id as queue_id'),
-      )
-      .where((eb) => {
-        return eb.and([
-          eb('creations.org_id', '=', orgId),
-          eb('creations.created_at', '>=', filterBy.startDate),
-          eb('creations.created_at', '<=', filterBy.endDate),
-          ...(filterBy.queueIds.length > 0
-            ? [eb('decisions.queue_id', 'in', filterBy.queueIds)]
-            : []),
-        ]);
+    const creations = creationsAlias;
+    const decisions = decisionsAlias;
+    const query = this.db
+      .select({
+        time_to_action: sql<
+          number | null
+        >`date_part(${'EPOCH'}, avg(${decisions.createdAt} - ${creations.createdAt}))`,
+        ...(groupBy.includes('queue_id')
+          ? { queue_id: decisions.queueId }
+          : {}),
       })
-      .$if(groupBy.length > 0, (qb) =>
-        qb.groupBy([
-          ...groupBy.map((it) => ref(`decisions.${it as string}`)).flat(),
-        ]),
+      .from(creations)
+      .innerJoin(
+        decisions,
+        sql`${creations.id} = ${decisions.jobPayload}->>'id'`,
       )
-      .execute();
+      .where(
+        and(
+          eq(creations.orgId, orgId),
+          gte(creations.createdAt, filterBy.startDate),
+          lte(creations.createdAt, filterBy.endDate),
+          filterBy.queueIds.length > 0
+            ? inArray(decisions.queueId, [...filterBy.queueIds])
+            : undefined,
+        ),
+      )
+      .$dynamic();
+    const rows =
+      groupBy.length > 0
+        ? await query.groupBy(
+            ...groupBy.map((it) => sql`${ident('decisions')}.${ident(it)}`),
+          )
+        : await query;
+    return rows as { time_to_action: number | null; queue_id?: string }[];
   }
 
   async getHandleTime(input: HandleTimeInput) {
     const { orgId, groupBy, filterBy } = input;
-    const { ref } = this.pgQuery.dynamic;
-    return this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_decisions as decisions')
-      .select(({ fn, val }) =>
-        fn<number | null>('date_part', [
-          val('EPOCH'),
-          fn.avg<number | null>(({ eb, ref }) =>
-            eb('decisions.created_at', '-', ref('decisions.assigned_at')),
-          ),
-        ]).as('handle_time'),
-      )
-      .$if(groupBy.includes('queue_id'), (qb) =>
-        qb.select('decisions.queue_id as queue_id'),
-      )
-      .$if(groupBy.includes('reviewer_id'), (qb) =>
-        qb.select('decisions.reviewer_id as reviewer_id'),
-      )
-      .where((eb) => {
-        return eb.and([
-          eb('decisions.org_id', '=', orgId),
-          eb('decisions.assigned_at', 'is not', null),
-          eb('decisions.created_at', '>=', filterBy.startDate),
-          eb('decisions.created_at', '<=', filterBy.endDate),
-          ...(filterBy.queueIds.length > 0
-            ? [eb('decisions.queue_id', 'in', filterBy.queueIds)]
-            : []),
-          ...(filterBy.reviewerIds.length > 0
-            ? [eb('decisions.reviewer_id', 'in', filterBy.reviewerIds)]
-            : []),
-        ]);
+    const decisions = decisionsAlias;
+    const query = this.db
+      .select({
+        handle_time: sql<
+          number | null
+        >`date_part(${'EPOCH'}, avg(${decisions.createdAt} - ${decisions.assignedAt}))`,
+        ...(groupBy.includes('queue_id')
+          ? { queue_id: decisions.queueId }
+          : {}),
+        ...(groupBy.includes('reviewer_id')
+          ? { reviewer_id: decisions.reviewerId }
+          : {}),
       })
-      .$if(groupBy.length > 0, (qb) =>
-        qb.groupBy([
-          ...groupBy.map((it) => ref(`decisions.${it as string}`)).flat(),
-        ]),
+      .from(decisions)
+      .where(
+        and(
+          eq(decisions.orgId, orgId),
+          isNotNull(decisions.assignedAt),
+          gte(decisions.createdAt, filterBy.startDate),
+          lte(decisions.createdAt, filterBy.endDate),
+          filterBy.queueIds.length > 0
+            ? inArray(decisions.queueId, [...filterBy.queueIds])
+            : undefined,
+          filterBy.reviewerIds.length > 0
+            ? inArray(decisions.reviewerId, [...filterBy.reviewerIds])
+            : undefined,
+        ),
       )
-      .execute();
+      .$dynamic();
+    const rows =
+      groupBy.length > 0
+        ? await query.groupBy(
+            ...groupBy.map((it) => sql`${ident('decisions')}.${ident(it)}`),
+          )
+        : await query;
+    return rows as {
+      handle_time: number | null;
+      queue_id?: string;
+      reviewer_id?: string | null;
+    }[];
   }
 
-  async getJobCreations(input: JobCreationsInput) {
+  async getJobCreations(
+    input: JobCreationsInput,
+  ): Promise<JobCreationCountRow[]> {
     const { groupBy, filterBy, orgId, timeDivision, timeZone } = input;
-
-    const { ref } = this.pgQuery.dynamic;
-    return this.pgQuery
-      .selectFrom('manual_review_tool.flattened_job_creations as creations')
-      .select([
-        sql<string>`date_trunc(${timeDivision}, created_at, ${timeZone})`.as(
-          'time',
-        ),
-        sql<number>`COUNT(DISTINCT(item_id, item_type_id))`.as('count'),
-      ])
-      .$if(groupBy.includes('item_type_id'), (qb) => qb.select('item_type_id'))
-      .$if(groupBy.includes('queue_id'), (qb) => qb.select('queue_id'))
-      .$if(groupBy.includes('policy_id'), (qb) => qb.select('policy_id'))
-      .$if(groupBy.includes('source'), (qb) =>
-        qb.select(['source_kind as source', 'rule_id']),
-      )
-      .where((eb) => {
-        return eb.and([
-          eb('org_id', '=', orgId),
-          eb('creations.created_at', '>=', filterBy.startDate),
-          eb('creations.created_at', '<=', filterBy.endDate),
-          ...(filterBy.itemTypeIds.length > 0
-            ? [eb('item_type_id', 'in', filterBy.itemTypeIds)]
-            : []),
-          ...(filterBy.queueIds.length > 0
-            ? [eb('queue_id', 'in', filterBy.queueIds)]
-            : []),
-          ...(filterBy.policyIds.length > 0
-            ? [eb('policy_id', 'in', filterBy.policyIds)]
-            : []),
-          ...(filterBy.sources.length > 0
-            ? [eb('source_kind', 'in', filterBy.sources)]
-            : []),
-          ...(filterBy.ruleIds.length > 0
-            ? [eb('rule_id', 'in', filterBy.ruleIds)]
-            : []),
-        ]);
+    const t = flattenedJobCreations;
+    const rows = await this.db
+      .select({
+        time: truncatedTime(timeDivision, t.createdAt, timeZone),
+        count: sql<number>`COUNT(DISTINCT(${t.itemId}, ${t.itemTypeId}))`,
+        ...(groupBy.includes('item_type_id')
+          ? { item_type_id: t.itemTypeId }
+          : {}),
+        ...(groupBy.includes('queue_id') ? { queue_id: t.queueId } : {}),
+        ...(groupBy.includes('policy_id') ? { policy_id: t.policyId } : {}),
+        ...(groupBy.includes('source')
+          ? {
+              // Aliased so the caller-supplied `source` group-by resolves.
+              source: sql<ManualReviewJobEnqueueSource>`${t.sourceKind}`.as(
+                'source',
+              ),
+              rule_id: t.ruleId,
+            }
+          : {}),
       })
-      .groupBy([
-        ...groupBy.map((it) => ref(it as string)).flat(),
-        'time',
-        ...(groupBy.includes('source') ? [ref('rule_id')] : []),
-      ])
-      .execute();
+      .from(t)
+      .where(
+        and(
+          eq(t.orgId, orgId),
+          gte(t.createdAt, filterBy.startDate),
+          lte(t.createdAt, filterBy.endDate),
+          filterBy.itemTypeIds.length > 0
+            ? inArray(t.itemTypeId, [...filterBy.itemTypeIds])
+            : undefined,
+          filterBy.queueIds.length > 0
+            ? inArray(t.queueId, [...filterBy.queueIds])
+            : undefined,
+          filterBy.policyIds.length > 0
+            ? inArray(t.policyId, [...filterBy.policyIds])
+            : undefined,
+          filterBy.sources.length > 0
+            ? inArray(t.sourceKind, [...filterBy.sources])
+            : undefined,
+          filterBy.ruleIds.length > 0
+            ? inArray(t.ruleId, [...filterBy.ruleIds])
+            : undefined,
+        ),
+      )
+      .groupBy(
+        ...[
+          ...groupBy.map((it) => ident(it as string)),
+          ident('time'),
+          ...(groupBy.includes('source') ? [ident('rule_id')] : []),
+        ],
+      );
+    return rows as unknown as JobCreationCountRow[];
   }
 
   /**
    * Shared query body for recent decisions: the select list, every filter
    * predicate, the `userSearchString` branch, and the NCMEC permission gate.
    * Stops short of `orderBy`/`offset` so each caller applies its own paging.
+   * Drizzle replaces (rather than ANDs) a second `.where()`, so callers pass
+   * any extra predicate (the activity-feed cursor) in `extraCondition`.
    */
   private buildRecentDecisionsQuery(opts: {
     userPermissions: UserPermission[];
     orgId: string;
     input: Omit<RecentDecisionsFilterInput, 'page'>;
     limit: number;
+    extraCondition?: SQL;
   }) {
-    const { userPermissions, orgId, input } = opts;
+    const { userPermissions, orgId, input, extraCondition } = opts;
     const limit = Math.min(opts.limit, MAX_DECISIONS_LIMIT);
     const {
       userSearchString,
@@ -302,129 +438,72 @@ export default class DecisionAnalytics {
       startTime,
       endTime,
     } = input;
-    return (
-      this.pgQuery
-        .selectFrom('manual_review_tool.manual_review_decisions')
-        .select([
-          'id',
-          'queue_id',
-          'reviewer_id',
-          'decision_components',
-          'related_actions',
-          'created_at',
-          sql<string>`((job_payload->'payload'::text)->'item'::text) -> 'itemId'::text`.as(
-            'item_id',
-          ),
-          sql<string>`(((job_payload->'payload'::text)->'item'::text) -> 'itemTypeIdentifier'::text) ->> 'id'::text`.as(
-            'item_type_id',
-          ),
-          'decision_reason',
-          'assigned_at',
-          sql<string | null>`job_payload->>'createdAt'`.as('job_created_at'),
-          sql<string>`(job_payload->>'id')::text`.as('job_id'),
-        ])
-        .where('org_id', '=', orgId)
-        .where(({ eb, selectFrom }) => {
-          return eb.and([
-            ...(startTime ? [eb('created_at', '>=', new Date(startTime))] : []),
-            ...(endTime ? [eb('created_at', '<=', new Date(endTime))] : []),
-            ...(queueIds && queueIds.length > 0
-              ? [eb('queue_id', 'in', queueIds)]
-              : []),
-            ...(reviewerIds && reviewerIds.length > 0
-              ? [eb('reviewer_id', 'in', reviewerIds)]
-              : []),
-            ...(policyIds
-              ? [
-                  eb.exists(
-                    selectFrom(
-                      sql`unnest(manual_review_tool.manual_review_decisions.decision_components)`.as(
-                        'decision_component',
-                      ),
-                    )
-                      .selectAll()
-                      .where(
-                        eb.or(
-                          policyIds.map((policyId) =>
-                            eb(
-                              sql<string>`decision_component->>'policies'`,
-                              'like',
-                              `%"${policyId}"%`,
-                            ),
-                          ),
-                        ),
-                      ),
+    const d = mrtDecisions;
+    const existsDecisionComponent = (condition: SQL) =>
+      sql`exists (select * from unnest(${d.decisionComponents}) as decision_component where ${condition})`;
+
+    return this.db
+      .select(recentDecisionSelection)
+      .from(d)
+      .where(
+        and(
+          eq(d.orgId, orgId),
+          startTime ? gte(d.createdAt, new Date(startTime)) : undefined,
+          endTime ? lte(d.createdAt, new Date(endTime)) : undefined,
+          queueIds && queueIds.length > 0
+            ? inArray(d.queueId, [...queueIds])
+            : undefined,
+          reviewerIds && reviewerIds.length > 0
+            ? inArray(d.reviewerId, [...reviewerIds])
+            : undefined,
+          policyIds
+            ? existsDecisionComponent(
+                orOrFalse(
+                  policyIds.map(
+                    (policyId) =>
+                      sql`decision_component->>'policies' like ${`%"${policyId}"%`}`,
                   ),
-                ]
-              : []),
-            ...(decisionsFilter
-              ? [
-                  eb.or(
-                    decisionsFilter.flatMap((it) => [
-                      eb.exists(
-                        selectFrom(
-                          sql`unnest(manual_review_tool.manual_review_decisions.decision_components)`.as(
-                            'decision_component',
-                          ),
-                        )
-                          .selectAll()
-                          .where(
-                            sql<string>`decision_component->>'type'`,
-                            '=',
-                            it.type,
+                ),
+              )
+            : undefined,
+          decisionsFilter
+            ? orOrFalse(
+                decisionsFilter.map((it) =>
+                  existsDecisionComponent(
+                    and(
+                      sql`decision_component->>'type' = ${it.type}`,
+                      it.actionIds !== undefined
+                        ? orOrFalse(
+                            it.actionIds.map(
+                              (actionId) =>
+                                sql`decision_component->>'actions' like ${`%"${actionId}"%`}`,
+                            ),
                           )
-                          .$if(it.actionIds !== undefined, (qb) =>
-                            qb.where(
-                              eb.or(
-                                it.actionIds!.map((actionId) =>
-                                  eb(
-                                    sql<string>`decision_component->>'actions'`,
-                                    'like',
-                                    `%"${actionId}"%`,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                      ),
-                    ]),
+                        : undefined,
+                    )!,
                   ),
-                ]
-              : []),
-          ]);
-        })
-        .$if(userSearchString !== undefined, (qb) =>
+                ),
+              )
+            : undefined,
           // See https://stackoverflow.com/a/55607847
-          qb.where(({ and, eb, val }) =>
-            and([
-              eb('created_at', '>', val(new Date(Date.now() - 3 * MONTH_MS))),
-              eb(
-                sql<string>`(manual_review_tool.manual_review_decisions.job_payload->'payload'->'item'->>'itemId')`,
-                '=',
+          userSearchString !== undefined
+            ? and(
+                gt(d.createdAt, new Date(Date.now() - 3 * MONTH_MS)),
                 // Above, the 'itemId' field is of type jsonb, so we cast it to a string using ::text, but that
                 // cast will leave quotes around the resulting string because it's just stringifying what it thinks
                 // is a jsonb object. The easiest way to handle this is to just add quotes around the userSearchString
                 // to match the quotes in the value above.
-                val(`${userSearchString}`),
-              ),
-            ]),
-          ),
-        )
-        // If the user doesn't have the VIEW_CHILD_SAFETY_DATA permission, filter out decisions on
-        // all NCMEC jobs
-        .$if(
-          !userPermissions.includes(UserPermission.VIEW_CHILD_SAFETY_DATA),
-          (qb) =>
-            qb.where(({ eb, val }) =>
-              eb(
-                sql<string>`(job_payload->'payload'->'kind')::text`,
-                '!=',
-                val('"NCMEC"'),
-              ),
-            ),
-        )
-        .limit(limit)
-    );
+                sql`(${d.jobPayload}->'payload'->'item'->>'itemId') = ${`${userSearchString}`}`,
+              )
+            : undefined,
+          // If the user doesn't have the VIEW_CHILD_SAFETY_DATA permission,
+          // filter out decisions on all NCMEC jobs
+          ncmecVisibilityCondition(userPermissions),
+          extraCondition,
+        ),
+      )
+      .limit(limit)
+      .$dynamic();
   }
 
   async getRecentDecisions(opts: {
@@ -441,11 +520,9 @@ export default class DecisionAnalytics {
       input,
       limit,
     })
-      .orderBy('created_at', 'desc')
-      .orderBy('id', 'desc')
-      .offset(page * limit)
-      .execute();
-    return decisions.map(mapDecisionRow);
+      .orderBy(desc(mrtDecisions.createdAt), desc(mrtDecisions.id))
+      .offset(page * limit);
+    return (decisions as RecentDecisionRow[]).map(mapDecisionRow);
   }
 
   /**
@@ -463,73 +540,70 @@ export default class DecisionAnalytics {
     limit: number;
   }) {
     const { userPermissions, orgId, input, cursor, limit } = opts;
-    const baseQuery = this.buildRecentDecisionsQuery({
+    const cursorCondition =
+      cursor === undefined
+        ? undefined
+        : cursor.id === null
+          ? lt(mrtDecisions.createdAt, cursor.ts)
+          : // `id` is uuid. Without the cast Postgres infers the bind type
+            // from the column, and a non-uuid string raises a Postgres error.
+            sql`(${mrtDecisions.createdAt}, ${mrtDecisions.id}) < (${cursor.ts}, ${cursor.id}::uuid)`;
+    const decisions = await this.buildRecentDecisionsQuery({
       userPermissions,
       orgId,
       input,
       limit,
-    });
-    const pagedQuery =
-      cursor === undefined
-        ? baseQuery
-        : cursor.id === null
-          ? baseQuery.where('created_at', '<', cursor.ts)
-          : baseQuery.where(
-              sql`(created_at, id)`,
-              '<',
-              // `id` is uuid. Without the cast Postgres infers the bind type
-              // from the column, and a non-uuid string raises a Postgres error.
-              sql`(${cursor.ts}, ${cursor.id}::uuid)`,
-            );
-    const decisions = await pagedQuery
-      .orderBy('created_at', 'desc')
-      .orderBy('id', 'desc')
-      .execute();
-    return decisions.map(mapDecisionRow);
+      extraCondition: cursorCondition,
+    }).orderBy(desc(mrtDecisions.createdAt), desc(mrtDecisions.id));
+    return (decisions as RecentDecisionRow[]).map(mapDecisionRow);
   }
 
-  async getResolvedJobCounts(input: JobCountsInput) {
+  async getResolvedJobCounts(
+    input: JobCountsInput,
+  ): Promise<ResolvedJobCountRow[]> {
     const { orgId, groupBy, filterBy, timeDivision, timeZone } = input;
     const { queueIds, reviewerIds, startDate, endDate } = filterBy;
-    const { ref } = this.pgQuery.dynamic;
-    return this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_decisions')
-      .select([
-        sql<string>`date_trunc(${timeDivision}, created_at, ${timeZone})`.as(
-          'time',
+    const d = mrtDecisions;
+    const createdAtInZone = sql`${d.createdAt} AT TIME ZONE ${timeZone}`;
+    const rows = await this.db
+      .select({
+        time: truncatedTime(timeDivision, d.createdAt, timeZone),
+        count: sql<number>`COUNT(DISTINCT ${d.id})`,
+        ...(groupBy.includes('queue_id') ? { queue_id: d.queueId } : {}),
+        ...(groupBy.includes('reviewer_id')
+          ? { reviewer_id: d.reviewerId }
+          : {}),
+      })
+      .from(d)
+      .where(
+        and(
+          eq(d.orgId, orgId),
+          sql`${createdAtInZone} >= ${startDate}`,
+          sql`${createdAtInZone} <= ${endDate}`,
+          queueIds.length > 0 ? inArray(d.queueId, [...queueIds]) : undefined,
+          reviewerIds.length > 0
+            ? inArray(d.reviewerId, [...reviewerIds])
+            : undefined,
         ),
-        sql<number>`COUNT(DISTINCT id)`.as('count'),
-      ])
-      .$if(groupBy.includes('queue_id'), (qb) => qb.select('queue_id'))
-      .$if(groupBy.includes('reviewer_id'), (qb) => qb.select('reviewer_id'))
-      .where('org_id', '=', orgId)
-      .where((eb) => {
-        return eb.and([
-          eb(sql`created_at AT TIME ZONE ${timeZone}`, '>=', startDate),
-          eb(sql`created_at AT TIME ZONE ${timeZone}`, '<=', endDate),
-        ]);
-      })
-      .where(({ eb }) => {
-        return eb.and([
-          ...(queueIds.length > 0 ? [eb('queue_id', 'in', queueIds)] : []),
-          ...(reviewerIds.length > 0
-            ? [eb('reviewer_id', 'in', reviewerIds)]
-            : []),
-        ]);
-      })
-      .groupBy(['time', ...groupBy.map((it) => ref(it as string)).flat()])
-      .execute();
+      )
+      .groupBy(...[ident('time'), ...groupBy.map((it) => ident(it as string))]);
+    return rows as unknown as ResolvedJobCountRow[];
   }
 
   async getDecidedJob(opts: { orgId: string; id: string }) {
     const { orgId, id } = opts;
-    const payload = await this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_decisions')
-      .select(['job_payload'])
-      .where('created_at', '>=', new Date('2023-10-01'))
-      .where('org_id', '=', orgId)
-      .where('id', '=', id)
-      .executeTakeFirst();
+    const d = mrtDecisions;
+    const [payload] = await this.db
+      .select({ job_payload: d.jobPayload })
+      .from(d)
+      .where(
+        and(
+          gte(d.createdAt, new Date('2023-10-01')),
+          eq(d.orgId, orgId),
+          eq(d.id, id),
+        ),
+      )
+      .limit(1);
     // This is safe because only jobs created before Sept 2023 have
     // the old legacy schema defined in StoredManualReviewJob (see
     // the comment associated with the StoredManualReviewJob type).
@@ -543,42 +617,19 @@ export default class DecisionAnalytics {
     userPermissions: UserPermission[];
   }) {
     const { orgId, jobId, userPermissions } = opts;
-    const decisionWithPayload = await this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_decisions')
-      .select([
-        'job_payload',
-        'id',
-        'queue_id',
-        'reviewer_id',
-        'decision_components',
-        'related_actions',
-        'created_at',
-        'decision_reason',
-        'assigned_at',
-        sql<string | null>`job_payload->>'createdAt'`.as('job_created_at'),
-        sql<string>`((job_payload->'payload'::text)->'item'::text) -> 'itemId'::text`.as(
-          'item_id',
+    const d = mrtDecisions;
+    const [decisionWithPayload] = (await this.db
+      .select({ job_payload: d.jobPayload, ...recentDecisionSelection })
+      .from(d)
+      .where(
+        and(
+          gte(d.createdAt, new Date('2023-10-01')),
+          eq(d.orgId, orgId),
+          sql`(${d.jobPayload}->>'id')::text = ${jobId}`,
+          ncmecVisibilityCondition(userPermissions),
         ),
-        sql<string>`(((job_payload->'payload'::text)->'item'::text) -> 'itemTypeIdentifier'::text) ->> 'id'::text`.as(
-          'item_type_id',
-        ),
-        sql<string>`(job_payload->>'id')::text`.as('job_id'),
-      ])
-      .where('created_at', '>=', new Date('2023-10-01'))
-      .where('org_id', '=', orgId)
-      .where(sql<string>`(job_payload->>'id')::text`, '=', jobId)
-      .$if(
-        !userPermissions.includes(UserPermission.VIEW_CHILD_SAFETY_DATA),
-        (qb) =>
-          qb.where(({ eb, val }) =>
-            eb(
-              sql<string>`(job_payload->'payload'->'kind')::text`,
-              '!=',
-              val('"NCMEC"'),
-            ),
-          ),
       )
-      .executeTakeFirst();
+      .limit(1)) as (RecentDecisionRow & { job_payload: unknown })[];
     // This is safe because only jobs created before Sept 2023 have
     // the old legacy schema defined in StoredManualReviewJob (see
     // the comment associated with the StoredManualReviewJob type).
@@ -588,42 +639,10 @@ export default class DecisionAnalytics {
     }
     return {
       job: decisionWithPayload.job_payload as ManualReviewJob,
-      decision: {
-        id: decisionWithPayload.id,
-        itemId: decisionWithPayload.item_id,
-        itemTypeId: decisionWithPayload.item_type_id,
-        queueId: decisionWithPayload.queue_id,
-        reviewerId: decisionWithPayload.reviewer_id,
-        decisions: decisionWithPayload.decision_components.map((it) => {
-          if (it.type !== 'CUSTOM_ACTION') {
-            return it;
-          }
-          return {
-            ...it,
-            actionIds: it.actions.map((it) => it.id),
-            policyIds: it.policies.map((it) => it.id),
-            itemTypeId: it.itemTypeId,
-          };
-        }),
-        relatedActions: decisionWithPayload.related_actions.map((action) => ({
-          ...action,
-          type: 'RELATED_ACTION' as const,
-        })),
-        createdAt: decisionWithPayload.created_at,
-        assignedAt: decisionWithPayload.assigned_at,
-        jobCreatedAt: decisionWithPayload.job_created_at
-          ? new Date(decisionWithPayload.job_created_at)
-          : null,
-        decisionReason: decisionWithPayload.decision_reason,
-        jobId: decisionWithPayload.job_id,
-      },
+      decision: mapDecisionRow(decisionWithPayload),
     };
   }
 }
-
-type RecentDecisionRow = InferResult<
-  ReturnType<DecisionAnalytics['buildRecentDecisionsQuery']>
->[number];
 
 function mapDecisionRow(decision: RecentDecisionRow) {
   return {

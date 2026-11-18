@@ -2,14 +2,21 @@
 
 import { type ItemIdentifier } from '@roostorg/coop-types';
 import { Queue, Worker, type Job } from 'bullmq';
+import { and, eq, gte, inArray, notInArray, or, sql } from 'drizzle-orm';
 import { type Cluster } from 'ioredis';
 import type IORedis from 'ioredis';
-import { type Kysely, type Transaction } from 'kysely';
 import pLimit from 'p-limit';
 import { type Opaque, type ReadonlyDeep } from 'type-fest';
 import { v1 as uuidv1 } from 'uuid';
 
 import { type Dependencies } from '../../../iocContainer/index.js';
+import {
+  schema,
+  transactionWithRetry,
+  type CoopDb,
+  type CoopDbOrTx,
+  type CoopTx,
+} from '../../../storage/postgres/drizzle.js';
 import { cached, type Cached } from '../../../utils/caching.js';
 import { filterNullOrUndefined } from '../../../utils/collections.js';
 import {
@@ -28,11 +35,7 @@ import {
   isForeignKeyViolationError,
   isUniqueViolationError,
 } from '../../../utils/kysely.js';
-import {
-  makeKyselyTransactionWithRetry,
-  type KyselyTransactionWithRetry,
-} from '../../../utils/kyselyTransactionWithRetry.js';
-import { removeUndefinedKeys, safePick } from '../../../utils/misc.js';
+import { removeUndefinedKeys, safeGet, safePick } from '../../../utils/misc.js';
 import { replaceEmptyStringWithNull } from '../../../utils/string.js';
 import { WEEK_MS } from '../../../utils/time.js';
 import {
@@ -51,7 +54,6 @@ import {
 import {
   type ClearReportsDisposition,
   type ClearReportsScope,
-  type ManualReviewToolServicePg,
 } from '../dbTypes.js';
 import {
   type AppealEnqueueSourceInfo,
@@ -100,19 +102,34 @@ const PENDING_JOB_INDEX_BACKFILL_BATCH_SIZE = 1_000;
 
 const PENDING_JOB_STATES = new Set(['waiting', 'prioritized', 'delayed']);
 
-const PgQueueSelection = [
-  'id',
-  'org_id as orgId',
-  'name',
-  'description',
-  'is_default_queue as isDefaultQueue',
-  'created_at as createdAt',
-  'is_appeals_queue as isAppealsQueue',
-  'auto_close_jobs as autoCloseJobs',
-  'job_sort_type as jobSortType',
-  'clear_reports_disposition as clearReportsDisposition',
-  'clear_reports_scope as clearReportsScope',
-] as const;
+const {
+  manualReviewQueues: queuesTable,
+  usersAndAccessibleQueues,
+  rolesAndAccessibleQueues,
+  usersAndFavoriteMrtQueues,
+  routingRules,
+  appealsRoutingRules,
+  jobCreations,
+  manualReviewDecisions,
+  queuesAndHiddenActions,
+  queuesAndClearReportsTriggerActions,
+} = schema;
+
+const PgQueueSelection = {
+  id: queuesTable.id,
+  orgId: queuesTable.orgId,
+  name: queuesTable.name,
+  description: queuesTable.description,
+  isDefaultQueue: queuesTable.isDefaultQueue,
+  createdAt: queuesTable.createdAt,
+  isAppealsQueue: queuesTable.isAppealsQueue,
+  // The column is nullable in the DB but always written; ManualReviewQueue
+  // types it as boolean.
+  autoCloseJobs: sql<boolean>`${queuesTable.autoCloseJobs}`,
+  jobSortType: queuesTable.jobSortType,
+  clearReportsDisposition: queuesTable.clearReportsDisposition,
+  clearReportsScope: queuesTable.clearReportsScope,
+};
 
 // BullJobId represents the ID we give a job within Bull. It's only unique among
 // the pending jobs within a single queue. Over time, multiple jobs will end up
@@ -183,19 +200,17 @@ export default class QueueOperations {
   private readonly getBullAppealWorker: Cached<
     Bind1<typeof getBullWorker<ManualReviewAppealJob>>
   >;
-  private readonly transactionWithRetry: KyselyTransactionWithRetry<ManualReviewToolServicePg>;
   private readonly pendingJobIndex: PendingJobIndex;
   readonly #pendingJobIndexBackfills = new Map<string, Promise<void>>();
 
   constructor(
-    private readonly pgQuery: Kysely<ManualReviewToolServicePg>,
-    private readonly pgQueryReadReplica: Kysely<ManualReviewToolServicePg>,
+    private readonly db: CoopDb,
+    private readonly dbReadReplica: CoopDb,
     private readonly moderationConfigService: Dependencies['ModerationConfigService'],
     private readonly redis: RedisConnection,
     private readonly tracer: Dependencies['Tracer'],
     private readonly meter?: Dependencies['Meter'],
   ) {
-    this.transactionWithRetry = makeKyselyTransactionWithRetry(this.pgQuery);
     this.pendingJobIndex = new PendingJobIndex(redis);
     // Reassingment here is a hack to work around TS syntax limitations
     // with generic instantiation expressions.
@@ -245,12 +260,13 @@ export default class QueueOperations {
   async checkQueueExists(orgId: string, queueId: string) {
     // NB: this intentionally hits the primary, to make sure we're giving an
     // accurate result before creating the Bull queue.
-    const queue = await this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_queues')
-      .select(PgQueueSelection)
-      .where('org_id', '=', orgId)
-      .where('id', '=', queueId)
-      .executeTakeFirst();
+    const queue = (
+      await this.db
+        .select(PgQueueSelection)
+        .from(queuesTable)
+        .where(and(eq(queuesTable.orgId, orgId), eq(queuesTable.id, queueId)))
+        .limit(1)
+    ).at(0);
     if (queue === undefined) {
       throw makeQueueDoesNotExistError({ shouldErrorSpan: true });
     }
@@ -311,80 +327,73 @@ export default class QueueOperations {
     // Defense-in-depth org-scoping: every user granted access to the new
     // queue must belong to the caller's org. The queue itself is always
     // created in the caller's org (orgId from the invoker).
-    await assertUsersInOrg(this.pgQuery, { orgId, userIds });
-    await assertRolesInOrg(this.pgQuery, { orgId, roleIds });
+    await assertUsersInOrg(this.db, { orgId, userIds });
+    await assertRolesInOrg(this.db, { orgId, roleIds });
     const uniqueRoleIds = [...new Set(roleIds)];
 
     let createdQueue: ManualReviewQueue;
     try {
-      createdQueue = await this.transactionWithRetry(async (transaction) => {
-        // In newer versions of kysely, this is greatly simplified with
-        // `transaction.selectNoFrom(eb => eb.exists(...))`, but we're blocked on
-        // updating by https://github.com/kysely-org/kysely/issues/577#issuecomment-1804900006
-        const orgHasQueuesAlready = await transaction
-          .selectFrom('manual_review_tool.manual_review_queues')
-          .where('org_id', '=', orgId)
-          .where('is_appeals_queue', '=', isAppealsQueue ?? false)
-          .limit(1)
-          .execute()
-          .then((queues) => queues.length > 0);
-
-        const queue = await transaction
-          .insertInto('manual_review_tool.manual_review_queues')
-          .returning(PgQueueSelection)
-          .values([
-            {
-              id: uuidv1(),
-              name,
-              org_id: orgId,
-              is_default_queue: !orgHasQueuesAlready,
-              description: replaceEmptyStringWithNull(description),
-              is_appeals_queue: isAppealsQueue ?? false,
-              auto_close_jobs: autoCloseJobs ?? false,
-              job_sort_type: jobSortType,
-              clear_reports_disposition: clearReportsDisposition ?? null,
-              clear_reports_scope: clearReportsScope ?? 'CURRENT_QUEUE',
-            },
-          ])
-          .executeTakeFirstOrThrow();
-
-        await transaction
-          .insertInto('manual_review_tool.users_and_accessible_queues')
-          .values(
-            userIds.map((userId) => ({
-              queue_id: queue.id,
-              user_id: userId,
-            })),
-          )
-          .executeTakeFirstOrThrow();
-
-        if (uniqueRoleIds.length > 0) {
-          await transaction
-            .insertInto('manual_review_tool.roles_and_accessible_queues')
-            .values(
-              uniqueRoleIds.map((roleId) => ({
-                queue_id: queue.id,
-                role_id: roleId,
-              })),
+      createdQueue = await transactionWithRetry(
+        this.db,
+        async (transaction) => {
+          const orgHasQueuesAlready = await transaction
+            .select({ id: queuesTable.id })
+            .from(queuesTable)
+            .where(
+              and(
+                eq(queuesTable.orgId, orgId),
+                eq(queuesTable.isAppealsQueue, isAppealsQueue ?? false),
+              ),
             )
-            .execute();
-        }
+            .limit(1)
+            .then((queues) => queues.length > 0);
 
-        await this.updateHiddenActionsForQueue({
-          transaction,
-          queueId: queue.id,
-          actionIdsToHide: hiddenActionIds,
-          actionIdsToUnhide: [],
-          orgId,
-        });
-        await this.setClearReportsTriggerActionsForQueue({
-          transaction,
-          queueId: queue.id,
-          orgId,
-          actionIds: clearReportsTriggerActionIds ?? [],
-        });
-        return queue;
-      });
+          const [queue] = await transaction
+            .insert(queuesTable)
+            .values([
+              {
+                id: uuidv1(),
+                name,
+                orgId,
+                isDefaultQueue: !orgHasQueuesAlready,
+                description: replaceEmptyStringWithNull(description),
+                isAppealsQueue: isAppealsQueue ?? false,
+                autoCloseJobs: autoCloseJobs ?? false,
+                jobSortType,
+                clearReportsDisposition: clearReportsDisposition ?? null,
+                clearReportsScope: clearReportsScope ?? 'CURRENT_QUEUE',
+              },
+            ])
+            .returning(PgQueueSelection);
+
+          await transaction
+            .insert(usersAndAccessibleQueues)
+            .values(userIds.map((userId) => ({ queueId: queue.id, userId })));
+
+          if (uniqueRoleIds.length > 0) {
+            await transaction
+              .insert(rolesAndAccessibleQueues)
+              .values(
+                uniqueRoleIds.map((roleId) => ({ queueId: queue.id, roleId })),
+              );
+          }
+
+          await this.updateHiddenActionsForQueue({
+            transaction,
+            queueId: queue.id,
+            actionIdsToHide: hiddenActionIds,
+            actionIdsToUnhide: [],
+            orgId,
+          });
+          await this.setClearReportsTriggerActionsForQueue({
+            transaction,
+            queueId: queue.id,
+            orgId,
+            actionIds: clearReportsTriggerActionIds ?? [],
+          });
+          return queue;
+        },
+      );
     } catch (e) {
       if (isUniqueViolationError(e)) {
         throw makeManualReviewQueueNameExistsError({ shouldErrorSpan: true });
@@ -438,70 +447,67 @@ export default class QueueOperations {
     // access must belong to the caller's org. Reject before any write so a
     // cross-org queueId or userId can't mutate users_and_accessible_queues
     // rows belonging to another org.
-    await assertUsersAndQueuesInOrg(this.pgQuery, {
+    await assertUsersAndQueuesInOrg(this.db, {
       orgId,
       userIds,
       queueIds: [queueId],
     });
-    await assertRolesInOrg(this.pgQuery, { orgId, roleIds });
+    await assertRolesInOrg(this.db, { orgId, roleIds });
 
-    return this.transactionWithRetry(async (transaction) => {
-      const [updatedQueue, _, __] = await Promise.all([
+    return transactionWithRetry(this.db, async (transaction) => {
+      const [updatedQueues, _, __] = await Promise.all([
         transaction
-          .updateTable('manual_review_tool.manual_review_queues')
+          .update(queuesTable)
           .set(
             removeUndefinedKeys({
               name,
               description: replaceEmptyStringWithNull(description),
-              auto_close_jobs: autoCloseJobs,
-              job_sort_type: jobSortType,
+              autoCloseJobs,
+              jobSortType,
               // null disables the feature and must survive removeUndefinedKeys.
-              clear_reports_disposition: clearReportsDisposition,
-              clear_reports_scope: clearReportsScope,
+              clearReportsDisposition,
+              clearReportsScope,
             }),
           )
-          .where('id', '=', queueId)
-          .where('org_id', '=', orgId)
-          .returning(PgQueueSelection)
-          .executeTakeFirstOrThrow(),
+          .where(and(eq(queuesTable.id, queueId), eq(queuesTable.orgId, orgId)))
+          .returning(PgQueueSelection),
         transaction
-          .insertInto('manual_review_tool.users_and_accessible_queues')
-          .values(
-            userIds.map((userId) => ({
-              queue_id: queueId,
-              user_id: userId,
-            })),
-          )
-          .onConflict((oc) => oc.doNothing())
-          .executeTakeFirstOrThrow(),
+          .insert(usersAndAccessibleQueues)
+          .values(userIds.map((userId) => ({ queueId, userId })))
+          .onConflictDoNothing(),
         transaction
-          .deleteFrom('manual_review_tool.users_and_accessible_queues')
-          .where('queue_id', '=', queueId)
-          .where('user_id', 'not in', userIds)
-          .executeTakeFirstOrThrow(),
+          .delete(usersAndAccessibleQueues)
+          .where(
+            and(
+              eq(usersAndAccessibleQueues.queueId, queueId),
+              notInArray(usersAndAccessibleQueues.userId, [...userIds]),
+            ),
+          ),
       ]);
+      // The queue can vanish between the org check and the update; throw so
+      // the transaction rolls back.
+      const updatedQueue = updatedQueues.at(0);
+      if (updatedQueue === undefined) {
+        throw makeQueueDoesNotExistError({ shouldErrorSpan: true });
+      }
 
       if (roleIds.length > 0) {
         await transaction
-          .insertInto('manual_review_tool.roles_and_accessible_queues')
-          .values(
-            roleIds.map((roleId) => ({
-              queue_id: queueId,
-              role_id: roleId,
-            })),
-          )
-          .onConflict((oc) => oc.doNothing())
-          .execute();
+          .insert(rolesAndAccessibleQueues)
+          .values(roleIds.map((roleId) => ({ queueId, roleId })))
+          .onConflictDoNothing();
         await transaction
-          .deleteFrom('manual_review_tool.roles_and_accessible_queues')
-          .where('queue_id', '=', queueId)
-          .where('role_id', 'not in', roleIds)
-          .execute();
+          .delete(rolesAndAccessibleQueues)
+          .where(
+            and(
+              eq(rolesAndAccessibleQueues.queueId, queueId),
+              notInArray(rolesAndAccessibleQueues.roleId, [...roleIds]),
+            ),
+          );
       } else {
         await transaction
-          .deleteFrom('manual_review_tool.roles_and_accessible_queues')
-          .where('queue_id', '=', queueId)
-          .execute();
+          .delete(rolesAndAccessibleQueues)
+          .where(eq(rolesAndAccessibleQueues.queueId, queueId));
       }
 
       await this.updateHiddenActionsForQueue({
@@ -535,33 +541,15 @@ export default class QueueOperations {
     }
     const queue = await this.getOrCreateBullQueue({ orgId, queueId });
 
-    let numDeletedRows: bigint;
+    let numDeletedRows: number;
     try {
-      numDeletedRows = await this.transactionWithRetry(async (transaction) => {
-        // Delete the queue scoped by org first. If it doesn't belong to the
-        // caller's org, no rows are touched and we bail before deleting any
-        // join rows. `users_and_accessible_queues` has no `org_id` column,
-        // so an unscoped delete would otherwise wipe another org's access
-        // rows when the parent delete matches 0 rows.
-        const queueDelete = await transaction
-          .deleteFrom('manual_review_tool.manual_review_queues')
-          .where('id', '=', queueId)
-          .where('org_id', '=', orgId)
-          .executeTakeFirst();
-
-        if (queueDelete.numDeletedRows === 0n) {
-          return 0n;
-        }
-
-        await transaction
-          .deleteFrom('manual_review_tool.users_and_accessible_queues')
-          .where('queue_id', '=', queueId)
-          .execute();
-
-        return queueDelete.numDeletedRows;
-      });
+      numDeletedRows = await transactionWithRetry(
+        this.db,
+        async (transaction) =>
+          this.#deleteQueueRows(transaction, orgId, queueId),
+      );
     } catch (e) {
-      const constraint = (e as { constraint?: string }).constraint;
+      const constraint = getPgConstraintName(e);
       if (
         isForeignKeyViolationError(e) &&
         (constraint === 'routing_rules_destination_queue_id_fkey' ||
@@ -569,23 +557,30 @@ export default class QueueOperations {
       ) {
         // routing_rules and appeals_routing_rules have RESTRICT FKs to this
         // queue. Query for their names so the error message is actionable.
-        const [routingRules, appealsRoutingRules] = await Promise.all([
-          this.pgQuery
-            .selectFrom('manual_review_tool.routing_rules')
-            .select(['name'])
-            .where('destination_queue_id', '=', queueId)
-            .where('org_id', '=', orgId)
-            .execute(),
-          this.pgQuery
-            .selectFrom('manual_review_tool.appeals_routing_rules')
-            .select(['name'])
-            .where('destination_queue_id', '=', queueId)
-            .where('org_id', '=', orgId)
-            .execute(),
-        ]);
+        const [dependentRoutingRules, dependentAppealsRoutingRules] =
+          await Promise.all([
+            this.db
+              .select({ name: routingRules.name })
+              .from(routingRules)
+              .where(
+                and(
+                  eq(routingRules.destinationQueueId, queueId),
+                  eq(routingRules.orgId, orgId),
+                ),
+              ),
+            this.db
+              .select({ name: appealsRoutingRules.name })
+              .from(appealsRoutingRules)
+              .where(
+                and(
+                  eq(appealsRoutingRules.destinationQueueId, queueId),
+                  eq(appealsRoutingRules.orgId, orgId),
+                ),
+              ),
+          ]);
         const ruleNames = [
-          ...routingRules.map((r) => r.name),
-          ...appealsRoutingRules.map((r) => r.name),
+          ...dependentRoutingRules.map((r) => r.name),
+          ...dependentAppealsRoutingRules.map((r) => r.name),
         ];
         throw makeQueueHasDependentRoutingRulesError(ruleNames, {
           shouldErrorSpan: false,
@@ -594,12 +589,12 @@ export default class QueueOperations {
       throw e;
     }
 
-    if (numDeletedRows === 1n) {
+    if (numDeletedRows === 1) {
       try {
         await queue.obliterate({ force: true });
       } catch (e) {
         // The DB row is already gone at this point, so a retry would see
-        // numDeletedRows === 0n and skip obliterate() entirely, silently
+        // numDeletedRows === 0 and skip obliterate() entirely, silently
         // leaving orphaned Bull/Redis data behind. Best-effort cleanup:
         // surface the failure to the active tracing span (mirrors the
         // pattern used elsewhere, e.g. `UserApi.logout`) so ops can run
@@ -612,7 +607,35 @@ export default class QueueOperations {
         .catch((e: unknown) => this.tracer.logActiveSpanFailedIfAny(e));
     }
 
-    return numDeletedRows === 1n;
+    return numDeletedRows === 1;
+  }
+
+  /**
+   * Deletes the queue scoped by org first. If it doesn't belong to the
+   * caller's org, no rows are touched and we bail before deleting any join
+   * rows. `users_and_accessible_queues` has no `org_id` column, so an unscoped
+   * delete would otherwise wipe another org's access rows when the parent
+   * delete matches 0 rows.
+   */
+  async #deleteQueueRows(
+    transaction: CoopTx,
+    orgId: string,
+    queueId: string,
+  ): Promise<number> {
+    const queueDelete = await transaction
+      .delete(queuesTable)
+      .where(and(eq(queuesTable.id, queueId), eq(queuesTable.orgId, orgId)));
+
+    const deleted = queueDelete.rowCount ?? 0;
+    if (deleted === 0) {
+      return 0;
+    }
+
+    await transaction
+      .delete(usersAndAccessibleQueues)
+      .where(eq(usersAndAccessibleQueues.queueId, queueId));
+
+    return deleted;
   }
 
   async deleteManualReviewQueueForTestsDO_NOT_USE(
@@ -629,61 +652,62 @@ export default class QueueOperations {
     //
     // routing_rules and appeals_routing_rules have RESTRICT FKs to this queue,
     // so we must delete any referencing rules before deleting the queue.
-    const numDeletedRows = await this.transactionWithRetry(
+    const numDeletedRows = await transactionWithRetry(
+      this.db,
       async (transaction) => {
         await transaction
-          .deleteFrom('manual_review_tool.routing_rules')
-          .where('destination_queue_id', '=', queueId)
-          .where('org_id', '=', orgId)
-          .execute();
+          .delete(routingRules)
+          .where(
+            and(
+              eq(routingRules.destinationQueueId, queueId),
+              eq(routingRules.orgId, orgId),
+            ),
+          );
 
         await transaction
-          .deleteFrom('manual_review_tool.appeals_routing_rules')
-          .where('destination_queue_id', '=', queueId)
-          .where('org_id', '=', orgId)
-          .execute();
+          .delete(appealsRoutingRules)
+          .where(
+            and(
+              eq(appealsRoutingRules.destinationQueueId, queueId),
+              eq(appealsRoutingRules.orgId, orgId),
+            ),
+          );
 
-        const queueDelete = await transaction
-          .deleteFrom('manual_review_tool.manual_review_queues')
-          .where('id', '=', queueId)
-          .where('org_id', '=', orgId)
-          .executeTakeFirst();
-
-        if (queueDelete.numDeletedRows === 0n) {
-          return 0n;
-        }
-
-        await transaction
-          .deleteFrom('manual_review_tool.users_and_accessible_queues')
-          .where('queue_id', '=', queueId)
-          .execute();
-
-        return queueDelete.numDeletedRows;
+        return this.#deleteQueueRows(transaction, orgId, queueId);
       },
     );
 
-    return numDeletedRows === 1n;
+    return numDeletedRows === 1;
   }
 
   async getDefaultQueueIdForOrg(orgId: string) {
-    const queue = await this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_queues')
-      .select(['id'])
-      .where('org_id', '=', orgId)
-      .where('is_appeals_queue', '=', false)
-      .where('is_default_queue', '=', true)
-      .executeTakeFirstOrThrow();
-    return queue.id;
+    return this.#getDefaultQueueId(orgId, false);
   }
 
   async getDefaultAppealsQueueIdForOrg(orgId: string) {
-    const queue = await this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_queues')
-      .select(['id'])
-      .where('org_id', '=', orgId)
-      .where('is_appeals_queue', '=', true)
-      .where('is_default_queue', '=', true)
-      .executeTakeFirstOrThrow();
+    return this.#getDefaultQueueId(orgId, true);
+  }
+
+  async #getDefaultQueueId(orgId: string, isAppealsQueue: boolean) {
+    const queue = (
+      await this.db
+        .select({ id: queuesTable.id })
+        .from(queuesTable)
+        .where(
+          and(
+            eq(queuesTable.orgId, orgId),
+            eq(queuesTable.isAppealsQueue, isAppealsQueue),
+            eq(queuesTable.isDefaultQueue, true),
+          ),
+        )
+        .limit(1)
+    ).at(0);
+    if (queue === undefined) {
+      // Every org gets default queues at creation; callers rely on a throw.
+      throw new Error(
+        `No default ${isAppealsQueue ? 'appeals ' : ''}queue for org`,
+      );
+    }
     return queue.id;
   }
 
@@ -704,43 +728,49 @@ export default class QueueOperations {
       return [];
     }
 
-    return this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_queues')
+    return this.db
       .select(PgQueueSelection)
-      .where('org_id', '=', orgId)
-      .$if(queueIds != null, (query) => query.where('id', 'in', queueIds ?? []))
-      .$if(!bypassQueuePermissions, (query) =>
-        query.where((eb) =>
-          eb.or([
-            eb('id', 'in', this.individuallyAccessibleQueueIds(userId)),
-            eb('id', 'in', this.roleAccessibleQueueIds(userId, orgId)),
-          ]),
+      .from(queuesTable)
+      .where(
+        and(
+          eq(queuesTable.orgId, orgId),
+          queueIds != null ? inArray(queuesTable.id, [...queueIds]) : undefined,
+          bypassQueuePermissions
+            ? undefined
+            : this.#isAccessibleToUser(userId, orgId),
         ),
-      )
-      .execute();
+      );
   }
 
   // A queue is accessible when the reviewer is individually assigned to it, or
   // when their role is assigned to it (see `roleAccessibleQueueIds`).
+  #isAccessibleToUser(userId: string, orgId: string) {
+    return or(
+      inArray(queuesTable.id, this.individuallyAccessibleQueueIds(userId)),
+      inArray(queuesTable.id, this.roleAccessibleQueueIds(userId, orgId)),
+    );
+  }
+
   private individuallyAccessibleQueueIds(userId: string) {
-    return this.pgQuery
-      .selectFrom('manual_review_tool.users_and_accessible_queues')
-      .select('queue_id')
-      .where('user_id', '=', userId);
+    return this.db
+      .select({ queueId: usersAndAccessibleQueues.queueId })
+      .from(usersAndAccessibleQueues)
+      .where(eq(usersAndAccessibleQueues.userId, userId));
   }
 
   private roleAccessibleQueueIds(userId: string, orgId: string) {
-    return this.pgQuery
-      .selectFrom('manual_review_tool.roles_and_accessible_queues')
-      .select('queue_id')
+    const { users } = schema;
+    return this.db
+      .select({ queueId: rolesAndAccessibleQueues.queueId })
+      .from(rolesAndAccessibleQueues)
       .where(
-        'role_id',
-        '=',
-        this.pgQuery
-          .selectFrom('public.users')
-          .select('role_id')
-          .where('id', '=', userId)
-          .where('org_id', '=', orgId),
+        eq(
+          rolesAndAccessibleQueues.roleId,
+          this.db
+            .select({ roleId: users.roleId })
+            .from(users)
+            .where(and(eq(users.id, userId), eq(users.orgId, orgId))),
+        ),
       );
   }
 
@@ -750,47 +780,37 @@ export default class QueueOperations {
     queueId: string;
   }) {
     const { orgId, userId, queueId } = opts;
-    return this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_queues')
-      .select(PgQueueSelection)
-      .where('org_id', '=', orgId)
-      .where('id', '=', queueId)
-      .where((eb) =>
-        eb.or([
-          eb('id', 'in', this.individuallyAccessibleQueueIds(userId)),
-          eb('id', 'in', this.roleAccessibleQueueIds(userId, orgId)),
-        ]),
-      )
-      .executeTakeFirst();
+    const queue = (
+      await this.db
+        .select(PgQueueSelection)
+        .from(queuesTable)
+        .where(
+          and(
+            eq(queuesTable.orgId, orgId),
+            eq(queuesTable.id, queueId),
+            this.#isAccessibleToUser(userId, orgId),
+          ),
+        )
+        .limit(1)
+    ).at(0);
+    return queue;
   }
 
   async getFavoriteQueuesForUser(opts: { orgId: string; userId: string }) {
     const { orgId, userId } = opts;
-    return this.pgQuery
-      .selectFrom(
-        'manual_review_tool.users_and_favorite_mrt_queues as favorite_queues',
-      )
+    return this.db
+      .select(PgQueueSelection)
+      .from(usersAndFavoriteMrtQueues)
       .innerJoin(
-        'manual_review_tool.manual_review_queues as queues',
-        'favorite_queues.queue_id',
-        'queues.id',
+        queuesTable,
+        eq(usersAndFavoriteMrtQueues.queueId, queuesTable.id),
       )
-      .select([
-        'queues.id',
-        'queues.org_id as orgId',
-        'queues.name',
-        'queues.description',
-        'queues.is_default_queue as isDefaultQueue',
-        'queues.created_at as createdAt',
-        'queues.is_appeals_queue as isAppealsQueue',
-        'queues.auto_close_jobs as autoCloseJobs',
-        'queues.job_sort_type as jobSortType',
-        'queues.clear_reports_disposition as clearReportsDisposition',
-        'queues.clear_reports_scope as clearReportsScope',
-      ])
-      .where('favorite_queues.user_id', '=', userId)
-      .where('favorite_queues.org_id', '=', orgId)
-      .execute();
+      .where(
+        and(
+          eq(usersAndFavoriteMrtQueues.userId, userId),
+          eq(usersAndFavoriteMrtQueues.orgId, orgId),
+        ),
+      );
   }
 
   async addFavoriteQueueForUser(opts: {
@@ -799,11 +819,10 @@ export default class QueueOperations {
     queueId: string;
   }) {
     const { userId, orgId, queueId } = opts;
-    await this.pgQuery
-      .insertInto('manual_review_tool.users_and_favorite_mrt_queues')
-      .values({ user_id: userId, org_id: orgId, queue_id: queueId })
-      .onConflict((oc) => oc.doNothing())
-      .execute();
+    await this.db
+      .insert(usersAndFavoriteMrtQueues)
+      .values({ userId, orgId, queueId })
+      .onConflictDoNothing();
   }
 
   async removeFavoriteQueueForUser(opts: {
@@ -812,67 +831,75 @@ export default class QueueOperations {
     queueId: string;
   }) {
     const { userId, orgId, queueId } = opts;
-    await this.pgQuery
-      .deleteFrom('manual_review_tool.users_and_favorite_mrt_queues')
-      .where('user_id', '=', userId)
-      .where('org_id', '=', orgId)
-      .where('queue_id', '=', queueId)
-      .execute();
+    await this.db
+      .delete(usersAndFavoriteMrtQueues)
+      .where(
+        and(
+          eq(usersAndFavoriteMrtQueues.userId, userId),
+          eq(usersAndFavoriteMrtQueues.orgId, orgId),
+          eq(usersAndFavoriteMrtQueues.queueId, queueId),
+        ),
+      );
   }
 
   async getAllQueuesForOrgAndDangerouslyBypassPermissioning(orgId: string) {
-    return this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_queues')
+    return this.db
       .select(PgQueueSelection)
-      .where('org_id', '=', orgId)
-      .execute();
+      .from(queuesTable)
+      .where(eq(queuesTable.orgId, orgId));
   }
 
   async getQueueForOrgAndDangerouslyBypassPermissioning(opts: {
     orgId: string;
     queueId: string;
   }) {
-    return this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_queues')
-      .select(PgQueueSelection)
-      .where('org_id', '=', opts.orgId)
-      .where('id', '=', opts.queueId)
-      .executeTakeFirst();
+    const queue = (
+      await this.db
+        .select(PgQueueSelection)
+        .from(queuesTable)
+        .where(
+          and(
+            eq(queuesTable.orgId, opts.orgId),
+            eq(queuesTable.id, opts.queueId),
+          ),
+        )
+        .limit(1)
+    ).at(0);
+    return queue;
   }
 
   async getUsersWhoCanSeeQueue(opts: { orgId: string; queueId: string }) {
     const { orgId, queueId } = opts;
-    return this.pgQuery
-      .selectFrom('manual_review_tool.users_and_accessible_queues')
-      .select(['user_id as userId'])
-      .where('queue_id', '=', queueId)
+    return this.db
+      .select({ userId: usersAndAccessibleQueues.userId })
+      .from(usersAndAccessibleQueues)
       .where(
-        'queue_id',
-        'in',
-        this.pgQuery
-          .selectFrom('manual_review_tool.manual_review_queues')
-          .select('id')
-          .where('org_id', '=', orgId),
-      )
-      .execute();
+        and(
+          eq(usersAndAccessibleQueues.queueId, queueId),
+          inArray(usersAndAccessibleQueues.queueId, this.#queueIdsInOrg(orgId)),
+        ),
+      );
   }
 
   async getAssignedRoleIdsForQueue(opts: { orgId: string; queueId: string }) {
     const { orgId, queueId } = opts;
-    const rows = await this.pgQuery
-      .selectFrom('manual_review_tool.roles_and_accessible_queues')
-      .select(['role_id as roleId'])
-      .where('queue_id', '=', queueId)
+    const rows = await this.db
+      .select({ roleId: rolesAndAccessibleQueues.roleId })
+      .from(rolesAndAccessibleQueues)
       .where(
-        'queue_id',
-        'in',
-        this.pgQuery
-          .selectFrom('manual_review_tool.manual_review_queues')
-          .select('id')
-          .where('org_id', '=', orgId),
-      )
-      .execute();
+        and(
+          eq(rolesAndAccessibleQueues.queueId, queueId),
+          inArray(rolesAndAccessibleQueues.queueId, this.#queueIdsInOrg(orgId)),
+        ),
+      );
     return rows.map((it) => it.roleId);
+  }
+
+  #queueIdsInOrg(orgId: string) {
+    return this.db
+      .select({ id: queuesTable.id })
+      .from(queuesTable)
+      .where(eq(queuesTable.orgId, orgId));
   }
 
   async addAccessibleQueuesForUser(opts: {
@@ -881,21 +908,20 @@ export default class QueueOperations {
     queueIds: readonly string[];
   }) {
     const { orgId, userIds, queueIds } = opts;
-    await assertUsersAndQueuesInOrg(this.pgQuery, {
+    await assertUsersAndQueuesInOrg(this.db, {
       orgId,
       userIds,
       queueIds,
     });
 
-    return this.pgQuery
-      .insertInto('manual_review_tool.users_and_accessible_queues')
+    return this.db
+      .insert(usersAndAccessibleQueues)
       .values(
         userIds.flatMap((userId) =>
-          queueIds.map((queueId) => ({ queue_id: queueId, user_id: userId })),
+          queueIds.map((queueId) => ({ queueId, userId })),
         ),
       )
-      .onConflict((oc) => oc.doNothing())
-      .execute();
+      .onConflictDoNothing();
   }
 
   async removeAccessibleQueuesForUser(opts: {
@@ -904,17 +930,20 @@ export default class QueueOperations {
     queueIds: readonly string[];
   }) {
     const { orgId, userId, queueIds } = opts;
-    await assertUsersAndQueuesInOrg(this.pgQuery, {
+    await assertUsersAndQueuesInOrg(this.db, {
       orgId,
       userIds: [userId],
       queueIds,
     });
 
-    return this.pgQuery
-      .deleteFrom('manual_review_tool.users_and_accessible_queues')
-      .where('user_id', '=', userId)
-      .where('queue_id', 'in', queueIds)
-      .execute();
+    return this.db
+      .delete(usersAndAccessibleQueues)
+      .where(
+        and(
+          eq(usersAndAccessibleQueues.userId, userId),
+          inArray(usersAndAccessibleQueues.queueId, [...queueIds]),
+        ),
+      );
   }
 
   async #getJob(
@@ -1482,20 +1511,21 @@ export default class QueueOperations {
     if (!isParsableExternalId(jobId)) {
       return undefined;
     }
-    const row = await this.pgQuery
-      .selectFrom('manual_review_tool.job_creations')
-      .select(['queue_id'])
-      .where('org_id', '=', orgId)
-      .where('id', '=', jobId)
-      .executeTakeFirst();
+    const row = (
+      await this.db
+        .select({ queueId: jobCreations.queueId })
+        .from(jobCreations)
+        .where(and(eq(jobCreations.orgId, orgId), eq(jobCreations.id, jobId)))
+        .limit(1)
+    ).at(0);
     if (row) {
       const jobs = await this.getJobs({
         orgId,
-        queueId: row.queue_id,
+        queueId: row.queueId,
         jobIds: [jobId],
       });
       if (jobs.length > 0) {
-        return { job: jobs[0], queueId: row.queue_id };
+        return { job: jobs[0], queueId: row.queueId };
       }
     }
     const queues =
@@ -1649,12 +1679,7 @@ export default class QueueOperations {
 
       // Race condition: a job can be decided but not yet dequeued.
       // If the front job already has a decision, remove it and grab the next.
-      const decision = await this.pgQueryReadReplica
-        .selectFrom('manual_review_tool.manual_review_decisions')
-        .where('created_at', '>=', new Date('2023-10-01'))
-        .where('org_id', '=', orgId)
-        .where('id', '=', jobIdToGuid(job.data.id))
-        .executeTakeFirst();
+      const decision = await this.#findDecisionForJob(orgId, job.data.id);
 
       if (decision === undefined) {
         return { job: job.data, lockToken };
@@ -1711,13 +1736,10 @@ export default class QueueOperations {
 
         // Race condition: a job can be decided but not yet dequeued.
         // If the front job already has a decision, remove it and grab the next.
-        const decision = await this.pgQueryReadReplica
-          .selectFrom('manual_review_tool.manual_review_decisions')
-          .select(['decision_components'])
-          .where('created_at', '>=', new Date('2023-10-01'))
-          .where('org_id', '=', orgId)
-          .where('id', '=', jobIdToGuid(convertedJob.data.id))
-          .executeTakeFirst();
+        const decision = await this.#findDecisionForJob(
+          orgId,
+          convertedJob.data.id,
+        );
 
         if (decision === undefined) {
           return { job: convertedJob.data, lockToken };
@@ -1744,6 +1766,23 @@ export default class QueueOperations {
         });
       }
     }
+  }
+
+  async #findDecisionForJob(orgId: string, jobId: JobId) {
+    const decision = (
+      await this.dbReadReplica
+        .select({ id: manualReviewDecisions.id })
+        .from(manualReviewDecisions)
+        .where(
+          and(
+            gte(manualReviewDecisions.createdAt, new Date('2023-10-01')),
+            eq(manualReviewDecisions.orgId, orgId),
+            eq(manualReviewDecisions.id, jobIdToGuid(jobId)),
+          ),
+        )
+        .limit(1)
+    ).at(0);
+    return decision;
   }
 
   static readonly REVIEWER_SKIP_TTL_MS = 30 * 60 * 1000;
@@ -2349,18 +2388,21 @@ export default class QueueOperations {
     }
     // Check postgres for creations within the last 7 days so we don't have to
     // search every bull queue for every item.
-    const recentJobCreationQueues = await this.pgQuery
-      .selectFrom('manual_review_tool.job_creations')
-      .select(['queue_id'])
-      .where('org_id', '=', orgId)
-      .where('item_id', '=', itemId)
-      .where('item_type_id', '=', itemTypeId)
-      .where('created_at', '>=', new Date(Date.now() - WEEK_MS))
-      .where('queue_id', 'in', queueIds)
-      .execute();
+    const recentJobCreationQueues = await this.db
+      .select({ queueId: jobCreations.queueId })
+      .from(jobCreations)
+      .where(
+        and(
+          eq(jobCreations.orgId, orgId),
+          eq(jobCreations.itemId, itemId),
+          eq(jobCreations.itemTypeId, itemTypeId),
+          gte(jobCreations.createdAt, new Date(Date.now() - WEEK_MS)),
+          inArray(jobCreations.queueId, queueIds),
+        ),
+      );
     const jobsWithQueue = await Promise.all(
       recentJobCreationQueues.map(async (rows) => {
-        const queueId = rows.queue_id;
+        const { queueId } = rows;
         const queue = await this.getOrCreateBullQueue({ orgId, queueId });
         const legacyJob = await queue.getJob(
           itemIdToBullJobId({ id: itemId, typeId: itemTypeId }),
@@ -2382,13 +2424,16 @@ export default class QueueOperations {
   async getHiddenActionsForQueue(opts: { queueId: string; orgId: string }) {
     const { queueId, orgId } = opts;
     return (
-      await this.pgQuery
-        .selectFrom('manual_review_tool.queues_and_hidden_actions')
-        .select(['action_id'])
-        .where('queue_id', '=', queueId)
-        .where('org_id', '=', orgId)
-        .execute()
-    ).map((it) => it.action_id);
+      await this.db
+        .select({ actionId: queuesAndHiddenActions.actionId })
+        .from(queuesAndHiddenActions)
+        .where(
+          and(
+            eq(queuesAndHiddenActions.queueId, queueId),
+            eq(queuesAndHiddenActions.orgId, orgId),
+          ),
+        )
+    ).map((it) => it.actionId);
   }
 
   // NB: Making the transaction required means this function should only be used
@@ -2398,7 +2443,7 @@ export default class QueueOperations {
     actionIdsToHide: readonly string[];
     actionIdsToUnhide: readonly string[];
     orgId: string;
-    transaction?: Transaction<ManualReviewToolServicePg>;
+    transaction?: CoopTx;
   }) {
     const { transaction, queueId, actionIdsToHide, actionIdsToUnhide, orgId } =
       opts;
@@ -2407,28 +2452,26 @@ export default class QueueOperations {
       return undefined;
     }
 
-    const queryInterface = transaction ?? this.pgQuery;
+    const queryInterface: CoopDbOrTx = transaction ?? this.db;
 
     if (actionIdsToHide.length > 0) {
       await queryInterface
-        .insertInto('manual_review_tool.queues_and_hidden_actions')
+        .insert(queuesAndHiddenActions)
         .values(
-          actionIdsToHide.map((actionId) => ({
-            queue_id: queueId,
-            action_id: actionId,
-            org_id: orgId,
-          })),
-        )
-        .execute();
+          actionIdsToHide.map((actionId) => ({ queueId, actionId, orgId })),
+        );
     }
 
     if (actionIdsToUnhide.length > 0) {
       await queryInterface
-        .deleteFrom('manual_review_tool.queues_and_hidden_actions')
-        .where('queue_id', '=', queueId)
-        .where('org_id', '=', orgId)
-        .where('action_id', 'in', actionIdsToUnhide)
-        .execute();
+        .delete(queuesAndHiddenActions)
+        .where(
+          and(
+            eq(queuesAndHiddenActions.queueId, queueId),
+            eq(queuesAndHiddenActions.orgId, orgId),
+            inArray(queuesAndHiddenActions.actionId, [...actionIdsToUnhide]),
+          ),
+        );
     }
   }
 
@@ -2439,15 +2482,16 @@ export default class QueueOperations {
   }): Promise<string[]> {
     const { queueId, orgId } = opts;
     return (
-      await this.pgQuery
-        .selectFrom(
-          'manual_review_tool.queues_and_clear_reports_trigger_actions',
+      await this.db
+        .select({ actionId: queuesAndClearReportsTriggerActions.actionId })
+        .from(queuesAndClearReportsTriggerActions)
+        .where(
+          and(
+            eq(queuesAndClearReportsTriggerActions.queueId, queueId),
+            eq(queuesAndClearReportsTriggerActions.orgId, orgId),
+          ),
         )
-        .select(['action_id'])
-        .where('queue_id', '=', queueId)
-        .where('org_id', '=', orgId)
-        .execute()
-    ).map((it) => it.action_id);
+    ).map((it) => it.actionId);
   }
 
   // Replaces the queue's trigger actions with `actionIds` (pass [] to clear).
@@ -2455,31 +2499,27 @@ export default class QueueOperations {
     queueId: string;
     orgId: string;
     actionIds: readonly string[];
-    transaction?: Transaction<ManualReviewToolServicePg>;
+    transaction?: CoopTx;
   }) {
     const { queueId, orgId, actionIds, transaction } = opts;
-    const queryInterface = transaction ?? this.pgQuery;
+    const queryInterface: CoopDbOrTx = transaction ?? this.db;
 
     await queryInterface
-      .deleteFrom('manual_review_tool.queues_and_clear_reports_trigger_actions')
-      .where('queue_id', '=', queueId)
-      .where('org_id', '=', orgId)
-      .execute();
+      .delete(queuesAndClearReportsTriggerActions)
+      .where(
+        and(
+          eq(queuesAndClearReportsTriggerActions.queueId, queueId),
+          eq(queuesAndClearReportsTriggerActions.orgId, orgId),
+        ),
+      );
 
     const uniqueActionIds = [...new Set(actionIds)];
     if (uniqueActionIds.length > 0) {
       await queryInterface
-        .insertInto(
-          'manual_review_tool.queues_and_clear_reports_trigger_actions',
-        )
+        .insert(queuesAndClearReportsTriggerActions)
         .values(
-          uniqueActionIds.map((actionId) => ({
-            queue_id: queueId,
-            action_id: actionId,
-            org_id: orgId,
-          })),
-        )
-        .execute();
+          uniqueActionIds.map((actionId) => ({ queueId, actionId, orgId })),
+        );
     }
   }
 }
@@ -2655,16 +2695,16 @@ const makeAccessibleQueueNotInOrgError = (data: ErrorInstanceData) =>
  * org. Defense-in-depth org-scoping for accessible-queue mutations.
  */
 async function assertQueuesInOrg(
-  db: Kysely<ManualReviewToolServicePg>,
+  db: CoopDbOrTx,
   opts: { orgId: string; queueIds: readonly string[] },
 ) {
   const { orgId, queueIds } = opts;
   const inOrgQueues = await db
-    .selectFrom('manual_review_tool.manual_review_queues')
-    .select('id')
-    .where('org_id', '=', orgId)
-    .where('id', 'in', queueIds)
-    .execute();
+    .select({ id: queuesTable.id })
+    .from(queuesTable)
+    .where(
+      and(eq(queuesTable.orgId, orgId), inArray(queuesTable.id, [...queueIds])),
+    );
   if (inOrgQueues.length !== new Set(queueIds).size) {
     throw makeAccessibleQueueNotInOrgError({ shouldErrorSpan: true });
   }
@@ -2675,16 +2715,15 @@ async function assertQueuesInOrg(
  * org. Defense-in-depth org-scoping for accessible-queue mutations.
  */
 async function assertUsersInOrg(
-  db: Kysely<ManualReviewToolServicePg>,
+  db: CoopDbOrTx,
   opts: { orgId: string; userIds: readonly string[] },
 ) {
   const { orgId, userIds } = opts;
+  const { users } = schema;
   const inOrgUsers = await db
-    .selectFrom('public.users')
-    .select('id')
-    .where('org_id', '=', orgId)
-    .where('id', 'in', userIds)
-    .execute();
+    .select({ id: users.id })
+    .from(users)
+    .where(and(eq(users.orgId, orgId), inArray(users.id, [...userIds])));
   if (inOrgUsers.length !== new Set(userIds).size) {
     throw makeAccessibleQueueNotInOrgError({ shouldErrorSpan: true });
   }
@@ -2692,19 +2731,18 @@ async function assertUsersInOrg(
 
 /** Rejects before any write if a target role does not belong to the caller's org. */
 async function assertRolesInOrg(
-  db: Kysely<ManualReviewToolServicePg>,
+  db: CoopDbOrTx,
   opts: { orgId: string; roleIds: readonly string[] },
 ) {
   const { orgId, roleIds } = opts;
   if (roleIds.length === 0) {
     return;
   }
+  const { roles } = schema;
   const inOrgRoles = await db
-    .selectFrom('public.roles')
-    .select('id')
-    .where('org_id', '=', orgId)
-    .where('id', 'in', roleIds)
-    .execute();
+    .select({ id: roles.id })
+    .from(roles)
+    .where(and(eq(roles.orgId, orgId), inArray(roles.id, [...roleIds])));
   if (inOrgRoles.length !== new Set(roleIds).size) {
     throw makeAccessibleQueueNotInOrgError({ shouldErrorSpan: true });
   }
@@ -2715,7 +2753,7 @@ async function assertRolesInOrg(
  * caller's org.
  */
 async function assertUsersAndQueuesInOrg(
-  db: Kysely<ManualReviewToolServicePg>,
+  db: CoopDbOrTx,
   opts: {
     orgId: string;
     userIds: readonly string[];
@@ -2752,6 +2790,17 @@ export const makeUnableToDeleteDefaultQueueError = (
 // Both halves are base64url tokens (optionally `=`-padded), so reject input
 // that can't be one before paying for the per-queue fallback scan.
 const B64URL_TOKEN = /^[A-Za-z0-9_\-+/=]+$/;
+/** Drizzle wraps pg errors, so the constraint name may be on `cause`. */
+function getPgConstraintName(error: unknown): string | undefined {
+  for (const path of [['constraint'], ['cause', 'constraint']]) {
+    const constraint = safeGet(error, path);
+    if (typeof constraint === 'string') {
+      return constraint;
+    }
+  }
+  return undefined;
+}
+
 function isParsableExternalId(externalId: JobId): boolean {
   const parts = (externalId as string).split(':');
   return (

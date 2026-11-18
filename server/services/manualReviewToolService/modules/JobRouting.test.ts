@@ -1,6 +1,8 @@
 import { ScalarTypes } from '@roostorg/coop-types';
+import { eq } from 'drizzle-orm';
 import { uid } from 'uid';
 
+import { schema } from '../../../storage/postgres/drizzle.js';
 import createContentItemTypes from '../../../test/fixtureHelpers/createContentItemTypes.js';
 import createMrtQueue from '../../../test/fixtureHelpers/createMrtQueue.js';
 import createOrg from '../../../test/fixtureHelpers/createOrg.js';
@@ -24,13 +26,13 @@ describe('JobRouting tests', () => {
       const manualReviewToolService = deps.ManualReviewToolService;
       const { org } = await createOrg(
         {
-          KyselyPg: deps.KyselyPg,
+          DrizzlePg: deps.DrizzlePg,
           ModerationConfigService: deps.ModerationConfigService,
           ApiKeyService: deps.ApiKeyService,
         },
         uid(),
       );
-      const { user } = await createUser(deps.KyselyPg, org.id);
+      const { user } = await createUser(deps.DrizzlePg, org.id);
       const userId = user.id;
       const { itemTypes } = await createContentItemTypes({
         moderationConfigService: deps.ModerationConfigService,
@@ -230,13 +232,13 @@ describe('JobRouting tests', () => {
     async ({ manualReviewToolService, org, deps }) => {
       const { org: otherOrg } = await createOrg(
         {
-          KyselyPg: deps.KyselyPg,
+          DrizzlePg: deps.DrizzlePg,
           ModerationConfigService: deps.ModerationConfigService,
           ApiKeyService: deps.ApiKeyService,
         },
         uid(),
       );
-      const { user: otherUser } = await createUser(deps.KyselyPg, otherOrg.id);
+      const { user: otherUser } = await createUser(deps.DrizzlePg, otherOrg.id);
       const { itemTypes: otherItemTypes } = await createContentItemTypes({
         moderationConfigService: deps.ModerationConfigService,
         orgId: otherOrg.id,
@@ -283,11 +285,10 @@ describe('JobRouting tests', () => {
 
       const getPersistedRoutingRuleOrder = async (orgId: string) =>
         (
-          await deps.KyselyPg.selectFrom('manual_review_tool.routing_rules')
-            .select('id')
-            .where('org_id', '=', orgId)
-            .orderBy('sequence_number')
-            .execute()
+          await deps.DrizzlePg.select({ id: schema.routingRules.id })
+            .from(schema.routingRules)
+            .where(eq(schema.routingRules.orgId, orgId))
+            .orderBy(schema.routingRules.sequenceNumber)
         ).map((rule) => rule.id);
 
       const otherOrgOrder = await getPersistedRoutingRuleOrder(otherOrg.id);

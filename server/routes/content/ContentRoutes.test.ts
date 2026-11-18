@@ -15,10 +15,10 @@ const { omit } = _;
 
 describe('POST Content', () => {
   const testWithFixture = makeTransactionalTestWithFixture(async ({ deps }) => {
-    const { ModerationConfigService, ApiKeyService, KyselyPg } = deps;
+    const { ModerationConfigService, ApiKeyService, DrizzlePg } = deps;
     const orgId = uid();
     const { apiKey } = await createOrg(
-      { KyselyPg, ModerationConfigService, ApiKeyService },
+      { DrizzlePg, ModerationConfigService, ApiKeyService },
       orgId,
     );
 
@@ -59,7 +59,7 @@ describe('POST Content', () => {
       },
     );
 
-    await createUser(KyselyPg, orgId, { id: uid() });
+    await createUser(DrizzlePg, orgId, { id: uid() });
 
     return { apiKey, contentType2, analytics: deps.DataWarehouseAnalytics };
   });

@@ -12,6 +12,11 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 
+import {
+  type NcmecAdditionalFilesColumn,
+  type NcmecReportedMediaColumn,
+  type NcmecReportedMessagesColumn,
+} from './json-types/services-misc.js';
 import { manualReviewQueues } from './manual-review-tool-1.js';
 import { ncmecReportErrorStatus, ncmecReportingSchema } from './types.js';
 
@@ -95,12 +100,21 @@ export const ncmecReports = ncmecReportingSchema.table(
       .default(sql`now()`)
       .notNull(),
     userItemTypeId: text('user_item_type_id').notNull(),
-    reportedMedia: jsonb('reported_media').array().notNull(),
-    reportXml: customType({ dataType: () => 'xml' })('report_xml').notNull(),
-    additionalFiles: jsonb('additional_files').array(),
+    reportedMedia: jsonb('reported_media')
+      .array()
+      .$type<NcmecReportedMediaColumn>()
+      .notNull(),
+    reportXml: customType({ dataType: () => 'xml' })('report_xml')
+      .$type<string>()
+      .notNull(),
+    additionalFiles: jsonb('additional_files')
+      .array()
+      .$type<NcmecAdditionalFilesColumn>(),
     reviewerId: varchar('reviewer_id', { length: 255 }),
     isTest: bool('is_test'),
-    reportedMessages: jsonb('reported_messages').array(),
+    reportedMessages: jsonb('reported_messages')
+      .array()
+      .$type<NcmecReportedMessagesColumn>(),
     incidentType: text('incident_type'),
   },
   (table) => [

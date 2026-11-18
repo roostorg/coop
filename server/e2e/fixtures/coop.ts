@@ -102,12 +102,12 @@ class Seeder {
     } = await importSeedHelpers();
 
     const org = await createOrg(this.deps);
-    await seedSystemRolesForOrg(this.deps.KyselyPg, org.org.id);
+    await seedSystemRolesForOrg(this.deps.DrizzlePg, org.org.id);
 
     const userId = uid();
     const email = `e2e-${userId}@example.com`;
     const user = await kyselyUserInsert({
-      db: this.deps.KyselyPg,
+      db: this.deps.DrizzlePg,
       id: userId,
       orgId: org.org.id,
       email,
@@ -162,7 +162,7 @@ class Seeder {
     },
   ): Promise<{ id: string; name: string }> {
     const { createRule } = await importSeedHelpers();
-    const created = await createRule(this.deps.KyselyPg, admin.orgId, {
+    const created = await createRule(this.deps.DrizzlePg, admin.orgId, {
       actionIds: rule.actionIds ?? [],
       contentTypeIds: [itemTypeId],
       conditionSet: rule.conditionSet as never,

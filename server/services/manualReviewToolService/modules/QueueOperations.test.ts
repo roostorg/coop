@@ -1,8 +1,9 @@
+import { and, eq, inArray } from 'drizzle-orm';
 import fc from 'fast-check';
 import { uid } from 'uid';
 import { v1 as uuidv1 } from 'uuid';
 
-import { type Dependencies } from '../../../iocContainer/index.js';
+import { schema, type CoopDb } from '../../../storage/postgres/drizzle.js';
 import createActions from '../../../test/fixtureHelpers/createActions.js';
 import createContentItemTypes from '../../../test/fixtureHelpers/createContentItemTypes.js';
 import createMrtQueue from '../../../test/fixtureHelpers/createMrtQueue.js';
@@ -38,14 +39,14 @@ describe('QueueOperations', () => {
     makeTransactionalTestWithFixture(async ({ deps }) => {
       const { org } = await createOrg(
         {
-          KyselyPg: deps.KyselyPg,
+          DrizzlePg: deps.DrizzlePg,
           ModerationConfigService: deps.ModerationConfigService,
           ApiKeyService: deps.ApiKeyService,
         },
         uid(),
       );
 
-      const { user } = await createUser(deps.KyselyPg, org.id);
+      const { user } = await createUser(deps.DrizzlePg, org.id);
       const { itemTypes } = await createContentItemTypes({
         moderationConfigService: deps.ModerationConfigService,
         orgId: org.id,
@@ -79,7 +80,7 @@ describe('QueueOperations', () => {
         user,
         actions,
         queue,
-        kyselyPg: deps.KyselyPg,
+        db: deps.DrizzlePg,
         mrtService: deps.ManualReviewToolService,
       };
     });
@@ -194,7 +195,7 @@ describe('QueueOperations', () => {
   testWithQueueAndActions()(
     'getReviewableQueuesForUser excludes a queue the user is not a member of',
     async ({ org, queue, mrtService, deps }) => {
-      const { user: outsider } = await createUser(deps.KyselyPg, org.id);
+      const { user: outsider } = await createUser(deps.DrizzlePg, org.id);
       const reviewable = await mrtService.getReviewableQueuesForUser({
         invoker: {
           userId: outsider.id,
@@ -233,7 +234,7 @@ describe('QueueOperations', () => {
   testWithQueueAndActions()(
     'getReviewableQueuesForUser lets EDIT_MRT_QUEUES holders view every queue',
     async ({ org, queue, mrtService, deps }) => {
-      const { user: outsider } = await createUser(deps.KyselyPg, org.id);
+      const { user: outsider } = await createUser(deps.DrizzlePg, org.id);
       const reviewable = await mrtService.getReviewableQueuesForUser({
         invoker: {
           userId: outsider.id,
@@ -248,7 +249,7 @@ describe('QueueOperations', () => {
   testWithQueueAndActions()(
     'getReviewableQueuesForUser filters requested queue IDs by reviewer access',
     async ({ org, queue, user, mrtService, deps }) => {
-      const { user: outsider } = await createUser(deps.KyselyPg, org.id);
+      const { user: outsider } = await createUser(deps.DrizzlePg, org.id);
       await expect(
         mrtService.getReviewableQueuesForUser({
           invoker: {
@@ -275,7 +276,7 @@ describe('QueueOperations', () => {
   testWithQueueAndActions()(
     'getReviewableQueuesForUser lets a queue manager filter without membership',
     async ({ org, queue, mrtService, deps }) => {
-      const { user: outsider } = await createUser(deps.KyselyPg, org.id);
+      const { user: outsider } = await createUser(deps.DrizzlePg, org.id);
       await expect(
         mrtService.getReviewableQueuesForUser({
           invoker: {
@@ -291,7 +292,7 @@ describe('QueueOperations', () => {
 
   testWithQueueAndActions()(
     'getExistingJobsForItem is scoped to the given queue IDs',
-    async ({ org, queue, user, mrtService, kyselyPg }) => {
+    async ({ org, queue, user, mrtService, db }) => {
       const jobPayload = makeDummyMrtJobPayload();
       await mrtService['queueOps']['addJob']({
         orgId: org.id,
@@ -301,20 +302,17 @@ describe('QueueOperations', () => {
       });
       const itemId = jobPayload.payload.item.itemId;
       const itemTypeId = jobPayload.payload.item.itemTypeIdentifier.id;
-      await kyselyPg
-        .insertInto('manual_review_tool.job_creations')
-        .values({
-          id: bullJobIdtoExternalJobId(
-            itemIdToBullJobId({ id: itemId, typeId: itemTypeId }),
-          ),
-          org_id: org.id,
-          item_id: itemId,
-          item_type_id: itemTypeId,
-          queue_id: queue.id,
-          created_at: new Date(),
-          enqueue_source_info: {},
-        })
-        .execute();
+      await db.insert(schema.jobCreations).values({
+        id: bullJobIdtoExternalJobId(
+          itemIdToBullJobId({ id: itemId, typeId: itemTypeId }),
+        ),
+        orgId: org.id,
+        itemId,
+        itemTypeId,
+        queueId: queue.id,
+        createdAt: new Date(),
+        enqueueSourceInfo: {},
+      });
 
       const inQueue = await mrtService.getExistingJobsForItem({
         orgId: org.id,
@@ -419,13 +417,13 @@ describe('QueueOperations', () => {
       const buildOrg = async () => {
         const { org } = await createOrg(
           {
-            KyselyPg: deps.KyselyPg,
+            DrizzlePg: deps.DrizzlePg,
             ModerationConfigService: deps.ModerationConfigService,
             ApiKeyService: deps.ApiKeyService,
           },
           uid(),
         );
-        const { user } = await createUser(deps.KyselyPg, org.id);
+        const { user } = await createUser(deps.DrizzlePg, org.id);
         const { queue } = await createMrtQueue({
           orgId: org.id,
           mrtService: deps.ManualReviewToolService,
@@ -445,11 +443,11 @@ describe('QueueOperations', () => {
     'grants and revokes queue access only for users and queues in the caller’s org',
     async ({ attacker, victim, mrtService, deps }) => {
       const { user: attackerMember } = await createUser(
-        deps.KyselyPg,
+        deps.DrizzlePg,
         attacker.org.id,
       );
       const { user: victimMember } = await createUser(
-        deps.KyselyPg,
+        deps.DrizzlePg,
         victim.org.id,
       );
       const tenants = [
@@ -514,11 +512,9 @@ describe('QueueOperations', () => {
           fc.array(operation, { minLength: 1 }),
           async (operations) => {
             // The outer fixture rolls back per test, not per generated case.
-            await deps.KyselyPg.deleteFrom(
-              'manual_review_tool.users_and_accessible_queues',
-            )
-              .where('queue_id', 'in', allQueueIds)
-              .execute();
+            await deps.DrizzlePg.delete(schema.usersAndAccessibleQueues).where(
+              inArray(schema.usersAndAccessibleQueues.queueId, allQueueIds),
+            );
             let expected: string[] = [];
 
             for (const op of operations) {
@@ -550,14 +546,13 @@ describe('QueueOperations', () => {
                 });
               }
 
-              const stored = await deps.KyselyPg.selectFrom(
-                'manual_review_tool.users_and_accessible_queues',
-              )
-                .select(['user_id', 'queue_id'])
-                .where('queue_id', 'in', allQueueIds)
-                .execute();
+              const stored = await deps.DrizzlePg.select()
+                .from(schema.usersAndAccessibleQueues)
+                .where(
+                  inArray(schema.usersAndAccessibleQueues.queueId, allQueueIds),
+                );
               expect(
-                new Set(stored.map((row) => `${row.user_id}:${row.queue_id}`)),
+                new Set(stored.map((row) => `${row.userId}:${row.queueId}`)),
               ).toEqual(new Set(expected));
             }
           },
@@ -723,16 +718,16 @@ describe('QueueOperations', () => {
     makeTransactionalTestWithFixture(async ({ deps }) => {
       const { org } = await createOrg(
         {
-          KyselyPg: deps.KyselyPg,
+          DrizzlePg: deps.DrizzlePg,
           ModerationConfigService: deps.ModerationConfigService,
           ApiKeyService: deps.ApiKeyService,
         },
         uid(),
       );
-      const { user: creator } = await createUser(deps.KyselyPg, org.id, {
+      const { user: creator } = await createUser(deps.DrizzlePg, org.id, {
         role: UserRole.ADMIN,
       });
-      const { user: moderator } = await createUser(deps.KyselyPg, org.id, {
+      const { user: moderator } = await createUser(deps.DrizzlePg, org.id, {
         role: UserRole.MODERATOR,
       });
       return {
@@ -741,7 +736,7 @@ describe('QueueOperations', () => {
         moderator,
         apiKeyService: deps.ApiKeyService,
         moderationConfigService: deps.ModerationConfigService,
-        kyselyPg: deps.KyselyPg,
+        db: deps.DrizzlePg,
         mrtService: deps.ManualReviewToolService,
       };
     });
@@ -752,18 +747,18 @@ describe('QueueOperations', () => {
     orgId,
   });
 
-  const getRoleId = async (
-    db: QueueFixtureRole['kyselyPg'],
-    orgId: string,
-    role: UserRole,
-  ) =>
-    db
-      .selectFrom('public.roles')
-      .select('id')
-      .where('org_id', '=', orgId)
-      .where('key', '=', role)
-      .executeTakeFirstOrThrow()
-      .then((row) => row.id);
+  const getRoleId = async (db: CoopDb, orgId: string, role: UserRole) => {
+    const row = (
+      await db
+        .select({ id: schema.roles.id })
+        .from(schema.roles)
+        .where(and(eq(schema.roles.orgId, orgId), eq(schema.roles.key, role)))
+    ).at(0);
+    if (row === undefined) {
+      throw new Error(`No ${role} role for org ${orgId}`);
+    }
+    return row.id;
+  };
 
   const createQueueWithRoles = async (
     mrtService: QueueFixtureRole['mrtService'],
@@ -791,8 +786,8 @@ describe('QueueOperations', () => {
 
   testWithRoleAssignableQueue()(
     'a role assigned to a queue grants its members reviewer access',
-    async ({ org, creator, moderator, mrtService, kyselyPg }) => {
-      const roleId = await getRoleId(kyselyPg, org.id, UserRole.MODERATOR);
+    async ({ org, creator, moderator, mrtService, db }) => {
+      const roleId = await getRoleId(db, org.id, UserRole.MODERATOR);
       const queue = await createQueueWithRoles(mrtService, org, creator, [
         roleId,
       ]);
@@ -806,8 +801,8 @@ describe('QueueOperations', () => {
 
   testWithRoleAssignableQueue()(
     'a repeated role assignment creates the queue with one assignment and grants access',
-    async ({ org, creator, moderator, mrtService, kyselyPg }) => {
-      const roleId = await getRoleId(kyselyPg, org.id, UserRole.MODERATOR);
+    async ({ org, creator, moderator, mrtService, db }) => {
+      const roleId = await getRoleId(db, org.id, UserRole.MODERATOR);
       const queue = await createQueueWithRoles(mrtService, org, creator, [
         roleId,
         roleId,
@@ -840,8 +835,8 @@ describe('QueueOperations', () => {
 
   testWithRoleAssignableQueue()(
     'getQueueForOrg returns a role-accessible queue for a moderator',
-    async ({ org, creator, moderator, mrtService, kyselyPg }) => {
-      const roleId = await getRoleId(kyselyPg, org.id, UserRole.MODERATOR);
+    async ({ org, creator, moderator, mrtService, db }) => {
+      const roleId = await getRoleId(db, org.id, UserRole.MODERATOR);
       const queue = await createQueueWithRoles(mrtService, org, creator, [
         roleId,
       ]);
@@ -857,8 +852,8 @@ describe('QueueOperations', () => {
 
   testWithRoleAssignableQueue()(
     'updating queue assignments replaces direct users and roles',
-    async ({ org, creator, moderator, mrtService, kyselyPg }) => {
-      const roleId = await getRoleId(kyselyPg, org.id, UserRole.MODERATOR);
+    async ({ org, creator, moderator, mrtService, db }) => {
+      const roleId = await getRoleId(db, org.id, UserRole.MODERATOR);
       const queue = await createQueueWithRoles(mrtService, org, creator, []);
       const assignment = fc.record({
         direct: fc.boolean(),
@@ -869,7 +864,7 @@ describe('QueueOperations', () => {
         fc.asyncProperty(assignment, assignment, async (initial, next) => {
           // Reset inside the property so every generated case and shrink starts
           // from its own independently seeded assignments.
-          await seedQueueAssignments(kyselyPg, {
+          await seedQueueAssignments(db, {
             queueId: queue.id,
             userIds: initial.direct ? [creator.id, moderator.id] : [creator.id],
             roleIds: initial.role ? [roleId] : [],
@@ -930,8 +925,8 @@ describe('QueueOperations', () => {
 
   testWithRoleAssignableQueue()(
     'returns reviewable queues within the caller’s org based on permissions and user or role assignments',
-    async ({ org, creator, moderator, mrtService, kyselyPg, deps }) => {
-      const roleId = await getRoleId(kyselyPg, org.id, UserRole.MODERATOR);
+    async ({ org, creator, moderator, mrtService, db, deps }) => {
+      const roleId = await getRoleId(db, org.id, UserRole.MODERATOR);
       const directQueue = await createQueueWithRoles(
         mrtService,
         org,
@@ -951,14 +946,14 @@ describe('QueueOperations', () => {
         [],
       );
       for (const queue of [directQueue, bothQueue]) {
-        await seedQueueAssignments(kyselyPg, {
+        await seedQueueAssignments(db, {
           queueId: queue.id,
           userIds: [creator.id, moderator.id],
           roleIds: queue.id === bothQueue.id ? [roleId] : [],
         });
       }
       const { org: otherOrg } = await createOrg(deps);
-      const { user: otherUser } = await createUser(kyselyPg, otherOrg.id);
+      const { user: otherUser } = await createUser(db, otherOrg.id);
       const foreignQueue = await createQueueWithRoles(
         mrtService,
         otherOrg,
@@ -1034,28 +1029,24 @@ describe('QueueOperations', () => {
       creator,
       moderator,
       mrtService,
-      kyselyPg,
+      db,
       moderationConfigService,
       apiKeyService,
     }) => {
-      const roleId = await getRoleId(kyselyPg, org.id, UserRole.MODERATOR);
+      const roleId = await getRoleId(db, org.id, UserRole.MODERATOR);
       const queue = await createQueueWithRoles(mrtService, org, creator, [
         roleId,
       ]);
       const { org: otherOrg } = await createOrg(
         {
-          KyselyPg: kyselyPg,
+          DrizzlePg: db,
           ModerationConfigService: moderationConfigService,
           ApiKeyService: apiKeyService,
         },
         uid(),
       );
-      await createUser(kyselyPg, otherOrg.id, { role: UserRole.MODERATOR });
-      const otherRoleId = await getRoleId(
-        kyselyPg,
-        otherOrg.id,
-        UserRole.MODERATOR,
-      );
+      await createUser(db, otherOrg.id, { role: UserRole.MODERATOR });
+      const otherRoleId = await getRoleId(db, otherOrg.id, UserRole.MODERATOR);
 
       await expect(
         mrtService.updateManualReviewQueue({
@@ -1090,11 +1081,10 @@ describe('QueueOperations', () => {
     Parameters<ReturnType<typeof testWithQueueAndActions>>[1]
   >[0];
   type RuleTable =
-    | 'manual_review_tool.routing_rules'
-    | 'manual_review_tool.appeals_routing_rules';
+    typeof schema.routingRules | typeof schema.appealsRoutingRules;
 
   const expectDeletionBlockedByRoutingRule = async (
-    { org, user, mrtService, kyselyPg }: QueueFixture,
+    { org, user, mrtService, db }: QueueFixture,
     table: RuleTable,
     ruleName: string,
   ) => {
@@ -1111,27 +1101,21 @@ describe('QueueOperations', () => {
         orgId: org.id,
       },
     });
-    await kyselyPg
-      .insertInto(table)
-      .values({
-        id: uuidv1(),
-        org_id: org.id,
-        name: ruleName,
-        description: null,
-        status: 'LIVE',
-        condition_set: { conditions: [], conjunction: 'AND' },
-        destination_queue_id: secondQueue.id,
-        creator_id: user.id,
-        sequence_number: 99,
-      })
-      .execute();
+    await db.insert(table).values({
+      id: uuidv1(),
+      orgId: org.id,
+      name: ruleName,
+      description: null,
+      status: 'LIVE',
+      conditionSet: { conditions: [], conjunction: 'AND' },
+      destinationQueueId: secondQueue.id,
+      creatorId: user.id,
+      sequenceNumber: 99,
+    });
     await expect(
       mrtService.deleteManualReviewQueue(org.id, secondQueue.id),
     ).rejects.toMatchObject({ name: 'QueueHasDependentRoutingRulesError' });
-    await kyselyPg
-      .deleteFrom(table)
-      .where('destination_queue_id', '=', secondQueue.id)
-      .execute();
+    await db.delete(table).where(eq(table.destinationQueueId, secondQueue.id));
     await mrtService.deleteManualReviewQueueForTestsDO_NOT_USE(
       org.id,
       secondQueue.id,
@@ -1143,7 +1127,7 @@ describe('QueueOperations', () => {
     async (ctx) =>
       expectDeletionBlockedByRoutingRule(
         ctx,
-        'manual_review_tool.routing_rules',
+        schema.routingRules,
         'block-rule',
       ),
   );
@@ -1153,7 +1137,7 @@ describe('QueueOperations', () => {
     async (ctx) =>
       expectDeletionBlockedByRoutingRule(
         ctx,
-        'manual_review_tool.appeals_routing_rules',
+        schema.appealsRoutingRules,
         'block-appeals-rule',
       ),
   );
@@ -1162,7 +1146,7 @@ describe('QueueOperations', () => {
 // Helpers
 
 async function seedQueueAssignments(
-  db: Dependencies['KyselyPg'],
+  db: CoopDb,
   {
     queueId,
     userIds,
@@ -1173,24 +1157,21 @@ async function seedQueueAssignments(
     roleIds: readonly string[];
   },
 ) {
+  const { usersAndAccessibleQueues, rolesAndAccessibleQueues } = schema;
   await db
-    .deleteFrom('manual_review_tool.users_and_accessible_queues')
-    .where('queue_id', '=', queueId)
-    .execute();
+    .delete(usersAndAccessibleQueues)
+    .where(eq(usersAndAccessibleQueues.queueId, queueId));
   await db
-    .deleteFrom('manual_review_tool.roles_and_accessible_queues')
-    .where('queue_id', '=', queueId)
-    .execute();
+    .delete(rolesAndAccessibleQueues)
+    .where(eq(rolesAndAccessibleQueues.queueId, queueId));
   if (userIds.length > 0) {
     await db
-      .insertInto('manual_review_tool.users_and_accessible_queues')
-      .values(userIds.map((userId) => ({ queue_id: queueId, user_id: userId })))
-      .execute();
+      .insert(usersAndAccessibleQueues)
+      .values(userIds.map((userId) => ({ queueId, userId })));
   }
   if (roleIds.length > 0) {
     await db
-      .insertInto('manual_review_tool.roles_and_accessible_queues')
-      .values(roleIds.map((roleId) => ({ queue_id: queueId, role_id: roleId })))
-      .execute();
+      .insert(rolesAndAccessibleQueues)
+      .values(roleIds.map((roleId) => ({ queueId, roleId })));
   }
 }

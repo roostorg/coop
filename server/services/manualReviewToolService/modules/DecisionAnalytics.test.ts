@@ -1,8 +1,8 @@
-import { sql } from 'kysely';
 import { uid } from 'uid';
 import { v1 as uuidv1 } from 'uuid';
 
 import { type Dependencies } from '../../../iocContainer/index.js';
+import { schema } from '../../../storage/postgres/drizzle.js';
 import createMrtQueue from '../../../test/fixtureHelpers/createMrtQueue.js';
 import createOrg from '../../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../../test/fixtureHelpers/createUser.js';
@@ -18,24 +18,21 @@ describe('DecisionAnalytics', () => {
     makeTransactionalTestWithFixture(async ({ deps }) => {
       const { org } = await createOrg(
         {
-          KyselyPg: deps.KyselyPg,
+          DrizzlePg: deps.DrizzlePg,
           ModerationConfigService: deps.ModerationConfigService,
           ApiKeyService: deps.ApiKeyService,
         },
         uid(),
       );
-      const { user } = await createUser(deps.KyselyPg, org.id);
+      const { user } = await createUser(deps.DrizzlePg, org.id);
       const { queue } = await createMrtQueue({
         orgId: org.id,
         mrtService: deps.ManualReviewToolService,
         userId: user.id,
       });
 
-      // `manual_review_decisions.created_at` is `GeneratedAlways` in the
-      // Kysely schema (DB default now()), so a typed `.values()` insert
-      // can't set it. `insertDecision` inserts the row, then overwrites
-      // `created_at` with a raw update so tests can control ordering
-      // deterministically.
+      // Inserts a decision with an explicit `created_at` so tests can
+      // control ordering deterministically.
       const insertDecision = async (createdAt: Date) => {
         const id = uuidv1();
         const jobPayload: ManualReviewJob = {
@@ -43,24 +40,16 @@ describe('DecisionAnalytics', () => {
           id: uuidv1() as JobId,
           orgId: org.id,
         };
-        await deps.KyselyPg.insertInto(
-          'manual_review_tool.manual_review_decisions',
-        )
-          .values({
-            id,
-            job_payload: jobPayload,
-            queue_id: queue.id,
-            reviewer_id: user.id,
-            org_id: org.id,
-            decision_components: [{ type: 'IGNORE' }],
-            related_actions: [],
-          })
-          .execute();
-        await sql`
-          update manual_review_tool.manual_review_decisions
-          set created_at = ${createdAt}
-          where id = ${id}
-        `.execute(deps.KyselyPg);
+        await deps.DrizzlePg.insert(schema.manualReviewDecisions).values({
+          id,
+          jobPayload,
+          queueId: queue.id,
+          reviewerId: user.id,
+          orgId: org.id,
+          decisionComponents: [{ type: 'IGNORE' }],
+          relatedActions: [],
+          createdAt,
+        });
         return id;
       };
 

@@ -1,5 +1,7 @@
+import { eq } from 'drizzle-orm';
 import { uid } from 'uid';
 
+import { schema } from '../../../storage/postgres/drizzle.js';
 import createOrg from '../../../test/fixtureHelpers/createOrg.js';
 import { makeTransactionalTestWithFixture } from '../../../test/harness/transactionalTest.js';
 import { MAX_JOB_PRIORITY_WEIGHT } from './JobPriority.js';
@@ -8,18 +10,18 @@ import JobPriorityWeights from './JobPriorityWeights.js';
 describe('JobPriorityWeights', () => {
   const testWithFixtures = makeTransactionalTestWithFixture(
     async ({ deps }) => {
-      const pgQuery = deps.KyselyPg;
+      const db = deps.DrizzlePg;
       const { org } = await createOrg(
         {
-          KyselyPg: pgQuery,
+          DrizzlePg: deps.DrizzlePg,
           ModerationConfigService: deps.ModerationConfigService,
           ApiKeyService: deps.ApiKeyService,
         },
         uid(),
       );
       return {
-        ops: new JobPriorityWeights(pgQuery),
-        pgQuery,
+        ops: new JobPriorityWeights(db),
+        db,
         orgId: org.id,
         mrtService: deps.ManualReviewToolService,
       };
@@ -71,7 +73,7 @@ describe('JobPriorityWeights', () => {
       async ({ ops, orgId, deps }) => {
         const { org: otherOrg } = await createOrg(
           {
-            KyselyPg: deps.KyselyPg,
+            DrizzlePg: deps.DrizzlePg,
             ModerationConfigService: deps.ModerationConfigService,
             ApiKeyService: deps.ApiKeyService,
           },
@@ -103,13 +105,12 @@ describe('JobPriorityWeights', () => {
   describe('upsertForOrg', () => {
     testWithFixtures(
       'is a no-op for an empty weights array',
-      async ({ ops, pgQuery, orgId }) => {
+      async ({ ops, db, orgId }) => {
         await ops.upsertForOrg(orgId, []);
-        const rows = await pgQuery
-          .selectFrom('manual_review_tool.job_priority_weights')
-          .selectAll()
-          .where('org_id', '=', orgId)
-          .execute();
+        const rows = await db
+          .select()
+          .from(schema.jobPriorityWeights)
+          .where(eq(schema.jobPriorityWeights.orgId, orgId));
         expect(rows).toEqual([]);
       },
     );
@@ -234,16 +235,15 @@ describe('JobPriorityWeights', () => {
   describe('org_id foreign key', () => {
     testWithFixtures(
       'cascades: deleting an org removes its weights',
-      async ({ ops, pgQuery, orgId }) => {
+      async ({ ops, db, orgId }) => {
         await ops.upsertForOrg(orgId, [{ property: 'numReports', weight: 7 }]);
 
-        await pgQuery.deleteFrom('orgs').where('id', '=', orgId).execute();
+        await db.delete(schema.orgs).where(eq(schema.orgs.id, orgId));
 
-        const rows = await pgQuery
-          .selectFrom('manual_review_tool.job_priority_weights')
-          .selectAll()
-          .where('org_id', '=', orgId)
-          .execute();
+        const rows = await db
+          .select()
+          .from(schema.jobPriorityWeights)
+          .where(eq(schema.jobPriorityWeights.orgId, orgId));
         // Without ON DELETE CASCADE these survive as orphans that a recycled
         // org id would silently inherit.
         expect(rows).toEqual([]);
@@ -257,7 +257,7 @@ describe('JobPriorityWeights', () => {
           ops.upsertForOrg('org-that-does-not-exist', [
             { property: 'numReports', weight: 1 },
           ]),
-        ).rejects.toMatchObject({ code: '23503' });
+        ).rejects.toMatchObject({ cause: { code: '23503' } });
       },
     );
   });

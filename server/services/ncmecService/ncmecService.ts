@@ -1,7 +1,8 @@
-import { sql, type Kysely } from 'kysely';
+import { eq, inArray, sql } from 'drizzle-orm';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
+import { schema, type CoopDb } from '../../storage/postgres/drizzle.js';
 import { type ActionExecutionCorrelationId } from '../analyticsLoggers/ActionExecutionLogger.js';
 import { type RuleExecutionCorrelationId } from '../analyticsLoggers/ruleExecutionLoggingUtils.js';
 import { type ItemSubmissionWithTypeIdentifier } from '../itemProcessingService/makeItemSubmissionWithTypeIdentifier.js';
@@ -14,7 +15,6 @@ import {
   type ReportEnqueueSourceInfo,
   type RuleExecutionEnqueueSourceInfo,
 } from '../manualReviewToolService/manualReviewToolService.js';
-import { type NcmecReportingServicePg } from './dbTypes.js';
 import NcmecEnqueueToMrt from './ncmecEnqueueToMrt.js';
 import NcmecReporting, { type NCMECReportParams } from './ncmecReporting.js';
 import { type ValidatedNcmecTarget } from './resolveNcmecTargetUser.js';
@@ -28,8 +28,8 @@ export class NcmecService {
   private readonly ncmecEnqueueToMrt: NcmecEnqueueToMrt;
 
   constructor(
-    readonly pgQuery: Kysely<NcmecReportingServicePg>,
-    readonly pqQueryReadReplica: Kysely<NcmecReportingServicePg>,
+    private readonly db: CoopDb,
+    private readonly dbReadReplica: CoopDb,
     readonly fetchHTTP: Dependencies['fetchHTTP'],
     readonly partialItemsService: Dependencies['PartialItemsService'],
     readonly moderationConfigService: Dependencies['ModerationConfigService'],
@@ -40,8 +40,8 @@ export class NcmecService {
     readonly getItemTypeEventuallyConsistent: Dependencies['getItemTypeEventuallyConsistent'],
   ) {
     this.ncmecReporting = new NcmecReporting(
-      pgQuery,
-      pqQueryReadReplica,
+      db,
+      dbReadReplica,
       fetchHTTP,
       signingKeyPairService,
       tracer,
@@ -150,30 +150,33 @@ export class NcmecService {
     if (jobIds.length === 0) {
       return [];
     }
-    return this.pqQueryReadReplica
-      .selectFrom('ncmec_reporting.ncmec_reports_errors')
-      .select([
-        'job_id',
-        'retry_count',
-        'user_id',
-        'user_type_id',
-        'status',
-        'last_error',
-      ])
-      .where('job_id', 'in', jobIds)
-      .execute();
+    const errors = schema.ncmecReportsErrors;
+    return this.dbReadReplica
+      .select({
+        job_id: errors.jobId,
+        retry_count: errors.retryCount,
+        user_id: errors.userId,
+        user_type_id: errors.userTypeId,
+        status: errors.status,
+        last_error: errors.lastError,
+      })
+      .from(errors)
+      .where(inArray(errors.jobId, jobIds));
   }
 
   /** Returns the `(user_id, user_item_type_id)` pairs that already have a
    * successful NCMEC submission for this org. Used to filter MRT decisions
    * down to "failed" submissions (those without a matching report row). */
   async getSuccessfulSubmissionKeysForOrg(orgId: string) {
-    return this.pqQueryReadReplica
-      .selectFrom('ncmec_reporting.ncmec_reports')
-      .select(['user_id as userId', 'user_item_type_id as userItemTypeId'])
-      .where('org_id', '=', orgId)
-      .groupBy(['user_id', 'user_item_type_id'])
-      .execute();
+    const reports = schema.ncmecReports;
+    return this.dbReadReplica
+      .select({
+        userId: reports.userId,
+        userItemTypeId: reports.userItemTypeId,
+      })
+      .from(reports)
+      .where(eq(reports.orgId, orgId))
+      .groupBy(reports.userId, reports.userItemTypeId);
   }
 
   async insertOrUpdateNcmecReportError(opts: {
@@ -186,50 +189,54 @@ export class NcmecService {
     // Atomic increment in `doUpdateSet` avoids the read-modify-write race
     // when two callers (e.g. background retry job + user-clicked Retry)
     // attempt to record an error for the same job_id concurrently.
-    return this.pgQuery
-      .insertInto('ncmec_reporting.ncmec_reports_errors')
+    const errors = schema.ncmecReportsErrors;
+    return this.db
+      .insert(errors)
       .values({
-        job_id: opts.jobId,
-        user_id: opts.userId,
-        user_type_id: opts.userTypeId,
+        jobId: opts.jobId,
+        userId: opts.userId,
+        userTypeId: opts.userTypeId,
         status: opts.status,
-        last_error: opts.error,
-        retry_count: 1,
+        lastError: opts.error,
+        retryCount: 1,
       })
-      .onConflict((oc) =>
-        oc.columns(['job_id']).doUpdateSet({
-          retry_count: sql`ncmec_reporting.ncmec_reports_errors.retry_count + 1`,
-          last_error: opts.error,
+      .onConflictDoUpdate({
+        target: errors.jobId,
+        set: {
+          retryCount: sql`${errors.retryCount} + 1`,
+          lastError: opts.error,
           status: opts.status,
-        }),
-      )
-      .execute();
+        },
+      });
   }
 
   async getNcmecOrgSettings(orgId: string) {
-    const result = await this.pgQuery
-      .selectFrom('ncmec_reporting.ncmec_org_settings')
-      .select([
-        'username',
-        'password',
-        'contact_email as contactEmail',
-        'more_info_url as moreInfoUrl',
-        'company_template as companyTemplate',
-        'legal_url as legalUrl',
-        'ncmec_preservation_endpoint as ncmecPreservationEndpoint',
-        'ncmec_additional_info_endpoint as ncmecAdditionalInfoEndpoint',
-        'default_ncmec_queue_id as defaultNcmecQueueId',
-        'default_internet_detail_type as defaultInternetDetailType',
-        'terms_of_service as termsOfService',
-        'contact_person_email as contactPersonEmail',
-        'contact_person_first_name as contactPersonFirstName',
-        'contact_person_last_name as contactPersonLastName',
-        'contact_person_phone as contactPersonPhone',
-        'media_review_requirement as mediaReviewRequirement',
-        'min_media_to_review as minMediaToReview',
-      ])
-      .where('org_id', '=', orgId)
-      .executeTakeFirst();
+    const settings = schema.ncmecOrgSettings;
+    const result = (
+      await this.db
+        .select({
+          username: settings.username,
+          password: settings.password,
+          contactEmail: settings.contactEmail,
+          moreInfoUrl: settings.moreInfoUrl,
+          companyTemplate: settings.companyTemplate,
+          legalUrl: settings.legalUrl,
+          ncmecPreservationEndpoint: settings.ncmecPreservationEndpoint,
+          ncmecAdditionalInfoEndpoint: settings.ncmecAdditionalInfoEndpoint,
+          defaultNcmecQueueId: settings.defaultNcmecQueueId,
+          defaultInternetDetailType: settings.defaultInternetDetailType,
+          termsOfService: settings.termsOfService,
+          contactPersonEmail: settings.contactPersonEmail,
+          contactPersonFirstName: settings.contactPersonFirstName,
+          contactPersonLastName: settings.contactPersonLastName,
+          contactPersonPhone: settings.contactPersonPhone,
+          mediaReviewRequirement: settings.mediaReviewRequirement,
+          minMediaToReview: settings.minMediaToReview,
+        })
+        .from(settings)
+        .where(eq(settings.orgId, orgId))
+        .limit(1)
+    ).at(0);
 
     return result ?? null;
   }
@@ -254,62 +261,44 @@ export class NcmecService {
     mediaReviewRequirement: 'ALL' | 'MINIMUM';
     minMediaToReview: number | null;
   }) {
-    await this.pgQuery
-      .insertInto('ncmec_reporting.ncmec_org_settings')
+    const fields = {
+      username: params.username,
+      password: params.password,
+      contactEmail: params.contactEmail ?? null,
+      moreInfoUrl: params.moreInfoUrl ?? null,
+      companyTemplate: params.companyTemplate ?? null,
+      legalUrl: params.legalUrl ?? null,
+      ncmecPreservationEndpoint: params.ncmecPreservationEndpoint ?? null,
+      ncmecAdditionalInfoEndpoint: params.ncmecAdditionalInfoEndpoint ?? null,
+      defaultNcmecQueueId: params.defaultNcmecQueueId ?? null,
+      defaultInternetDetailType: params.defaultInternetDetailType ?? null,
+      termsOfService: params.termsOfService ?? null,
+      contactPersonEmail: params.contactPersonEmail ?? null,
+      contactPersonFirstName: params.contactPersonFirstName ?? null,
+      contactPersonLastName: params.contactPersonLastName ?? null,
+      contactPersonPhone: params.contactPersonPhone ?? null,
+      mediaReviewRequirement: params.mediaReviewRequirement,
+      minMediaToReview: params.minMediaToReview ?? null,
+    };
+    await this.db
+      .insert(schema.ncmecOrgSettings)
       .values({
-        org_id: params.orgId,
-        username: params.username,
-        password: params.password,
-        contact_email: params.contactEmail ?? null,
-        more_info_url: params.moreInfoUrl ?? null,
-        company_template: params.companyTemplate ?? null,
-        legal_url: params.legalUrl ?? null,
-        ncmec_preservation_endpoint: params.ncmecPreservationEndpoint ?? null,
-        ncmec_additional_info_endpoint:
-          params.ncmecAdditionalInfoEndpoint ?? null,
-        default_ncmec_queue_id: params.defaultNcmecQueueId ?? null,
-        default_internet_detail_type: params.defaultInternetDetailType ?? null,
-        terms_of_service: params.termsOfService ?? null,
-        contact_person_email: params.contactPersonEmail ?? null,
-        contact_person_first_name: params.contactPersonFirstName ?? null,
-        contact_person_last_name: params.contactPersonLastName ?? null,
-        contact_person_phone: params.contactPersonPhone ?? null,
-        media_review_requirement: params.mediaReviewRequirement,
-        min_media_to_review: params.minMediaToReview ?? null,
-        actions_to_run_upon_report_creation: null,
-        policies_applied_to_actions_run_on_report_creation: null,
+        orgId: params.orgId,
+        ...fields,
+        actionsToRunUponReportCreation: null,
+        policiesAppliedToActionsRunOnReportCreation: null,
       })
-      .onConflict((oc) =>
-        oc.column('org_id').doUpdateSet({
-          username: params.username,
-          password: params.password,
-          contact_email: params.contactEmail ?? null,
-          more_info_url: params.moreInfoUrl ?? null,
-          company_template: params.companyTemplate ?? null,
-          legal_url: params.legalUrl ?? null,
-          ncmec_preservation_endpoint: params.ncmecPreservationEndpoint ?? null,
-          ncmec_additional_info_endpoint:
-            params.ncmecAdditionalInfoEndpoint ?? null,
-          default_ncmec_queue_id: params.defaultNcmecQueueId ?? null,
-          default_internet_detail_type:
-            params.defaultInternetDetailType ?? null,
-          terms_of_service: params.termsOfService ?? null,
-          contact_person_email: params.contactPersonEmail ?? null,
-          contact_person_first_name: params.contactPersonFirstName ?? null,
-          contact_person_last_name: params.contactPersonLastName ?? null,
-          contact_person_phone: params.contactPersonPhone ?? null,
-          media_review_requirement: params.mediaReviewRequirement,
-          min_media_to_review: params.minMediaToReview ?? null,
-        }),
-      )
-      .execute();
+      .onConflictDoUpdate({
+        target: schema.ncmecOrgSettings.orgId,
+        set: fields,
+      });
   }
 }
 
 export default inject(
   [
-    'KyselyPg',
-    'KyselyPgReadReplica',
+    'DrizzlePg',
+    'DrizzlePgReadReplica',
     'fetchHTTP',
     'PartialItemsService',
     'ModerationConfigService',

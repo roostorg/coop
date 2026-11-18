@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
-import { sql } from 'kysely';
+import { eq, sql } from 'drizzle-orm';
 import * as superTest from 'supertest';
 
+import { schema } from '../../storage/postgres/drizzle.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import createSession, {
   expectSessionIdentity,
@@ -9,6 +10,8 @@ import createSession, {
 import createUser from '../../test/fixtureHelpers/createUser.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
 import { MIN_PASSWORD_LENGTH } from './constants.js';
+
+const { passwordResetTokens, users } = schema;
 
 describe('password recovery session persistence', () => {
   const initialPassword = 'Initial-password';
@@ -18,7 +21,7 @@ describe('password recovery session persistence', () => {
     async ({ deps, server }) => {
       const { org } = await createOrg(deps);
       const { org: foreignOrg } = await createOrg(deps);
-      const { user } = await createUser(deps.KyselyPg, org.id, {
+      const { user } = await createUser(deps.DrizzlePg, org.id, {
         approvedByAdmin: true,
         loginMethods: ['password'],
         password: initialPassword,
@@ -37,7 +40,7 @@ describe('password recovery session persistence', () => {
         await expectSessionIdentity(session, user);
 
       const createObserver = async (orgId: string) => {
-        const { user: observer } = await createUser(deps.KyselyPg, orgId, {
+        const { user: observer } = await createUser(deps.DrizzlePg, orgId, {
           approvedByAdmin: true,
           loginMethods: ['password'],
           password: initialPassword,
@@ -54,16 +57,12 @@ describe('password recovery session persistence', () => {
           await expectSessionIdentity(observer.session, observer.user);
       };
 
-      await deps.KyselyPg.insertInto(
-        'user_management_service.password_reset_tokens',
-      )
-        .values({
-          user_id: user.id,
-          org_id: org.id,
-          hashed_token: createHash('sha256').update(resetToken).digest('hex'),
-          created_at: new Date(),
-        })
-        .execute();
+      await deps.DrizzlePg.insert(passwordResetTokens).values({
+        userId: user.id,
+        orgId: org.id,
+        hashedToken: createHash('sha256').update(resetToken).digest('hex'),
+        createdAt: new Date(),
+      });
 
       const changePassword = ({
         currentPassword = initialPassword,
@@ -90,10 +89,11 @@ describe('password recovery session persistence', () => {
           .expect(200);
 
       const expectPasswordAndSessionsUnchanged = async () => {
-        const stored = await deps.KyselyPg.selectFrom('public.users')
-          .select('password')
-          .where('id', '=', user.id)
-          .executeTakeFirstOrThrow();
+        const [stored] = await deps.DrizzlePg.select({
+          password: users.password,
+        })
+          .from(users)
+          .where(eq(users.id, user.id));
         expect(stored.password).toBe(user.password);
         for (const session of allUserSessions)
           await expectSessionIdentity(session, user);
@@ -180,12 +180,9 @@ describe('password recovery session persistence', () => {
       await expectUnrelatedSessionsActive();
       const freshSession = await expectOnlyNewPasswordWorks();
       expect(
-        await deps.KyselyPg.selectFrom(
-          'user_management_service.password_reset_tokens',
-        )
-          .selectAll()
-          .where('user_id', '=', user.id)
-          .execute(),
+        await deps.DrizzlePg.select()
+          .from(passwordResetTokens)
+          .where(eq(passwordResetTokens.userId, user.id)),
       ).toEqual([]);
 
       await resetPassword({ newPassword: 'Replayed-password' });
@@ -217,24 +214,23 @@ describe('password recovery session persistence', () => {
       async (fixture) => {
         const { deps, user, expectPasswordAndSessionsUnchanged } = fixture;
         // A real PostgreSQL failure tests the transaction, not a mocked query order.
-        await sql`CREATE FUNCTION pg_temp.reject_session_delete() RETURNS trigger AS $$
+        await deps.DrizzlePg.execute(
+          sql`CREATE FUNCTION pg_temp.reject_session_delete() RETURNS trigger AS $$
         BEGIN RAISE EXCEPTION 'synthetic session deletion failure'; END;
-      $$ LANGUAGE plpgsql`.execute(deps.KyselyPg);
-        await sql`CREATE TRIGGER reject_session_delete BEFORE DELETE ON public.session
-        FOR EACH ROW EXECUTE FUNCTION pg_temp.reject_session_delete()`.execute(
-          deps.KyselyPg,
+      $$ LANGUAGE plpgsql`,
+        );
+        await deps.DrizzlePg.execute(
+          sql`CREATE TRIGGER reject_session_delete BEFORE DELETE ON public.session
+        FOR EACH ROW EXECUTE FUNCTION pg_temp.reject_session_delete()`,
         );
         const result = await fixture[method]();
         expect(result.body.errors).toBeDefined();
         await expectPasswordAndSessionsUnchanged();
         expect(
-          await deps.KyselyPg.selectFrom(
-            'user_management_service.password_reset_tokens',
-          )
-            .select('user_id')
-            .where('user_id', '=', user.id)
-            .execute(),
-        ).toEqual([{ user_id: user.id }]);
+          await deps.DrizzlePg.select({ userId: passwordResetTokens.userId })
+            .from(passwordResetTokens)
+            .where(eq(passwordResetTokens.userId, user.id)),
+        ).toEqual([{ userId: user.id }]);
       },
     );
   }
@@ -247,12 +243,9 @@ describe('password recovery session persistence', () => {
       resetPassword,
       expectPasswordAndSessionsUnchanged,
     }) => {
-      await deps.KyselyPg.updateTable(
-        'user_management_service.password_reset_tokens',
-      )
-        .set({ created_at: new Date(Date.now() - 2 * 60 * 60 * 1000) })
-        .where('user_id', '=', user.id)
-        .execute();
+      await deps.DrizzlePg.update(passwordResetTokens)
+        .set({ createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000) })
+        .where(eq(passwordResetTokens.userId, user.id));
       for (const token of [resetToken, 'unknown-token']) {
         const result = await resetPassword({ token });
         expect(result.body).toEqual({ data: { resetPassword: true } });

@@ -1,6 +1,8 @@
+import { asc, inArray } from 'drizzle-orm';
 import fc from 'fast-check';
 
 import { UserPermission } from '../../services/userManagementService/index.js';
+import { schema } from '../../storage/postgres/drizzle.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import createSession from '../../test/fixtureHelpers/createSession.js';
 import createUser from '../../test/fixtureHelpers/createUser.js';
@@ -43,7 +45,7 @@ describe('API key GraphQL authorization', () => {
     async ({ deps, server }) => {
       const local = await createOrg(deps);
       const foreign = await createOrg(deps);
-      const { user } = await createUser(deps.KyselyPg, local.org.id, {
+      const { user } = await createUser(deps.DrizzlePg, local.org.id, {
         approvedByAdmin: true,
         loginMethods: ['password'],
         password: 'Api-key-test-password',
@@ -54,16 +56,16 @@ describe('API key GraphQL authorization', () => {
         );
       }
       const snapshot = async () => ({
-        apiKeys: await deps.KyselyPg.selectFrom('public.api_keys')
-          .selectAll()
-          .where('org_id', 'in', [local.org.id, foreign.org.id])
-          .orderBy('id')
-          .execute(),
-        signingKeys: await deps.KyselyPg.selectFrom('public.signing_keys')
-          .selectAll()
-          .where('org_id', 'in', [local.org.id, foreign.org.id])
-          .orderBy('org_id')
-          .execute(),
+        apiKeys: await deps.DrizzlePg.select()
+          .from(schema.apiKeys)
+          .where(inArray(schema.apiKeys.orgId, [local.org.id, foreign.org.id]))
+          .orderBy(asc(schema.apiKeys.id)),
+        signingKeys: await deps.DrizzlePg.select()
+          .from(schema.signingKeys)
+          .where(
+            inArray(schema.signingKeys.orgId, [local.org.id, foreign.org.id]),
+          )
+          .orderBy(asc(schema.signingKeys.orgId)),
       });
       const session = await createSession(
         server,
@@ -100,7 +102,7 @@ describe('API key GraphQL authorization', () => {
           for (const secret of [
             local.apiKey,
             foreign.apiKey,
-            ...before.apiKeys.map((key) => key.key_hash),
+            ...before.apiKeys.map((key) => key.keyHash),
           ])
             expect(jsonStringify(response.body)).not.toContain(secret);
           expect(jsonStringify(response.body)).not.toContain(
@@ -119,7 +121,7 @@ describe('API key GraphQL authorization', () => {
             fc.asyncProperty(
               fc.subarray(unrelatedPermissions),
               async (permissions) => {
-                await kyselyUpdateRolePermissions(deps.KyselyPg, {
+                await kyselyUpdateRolePermissions(deps.DrizzlePg, {
                   orgId: user.orgId,
                   roleKey: user.role,
                   permissions,
@@ -138,7 +140,7 @@ describe('API key GraphQL authorization', () => {
                 for (const secret of [
                   local.apiKey,
                   foreign.apiKey,
-                  ...before.apiKeys.map((key) => key.key_hash),
+                  ...before.apiKeys.map((key) => key.keyHash),
                 ])
                   expect(jsonStringify(response.body)).not.toContain(secret);
                 expect(jsonStringify(response.body)).not.toContain(
@@ -157,7 +159,7 @@ describe('API key GraphQL authorization', () => {
   testWithKeys(
     'MANAGE_ORG can check that an API key exists without revealing it',
     async ({ deps, user, session }) => {
-      await kyselyUpdateRolePermissions(deps.KyselyPg, {
+      await kyselyUpdateRolePermissions(deps.DrizzlePg, {
         orgId: user.orgId,
         roleKey: user.role,
         permissions: [UserPermission.MANAGE_ORG],
@@ -177,7 +179,7 @@ describe('API key GraphQL authorization', () => {
   testWithKeys(
     'MANAGE_ORG rotates only the caller API key and returns the usable replacement',
     async ({ deps, local, foreign, user, session, snapshot }) => {
-      await kyselyUpdateRolePermissions(deps.KyselyPg, {
+      await kyselyUpdateRolePermissions(deps.DrizzlePg, {
         orgId: user.orgId,
         roleKey: user.role,
         permissions: [UserPermission.MANAGE_ORG],
@@ -204,8 +206,8 @@ describe('API key GraphQL authorization', () => {
       });
       const after = await snapshot();
       expect(
-        after.apiKeys.filter((key) => key.org_id === foreign.org.id),
-      ).toEqual(before.apiKeys.filter((key) => key.org_id === foreign.org.id));
+        after.apiKeys.filter((key) => key.orgId === foreign.org.id),
+      ).toEqual(before.apiKeys.filter((key) => key.orgId === foreign.org.id));
       expect(after.signingKeys).toEqual(before.signingKeys);
       expect(await deps.ApiKeyService.validateApiKey(local.apiKey)).toBeNull();
       expect(await deps.ApiKeyService.validateApiKey(rotated.apiKey)).toBe(
@@ -220,7 +222,7 @@ describe('API key GraphQL authorization', () => {
   testWithKeys(
     'MANAGE_ORG rotates only the caller persisted webhook signing key',
     async ({ deps, local, foreign, user, session, snapshot }) => {
-      await kyselyUpdateRolePermissions(deps.KyselyPg, {
+      await kyselyUpdateRolePermissions(deps.DrizzlePg, {
         orgId: user.orgId,
         roleKey: user.role,
         permissions: [UserPermission.MANAGE_ORG],
@@ -256,14 +258,14 @@ describe('API key GraphQL authorization', () => {
       const after = await snapshot();
       expect(after.apiKeys).toEqual(before.apiKeys);
       expect(
-        after.signingKeys.filter((key) => key.org_id === foreign.org.id),
+        after.signingKeys.filter((key) => key.orgId === foreign.org.id),
       ).toEqual(
-        before.signingKeys.filter((key) => key.org_id === foreign.org.id),
+        before.signingKeys.filter((key) => key.orgId === foreign.org.id),
       );
       expect(
-        after.signingKeys.find((key) => key.org_id === local.org.id)?.key_data,
+        after.signingKeys.find((key) => key.orgId === local.org.id)?.keyData,
       ).not.toEqual(
-        before.signingKeys.find((key) => key.org_id === local.org.id)?.key_data,
+        before.signingKeys.find((key) => key.orgId === local.org.id)?.keyData,
       );
     },
   );

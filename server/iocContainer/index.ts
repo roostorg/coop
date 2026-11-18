@@ -985,8 +985,8 @@ export default async function getBottle(
     'ModerationConfigService',
     (container) =>
       new ModerationConfigService(
-        container.KyselyPg,
-        container.KyselyPgReadReplica,
+        container.DrizzlePg,
+        container.DrizzlePgReadReplica,
         async (_) => {},
       ),
   );
@@ -1012,8 +1012,8 @@ export default async function getBottle(
       container.IORedis,
       container.RuleEvaluator,
       container.RoutingRuleExecutionLogger,
-      container.KyselyPg,
-      container.KyselyPgReadReplica,
+      container.DrizzlePg,
+      container.DrizzlePgReadReplica,
       container.UserStatisticsService,
       container.getActionsByIdEventuallyConsistent,
       container.Tracer,
@@ -1668,8 +1668,7 @@ export default async function getBottle(
   );
 
   bottle.factory('getImageBankEventuallyConsistent', (container) => {
-    const kyselyPg = container.KyselyPg;
-    const hashBankService = new HashBankService(kyselyPg);
+    const hashBankService = new HashBankService(container.DrizzlePg);
 
     return cached({
       async producer({ orgId, bankId }) {
@@ -1934,7 +1933,11 @@ export default async function getBottle(
                       }
                     }
                   } else if ('end' in it && typeof it.end === 'function') {
-                    await it.end();
+                    // pg.Pool#end throws if called twice (shutdown can run
+                    // more than once), unlike Kysely's destroy().
+                    if (!('ending' in it && it.ending === true)) {
+                      await it.end();
+                    }
                   } else if (
                     'flushPendingWrites' in it &&
                     typeof it.flushPendingWrites === 'function'

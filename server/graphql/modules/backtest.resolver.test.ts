@@ -13,60 +13,60 @@ import { resolvers } from './backtest.js';
 function makeBacktestRow(
   overrides: Partial<{
     id: string;
-    rule_id: string;
-    creator_id: string;
-    sample_desired_size: number;
-    sample_actual_size: number;
-    sample_start_at: Date;
-    sample_end_at: Date;
-    sampling_complete: boolean;
-    content_items_processed: number;
-    content_items_matched: number;
+    ruleId: string;
+    creatorId: string;
+    sampleDesiredSize: number;
+    sampleActualSize: number;
+    sampleStartAt: Date;
+    sampleEndAt: Date;
+    samplingComplete: boolean;
+    contentItemsProcessed: number;
+    contentItemsMatched: number;
     status: 'RUNNING' | 'COMPLETE' | 'CANCELED';
-    created_at: Date;
-    updated_at: Date;
-    cancelation_date: Date | null;
+    createdAt: Date;
+    updatedAt: Date;
+    cancelationDate: Date | null;
   }> = {},
 ) {
   const now = new Date('2026-01-01T00:00:00Z');
   return {
     id: 'bt-1',
-    rule_id: 'rule-1',
-    creator_id: 'user-1',
-    sample_desired_size: 100,
-    sample_actual_size: 80,
-    sample_start_at: now,
-    sample_end_at: now,
-    sampling_complete: true,
-    content_items_processed: 50,
-    content_items_matched: 10,
+    ruleId: 'rule-1',
+    creatorId: 'user-1',
+    sampleDesiredSize: 100,
+    sampleActualSize: 80,
+    sampleStartAt: now,
+    sampleEndAt: now,
+    samplingComplete: true,
+    contentItemsProcessed: 50,
+    contentItemsMatched: 10,
     status: 'COMPLETE' as const,
-    created_at: now,
-    updated_at: now,
-    cancelation_date: null,
+    createdAt: now,
+    updatedAt: now,
+    cancelationDate: null,
     ...overrides,
   };
 }
 
 describe('mapBacktestRowToGqlParent', () => {
-  it('round-trips snake_case columns to camelCase fields', () => {
+  it('maps row columns to GraphQL fields', () => {
     const row = makeBacktestRow();
     const parent = mapBacktestRowToGqlParent(row);
     expect(parent).toMatchObject({
       id: row.id,
-      ruleId: row.rule_id,
-      creatorId: row.creator_id,
-      sampleDesiredSize: row.sample_desired_size,
-      sampleActualSize: row.sample_actual_size,
-      sampleStartAt: row.sample_start_at,
-      sampleEndAt: row.sample_end_at,
-      samplingComplete: row.sampling_complete,
-      contentItemsProcessed: row.content_items_processed,
-      contentItemsMatched: row.content_items_matched,
+      ruleId: row.ruleId,
+      creatorId: row.creatorId,
+      sampleDesiredSize: row.sampleDesiredSize,
+      sampleActualSize: row.sampleActualSize,
+      sampleStartAt: row.sampleStartAt,
+      sampleEndAt: row.sampleEndAt,
+      samplingComplete: row.samplingComplete,
+      contentItemsProcessed: row.contentItemsProcessed,
+      contentItemsMatched: row.contentItemsMatched,
       status: row.status,
-      createdAt: row.created_at,
-      updatedAt: row.updated_at,
-      cancelationDate: row.cancelation_date,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      cancelationDate: row.cancelationDate,
     });
   });
 
@@ -74,9 +74,9 @@ describe('mapBacktestRowToGqlParent', () => {
     // Queues deliver at-least-once, so processed can exceed actual size.
     const parent = mapBacktestRowToGqlParent(
       makeBacktestRow({
-        sample_actual_size: 80,
-        content_items_processed: 95,
-        content_items_matched: 5,
+        sampleActualSize: 80,
+        contentItemsProcessed: 95,
+        contentItemsMatched: 5,
       }),
     );
     expect(parent.correctedContentItemsProcessed).toBe(80);
@@ -85,9 +85,9 @@ describe('mapBacktestRowToGqlParent', () => {
   it('clamps correctedContentItemsMatched at correctedContentItemsProcessed', () => {
     const parent = mapBacktestRowToGqlParent(
       makeBacktestRow({
-        sample_actual_size: 80,
-        content_items_processed: 50,
-        content_items_matched: 60,
+        sampleActualSize: 80,
+        contentItemsProcessed: 50,
+        contentItemsMatched: 60,
       }),
     );
     expect(parent.correctedContentItemsProcessed).toBe(50);
@@ -97,9 +97,9 @@ describe('mapBacktestRowToGqlParent', () => {
   it('passes through processed/matched values when below the clamp ceilings', () => {
     const parent = mapBacktestRowToGqlParent(
       makeBacktestRow({
-        sample_actual_size: 80,
-        content_items_processed: 30,
-        content_items_matched: 5,
+        sampleActualSize: 80,
+        contentItemsProcessed: 30,
+        contentItemsMatched: 5,
       }),
     );
     expect(parent.correctedContentItemsProcessed).toBe(30);

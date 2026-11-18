@@ -18,14 +18,14 @@ describe('QueueOperations per-reviewer skips', () => {
   const testWithQueue = makeTransactionalTestWithFixture(async ({ deps }) => {
     const { org } = await createOrg(
       {
-        KyselyPg: deps.KyselyPg,
+        DrizzlePg: deps.DrizzlePg,
         ModerationConfigService: deps.ModerationConfigService,
         ApiKeyService: deps.ApiKeyService,
       },
       uid(),
     );
 
-    const { user } = await createUser(deps.KyselyPg, org.id);
+    const { user } = await createUser(deps.DrizzlePg, org.id);
 
     const { queue } = await createMrtQueue({
       orgId: org.id,

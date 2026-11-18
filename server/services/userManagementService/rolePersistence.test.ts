@@ -1,4 +1,5 @@
 import { faker } from '@faker-js/faker';
+import { and, eq } from 'drizzle-orm';
 import { uid } from 'uid';
 
 // This integration fixture intentionally exercises the production role seeder.
@@ -7,21 +8,24 @@ import { seedSystemRolesForOrg } from '../../graphql/datasources/rolePersistence
 // This integration fixture calls the GraphQL datasource with its generated enum.
 // eslint-disable-next-line no-restricted-syntax, import/no-restricted-paths
 import { GQLUserRole } from '../../graphql/generated.js';
+import { schema } from '../../storage/postgres/drizzle.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
 import { UserPermission, UserRole } from './permissioning.js';
+
+const { inviteUserTokens, roles, users } = schema;
 
 describe('UserManagementService role persistence', () => {
   const testWithFixture = makeTransactionalTestWithFixture(async ({ deps }) => {
     const { org } = await createOrg(
       {
-        KyselyPg: deps.KyselyPg,
+        DrizzlePg: deps.DrizzlePg,
         ModerationConfigService: deps.ModerationConfigService,
         ApiKeyService: deps.ApiKeyService,
       },
       uid(),
     );
-    await seedSystemRolesForOrg(deps.KyselyPg, org.id);
+    await seedSystemRolesForOrg(deps.DrizzlePg, org.id);
     return { org };
   });
 
@@ -35,14 +39,14 @@ describe('UserManagementService role persistence', () => {
         orgId: org.id,
       });
 
-      const persisted = await deps.KyselyPg.selectFrom(
-        'public.invite_user_tokens',
-      )
-        .innerJoin('public.roles', 'public.roles.id', 'role_id')
-        .select(['role_id', 'public.roles.key'])
-        .where('token', '=', token)
-        .executeTakeFirstOrThrow();
-      expect(persisted.role_id).not.toBeNull();
+      const [persisted] = await deps.DrizzlePg.select({
+        roleId: inviteUserTokens.roleId,
+        key: roles.key,
+      })
+        .from(inviteUserTokens)
+        .innerJoin(roles, eq(roles.id, inviteUserTokens.roleId))
+        .where(eq(inviteUserTokens.token, token));
+      expect(persisted.roleId).not.toBeNull();
       expect(persisted.key).toBe(UserRole.ANALYST);
       await expect(
         deps.UserManagementService.getInviteUserToken({ token }),
@@ -104,28 +108,24 @@ describe('UserManagementService role persistence', () => {
     'updates a user through the organization role ID and round-trips its key',
     async ({ deps, org }) => {
       const userId = uid();
-      const adminRole = await deps.KyselyPg.selectFrom('public.roles')
-        .select('id')
-        .where('org_id', '=', org.id)
-        .where('key', '=', UserRole.ADMIN)
-        .executeTakeFirstOrThrow();
+      const [adminRole] = await deps.DrizzlePg.select({ id: roles.id })
+        .from(roles)
+        .where(and(eq(roles.orgId, org.id), eq(roles.key, UserRole.ADMIN)));
       const now = new Date();
-      await deps.KyselyPg.insertInto('public.users')
-        .values({
-          id: userId,
-          org_id: org.id,
-          email: faker.internet.email(),
-          first_name: 'Role',
-          last_name: 'User',
-          role_id: adminRole.id,
-          login_methods: ['saml'],
-          password: null,
-          approved_by_admin: true,
-          rejected_by_admin: false,
-          created_at: now,
-          updated_at: now,
-        })
-        .execute();
+      await deps.DrizzlePg.insert(users).values({
+        id: userId,
+        orgId: org.id,
+        email: faker.internet.email(),
+        firstName: 'Role',
+        lastName: 'User',
+        roleId: adminRole.id,
+        loginMethods: ['saml'],
+        password: null,
+        approvedByAdmin: true,
+        rejectedByAdmin: false,
+        createdAt: now,
+        updatedAt: now,
+      });
 
       await deps.UserManagementService.updateUserRole({
         userId,
@@ -138,16 +138,15 @@ describe('UserManagementService role persistence', () => {
         },
       });
 
-      const analystRole = await deps.KyselyPg.selectFrom('public.roles')
-        .select('id')
-        .where('org_id', '=', org.id)
-        .where('key', '=', UserRole.ANALYST)
-        .executeTakeFirstOrThrow();
-      const persistedUser = await deps.KyselyPg.selectFrom('public.users')
-        .select('role_id')
-        .where('id', '=', userId)
-        .executeTakeFirstOrThrow();
-      expect(persistedUser.role_id).toBe(analystRole.id);
+      const [analystRole] = await deps.DrizzlePg.select({ id: roles.id })
+        .from(roles)
+        .where(and(eq(roles.orgId, org.id), eq(roles.key, UserRole.ANALYST)));
+      const [persistedUser] = await deps.DrizzlePg.select({
+        roleId: users.roleId,
+      })
+        .from(users)
+        .where(eq(users.id, userId));
+      expect(persistedUser.roleId).toBe(analystRole.id);
 
       await expect(
         deps.UserManagementService.getUsersForOrg(org.id),

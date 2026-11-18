@@ -11,7 +11,6 @@ import { inject, safeGetEnvInt } from '../../iocContainer/utils.js';
 import { type ActionCountsInput } from '../../services/actionStatisticsService/index.js';
 import { type AggregationClause } from '../../services/aggregationsService/index.js';
 import { type ConditionSetWithResultAsLogged } from '../../services/analyticsLoggers/index.js';
-import { type CombinedPg } from '../../services/combinedDbTypes.js';
 import {
   makeRuleHasRunningBacktestsError,
   makeRuleIsMissingContentTypeError,
@@ -35,6 +34,7 @@ import {
   warehouseDateToDate,
   type DataWarehousePublicSchema,
 } from '../../storage/dataWarehouse/warehouseSchema.js';
+import { transactionWithRetry } from '../../storage/postgres/drizzle.js';
 import { toCorrelationId } from '../../utils/correlationIds.js';
 import {
   jsonParse,
@@ -43,10 +43,6 @@ import {
 } from '../../utils/encoding.js';
 import { makeBadRequestError, makeNotFoundError } from '../../utils/errors.js';
 import { isUniqueViolationError } from '../../utils/kysely.js';
-import {
-  makeKyselyTransactionWithRetry,
-  type KyselyTransactionWithRetry,
-} from '../../utils/kyselyTransactionWithRetry.js';
 import { logErrorJson } from '../../utils/logging.js';
 import { assertUnreachable } from '../../utils/misc.js';
 import { takeLast } from '../../utils/sql.js';
@@ -300,8 +296,6 @@ function parseAggregationClauseInput(
  */
 class RuleAPI {
   private readonly warehouse: Kysely<DataWarehousePublicSchema>;
-  private readonly kysely: Kysely<CombinedPg>;
-  private readonly kyselyTransactionWithRetry: KyselyTransactionWithRetry<CombinedPg>;
 
   private readonly graphQlRuleParentDeps: Parameters<
     typeof buildGraphqlRuleParent
@@ -311,21 +305,17 @@ class RuleAPI {
     dialect: Dependencies['DataWarehouseDialect'],
     public readonly ruleInsights: Dependencies['RuleActionInsights'],
     private readonly actionStats: Dependencies['ActionStatisticsService'],
-    private readonly kyselyPg: Dependencies['KyselyPg'],
+    private readonly db: Dependencies['DrizzlePg'],
     private readonly moderationConfigService: Dependencies['ModerationConfigService'],
     private readonly tracer: Dependencies['Tracer'],
     private readonly signalsService: Dependencies['SignalsService'],
   ) {
     this.warehouse =
       dialect.getKyselyInstance() as Kysely<DataWarehousePublicSchema>;
-    this.kysely = this.kyselyPg as Kysely<CombinedPg>;
-    this.kyselyTransactionWithRetry = makeKyselyTransactionWithRetry(
-      this.kysely,
-    );
     this.graphQlRuleParentDeps = {
       moderationConfigService: this.moderationConfigService,
       findUserByIdAndOrg: async (opts) =>
-        kyselyUserFindByIdAndOrg(this.kyselyPg, opts),
+        kyselyUserFindByIdAndOrg(this.db, opts),
     };
   }
 
@@ -454,7 +444,7 @@ class RuleAPI {
     const ruleId = uid();
 
     try {
-      await this.kyselyTransactionWithRetry(async (trx) => {
+      await transactionWithRetry(this.db, async (trx) => {
         await kyselyCreateRule(trx, {
           id: ruleId,
           name,
@@ -596,7 +586,7 @@ class RuleAPI {
     // active backtests for this rule because, if there are, we should fail the
     // update unless the user's asked to cancel the backtests explicitly.
     if (!cancelRunningBacktests) {
-      if (await kyselyHasRunningBacktestsForRule(this.kysely, id)) {
+      if (await kyselyHasRunningBacktestsForRule(this.db, id)) {
         throw makeRuleHasRunningBacktestsError({ shouldErrorSpan: true });
       }
     }
@@ -607,8 +597,8 @@ class RuleAPI {
     // use SERIALIZABLE to make the update + backtest cancelation logically
     // linearizable w/r/t concurrently started backtests, but that's overkill.
     try {
-      await this.kyselyTransactionWithRetry(
-        { isolationLevel: 'repeatable read' },
+      await transactionWithRetry(
+        this.db,
         async (trx) => {
           await kyselyUpdateRule(trx, {
             id,
@@ -634,6 +624,7 @@ class RuleAPI {
             await kyselyCancelRunningBacktestsForRule(trx, id);
           }
         },
+        { isolationLevel: 'repeatable read' },
       );
     } catch (e) {
       throw isUniqueViolationError(e)
@@ -658,7 +649,7 @@ class RuleAPI {
     const { id, orgId } = opts;
 
     try {
-      return await this.kyselyTransactionWithRetry(async (trx) =>
+      return await transactionWithRetry(this.db, async (trx) =>
         kyselyDeleteRule(trx, id, orgId),
       );
     } catch (exception) {
@@ -867,7 +858,7 @@ class RuleAPI {
     ruleId: string,
     backtestIds?: readonly string[] | null,
   ) {
-    return kyselyListBacktestsForRule(this.kysely, ruleId, backtestIds);
+    return kyselyListBacktestsForRule(this.db, ruleId, backtestIds);
   }
 
   /**
@@ -961,7 +952,7 @@ export default inject(
     'DataWarehouseDialect',
     'RuleActionInsights',
     'ActionStatisticsService',
-    'KyselyPg',
+    'DrizzlePg',
     'ModerationConfigService',
     'Tracer',
     'SignalsService',

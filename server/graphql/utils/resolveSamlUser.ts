@@ -10,6 +10,7 @@ import { makeLoginUserDoesNotExistError } from '../datasources/userApiErrors.js'
 import {
   kyselyUserFindByEmailAndOrg,
   type GraphQLUserParent,
+  type LegacyKysely,
   type UsersDb,
 } from '../datasources/userKyselyPersistence.js';
 import { getOrgIdFromPath } from './orgIdFromPath.js';
@@ -19,7 +20,8 @@ import { getOrgIdFromPath } from './orgIdFromPath.js';
  * the org named in the callback path (`/saml/login/:orgId/callback`).
  */
 export async function resolveSamlUser(
-  db: UsersDb,
+  // `LegacyKysely` only for `server/api.ts`; see userKyselyPersistence.ts.
+  db: UsersDb | LegacyKysely,
   tracer: SafeTracer,
   req: Pick<Request, 'params'>,
   profile: Pick<Profile, 'email'> | null,

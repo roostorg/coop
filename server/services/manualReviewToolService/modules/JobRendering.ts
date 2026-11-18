@@ -1,28 +1,38 @@
-import { type Kysely } from 'kysely';
+import { and, eq, is } from 'drizzle-orm';
+import { PgAsyncTransaction } from 'drizzle-orm/pg-core';
 
+import {
+  schema,
+  transactionWithRetry,
+  type CoopDbOrTx,
+} from '../../../storage/postgres/drizzle.js';
 import { makeNotFoundError } from '../../../utils/errors.js';
-import { makeKyselyTransactionWithRetry } from '../../../utils/kyselyTransactionWithRetry.js';
-import { type ModerationConfigServicePg } from '../../moderationConfigService/index.js';
+import { type ItemSchema } from '../../moderationConfigService/index.js';
 import { assertHiddenFieldsExist } from '../../moderationConfigService/modules/itemTypeSchemaValidation.js';
-import { type ManualReviewToolServicePg } from '../dbTypes.js';
 
-type JobRenderingPg = ManualReviewToolServicePg & ModerationConfigServicePg;
+const { manualReviewHiddenItemFields: hiddenItemFields, itemTypes } = schema;
 
 export default class JobRendering {
-  constructor(readonly pgQuery: Kysely<JobRenderingPg>) {}
+  constructor(readonly db: CoopDbOrTx) {}
 
   async getHiddenFieldsForItemType(opts: {
     orgId: string;
     itemTypeId: string;
   }) {
-    const res = await this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_hidden_item_fields')
-      .select(['hidden_fields'])
-      .where('org_id', '=', opts.orgId)
-      .where('item_type_id', '=', opts.itemTypeId)
-      .executeTakeFirst();
+    const res = (
+      await this.db
+        .select({ hiddenFields: hiddenItemFields.hiddenFields })
+        .from(hiddenItemFields)
+        .where(
+          and(
+            eq(hiddenItemFields.orgId, opts.orgId),
+            eq(hiddenItemFields.itemTypeId, opts.itemTypeId),
+          ),
+        )
+        .limit(1)
+    ).at(0);
 
-    return res?.hidden_fields ?? [];
+    return res?.hiddenFields ?? [];
   }
 
   async setHiddenFieldsForItemType(opts: {
@@ -30,47 +40,58 @@ export default class JobRendering {
     itemTypeId: string;
     hiddenFields: readonly string[];
   }) {
-    const setHiddenFields = async (query: Kysely<JobRenderingPg>) => {
+    const setHiddenFields = async (query: CoopDbOrTx) => {
       if (opts.hiddenFields.length === 0) {
         return query
-          .$extendTables<ManualReviewToolServicePg>()
-          .deleteFrom('manual_review_tool.manual_review_hidden_item_fields')
-          .where('org_id', '=', opts.orgId)
-          .where('item_type_id', '=', opts.itemTypeId)
-          .execute();
+          .delete(hiddenItemFields)
+          .where(
+            and(
+              eq(hiddenItemFields.orgId, opts.orgId),
+              eq(hiddenItemFields.itemTypeId, opts.itemTypeId),
+            ),
+          );
       }
 
-      const itemType = await query
-        .selectFrom('public.item_types')
-        .select('fields')
-        .where('id', '=', opts.itemTypeId)
-        .where('org_id', '=', opts.orgId)
-        .forUpdate()
-        .executeTakeFirst();
+      const itemType = (
+        await query
+          .select({ fields: itemTypes.fields })
+          .from(itemTypes)
+          .where(
+            and(
+              eq(itemTypes.id, opts.itemTypeId),
+              eq(itemTypes.orgId, opts.orgId),
+            ),
+          )
+          .limit(1)
+          .for('update')
+      ).at(0);
       if (itemType === undefined) {
         throw makeNotFoundError('Item type not found', {
           shouldErrorSpan: false,
         });
       }
-      assertHiddenFieldsExist(itemType.fields, opts.hiddenFields);
+      assertHiddenFieldsExist(
+        itemType.fields as unknown as ItemSchema,
+        opts.hiddenFields,
+      );
       return query
-        .$extendTables<ManualReviewToolServicePg>()
-        .insertInto('manual_review_tool.manual_review_hidden_item_fields')
+        .insert(hiddenItemFields)
         .values({
-          org_id: opts.orgId,
-          item_type_id: opts.itemTypeId,
-          hidden_fields: [...opts.hiddenFields],
+          orgId: opts.orgId,
+          itemTypeId: opts.itemTypeId,
+          hiddenFields: [...opts.hiddenFields],
         })
-        .onConflict((oc) =>
-          oc.columns(['org_id', 'item_type_id']).doUpdateSet({
-            hidden_fields: [...opts.hiddenFields],
-          }),
-        )
-        .execute();
+        .onConflictDoUpdate({
+          target: [hiddenItemFields.orgId, hiddenItemFields.itemTypeId],
+          set: { hiddenFields: [...opts.hiddenFields] },
+        });
     };
 
-    return this.pgQuery.isTransaction
-      ? setHiddenFields(this.pgQuery)
-      : makeKyselyTransactionWithRetry(this.pgQuery)(setHiddenFields);
+    // Join the caller's transaction when given one (see
+    // ManualReviewToolService.forTransaction); otherwise open our own so the
+    // item type row lock covers the upsert.
+    return is(this.db, PgAsyncTransaction)
+      ? setHiddenFields(this.db)
+      : transactionWithRetry(this.db, setHiddenFields);
   }
 }

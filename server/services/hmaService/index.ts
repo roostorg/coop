@@ -256,12 +256,12 @@ export class HmaService {
 
   constructor(
     private readonly fetchHTTP: Dependencies['fetchHTTP'],
-    kyselyPg: Dependencies['KyselyPg'],
+    drizzlePg: Dependencies['DrizzlePg'],
     private readonly tracer: Dependencies['Tracer'],
   ) {
     this.hmaServiceUrl =
       process.env.HMA_SERVICE_URL ?? 'http://localhost:9876/';
-    this.hashBankService = new HashBankService(kyselyPg);
+    this.hashBankService = new HashBankService(drizzlePg);
   }
 
   private getHmaName(orgId: string, name: string): string {
@@ -1203,4 +1203,4 @@ export class HmaService {
   }
 }
 
-export default inject(['fetchHTTP', 'KyselyPg', 'Tracer'], HmaService);
+export default inject(['fetchHTTP', 'DrizzlePg', 'Tracer'], HmaService);

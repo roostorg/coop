@@ -18,6 +18,10 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 
+import {
+  type CallbackJson,
+  type CustomMrtApiParamJson,
+} from './json-types/moderation-config.js';
 import { locationBanks, orgs, roles, rules } from './public-2.js';
 import { users } from './public-3.js';
 import {
@@ -42,8 +46,8 @@ export const actions = pgTable(
       .default(sql`CURRENT_TIMESTAMP`)
       .notNull(),
     orgId: varchar('org_id', { length: 255 }).notNull(),
-    callbackUrlHeaders: jsonb('callback_url_headers'),
-    callbackUrlBody: jsonb('callback_url_body'),
+    callbackUrlHeaders: jsonb('callback_url_headers').$type<CallbackJson>(),
+    callbackUrlBody: jsonb('callback_url_body').$type<CallbackJson>(),
     penalty: userPenaltySeverity().default('NONE').notNull(),
     sysPeriod: tstzrange('sys_period')
       .default('tstzrange(CURRENT_TIMESTAMP, NULL::timestamp with time zone)')
@@ -55,6 +59,7 @@ export const actions = pgTable(
       .notNull(),
     applyUserStrikes: bool('apply_user_strikes').default(false).notNull(),
     customMrtApiParams: jsonb('custom_mrt_api_params')
+      .$type<CustomMrtApiParamJson>()
       .array()
       .default(sql`'{}'`)
       .notNull(),

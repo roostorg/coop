@@ -20,17 +20,16 @@
  * Run with: pnpm run test:integ
  * Requires: `pnpm run up && pnpm run db:update`
  */
-import { type Kysely } from 'kysely';
+import { count, eq } from 'drizzle-orm';
 import { uid } from 'uid';
 import { v4 as uuidv4 } from 'uuid';
 
-import { type CombinedPg } from '../../services/combinedDbTypes.js';
-import { type ManualReviewToolServicePg } from '../../services/manualReviewToolService/index.js';
 import {
   RuleAlarmStatus,
   RuleStatus,
   RuleType,
 } from '../../services/moderationConfigService/index.js';
+import { schema, type CoopDb } from '../../storage/postgres/drizzle.js';
 import { jsonStringify } from '../../utils/encoding.js';
 import createOrg from '../fixtureHelpers/createOrg.js';
 import createUser from '../fixtureHelpers/createUser.js';
@@ -51,7 +50,7 @@ describe('Refresh MRT decisions materialized view job (integration)', () => {
 
     const orgFixture = await createOrg(
       {
-        KyselyPg: harness.deps.KyselyPg,
+        DrizzlePg: harness.deps.DrizzlePg,
         ModerationConfigService: harness.deps.ModerationConfigService,
         ApiKeyService: harness.deps.ApiKeyService,
       },
@@ -61,7 +60,7 @@ describe('Refresh MRT decisions materialized view job (integration)', () => {
 
     // Reviewer for the seeded decisions; reviewer_id must reference a real
     // coop user.
-    const userFixture = await createUser(harness.deps.KyselyPg, orgId);
+    const userFixture = await createUser(harness.deps.DrizzlePg, orgId);
     reviewerId = userFixture.user.id;
     coopUserCleanup = userFixture.cleanup;
   }, 60_000);
@@ -80,18 +79,14 @@ describe('Refresh MRT decisions materialized view job (integration)', () => {
       // this org so a subsequent run isn't affected by leftovers.
       if (harness) {
         await runStep(async () => {
-          await harness!.deps.KyselyPg.deleteFrom(
-            'manual_review_tool.manual_review_decisions',
-          )
-            .where('org_id', '=', orgId)
-            .execute();
+          await harness!.deps.DrizzlePg.delete(
+            schema.manualReviewDecisions,
+          ).where(eq(schema.manualReviewDecisions.orgId, orgId));
         });
         await runStep(async () => {
-          await harness!.deps.KyselyPg.deleteFrom(
-            'manual_review_tool.dim_mrt_decisions_materialized',
-          )
-            .where('org_id', '=', orgId)
-            .execute();
+          await harness!.deps.DrizzlePg.delete(
+            schema.dimMrtDecisionsMaterialized,
+          ).where(eq(schema.dimMrtDecisionsMaterialized.orgId, orgId));
         });
       }
       await runStep(coopUserCleanup);
@@ -103,22 +98,20 @@ describe('Refresh MRT decisions materialized view job (integration)', () => {
 
   test('first run materializes all decisions, re-runs do not duplicate, new decisions are picked up', async () => {
     if (!harness) throw new Error('harness was not initialized');
-    const { KyselyPg, RefreshMRTDecisionsMaterializedViewJob } = harness.deps;
+    const { DrizzlePg, RefreshMRTDecisionsMaterializedViewJob } = harness.deps;
 
     const countMaterializedForOrg = async () => {
-      const { count } = await KyselyPg.selectFrom(
-        'manual_review_tool.dim_mrt_decisions_materialized',
-      )
-        .select((eb) => eb.fn.countAll<bigint>().as('count'))
-        .where('org_id', '=', orgId)
-        .executeTakeFirstOrThrow();
-      return Number(count);
+      const materialized = schema.dimMrtDecisionsMaterialized;
+      const [{ n }] = await DrizzlePg.select({ n: count() })
+        .from(materialized)
+        .where(eq(materialized.orgId, orgId));
+      return n;
     };
 
     // Seed 3 decisions. `dim_mrt_decisions` is a view that produces one row
     // per (decision × non-CUSTOM_ACTION decision_component); we use a single
     // NO_ACTION component per decision so the row count maps 1:1.
-    await insertDecisions(KyselyPg, orgId, reviewerId, 3);
+    await insertDecisions(DrizzlePg, orgId, reviewerId, 3);
 
     // Baseline: nothing materialized yet for this org.
     expect(await countMaterializedForOrg()).toBe(0);
@@ -134,7 +127,7 @@ describe('Refresh MRT decisions materialized view job (integration)', () => {
     expect(await countMaterializedForOrg()).toBe(3);
 
     // Add 2 more decisions, run again: should pick up exactly the new ones.
-    await insertDecisions(KyselyPg, orgId, reviewerId, 2);
+    await insertDecisions(DrizzlePg, orgId, reviewerId, 2);
     await RefreshMRTDecisionsMaterializedViewJob.run();
     expect(await countMaterializedForOrg()).toBe(5);
   }, 60_000);
@@ -153,7 +146,7 @@ describe('Detect rule pass rate anomalies job (integration)', () => {
 
     const orgFixture = await createOrg(
       {
-        KyselyPg: harness.deps.KyselyPg,
+        DrizzlePg: harness.deps.DrizzlePg,
         ModerationConfigService: harness.deps.ModerationConfigService,
         ApiKeyService: harness.deps.ApiKeyService,
       },
@@ -162,7 +155,7 @@ describe('Detect rule pass rate anomalies job (integration)', () => {
     orgCleanup = orgFixture.cleanup;
 
     // Rule creator — gets the in-app notification when alarm state changes.
-    const userFixture = await createUser(harness.deps.KyselyPg, orgId);
+    const userFixture = await createUser(harness.deps.DrizzlePg, orgId);
     coopUserId = userFixture.user.id;
     coopUserCleanup = userFixture.cleanup;
 
@@ -170,29 +163,25 @@ describe('Detect rule pass rate anomalies job (integration)', () => {
     // `public.rules` to match the rule_id it pulls from ClickHouse.
     ruleId = uid();
     const now = new Date();
-    await harness.deps.KyselyPg.insertInto('public.rules')
-      .values({
-        id: ruleId,
-        org_id: orgId,
-        creator_id: coopUserId,
-        name: `anomaly-test-rule-${uid()}`,
-        description: null,
-        condition_set: { conditions: [], conjunction: 'AND' },
-        rule_type: RuleType.CONTENT,
-        status_if_unexpired: RuleStatus.LIVE,
-        tags: [],
-        daily_actions_run: 0,
-        alarm_status: RuleAlarmStatus.OK,
-        alarm_status_set_at: new Date(0),
-        max_daily_actions: null,
-        expiration_time: null,
-        parent_id: null,
-        // Kysely types these as `GeneratedAlways`, but Postgres has no
-        // default for them and rejects nulls.
-        created_at: now,
-        updated_at: now,
-      })
-      .execute();
+    await harness.deps.DrizzlePg.insert(schema.rules).values({
+      id: ruleId,
+      orgId,
+      creatorId: coopUserId,
+      name: `anomaly-test-rule-${uid()}`,
+      description: null,
+      conditionSet: { conditions: [], conjunction: 'AND' },
+      ruleType: RuleType.CONTENT,
+      statusIfUnexpired: RuleStatus.LIVE,
+      tags: [],
+      dailyActionsRun: 0,
+      alarmStatus: RuleAlarmStatus.OK,
+      alarmStatusSetAt: new Date(0),
+      maxDailyActions: null,
+      expirationTime: null,
+      parentId: null,
+      createdAt: now,
+      updatedAt: now,
+    });
   }, 60_000);
 
   afterAll(async () => {
@@ -207,14 +196,14 @@ describe('Detect rule pass rate anomalies job (integration)', () => {
     try {
       if (harness) {
         await runStep(async () => {
-          await harness!.deps.KyselyPg.deleteFrom('public.notifications')
-            .where('userId', '=', coopUserId)
-            .execute();
+          await harness!.deps.DrizzlePg.delete(schema.notifications).where(
+            eq(schema.notifications.userId, coopUserId),
+          );
         });
         await runStep(async () => {
-          await harness!.deps.KyselyPg.deleteFrom('public.rules')
-            .where('id', '=', ruleId)
-            .execute();
+          await harness!.deps.DrizzlePg.delete(schema.rules).where(
+            eq(schema.rules.id, ruleId),
+          );
         });
         // ClickHouse seeded rows are partitioned by date; cleaning them up
         // would require a heavyweight ALTER. Each test run uses a fresh
@@ -229,7 +218,7 @@ describe('Detect rule pass rate anomalies job (integration)', () => {
 
   test('first run fires alarm notification + updates rule; second run is a no-op', async () => {
     if (!harness) throw new Error('harness was not initialized');
-    const { KyselyPg, DataWarehouse, Tracer, DetectRulePassRateAnomaliesJob } =
+    const { DrizzlePg, DataWarehouse, Tracer, DetectRulePassRateAnomaliesJob } =
       harness.deps;
 
     // Seed 25 historical 1-hour periods with a low distinct-passing-users
@@ -247,19 +236,19 @@ describe('Detect rule pass rate anomalies job (integration)', () => {
     });
 
     const countNotifications = async () => {
-      const { count } = await KyselyPg.selectFrom('public.notifications')
-        .select((eb) => eb.fn.countAll<bigint>().as('count'))
-        .where('userId', '=', coopUserId)
-        .executeTakeFirstOrThrow();
-      return Number(count);
+      const [{ n }] = await DrizzlePg.select({ n: count() })
+        .from(schema.notifications)
+        .where(eq(schema.notifications.userId, coopUserId));
+      return n;
     };
 
     const getRuleAlarmStatus = async () => {
-      const row = await KyselyPg.selectFrom('public.rules')
-        .select(['alarm_status'])
-        .where('id', '=', ruleId)
-        .executeTakeFirstOrThrow();
-      return row.alarm_status;
+      const [row] = await DrizzlePg.select({
+        alarmStatus: schema.rules.alarmStatus,
+      })
+        .from(schema.rules)
+        .where(eq(schema.rules.id, ruleId));
+      return row.alarmStatus;
     };
 
     // First run: alarm fires.
@@ -283,7 +272,7 @@ describe('Detect rule pass rate anomalies job (integration)', () => {
  * non-CUSTOM_ACTION branch.
  */
 async function insertDecisions(
-  db: Kysely<CombinedPg & ManualReviewToolServicePg>,
+  db: CoopDb,
   orgId: string,
   reviewerId: string,
   count: number,
@@ -294,16 +283,12 @@ async function insertDecisions(
     const itemTypeId = uid();
     return {
       id: decisionId,
-      org_id: orgId,
-      queue_id: uid(),
-      reviewer_id: reviewerId,
-      decision_components: [
-        {
-          type: 'NO_ACTION',
-        },
-      ] as unknown as never,
-      related_actions: [] as unknown as never,
-      job_payload: {
+      orgId,
+      queueId: uid(),
+      reviewerId,
+      decisionComponents: [{ type: 'NO_ACTION' }],
+      relatedActions: [],
+      jobPayload: {
         id: uuidv4(),
         payload: {
           item: {
@@ -311,16 +296,13 @@ async function insertDecisions(
             itemTypeIdentifier: { id: itemTypeId },
           },
         },
-      } as unknown as never,
-      enqueue_source_info: null,
-      item_created_at: null,
-      decision_reason: null,
+      },
+      enqueueSourceInfo: null,
+      itemCreatedAt: null,
+      decisionReason: null,
     };
   });
-  await db
-    .insertInto('manual_review_tool.manual_review_decisions')
-    .values(rows)
-    .execute();
+  await db.insert(schema.manualReviewDecisions).values(rows);
 }
 
 /**

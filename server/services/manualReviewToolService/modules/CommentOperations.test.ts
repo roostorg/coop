@@ -1,5 +1,6 @@
 import { v1 as uuidv1 } from 'uuid';
 
+import { schema } from '../../../storage/postgres/drizzle.js';
 import createOrg from '../../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../../test/fixtureHelpers/createUser.js';
 import { makeTransactionalTestWithFixture } from '../../../test/harness/transactionalTest.js';
@@ -10,14 +11,14 @@ import CommentOperations from './CommentOperations.js';
 describe('CommentOperations', () => {
   const testWithFixtures = makeTransactionalTestWithFixture(
     async ({ deps }) => {
-      const pgQuery = deps.KyselyPg;
-      const commentOps = new CommentOperations(pgQuery);
+      const db = deps.DrizzlePg;
+      const commentOps = new CommentOperations(db);
 
       // Create test org
       const orgId = uuidv1();
       await createOrg(
         {
-          KyselyPg: deps.KyselyPg,
+          DrizzlePg: deps.DrizzlePg,
           ModerationConfigService: deps.ModerationConfigService,
           ApiKeyService: deps.ApiKeyService,
         },
@@ -25,7 +26,7 @@ describe('CommentOperations', () => {
       );
 
       // Create test user
-      const { user } = await createUser(deps.KyselyPg, orgId);
+      const { user } = await createUser(deps.DrizzlePg, orgId);
 
       // Create a queue (required for job_creations foreign key)
       const queue = await deps.ManualReviewToolService.createManualReviewQueue({
@@ -48,33 +49,30 @@ describe('CommentOperations', () => {
       const jobId1 = uuidv1();
       const jobId2 = uuidv1();
 
-      await pgQuery
-        .insertInto('manual_review_tool.job_creations')
-        .values([
-          {
-            id: jobId1 as JobId,
-            org_id: orgId,
-            item_id: itemId,
-            item_type_id: itemTypeId,
-            queue_id: queue.id,
-            created_at: new Date('2023-01-01'),
-            enqueue_source_info: {},
-          },
-          {
-            id: jobId2 as JobId,
-            org_id: orgId,
-            item_id: itemId,
-            item_type_id: itemTypeId,
-            queue_id: queue.id,
-            created_at: new Date('2023-01-02'),
-            enqueue_source_info: {},
-          },
-        ])
-        .execute();
+      await db.insert(schema.jobCreations).values([
+        {
+          id: jobId1 as JobId,
+          orgId,
+          itemId,
+          itemTypeId,
+          queueId: queue.id,
+          createdAt: new Date('2023-01-01'),
+          enqueueSourceInfo: {},
+        },
+        {
+          id: jobId2 as JobId,
+          orgId,
+          itemId,
+          itemTypeId,
+          queueId: queue.id,
+          createdAt: new Date('2023-01-02'),
+          enqueueSourceInfo: {},
+        },
+      ]);
 
       return {
         commentOps,
-        pgQuery,
+        db,
         orgId,
         userId: user.id,
         itemId,
@@ -119,21 +117,18 @@ describe('CommentOperations', () => {
   describe('getComments', () => {
     testWithFixtures(
       'should return comments for single job when job not in job_creations',
-      async ({ commentOps, pgQuery, orgId, userId }) => {
+      async ({ commentOps, db, orgId, userId }) => {
         const singleJobId = uuidv1();
 
         // Add a comment directly to a job not in job_creations
-        await pgQuery
-          .insertInto('manual_review_tool.job_comments')
-          .values({
-            id: uuidv1(),
-            org_id: orgId,
-            job_id: singleJobId,
-            comment_text: 'Test comment',
-            author_id: userId,
-            created_at: new Date(),
-          })
-          .execute();
+        await db.insert(schema.jobComments).values({
+          id: uuidv1(),
+          orgId,
+          jobId: singleJobId,
+          commentText: 'Test comment',
+          authorId: userId,
+          createdAt: new Date(),
+        });
 
         const result = await commentOps.getComments({
           orgId,
@@ -147,29 +142,26 @@ describe('CommentOperations', () => {
 
     testWithFixtures(
       'should return comments for all related jobs when job found in job_creations',
-      async ({ commentOps, pgQuery, orgId, userId, jobId1, jobId2 }) => {
+      async ({ commentOps, db, orgId, userId, jobId1, jobId2 }) => {
         // Add comments to both related jobs
-        await pgQuery
-          .insertInto('manual_review_tool.job_comments')
-          .values([
-            {
-              id: uuidv1(),
-              org_id: orgId,
-              job_id: jobId1,
-              comment_text: 'Comment from first queue',
-              author_id: userId,
-              created_at: new Date('2023-01-01T10:00:00Z'),
-            },
-            {
-              id: uuidv1(),
-              org_id: orgId,
-              job_id: jobId2,
-              comment_text: 'Comment from second queue',
-              author_id: userId,
-              created_at: new Date('2023-01-02T10:00:00Z'),
-            },
-          ])
-          .execute();
+        await db.insert(schema.jobComments).values([
+          {
+            id: uuidv1(),
+            orgId,
+            jobId: jobId1,
+            commentText: 'Comment from first queue',
+            authorId: userId,
+            createdAt: new Date('2023-01-01T10:00:00Z'),
+          },
+          {
+            id: uuidv1(),
+            orgId,
+            jobId: jobId2,
+            commentText: 'Comment from second queue',
+            authorId: userId,
+            createdAt: new Date('2023-01-02T10:00:00Z'),
+          },
+        ]);
 
         const result = await commentOps.getComments({ orgId, jobId: jobId1 });
 
@@ -190,37 +182,34 @@ describe('CommentOperations', () => {
 
     testWithFixtures(
       'should order comments by created_at ascending',
-      async ({ commentOps, pgQuery, orgId, userId, jobId1 }) => {
+      async ({ commentOps, db, orgId, userId, jobId1 }) => {
         // Add comments with specific timestamps
-        await pgQuery
-          .insertInto('manual_review_tool.job_comments')
-          .values([
-            {
-              id: uuidv1(),
-              org_id: orgId,
-              job_id: jobId1,
-              comment_text: 'Third comment',
-              author_id: userId,
-              created_at: new Date('2023-01-03T10:00:00Z'),
-            },
-            {
-              id: uuidv1(),
-              org_id: orgId,
-              job_id: jobId1,
-              comment_text: 'First comment',
-              author_id: userId,
-              created_at: new Date('2023-01-01T10:00:00Z'),
-            },
-            {
-              id: uuidv1(),
-              org_id: orgId,
-              job_id: jobId1,
-              comment_text: 'Second comment',
-              author_id: userId,
-              created_at: new Date('2023-01-02T10:00:00Z'),
-            },
-          ])
-          .execute();
+        await db.insert(schema.jobComments).values([
+          {
+            id: uuidv1(),
+            orgId,
+            jobId: jobId1,
+            commentText: 'Third comment',
+            authorId: userId,
+            createdAt: new Date('2023-01-03T10:00:00Z'),
+          },
+          {
+            id: uuidv1(),
+            orgId,
+            jobId: jobId1,
+            commentText: 'First comment',
+            authorId: userId,
+            createdAt: new Date('2023-01-01T10:00:00Z'),
+          },
+          {
+            id: uuidv1(),
+            orgId,
+            jobId: jobId1,
+            commentText: 'Second comment',
+            authorId: userId,
+            createdAt: new Date('2023-01-02T10:00:00Z'),
+          },
+        ]);
 
         const result = await commentOps.getComments({ orgId, jobId: jobId1 });
 
@@ -247,37 +236,34 @@ describe('CommentOperations', () => {
 
     testWithFixtures(
       'should return correct count for cross-queue comments',
-      async ({ commentOps, pgQuery, orgId, userId, jobId1, jobId2 }) => {
+      async ({ commentOps, db, orgId, userId, jobId1, jobId2 }) => {
         // Add comments to both related jobs
-        await pgQuery
-          .insertInto('manual_review_tool.job_comments')
-          .values([
-            {
-              id: uuidv1(),
-              org_id: orgId,
-              job_id: jobId1,
-              comment_text: 'Comment 1',
-              author_id: userId,
-              created_at: new Date(),
-            },
-            {
-              id: uuidv1(),
-              org_id: orgId,
-              job_id: jobId1,
-              comment_text: 'Comment 2',
-              author_id: userId,
-              created_at: new Date(),
-            },
-            {
-              id: uuidv1(),
-              org_id: orgId,
-              job_id: jobId2,
-              comment_text: 'Comment 3',
-              author_id: userId,
-              created_at: new Date(),
-            },
-          ])
-          .execute();
+        await db.insert(schema.jobComments).values([
+          {
+            id: uuidv1(),
+            orgId,
+            jobId: jobId1,
+            commentText: 'Comment 1',
+            authorId: userId,
+            createdAt: new Date(),
+          },
+          {
+            id: uuidv1(),
+            orgId,
+            jobId: jobId1,
+            commentText: 'Comment 2',
+            authorId: userId,
+            createdAt: new Date(),
+          },
+          {
+            id: uuidv1(),
+            orgId,
+            jobId: jobId2,
+            commentText: 'Comment 3',
+            authorId: userId,
+            createdAt: new Date(),
+          },
+        ]);
 
         const result = await commentOps.getCommentCount({
           orgId,

@@ -77,14 +77,14 @@ async function createOrgAndUser() {
 
     // Create org first so FK-dependent tables can reference it
     const org = await kyselyOrgInsert({
-      db: container.KyselyPg,
+      db: container.DrizzlePg,
       id: orgId,
       email: argv.email,
       name: argv.name,
       websiteUrl: argv.website,
     });
 
-    await seedSystemRolesForOrg(container.KyselyPg, orgId);
+    await seedSystemRolesForOrg(container.DrizzlePg, orgId);
 
     // Create signing keys and API key (both reference org via FK)
     await container.SigningKeyPairService.createAndStoreSigningKeys(orgId);
@@ -116,7 +116,7 @@ async function createOrgAndUser() {
     // Hash the password and create the admin user
     const hashedPassword = await hashPassword(argv.password);
     const user = await kyselyUserInsert({
-      db: container.KyselyPg,
+      db: container.DrizzlePg,
       id: userId,
       orgId,
       email: argv.email,

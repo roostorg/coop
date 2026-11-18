@@ -1,9 +1,10 @@
 /* eslint-disable max-lines */
-import { sql, type Kysely, type Selection } from 'kysely';
+import { and, eq, inArray, sql, type SQL } from 'drizzle-orm';
 import { type ReadonlyDeep } from 'type-fest';
 import { uid } from 'uid';
 
 import { type ConsumerDirectives } from '../../../lib/cache/index.js';
+import { schema, type CoopDbOrTx } from '../../../storage/postgres/drizzle.js';
 import { cached, type Cached } from '../../../utils/caching.js';
 import {
   CoopError,
@@ -13,17 +14,12 @@ import {
 } from '../../../utils/errors.js';
 import { isUniqueViolationError } from '../../../utils/kysely.js';
 import {
-  makeKyselyTransactionWithRetry,
-  type KyselyTransactionWithRetry,
-} from '../../../utils/kyselyTransactionWithRetry.js';
-import {
   __throw,
   assertUnreachable,
   removeUndefinedKeys,
 } from '../../../utils/misc.js';
 import { replaceEmptyStringWithNull } from '../../../utils/string.js';
 import { type CollapseCases } from '../../../utils/typescript-types.js';
-import { type ModerationConfigServicePg } from '../dbTypes.js';
 import { makeItemTypeNameAlreadyExistsError } from '../errors.js';
 import {
   type ContentItemType,
@@ -39,6 +35,7 @@ import {
   type ItemSchema,
   type ItemTypeSelector,
 } from '../types/itemTypes.js';
+import { isTransaction, runInTransaction } from './drizzleTx.js';
 import {
   assertValidItemSchema,
   assertValidItemTypeFieldRoles,
@@ -46,46 +43,81 @@ import {
   type ItemTypeRoleColumns,
 } from './itemTypeSchemaValidation.js';
 
-const versionTextExpression = sql<string>`to_char(timezone('UTC'::text, version), 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'::text)`;
-const itemTypeDbSelection = [
-  'id',
-  'name',
-  'description',
-  'kind',
-  'fields',
-  versionTextExpression.as('version'),
-  'display_name_field as displayNameField',
-  'creator_id_field as creatorIdField',
-  'thread_id_field as threadIdField',
-  'parent_id_field as parentIdField',
-  'created_at_field as createdAtField',
-  'is_deleted_field as isDeletedField',
-  'profile_icon_field as profileIconField',
-  'background_image_field as backgroundImageField',
-  'ip_address_field as ipAddressField',
-  'email_field as emailField',
-  'org_id as orgId',
-  'is_default_user as isDefaultUserType',
-] as const;
+const itemTypes = schema.itemTypes;
+const itv = schema.itemTypeVersions;
 
-type ItemTypeDbResult = Selection<
-  ModerationConfigServicePg,
-  'public.item_type_versions',
-  (typeof itemTypeDbSelection)[number]
->;
+const itemTypeDbSelection = {
+  id: itv.id,
+  name: itv.name,
+  description: itv.description,
+  kind: itv.kind,
+  fields: itv.fields,
+  version: sql<string>`to_char(timezone('UTC'::text, ${itv.version}), 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'::text)`,
+  displayNameField: itv.displayNameField,
+  creatorIdField: itv.creatorIdField,
+  threadIdField: itv.threadIdField,
+  parentIdField: itv.parentIdField,
+  createdAtField: itv.createdAtField,
+  isDeletedField: itv.isDeletedField,
+  profileIconField: itv.profileIconField,
+  backgroundImageField: itv.backgroundImageField,
+  ipAddressField: itv.ipAddressField,
+  emailField: itv.emailField,
+  orgId: itv.orgId,
+  isDefaultUserType: itv.isDefaultUser,
+};
 
-const itemTypeRoleColumnNames = [
-  'display_name_field',
-  'creator_id_field',
-  'thread_id_field',
-  'parent_id_field',
-  'created_at_field',
-  'profile_icon_field',
-  'background_image_field',
-  'is_deleted_field',
-  'ip_address_field',
-  'email_field',
-] as const;
+// The materialized view's columns are all nullable in the model (Postgres
+// doesn't track nullability for views), but the underlying table's aren't.
+type ItemTypeDbResult = {
+  id: string;
+  name: string;
+  description: string | null;
+  kind: ItemTypeKind;
+  fields: ItemSchema;
+  version: string;
+  displayNameField: string | null;
+  creatorIdField: string | null;
+  threadIdField: string | null;
+  parentIdField: string | null;
+  createdAtField: string | null;
+  isDeletedField: string | null;
+  profileIconField: string | null;
+  backgroundImageField: string | null;
+  ipAddressField: string | null;
+  emailField: string | null;
+  orgId: string;
+  isDefaultUserType: boolean;
+};
+
+// The role-column validation helpers work on snake_case column names.
+const itemTypeRoleColumns = {
+  display_name_field: itemTypes.displayNameField,
+  creator_id_field: itemTypes.creatorIdField,
+  thread_id_field: itemTypes.threadIdField,
+  parent_id_field: itemTypes.parentIdField,
+  created_at_field: itemTypes.createdAtField,
+  profile_icon_field: itemTypes.profileIconField,
+  background_image_field: itemTypes.backgroundImageField,
+  is_deleted_field: itemTypes.isDeletedField,
+  ip_address_field: itemTypes.ipAddressField,
+  email_field: itemTypes.emailField,
+} as const;
+
+function roleColumnsToModel(roleColumns: ItemTypeRoleColumns) {
+  return {
+    displayNameField: roleColumns.display_name_field,
+    creatorIdField: roleColumns.creator_id_field,
+    threadIdField: roleColumns.thread_id_field,
+    parentIdField: roleColumns.parent_id_field,
+    createdAtField: roleColumns.created_at_field,
+    profileIconField: roleColumns.profile_icon_field,
+    backgroundImageField: roleColumns.background_image_field,
+    isDeletedField: roleColumns.is_deleted_field,
+    ipAddressField: roleColumns.ip_address_field,
+    emailField: roleColumns.email_field,
+  };
+}
 
 export default class ItemTypeOperations {
   private readonly itemTypeVersionsCache: Cached<
@@ -97,27 +129,29 @@ export default class ItemTypeOperations {
   private readonly latestItemTypesCache: Cached<
     (orgId: string) => Promise<ItemType[]>
   >;
-  private readonly transactionWithRetry: KyselyTransactionWithRetry<ModerationConfigServicePg>;
 
   constructor(
-    private readonly pgQuery: Kysely<ModerationConfigServicePg>,
-    private readonly pgQueryReplica: Kysely<ModerationConfigServicePg>,
+    private readonly pgQuery: CoopDbOrTx,
+    private readonly pgQueryReplica: CoopDbOrTx,
   ) {
-    this.transactionWithRetry = makeKyselyTransactionWithRetry(this.pgQuery);
     // Cache of ItemTypeIdentifier -> ItemTypeVersion (which is immutable and
     // the same version/incarnation will always be returned for the same identifier)
     this.itemTypeVersionsCache = cached({
       async producer(opts) {
         const { orgId } = opts;
         const { version, id } = opts.itemTypeIdentifier;
-        const itemType = await getItemTypeVersionsBaseQuery({
+        const [itemType] = await getItemTypeVersions({
           orgId,
           currentVersionsOnly: false,
           pgQuery,
-        })
-          .where('id', '=', id)
-          .where('version', '=', version)
-          .executeTakeFirst();
+          where: and(
+            eq(itv.id, id),
+            // Bind the version string untyped so Postgres parses it as a
+            // timestamptz (as Kysely's where did); eq() would encode it with
+            // the Date column's encoder.
+            sql`${itv.version} = ${version}`,
+          ),
+        });
 
         return itemType !== undefined
           ? dbResultToItemType(itemType, 'original')
@@ -135,14 +169,13 @@ export default class ItemTypeOperations {
 
     this.latestItemTypesCache = cached({
       async producer(orgId) {
-        const itemTypes = await pgQuery
-          .selectFrom('public.item_type_versions')
-          .select(itemTypeDbSelection)
-          .where('org_id', '=', orgId)
-          .where('is_current', '=', true)
-          .execute();
+        const rows = await getItemTypeVersions({
+          orgId,
+          currentVersionsOnly: true,
+          pgQuery,
+        });
 
-        return itemTypes.map((it) => dbResultToItemType(it, 'original'));
+        return rows.map((it) => dbResultToItemType(it, 'original'));
       },
       directives: { freshUntilAge: 10, maxStale: [0, 2, 2] },
     });
@@ -245,13 +278,13 @@ export default class ItemTypeOperations {
   }
 
   async createDefaultUserType(orgId: string) {
-    const { id: userItemTypeId } = await this.pgQuery
-      .insertInto('public.item_types')
+    const [{ id: userItemTypeId }] = await this.pgQuery
+      .insert(itemTypes)
       .values({
         id: uid(),
         name: 'User',
         description: 'This is the default user for the org.',
-        org_id: orgId,
+        orgId,
         kind: 'USER',
         fields: [
           {
@@ -261,15 +294,14 @@ export default class ItemTypeOperations {
             container: null,
           },
         ],
-        profile_icon_field: null,
-        created_at_field: null,
-        display_name_field: null,
-        background_image_field: null,
-        is_deleted_field: null,
-        is_default_user: true,
+        profileIconField: null,
+        createdAtField: null,
+        displayNameField: null,
+        backgroundImageField: null,
+        isDeletedField: null,
+        isDefaultUser: true,
       })
-      .returning('id')
-      .executeTakeFirstOrThrow();
+      .returning({ id: itemTypes.id });
 
     await this.invalidateLatestItemTypesCache(orgId);
     return (await this.latestItemTypesCache(orgId, { maxAge: 0 })).find(
@@ -517,37 +549,32 @@ export default class ItemTypeOperations {
         replaceEmptyStringWithNull(value),
       ]),
     ) as ItemTypeRoleColumns;
-    const create = async (query: Kysely<ModerationConfigServicePg>) => {
+    const create = async (query: CoopDbOrTx) => {
       assertValidItemSchema(input.schema);
       assertValidItemTypeFieldRoles(input.schema, kind, normalizedRoleColumns);
-      await query
-        .insertInto('public.item_types')
-        .values({
-          id: itemTypeId,
-          name: input.name,
-          description: input.description,
-          org_id: orgId,
-          kind,
-          fields: input.schema,
-          ...normalizedRoleColumns,
-        })
-        .execute();
-      const row = await getItemTypeVersionsBaseQuery({
+      await query.insert(itemTypes).values({
+        id: itemTypeId,
+        name: input.name,
+        description: input.description,
+        orgId,
+        kind,
+        fields: [...input.schema],
+        ...removeUndefinedKeys(roleColumnsToModel(normalizedRoleColumns)),
+      });
+      const [row] = await getItemTypeVersions({
         orgId,
         currentVersionsOnly: true,
         pgQuery: query,
-      })
-        .where('id', '=', itemTypeId)
-        .where('kind', '=', kind)
-        .executeTakeFirstOrThrow();
-      return dbResultToItemType(row, 'original') as T;
+        where: and(eq(itv.id, itemTypeId), eq(itv.kind, kind)),
+      });
+      return dbResultToItemType(row ?? throwNoResult(), 'original') as T;
     };
     try {
-      const result = this.pgQuery.isTransaction
+      const result = isTransaction(this.pgQuery)
         ? await create(this.pgQuery)
-        : await this.transactionWithRetry(create);
+        : await runInTransaction(this.pgQuery, create);
       await this.invalidateLatestItemTypesCache(orgId);
-      if (!this.pgQuery.isTransaction) {
+      if (!isTransaction(this.pgQuery)) {
         await this.latestItemTypesCache(orgId, { maxAge: 0 });
       }
       return result;
@@ -567,58 +594,71 @@ export default class ItemTypeOperations {
     },
     roleColumns: ItemTypeRoleColumns,
   ): Promise<T> {
-    const update = async (query: Kysely<ModerationConfigServicePg>) => {
-      const current = await query
-        .selectFrom('public.item_types')
-        .select(['id', 'fields', ...itemTypeRoleColumnNames])
-        .where('id', '=', input.id)
-        .where('org_id', '=', orgId)
-        .where('kind', '=', kind)
-        .forUpdate()
-        .executeTakeFirst();
+    const update = async (query: CoopDbOrTx) => {
+      const [current] = await query
+        .select({
+          id: itemTypes.id,
+          fields: itemTypes.fields,
+          ...itemTypeRoleColumns,
+        })
+        .from(itemTypes)
+        .where(
+          and(
+            eq(itemTypes.id, input.id),
+            eq(itemTypes.orgId, orgId),
+            eq(itemTypes.kind, kind),
+          ),
+        )
+        .limit(1)
+        .for('update');
       if (current === undefined) {
         throw makeNotFoundError('Item type not found', {
           shouldErrorSpan: false,
         });
       }
-      const proposedSchema = input.schema ?? current.fields;
+      const proposedSchema =
+        input.schema ?? (current.fields as unknown as ItemSchema);
       assertValidItemSchema(proposedSchema);
       const proposedRoleColumns = mergeItemTypeRoleColumns(
         current,
         roleColumns,
       );
       assertValidItemTypeFieldRoles(proposedSchema, kind, proposedRoleColumns);
-      const updated = await query
-        .updateTable('public.item_types')
+      const [updated] = await query
+        .update(itemTypes)
         .set(
           removeUndefinedKeys({
             name: input.name,
             description: replaceEmptyStringWithNull(input.description),
-            fields: proposedSchema,
-            ...roleColumns,
+            fields: [...proposedSchema],
+            ...roleColumnsToModel(roleColumns),
           }),
         )
-        .where('id', '=', current.id)
-        .where('org_id', '=', orgId)
-        .where('kind', '=', kind)
-        .returning('id')
-        .executeTakeFirstOrThrow();
-      const row = await getItemTypeVersionsBaseQuery({
+        .where(
+          and(
+            eq(itemTypes.id, current.id),
+            eq(itemTypes.orgId, orgId),
+            eq(itemTypes.kind, kind),
+          ),
+        )
+        .returning({ id: itemTypes.id });
+      const [row] = await getItemTypeVersions({
         orgId,
         currentVersionsOnly: true,
         pgQuery: query,
-      })
-        .where('id', '=', updated.id)
-        .where('kind', '=', kind)
-        .executeTakeFirstOrThrow();
-      return dbResultToItemType(row, 'original') as T;
+        where: and(
+          eq(itv.id, (updated ?? throwNoResult()).id),
+          eq(itv.kind, kind),
+        ),
+      });
+      return dbResultToItemType(row ?? throwNoResult(), 'original') as T;
     };
     try {
-      const result = this.pgQuery.isTransaction
+      const result = isTransaction(this.pgQuery)
         ? await update(this.pgQuery)
-        : await this.transactionWithRetry(update);
+        : await runInTransaction(this.pgQuery, update);
       await this.invalidateLatestItemTypesCache(orgId);
-      if (!this.pgQuery.isTransaction) {
+      if (!isTransaction(this.pgQuery)) {
         await this.latestItemTypesCache(orgId, { maxAge: 0 });
       }
       return result;
@@ -628,11 +668,16 @@ export default class ItemTypeOperations {
   }
 
   private rethrowItemTypeNameConflict(error: unknown): never {
-    const pgError = error as {
+    // Drizzle wraps the pg error in a DrizzleQueryError; the pg error (which
+    // carries constraint/table/schema) is its `cause`.
+    type PgErrorFields = {
       constraint?: string;
       table?: string;
       schema?: string;
+      cause?: unknown;
     };
+    const pgError = ((error as PgErrorFields | undefined)?.cause ??
+      error) as PgErrorFields;
     if (
       isUniqueViolationError(error) &&
       pgError.constraint === 'org_id_name_key' &&
@@ -651,13 +696,18 @@ export default class ItemTypeOperations {
    */
   async deleteItemType(opts: { orgId: string; itemTypeId: string }) {
     const { orgId, itemTypeId } = opts;
-    const deleteItemType = async (query: Kysely<ModerationConfigServicePg>) => {
-      const isDefaultUserType = await query
-        .selectFrom('public.item_types')
-        .where('id', '=', itemTypeId)
-        .where('is_default_user', '=', true)
-        .where('org_id', '=', orgId)
-        .executeTakeFirst();
+    const deleteItemType = async (query: CoopDbOrTx) => {
+      const [isDefaultUserType] = await query
+        .select({ id: itemTypes.id })
+        .from(itemTypes)
+        .where(
+          and(
+            eq(itemTypes.id, itemTypeId),
+            eq(itemTypes.isDefaultUser, true),
+            eq(itemTypes.orgId, orgId),
+          ),
+        )
+        .limit(1);
 
       // We should also check if there are any outstanding jobs in MRT that
       // contain this itemType they'll get stuck because when the UI tries to
@@ -677,49 +727,51 @@ export default class ItemTypeOperations {
       }
 
       return query
-        .deleteFrom('public.item_types')
-        .where('id', '=', itemTypeId)
-        .where('org_id', '=', orgId)
-        .executeTakeFirst();
+        .delete(itemTypes)
+        .where(and(eq(itemTypes.id, itemTypeId), eq(itemTypes.orgId, orgId)));
     };
-    const res = this.pgQuery.isTransaction
+    const res = isTransaction(this.pgQuery)
       ? await deleteItemType(this.pgQuery)
-      : await this.transactionWithRetry(
-          { isolationLevel: 'repeatable read' },
-          deleteItemType,
-        );
+      : await runInTransaction(this.pgQuery, deleteItemType, {
+          isolationLevel: 'repeatable read',
+        });
 
-    if (!this.pgQuery.isTransaction) {
+    if (!isTransaction(this.pgQuery)) {
       await this.invalidateLatestItemTypesCache(orgId);
       await this.latestItemTypesCache(orgId, { maxAge: 0 });
     }
 
-    return res.numDeletedRows === 1n;
+    return res.rowCount === 1;
   }
 
   async getActionItemTypeIds(opts: { orgId: string }) {
+    const actions = schema.actions;
+    const ait = schema.actionsAndItemTypes;
     const rows = await this.pgQuery
-      .selectFrom('public.actions as a')
-      .innerJoin('public.item_type_versions as it', (join) =>
-        join.onRef('it.org_id', '=', 'a.org_id').on('it.is_current', '=', true)
-          .on(sql<boolean>`(
-            it.kind = ANY(a.applies_to_all_items_of_kind)
+      .select({
+        actionId: actions.id,
+        itemTypeIds: sql<string[]>`array_agg(${itv.id} ORDER BY ${itv.id})`,
+      })
+      .from(actions)
+      .innerJoin(
+        itv,
+        and(
+          eq(itv.orgId, actions.orgId),
+          eq(itv.isCurrent, true),
+          sql`(
+            ${itv.kind} = ANY(${actions.appliesToAllItemsOfKind})
             OR (
-              cardinality(a.applies_to_all_items_of_kind) = 0
+              cardinality(${actions.appliesToAllItemsOfKind}) = 0
               AND EXISTS (
-                SELECT 1 FROM public.actions_and_item_types AS ait
-                WHERE ait.action_id = a.id AND ait.item_type_id = it.id
+                SELECT 1 FROM ${ait}
+                WHERE ${ait.actionId} = ${actions.id} AND ${ait.itemTypeId} = ${itv.id}
               )
             )
-          )`),
+          )`,
+        ),
       )
-      .where('a.org_id', '=', opts.orgId)
-      .select([
-        'a.id as actionId',
-        sql<string[]>`array_agg(it.id ORDER BY it.id)`.as('itemTypeIds'),
-      ])
-      .groupBy('a.id')
-      .execute();
+      .where(eq(actions.orgId, opts.orgId))
+      .groupBy(actions.id);
 
     return new Map(rows.map((row) => [row.actionId, row.itemTypeIds]));
   }
@@ -737,20 +789,16 @@ export default class ItemTypeOperations {
       directives?.maxAge == null ? true : directives.maxAge > 4,
     );
 
-    const results = await makeKyselyTransactionWithRetry(pgQuery)(
-      { isolationLevel: 'repeatable read' },
+    const results = await runInTransaction(
+      pgQuery,
       async (trx) => {
-        const action = await trx
-          .selectFrom('public.actions')
-          // We have to select this as a text array in order for the postgres
-          // driver to properly convert it into a javascript array
-          .select((eb) =>
-            sql<('CONTENT' | 'THREAD' | 'USER')[]>`${eb.ref(
-              'applies_to_all_items_of_kind',
-            )}::text[]`.as('appliesToAllItemsOfKind'),
-          )
-          .where('id', '=', actionId)
-          .executeTakeFirst();
+        const [action] = await trx
+          .select({
+            appliesToAllItemsOfKind: schema.actions.appliesToAllItemsOfKind,
+          })
+          .from(schema.actions)
+          .where(eq(schema.actions.id, actionId))
+          .limit(1);
 
         if (action === undefined) {
           return [];
@@ -758,28 +806,26 @@ export default class ItemTypeOperations {
 
         // Reads use `trx` so they share the `repeatable read` snapshot.
         return action.appliesToAllItemsOfKind.length > 0
-          ? getItemTypeVersionsBaseQuery({
+          ? getItemTypeVersions({
               orgId,
               currentVersionsOnly: true,
               pgQuery: trx,
+              where: inArray(itv.kind, action.appliesToAllItemsOfKind),
             })
-              .where('kind', 'in', action.appliesToAllItemsOfKind)
-              .execute()
-          : getItemTypeVersionsBaseQuery({
+          : getItemTypeVersions({
               orgId,
               currentVersionsOnly: true,
               pgQuery: trx,
-            })
-              .where(
-                'id',
-                'in',
+              where: inArray(
+                itv.id,
                 trx
-                  .selectFrom('public.actions_and_item_types')
-                  .select('item_type_id')
-                  .where('action_id', '=', actionId),
-              )
-              .execute();
+                  .select({ id: schema.actionsAndItemTypes.itemTypeId })
+                  .from(schema.actionsAndItemTypes)
+                  .where(eq(schema.actionsAndItemTypes.actionId, actionId)),
+              ),
+            });
       },
+      { isolationLevel: 'repeatable read' },
     );
 
     return results.map((it) => dbResultToItemType(it));
@@ -791,20 +837,19 @@ export default class ItemTypeOperations {
     readFromReplica?: boolean;
   }): Promise<ItemType[]> {
     const { orgId, ruleId, readFromReplica } = opts;
-    const itemTypes = await getItemTypeVersionsBaseQuery({
+    const pgQuery = this.#getPgQuery(readFromReplica);
+    const itemTypes = await getItemTypeVersions({
       orgId,
       currentVersionsOnly: true,
-      pgQuery: this.#getPgQuery(readFromReplica),
-    })
-      .where(
-        'id',
-        'in',
-        this.pgQuery
-          .selectFrom('public.rules_and_item_types')
-          .select('item_type_id')
-          .where('rule_id', '=', ruleId),
-      )
-      .execute();
+      pgQuery,
+      where: inArray(
+        itv.id,
+        pgQuery
+          .select({ id: schema.rulesAndItemTypes.itemTypeId })
+          .from(schema.rulesAndItemTypes)
+          .where(eq(schema.rulesAndItemTypes.ruleId, ruleId)),
+      ),
+    });
     return itemTypes.map((itemType) => dbResultToItemType(itemType));
   }
 
@@ -820,17 +865,30 @@ export default class ItemTypeOperations {
   }
 }
 
-function getItemTypeVersionsBaseQuery(opts: {
+async function getItemTypeVersions(opts: {
   orgId: string;
   currentVersionsOnly: boolean;
-  pgQuery: Kysely<ModerationConfigServicePg>;
-}) {
-  const { orgId, currentVersionsOnly, pgQuery } = opts;
-  return pgQuery
-    .selectFrom('public.item_type_versions')
+  pgQuery: CoopDbOrTx;
+  where?: SQL;
+}): Promise<ItemTypeDbResult[]> {
+  const { orgId, currentVersionsOnly, pgQuery, where } = opts;
+  const rows = await pgQuery
     .select(itemTypeDbSelection)
-    .where('org_id', '=', orgId)
-    .$if(currentVersionsOnly, (qb) => qb.where('is_current', '=', true));
+    .from(itv)
+    .where(
+      and(
+        eq(itv.orgId, orgId),
+        currentVersionsOnly ? eq(itv.isCurrent, true) : undefined,
+        where,
+      ),
+    );
+  return rows as unknown as ItemTypeDbResult[];
+}
+
+// Stands in for Kysely's executeTakeFirstOrThrow on a row that the same
+// transaction just wrote.
+function throwNoResult(): never {
+  throw new Error('no result');
 }
 
 function dbResultToItemType<T extends ItemTypeKind>(

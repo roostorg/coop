@@ -1,3 +1,4 @@
+import { and, eq } from 'drizzle-orm';
 import { uid } from 'uid';
 
 import {
@@ -7,6 +8,7 @@ import {
   NcmecReporting,
   type NCMECReportParams,
 } from '../../services/ncmecService/index.js';
+import { schema } from '../../storage/postgres/drizzle.js';
 import createOrg from '../fixtureHelpers/createOrg.js';
 import { makeStubFetchHTTP } from '../fixtureHelpers/makeStubFetchHTTP.js';
 import { makeTransactionalTestWithFixture } from '../harness/transactionalTest.js';
@@ -22,7 +24,7 @@ describe('NCMEC submitReport (integration)', () => {
 
     const orgFixture = await createOrg(
       {
-        KyselyPg: deps.KyselyPg,
+        DrizzlePg: deps.DrizzlePg,
         ModerationConfigService: deps.ModerationConfigService,
         ApiKeyService: deps.ApiKeyService,
       },
@@ -54,8 +56,8 @@ describe('NCMEC submitReport (integration)', () => {
       preservationUrl: PRESERVATION_URL,
     });
     const ncmecReporting = new NcmecReporting(
-      deps.KyselyPg,
-      deps.KyselyPgReadReplica,
+      deps.DrizzlePg,
+      deps.DrizzlePgReadReplica,
       stub.fetchHTTP,
       deps.SigningKeyPairService,
       deps.Tracer,
@@ -137,13 +139,16 @@ describe('NCMEC submitReport (integration)', () => {
       expect(submitCall.headers?.Authorization).toMatch(/^Basic /);
 
       // persisted row
-      const row = await deps.KyselyPg.selectFrom(
-        'ncmec_reporting.ncmec_reports',
-      )
-        .select(['report_id', 'is_test', 'report_xml'])
-        .where('org_id', '=', orgId)
-        .where('report_id', '=', reportId)
-        .executeTakeFirst();
+      const reports = schema.ncmecReports;
+      const row = (
+        await deps.DrizzlePg.select({
+          report_id: reports.reportId,
+          is_test: reports.isTest,
+          report_xml: reports.reportXml,
+        })
+          .from(reports)
+          .where(and(eq(reports.orgId, orgId), eq(reports.reportId, reportId)))
+      ).at(0);
       expect(row).toBeDefined();
       expect(row?.is_test).toBe(false);
       expect(String(row?.report_xml)).toContain('jane@example.com');

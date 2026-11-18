@@ -1,6 +1,6 @@
-import { type Kysely } from 'kysely';
+import { eq } from 'drizzle-orm';
 
-import { type CoreAppTablesPg } from '../../services/coreAppTables.js';
+import { schema, type CoopDbOrTx } from '../../storage/postgres/drizzle.js';
 import {
   validateOrgCreateInput,
   validateOrgUpdatePatch,
@@ -20,63 +20,46 @@ export type GraphQLOrgParent = {
   onCallAlertEmail: string | null;
 };
 
-/**
- * Functions in this module only touch `public.orgs`; typing the param as
- * `Kysely<CoreAppTablesPg>` lets callers pass either `Dependencies['KyselyPg']`
- * (`Kysely<any>`) or a more specific `Kysely<CombinedPg>` without casting.
- */
-type OrgsDb = Kysely<CoreAppTablesPg>;
+type OrgsDb = CoopDbOrTx;
 
-function rowToGraphQLOrgParent(row: {
-  id: string;
-  name: string;
-  email: string;
-  website_url: string;
-  on_call_alert_email: string | null;
-}): GraphQLOrgParent {
-  return {
-    id: row.id,
-    name: row.name,
-    email: row.email,
-    websiteUrl: row.website_url,
-    onCallAlertEmail: row.on_call_alert_email,
-  };
-}
+const { orgs } = schema;
+
+const ORG_FIELDS = {
+  id: orgs.id,
+  name: orgs.name,
+  email: orgs.email,
+  websiteUrl: orgs.websiteUrl,
+  onCallAlertEmail: orgs.onCallAlertEmail,
+};
 
 export async function kyselyOrgFindById(
   db: OrgsDb,
   id: string,
 ): Promise<GraphQLOrgParent | undefined> {
-  const row = await db
-    .selectFrom('public.orgs')
-    .selectAll()
-    .where('id', '=', id)
-    .executeTakeFirst();
-  return row === undefined ? undefined : rowToGraphQLOrgParent(row);
+  const row = (
+    await db.select(ORG_FIELDS).from(orgs).where(eq(orgs.id, id)).limit(1)
+  ).at(0);
+  return row;
 }
 
 export async function kyselyOrgFindByName(
   db: OrgsDb,
   name: string,
 ): Promise<GraphQLOrgParent | undefined> {
-  const row = await db
-    .selectFrom('public.orgs')
-    .selectAll()
-    .where('name', '=', name)
-    .executeTakeFirst();
-  return row === undefined ? undefined : rowToGraphQLOrgParent(row);
+  const row = (
+    await db.select(ORG_FIELDS).from(orgs).where(eq(orgs.name, name)).limit(1)
+  ).at(0);
+  return row;
 }
 
 export async function kyselyOrgFindByEmail(
   db: OrgsDb,
   email: string,
 ): Promise<GraphQLOrgParent | undefined> {
-  const row = await db
-    .selectFrom('public.orgs')
-    .selectAll()
-    .where('email', '=', email)
-    .executeTakeFirst();
-  return row === undefined ? undefined : rowToGraphQLOrgParent(row);
+  const row = (
+    await db.select(ORG_FIELDS).from(orgs).where(eq(orgs.email, email)).limit(1)
+  ).at(0);
+  return row;
 }
 
 export async function kyselyOrgInsert(opts: {
@@ -106,21 +89,20 @@ export async function kyselyOrgInsert(opts: {
   }
 
   const now = new Date();
-  const row = await opts.db
-    .insertInto('public.orgs')
+  const [row] = await opts.db
+    .insert(orgs)
     .values({
       id: opts.id,
       email: opts.email,
       name: opts.name,
-      website_url: opts.websiteUrl,
-      api_key_id: opts.apiKeyId ?? null,
-      created_at: now,
-      updated_at: now,
-      on_call_alert_email: opts.onCallAlertEmail ?? null,
+      websiteUrl: opts.websiteUrl,
+      apiKeyId: opts.apiKeyId ?? null,
+      createdAt: now,
+      updatedAt: now,
+      onCallAlertEmail: opts.onCallAlertEmail ?? null,
     })
-    .returningAll()
-    .executeTakeFirstOrThrow();
-  return rowToGraphQLOrgParent(row);
+    .returning(ORG_FIELDS);
+  return row;
 }
 
 export async function kyselyOrgUpdate(
@@ -142,13 +124,7 @@ export async function kyselyOrgUpdate(
 
   // `onCallAlertEmail` is intentionally the only field where `null` is set
   // on the row (clears the value); other fields treat `null` as skip.
-  const update: {
-    name?: string;
-    email?: string;
-    website_url?: string;
-    on_call_alert_email?: string | null;
-    updated_at: Date;
-  } = { updated_at: new Date() };
+  const update: Partial<typeof orgs.$inferInsert> = { updatedAt: new Date() };
 
   if (patch.name != null) {
     update.name = patch.name;
@@ -157,25 +133,26 @@ export async function kyselyOrgUpdate(
     update.email = patch.email;
   }
   if (patch.websiteUrl != null && patch.websiteUrl !== '') {
-    update.website_url = patch.websiteUrl;
+    update.websiteUrl = patch.websiteUrl;
   }
   if (patch.onCallAlertEmail !== undefined) {
-    update.on_call_alert_email = patch.onCallAlertEmail;
+    update.onCallAlertEmail = patch.onCallAlertEmail;
   }
 
-  const row = await db
-    .updateTable('public.orgs')
-    .set(update)
-    .where('id', '=', orgId)
-    .returningAll()
-    .executeTakeFirst();
+  const row = (
+    await db
+      .update(orgs)
+      .set(update)
+      .where(eq(orgs.id, orgId))
+      .returning(ORG_FIELDS)
+  ).at(0);
 
-  return row === undefined ? undefined : rowToGraphQLOrgParent(row);
+  return row;
 }
 
 export async function kyselyOrgDeleteById(
   db: OrgsDb,
   orgId: string,
 ): Promise<void> {
-  await db.deleteFrom('public.orgs').where('id', '=', orgId).execute();
+  await db.delete(orgs).where(eq(orgs.id, orgId));
 }

@@ -39,7 +39,7 @@ describe('GET /moderation_activity/export', () => {
   const testExport = makeTransactionalTestWithFixture(
     async ({ deps, request }) => {
       const { org } = await createOrg(deps);
-      const { user: admin } = await createUser(deps.KyselyPg, org.id, {
+      const { user: admin } = await createUser(deps.DrizzlePg, org.id, {
         approvedByAdmin: true,
         loginMethods: ['password'],
         password: PASSWORD,
@@ -74,7 +74,7 @@ describe('GET /moderation_activity/export', () => {
   testExport(
     'returns 403 for a user without VIEW_MRT_DATA, before any lookups',
     async ({ request, deps, org, stubFeed, login }) => {
-      const { user: rulesManager } = await createUser(deps.KyselyPg, org.id, {
+      const { user: rulesManager } = await createUser(deps.DrizzlePg, org.id, {
         role: UserRole.RULES_MANAGER,
         approvedByAdmin: true,
         loginMethods: ['password'],
@@ -94,7 +94,7 @@ describe('GET /moderation_activity/export', () => {
   testExport(
     'streams every page as a CSV download with reviewer names',
     async ({ request, deps, org, admin, stubFeed, login }) => {
-      const { user: unapproved } = await createUser(deps.KyselyPg, org.id, {
+      const { user: unapproved } = await createUser(deps.DrizzlePg, org.id, {
         approvedByAdmin: false,
       });
       stubFeed([

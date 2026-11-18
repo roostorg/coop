@@ -40,13 +40,13 @@ class OrgAPI {
     private readonly config: Dependencies['ConfigService'],
     private readonly orgSettingsService: Dependencies['OrgSettingsService'],
     private readonly manualReviewToolService: Dependencies['ManualReviewToolService'],
-    private readonly kysely: Dependencies['KyselyPg'],
+    private readonly db: Dependencies['DrizzlePg'],
   ) {}
 
   // Create invite token and optionally send email
   async inviteUser(input: GQLInviteUserInput, orgId: string) {
     const { email, role } = input;
-    const org = await kyselyOrgFindById(this.kysely, orgId);
+    const org = await kyselyOrgFindById(this.db, orgId);
     if (org == null) {
       throw new Error(`Organization not found: ${orgId}`);
     }
@@ -104,7 +104,7 @@ class OrgAPI {
   }
 
   async getGraphQLOrgFromId(id: string): Promise<GraphQLOrgParent> {
-    const org = await kyselyOrgFindById(this.kysely, id);
+    const org = await kyselyOrgFindById(this.db, id);
     if (org == null) {
       throw new Error(`Organization not found: ${id}`);
     }
@@ -125,7 +125,7 @@ class OrgAPI {
       throw orgValidationFailureToBadRequestError(validation.failure);
     }
 
-    const updated = await kyselyOrgUpdate(this.kysely, orgId, {
+    const updated = await kyselyOrgUpdate(this.db, orgId, {
       name: input.name ?? undefined,
       email: input.email ?? undefined,
       websiteUrl: input.websiteUrl ?? undefined,
@@ -143,7 +143,7 @@ class OrgAPI {
   }
 
   async getOrgUsersForGraphQL(orgId: string): Promise<GraphQLUserParent[]> {
-    return kyselyUserListByOrg(this.kysely, orgId);
+    return kyselyUserListByOrg(this.db, orgId);
   }
 
   // TODO: ApiKeyService should maybe be its own dataSource,
@@ -235,7 +235,7 @@ export default inject(
     'ConfigService',
     'OrgSettingsService',
     'ManualReviewToolService',
-    'KyselyPg',
+    'DrizzlePg',
   ],
   OrgAPI,
 );

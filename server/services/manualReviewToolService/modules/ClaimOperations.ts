@@ -1,12 +1,14 @@
-import { type Kysely } from 'kysely';
+import { and, desc, eq } from 'drizzle-orm';
 
+import { schema, type CoopDb } from '../../../storage/postgres/drizzle.js';
 import { makeNotFoundError } from '../../../utils/errors.js';
 import { isForeignKeyViolationError } from '../../../utils/kysely.js';
-import { type ManualReviewToolServicePg } from '../dbTypes.js';
 import { type JobId } from '../manualReviewToolService.js';
 
+const { jobClaims } = schema;
+
 export default class ClaimOperations {
-  constructor(private readonly pgQuery: Kysely<ManualReviewToolServicePg>) {}
+  constructor(private readonly db: CoopDb) {}
 
   async logClaim(opts: {
     orgId: string;
@@ -16,15 +18,7 @@ export default class ClaimOperations {
   }) {
     const { orgId, jobId, queueId, userId } = opts;
     try {
-      await this.pgQuery
-        .insertInto('manual_review_tool.job_claims')
-        .values({
-          org_id: orgId,
-          job_id: jobId,
-          queue_id: queueId,
-          user_id: userId,
-        })
-        .executeTakeFirst();
+      await this.db.insert(jobClaims).values({ orgId, jobId, queueId, userId });
     } catch (e) {
       if (isForeignKeyViolationError(e)) {
         throw makeNotFoundError('Queue not found', { shouldErrorSpan: true });
@@ -40,21 +34,21 @@ export default class ClaimOperations {
     userId?: string;
   }): Promise<Date | null> {
     const { orgId, jobId, userId } = opts;
-    let query = this.pgQuery
-      .selectFrom('manual_review_tool.job_claims')
-      .select('claimed_at')
-      .where('org_id', '=', orgId)
-      .where('job_id', '=', jobId);
+    const row = (
+      await this.db
+        .select({ claimedAt: jobClaims.claimedAt })
+        .from(jobClaims)
+        .where(
+          and(
+            eq(jobClaims.orgId, orgId),
+            eq(jobClaims.jobId, jobId),
+            userId != null ? eq(jobClaims.userId, userId) : undefined,
+          ),
+        )
+        .orderBy(desc(jobClaims.claimedAt))
+        .limit(1)
+    ).at(0);
 
-    if (userId != null) {
-      query = query.where('user_id', '=', userId);
-    }
-
-    const row = await query
-      .orderBy('claimed_at', 'desc')
-      .limit(1)
-      .executeTakeFirst();
-
-    return row?.claimed_at ?? null;
+    return row?.claimedAt ?? null;
   }
 }

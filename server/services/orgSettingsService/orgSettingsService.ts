@@ -1,8 +1,9 @@
-import { type Kysely } from 'kysely';
+import { eq } from 'drizzle-orm';
 import { type JsonObject } from 'type-fest';
 import { type ReadonlyObjectDeep } from 'type-fest/source/readonly-deep.js';
 
 import { inject } from '../../iocContainer/utils.js';
+import { schema, type CoopDb } from '../../storage/postgres/drizzle.js';
 import { cached } from '../../utils/caching.js';
 import { MINUTE_MS } from '../../utils/time.js';
 
@@ -32,19 +33,35 @@ export type OrgSettingsPg = {
       }
   );
 };
+type OrgSettingsRow = OrgSettingsPg['public.org_settings'];
+// Distributes over the saml_enabled union so callers keep its narrowing.
+type SamlSettings = OrgSettingsRow extends infer R
+  ? R extends OrgSettingsRow
+    ? Pick<R, 'saml_enabled' | 'sso_url' | 'cert'>
+    : never
+  : never;
+
+const orgSettings = schema.orgSettings;
+
 type PartialItemsInfo = {
   partialItemsEndpoint?: string;
   partialItemsRequestHeaders: JsonObject | null;
 };
 
-function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
+function makeOrgSettingsService(pgQuery: CoopDb) {
   const partialItemsEndpointCache = cached({
     async producer(orgId: string) {
-      const row = await pgQuery
-        .selectFrom('public.org_settings')
-        .select(['partial_items_endpoint', 'partial_items_request_headers'])
-        .where('org_id', '=', orgId)
-        .executeTakeFirst();
+      const row = (
+        await pgQuery
+          .select({
+            partial_items_endpoint: orgSettings.partialItemsEndpoint,
+            partial_items_request_headers:
+              orgSettings.partialItemsRequestHeaders,
+          })
+          .from(orgSettings)
+          .where(eq(orgSettings.orgId, orgId))
+          .limit(1)
+      ).at(0);
       return row;
     },
     // NB: HOUR is in milliseconds but this library uses seconds for maxAge
@@ -55,26 +72,26 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
   // plain UPDATE would silently affect 0 rows. Every settings mutation calls
   // this first to guarantee a row (with defaults) exists.
   async function ensureOrgSettingsRow(orgId: string) {
-    const result = await pgQuery
-      .insertInto('public.org_settings')
+    const inserted = await pgQuery
+      .insert(orgSettings)
       .values({
-        org_id: orgId,
-        has_reporting_rules_enabled: false,
-        has_appeals_enabled: false,
-        allow_multiple_policies_per_action: false,
-        user_strike_ttl_days: 90,
-        saml_enabled: false,
-        sso_url: null,
+        orgId,
+        hasReportingRulesEnabled: false,
+        hasAppealsEnabled: false,
+        allowMultiplePoliciesPerAction: false,
+        userStrikeTtlDays: 90,
+        samlEnabled: false,
+        ssoUrl: null,
         cert: null,
-        appeal_callback_url: null,
-        appeal_callback_headers: null,
-        appeal_callback_body: null,
+        appealCallbackUrl: null,
+        appealCallbackHeaders: null,
+        appealCallbackBody: null,
       })
-      .onConflict((oc) => oc.column('org_id').doNothing())
-      .executeTakeFirst();
+      .onConflictDoNothing({ target: orgSettings.orgId })
+      .returning({ orgId: orgSettings.orgId });
     // If a row was actually inserted, drop the partial-items cache: it may have
     // memoized "no row" as undefined, which is now stale.
-    if (Number(result.numInsertedOrUpdatedRows ?? 0) > 0) {
+    if (inserted.length > 0) {
       await partialItemsEndpointCache.invalidate?.(orgId);
     }
   }
@@ -84,39 +101,47 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
       await ensureOrgSettingsRow(opts.orgId);
     },
     async hasReportingRulesEnabled(orgId: string) {
-      const rows = await pgQuery
-        .selectFrom('public.org_settings')
-        .select(['has_reporting_rules_enabled'])
-        .where('org_id', '=', orgId)
-        .executeTakeFirst();
-      return rows?.has_reporting_rules_enabled ?? false;
+      const row = (
+        await pgQuery
+          .select({ value: orgSettings.hasReportingRulesEnabled })
+          .from(orgSettings)
+          .where(eq(orgSettings.orgId, orgId))
+          .limit(1)
+      ).at(0);
+      return row?.value ?? false;
     },
     async hasAppealsEnabled(orgId: string) {
-      const rows = await pgQuery
-        .selectFrom('public.org_settings')
-        .select(['has_appeals_enabled'])
-        .where('org_id', '=', orgId)
-        .executeTakeFirst();
-      return rows?.has_appeals_enabled ?? false;
+      const row = (
+        await pgQuery
+          .select({ value: orgSettings.hasAppealsEnabled })
+          .from(orgSettings)
+          .where(eq(orgSettings.orgId, orgId))
+          .limit(1)
+      ).at(0);
+      return row?.value ?? false;
     },
     async allowMultiplePoliciesPerAction(orgId: string) {
-      const rows = await pgQuery
-        .selectFrom('public.org_settings')
-        .select(['allow_multiple_policies_per_action'])
-        .where('org_id', '=', orgId)
-        .executeTakeFirst();
-      return rows?.allow_multiple_policies_per_action ?? false;
+      const row = (
+        await pgQuery
+          .select({ value: orgSettings.allowMultiplePoliciesPerAction })
+          .from(orgSettings)
+          .where(eq(orgSettings.orgId, orgId))
+          .limit(1)
+      ).at(0);
+      return row?.value ?? false;
     },
     async getAppealSettings(orgId: string) {
-      const row = await pgQuery
-        .selectFrom('public.org_settings')
-        .select([
-          'appeal_callback_url',
-          'appeal_callback_headers',
-          'appeal_callback_body',
-        ])
-        .where('org_id', '=', orgId)
-        .executeTakeFirst();
+      const row = (
+        await pgQuery
+          .select({
+            appeal_callback_url: orgSettings.appealCallbackUrl,
+            appeal_callback_headers: orgSettings.appealCallbackHeaders,
+            appeal_callback_body: orgSettings.appealCallbackBody,
+          })
+          .from(orgSettings)
+          .where(eq(orgSettings.orgId, orgId))
+          .limit(1)
+      ).at(0);
       return {
         appealCallbackUrl: row?.appeal_callback_url,
         appealCallbackHeaders: row?.appeal_callback_headers,
@@ -124,23 +149,25 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
       };
     },
     async userStrikeTTLInDays(orgId: string) {
-      const rows = await pgQuery
-        .selectFrom('public.org_settings')
-        .select(['user_strike_ttl_days'])
-        .where('org_id', '=', orgId)
-        .executeTakeFirst();
-      return rows?.user_strike_ttl_days ?? 90;
+      const row = (
+        await pgQuery
+          .select({ value: orgSettings.userStrikeTtlDays })
+          .from(orgSettings)
+          .where(eq(orgSettings.orgId, orgId))
+          .limit(1)
+      ).at(0);
+      return row?.value ?? 90;
     },
     async updateUserStrikeTTL(input: { orgId: string; ttlDays: number }) {
       await ensureOrgSettingsRow(input.orgId);
-      return pgQuery
-        .updateTable('public.org_settings')
-        .where('org_id', '=', input.orgId)
-        .set({
-          user_strike_ttl_days: input.ttlDays,
-        })
-        .returning(['user_strike_ttl_days'])
-        .executeTakeFirst();
+      const row = (
+        await pgQuery
+          .update(orgSettings)
+          .set({ userStrikeTtlDays: input.ttlDays })
+          .where(eq(orgSettings.orgId, input.orgId))
+          .returning({ user_strike_ttl_days: orgSettings.userStrikeTtlDays })
+      ).at(0);
+      return row;
     },
     async updateAppealSettings(input: {
       orgId: string;
@@ -149,20 +176,21 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
       callbackBody: JsonObject | null;
     }) {
       await ensureOrgSettingsRow(input.orgId);
-      const row = await pgQuery
-        .updateTable('public.org_settings')
-        .where('org_id', '=', input.orgId)
-        .set({
-          appeal_callback_headers: input.callbackHeaders,
-          appeal_callback_url: input.callbackUrl,
-          appeal_callback_body: input.callbackBody,
-        })
-        .returning([
-          'appeal_callback_url',
-          'appeal_callback_headers',
-          'appeal_callback_body',
-        ])
-        .executeTakeFirst();
+      const row = (
+        await pgQuery
+          .update(orgSettings)
+          .set({
+            appealCallbackHeaders: input.callbackHeaders,
+            appealCallbackUrl: input.callbackUrl,
+            appealCallbackBody: input.callbackBody,
+          })
+          .where(eq(orgSettings.orgId, input.orgId))
+          .returning({
+            appeal_callback_url: orgSettings.appealCallbackUrl,
+            appeal_callback_headers: orgSettings.appealCallbackHeaders,
+            appeal_callback_body: orgSettings.appealCallbackBody,
+          })
+      ).at(0);
       return row;
     },
     async partialItemsInfo(
@@ -185,23 +213,31 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
     }) {
       await ensureOrgSettingsRow(input.orgId);
       await pgQuery
-        .updateTable('public.org_settings')
-        .where('org_id', '=', input.orgId)
+        .update(orgSettings)
         .set({
-          partial_items_endpoint: input.endpoint,
-          partial_items_request_headers: input.requestHeaders,
+          partialItemsEndpoint: input.endpoint,
+          partialItemsRequestHeaders: input.requestHeaders,
         })
-        .execute();
+        .where(eq(orgSettings.orgId, input.orgId));
       // The read path is cached for 5 minutes; drop the entry so the new
       // values are visible immediately instead of after the TTL.
       await partialItemsEndpointCache.invalidate?.(input.orgId);
     },
-    async getSamlSettings(orgId: string) {
-      return pgQuery
-        .selectFrom('public.org_settings')
-        .select(['saml_enabled', 'sso_url', 'cert'])
-        .where('org_id', '=', orgId)
-        .executeTakeFirst();
+    async getSamlSettings(orgId: string): Promise<SamlSettings | undefined> {
+      const row = (
+        await pgQuery
+          .select({
+            saml_enabled: orgSettings.samlEnabled,
+            sso_url: orgSettings.ssoUrl,
+            cert: orgSettings.cert,
+          })
+          .from(orgSettings)
+          .where(eq(orgSettings.orgId, orgId))
+          .limit(1)
+      ).at(0);
+      // The saml_settings_constraint check guarantees sso_url and cert are
+      // set whenever saml_enabled is true; the Drizzle model can't express it.
+      return row as SamlSettings | undefined;
     },
     async updateSamlSettings(input: {
       orgId: string;
@@ -211,10 +247,9 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
       try {
         await ensureOrgSettingsRow(input.orgId);
         await pgQuery
-          .updateTable('public.org_settings')
-          .where('org_id', '=', input.orgId)
-          .set({ sso_url: input.ssoUrl, cert: input.cert })
-          .executeTakeFirst();
+          .update(orgSettings)
+          .set({ ssoUrl: input.ssoUrl, cert: input.cert })
+          .where(eq(orgSettings.orgId, input.orgId));
         return true;
       } catch (e) {
         return false;
@@ -223,10 +258,9 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
     async updateHasAppealsEnabled(input: { orgId: string; enabled: boolean }) {
       await ensureOrgSettingsRow(input.orgId);
       await pgQuery
-        .updateTable('public.org_settings')
-        .where('org_id', '=', input.orgId)
-        .set({ has_appeals_enabled: input.enabled })
-        .execute();
+        .update(orgSettings)
+        .set({ hasAppealsEnabled: input.enabled })
+        .where(eq(orgSettings.orgId, input.orgId));
     },
     async updateHasReportingRulesEnabled(input: {
       orgId: string;
@@ -234,10 +268,9 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
     }) {
       await ensureOrgSettingsRow(input.orgId);
       await pgQuery
-        .updateTable('public.org_settings')
-        .where('org_id', '=', input.orgId)
-        .set({ has_reporting_rules_enabled: input.enabled })
-        .execute();
+        .update(orgSettings)
+        .set({ hasReportingRulesEnabled: input.enabled })
+        .where(eq(orgSettings.orgId, input.orgId));
     },
     async updateAllowMultiplePoliciesPerAction(input: {
       orgId: string;
@@ -245,19 +278,20 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
     }) {
       await ensureOrgSettingsRow(input.orgId);
       await pgQuery
-        .updateTable('public.org_settings')
-        .where('org_id', '=', input.orgId)
-        .set({ allow_multiple_policies_per_action: input.enabled })
-        .execute();
+        .update(orgSettings)
+        .set({ allowMultiplePoliciesPerAction: input.enabled })
+        .where(eq(orgSettings.orgId, input.orgId));
     },
     async updateSamlEnabled(input: { orgId: string; enabled: boolean }) {
       await ensureOrgSettingsRow(input.orgId);
       if (input.enabled) {
-        const settings = await pgQuery
-          .selectFrom('public.org_settings')
-          .select(['sso_url', 'cert'])
-          .where('org_id', '=', input.orgId)
-          .executeTakeFirst();
+        const settings = (
+          await pgQuery
+            .select({ sso_url: orgSettings.ssoUrl, cert: orgSettings.cert })
+            .from(orgSettings)
+            .where(eq(orgSettings.orgId, input.orgId))
+            .limit(1)
+        ).at(0);
         if (!settings?.sso_url || !settings?.cert) {
           throw new Error(
             'Cannot enable SAML SSO without configuring SSO URL and certificate first',
@@ -265,10 +299,9 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
         }
       }
       await pgQuery
-        .updateTable('public.org_settings')
-        .where('org_id', '=', input.orgId)
-        .set({ saml_enabled: input.enabled })
-        .execute();
+        .update(orgSettings)
+        .set({ samlEnabled: input.enabled })
+        .where(eq(orgSettings.orgId, input.orgId));
     },
     async close() {
       await partialItemsEndpointCache.close();
@@ -278,4 +311,4 @@ function makeOrgSettingsService(pgQuery: Kysely<OrgSettingsPg>) {
 
 export type OrgSettingsService = ReturnType<typeof makeOrgSettingsService>;
 
-export default inject(['KyselyPg'], makeOrgSettingsService);
+export default inject(['DrizzlePg'], makeOrgSettingsService);

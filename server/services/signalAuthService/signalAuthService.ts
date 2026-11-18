@@ -1,11 +1,11 @@
-import { type Kysely } from 'kysely';
+import { and, eq } from 'drizzle-orm';
 import { type ReadonlyDeep } from 'type-fest';
 
 import { inject } from '../../iocContainer/utils.js';
-import { jsonParse, jsonStringify, type JsonOf } from '../../utils/encoding.js';
+import { schema, type CoopDb } from '../../storage/postgres/drizzle.js';
+import { jsonParse, type JsonOf } from '../../utils/encoding.js';
 import { type NonEmptyString } from '../../utils/typescript-types.js';
 import { Integration } from '../signalsService/index.js';
-import { type SignalAuthServicePg } from './dbTypes.js';
 
 export type GetCredentials<T extends ConfigurableIntegration> = (
   orgId: string,
@@ -102,9 +102,9 @@ export type CredentialImplementations = {
  */
 class SignalAuthService {
   private implementations: CredentialImplementations;
-  private pg: Kysely<SignalAuthServicePg>;
+  private pg: CoopDb;
 
-  constructor(pg: Kysely<SignalAuthServicePg>) {
+  constructor(pg: CoopDb) {
     this.pg = pg;
     this.implementations = makeImplementations(pg);
   }
@@ -155,12 +155,19 @@ class SignalAuthService {
         ? { apiKey: c.apiKey, labelerVersions: c.labelerVersions }
         : undefined;
     }
-    const row = await this.pg
-      .selectFrom('signal_auth_service.integration_configs')
-      .select(['config'])
-      .where('org_id', '=', orgId)
-      .where('integration_id', '=', integrationId)
-      .executeTakeFirst();
+    const { integrationConfigs } = schema;
+    const row = (
+      await this.pg
+        .select({ config: integrationConfigs.config })
+        .from(integrationConfigs)
+        .where(
+          and(
+            eq(integrationConfigs.orgId, orgId),
+            eq(integrationConfigs.integrationId, integrationId),
+          ),
+        )
+        .limit(1)
+    ).at(0);
     if (row == null) return undefined;
     const config = row.config;
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition, @typescript-eslint/no-unnecessary-type-assertion -- DB JSON type can be null; cast for API shape
@@ -202,72 +209,70 @@ class SignalAuthService {
       await this.set(Integration.ZENTROPI, orgId, { apiKey, labelerVersions });
       return { apiKey, labelerVersions };
     }
+    const { integrationConfigs } = schema;
     await this.pg
-      .insertInto('signal_auth_service.integration_configs')
-      .values({
-        org_id: orgId,
-        integration_id: integrationId,
-        config,
-      })
-      .onConflict((oc) =>
-        oc.columns(['org_id', 'integration_id']).doUpdateSet({ config }),
-      )
-      .execute();
+      .insert(integrationConfigs)
+      .values({ orgId, integrationId, config })
+      .onConflictDoUpdate({
+        target: [integrationConfigs.orgId, integrationConfigs.integrationId],
+        set: { config },
+      });
     return config;
   }
 }
 
-export default inject(['KyselyPg'], SignalAuthService);
+export default inject(['DrizzlePg'], SignalAuthService);
 export { type SignalAuthService };
 
 // Returns the whole CredentialImplementations object inline, with the
 // implementations for all the integrations, which might seem like a lot, but
 // saves us from having a lot of boilerplate with private bottle services and
 // separate dependency lists for each integration.
-function makeImplementations(
-  pg: Kysely<SignalAuthServicePg>,
-): CredentialImplementations {
+function makeImplementations(pg: CoopDb): CredentialImplementations {
+  const { googleContentSafetyConfigs, openAiConfigs, zentropiConfigs } = schema;
   return {
     [Integration.GOOGLE_CONTENT_SAFETY_API]: {
       get: async (orgId: string) => {
-        return pg
-          .selectFrom('signal_auth_service.google_content_safety_configs')
-          .select(['api_key as apiKey'])
-          .where('org_id', '=', orgId)
-          .executeTakeFirst();
+        const row = (
+          await pg
+            .select({ apiKey: googleContentSafetyConfigs.apiKey })
+            .from(googleContentSafetyConfigs)
+            .where(eq(googleContentSafetyConfigs.orgId, orgId))
+            .limit(1)
+        ).at(0);
+        return row;
       },
       set: async (orgId: string, credential: GoogleContentSafetyCredential) => {
-        return pg
-          .insertInto('signal_auth_service.google_content_safety_configs')
-          .values([
-            {
-              org_id: orgId,
-              api_key: credential.apiKey,
-            },
-          ])
-          .onConflict((oc) =>
-            oc.column('org_id').doUpdateSet({ api_key: credential.apiKey }),
-          )
-          .returning(['api_key as apiKey'])
-          .executeTakeFirstOrThrow();
+        const row = (
+          await pg
+            .insert(googleContentSafetyConfigs)
+            .values({ orgId, apiKey: credential.apiKey })
+            .onConflictDoUpdate({
+              target: googleContentSafetyConfigs.orgId,
+              set: { apiKey: credential.apiKey },
+            })
+            .returning({ apiKey: googleContentSafetyConfigs.apiKey })
+        ).at(0);
+        return returnedRow(row);
       },
       delete: async (orgId: string) => {
         await pg
-          .deleteFrom('signal_auth_service.google_content_safety_configs')
-          .where('org_id', '=', orgId)
-          .executeTakeFirst();
+          .delete(googleContentSafetyConfigs)
+          .where(eq(googleContentSafetyConfigs.orgId, orgId));
       },
     },
     [Integration.OPEN_AI]: {
       get: async (orgId: string) => {
-        const row = await pg
-          .selectFrom('signal_auth_service.open_ai_configs')
-          .select([
-            'api_key as apiKey',
-            'csam_classifier_api_key as csamClassifierApiKey',
-          ])
-          .where('org_id', '=', orgId)
-          .executeTakeFirst();
+        const row = (
+          await pg
+            .select({
+              apiKey: openAiConfigs.apiKey,
+              csamClassifierApiKey: openAiConfigs.csamClassifierApiKey,
+            })
+            .from(openAiConfigs)
+            .where(eq(openAiConfigs.orgId, orgId))
+            .limit(1)
+        ).at(0);
         if (row == null) return undefined;
         return {
           apiKey: row.apiKey,
@@ -284,49 +289,52 @@ function makeImplementations(
           credential.csamClassifierApiKey !== ''
             ? credential.csamClassifierApiKey
             : null;
-        const row = await pg
-          .insertInto('signal_auth_service.open_ai_configs')
-          .values([
-            {
-              org_id: orgId,
-              api_key: credential.apiKey,
-              csam_classifier_api_key: csamProvided ? csamValue : null,
-            },
-          ])
-          .onConflict((oc) =>
-            oc.column('org_id').doUpdateSet({
-              api_key: credential.apiKey,
-              ...(csamProvided ? { csam_classifier_api_key: csamValue } : {}),
-            }),
-          )
-          .returning([
-            'api_key as apiKey',
-            'csam_classifier_api_key as csamClassifierApiKey',
-          ])
-          .executeTakeFirstOrThrow();
+        const inserted = (
+          await pg
+            .insert(openAiConfigs)
+            .values({
+              orgId,
+              apiKey: credential.apiKey,
+              csamClassifierApiKey: csamProvided ? csamValue : null,
+            })
+            .onConflictDoUpdate({
+              target: openAiConfigs.orgId,
+              set: {
+                apiKey: credential.apiKey,
+                ...(csamProvided ? { csamClassifierApiKey: csamValue } : {}),
+              },
+            })
+            .returning({
+              apiKey: openAiConfigs.apiKey,
+              csamClassifierApiKey: openAiConfigs.csamClassifierApiKey,
+            })
+        ).at(0);
+        const row = returnedRow(inserted);
         return {
           apiKey: row.apiKey,
           csamClassifierApiKey: row.csamClassifierApiKey ?? undefined,
         };
       },
       delete: async (orgId: string) => {
-        await pg
-          .deleteFrom('signal_auth_service.open_ai_configs')
-          .where('org_id', '=', orgId)
-          .executeTakeFirst();
+        await pg.delete(openAiConfigs).where(eq(openAiConfigs.orgId, orgId));
       },
     },
     [Integration.ZENTROPI]: {
       get: async (orgId: string) => {
-        const row = await pg
-          .selectFrom('signal_auth_service.zentropi_configs')
-          .select(['api_key', 'labeler_versions'])
-          .where('org_id', '=', orgId)
-          .executeTakeFirst();
+        const row = (
+          await pg
+            .select({
+              apiKey: zentropiConfigs.apiKey,
+              labelerVersions: zentropiConfigs.labelerVersions,
+            })
+            .from(zentropiConfigs)
+            .where(eq(zentropiConfigs.orgId, orgId))
+            .limit(1)
+        ).at(0);
         if (row == null) return undefined;
-        const labelerVersions = row.labeler_versions;
+        const labelerVersions = row.labelerVersions;
         return {
-          apiKey: row.api_key,
+          apiKey: row.apiKey,
           labelerVersions: Array.isArray(labelerVersions)
             ? (labelerVersions as ZentropiLabelerVersion[])
             : typeof labelerVersions === 'string'
@@ -335,29 +343,26 @@ function makeImplementations(
         };
       },
       set: async (orgId: string, credential: ZentropiCredential) => {
-        const labelerVersionsJson = jsonStringify(
-          credential.labelerVersions ?? [],
-        );
-        const row = await pg
-          .insertInto('signal_auth_service.zentropi_configs')
-          .values([
-            {
-              org_id: orgId,
-              api_key: credential.apiKey,
-              labeler_versions: labelerVersionsJson,
-            },
-          ])
-          .onConflict((oc) =>
-            oc.column('org_id').doUpdateSet({
-              api_key: credential.apiKey,
-              labeler_versions: labelerVersionsJson,
-            }),
-          )
-          .returning(['api_key', 'labeler_versions'])
-          .executeTakeFirstOrThrow();
-        const returnedVersions = row.labeler_versions;
+        // Drizzle serializes jsonb itself; passing a pre-stringified value
+        // would store a JSON string scalar instead of an array.
+        const labelerVersions = credential.labelerVersions ?? [];
+        const inserted = (
+          await pg
+            .insert(zentropiConfigs)
+            .values({ orgId, apiKey: credential.apiKey, labelerVersions })
+            .onConflictDoUpdate({
+              target: zentropiConfigs.orgId,
+              set: { apiKey: credential.apiKey, labelerVersions },
+            })
+            .returning({
+              apiKey: zentropiConfigs.apiKey,
+              labelerVersions: zentropiConfigs.labelerVersions,
+            })
+        ).at(0);
+        const row = returnedRow(inserted);
+        const returnedVersions = row.labelerVersions;
         return {
-          apiKey: row.api_key,
+          apiKey: row.apiKey,
           labelerVersions: Array.isArray(returnedVersions)
             ? (returnedVersions as ZentropiLabelerVersion[])
             : typeof returnedVersions === 'string'
@@ -367,10 +372,18 @@ function makeImplementations(
       },
       delete: async (orgId: string) => {
         await pg
-          .deleteFrom('signal_auth_service.zentropi_configs')
-          .where('org_id', '=', orgId)
-          .executeTakeFirst();
+          .delete(zentropiConfigs)
+          .where(eq(zentropiConfigs.orgId, orgId));
       },
     },
   };
+}
+
+// An upsert always returns its row; this narrows away `undefined` and throws
+// like Kysely's executeTakeFirstOrThrow if it somehow didn't.
+function returnedRow<T>(row: T | undefined): T {
+  if (row === undefined) {
+    throw new Error('Upsert returned no row');
+  }
+  return row;
 }

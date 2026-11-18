@@ -16,6 +16,11 @@ import {
   varchar,
 } from 'drizzle-orm/pg-core';
 
+import {
+  type ClearReportsDisposition,
+  type ClearReportsScope,
+  type JobSortType,
+} from './json-types/mrt-queues.js';
 import { orgs } from './public-2.js';
 import {
   appealsRoutingRuleStatus,
@@ -325,11 +330,13 @@ export const manualReviewQueues = manualReviewToolSchema.table(
     autoCloseJobs: bool('auto_close_jobs').default(false),
     clearReportsDisposition: varchar('clear_reports_disposition', {
       length: 64,
-    }),
+    }).$type<ClearReportsDisposition>(),
     clearReportsScope: varchar('clear_reports_scope', { length: 64 })
+      .$type<ClearReportsScope>()
       .default('CURRENT_QUEUE')
       .notNull(),
     jobSortType: varchar('job_sort_type', { length: 16 })
+      .$type<JobSortType>()
       .default('FIFO')
       .notNull(),
   },

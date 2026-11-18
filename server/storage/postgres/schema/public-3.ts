@@ -17,6 +17,7 @@ import {
 } from 'drizzle-orm/pg-core';
 
 import { type SigningKeyData } from './json-types.js';
+import { type ActionParametersJson } from './json-types/moderation-config.js';
 import { orgs, roles, rules } from './public-2.js';
 import { loginMethodEnum, ruleType, textBankType, tstzrange } from './types.js';
 
@@ -126,7 +127,10 @@ export const userStrikeThresholds = pgTable(
       .array()
       .default(sql`(ARRAY[]::character varying[])`)
       .notNull(),
-    actionParameters: jsonb('action_parameters').default({}).notNull(),
+    actionParameters: jsonb('action_parameters')
+      .$type<ActionParametersJson>()
+      .default({})
+      .notNull(),
   },
   (table) => [
     foreignKey({

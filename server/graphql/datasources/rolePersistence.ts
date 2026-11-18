@@ -1,6 +1,5 @@
-import { type Kysely } from 'kysely';
+import { and, count, eq, inArray } from 'drizzle-orm';
 
-import { type CombinedPg } from '../../services/combinedDbTypes.js';
 import {
   getPermissionGroups,
   getPermissionsForRole,
@@ -9,42 +8,43 @@ import {
   UserRole,
   type PermissionGroup,
 } from '../../services/userManagementService/index.js';
-import { makeKyselyTransactionWithRetry } from '../../utils/kyselyTransactionWithRetry.js';
+import {
+  schema,
+  transactionWithRetry,
+  type CoopDb,
+  type CoopDbOrTx,
+} from '../../storage/postgres/drizzle.js';
 
-type RolesKysely = Kysely<CombinedPg>;
+const { roles, rolePermissions, users } = schema;
 
 /** Inserts any missing system roles and their initial permissions for an org. */
 export async function seedSystemRolesForOrg(
-  kysely: RolesKysely,
+  db: CoopDb,
   orgId: string,
 ): Promise<void> {
-  await makeKyselyTransactionWithRetry(kysely)(async (tx) => {
+  await transactionWithRetry(db, async (tx) => {
     const insertedRoles = await tx
-      .insertInto('public.roles')
+      .insert(roles)
       .values(
         Object.values(UserRole).map((roleKey) => ({
-          org_id: orgId,
+          orgId,
           key: roleKey,
-          display_name: SystemRoleDefaults[roleKey].displayName,
+          displayName: SystemRoleDefaults[roleKey].displayName,
           description: SystemRoleDefaults[roleKey].description,
-          is_system: true,
+          isSystem: true,
         })),
       )
-      .onConflict((oc) => oc.columns(['org_id', 'key']).doNothing())
-      .returning(['id', 'key'])
-      .execute();
+      .onConflictDoNothing({ target: [roles.orgId, roles.key] })
+      .returning({ id: roles.id, key: roles.key });
 
     const permissions = insertedRoles.flatMap(({ id, key }) =>
       getPermissionsForRole(key).map((permission) => ({
-        role_id: id,
+        roleId: id,
         permission,
       })),
     );
     if (permissions.length > 0) {
-      await tx
-        .insertInto('public.role_permissions')
-        .values(permissions)
-        .execute();
+      await tx.insert(rolePermissions).values(permissions);
     }
   });
 }
@@ -64,45 +64,53 @@ export type RoleParent = {
 type RoleRow = {
   id: string;
   key: string;
-  display_name: string;
+  displayName: string;
   description: string | null;
-  is_system: boolean;
+  isSystem: boolean;
+};
+
+const ROLE_FIELDS = {
+  id: roles.id,
+  key: roles.key,
+  displayName: roles.displayName,
+  description: roles.description,
+  isSystem: roles.isSystem,
 };
 
 /** Lists every persisted system role for an org. */
 export async function kyselyListRolesForOrg(
-  kysely: RolesKysely,
+  db: CoopDbOrTx,
   orgId: string,
 ): Promise<RoleParent[]> {
-  const persistedRows: ReadonlyArray<RoleRow> = await kysely
-    .selectFrom('public.roles')
-    .select(['id', 'key', 'display_name', 'description', 'is_system'])
-    .where('org_id', '=', orgId)
-    .where('is_system', '=', true)
-    .execute();
+  const persistedRows: ReadonlyArray<RoleRow> = await db
+    .select(ROLE_FIELDS)
+    .from(roles)
+    .where(and(eq(roles.orgId, orgId), eq(roles.isSystem, true)));
 
   const persistedIds = persistedRows.map((r) => r.id);
 
   const permissionRows: ReadonlyArray<{
-    role_id: string;
+    roleId: string;
     permission: string;
   }> =
     persistedIds.length === 0
       ? []
-      : await kysely
-          .selectFrom('public.role_permissions')
-          .select(['role_id', 'permission'])
-          .where('role_id', 'in', persistedIds)
-          .execute();
+      : await db
+          .select({
+            roleId: rolePermissions.roleId,
+            permission: rolePermissions.permission,
+          })
+          .from(rolePermissions)
+          .where(inArray(rolePermissions.roleId, persistedIds));
 
   const permissionsByRoleId = new Map<string, UserPermission[]>();
   for (const row of permissionRows) {
     if (!isUserPermission(row.permission)) {
       continue;
     }
-    const arr = permissionsByRoleId.get(row.role_id) ?? [];
+    const arr = permissionsByRoleId.get(row.roleId) ?? [];
     arr.push(row.permission);
-    permissionsByRoleId.set(row.role_id, arr);
+    permissionsByRoleId.set(row.roleId, arr);
   }
 
   const persistedByKey = new Map<string, RoleRow>();
@@ -116,7 +124,7 @@ export async function kyselyListRolesForOrg(
     }
   }
 
-  const userCountRows = await countApprovedUsersByRole(kysely, orgId);
+  const userCountRows = await countApprovedUsersByRole(db, orgId);
   const userCountsByRole = new Map<string, number>();
   for (const r of userCountRows) {
     userCountsByRole.set(r.roleId, r.count);
@@ -127,9 +135,9 @@ export async function kyselyListRolesForOrg(
     return {
       id: row.id,
       key: roleKey,
-      displayName: row.display_name,
+      displayName: row.displayName,
       description: row.description,
-      isSystem: row.is_system,
+      isSystem: row.isSystem,
       permissions: permissionsByRoleId.get(row.id) ?? [],
       userCount: userCountsByRole.get(row.id) ?? 0,
     };
@@ -137,33 +145,32 @@ export async function kyselyListRolesForOrg(
 }
 
 async function countApprovedUsersByRole(
-  kysely: RolesKysely,
+  db: CoopDbOrTx,
   orgId: string,
 ): Promise<ReadonlyArray<{ roleId: string; count: number }>> {
-  const rows = await kysely
-    .selectFrom('public.users as users')
-    .innerJoin('public.roles as roles', (join) =>
-      join
-        .onRef('roles.id', '=', 'users.role_id')
-        .onRef('roles.org_id', '=', 'users.org_id'),
+  // Drizzle's `count()` already maps the bigint result to a number.
+  return db
+    .select({ roleId: roles.id, count: count() })
+    .from(users)
+    .innerJoin(
+      roles,
+      and(eq(roles.id, users.roleId), eq(roles.orgId, users.orgId)),
     )
-    .select((eb) => [
-      'roles.id as roleId',
-      eb.fn.countAll<string>().as('count'),
-    ])
-    .where('users.org_id', '=', orgId)
-    .where('roles.org_id', '=', orgId)
-    .where('users.rejected_by_admin', '=', false)
-    .groupBy('roles.id')
-    .execute();
-  return rows.map((r) => ({ roleId: r.roleId, count: Number(r.count) }));
+    .where(
+      and(
+        eq(users.orgId, orgId),
+        eq(roles.orgId, orgId),
+        eq(users.rejectedByAdmin, false),
+      ),
+    )
+    .groupBy(roles.id);
 }
 
 /**
  * Atomically replaces the permission set for `(orgId, roleKey)`.
  */
 export async function kyselyUpdateRolePermissions(
-  kysely: RolesKysely,
+  db: CoopDb,
   opts: {
     orgId: string;
     roleKey: UserRole;
@@ -171,23 +178,16 @@ export async function kyselyUpdateRolePermissions(
   },
 ): Promise<RoleParent> {
   const { orgId, roleKey, permissions } = opts;
-  return makeKyselyTransactionWithRetry(kysely)(async (tx) => {
+  return transactionWithRetry(db, async (tx) => {
     const roleId = await getSystemRoleId(tx, { orgId, roleKey });
-    await tx
-      .deleteFrom('public.role_permissions')
-      .where('role_id', '=', roleId)
-      .execute();
+    await tx.delete(rolePermissions).where(eq(rolePermissions.roleId, roleId));
     if (permissions.length > 0) {
       const dedupedPermissions = Array.from(new Set(permissions));
       await tx
-        .insertInto('public.role_permissions')
+        .insert(rolePermissions)
         .values(
-          dedupedPermissions.map((permission) => ({
-            role_id: roleId,
-            permission,
-          })),
-        )
-        .execute();
+          dedupedPermissions.map((permission) => ({ roleId, permission })),
+        );
     }
     return readRoleAfterWrite(tx, { orgId, roleKey, roleId });
   });
@@ -197,7 +197,7 @@ export async function kyselyUpdateRolePermissions(
  * Renames a role's display name and optionally its description.
  */
 export async function kyselyRenameRole(
-  kysely: RolesKysely,
+  db: CoopDb,
   opts: {
     orgId: string;
     roleKey: UserRole;
@@ -206,17 +206,16 @@ export async function kyselyRenameRole(
   },
 ): Promise<RoleParent> {
   const { orgId, roleKey, displayName, description } = opts;
-  return makeKyselyTransactionWithRetry(kysely)(async (tx) => {
+  return transactionWithRetry(db, async (tx) => {
     const roleId = await getSystemRoleId(tx, { orgId, roleKey });
     await tx
-      .updateTable('public.roles')
+      .update(roles)
       .set({
-        display_name: displayName,
+        displayName,
         ...(description !== undefined ? { description } : {}),
-        updated_at: new Date(),
+        updatedAt: new Date(),
       })
-      .where('id', '=', roleId)
-      .execute();
+      .where(eq(roles.id, roleId));
     return readRoleAfterWrite(tx, { orgId, roleKey, roleId });
   });
 }
@@ -226,33 +225,46 @@ export function kyselyGetPermissionGroups(): readonly PermissionGroup[] {
 }
 
 async function getSystemRoleId(
-  tx: RolesKysely,
+  tx: CoopDbOrTx,
   opts: { orgId: string; roleKey: UserRole },
 ): Promise<string> {
-  const existing = await tx
-    .selectFrom('public.roles')
-    .select('id')
-    .where('org_id', '=', opts.orgId)
-    .where('key', '=', opts.roleKey)
-    .where('is_system', '=', true)
-    .executeTakeFirstOrThrow();
+  const existing = (
+    await tx
+      .select({ id: roles.id })
+      .from(roles)
+      .where(
+        and(
+          eq(roles.orgId, opts.orgId),
+          eq(roles.key, opts.roleKey),
+          eq(roles.isSystem, true),
+        ),
+      )
+      .limit(1)
+  ).at(0);
+  if (existing === undefined) {
+    throw new Error(`No system role ${opts.roleKey} for org ${opts.orgId}`);
+  }
   return existing.id;
 }
 
 async function readRoleAfterWrite(
-  tx: RolesKysely,
+  tx: CoopDbOrTx,
   opts: { orgId: string; roleKey: UserRole; roleId: string },
 ): Promise<RoleParent> {
-  const row = await tx
-    .selectFrom('public.roles')
-    .select(['id', 'key', 'display_name', 'description', 'is_system'])
-    .where('id', '=', opts.roleId)
-    .executeTakeFirstOrThrow();
+  const row = (
+    await tx
+      .select(ROLE_FIELDS)
+      .from(roles)
+      .where(eq(roles.id, opts.roleId))
+      .limit(1)
+  ).at(0);
+  if (row === undefined) {
+    throw new Error(`Role ${opts.roleId} not found`);
+  }
   const permissionRows = await tx
-    .selectFrom('public.role_permissions')
-    .select('permission')
-    .where('role_id', '=', opts.roleId)
-    .execute();
+    .select({ permission: rolePermissions.permission })
+    .from(rolePermissions)
+    .where(eq(rolePermissions.roleId, opts.roleId));
   const permissions = permissionRows
     .map((p) => p.permission)
     .filter(isUserPermission);
@@ -261,9 +273,9 @@ async function readRoleAfterWrite(
   return {
     id: row.id,
     key: opts.roleKey,
-    displayName: row.display_name,
+    displayName: row.displayName,
     description: row.description,
-    isSystem: row.is_system,
+    isSystem: row.isSystem,
     permissions,
     userCount,
   };

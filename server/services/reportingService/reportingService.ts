@@ -1,5 +1,4 @@
 import { type ItemIdentifier } from '@roostorg/coop-types';
-import { type Kysely } from 'kysely';
 import { match } from 'ts-pattern';
 
 import { type Dependencies } from '../../iocContainer/index.js';
@@ -10,6 +9,7 @@ import {
   type ReportingRulePassingContentSampleInput,
   type ReportingRulePassRateInput,
 } from '../../plugins/warehouse/queries/IReportingAnalyticsAdapter.js';
+import { type CoopDb } from '../../storage/postgres/drizzle.js';
 import {
   fromCorrelationId,
   type CorrelationId,
@@ -21,7 +21,6 @@ import {
   itemSubmissionToItemSubmissionWithTypeIdentifier,
   type ItemSubmission,
 } from '../itemProcessingService/index.js';
-import { type ReportingServicePg } from './dbTypes.js';
 import ReportingRuleEngine from './reportingRuleEngine.js';
 import {
   buildSimplifiedHistoryQuery,
@@ -76,7 +75,7 @@ export type ReportingRuleExecutionCorrelationId =
 function makeReportingService(
   dataWarehouseAnalytics: Dependencies['DataWarehouseAnalytics'],
   reportingAnalyticsAdapter: IReportingAnalyticsAdapter,
-  pgQuery: Kysely<ReportingServicePg>,
+  pgQuery: CoopDb,
   ruleEvaluator: Dependencies['RuleEvaluator'],
   reportingRuleExecutionLogger: Dependencies['ReportingRuleExecutionLogger'],
   actionPublisher: Dependencies['ActionPublisher'],
@@ -408,7 +407,7 @@ export default inject(
   [
     'DataWarehouseAnalytics',
     'ReportingAnalyticsAdapter',
-    'KyselyPg',
+    'DrizzlePg',
     'RuleEvaluator',
     'ReportingRuleExecutionLogger',
     'ActionPublisher',

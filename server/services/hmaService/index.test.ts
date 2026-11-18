@@ -1,6 +1,7 @@
 import fc from 'fast-check';
 import { assert, vi, type Mock } from 'vitest';
 
+import { type PublicInterface } from '../../iocContainer/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
 import { jsonParse, tryJsonParse } from '../../utils/encoding.js';
@@ -63,62 +64,70 @@ type MockDbOpts = {
 };
 
 /**
- * Minimal Kysely stand-in holding MOCK_BANK. Lookups apply their filters, so
- * a query only finds MOCK_BANK when it's scoped to MOCK_BANK's org.
+ * In-memory stand-in for HmaService's HashBankService, holding MOCK_BANK.
+ * Lookups apply their filters, so a query only finds MOCK_BANK when it's
+ * scoped to MOCK_BANK's org. The SQL itself is covered by the transactional
+ * tests below that use the real database.
  */
-function makeMockKyselyPg(opts: MockDbOpts = {}) {
-  const set = vi.fn();
-  const makeChain = () => {
-    let filters: Record<string, unknown> = {};
-    const chain = {
-      values: vi.fn().mockReturnThis(),
-      returningAll: vi.fn().mockReturnThis(),
-      executeTakeFirstOrThrow: opts.writesFail
-        ? vi.fn().mockRejectedValue(new Error('write failed'))
-        : vi.fn().mockResolvedValue(MOCK_BANK),
-      selectAll: vi.fn().mockReturnThis(),
-      select: vi.fn().mockReturnThis(),
-      limit: vi.fn().mockReturnThis(),
-      where: vi.fn((col: string, _op: string, val: unknown) => {
-        filters = { ...filters, [col]: val };
-        return chain;
-      }),
-      executeTakeFirst: vi.fn(async () => {
-        if ('hma_name' in filters) {
-          const hmaName = String(filters.hma_name);
-          return hmaName === MOCK_BANK.hma_name ||
-            (opts.takenHmaNames ?? []).includes(hmaName)
-            ? { id: 99 }
-            : undefined;
-        }
-        if (filters.org_id !== MOCK_BANK.org_id) {
-          return undefined;
-        }
-        if ('name' in filters && filters.name !== MOCK_BANK.name) {
-          return undefined;
-        }
-        return MOCK_BANK;
-      }),
-      execute: vi.fn().mockResolvedValue([]),
-      set: vi.fn((values: unknown) => {
-        set(values);
-        return chain;
-      }),
-    };
-    return chain;
+function makeFakeBankStore(opts: MockDbOpts = {}) {
+  const update = vi.fn();
+  // Called once per DELETE, whichever lookup key it used.
+  const deleteFrom = vi.fn();
+  const write = async () => {
+    if (opts.writesFail) {
+      throw new Error('write failed');
+    }
+    return MOCK_BANK;
   };
-  const deleteFrom = vi.fn(() => makeChain());
+  const banks: PublicInterface<HashBankService> = {
+    create: vi.fn(write),
+    async findById(_id, orgId) {
+      return orgId === MOCK_BANK.org_id ? MOCK_BANK : null;
+    },
+    async findByName(name, orgId) {
+      return orgId === MOCK_BANK.org_id && name === MOCK_BANK.name
+        ? MOCK_BANK
+        : null;
+    },
+    async isHmaNameTaken(hmaName) {
+      return (
+        hmaName === MOCK_BANK.hma_name ||
+        (opts.takenHmaNames ?? []).includes(hmaName)
+      );
+    },
+    async findAllByOrgId() {
+      return [];
+    },
+    async update(_id, _orgId, values) {
+      update(values);
+      return write();
+    },
+    async delete() {
+      deleteFrom();
+    },
+    async deleteByName() {
+      deleteFrom();
+    },
+  };
   return {
-    db: {
-      insertInto: vi.fn(() => makeChain()),
-      selectFrom: vi.fn(() => makeChain()),
-      updateTable: vi.fn(() => makeChain()),
-      deleteFrom,
-    } as unknown as ConstructorParameters<typeof HmaService>[1],
+    banks,
     deleteFrom,
-    // Values passed to each UPDATE ... SET so far.
-    updates: () => set.mock.calls.map(([values]) => values as unknown),
+    // Values passed to each update so far.
+    updates: () => update.mock.calls.map(([values]) => values as unknown),
   };
+}
+
+function withBankStore(
+  fetchHTTP: Mock,
+  banks: PublicInterface<HashBankService>,
+  tracer: ReturnType<typeof makeTracer> = makeTracer(),
+): HmaService {
+  // The db handle is unused: every query goes through the fake bank store.
+  const svc = new HmaService(fetchHTTP as never, undefined as never, tracer);
+  // HmaService builds its HashBankService internally; swap in the fake.
+  // eslint-disable-next-line functional/immutable-data
+  Object.assign(svc, { hashBankService: banks });
+  return svc;
 }
 
 function makeTracer() {
@@ -133,11 +142,7 @@ function makeService(
   fetchHTTP: Mock,
   opts: MockDbOpts & { tracer?: ReturnType<typeof makeTracer> } = {},
 ): HmaService {
-  return new HmaService(
-    fetchHTTP as never,
-    makeMockKyselyPg(opts).db,
-    opts.tracer ?? makeTracer(),
-  );
+  return withBankStore(fetchHTTP, makeFakeBankStore(opts).banks, opts.tracer);
 }
 
 type Res = { ok: boolean; status: number; body: unknown; headers: object };
@@ -462,8 +467,8 @@ describe('HmaService', () => {
         'PUT /c/bank/COOP_ORG1_MY_BANK': fail(500),
         'DELETE /c/exchange/COOP_ORG1_MY_BANK': ok({}),
       });
-      const { db, deleteFrom } = makeMockKyselyPg();
-      const svc = new HmaService(fetchHTTP as never, db, makeTracer());
+      const { banks, deleteFrom } = makeFakeBankStore();
+      const svc = withBankStore(fetchHTTP, banks);
 
       await expect(
         svc.createBank('org1', 'My Bank', 'desc', 0.5, {
@@ -589,7 +594,7 @@ describe('HmaService', () => {
 
     const testWithBanks = makeTransactionalTestWithFixture(async ({ deps }) => {
       const orgs = [await createOrg(deps), await createOrg(deps)];
-      const hashBankService = new HashBankService(deps.KyselyPg);
+      const hashBankService = new HashBankService(deps.DrizzlePg);
       const banks = await Promise.all(
         [0, 1, 2, 3].map(async (index) =>
           hashBankService.create({
@@ -637,7 +642,7 @@ describe('HmaService', () => {
         });
         const service = new HmaService(
           fetchHTTP as never,
-          deps.KyselyPg,
+          deps.DrizzlePg,
           deps.Tracer,
         );
         const operation = fc.record({
@@ -952,8 +957,8 @@ describe('HmaService', () => {
         'GET /c/exchange/COOP_ORG1_TEST_BANK': ok({ api: 'ncmec' }),
         'DELETE /c/exchange/COOP_ORG1_TEST_BANK': fail(500),
       });
-      const { db, deleteFrom } = makeMockKyselyPg();
-      const svc = new HmaService(fetchHTTP as never, db, makeTracer());
+      const { banks, deleteFrom } = makeFakeBankStore();
+      const svc = withBankStore(fetchHTTP, banks);
 
       await expect(svc.deleteBank('org1', '1')).rejects.toThrow(
         'Failed to delete HMA bank',
@@ -978,8 +983,8 @@ describe('HmaService', () => {
         'GET /c/bank/COOP_ORG1_TEST_BANK': fail(404),
         'DELETE /c/exchange/COOP_ORG1_TEST_BANK': ok({}),
       });
-      const { db, deleteFrom } = makeMockKyselyPg();
-      const svc = new HmaService(fetchHTTP as never, db, makeTracer());
+      const { banks, deleteFrom } = makeFakeBankStore();
+      const svc = withBankStore(fetchHTTP, banks);
 
       expect(await svc.getBankById('org1', 1)).toBeNull();
       expect(
@@ -993,8 +998,8 @@ describe('HmaService', () => {
         'GET /c/bank/COOP_ORG1_TEST_BANK': fail(404),
         'DELETE /c/exchange/COOP_ORG1_TEST_BANK': fail(500),
       });
-      const { db, deleteFrom } = makeMockKyselyPg();
-      const svc = new HmaService(fetchHTTP as never, db, makeTracer());
+      const { banks, deleteFrom } = makeFakeBankStore();
+      const svc = withBankStore(fetchHTTP, banks);
 
       expect(await svc.getBankById('org1', 1)).toEqual(MOCK_BANK);
       expect(deleteFrom).not.toHaveBeenCalled();
@@ -1007,8 +1012,8 @@ describe('HmaService', () => {
         'GET /c/exchange/COOP_ORG1_TEST_BANK': fail(404),
         'PUT /c/bank/COOP_ORG1_TEST_BANK': ok({}),
       });
-      const { db, updates } = makeMockKyselyPg();
-      const svc = new HmaService(fetchHTTP as never, db, makeTracer());
+      const { banks, updates } = makeFakeBankStore();
+      const svc = withBankStore(fetchHTTP, banks);
 
       await svc.updateBank('org1', '1', { name: 'renamed' });
 
@@ -1025,8 +1030,8 @@ describe('HmaService', () => {
       const fetchHTTP = routeFetch({
         'GET /c/exchange/COOP_ORG1_TEST_BANK': ok({ api: 'ncmec' }),
       });
-      const { db, updates } = makeMockKyselyPg();
-      const svc = new HmaService(fetchHTTP as never, db, makeTracer());
+      const { banks, updates } = makeFakeBankStore();
+      const svc = withBankStore(fetchHTTP, banks);
 
       await svc.updateBank('org1', '1', { name: 'renamed' });
 
@@ -1040,10 +1045,10 @@ describe('HmaService', () => {
         'GET /c/bank/COOP_ORG1_RENAMED_2': fail(404),
         'PUT /c/bank/COOP_ORG1_TEST_BANK': ok({}),
       });
-      const { db, updates } = makeMockKyselyPg({
+      const { banks, updates } = makeFakeBankStore({
         takenHmaNames: ['COOP_ORG1_RENAMED'],
       });
-      const svc = new HmaService(fetchHTTP as never, db, makeTracer());
+      const svc = withBankStore(fetchHTTP, banks);
 
       await svc.updateBank('org1', '1', { name: 'Renamed!' });
 
@@ -1058,8 +1063,8 @@ describe('HmaService', () => {
       const fetchHTTP = routeFetch({
         'GET /c/exchange/COOP_ORG1_TEST_BANK': fail(404),
       });
-      const { db, updates } = makeMockKyselyPg();
-      const svc = new HmaService(fetchHTTP as never, db, makeTracer());
+      const { banks, updates } = makeFakeBankStore();
+      const svc = withBankStore(fetchHTTP, banks);
 
       await svc.updateBank('org1', '1', { name: 'Test Bank' });
 
@@ -1072,8 +1077,8 @@ describe('HmaService', () => {
         'GET /c/exchange/COOP_ORG1_TEST_BANK': fail(404),
         'PUT /c/bank/COOP_ORG1_TEST_BANK': fail(403),
       });
-      const { db, updates } = makeMockKyselyPg();
-      const svc = new HmaService(fetchHTTP as never, db, makeTracer());
+      const { banks, updates } = makeFakeBankStore();
+      const svc = withBankStore(fetchHTTP, banks);
 
       await expect(
         svc.updateBank('org1', '1', { name: 'renamed' }),
@@ -1099,8 +1104,8 @@ describe('HmaService', () => {
 
     it('rejects renaming to a name the org already uses', async () => {
       const fetchHTTP = routeFetch({});
-      const { db, updates } = makeMockKyselyPg();
-      const svc = new HmaService(fetchHTTP as never, db, makeTracer());
+      const { banks, updates } = makeFakeBankStore();
+      const svc = withBankStore(fetchHTTP, banks);
       const otherBank = { ...MOCK_BANK, id: 2, name: 'other' };
       vi.spyOn(
         (svc as unknown as { hashBankService: HashBankService })
@@ -1119,8 +1124,8 @@ describe('HmaService', () => {
         'GET /c/exchange/COOP_ORG1_TEST_BANK': fail(404),
         'PUT /c/bank/COOP_ORG1_TEST_BANK': ok({}),
       });
-      const { db, updates } = makeMockKyselyPg();
-      const svc = new HmaService(fetchHTTP as never, db, makeTracer());
+      const { banks, updates } = makeFakeBankStore();
+      const svc = withBankStore(fetchHTTP, banks);
 
       await svc.updateBank('org1', '1', {
         name: 'renamed',

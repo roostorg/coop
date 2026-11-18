@@ -29,7 +29,7 @@ export const integrationConfigs = signalAuthServiceSchema.table(
   {
     orgId: varchar('org_id', { length: 255 }).notNull(),
     integrationId: varchar('integration_id', { length: 255 }).notNull(),
-    config: jsonb().default({}).notNull(),
+    config: jsonb().$type<Record<string, unknown>>().default({}).notNull(),
     createdAt: timestamp('created_at', { withTimezone: true })
       .default(sql`now()`)
       .notNull(),

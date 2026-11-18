@@ -126,9 +126,8 @@ export const actionVersions = pgMaterializedView('action_versions', {
   callbackUrlHeaders: jsonb('callback_url_headers'),
   callbackUrlBody: jsonb('callback_url_body'),
   penalty: userPenaltySeverity(),
-  appliesToAllItemsOfKind: itemTypeKind('applies_to_all_items_of_kind')
-    .array()
-    .array('[][]'),
+  // drizzle-kit pulled matview array columns as 2-D; they are 1-D.
+  appliesToAllItemsOfKind: itemTypeKind('applies_to_all_items_of_kind').array(),
   version: timestamp({ withTimezone: true }),
   isCurrent: bool('is_current'),
 }).as(
@@ -146,7 +145,7 @@ export const itemTypeVersions = pgMaterializedView('item_type_versions', {
   id: varchar({ length: 255 }),
   name: varchar({ length: 255 }),
   description: varchar({ length: 255 }),
-  fields: jsonb().array().array('[][]'),
+  fields: jsonb().array(),
   orgId: varchar('org_id', { length: 255 }),
   kind: itemTypeKind(),
   displayNameField: varchar('display_name_field', { length: 255 }),
@@ -190,7 +189,7 @@ export const ruleVersions = pgMaterializedView('rule_versions', {
   name: varchar({ length: 255 }),
   description: varchar({ length: 255 }),
   statusIfUnexpired: varchar('status_if_unexpired', { length: 255 }),
-  tags: varchar({ length: 255 }).array().array('[][]'),
+  tags: varchar({ length: 255 }).array(),
   maxDailyActions: integer('max_daily_actions'),
   orgId: varchar('org_id', { length: 255 }),
   creatorId: varchar('creator_id', { length: 255 }),
@@ -198,9 +197,9 @@ export const ruleVersions = pgMaterializedView('rule_versions', {
   ruleType: ruleType('rule_type'),
   conditionSet: jsonb('condition_set'),
   isCurrent: bool('is_current'),
-  actionIds: varchar('action_ids').array().array('[][]'),
-  itemTypeIds: varchar('item_type_ids').array().array('[][]'),
-  policyIds: varchar('policy_ids').array().array('[][]'),
+  actionIds: varchar('action_ids').array(),
+  itemTypeIds: varchar('item_type_ids').array(),
+  policyIds: varchar('policy_ids').array(),
   version: timestamp({ withTimezone: true }),
 }).as(
   sql`WITH action_association_versions AS ( SELECT rules_and_actions.action_id, rules_and_actions.rule_id, rules_and_actions.sys_period FROM rules_and_actions UNION ALL SELECT rules_and_actions_history.action_id, rules_and_actions_history.rule_id, rules_and_actions_history.sys_period FROM rules_and_actions_history ), item_type_association_versions AS ( SELECT rules_and_item_types.item_type_id, rules_and_item_types.rule_id, rules_and_item_types.sys_period FROM rules_and_item_types UNION ALL SELECT rules_and_item_types_history.item_type_id, rules_and_item_types_history.rule_id, rules_and_item_types_history.sys_period FROM rules_and_item_types_history ), policy_association_versions AS ( SELECT rules_and_policies.policy_id, rules_and_policies.rule_id, rules_and_policies.sys_period FROM rules_and_policies UNION ALL SELECT rules_and_policies_history.policy_id, rules_and_policies_history.rule_id, rules_and_policies_history.sys_period FROM rules_and_policies_history ), rule_versions AS ( SELECT rules.id, rules.name, rules.description, rules.status_if_unexpired, rules.tags, rules.max_daily_actions, rules.org_id, rules.creator_id, rules.expiration_time, rules.condition_set, rules.rule_type, rules.sys_period FROM rules UNION ALL SELECT rules_history.id, rules_history.name, rules_history.description, rules_history.status_if_unexpired, rules_history.tags, rules_history.max_daily_actions, rules_history.org_id, rules_history.creator_id, rules_history.expiration_time, rules_history.condition_set, rules_history.rule_type, rules_history.sys_period FROM rules_history ), rule_change_times AS ( SELECT t.rule_id, unnest(t.change_times_with_duplicates) AS change_time FROM ( SELECT rule_versions_1.id AS rule_id, array_remove((((((array_agg(DISTINCT lower(rule_versions_1.sys_period)) || array_agg(DISTINCT lower(action_association_versions.sys_period))) || array_agg(DISTINCT upper(action_association_versions.sys_period))) || array_agg(DISTINCT lower(item_type_association_versions.sys_period))) || array_agg(DISTINCT upper(item_type_association_versions.sys_period))) || array_agg(DISTINCT lower(policy_association_versions.sys_period))) || array_agg(DISTINCT upper(policy_association_versions.sys_period)), NULL::timestamp with time zone) AS change_times_with_duplicates FROM rule_versions rule_versions_1 LEFT JOIN action_association_versions ON rule_versions_1.id::text = action_association_versions.rule_id::text LEFT JOIN item_type_association_versions ON rule_versions_1.id::text = item_type_association_versions.rule_id::text LEFT JOIN policy_association_versions ON rule_versions_1.id::text = policy_association_versions.rule_id::text GROUP BY rule_versions_1.id) t GROUP BY t.rule_id, (unnest(t.change_times_with_duplicates)) ), rule_max_change_times AS ( SELECT rule_change_times_1.rule_id, max(rule_change_times_1.change_time) AS max_change_time FROM rule_change_times rule_change_times_1 GROUP BY rule_change_times_1.rule_id ) SELECT rule_versions.id, rule_versions.name, rule_versions.description, rule_versions.status_if_unexpired, rule_versions.tags, rule_versions.max_daily_actions, rule_versions.org_id, rule_versions.creator_id, rule_versions.expiration_time, rule_versions.rule_type, rule_versions.condition_set, rule_max_change_times.max_change_time = rule_change_times.change_time AND upper_inf(rule_versions.sys_period) AS is_current, ( SELECT COALESCE(array_agg(action_association_versions.action_id), '{}'::character varying[]) AS "coalesce" FROM action_association_versions WHERE action_association_versions.rule_id::text = rule_versions.id::text AND action_association_versions.sys_period @> rule_change_times.change_time) AS action_ids, ( SELECT COALESCE(array_agg(item_type_association_versions.item_type_id), '{}'::character varying[]) AS "coalesce" FROM item_type_association_versions WHERE item_type_association_versions.rule_id::text = rule_versions.id::text AND item_type_association_versions.sys_period @> rule_change_times.change_time) AS item_type_ids, ( SELECT COALESCE(array_agg(policy_association_versions.policy_id), '{}'::character varying[]) AS "coalesce" FROM policy_association_versions WHERE policy_association_versions.rule_id::text = rule_versions.id::text AND policy_association_versions.sys_period @> rule_change_times.change_time) AS policy_ids, rule_change_times.change_time AS version FROM rule_change_times JOIN rule_versions ON rule_change_times.rule_id::text = rule_versions.id::text AND rule_versions.sys_period @> rule_change_times.change_time JOIN rule_max_change_times ON rule_max_change_times.rule_id::text = rule_versions.id::text ORDER BY rule_versions.id, rule_change_times.change_time`,

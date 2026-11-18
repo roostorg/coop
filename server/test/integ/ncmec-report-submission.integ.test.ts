@@ -10,8 +10,10 @@
  * Requires: `pnpm run up && pnpm run db:update`
  */
 import { ScalarTypes } from '@roostorg/coop-types';
+import { and, eq } from 'drizzle-orm';
 import { uid } from 'uid';
 
+import { schema } from '../../storage/postgres/drizzle.js';
 import { jsonStringify } from '../../utils/encoding.js';
 import createContentItemTypes from '../fixtureHelpers/createContentItemTypes.js';
 import createMrtQueue from '../fixtureHelpers/createMrtQueue.js';
@@ -54,7 +56,7 @@ describe('NCMEC report and submission (integration)', () => {
 
     const orgFixture = await createOrg(
       {
-        KyselyPg: harness.deps.KyselyPg,
+        DrizzlePg: harness.deps.DrizzlePg,
         ModerationConfigService: harness.deps.ModerationConfigService,
         ApiKeyService: harness.deps.ApiKeyService,
       },
@@ -64,7 +66,7 @@ describe('NCMEC report and submission (integration)', () => {
     userItemTypeId = orgFixture.defaultUserItemType.id;
     orgCleanup = orgFixture.cleanup;
 
-    const reviewerFixture = await createUser(harness.deps.KyselyPg, orgId, {
+    const reviewerFixture = await createUser(harness.deps.DrizzlePg, orgId, {
       password: REVIEWER_PASSWORD,
       loginMethods: ['password'],
       approvedByAdmin: true,
@@ -402,12 +404,20 @@ describe('NCMEC report and submission (integration)', () => {
       // Both media items are persisted in the ncmec_reports row
       const reportRow = await waitFor(
         `ncmec_reports row for user ${creatorUserId}`,
-        async () =>
-          harness!.deps.KyselyPg.selectFrom('ncmec_reporting.ncmec_reports')
-            .select(['report_id', 'is_test', 'reviewer_id', 'reported_media'])
-            .where('org_id', '=', orgId)
-            .where('user_id', '=', creatorUserId)
-            .executeTakeFirst(),
+        async () => {
+          const reports = schema.ncmecReports;
+          const rows = await harness!.deps.DrizzlePg.select({
+            report_id: reports.reportId,
+            is_test: reports.isTest,
+            reviewer_id: reports.reviewerId,
+            reported_media: reports.reportedMedia,
+          })
+            .from(reports)
+            .where(
+              and(eq(reports.orgId, orgId), eq(reports.userId, creatorUserId)),
+            );
+          return rows.at(0);
+        },
       );
 
       expect(reportRow.report_id).toBe(ncmecReportId);

@@ -1,9 +1,15 @@
 import { makeEnumLike } from '@roostorg/coop-types';
-import { sql, type Kysely, type Transaction } from 'kysely';
+import { and, eq, notInArray, sql } from 'drizzle-orm';
 import { type ReadonlyDeep } from 'type-fest';
 import { v1 as uuidv1 } from 'uuid';
 
 import { type ConsumerDirectives } from '../../lib/cache/index.js';
+import {
+  schema,
+  transactionWithRetry,
+  type CoopDb,
+  type CoopDbOrTx,
+} from '../../storage/postgres/drizzle.js';
 import { cached } from '../../utils/caching.js';
 import { filterNullOrUndefined } from '../../utils/collections.js';
 import {
@@ -11,10 +17,6 @@ import {
   ErrorType,
   type ErrorInstanceData,
 } from '../../utils/errors.js';
-import {
-  makeKyselyTransactionWithRetry,
-  type KyselyTransactionWithRetry,
-} from '../../utils/kyselyTransactionWithRetry.js';
 import { removeUndefinedKeys } from '../../utils/misc.js';
 import { replaceEmptyStringWithNull } from '../../utils/string.js';
 import {
@@ -22,7 +24,6 @@ import {
   type NonEmptyString,
 } from '../../utils/typescript-types.js';
 import { type ConditionSet } from '../moderationConfigService/index.js';
-import { type ReportingServicePg } from './dbTypes.js';
 
 export const ReportingRuleStatus = makeEnumLike([
   'DRAFT',
@@ -71,27 +72,38 @@ export type UpdateReportingRuleInput = Readonly<{
   conditionSet?: ConditionSet;
 }>;
 
-const reportingRuleSelection = [
-  'id',
-  'org_id as orgId',
-  'creator_id as creatorId',
-  'name',
-  'description',
-  'status',
-  'condition_set as conditionSet',
-] as const;
+const rr = schema.reportingRules;
+const rrv = schema.reportingRuleVersions;
+const toItemTypes = schema.reportingRulesToItemTypes;
+const toActions = schema.reportingRulesToActions;
+const toPolicies = schema.reportingRulesToPolicies;
+
+const reportingRuleSelection = {
+  id: rr.id,
+  orgId: rr.orgId,
+  creatorId: rr.creatorId,
+  name: rr.name,
+  description: rr.description,
+  status: rr.status,
+  // jsonb is decoded by pg; the sql<> wrapper only narrows the type.
+  conditionSet: sql<ConditionSet>`${rr.conditionSet}`,
+};
+
+// Kysely's executeTakeFirstOrThrow message; isReportingRuleNotFoundError
+// matches on it.
+function throwNoResult(): never {
+  throw new Error('no result');
+}
 
 export default class ReportingRules {
   private readonly reportingRulesCache;
-  private readonly transactionWithRetry: KyselyTransactionWithRetry<ReportingServicePg>;
 
-  constructor(private readonly pgQuery: Kysely<ReportingServicePg>) {
+  constructor(private readonly pgQuery: CoopDb) {
     this.reportingRulesCache = cached({
       producer: async (orgId: string) =>
         this.#getReportingRulesBypassCache(orgId, pgQuery),
       directives: { freshUntilAge: 10 },
     });
-    this.transactionWithRetry = makeKyselyTransactionWithRetry(this.pgQuery);
   }
 
   async getReportingRules(opts: {
@@ -117,51 +129,46 @@ export default class ReportingRules {
       policyIds,
     } = input;
 
-    return this.transactionWithRetry(async (trx) => {
-      const reportingRule = await trx
-        .insertInto('reporting_rules.reporting_rules')
+    return transactionWithRetry(this.pgQuery, async (trx) => {
+      const [reportingRule] = await trx
+        .insert(rr)
         .values({
           id: uuidv1(),
-          org_id: orgId,
+          orgId,
           name,
           description: replaceEmptyStringWithNull(description),
           status,
-          condition_set: conditionSet,
-          creator_id: creatorId,
+          conditionSet,
+          creatorId,
         })
-        .returning(reportingRuleSelection)
-        .executeTakeFirstOrThrow();
+        .returning(reportingRuleSelection);
+      if (reportingRule === undefined) {
+        throwNoResult();
+      }
 
-      await trx
-        .insertInto('reporting_rules.reporting_rules_to_item_types')
-        .values(
-          itemTypeIds.map((itemTypeId) => ({
-            reporting_rule_id: reportingRule.id,
-            item_type_id: itemTypeId,
-          })),
-        )
-        .execute();
+      await trx.insert(toItemTypes).values(
+        itemTypeIds.map((itemTypeId) => ({
+          reportingRuleId: reportingRule.id,
+          itemTypeId,
+        })),
+      );
 
-      await trx
-        .insertInto('reporting_rules.reporting_rules_to_actions')
-        .values(
-          actionIds.map((actionId) => ({
-            action_id: actionId,
-            reporting_rule_id: reportingRule.id,
-          })),
-        )
-        .execute();
+      // An empty actionIds throws, as before: Kysely emitted invalid SQL,
+      // Drizzle throws "values() must be called with at least one value".
+      await trx.insert(toActions).values(
+        actionIds.map((actionId) => ({
+          actionId,
+          reportingRuleId: reportingRule.id,
+        })),
+      );
 
       if (policyIds.length > 0) {
-        await trx
-          .insertInto('reporting_rules.reporting_rules_to_policies')
-          .values(
-            policyIds.map((policyId) => ({
-              policy_id: policyId,
-              reporting_rule_id: reportingRule.id,
-            })),
-          )
-          .execute();
+        await trx.insert(toPolicies).values(
+          policyIds.map((policyId) => ({
+            policyId,
+            reportingRuleId: reportingRule.id,
+          })),
+        );
       }
 
       return {
@@ -197,91 +204,86 @@ export default class ReportingRules {
       policyIds,
     } = input;
 
-    return this.transactionWithRetry(async (trx) => {
-      const updatedReportingRule = await trx
-        .updateTable('reporting_rules.reporting_rules')
+    return transactionWithRetry(this.pgQuery, async (trx) => {
+      const [updatedReportingRule] = await trx
+        .update(rr)
         .set({
-          ...(conditionSet ? { condition_set: conditionSet } : {}),
+          ...(conditionSet ? { conditionSet } : {}),
           ...removeUndefinedKeys({
             name,
             description: replaceEmptyStringWithNull(description),
             status,
           }),
         })
-        .where('id', '=', id)
-        .where('org_id', '=', orgId)
-        .returning(reportingRuleSelection)
-        .executeTakeFirstOrThrow();
+        .where(and(eq(rr.id, id), eq(rr.orgId, orgId)))
+        .returning(reportingRuleSelection);
+      if (updatedReportingRule === undefined) {
+        throwNoResult();
+      }
 
       if (itemTypeIds) {
         await trx
-          .deleteFrom('reporting_rules.reporting_rules_to_item_types')
-          .where(({ eb, and }) =>
-            and([
-              eb('reporting_rule_id', '=', id),
-              eb('item_type_id', 'not in', itemTypeIds),
-            ]),
-          )
-          .execute();
+          .delete(toItemTypes)
+          .where(
+            and(
+              eq(toItemTypes.reportingRuleId, id),
+              notInArray(toItemTypes.itemTypeId, [...itemTypeIds]),
+            ),
+          );
 
         await trx
-          .insertInto('reporting_rules.reporting_rules_to_item_types')
+          .insert(toItemTypes)
           .values(
             itemTypeIds.map((itemTypeId) => ({
-              reporting_rule_id: id,
-              item_type_id: itemTypeId,
+              reportingRuleId: id,
+              itemTypeId,
             })),
           )
-          .onConflict((oc) =>
-            oc.columns(['reporting_rule_id', 'item_type_id']).doNothing(),
-          )
-          .execute();
+          .onConflictDoNothing({
+            target: [toItemTypes.reportingRuleId, toItemTypes.itemTypeId],
+          });
       }
 
       if (actionIds) {
+        // Empty actionIds: Kysely's `not in ()` failed here; Drizzle's
+        // notInArray([]) is `true`, and the empty insert below throws instead.
         await trx
-          .deleteFrom('reporting_rules.reporting_rules_to_actions')
-          .where(({ eb, and }) =>
-            and([
-              eb('reporting_rule_id', '=', id),
-              eb('action_id', 'not in', actionIds),
-            ]),
-          )
-          .execute();
+          .delete(toActions)
+          .where(
+            and(
+              eq(toActions.reportingRuleId, id),
+              notInArray(toActions.actionId, [...actionIds]),
+            ),
+          );
 
         await trx
-          .insertInto('reporting_rules.reporting_rules_to_actions')
+          .insert(toActions)
           .values(
             actionIds.map((actionId) => ({
-              reporting_rule_id: id,
-              action_id: actionId,
+              reportingRuleId: id,
+              actionId,
             })),
           )
-          .onConflict((oc) =>
-            oc.columns(['reporting_rule_id', 'action_id']).doNothing(),
-          )
-          .execute();
+          .onConflictDoNothing({
+            target: [toActions.reportingRuleId, toActions.actionId],
+          });
       }
 
       if (policyIds) {
-        await trx
-          .deleteFrom('reporting_rules.reporting_rules_to_policies')
-          .where('reporting_rule_id', '=', id)
-          .execute();
+        await trx.delete(toPolicies).where(eq(toPolicies.reportingRuleId, id));
 
         if (policyIds.length > 0) {
           await trx
-            .insertInto('reporting_rules.reporting_rules_to_policies')
+            .insert(toPolicies)
             .values(
               policyIds.map((policyId) => ({
-                reporting_rule_id: id,
-                policy_id: policyId,
+                reportingRuleId: id,
+                policyId,
               })),
             )
-            .onConflict((oc) =>
-              oc.columns(['reporting_rule_id', 'policy_id']).doNothing(),
-            )
-            .execute();
+            .onConflictDoNothing({
+              target: [toPolicies.reportingRuleId, toPolicies.policyId],
+            });
         }
       }
 
@@ -323,138 +325,111 @@ export default class ReportingRules {
   }): Promise<boolean> {
     const { id, orgId } = input;
 
-    return this.transactionWithRetry(async (trx) => {
+    return transactionWithRetry(this.pgQuery, async (trx) => {
       // Verify ownership inside the txn before touching any join rows.
       // Skipping this would let a foreign-org `id` wipe that other org's
       // join rows (the join tables have no org column) before the scoped
       // parent delete no-ops.
-      const owned = await trx
-        .selectFrom('reporting_rules.reporting_rules')
-        .select('id')
-        .where('id', '=', id)
-        .where('org_id', '=', orgId)
-        .executeTakeFirst();
+      const [owned] = await trx
+        .select({ id: rr.id })
+        .from(rr)
+        .where(and(eq(rr.id, id), eq(rr.orgId, orgId)))
+        .limit(1);
       if (owned === undefined) {
         return false;
       }
 
-      await trx
-        .deleteFrom('reporting_rules.reporting_rules_to_item_types')
-        .where('reporting_rule_id', '=', id)
-        .execute();
-
-      await trx
-        .deleteFrom('reporting_rules.reporting_rules_to_actions')
-        .where('reporting_rule_id', '=', id)
-        .execute();
-
-      await trx
-        .deleteFrom('reporting_rules.reporting_rules_to_policies')
-        .where('reporting_rule_id', '=', id)
-        .execute();
+      await trx.delete(toItemTypes).where(eq(toItemTypes.reportingRuleId, id));
+      await trx.delete(toActions).where(eq(toActions.reportingRuleId, id));
+      await trx.delete(toPolicies).where(eq(toPolicies.reportingRuleId, id));
 
       const deleteResult = await trx
-        .deleteFrom('reporting_rules.reporting_rules')
-        .where('id', '=', id)
-        .where('org_id', '=', orgId)
-        .executeTakeFirst();
+        .delete(rr)
+        .where(and(eq(rr.id, id), eq(rr.orgId, orgId)));
 
-      return deleteResult.numDeletedRows === 1n;
+      return deleteResult.rowCount === 1;
     });
   }
 
   async #getReportingRulesBypassCache(
     orgId: string,
-    db: Transaction<ReportingServicePg> | Kysely<ReportingServicePg>,
+    db: CoopDbOrTx,
   ): Promise<ReportingRule[]> {
     const reportingRules = await db
-      .selectFrom('reporting_rules.reporting_rule_versions as reporting_rules')
-      .innerJoin(
-        'reporting_rules.reporting_rules_to_item_types as rules_to_item_types',
-        'reporting_rules.id',
-        'rules_to_item_types.reporting_rule_id',
-      )
-      .innerJoin(
-        'reporting_rules.reporting_rules_to_actions as rules_to_actions',
-        'reporting_rules.id',
-        'rules_to_actions.reporting_rule_id',
-      )
-      .leftJoin(
-        'reporting_rules.reporting_rules_to_policies as rules_to_policies',
-        'reporting_rules.id',
-        'rules_to_policies.reporting_rule_id',
-      )
-      .where('reporting_rules.org_id', '=', orgId)
-      .where('reporting_rules.is_current', '=', true)
-      .select([
-        ...reportingRuleSelection,
-        sql<string[]>`json_agg(distinct rules_to_item_types.item_type_id)`.as(
-          'itemTypeIds',
-        ),
-        sql<string[]>`json_agg(distinct rules_to_actions.action_id)`.as(
-          'actionIds',
-        ),
-        sql<string[]>`json_agg(distinct rules_to_policies.policy_id)`.as(
-          'policyIds',
-        ),
-        'version',
-      ])
-      .groupBy([
-        'reporting_rules.id',
-        'reporting_rules.org_id',
-        'reporting_rules.creator_id',
-        'reporting_rules.name',
-        'reporting_rules.description',
-        'reporting_rules.status',
-        'reporting_rules.condition_set',
-        'reporting_rules.version',
-      ])
-      .execute();
+      .select({
+        id: sql<string>`${rrv.id}`,
+        orgId: sql<string>`${rrv.orgId}`,
+        creatorId: sql<string>`${rrv.creatorId}`,
+        name: sql<string>`${rrv.name}`,
+        description: rrv.description,
+        status: sql<ReportingRuleStatus>`${rrv.status}`,
+        conditionSet: sql<ConditionSet>`${rrv.conditionSet}`,
+        itemTypeIds: sql<
+          string[]
+        >`json_agg(distinct ${toItemTypes.itemTypeId})`,
+        actionIds: sql<string[]>`json_agg(distinct ${toActions.actionId})`,
+        policyIds: sql<
+          (string | null)[]
+        >`json_agg(distinct ${toPolicies.policyId})`,
+        version: rrv.version,
+      })
+      .from(rrv)
+      .innerJoin(toItemTypes, eq(rrv.id, toItemTypes.reportingRuleId))
+      .innerJoin(toActions, eq(rrv.id, toActions.reportingRuleId))
+      .leftJoin(toPolicies, eq(rrv.id, toPolicies.reportingRuleId))
+      .where(and(eq(rrv.orgId, orgId), eq(rrv.isCurrent, true)))
+      .groupBy(
+        rrv.id,
+        rrv.orgId,
+        rrv.creatorId,
+        rrv.name,
+        rrv.description,
+        rrv.status,
+        rrv.conditionSet,
+        rrv.version,
+      );
 
     return reportingRules.map((it) => ({
       ...it,
       policyIds: filterNullOrUndefined(it.policyIds),
+      // ReportingRule.version is typed as a string, but (as with Kysely) the
+      // timestamptz comes back decoded to a Date.
+      version: it.version as unknown as string,
     }));
   }
 
   async #getItemTypeIdsForReportingRule(
     reportingRuleId: string,
-    db: Transaction<ReportingServicePg> | Kysely<ReportingServicePg> = this
-      .pgQuery,
+    db: CoopDbOrTx = this.pgQuery,
   ) {
     const results = await db
-      .selectFrom('reporting_rules.reporting_rules_to_item_types')
-      .select('item_type_id as itemTypeId')
-      .where('reporting_rule_id', '=', reportingRuleId)
-      .execute();
+      .select({ itemTypeId: toItemTypes.itemTypeId })
+      .from(toItemTypes)
+      .where(eq(toItemTypes.reportingRuleId, reportingRuleId));
 
     return results.map((row) => row.itemTypeId);
   }
 
   async #getActionIdsForReportingRule(
     reportingRuleId: string,
-    db: Transaction<ReportingServicePg> | Kysely<ReportingServicePg> = this
-      .pgQuery,
+    db: CoopDbOrTx = this.pgQuery,
   ) {
     const results = await db
-      .selectFrom('reporting_rules.reporting_rules_to_actions')
-      .select('action_id as actionId')
-      .where('reporting_rule_id', '=', reportingRuleId)
-      .execute();
+      .select({ actionId: toActions.actionId })
+      .from(toActions)
+      .where(eq(toActions.reportingRuleId, reportingRuleId));
 
     return results.map((row) => row.actionId);
   }
 
   async #getPolicyIdsForReportingRule(
     reportingRuleId: string,
-    db: Transaction<ReportingServicePg> | Kysely<ReportingServicePg> = this
-      .pgQuery,
+    db: CoopDbOrTx = this.pgQuery,
   ) {
     const results = await db
-      .selectFrom('reporting_rules.reporting_rules_to_policies')
-      .select('policy_id as policyId')
-      .where('reporting_rule_id', '=', reportingRuleId)
-      .execute();
+      .select({ policyId: toPolicies.policyId })
+      .from(toPolicies)
+      .where(eq(toPolicies.reportingRuleId, reportingRuleId));
 
     return results.map((row) => row.policyId);
   }
@@ -463,12 +438,15 @@ export default class ReportingRules {
 export type ReportingRuleErrorType =
   'ReportingRuleNameExistsError' | 'NotFoundError';
 
-function isReportingRuleNameExistsError(error: unknown) {
+// Drizzle wraps the pg error in a DrizzleQueryError whose own message is
+// "Failed query: ..."; the pg message is on `cause`.
+function isReportingRuleNameExistsError(error: unknown): boolean {
   return (
     error instanceof Error &&
-    error.message.includes(
+    (error.message.includes(
       'duplicate key value violates unique constraint "reporting_rules_org_id_name_key"',
-    )
+    ) ||
+      isReportingRuleNameExistsError(error.cause))
   );
 }
 

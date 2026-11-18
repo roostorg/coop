@@ -36,13 +36,13 @@ describe('resolveSamlUser', () => {
   const testWithFixture = makeTransactionalTestWithFixture(async ({ deps }) => {
     const { org } = await createOrg(
       {
-        KyselyPg: deps.KyselyPg,
+        DrizzlePg: deps.DrizzlePg,
         ModerationConfigService: deps.ModerationConfigService,
         ApiKeyService: deps.ApiKeyService,
       },
       uid(),
     );
-    await seedSystemRolesForOrg(deps.KyselyPg, org.id);
+    await seedSystemRolesForOrg(deps.DrizzlePg, org.id);
     return { org };
   });
 
@@ -50,10 +50,10 @@ describe('resolveSamlUser', () => {
     'passes the user to done when the email belongs to the path org',
     async ({ deps, org }) => {
       const input = samlUserInput(org.id);
-      await kyselyUserInsert({ db: deps.KyselyPg, ...input });
+      await kyselyUserInsert({ db: deps.DrizzlePg, ...input });
       const done = vi.fn();
       await resolveSamlUser(
-        deps.KyselyPg,
+        deps.DrizzlePg,
         deps.Tracer,
         makeReq(org.id),
         { email: input.email },
@@ -66,16 +66,42 @@ describe('resolveSamlUser', () => {
     },
   );
 
+  // `server/api.ts` still passes its Kysely handle.
+  testWithFixture(
+    'resolves the user through a Kysely handle too',
+    async ({ deps, org }) => {
+      const input = samlUserInput(org.id);
+      await kyselyUserInsert({ db: deps.DrizzlePg, ...input });
+      const done = vi.fn();
+      await resolveSamlUser(
+        deps.KyselyPg,
+        deps.Tracer,
+        makeReq(org.id),
+        { email: input.email },
+        done,
+      );
+      const [err, user] = done.mock.calls[0];
+      expect(err).toBeNull();
+      expect(user).toMatchObject({
+        id: input.id,
+        orgId: org.id,
+        role: input.role,
+        loginMethods: ['saml'],
+      });
+      expect(user.getPermissions().length).toBeGreaterThan(0);
+    },
+  );
+
   // Security regression (GHSA-2v93-383c-9fw2): an assertion authenticating one
   // org must never resolve a user who lives in another org.
   testWithFixture(
     'rejects when the email belongs to a different org',
     async ({ deps, org }) => {
       const input = samlUserInput(org.id);
-      await kyselyUserInsert({ db: deps.KyselyPg, ...input });
+      await kyselyUserInsert({ db: deps.DrizzlePg, ...input });
       const done = vi.fn();
       await resolveSamlUser(
-        deps.KyselyPg,
+        deps.DrizzlePg,
         deps.Tracer,
         makeReq(`different-org-${uid()}`),
         { email: input.email },
@@ -92,7 +118,7 @@ describe('resolveSamlUser', () => {
     async ({ deps, org }) => {
       const done = vi.fn();
       await resolveSamlUser(
-        deps.KyselyPg,
+        deps.DrizzlePg,
         deps.Tracer,
         makeReq(org.id),
         { email: `missing-${uid()}@example.com` },
@@ -108,7 +134,7 @@ describe('resolveSamlUser', () => {
     async ({ deps }) => {
       const done = vi.fn();
       await resolveSamlUser(
-        deps.KyselyPg,
+        deps.DrizzlePg,
         deps.Tracer,
         makeReq(undefined),
         { email: 'a@example.com' },
@@ -130,7 +156,7 @@ describe('resolveSamlUser', () => {
       async ({ deps, org }) => {
         const done = vi.fn();
         await resolveSamlUser(
-          deps.KyselyPg,
+          deps.DrizzlePg,
           deps.Tracer,
           makeReq(org.id),
           profile,
@@ -150,7 +176,7 @@ describe('resolveSamlUser', () => {
       const arrayProfile = { email: ['a@example.com'] };
       const done = vi.fn();
       await resolveSamlUser(
-        deps.KyselyPg,
+        deps.DrizzlePg,
         deps.Tracer,
         makeReq(org.id),
         arrayProfile as unknown as Pick<Profile, 'email'>,
@@ -166,7 +192,7 @@ describe('resolveSamlUser', () => {
   test('logs to the tracer and returns an internal error on a DB failure', async () => {
     const dbError = new Error('connection refused');
     const db = {
-      selectFrom() {
+      select() {
         throw dbError;
       },
     } as unknown as UsersDb;
