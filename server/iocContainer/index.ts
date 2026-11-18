@@ -249,6 +249,7 @@ import {
   type IDataWarehouse,
   type IDataWarehouseDialect,
 } from '../storage/dataWarehouse/index.js';
+import { TypeormHandle } from '../storage/typeorm/dataSource.js';
 import { cached, type Cached } from '../utils/caching.js';
 import { CoopMeter } from '../utils/CoopMeter.js';
 import {
@@ -340,6 +341,11 @@ export interface Dependencies {
   // non-Kysely Postgres consumers (e.g., the express-session store) can
   // share the same pool instead of opening their own.
   KyselyPgPool: pg.Pool;
+
+  // TypeORM PoC: DataSources sharing the Kysely pools. See
+  // storage/typeorm/dataSource.ts.
+  TypeormPg: TypeormHandle;
+  TypeormPgReadReplica: TypeormHandle;
 
   // Similar to our Kysely services, we register the services as Scylla<any> so
   // that each dependent service can type its arg more specifically with the set
@@ -621,6 +627,27 @@ export default async function getBottle(
         }),
         log: kyselyLogLevels,
       }),
+  );
+
+  bottle.factory(
+    'TypeormPg',
+    (container) =>
+      new TypeormHandle(container.KyselyPgPool, {
+        logging: isEnvTrue('DATABASE_PRINT_LOGS'),
+      }),
+  );
+
+  bottle.factory(
+    'TypeormPgReadReplica',
+    () =>
+      new TypeormHandle(
+        createPgPool({
+          ...getPgMasterConnectionInfo(),
+          max: parseInt(process.env.DATABASE_READ_POOL_MAX ?? '150'),
+          host: safeGetEnvVar('DATABASE_READ_ONLY_HOST'),
+        }),
+        { logging: isEnvTrue('DATABASE_PRINT_LOGS') },
+      ),
   );
 
   // AUTH-enabled Redis (e.g. ElastiCache with an auth token) rejects every
@@ -1837,6 +1864,8 @@ export default async function getBottle(
             'DataWarehouseDialect',
             'DataWarehouseAnalytics',
             'ReportingAnalyticsAdapter',
+            'TypeormPg',
+            'TypeormPgReadReplica',
             'KyselyPg',
             'KyselyPgReadReplica',
             'getEnabledRulesForItemTypeEventuallyConsistent',
