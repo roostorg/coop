@@ -1,36 +1,45 @@
-import { type Kysely } from 'kysely';
 import { type JsonObject } from 'type-fest';
 
+import {
+  type Prisma,
+  type PrismaPgQueryable,
+} from '../../../storage/prisma/index.js';
 import {
   CoopError,
   ErrorType,
   type ErrorInstanceData,
 } from '../../../utils/errors.js';
 import { isUniqueViolationError } from '../../../utils/kysely.js';
-import {
-  makeKyselyTransactionWithRetry,
-  type KyselyTransactionWithRetry,
-} from '../../../utils/kyselyTransactionWithRetry.js';
 import { removeUndefinedKeys } from '../../../utils/misc.js';
-import { type ModerationConfigServicePg } from '../dbTypes.js';
+import { runInPrismaTransaction } from '../prismaTransaction.js';
 
-const userStrikeThresholdSelection = [
-  'id',
-  'org_id as orgId',
-  'threshold',
-  'actions',
-  'action_parameters as actionParameters',
-] as const;
+const userStrikeThresholdPrismaSelect = {
+  id: true,
+  org_id: true,
+  threshold: true,
+  actions: true,
+  action_parameters: true,
+} as const satisfies Prisma.user_strike_thresholdsSelect;
+
+function toUserStrikeThreshold(
+  row: Prisma.user_strike_thresholdsGetPayload<{
+    select: typeof userStrikeThresholdPrismaSelect;
+  }>,
+) {
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    threshold: row.threshold,
+    actions: row.actions,
+    actionParameters: row.action_parameters as JsonObject,
+  };
+}
 
 export default class UserStrikeOperations {
-  private readonly transactionWithRetry: KyselyTransactionWithRetry<ModerationConfigServicePg>;
-
   constructor(
-    private readonly pgQuery: Kysely<ModerationConfigServicePg>,
-    private readonly pgQueryReplica: Kysely<ModerationConfigServicePg>,
-  ) {
-    this.transactionWithRetry = makeKyselyTransactionWithRetry(this.pgQuery);
-  }
+    private readonly pgQuery: PrismaPgQueryable,
+    private readonly pgQueryReplica: PrismaPgQueryable,
+  ) {}
 
   async getUserStrikeThresholds(opts: {
     orgId: string;
@@ -38,11 +47,11 @@ export default class UserStrikeOperations {
   }) {
     const { orgId, readFromReplica } = opts;
     const pgQuery = this.#getPgQuery(readFromReplica);
-    const query = pgQuery
-      .selectFrom('public.user_strike_thresholds')
-      .select(userStrikeThresholdSelection)
-      .where('org_id', '=', orgId);
-    return query.execute();
+    const rows = await pgQuery.user_strike_thresholds.findMany({
+      select: userStrikeThresholdPrismaSelect,
+      where: { org_id: orgId },
+    });
+    return rows.map(toUserStrikeThreshold);
   }
 
   async createUserStrikeThreshold(opts: {
@@ -56,16 +65,17 @@ export default class UserStrikeOperations {
     const { orgId: org_id, thresholdSettings } = opts;
 
     try {
-      return await this.pgQuery
-        .insertInto('public.user_strike_thresholds')
-        .values({
-          org_id,
-          threshold: thresholdSettings.threshold,
-          actions: thresholdSettings.actions,
-          action_parameters: thresholdSettings.actionParameters ?? {},
-        })
-        .returning(userStrikeThresholdSelection)
-        .executeTakeFirstOrThrow();
+      return toUserStrikeThreshold(
+        await this.pgQuery.user_strike_thresholds.create({
+          data: {
+            org_id,
+            threshold: thresholdSettings.threshold,
+            actions: thresholdSettings.actions,
+            action_parameters: thresholdSettings.actionParameters ?? {},
+          },
+          select: userStrikeThresholdPrismaSelect,
+        }),
+      );
     } catch (e: unknown) {
       throw isUniqueViolationError(e)
         ? makeThresholdAlreadyExistsError({ shouldErrorSpan: true })
@@ -85,19 +95,22 @@ export default class UserStrikeOperations {
     const { orgId, thresholdSettings } = opts;
 
     try {
-      return await this.pgQuery
-        .updateTable('public.user_strike_thresholds')
-        .set(
-          removeUndefinedKeys({
+      const [updated] =
+        await this.pgQuery.user_strike_thresholds.updateManyAndReturn({
+          data: removeUndefinedKeys({
             threshold: thresholdSettings.threshold,
             actions: thresholdSettings.actions,
             action_parameters: thresholdSettings.actionParameters,
           }),
-        )
-        .where('id', '=', thresholdSettings.id)
-        .where('org_id', '=', orgId)
-        .returning(userStrikeThresholdSelection)
-        .executeTakeFirstOrThrow();
+          // The id column is an integer; the API carries it as a string,
+          // which Postgres coerced implicitly under Kysely.
+          where: { id: Number(thresholdSettings.id), org_id: orgId },
+          select: userStrikeThresholdPrismaSelect,
+        });
+      if (updated === undefined) {
+        throw new Error('no result');
+      }
+      return toUserStrikeThreshold(updated);
     } catch (e: unknown) {
       throw isUniqueViolationError(e)
         ? makeThresholdAlreadyExistsError({ shouldErrorSpan: true })
@@ -116,27 +129,30 @@ export default class UserStrikeOperations {
       actionParameters?: JsonObject;
     }[];
   }) {
-    await this.transactionWithRetry(async (trx) => {
-      await trx
-        .deleteFrom('public.user_strike_thresholds')
-        .where('org_id', '=', opts.orgId)
-        .execute();
+    await runInPrismaTransaction(this.pgQuery, {}, async (trx) => {
+      await trx.user_strike_thresholds.deleteMany({
+        where: { org_id: opts.orgId },
+      });
       for (const threshold of opts.thresholds) {
-        await trx
-          .insertInto('public.user_strike_thresholds')
-          .values({
+        await trx.user_strike_thresholds.upsert({
+          where: {
+            org_id_threshold: {
+              org_id: opts.orgId,
+              threshold: threshold.threshold,
+            },
+          },
+          create: {
             org_id: opts.orgId,
             threshold: threshold.threshold,
             actions: [...threshold.actions],
             action_parameters: threshold.actionParameters ?? {},
-          })
-          .onConflict((oc) =>
-            oc.columns(['org_id', 'threshold']).doUpdateSet({
-              actions: [...threshold.actions],
-              action_parameters: threshold.actionParameters ?? {},
-            }),
-          )
-          .execute();
+          },
+          update: {
+            actions: [...threshold.actions],
+            action_parameters: threshold.actionParameters ?? {},
+          },
+          select: { id: true },
+        });
       }
     });
   }
@@ -148,14 +164,13 @@ export default class UserStrikeOperations {
   }) {
     const { orgId, id, threshold } = opts;
 
-    const rowsDeleted = await this.pgQuery
-      .deleteFrom('public.user_strike_thresholds')
-      .where('org_id', '=', orgId)
-      .where('id', '=', id)
-      .where('threshold', '=', threshold)
-      .execute();
+    await this.pgQuery.user_strike_thresholds.deleteMany({
+      where: { org_id: orgId, id: Number(id), threshold },
+    });
 
-    return rowsDeleted.length === 1;
+    // Unconditional, as in the Kysely implementation, whose check on the
+    // length of `execute()`'s result (always one DeleteResult) always passed.
+    return true;
   }
 
   #getPgQuery(readFromReplica: boolean = false) {

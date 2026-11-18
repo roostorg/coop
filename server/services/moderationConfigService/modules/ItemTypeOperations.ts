@@ -1,5 +1,4 @@
 /* eslint-disable max-lines */
-import { sql, type Kysely, type Selection } from 'kysely';
 import { type ReadonlyDeep } from 'type-fest';
 import { uid } from 'uid';
 
@@ -11,11 +10,15 @@ import {
   isCoopErrorOfType,
   makeNotFoundError,
 } from '../../../utils/errors.js';
-import { isUniqueViolationError } from '../../../utils/kysely.js';
 import {
-  makeKyselyTransactionWithRetry,
-  type KyselyTransactionWithRetry,
-} from '../../../utils/kyselyTransactionWithRetry.js';
+  isPrismaTransaction,
+  Prisma,
+  type PrismaPgQueryable,
+} from '../../../storage/prisma/index.js';
+import {
+  getPgErrorDetails,
+  isUniqueViolationError,
+} from '../../../utils/kysely.js';
 import {
   __throw,
   assertUnreachable,
@@ -23,7 +26,6 @@ import {
 } from '../../../utils/misc.js';
 import { replaceEmptyStringWithNull } from '../../../utils/string.js';
 import { type CollapseCases } from '../../../utils/typescript-types.js';
-import { type ModerationConfigServicePg } from '../dbTypes.js';
 import { makeItemTypeNameAlreadyExistsError } from '../errors.js';
 import {
   type ContentItemType,
@@ -39,6 +41,7 @@ import {
   type ItemSchema,
   type ItemTypeSelector,
 } from '../types/itemTypes.js';
+import { runInPrismaTransaction } from '../prismaTransaction.js';
 import {
   assertValidItemSchema,
   assertValidItemTypeFieldRoles,
@@ -46,33 +49,46 @@ import {
   type ItemTypeRoleColumns,
 } from './itemTypeSchemaValidation.js';
 
-const versionTextExpression = sql<string>`to_char(timezone('UTC'::text, version), 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'::text)`;
-const itemTypeDbSelection = [
-  'id',
-  'name',
-  'description',
-  'kind',
-  'fields',
-  versionTextExpression.as('version'),
-  'display_name_field as displayNameField',
-  'creator_id_field as creatorIdField',
-  'thread_id_field as threadIdField',
-  'parent_id_field as parentIdField',
-  'created_at_field as createdAtField',
-  'is_deleted_field as isDeletedField',
-  'profile_icon_field as profileIconField',
-  'background_image_field as backgroundImageField',
-  'ip_address_field as ipAddressField',
-  'email_field as emailField',
-  'org_id as orgId',
-  'is_default_user as isDefaultUserType',
-] as const;
+const itemTypeVersionsSelection = Prisma.sql`
+  id,
+  name,
+  description,
+  kind::text AS kind,
+  fields,
+  to_char(timezone('UTC'::text, version), 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'::text) AS version,
+  display_name_field AS "displayNameField",
+  creator_id_field AS "creatorIdField",
+  thread_id_field AS "threadIdField",
+  parent_id_field AS "parentIdField",
+  created_at_field AS "createdAtField",
+  is_deleted_field AS "isDeletedField",
+  profile_icon_field AS "profileIconField",
+  background_image_field AS "backgroundImageField",
+  ip_address_field AS "ipAddressField",
+  email_field AS "emailField",
+  org_id AS "orgId",
+  is_default_user AS "isDefaultUserType"`;
 
-type ItemTypeDbResult = Selection<
-  ModerationConfigServicePg,
-  'public.item_type_versions',
-  (typeof itemTypeDbSelection)[number]
->;
+type ItemTypeDbResult = {
+  id: string;
+  name: string;
+  description: string | null;
+  kind: ItemTypeKind;
+  fields: ItemSchema;
+  version: string;
+  displayNameField: string | null;
+  creatorIdField: string | null;
+  threadIdField: string | null;
+  parentIdField: string | null;
+  createdAtField: string | null;
+  isDeletedField: string | null;
+  profileIconField: string | null;
+  backgroundImageField: string | null;
+  ipAddressField: string | null;
+  emailField: string | null;
+  orgId: string;
+  isDefaultUserType: boolean;
+};
 
 const itemTypeRoleColumnNames = [
   'display_name_field',
@@ -87,6 +103,10 @@ const itemTypeRoleColumnNames = [
   'email_field',
 ] as const;
 
+type ItemTypeForUpdateRow = { id: string; fields: ItemSchema } & Required<
+  ItemTypeRoleColumns
+>;
+
 export default class ItemTypeOperations {
   private readonly itemTypeVersionsCache: Cached<
     (it: {
@@ -97,27 +117,23 @@ export default class ItemTypeOperations {
   private readonly latestItemTypesCache: Cached<
     (orgId: string) => Promise<ItemType[]>
   >;
-  private readonly transactionWithRetry: KyselyTransactionWithRetry<ModerationConfigServicePg>;
 
   constructor(
-    private readonly pgQuery: Kysely<ModerationConfigServicePg>,
-    private readonly pgQueryReplica: Kysely<ModerationConfigServicePg>,
+    private readonly pgQuery: PrismaPgQueryable,
+    private readonly pgQueryReplica: PrismaPgQueryable,
   ) {
-    this.transactionWithRetry = makeKyselyTransactionWithRetry(this.pgQuery);
     // Cache of ItemTypeIdentifier -> ItemTypeVersion (which is immutable and
     // the same version/incarnation will always be returned for the same identifier)
     this.itemTypeVersionsCache = cached({
       async producer(opts) {
         const { orgId } = opts;
         const { version, id } = opts.itemTypeIdentifier;
-        const itemType = await getItemTypeVersionsBaseQuery({
+        const [itemType] = await queryItemTypeVersions({
           orgId,
           currentVersionsOnly: false,
           pgQuery,
-        })
-          .where('id', '=', id)
-          .where('version', '=', version)
-          .executeTakeFirst();
+          where: Prisma.sql`id = ${id} AND version = ${version}::timestamptz`,
+        });
 
         return itemType !== undefined
           ? dbResultToItemType(itemType, 'original')
@@ -135,12 +151,11 @@ export default class ItemTypeOperations {
 
     this.latestItemTypesCache = cached({
       async producer(orgId) {
-        const itemTypes = await pgQuery
-          .selectFrom('public.item_type_versions')
-          .select(itemTypeDbSelection)
-          .where('org_id', '=', orgId)
-          .where('is_current', '=', true)
-          .execute();
+        const itemTypes = await queryItemTypeVersions({
+          orgId,
+          currentVersionsOnly: true,
+          pgQuery,
+        });
 
         return itemTypes.map((it) => dbResultToItemType(it, 'original'));
       },
@@ -245,9 +260,8 @@ export default class ItemTypeOperations {
   }
 
   async createDefaultUserType(orgId: string) {
-    const { id: userItemTypeId } = await this.pgQuery
-      .insertInto('public.item_types')
-      .values({
+    const { id: userItemTypeId } = await this.pgQuery.item_types.create({
+      data: {
         id: uid(),
         name: 'User',
         description: 'This is the default user for the org.',
@@ -267,9 +281,9 @@ export default class ItemTypeOperations {
         background_image_field: null,
         is_deleted_field: null,
         is_default_user: true,
-      })
-      .returning('id')
-      .executeTakeFirstOrThrow();
+      },
+      select: { id: true },
+    });
 
     await this.invalidateLatestItemTypesCache(orgId);
     return (await this.latestItemTypesCache(orgId, { maxAge: 0 })).find(
@@ -517,37 +531,33 @@ export default class ItemTypeOperations {
         replaceEmptyStringWithNull(value),
       ]),
     ) as ItemTypeRoleColumns;
-    const create = async (query: Kysely<ModerationConfigServicePg>) => {
+    const create = async (query: PrismaPgQueryable) => {
       assertValidItemSchema(input.schema);
       assertValidItemTypeFieldRoles(input.schema, kind, normalizedRoleColumns);
-      await query
-        .insertInto('public.item_types')
-        .values({
+      await query.item_types.create({
+        data: {
           id: itemTypeId,
           name: input.name,
           description: input.description,
           org_id: orgId,
           kind,
-          fields: input.schema,
+          fields: input.schema as unknown as Prisma.InputJsonValue[],
           ...normalizedRoleColumns,
-        })
-        .execute();
-      const row = await getItemTypeVersionsBaseQuery({
+        },
+        select: { id: true },
+      });
+      const row = await queryCurrentItemTypeVersionOrThrow({
         orgId,
-        currentVersionsOnly: true,
         pgQuery: query,
-      })
-        .where('id', '=', itemTypeId)
-        .where('kind', '=', kind)
-        .executeTakeFirstOrThrow();
+        id: itemTypeId,
+        kind,
+      });
       return dbResultToItemType(row, 'original') as T;
     };
     try {
-      const result = this.pgQuery.isTransaction
-        ? await create(this.pgQuery)
-        : await this.transactionWithRetry(create);
+      const result = await runInPrismaTransaction(this.pgQuery, {}, create);
       await this.invalidateLatestItemTypesCache(orgId);
-      if (!this.pgQuery.isTransaction) {
+      if (!isPrismaTransaction(this.pgQuery)) {
         await this.latestItemTypesCache(orgId, { maxAge: 0 });
       }
       return result;
@@ -567,15 +577,15 @@ export default class ItemTypeOperations {
     },
     roleColumns: ItemTypeRoleColumns,
   ): Promise<T> {
-    const update = async (query: Kysely<ModerationConfigServicePg>) => {
-      const current = await query
-        .selectFrom('public.item_types')
-        .select(['id', 'fields', ...itemTypeRoleColumnNames])
-        .where('id', '=', input.id)
-        .where('org_id', '=', orgId)
-        .where('kind', '=', kind)
-        .forUpdate()
-        .executeTakeFirst();
+    const update = async (query: PrismaPgQueryable) => {
+      // prisma-raw: FOR UPDATE
+      const [current] = await query.$queryRaw<ItemTypeForUpdateRow[]>`
+        SELECT id, fields, ${Prisma.raw(itemTypeRoleColumnNames.join(', '))}
+        FROM public.item_types
+        WHERE id = ${input.id}
+          AND org_id = ${orgId}
+          AND kind = ${kind}::item_type_kind
+        FOR UPDATE`;
       if (current === undefined) {
         throw makeNotFoundError('Item type not found', {
           shouldErrorSpan: false,
@@ -588,37 +598,28 @@ export default class ItemTypeOperations {
         roleColumns,
       );
       assertValidItemTypeFieldRoles(proposedSchema, kind, proposedRoleColumns);
-      const updated = await query
-        .updateTable('public.item_types')
-        .set(
-          removeUndefinedKeys({
-            name: input.name,
-            description: replaceEmptyStringWithNull(input.description),
-            fields: proposedSchema,
-            ...roleColumns,
-          }),
-        )
-        .where('id', '=', current.id)
-        .where('org_id', '=', orgId)
-        .where('kind', '=', kind)
-        .returning('id')
-        .executeTakeFirstOrThrow();
-      const row = await getItemTypeVersionsBaseQuery({
+      const updated = await query.item_types.update({
+        where: { id: current.id, org_id: orgId, kind },
+        data: removeUndefinedKeys({
+          name: input.name,
+          description: replaceEmptyStringWithNull(input.description),
+          fields: proposedSchema as unknown as Prisma.InputJsonValue[],
+          ...roleColumns,
+        }),
+        select: { id: true },
+      });
+      const row = await queryCurrentItemTypeVersionOrThrow({
         orgId,
-        currentVersionsOnly: true,
         pgQuery: query,
-      })
-        .where('id', '=', updated.id)
-        .where('kind', '=', kind)
-        .executeTakeFirstOrThrow();
+        id: updated.id,
+        kind,
+      });
       return dbResultToItemType(row, 'original') as T;
     };
     try {
-      const result = this.pgQuery.isTransaction
-        ? await update(this.pgQuery)
-        : await this.transactionWithRetry(update);
+      const result = await runInPrismaTransaction(this.pgQuery, {}, update);
       await this.invalidateLatestItemTypesCache(orgId);
-      if (!this.pgQuery.isTransaction) {
+      if (!isPrismaTransaction(this.pgQuery)) {
         await this.latestItemTypesCache(orgId, { maxAge: 0 });
       }
       return result;
@@ -628,16 +629,16 @@ export default class ItemTypeOperations {
   }
 
   private rethrowItemTypeNameConflict(error: unknown): never {
-    const pgError = error as {
-      constraint?: string;
-      table?: string;
-      schema?: string;
-    };
+    // Prisma's error names the constraint (and sometimes the table) but not
+    // the schema; index names are unique per schema, and
+    // `public.org_id_name_key` is item_types' (org_id, name) key.
+    const pgError = getPgErrorDetails(error);
     if (
       isUniqueViolationError(error) &&
-      pgError.constraint === 'org_id_name_key' &&
-      pgError.table === 'item_types' &&
-      pgError.schema === 'public'
+      pgError?.constraint === 'org_id_name_key' &&
+      (pgError.table === undefined ||
+        pgError.table === 'item_types' ||
+        pgError.table === 'public.item_types')
     ) {
       throw makeItemTypeNameAlreadyExistsError({ shouldErrorSpan: false });
     }
@@ -651,13 +652,11 @@ export default class ItemTypeOperations {
    */
   async deleteItemType(opts: { orgId: string; itemTypeId: string }) {
     const { orgId, itemTypeId } = opts;
-    const deleteItemType = async (query: Kysely<ModerationConfigServicePg>) => {
-      const isDefaultUserType = await query
-        .selectFrom('public.item_types')
-        .where('id', '=', itemTypeId)
-        .where('is_default_user', '=', true)
-        .where('org_id', '=', orgId)
-        .executeTakeFirst();
+    const deleteItemType = async (query: PrismaPgQueryable) => {
+      const isDefaultUserType = await query.item_types.findFirst({
+        where: { id: itemTypeId, is_default_user: true, org_id: orgId },
+        select: { id: true },
+      });
 
       // We should also check if there are any outstanding jobs in MRT that
       // contain this itemType they'll get stuck because when the UI tries to
@@ -676,50 +675,46 @@ export default class ItemTypeOperations {
         });
       }
 
-      return query
-        .deleteFrom('public.item_types')
-        .where('id', '=', itemTypeId)
-        .where('org_id', '=', orgId)
-        .executeTakeFirst();
+      return query.item_types.deleteMany({
+        where: { id: itemTypeId, org_id: orgId },
+      });
     };
-    const res = this.pgQuery.isTransaction
-      ? await deleteItemType(this.pgQuery)
-      : await this.transactionWithRetry(
-          { isolationLevel: 'repeatable read' },
-          deleteItemType,
-        );
+    const res = await runInPrismaTransaction(
+      this.pgQuery,
+      { isolationLevel: 'RepeatableRead' },
+      deleteItemType,
+    );
 
-    if (!this.pgQuery.isTransaction) {
+    if (!isPrismaTransaction(this.pgQuery)) {
       await this.invalidateLatestItemTypesCache(orgId);
       await this.latestItemTypesCache(orgId, { maxAge: 0 });
     }
 
-    return res.numDeletedRows === 1n;
+    return res.count === 1;
   }
 
   async getActionItemTypeIds(opts: { orgId: string }) {
-    const rows = await this.pgQuery
-      .selectFrom('public.actions as a')
-      .innerJoin('public.item_type_versions as it', (join) =>
-        join.onRef('it.org_id', '=', 'a.org_id').on('it.is_current', '=', true)
-          .on(sql<boolean>`(
-            it.kind = ANY(a.applies_to_all_items_of_kind)
-            OR (
-              cardinality(a.applies_to_all_items_of_kind) = 0
-              AND EXISTS (
-                SELECT 1 FROM public.actions_and_item_types AS ait
-                WHERE ait.action_id = a.id AND ait.item_type_id = it.id
-              )
+    // prisma-raw: join with non-FK ON condition (= ANY(array)) + array_agg
+    const rows = await this.pgQuery.$queryRaw<
+      { actionId: string; itemTypeIds: string[] }[]
+    >`
+      SELECT a.id AS "actionId", array_agg(it.id ORDER BY it.id) AS "itemTypeIds"
+      FROM public.actions AS a
+      INNER JOIN public.item_type_versions AS it
+        ON it.org_id = a.org_id
+        AND it.is_current = true
+        AND (
+          it.kind = ANY(a.applies_to_all_items_of_kind)
+          OR (
+            cardinality(a.applies_to_all_items_of_kind) = 0
+            AND EXISTS (
+              SELECT 1 FROM public.actions_and_item_types AS ait
+              WHERE ait.action_id = a.id AND ait.item_type_id = it.id
             )
-          )`),
-      )
-      .where('a.org_id', '=', opts.orgId)
-      .select([
-        'a.id as actionId',
-        sql<string[]>`array_agg(it.id ORDER BY it.id)`.as('itemTypeIds'),
-      ])
-      .groupBy('a.id')
-      .execute();
+          )
+        )
+      WHERE a.org_id = ${opts.orgId}
+      GROUP BY a.id`;
 
     return new Map(rows.map((row) => [row.actionId, row.itemTypeIds]));
   }
@@ -737,48 +732,34 @@ export default class ItemTypeOperations {
       directives?.maxAge == null ? true : directives.maxAge > 4,
     );
 
-    const results = await makeKyselyTransactionWithRetry(pgQuery)(
-      { isolationLevel: 'repeatable read' },
+    const results = await runInPrismaTransaction(
+      pgQuery,
+      { isolationLevel: 'RepeatableRead' },
       async (trx) => {
-        const action = await trx
-          .selectFrom('public.actions')
-          // We have to select this as a text array in order for the postgres
-          // driver to properly convert it into a javascript array
-          .select((eb) =>
-            sql<('CONTENT' | 'THREAD' | 'USER')[]>`${eb.ref(
-              'applies_to_all_items_of_kind',
-            )}::text[]`.as('appliesToAllItemsOfKind'),
-          )
-          .where('id', '=', actionId)
-          .executeTakeFirst();
+        const action = await trx.actions.findUnique({
+          where: { id: actionId },
+          select: { applies_to_all_items_of_kind: true },
+        });
 
-        if (action === undefined) {
+        if (action === null) {
           return [];
         }
 
         // Reads use `trx` so they share the `repeatable read` snapshot.
-        return action.appliesToAllItemsOfKind.length > 0
-          ? getItemTypeVersionsBaseQuery({
-              orgId,
-              currentVersionsOnly: true,
-              pgQuery: trx,
-            })
-              .where('kind', 'in', action.appliesToAllItemsOfKind)
-              .execute()
-          : getItemTypeVersionsBaseQuery({
-              orgId,
-              currentVersionsOnly: true,
-              pgQuery: trx,
-            })
-              .where(
-                'id',
-                'in',
-                trx
-                  .selectFrom('public.actions_and_item_types')
-                  .select('item_type_id')
-                  .where('action_id', '=', actionId),
-              )
-              .execute();
+        const appliesToAllItemsOfKind: ItemTypeKind[] =
+          action.applies_to_all_items_of_kind;
+        return queryItemTypeVersions({
+          orgId,
+          currentVersionsOnly: true,
+          pgQuery: trx,
+          where:
+            appliesToAllItemsOfKind.length > 0
+              ? Prisma.sql`kind::text = ANY(${appliesToAllItemsOfKind}::text[])`
+              : Prisma.sql`id IN (
+                  SELECT item_type_id FROM public.actions_and_item_types
+                  WHERE action_id = ${actionId}
+                )`,
+        });
       },
     );
 
@@ -791,20 +772,15 @@ export default class ItemTypeOperations {
     readFromReplica?: boolean;
   }): Promise<ItemType[]> {
     const { orgId, ruleId, readFromReplica } = opts;
-    const itemTypes = await getItemTypeVersionsBaseQuery({
+    const itemTypes = await queryItemTypeVersions({
       orgId,
       currentVersionsOnly: true,
       pgQuery: this.#getPgQuery(readFromReplica),
-    })
-      .where(
-        'id',
-        'in',
-        this.pgQuery
-          .selectFrom('public.rules_and_item_types')
-          .select('item_type_id')
-          .where('rule_id', '=', ruleId),
-      )
-      .execute();
+      where: Prisma.sql`id IN (
+        SELECT item_type_id FROM public.rules_and_item_types
+        WHERE rule_id = ${ruleId}
+      )`,
+    });
     return itemTypes.map((itemType) => dbResultToItemType(itemType));
   }
 
@@ -820,17 +796,38 @@ export default class ItemTypeOperations {
   }
 }
 
-function getItemTypeVersionsBaseQuery(opts: {
+async function queryItemTypeVersions(opts: {
   orgId: string;
   currentVersionsOnly: boolean;
-  pgQuery: Kysely<ModerationConfigServicePg>;
+  pgQuery: PrismaPgQueryable;
+  where?: Prisma.Sql;
 }) {
-  const { orgId, currentVersionsOnly, pgQuery } = opts;
-  return pgQuery
-    .selectFrom('public.item_type_versions')
-    .select(itemTypeDbSelection)
-    .where('org_id', '=', orgId)
-    .$if(currentVersionsOnly, (qb) => qb.where('is_current', '=', true));
+  const { orgId, currentVersionsOnly, pgQuery, where } = opts;
+  // prisma-raw: µs-precision version string via to_char
+  return pgQuery.$queryRaw<ItemTypeDbResult[]>`
+    SELECT ${itemTypeVersionsSelection}
+    FROM public.item_type_versions
+    WHERE org_id = ${orgId}
+    ${currentVersionsOnly ? Prisma.sql`AND is_current = true` : Prisma.empty}
+    ${where ? Prisma.sql`AND ${where}` : Prisma.empty}`;
+}
+
+async function queryCurrentItemTypeVersionOrThrow(opts: {
+  orgId: string;
+  pgQuery: PrismaPgQueryable;
+  id: string;
+  kind: ItemTypeKind;
+}) {
+  const [row] = await queryItemTypeVersions({
+    orgId: opts.orgId,
+    currentVersionsOnly: true,
+    pgQuery: opts.pgQuery,
+    where: Prisma.sql`id = ${opts.id} AND kind = ${opts.kind}::item_type_kind`,
+  });
+  if (row === undefined) {
+    throw new Error('no result');
+  }
+  return row;
 }
 
 function dbResultToItemType<T extends ItemTypeKind>(

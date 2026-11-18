@@ -1,8 +1,11 @@
 /* eslint-disable max-lines -- action transaction and error definitions stay colocated */
-import { sql, type Kysely } from 'kysely';
 import { type JsonObject, type JsonValue, type Writable } from 'type-fest';
 import { uid } from 'uid';
 
+import {
+  Prisma,
+  type PrismaPgQueryable,
+} from '../../../storage/prisma/index.js';
 import {
   CoopError,
   ErrorType,
@@ -13,10 +16,10 @@ import {
   isUniqueViolationError,
   type FixKyselyRowCorrelation,
 } from '../../../utils/kysely.js';
-import { makeKyselyTransactionWithRetry } from '../../../utils/kyselyTransactionWithRetry.js';
 import { assertUnreachable, removeUndefinedKeys } from '../../../utils/misc.js';
 import { type ModerationConfigServicePg } from '../dbTypes.js';
 import { type Action, type CustomAction } from '../index.js';
+import { runInPrismaTransaction } from '../prismaTransaction.js';
 import { type ItemTypeKind } from '../types/itemTypes.js';
 import {
   serializeParameters,
@@ -61,6 +64,30 @@ export const BUILT_IN_ACTIONS = [
   appliesToAllItemsOfKind: readonly ItemTypeKind[];
 }[];
 
+const actionPrismaSelect = {
+  id: true,
+  name: true,
+  description: true,
+  callback_url: true,
+  callback_url_headers: true,
+  callback_url_body: true,
+  org_id: true,
+  penalty: true,
+  action_type: true,
+  applies_to_all_items_of_kind: true,
+  apply_user_strikes: true,
+  custom_mrt_api_params: true,
+} as const satisfies Prisma.actionsSelect;
+
+type ActionPrismaRow = Prisma.actionsGetPayload<{
+  select: typeof actionPrismaSelect;
+}>;
+
+type ActionDbResult = FixKyselyRowCorrelation<
+  ModerationConfigServicePg['public.actions'],
+  typeof actionDbSelection
+>;
+
 const actionDbSelection = [
   'id',
   'name',
@@ -76,37 +103,39 @@ const actionDbSelection = [
   'custom_mrt_api_params as customMrtApiParams',
 ] as const;
 
-const actionJoinDbSelection = [
-  'a.id',
-  'a.name',
-  'a.description',
-  'a.callback_url as callbackUrl',
-  'a.callback_url_headers as callbackUrlHeaders',
-  'a.callback_url_body as callbackUrlBody',
-  'a.org_id as orgId',
-  'a.penalty',
-  'a.action_type as actionType',
-  'a.applies_to_all_items_of_kind as appliesToAllItemsOfKind',
-  'a.apply_user_strikes as applyUserStrikes',
-  'a.custom_mrt_api_params as customMrtApiParams',
-] as const;
+// Prisma can't alias columns, so rename here; JSON columns come back as
+// Prisma.JsonValue and are cast to their domain types.
+function actionRowToDbResult(row: ActionPrismaRow): ActionDbResult {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    callbackUrl: row.callback_url,
+    callbackUrlHeaders: row.callback_url_headers as JsonObject | null,
+    callbackUrlBody: row.callback_url_body as JsonObject | null,
+    orgId: row.org_id,
+    penalty: row.penalty,
+    actionType: row.action_type,
+    appliesToAllItemsOfKind: row.applies_to_all_items_of_kind,
+    applyUserStrikes: row.apply_user_strikes,
+    customMrtApiParams: row.custom_mrt_api_params as JsonValue[],
+  } as ActionDbResult;
+}
 
-type ActionDbResult = FixKyselyRowCorrelation<
-  ModerationConfigServicePg['public.actions'],
-  typeof actionDbSelection
->;
+/** Prisma needs `Prisma.DbNull` to write SQL NULL into a nullable Json column. */
+function jsonOrDbNull(value: JsonObject | null): JsonObject | typeof Prisma.DbNull;
+function jsonOrDbNull(
+  value: JsonObject | null | undefined,
+): JsonObject | typeof Prisma.DbNull | undefined;
+function jsonOrDbNull(value: JsonObject | null | undefined) {
+  return value === null ? Prisma.DbNull : value;
+}
 
 export default class ActionOperations {
-  private readonly transactionWithRetry: ReturnType<
-    typeof makeKyselyTransactionWithRetry<ModerationConfigServicePg>
-  >;
-
   constructor(
-    private readonly pgQuery: Kysely<ModerationConfigServicePg>,
-    private readonly pgQueryReplica: Kysely<ModerationConfigServicePg>,
-  ) {
-    this.transactionWithRetry = makeKyselyTransactionWithRetry(this.pgQuery);
-  }
+    private readonly pgQuery: PrismaPgQueryable,
+    private readonly pgQueryReplica: PrismaPgQueryable,
+  ) {}
 
   async createAction(
     orgId: string,
@@ -130,42 +159,40 @@ export default class ActionOperations {
   ): Promise<CustomAction> {
     const parameters = validateActionParameters(input.parameters ?? null);
 
-    return this.transactionWithRetry(async (trx) => {
+    return runInPrismaTransaction(this.pgQuery, {}, async (trx) => {
       try {
         if (input.itemTypeIds !== undefined) {
           await this.#validateItemTypeIds(trx, orgId, input.itemTypeIds);
         }
-        const query = trx
-          .insertInto('public.actions')
-          .values({
-            id: uid(),
-            name: input.name,
-            description: input.description,
-            org_id: orgId,
-            action_type: input.type,
-            callback_url: input.callbackUrl,
-            callback_url_headers: input.callbackUrlHeaders,
-            callback_url_body: input.callbackUrlBody,
-            penalty: 'NONE',
-            apply_user_strikes: input.applyUserStrikes ?? false,
-            custom_mrt_api_params: serializeParameters(parameters),
-            updated_at: new Date(),
-          })
-          .returning(actionDbSelection);
-
-        const actionRow =
-          (await query.executeTakeFirstOrThrow()) as ActionDbResult;
+        const actionRow = actionRowToDbResult(
+          await trx.actions.create({
+            data: {
+              id: uid(),
+              name: input.name,
+              description: input.description,
+              org_id: orgId,
+              action_type: input.type,
+              callback_url: input.callbackUrl,
+              callback_url_headers: jsonOrDbNull(input.callbackUrlHeaders),
+              callback_url_body: jsonOrDbNull(input.callbackUrlBody),
+              penalty: 'NONE',
+              apply_user_strikes: input.applyUserStrikes ?? false,
+              custom_mrt_api_params: serializeParameters(
+                parameters,
+              ) as Prisma.InputJsonValue[],
+              updated_at: new Date(),
+            },
+            select: actionPrismaSelect,
+          }),
+        );
 
         if (input.itemTypeIds !== undefined && input.itemTypeIds.length > 0) {
-          await trx
-            .insertInto('public.actions_and_item_types')
-            .values(
-              input.itemTypeIds.map((item_type_id) => ({
-                action_id: actionRow.id,
-                item_type_id,
-              })),
-            )
-            .execute();
+          await trx.actions_and_item_types.createMany({
+            data: input.itemTypeIds.map((item_type_id) => ({
+              action_id: actionRow.id,
+              item_type_id,
+            })),
+          });
         }
 
         const action = this.#dbResultToAction(actionRow);
@@ -182,16 +209,14 @@ export default class ActionOperations {
 
   // Idempotent: existing built-ins are detected by (org_id, action_type).
   async upsertBuiltInActions(orgId: string): Promise<readonly Action[]> {
-    return this.transactionWithRetry(async (trx) => {
-      const existingByType = new Set(
+    return runInPrismaTransaction(this.pgQuery, {}, async (trx) => {
+      const existingByType = new Set<Action['actionType']>(
         (
-          (await trx
-            .selectFrom('public.actions')
-            .select('action_type as actionType')
-            .where('org_id', '=', orgId)
-            .where('action_type', '!=', 'CUSTOM_ACTION')
-            .execute()) as { actionType: Action['actionType'] }[]
-        ).map((row) => row.actionType),
+          await trx.actions.findMany({
+            select: { action_type: true },
+            where: { org_id: orgId, action_type: { not: 'CUSTOM_ACTION' } },
+          })
+        ).map((row) => row.action_type),
       );
 
       const toInsert = BUILT_IN_ACTIONS.filter(
@@ -203,8 +228,8 @@ export default class ActionOperations {
         org_id: orgId,
         action_type: b.actionType,
         callback_url: null,
-        callback_url_headers: null,
-        callback_url_body: null,
+        callback_url_headers: Prisma.DbNull,
+        callback_url_body: Prisma.DbNull,
         penalty: 'NONE' as const,
         apply_user_strikes: false,
         applies_to_all_items_of_kind: [...b.appliesToAllItemsOfKind],
@@ -212,21 +237,17 @@ export default class ActionOperations {
       }));
 
       if (toInsert.length > 0) {
-        await trx
-          .insertInto('public.actions')
-          .values(toInsert)
-          .onConflict((oc) => oc.doNothing())
-          .execute();
+        await trx.actions.createMany({ data: toInsert, skipDuplicates: true });
       }
 
-      const refreshed = (await trx
-        .selectFrom('public.actions')
-        .select(actionDbSelection)
-        .where('org_id', '=', orgId)
-        .where('action_type', '!=', 'CUSTOM_ACTION')
-        .execute()) as ActionDbResult[];
+      const refreshed = await trx.actions.findMany({
+        select: actionPrismaSelect,
+        where: { org_id: orgId, action_type: { not: 'CUSTOM_ACTION' } },
+      });
 
-      return refreshed.map((row) => this.#dbResultToAction(row));
+      return refreshed.map((row) =>
+        this.#dbResultToAction(actionRowToDbResult(row)),
+      );
     });
   }
 
@@ -246,18 +267,16 @@ export default class ActionOperations {
     itemTypeIds?: readonly string[] | undefined;
   }): Promise<CustomAction> {
     const { orgId, actionId, patch, itemTypeIds } = opts;
-    return this.transactionWithRetry(async (trx) => {
-      const existing = (await trx
-        .selectFrom('public.actions')
-        .select(actionDbSelection)
-        .where('id', '=', actionId)
-        .where('org_id', '=', orgId)
-        .where('action_type', '=', 'CUSTOM_ACTION')
-        .executeTakeFirst()) as ActionDbResult | undefined;
+    return runInPrismaTransaction(this.pgQuery, {}, async (trx) => {
+      const existingRow = await trx.actions.findFirst({
+        select: actionPrismaSelect,
+        where: { id: actionId, org_id: orgId, action_type: 'CUSTOM_ACTION' },
+      });
 
-      if (existing == null) {
+      if (existingRow == null) {
         throw makeNotFoundError('Action not found', { shouldErrorSpan: true });
       }
+      const existing = actionRowToDbResult(existingRow);
 
       const validatedParameters =
         patch.parameters === undefined
@@ -272,13 +291,15 @@ export default class ActionOperations {
         name: patch.name,
         description: patch.description,
         callback_url: patch.callbackUrl,
-        callback_url_headers: patch.callbackUrlHeaders,
-        callback_url_body: patch.callbackUrlBody,
+        callback_url_headers: jsonOrDbNull(patch.callbackUrlHeaders),
+        callback_url_body: jsonOrDbNull(patch.callbackUrlBody),
         apply_user_strikes: patch.applyUserStrikes,
         custom_mrt_api_params:
           validatedParameters === undefined
             ? undefined
-            : serializeParameters(validatedParameters),
+            : (serializeParameters(
+                validatedParameters,
+              ) as Prisma.InputJsonValue[]),
       });
       const hasUserFields = Object.keys(setPayload).length > 0;
       const touchesJunction = itemTypeIds !== undefined;
@@ -291,43 +312,32 @@ export default class ActionOperations {
 
       try {
         if (hasUserFields) {
-          await trx
-            .updateTable('public.actions')
-            .set({
-              ...setPayload,
-              updated_at: new Date(),
-            })
-            .where('id', '=', actionId)
-            .where('org_id', '=', orgId)
-            .execute();
+          await trx.actions.updateMany({
+            data: { ...setPayload, updated_at: new Date() },
+            where: { id: actionId, org_id: orgId },
+          });
         }
 
         if (itemTypeIds !== undefined) {
-          await trx
-            .deleteFrom('public.actions_and_item_types')
-            .where('action_id', '=', actionId)
-            .execute();
+          await trx.actions_and_item_types.deleteMany({
+            where: { action_id: actionId },
+          });
           if (itemTypeIds.length > 0) {
-            await trx
-              .insertInto('public.actions_and_item_types')
-              .values(
-                itemTypeIds.map((item_type_id) => ({
-                  action_id: actionId,
-                  item_type_id,
-                })),
-              )
-              .execute();
+            await trx.actions_and_item_types.createMany({
+              data: itemTypeIds.map((item_type_id) => ({
+                action_id: actionId,
+                item_type_id,
+              })),
+            });
           }
         }
 
-        const refreshed = (await trx
-          .selectFrom('public.actions')
-          .select(actionDbSelection)
-          .where('id', '=', actionId)
-          .where('org_id', '=', orgId)
-          .executeTakeFirstOrThrow()) as ActionDbResult;
+        const refreshed = await trx.actions.findFirstOrThrow({
+          select: actionPrismaSelect,
+          where: { id: actionId, org_id: orgId },
+        });
 
-        const action = this.#dbResultToAction(refreshed);
+        const action = this.#dbResultToAction(actionRowToDbResult(refreshed));
         assertCustomAction(action);
         return action;
       } catch (e: unknown) {
@@ -341,32 +351,25 @@ export default class ActionOperations {
 
   async deleteCustomAction(opts: { orgId: string; actionId: string }) {
     const { orgId, actionId } = opts;
-    return this.transactionWithRetry(async (trx) => {
-      const row = await trx
-        .selectFrom('public.actions')
-        .select('id')
-        .where('id', '=', actionId)
-        .where('org_id', '=', orgId)
-        .where('action_type', '=', 'CUSTOM_ACTION')
-        .executeTakeFirst();
+    return runInPrismaTransaction(this.pgQuery, {}, async (trx) => {
+      const row = await trx.actions.findFirst({
+        select: { id: true },
+        where: { id: actionId, org_id: orgId, action_type: 'CUSTOM_ACTION' },
+      });
 
       if (row == null) {
         return false;
       }
 
-      await trx
-        .deleteFrom('public.rules_and_actions')
-        .where('action_id', '=', actionId)
-        .execute();
-      await trx
-        .deleteFrom('public.actions_and_item_types')
-        .where('action_id', '=', actionId)
-        .execute();
-      await trx
-        .deleteFrom('public.actions')
-        .where('id', '=', actionId)
-        .where('org_id', '=', orgId)
-        .execute();
+      await trx.rules_and_actions.deleteMany({
+        where: { action_id: actionId },
+      });
+      await trx.actions_and_item_types.deleteMany({
+        where: { action_id: actionId },
+      });
+      await trx.actions.deleteMany({
+        where: { id: actionId, org_id: orgId },
+      });
 
       return true;
     });
@@ -382,29 +385,25 @@ export default class ActionOperations {
     const pgQuery = this.#getPgQuery(readFromReplica);
 
     const [viaJunction, viaAppliesAll] = await Promise.all([
-      pgQuery
-        .selectFrom('public.actions_and_item_types as ait')
-        .innerJoin('public.actions as a', 'a.id', 'ait.action_id')
-        .select(actionJoinDbSelection)
-        .where('ait.item_type_id', '=', itemTypeId)
-        .where('a.org_id', '=', orgId)
-        .execute(),
-      pgQuery
-        .selectFrom('public.actions as a')
-        .select(actionJoinDbSelection)
-        .where('a.org_id', '=', orgId)
-        .where(
-          sql<boolean>`${itemTypeKind}::text = ANY(a.applies_to_all_items_of_kind::text[])`,
-        )
-        .execute(),
+      pgQuery.actions.findMany({
+        select: actionPrismaSelect,
+        where: {
+          org_id: orgId,
+          actions_and_item_types: { some: { item_type_id: itemTypeId } },
+        },
+      }),
+      pgQuery.actions.findMany({
+        select: actionPrismaSelect,
+        where: {
+          org_id: orgId,
+          applies_to_all_items_of_kind: { has: itemTypeKind },
+        },
+      }),
     ]);
 
-    const junctionRows = viaJunction as ActionDbResult[];
-    const appliesAllRows = viaAppliesAll as ActionDbResult[];
-
     const byId = new Map<string, ActionDbResult>();
-    for (const row of [...junctionRows, ...appliesAllRows]) {
-      byId.set(row.id, row);
+    for (const row of [...viaJunction, ...viaAppliesAll]) {
+      byId.set(row.id, actionRowToDbResult(row));
     }
     return [...byId.values()].map((it) => this.#dbResultToAction(it));
   }
@@ -416,15 +415,15 @@ export default class ActionOperations {
   }) {
     const { ids, orgId, readFromReplica } = opts;
     const pgQuery = this.#getPgQuery(readFromReplica);
-    const query = pgQuery
-      .selectFrom('public.actions')
-      .select(actionDbSelection)
-      .where('org_id', '=', orgId)
-      .$if(ids !== undefined, (qb) => qb.where('id', 'in', ids!));
+    const results = await pgQuery.actions.findMany({
+      select: actionPrismaSelect,
+      where: {
+        org_id: orgId,
+        ...(ids !== undefined ? { id: { in: [...ids] } } : {}),
+      },
+    });
 
-    const results = (await query.execute()) as ActionDbResult[];
-
-    return results.map((it) => this.#dbResultToAction(it));
+    return results.map((it) => this.#dbResultToAction(actionRowToDbResult(it)));
   }
 
   // Returns each action attached to a rule paired with the parameter values
@@ -435,18 +434,15 @@ export default class ActionOperations {
     readFromReplica?: boolean;
   }): Promise<readonly { action: Action; parameters: JsonObject }[]> {
     const { orgId, ruleId, readFromReplica } = opts;
-    const results = (await this.#getPgQuery(readFromReplica)
-      .selectFrom('public.rules_and_actions as raa')
-      .innerJoin('public.actions as a', 'a.id', 'raa.action_id')
-      .select([...actionJoinDbSelection, 'raa.action_parameters'])
-      .where('raa.rule_id', '=', ruleId)
-      .where('a.org_id', '=', orgId)
-      .execute()) as (ActionDbResult & {
-      action_parameters: JsonObject | null;
-    })[];
+    const results = await this.#getPgQuery(
+      readFromReplica,
+    ).rules_and_actions.findMany({
+      select: { action_parameters: true, actions: { select: actionPrismaSelect } },
+      where: { rule_id: ruleId, actions: { org_id: orgId } },
+    });
     return results.map((it) => ({
-      action: this.#dbResultToAction(it),
-      parameters: it.action_parameters ?? {},
+      action: this.#dbResultToAction(actionRowToDbResult(it.actions)),
+      parameters: (it.action_parameters as JsonObject | null) ?? {},
     }));
   }
 
@@ -495,7 +491,7 @@ export default class ActionOperations {
   }
 
   async #validateItemTypeIds(
-    trx: Kysely<ModerationConfigServicePg>,
+    trx: PrismaPgQueryable,
     orgId: string,
     itemTypeIds: readonly string[],
   ) {
@@ -505,18 +501,15 @@ export default class ActionOperations {
     }
     if (itemTypeIds.length === 0) return;
 
-    const matchingRows = await trx
-      .selectFrom('public.item_types')
-      .select('id')
-      .where('org_id', '=', orgId)
-      .where('id', 'in', itemTypeIds)
-      .execute();
+    const matchingRows = await trx.item_types.findMany({
+      select: { id: true },
+      where: { org_id: orgId, id: { in: [...itemTypeIds] } },
+    });
     if (matchingRows.length !== itemTypeIds.length) {
       throw makeInvalidActionItemTypeIdsError({ shouldErrorSpan: true });
     }
   }
 }
-
 export type ActionErrorType =
   'ActionNameExistsError' | 'InvalidActionItemTypeIdsError';
 
