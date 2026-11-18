@@ -73,6 +73,12 @@ function rejectUnsupportedTransactionControl(
   );
 }
 
+function isAppSavepointCommand(normalized: string): boolean {
+  return /^(savepoint|release savepoint|rollback to savepoint) sp\d+$/.test(
+    normalized,
+  );
+}
+
 export function createTransactionalTestDb(
   config: pg.ClientConfig,
 ): TransactionalTestDb {
@@ -127,10 +133,16 @@ export function createTransactionalTestDb(
       typeof text === 'string'
         ? text.trim().toLowerCase().replace(/;/g, '')
         : '';
-    if (normalized === 'begin' || normalized.startsWith('start transaction')) {
+    if (
+      normalized === 'begin' ||
+      normalized.startsWith('begin ') ||
+      normalized.startsWith('start transaction')
+    ) {
       // A BEGIN that arrives while a transaction already holds the connection
       // is a *nested* transaction (Kysely issues a plain `begin` for nesting,
-      // not a savepoint).
+      // not a savepoint). Drizzle's BEGIN carries its isolation level
+      // (`begin isolation level ...`); like Kysely's, it's dropped, since a
+      // savepoint can't change the outer transaction's isolation level.
       if (txMutex !== null) {
         return openSavepoint(); // → SAVEPOINT coop_test_sp_<new depth>
       }
@@ -170,6 +182,15 @@ export function createTransactionalTestDb(
         endTx = null;
       }
       return result;
+    }
+
+    // Drizzle runs nested transactions as its own named savepoints (`sp1`,
+    // ...). Inside an application transaction those nest within our savepoint,
+    // so they can go straight to the connection.
+    if (txMutex !== null && isAppSavepointCommand(normalized)) {
+      return values === undefined
+        ? client.query(textOrConfig)
+        : client.query(textOrConfig, values);
     }
 
     rejectUnsupportedTransactionControl(normalized, text);

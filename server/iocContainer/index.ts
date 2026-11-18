@@ -249,6 +249,7 @@ import {
   type IDataWarehouse,
   type IDataWarehouseDialect,
 } from '../storage/dataWarehouse/index.js';
+import { makeDrizzle, type CoopDb } from '../storage/postgres/drizzle.js';
 import { cached, type Cached } from '../utils/caching.js';
 import { CoopMeter } from '../utils/CoopMeter.js';
 import {
@@ -340,6 +341,13 @@ export interface Dependencies {
   // non-Kysely Postgres consumers (e.g., the express-session store) can
   // share the same pool instead of opening their own.
   KyselyPgPool: pg.Pool;
+  // Pool for the read replica, shared by KyselyPgReadReplica and
+  // DrizzlePgReadReplica.
+  PgReadReplicaPool: pg.Pool;
+
+  // Drizzle instances over the same pools as KyselyPg/KyselyPgReadReplica.
+  DrizzlePg: CoopDb;
+  DrizzlePgReadReplica: CoopDb;
 
   // Similar to our Kysely services, we register the services as Scylla<any> so
   // that each dependent service can type its arg more specifically with the set
@@ -606,21 +614,35 @@ export default async function getBottle(
       }),
   );
 
+  bottle.factory('PgReadReplicaPool', () =>
+    createPgPool({
+      ...getPgMasterConnectionInfo(),
+      max: parseInt(process.env.DATABASE_READ_POOL_MAX ?? '150'),
+      host: safeGetEnvVar('DATABASE_READ_ONLY_HOST'),
+    }),
+  );
+
   bottle.factory(
     'KyselyPgReadReplica',
-    () =>
+    (container) =>
       new Kysely<CombinedPg>({
         dialect: new PostgresDialect({
           controlClient: pg.Client,
-          pool: createPgPool({
-            ...getPgMasterConnectionInfo(),
-            max: parseInt(process.env.DATABASE_READ_POOL_MAX ?? '150'),
-            host: safeGetEnvVar('DATABASE_READ_ONLY_HOST'),
-          }),
+          pool: container.PgReadReplicaPool,
           cursor: Cursor,
         }),
         log: kyselyLogLevels,
       }),
+  );
+
+  const logDrizzleQueries = isEnvTrue('DATABASE_PRINT_LOGS');
+  bottle.factory('DrizzlePg', (container) =>
+    makeDrizzle(container.KyselyPgPool, { logQueries: logDrizzleQueries }),
+  );
+  bottle.factory('DrizzlePgReadReplica', (container) =>
+    makeDrizzle(container.PgReadReplicaPool, {
+      logQueries: logDrizzleQueries,
+    }),
   );
 
   // AUTH-enabled Redis (e.g. ElastiCache with an auth token) rejects every
@@ -1813,8 +1835,12 @@ export default async function getBottle(
                 }[CloseMethodName];
               }[keyof Dependencies]
             >,
-            // Services that don't need cleanup
-            'UserStatisticsService' | 'HMAHashBankService'
+            // Services that don't need cleanup. The Kysely instances only
+            // own their pools, which are shut down directly.
+            | 'UserStatisticsService'
+            | 'HMAHashBankService'
+            | 'KyselyPg'
+            | 'KyselyPgReadReplica'
           >;
 
           // This will be a type error if we forgot to close something.
@@ -1837,8 +1863,10 @@ export default async function getBottle(
             'DataWarehouseDialect',
             'DataWarehouseAnalytics',
             'ReportingAnalyticsAdapter',
-            'KyselyPg',
-            'KyselyPgReadReplica',
+            // The Kysely and Drizzle instances hold no resources beyond these
+            // shared pools, so shutting down the pools covers both.
+            'KyselyPgPool',
+            'PgReadReplicaPool',
             'getEnabledRulesForItemTypeEventuallyConsistent',
             'getPoliciesForRulesEventuallyConsistent',
             'getActionsForRuleEventuallyConsistent',
@@ -1905,6 +1933,8 @@ export default async function getBottle(
                         throw err;
                       }
                     }
+                  } else if ('end' in it && typeof it.end === 'function') {
+                    await it.end();
                   } else if (
                     'flushPendingWrites' in it &&
                     typeof it.flushPendingWrites === 'function'
