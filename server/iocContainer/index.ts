@@ -1018,10 +1018,6 @@ export default async function getBottle(
       container.IORedis,
       container.RuleEvaluator,
       container.RoutingRuleExecutionLogger,
-      // Still needed by QueueOperations, JobRouting and AppealsJobRouting
-      // until they are ported.
-      container.KyselyPg,
-      container.KyselyPgReadReplica,
       container.PrismaPg,
       container.PrismaPgReadReplica,
       container.UserStatisticsService,

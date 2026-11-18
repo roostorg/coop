@@ -17,6 +17,7 @@ import {
 import { type ItemSubmissionWithTypeIdentifier } from '../../itemProcessingService/makeItemSubmissionWithTypeIdentifier.js';
 import { type ItemType } from '../../moderationConfigService/index.js';
 import { type NcmecReportingServicePg } from '../../ncmecService/dbTypes.js';
+import { type ManualReviewToolServicePg } from '../dbTypes.js';
 import {
   NCMEC_ESCALATION_SKIP_WARNING,
   type ManualReviewDecisionComponent,
@@ -68,7 +69,7 @@ const testWithFixture = () =>
     });
 
     const mrtService = container.ManualReviewToolService;
-    const mrtPg = mrtService['pgQuery'];
+    const mrtPg = container.KyselyPg as Kysely<ManualReviewToolServicePg>;
     const queueOps = mrtService['queueOps'];
     const ncmecPg = container.KyselyPg as Kysely<NcmecReportingServicePg>;
 

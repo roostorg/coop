@@ -428,12 +428,12 @@ describe('Manual Review Tool Service', () => {
           },
         });
 
-        const row = await mrtService['pgQuery']
-          .selectFrom('manual_review_tool.manual_review_decisions')
-          .where('id', '=', jobIdToGuid(dequeuedJob.job.id))
-          .where('org_id', '=', orgId)
-          .select(['reviewer_id', 'assigned_at'])
-          .executeTakeFirst();
+        const row = await mrtService[
+          'prisma'
+        ].manual_review_decisions.findFirst({
+          where: { id: jobIdToGuid(dequeuedJob.job.id), org_id: orgId },
+          select: { reviewer_id: true, assigned_at: true },
+        });
 
         expect(row?.reviewer_id).toBe(AUTOMATED_DECISION_REVIEWER_ID);
         expect(row?.assigned_at).toBeNull();

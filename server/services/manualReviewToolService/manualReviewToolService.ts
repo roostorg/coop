@@ -2,7 +2,6 @@
 
 import { SpanStatusCode } from '@opentelemetry/api';
 import { type ItemIdentifier } from '@roostorg/coop-types';
-import { type Kysely } from 'kysely';
 import _ from 'lodash';
 import { type Opaque } from 'type-fest';
 
@@ -44,7 +43,6 @@ import {
 import {
   type ClearReportsDisposition,
   type ClearReportsScope,
-  type ManualReviewToolServicePg,
 } from './dbTypes.js';
 import AppealsJobRouting from './modules/AppealsJobRouting.js';
 import ClaimOperations from './modules/ClaimOperations.js';
@@ -349,8 +347,6 @@ export class ManualReviewToolService {
     readonly redis: Dependencies['IORedis'],
     readonly ruleEvaluator: Dependencies['RuleEvaluator'],
     readonly routingRuleExecutionLogger: Dependencies['RoutingRuleExecutionLogger'],
-    readonly pgQuery: Kysely<ManualReviewToolServicePg>,
-    readonly pgQueryReadReplica: Kysely<ManualReviewToolServicePg>,
     readonly prisma: PrismaPgClient,
     readonly prismaReadReplica: PrismaPgClient,
     readonly userStatisticsService: UserStatisticsService,
