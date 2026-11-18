@@ -106,13 +106,12 @@ export default async function makeWWWServer(deps: Dependencies) {
     nestApp.get(PASSPORT),
   );
   for (const middleware of sessionMiddleware) {
-    nestApp.use(
-      (
-        req: express.Request,
-        res: express.Response,
-        next: express.NextFunction,
-      ) => (req.path === '/api/v1/ready' ? next() : middleware(req, res, next)),
-    );
+    const skipHealthCheck: express.RequestHandler = (req, res, next) =>
+      req.path === '/api/v1/ready' ? next() : middleware(req, res, next);
+    // Keep the inner middleware's name (session, initialize, authenticate):
+    // OpenTelemetry's Express instrumentation names spans after it.
+    Object.defineProperty(skipHealthCheck, 'name', { value: middleware.name });
+    nestApp.use(skipHealthCheck);
   }
 
   await nestApp.init();
