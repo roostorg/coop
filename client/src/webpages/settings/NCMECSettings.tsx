@@ -89,7 +89,7 @@ type NcmecSettings = {
   contactPersonPhone: string;
   mediaReviewRequirement: GQLNcmecMediaReviewRequirement;
   minMediaToReview: string;
-  reportedMediaHashBankId: string;
+  reportedMediaHashBankId: number | null;
 };
 
 export default function NCMECSettings() {
@@ -111,7 +111,7 @@ export default function NCMECSettings() {
     contactPersonPhone: '',
     mediaReviewRequirement: GQLNcmecMediaReviewRequirement.All,
     minMediaToReview: '1',
-    reportedMediaHashBankId: '',
+    reportedMediaHashBankId: null,
   });
 
   const { loading, error, data } = useGQLNcmecOrgSettingsQuery({
@@ -162,7 +162,7 @@ export default function NCMECSettings() {
           GQLNcmecMediaReviewRequirement.All,
         minMediaToReview: String(data.ncmecOrgSettings.minMediaToReview ?? 1),
         reportedMediaHashBankId:
-          data.ncmecOrgSettings.reportedMediaHashBankId?.toString() ?? '',
+          data.ncmecOrgSettings.reportedMediaHashBankId ?? null,
       });
     }
   }, [data?.ncmecOrgSettings]);
@@ -251,9 +251,7 @@ export default function NCMECSettings() {
           contactPersonPhone: settings.contactPersonPhone || null,
           mediaReviewRequirement: settings.mediaReviewRequirement,
           minMediaToReview: isMinimumPolicy ? parsedMinMedia : null,
-          reportedMediaHashBankId: settings.reportedMediaHashBankId
-            ? Number(settings.reportedMediaHashBankId)
-            : null,
+          reportedMediaHashBankId: settings.reportedMediaHashBankId,
         },
       },
     });
@@ -598,11 +596,12 @@ export default function NCMECSettings() {
               Hash bank for reported media
             </Label>
             <Select
-              value={settings.reportedMediaHashBankId || '__none__'}
+              value={settings.reportedMediaHashBankId?.toString() ?? '__none__'}
               onValueChange={(value) =>
                 setSettings({
                   ...settings,
-                  reportedMediaHashBankId: value === '__none__' ? '' : value,
+                  reportedMediaHashBankId:
+                    value === '__none__' ? null : Number(value),
                 })
               }
             >

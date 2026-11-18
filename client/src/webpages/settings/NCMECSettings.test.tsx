@@ -6,6 +6,7 @@ import {
 } from '@/graphql/generated';
 import { MockedProvider, MockedResponse } from '@apollo/client/testing';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { GraphQLError } from 'graphql';
 import { useState } from 'react';
 import { HelmetProvider } from 'react-helmet-async';
@@ -18,6 +19,21 @@ const { toast } = vi.hoisted(() => ({
   toast: { success: vi.fn(), warning: vi.fn(), error: vi.fn() },
 }));
 vi.mock('@/coop-ui/Toast', () => ({ toast }));
+
+// jsdom implements neither the Pointer Events capture API nor
+// `scrollIntoView`, which the Radix select calls when it opens.
+beforeAll(() => {
+  window.HTMLElement.prototype.hasPointerCapture ||= () => false;
+  window.HTMLElement.prototype.releasePointerCapture ||= () => {};
+  window.HTMLElement.prototype.setPointerCapture ||= () => {};
+  window.HTMLElement.prototype.scrollIntoView ||= () => {};
+});
+
+const reportedCsamBank = {
+  __typename: 'HashBank',
+  id: '7',
+  name: 'Reported CSAM',
+};
 
 const savedSettings = {
   __typename: 'NcmecOrgSettings',
@@ -38,10 +54,13 @@ const savedSettings = {
   contactPersonPhone: null,
   mediaReviewRequirement: GQLNcmecMediaReviewRequirement.All,
   minMediaToReview: null,
-  reportedMediaHashBankId: null,
+  reportedMediaHashBankId: null as number | null,
 };
 
-function settingsQueryMock(enabled: boolean): MockedResponse {
+function settingsQueryMock(
+  enabled: boolean,
+  settings = savedSettings,
+): MockedResponse {
   return {
     request: { query: GQLNcmecOrgSettingsDocument },
     result: {
@@ -50,8 +69,8 @@ function settingsQueryMock(enabled: boolean): MockedResponse {
           __typename: 'User',
           permissions: [GQLUserPermission.ManageOrg],
         },
-        ncmecOrgSettings: enabled ? savedSettings : null,
-        hashBanks: [],
+        ncmecOrgSettings: enabled ? settings : null,
+        hashBanks: [reportedCsamBank],
         myOrg: {
           __typename: 'Org',
           hasNCMECReportingEnabled: enabled,
@@ -62,8 +81,11 @@ function settingsQueryMock(enabled: boolean): MockedResponse {
   };
 }
 
-function updateMock(result: MockedResponse['result']): MockedResponse {
-  const { __typename, ...input } = savedSettings;
+function updateMock(
+  result: MockedResponse['result'],
+  settings = savedSettings,
+): MockedResponse {
+  const { __typename, ...input } = settings;
   return {
     request: { query: GQLUpdateNcmecOrgSettingsDocument, variables: { input } },
     result,
@@ -180,6 +202,45 @@ describe('NCMECSettings', () => {
     );
     expect(screen.getByLabelText(/legal url/i)).toHaveValue(
       savedSettings.legalUrl,
+    );
+  });
+
+  it('saves the picked hash bank by its numeric id and shows it after navigating back', async () => {
+    const withBank = { ...savedSettings, reportedMediaHashBankId: 7 };
+    renderPage([
+      settingsQueryMock(true),
+      updateMock(
+        {
+          data: {
+            updateNcmecOrgSettings: {
+              __typename: 'UpdateNcmecOrgSettingsResponse',
+              success: true,
+            },
+          },
+        },
+        withBank,
+      ),
+      settingsQueryMock(true, withBank),
+    ]);
+
+    userEvent.click(
+      await screen.findByLabelText(/hash bank for reported media/i),
+    );
+    userEvent.click(
+      await screen.findByRole('option', { name: reportedCsamBank.name }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Update Settings' }));
+
+    await waitFor(() => expect(toast.success).toHaveBeenCalled());
+    expect(toast.error).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'toggle page' }));
+    fireEvent.click(screen.getByRole('button', { name: 'toggle page' }));
+
+    await waitFor(() =>
+      expect(
+        screen.getByLabelText(/hash bank for reported media/i),
+      ).toHaveTextContent(reportedCsamBank.name),
     );
   });
 });
