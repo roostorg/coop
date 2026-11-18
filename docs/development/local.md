@@ -182,12 +182,12 @@ View traces at [localhost:16686](http://localhost:16686).
 
 ### Access points
 
-| Service    | URL                           |
-| ---------- | ----------------------------- |
-| Client     | http://localhost:3000         |
-| API Server | http://localhost:8080         |
-| GraphQL    | http://localhost:8080/graphql |
-| Jaeger UI  | http://localhost:16686        |
+| Service    | URL                                  |
+| ---------- | ------------------------------------ |
+| Client     | http://localhost:3000                |
+| API Server | http://localhost:8080                |
+| GraphQL    | http://localhost:8080/api/v1/graphql |
+| Jaeger UI  | http://localhost:16686               |
 
 ## Testing
 

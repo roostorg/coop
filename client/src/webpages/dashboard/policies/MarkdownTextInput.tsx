@@ -16,8 +16,14 @@ export default function MarkdownTextInput(props: {
   const lastText = useRef(text);
   const editor: Editor | null = useEditor(
     {
+      shouldRerenderOnTransaction: true,
       extensions: [
         StarterKit.configure({
+          link: false,
+          underline: false,
+          listKeymap: false,
+          trailingNode: false,
+          codeBlock: { exitOnArrowUp: false },
           bulletList: {
             keepMarks: true,
             keepAttributes: false, // TODO : Making this as `false` becase marks are not preserved when I try to preserve attrs, awaiting a bit of help
@@ -85,8 +91,9 @@ export default function MarkdownTextInput(props: {
     // NB: Need this due to weird behavior in tiptap editor.
     // See: https://github.com/ueberdosis/tiptap/issues/4167
     const { from, to } = editor.state.selection;
-    editor.commands.setContent(text ?? '', false, {
-      preserveWhitespace: 'full',
+    editor.commands.setContent(text ?? '', {
+      emitUpdate: false,
+      parseOptions: { preserveWhitespace: 'full' },
     });
     editor.commands.setTextSelection({ from, to });
     // eslint-disable-next-line react-hooks/exhaustive-deps

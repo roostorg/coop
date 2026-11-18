@@ -25,9 +25,11 @@ type Harness = {
   };
   navigate: ReturnType<typeof vi.fn>;
   dequeue: ReturnType<typeof vi.fn>;
+  toastInfo: ReturnType<typeof vi.fn>;
   submit: ReturnType<typeof vi.fn>;
   queryData: GQLManualReviewJobInfoQuery;
   dequeueData: DequeueResponse | undefined;
+  dequeueError: Error | undefined;
   nextResult: DequeueResponse;
   onDequeue: ((data: DequeueResponse) => void) | undefined;
   onSubmit: ((data: SubmitResponse) => Promise<void>) | undefined;
@@ -37,12 +39,18 @@ const harness = vi.hoisted<Harness>(() => ({
   route: { queueId: 'queue-1', jobId: 'a', lockToken: 'reviewer-1' },
   navigate: vi.fn(),
   dequeue: vi.fn(),
+  toastInfo: vi.fn(),
   submit: vi.fn(),
   queryData: undefined as unknown as GQLManualReviewJobInfoQuery,
   dequeueData: undefined,
+  dequeueError: undefined,
   nextResult: { __typename: 'Mutation', dequeueManualReviewJob: null },
   onDequeue: undefined,
   onSubmit: undefined,
+}));
+
+vi.mock('@/coop-ui/Toast', () => ({
+  toast: { info: harness.toastInfo, warning: vi.fn() },
 }));
 
 vi.mock('react-router', async (importOriginal) => ({
@@ -64,7 +72,14 @@ vi.mock('@/graphql/generated', async (importOriginal) => ({
     onCompleted: NonNullable<Harness['onDequeue']>;
   }) {
     harness.onDequeue = options.onCompleted;
-    return [harness.dequeue, { data: harness.dequeueData, loading: false }];
+    return [
+      harness.dequeue,
+      {
+        data: harness.dequeueData,
+        loading: false,
+        error: harness.dequeueError,
+      },
+    ];
   },
   useGQLSubmitManualReviewDecisionMutation(options: {
     onCompleted: NonNullable<Harness['onSubmit']>;
@@ -80,7 +95,12 @@ vi.mock('./v2/useEnqueueActionGate', () => ({
   useEnqueueActionGate: () => ({}),
 }));
 vi.mock('./v2/ncmec/NCMECReviewUser', () => ({
-  default: () => <div>Active review</div>,
+  default: ({ skipToNextJob }: { skipToNextJob: () => Promise<void> }) => (
+    <div>
+      Active review
+      <button onClick={skipToNextJob}>Skip</button>
+    </div>
+  ),
 }));
 vi.mock('./v2/ManualReviewJobContentView', () => ({
   default: () => <div>Content review</div>,
@@ -117,6 +137,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   harness.route = { queueId: 'queue-1', jobId: 'a', lockToken: 'reviewer-1' };
   harness.dequeueData = undefined;
+  harness.dequeueError = undefined;
   harness.queryData = makeNcmecQueryData();
   harness.nextResult = { __typename: 'Mutation', dequeueManualReviewJob: null };
   harness.onDequeue = undefined;
@@ -237,7 +258,57 @@ function makeContentQueryData(opts: { hasCreator: boolean }) {
   } as unknown as GQLManualReviewJobInfoQuery;
 }
 
-describe('review advancement after a decision', () => {
+describe('review entry and advancement', () => {
+  it('returns to queues with an explanation when initial entry finds no available job', async () => {
+    harness.route = {
+      queueId: 'queue-1',
+      jobId: undefined,
+      lockToken: undefined,
+    };
+    const { rerender } = render(<ManualReviewJobReview />);
+    await act(async () => {});
+    rerender(<ManualReviewJobReview />);
+
+    expect(harness.dequeue).toHaveBeenCalledTimes(1);
+    expect(harness.navigate).toHaveBeenCalledTimes(1);
+    expect(harness.navigate).toHaveBeenCalledWith(
+      '/dashboard/manual_review/queues',
+      { replace: true },
+    );
+    expect(harness.toastInfo).toHaveBeenCalledTimes(1);
+    expect(harness.toastInfo).toHaveBeenCalledWith(
+      'No jobs are currently available for you in this queue.',
+    );
+  });
+
+  it('returns to queues once with an explanation after skipping the last available job', async () => {
+    render(<ManualReviewJobReview />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Skip' }));
+    });
+
+    expect(harness.dequeue).toHaveBeenCalledTimes(1);
+    expect(harness.navigate).toHaveBeenCalledTimes(1);
+    expect(harness.navigate).toHaveBeenCalledWith(
+      '/dashboard/manual_review/queues',
+      { replace: true },
+    );
+    expect(harness.toastInfo).toHaveBeenCalledTimes(1);
+    expect(harness.toastInfo).toHaveBeenCalledWith(
+      'No jobs are currently available for you in this queue.',
+    );
+  });
+
+  it('keeps a dequeue error distinct from an empty queue result', () => {
+    harness.dequeueError = new Error('Request failed');
+    render(<ManualReviewJobReview />);
+
+    expect(screen.getByText('Error Dequeueing Next Job')).toBeTruthy();
+    expect(harness.toastInfo).not.toHaveBeenCalled();
+    expect(harness.navigate).not.toHaveBeenCalled();
+  });
+
   it('leaves the last completed review rather than rendering the old query again', async () => {
     const { rerender } = render(<ManualReviewJobReview />);
     expect(screen.getByText('Active review')).toBeTruthy();
@@ -254,6 +325,7 @@ describe('review advancement after a decision', () => {
     );
     expect(screen.queryByText('Active review')).toBeNull();
     expect(screen.getByText('No Jobs to Review')).toBeTruthy();
+    expect(harness.toastInfo).toHaveBeenCalledTimes(1);
   });
 
   it('returns to queues when the already-submitted recovery finds no next job', async () => {
@@ -308,9 +380,10 @@ describe('review advancement after a decision', () => {
       '/dashboard/manual_review/queues',
       expect.anything(),
     );
+    expect(harness.toastInfo).not.toHaveBeenCalled();
   });
 
-  it('keeps the initial empty-queue view instead of navigating to a completed job', async () => {
+  it('returns to queues when initial entry has a lock token but no available job', async () => {
     harness.route = {
       queueId: 'queue-1',
       jobId: undefined,
@@ -323,8 +396,12 @@ describe('review advancement after a decision', () => {
     rerender(<ManualReviewJobReview />);
 
     expect(harness.dequeue).toHaveBeenCalledTimes(1);
-    expect(harness.navigate).not.toHaveBeenCalled();
+    expect(harness.navigate).toHaveBeenCalledWith(
+      '/dashboard/manual_review/queues',
+      { replace: true },
+    );
     expect(screen.getByText('No Jobs to Review')).toBeTruthy();
+    expect(harness.toastInfo).toHaveBeenCalledTimes(1);
   });
 });
 

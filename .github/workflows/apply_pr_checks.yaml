@@ -40,16 +40,27 @@ jobs:
               - '.env.githubci'
               - '.github/workflows/apply_pr_checks.yaml'
               - '.github/actions/prepare-docker-images/**'
+            # Each package's dependencies are locked in the root pnpm-lock.yaml,
+            # so a change here can affect any of them.
+            deps: &deps
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - '.nvmrc'
             server:
               - 'server/**'
               - *docker
+              - *deps
             client:
               - 'client/**'
               - *docker
+              - *deps
             db:
               - 'db/**'
+              - *deps
             migrator:
               - 'migrator/**'
+              - *deps
 
   check_formatting:
     runs-on: ubuntu-latest
@@ -61,7 +72,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup pnpm and Node.js, install dependencies
-        uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
+        uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
         with:
           cache: true
           require-lockfile: true
@@ -83,7 +94,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup pnpm and Node.js, install dependencies
-        uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
+        uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
         with:
           cache: true
           require-lockfile: true
@@ -168,6 +179,12 @@ jobs:
               for file in "${CHANGED_FILES[@]}"
               do
                 if [[ "${file}" == ${subdir}* ]]; then
+                  if [[ "$file" == *.seed.staging.sql ]] &&
+                     [[ "$(git diff --name-only --diff-filter=M "$BASE_REF" "$GITHUB_SHA" -- "$file")" == "$file" ]]; then
+                    echo "Allowing staging seed update: $file"
+                    continue
+                  fi
+
                   validate_migration "${file}" "${most_recent_migration_datestamp}"
                 else
                   echo -e "Skipping ${file} because it is not in the ${subdir} directory."
@@ -198,7 +215,7 @@ jobs:
           persist-credentials: false
 
       - name: Prepare Docker images
-        uses: ./.github/actions/prepare-docker-images
+        uses: $/.github/actions/prepare-docker-images
         with:
           pull: postgres scylla clickhouse redis
           build: backend test
@@ -341,7 +358,7 @@ jobs:
           persist-credentials: false
 
       - name: Prepare Docker images
-        uses: ./.github/actions/prepare-docker-images
+        uses: $/.github/actions/prepare-docker-images
         with:
           build: client
 
@@ -384,7 +401,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup pnpm and Node.js, install dependencies
-        uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
+        uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
         with:
           cache: true
           require-lockfile: true
@@ -404,7 +421,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup pnpm and Node.js, install dependencies
-        uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
+        uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
         with:
           cache: true
           require-lockfile: true

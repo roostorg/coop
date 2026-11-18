@@ -2,25 +2,20 @@
 import { type ReadableStream } from 'node:stream/web';
 import type { Exception } from '@opentelemetry/api';
 import { makeEnumLike, type ItemIdentifier } from '@roostorg/coop-types';
-import _Ajv from 'ajv';
 import { sql, type Kysely } from 'kysely';
 import _ from 'lodash';
 import { FormData } from 'undici';
+import * as v from 'valibot';
 import { js2xml } from 'xml-js';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import { jsonStringify } from '../../utils/encoding.js';
-import { type JSONSchemaV4 } from '../../utils/json-schema-types.js';
 import { type FixKyselyRowCorrelation } from '../../utils/kysely.js';
 import { logErrorJson } from '../../utils/logging.js';
 import { assertUnreachable, withRetries } from '../../utils/misc.js';
 import { type CollapseCases } from '../../utils/typescript-types.js';
-import { rawItemSubmissionToItemSubmission } from '../itemProcessingService/makeItemSubmission.js';
+import { rawItemDataSchema } from '../itemProcessingService/index.js';
 import { type RawItemData } from '../itemProcessingService/toNormalizedItemDataOrErrors.js';
-import {
-  rawItemSubmissionSchema,
-  type RawItemSubmission,
-} from '../itemProcessingService/types.js';
 import type {
   NCMECReportedContentInThread,
   NCMECThreadReport,
@@ -1147,210 +1142,89 @@ type FileAdditionalInfo = {
   fileName?: string;
 };
 
-const Ajv = _Ajv as unknown as typeof _Ajv.default;
-const ajv = new Ajv();
+const ipAddressEventSchema = v.array(
+  v.object({
+    ipAddress: v.string(),
+    eventName: v.optional(
+      v.picklist([
+        'Login',
+        'Registration',
+        'Purchase',
+        'Upload',
+        'Other',
+        'Unknown',
+      ]),
+    ),
+    dateTime: v.optional(v.string()),
+    possibleProxy: v.optional(v.boolean()),
+    port: v.optional(v.pipe(v.number(), v.integer())),
+  }),
+);
 
-const validateIpAddressEvent = {
-  type: 'array',
-  items: {
-    type: 'object',
-    properties: {
-      ipAddress: { type: 'string' },
-      eventName: {
-        type: 'string',
-        enum: [
-          'Login',
-          'Registration',
-          'Purchase',
-          'Upload',
-          'Other',
-          'Unknown',
-        ],
-      },
-      dateTime: { type: 'string' },
-      possibleProxy: { type: 'boolean' },
-      port: { type: 'integer' },
-    },
-    required: ['ipAddress'],
-  },
-} as const;
+const ncmecAdditionalInfoSchema = v.object({
+  users: v.array(
+    v.object({
+      id: v.string(),
+      typeId: v.string(),
+      screenName: v.optional(v.string()),
+      email: v.optional(
+        v.array(
+          v.object({
+            email: v.string(),
+            verified: v.optional(v.boolean()),
+            verificationDate: v.optional(v.string()),
+            type: v.optional(v.picklist(['Business', 'Home', 'Work'])),
+          }),
+        ),
+      ),
+      ipCaptureEvent: v.optional(ipAddressEventSchema),
+      data: v.optional(rawItemDataSchema),
+    }),
+  ),
+  media: v.optional(
+    v.array(
+      v.object({
+        id: v.string(),
+        typeId: v.string(),
+        ipCaptureEvent: v.optional(ipAddressEventSchema),
+        additionalInfo: v.optional(v.array(v.string())),
+        fileName: v.optional(v.string()),
+        missing: v.optional(v.boolean()),
+        publiclyAvailable: v.optional(v.boolean()),
+        fileDetails: v.optional(
+          v.object({
+            hash: v.string(),
+            hashType: v.string(),
+          }),
+        ),
+      }),
+    ),
+  ),
+  additionalFiles: v.optional(
+    v.array(
+      v.object({
+        fileUrl: v.string(),
+        additionalInfo: v.optional(v.array(v.string())),
+        fileName: v.optional(v.string()),
+      }),
+    ),
+  ),
+  messages: v.optional(
+    v.array(
+      v.object({
+        id: v.string(),
+        typeId: v.string(),
+        ipAddress: v.string(),
+      }),
+    ),
+  ),
+  additionalInfo: v.optional(v.string()),
+});
 
-type NcmecMessageResponse = {
-  conversations: {
-    threadId: string;
-    typeId: string;
-    messages: (RawItemSubmission & {
-      ipAddress: {
-        ip: string;
-        port: number;
-      };
-    })[];
-  }[];
-};
-
-const validateNcmecMessages = ajv.compile<NcmecMessageResponse>({
-  type: 'object',
-  properties: {
-    conversations: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          threadId: { type: 'string' },
-          typeId: { type: 'string' },
-          messages: {
-            type: 'array',
-            items: {
-              type: 'object',
-              oneOf: [
-                {
-                  ...rawItemSubmissionSchema.oneOf[0],
-                  properties: {
-                    ...rawItemSubmissionSchema.oneOf[0].properties,
-                    ipAddress: {
-                      type: 'object',
-                      properties: {
-                        ip: { type: 'string' },
-                        port: { type: 'integer' },
-                      },
-                      required: ['ip', 'port'],
-                    },
-                  },
-                  required: [
-                    ...rawItemSubmissionSchema.oneOf[0].required,
-                    'ipAddress',
-                  ],
-                },
-                {
-                  ...rawItemSubmissionSchema.oneOf[1],
-                  properties: {
-                    ...rawItemSubmissionSchema.oneOf[1].properties,
-                    ipAddress: {
-                      type: 'object',
-                      properties: {
-                        ip: { type: 'string' },
-                        port: { type: 'integer' },
-                      },
-                      required: ['ip', 'port'],
-                    },
-                  },
-                  required: [
-                    ...rawItemSubmissionSchema.oneOf[1].required,
-                    'ipAddress',
-                  ],
-                },
-              ],
-            },
-          },
-        },
-        required: ['threadId', 'typeId', 'messages'],
-      },
-    },
-  },
-  required: ['conversations'],
-} as const satisfies JSONSchemaV4<NcmecMessageResponse>);
-
-const validateNcmecAdditionalInfo = ajv.compile<NcmecAdditionalInfoResponse>({
-  type: 'object',
-  properties: {
-    users: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          id: { type: 'string' },
-          typeId: { type: 'string' },
-          screenName: { type: 'string' },
-          email: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                email: { type: 'string' },
-                verified: { type: 'boolean' },
-                verificationDate: { type: 'string' },
-                type: { type: 'string', enum: ['Business', 'Home', 'Work'] },
-              },
-              required: ['email'],
-            },
-          },
-          ipCaptureEvent: validateIpAddressEvent,
-          // NB: the typings break here if we don't have { required: [] },
-          // but actually putting an empty array for `required` in the runtime
-          // value breaks request handling, so we just use a cast.
-          data: { type: 'object' } as unknown as {
-            type: 'object';
-            required: [];
-          },
-        },
-        required: ['id', 'typeId'],
-      },
-    },
-    media: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          id: { type: 'string' },
-          typeId: { type: 'string' },
-          ipCaptureEvent: validateIpAddressEvent,
-          additionalInfo: {
-            type: 'array',
-            items: {
-              type: 'string',
-            },
-          },
-          fileName: { type: 'string' },
-          missing: { type: 'boolean' },
-          publiclyAvailable: { type: 'boolean' },
-          fileDetails: {
-            type: 'object',
-            properties: {
-              hash: { type: 'string' },
-              hashType: { type: 'string' },
-            },
-            required: ['hash', 'hashType'],
-          },
-        },
-        required: ['id', 'typeId'],
-      },
-    },
-    additionalFiles: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          fileUrl: { type: 'string' },
-          additionalInfo: {
-            type: 'array',
-            items: {
-              type: 'string',
-            },
-          },
-          fileName: { type: 'string' },
-        },
-        required: ['fileUrl'],
-      },
-    },
-    messages: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: {
-          id: { type: 'string' },
-          typeId: { type: 'string' },
-          ipAddress: { type: 'string' },
-        },
-        required: ['id', 'typeId', 'ipAddress'],
-      },
-    },
-    additionalInfo: {
-      type: 'string',
-    },
-  },
-  additionalProperties: true,
-  required: ['users'],
-} as const satisfies JSONSchemaV4<NcmecAdditionalInfoResponse>);
+export const validateNcmecAdditionalInfo = (
+  input: unknown,
+): input is NcmecAdditionalInfoResponse =>
+  v.safeParse(ncmecAdditionalInfoSchema, input).success;
 
 /**
  * Download media and hand the body to `send`. If the download is not usable
@@ -1367,6 +1241,7 @@ export async function uploadDownloadedMedia<T>(
   try {
     const response = await fetchHTTP({
       url,
+      isUntrustedUrl: true,
       method: 'get',
       handleResponseBody: 'as-readable-stream',
       maxResponseSize: 'unlimited',
@@ -1423,8 +1298,6 @@ export default class NcmecReporting {
     private pqQueryReadReplica: Kysely<NcmecReportingServicePg>,
     private fetchHTTP: Dependencies['fetchHTTP'],
     private signingKeyPairService: Dependencies['SigningKeyPairService'],
-    private moderationConfigService: Dependencies['ModerationConfigService'],
-    private getItemTypeEventuallyConsistent: Dependencies['getItemTypeEventuallyConsistent'],
     private readonly tracer: Dependencies['Tracer'],
   ) {}
   async hasNCMECReportingEnabled(orgId: string) {
@@ -1464,77 +1337,6 @@ export default class NcmecReporting {
       : undefined;
   }
 
-  async getNcmecMessages(
-    orgId: string,
-    userId: ItemIdentifier,
-    reportedMedia: readonly ItemIdentifier[],
-  ) {
-    const fetchWithRetries = withRetries(
-      {
-        maxRetries: 5,
-        initialTimeMsBetweenRetries: 5,
-        maxTimeMsBetweenRetries: 500,
-        jitter: true,
-      },
-      async () => {
-        const response = await this.fetchHTTP({
-          url: 'https://tas-infra-ml.net/data/coop/content/pre-preserve/get',
-          method: 'post',
-          body: jsonStringify({
-            userId: userId.id,
-            typeId: userId.typeId,
-            reported_messages: reportedMedia,
-          }),
-          handleResponseBody: 'as-json',
-          signWith: this.signingKeyPairService.sign.bind(
-            this.signingKeyPairService,
-            orgId,
-          ),
-        });
-        if (!response.ok) {
-          throw new Error();
-        }
-        const responseBody = response.body;
-        if (!validateNcmecMessages(responseBody)) {
-          throw new Error(`NCMEC Messages failed validation`);
-        }
-        return responseBody;
-      },
-    );
-    const body = await fetchWithRetries();
-
-    return Promise.all(
-      body.conversations.map(async (conversation) => {
-        const messages = await Promise.all(
-          conversation.messages.map(async (message) => {
-            const { error, itemSubmission } =
-              await rawItemSubmissionToItemSubmission(
-                await this.moderationConfigService.getItemTypes({
-                  orgId,
-                  directives: { maxAge: 10 },
-                }),
-                orgId,
-                this.getItemTypeEventuallyConsistent,
-                message,
-              );
-            if (error) {
-              throw error;
-            }
-            return {
-              message: itemSubmission,
-              ipAddress: message.ipAddress,
-            };
-          }),
-        );
-        return {
-          messages: messages.slice(-50), // Get the last 50 items
-          threadId: conversation.threadId,
-          threadTypeId: conversation.typeId,
-        };
-      }),
-    );
-  }
-
   async getNCMECAdditionalInfo(
     orgId: string,
     reportedUsers: ItemIdentifier[],
@@ -1562,6 +1364,7 @@ export default class NcmecReporting {
 
     const response = await this.fetchHTTP({
       url: additionalInfoEndpoint,
+      isUntrustedUrl: false,
       method: 'post',
       body: jsonStringify({
         users: reportedUsers,
@@ -1673,6 +1476,10 @@ export default class NcmecReporting {
   // (user_id, user_item_type_id, org_id) for uniqueness, before an hour before
   // it executes, to allow for concurrent decisions to finish executing. Only
   // meant to be used in the NCMEC retry script.
+  //
+  // A production report covers all of the user's decisions; a test report
+  // covers only decisions made at or before latestTestReportAt. Rows with a
+  // null is_test predate the column and count as production.
   async getUsersWithNcmecDecision(opts: { startDate: Date }) {
     const { startDate } = opts;
     return this.pqQueryReadReplica
@@ -1681,11 +1488,12 @@ export default class NcmecReporting {
         'user_id as userId',
         'user_item_type_id as userItemTypeId',
         'org_id as orgId',
+        sql<boolean>`bool_or(is_test is not true)`.as('hasProductionReport'),
+        sql<Date | null>`max(created_at) filter (where is_test)`.as(
+          'latestTestReportAt',
+        ),
       ])
       .where('created_at', '>=', startDate)
-      .where((eb) =>
-        eb.or([eb('is_test', '=', null), eb('is_test', '=', false)]),
-      )
       .groupBy(['user_id', 'user_item_type_id', 'org_id'])
       .execute();
   }
@@ -1736,6 +1544,7 @@ export default class NcmecReporting {
       async () => {
         const response = await this.fetchHTTP({
           url: ncmecPreservationEndpoint,
+          isUntrustedUrl: false,
           method: 'post',
           body: jsonStringify({
             user,
@@ -1763,7 +1572,7 @@ export default class NcmecReporting {
       .select(['ncmec_preservation_endpoint'])
       .where('org_id', '=', orgId)
       .executeTakeFirst();
-    return rows?.ncmec_preservation_endpoint;
+    return rows?.ncmec_preservation_endpoint ?? undefined;
   }
 
   async ncmecAdditionalInfoEndpoint(
@@ -1774,7 +1583,7 @@ export default class NcmecReporting {
       .select(['ncmec_additional_info_endpoint'])
       .where('org_id', '=', orgId)
       .executeTakeFirst();
-    return rows?.ncmec_additional_info_endpoint;
+    return rows?.ncmec_additional_info_endpoint ?? undefined;
   }
 
   async getUserHasExistingNcmeReport(params: {
@@ -2544,6 +2353,7 @@ export default class NcmecReporting {
         });
         const response = await this.fetchHTTP({
           url,
+          isUntrustedUrl: false,
           method: 'post',
           headers: {
             ...(includeContentType ? { 'Content-Type': 'text/xml' } : {}),

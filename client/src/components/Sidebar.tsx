@@ -66,7 +66,6 @@ interface SidebarProps {
   setSelectedMenuItem: React.Dispatch<React.SetStateAction<string | null>>;
   permissions: readonly GQLUserPermission[] | undefined;
   logout: () => void;
-  isDemoOrg?: boolean;
 }
 
 export default function Sidebar(props: SidebarProps) {
@@ -77,7 +76,6 @@ export default function Sidebar(props: SidebarProps) {
     setSelectedMenuItem,
     permissions,
     logout,
-    isDemoOrg,
   } = props;
 
   const [collapsed, setCollapsed] = useState(false);
@@ -332,11 +330,6 @@ export default function Sidebar(props: SidebarProps) {
       </div>
 
       <div className="absolute bottom-0 flex flex-col justify-end w-full gap-0">
-        {isDemoOrg ? (
-          <div className="flex justify-center py-1 m-4 mx-8 text-center text-yellow-800 bg-yellow-100 rounded-lg grow">
-            Demo Account
-          </div>
-        ) : null}
         {settingsMenu}
         <div className="flex justify-center gap-[20px] p-[16px] bg-slate-50">
           {!collapsed &&

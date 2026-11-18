@@ -1,3 +1,4 @@
+import fc from 'fast-check';
 import { vi } from 'vitest';
 
 import ContentAccessService, {
@@ -87,14 +88,37 @@ describe('content access extension', () => {
     }
   });
 
-  it('denies truthy values other than true from untyped extensions', async () => {
-    const authorize = async (): Promise<boolean> => {
-      // @ts-expect-error -- Exercise invalid output from an untyped deployment callback.
-      return 'allow';
-    };
-    await expect(
-      new ContentAccessService({ authorize }).beforeAccess(request),
-    ).rejects.toEqual(new ContentAccessError('denied'));
+  it('only accepts literal true from untyped authorization callbacks', async () => {
+    await fc.assert(
+      fc.asyncProperty(fc.anything(), async (result) => {
+        const authorize = async (): Promise<boolean> => {
+          // @ts-expect-error -- Exercise invalid output from an untyped deployment callback.
+          return result;
+        };
+        const access = new ContentAccessService({ authorize }).beforeAccess(
+          request,
+        );
+        if (result === true) {
+          await expect(access).resolves.toBeUndefined();
+        } else {
+          await expect(access).rejects.toEqual(
+            new ContentAccessError('denied'),
+          );
+        }
+      }),
+      {
+        examples: [
+          [true],
+          [false],
+          ['allow'],
+          [1],
+          [{}],
+          [[]],
+          [null],
+          [undefined],
+        ],
+      },
+    );
   });
 
   describe('callback deadlines', () => {

@@ -96,8 +96,6 @@ function makeEnqueue(
     {
       getItemSubmissionsByCreator: () => emptyAsyncIterable(),
     } as unknown as never,
-    (async () => ({ status: 200 })) as unknown as never,
-    { sign: () => undefined } as unknown as never,
     {
       getUserHasExistingNcmeReport: existingReportCheck,
     } as unknown as NcmecReporting,

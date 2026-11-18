@@ -1,5 +1,5 @@
 import { gql } from '@apollo/client';
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useNavigate, useParams } from 'react-router';
 
@@ -10,6 +10,7 @@ import CoopModal from '../components/CoopModal';
 import {
   GQLIntegrationApiCredential,
   GQLIntegrationConfigDocument,
+  GQLIntegrationConfigFieldInputType,
   GQLUserPermission,
   namedOperations,
   useGQLIntegrationConfigQuery,
@@ -17,6 +18,7 @@ import {
   useGQLSetIntegrationConfigMutation,
   useGQLSetPluginIntegrationConfigMutation,
   type GQLGoogleContentSafetyApiIntegrationApiCredential,
+  type GQLModelCard,
   type GQLOpenAiIntegrationApiCredential,
   type GQLZentropiIntegrationApiCredential,
 } from '../../../graphql/generated';
@@ -78,9 +80,21 @@ gql`
           title
           docsUrl
           requiresConfig
+          configurationFields {
+            key
+            label
+            required
+            inputType
+            options {
+              value
+              label
+            }
+            placeholder
+            description
+          }
           logoUrl
           logoWithBackgroundUrl
-          modelCard {
+          modelCards {
             modelName
             version
             releaseDate
@@ -107,6 +121,7 @@ gql`
             }
             ... on OpenAiIntegrationApiCredential {
               apiKey
+              csamClassifierApiKey
             }
             ... on ZentropiIntegrationApiCredential {
               apiKey
@@ -114,6 +129,7 @@ gql`
                 id
                 label
                 labelerId
+                model
               }
             }
             ... on PluginIntegrationApiCredential {
@@ -148,7 +164,11 @@ export function getNewEmptyApiKey(name: string): GQLIntegrationApiCredential {
       };
     }
     case 'OPEN_AI': {
-      return { __typename: 'OpenAiIntegrationApiCredential', apiKey: '' };
+      return {
+        __typename: 'OpenAiIntegrationApiCredential',
+        apiKey: '',
+        csamClassifierApiKey: '',
+      };
     }
     case 'ZENTROPI': {
       return {
@@ -164,6 +184,124 @@ export function getNewEmptyApiKey(name: string): GQLIntegrationApiCredential {
       };
     }
   }
+}
+
+const INVALID_JSON = Symbol('invalid JSON');
+
+/** JSON fields hold JSON text while editing, so `[]` here is never blank. */
+function isBlankFieldValue(value: unknown): boolean {
+  return (
+    value == null ||
+    (typeof value === 'string' && value.trim() === '') ||
+    (Array.isArray(value) && value.length === 0)
+  );
+}
+
+/** JSON fields are edited as text; saved config holds the parsed value. */
+function parseJsonField<T>(value: T): T | typeof INVALID_JSON {
+  if (typeof value !== 'string') {
+    return value;
+  }
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return INVALID_JSON;
+  }
+}
+
+/**
+ * The model cards for an integration. A single-model integration shows its one
+ * card directly; a multi-model integration shows one tab per model, each
+ * opening that model's card. Tab labels are the model names, so the integration
+ * name is never repeated.
+ */
+function IntegrationModelCards({ cards }: { cards: readonly GQLModelCard[] }) {
+  const [activeIndex, setActiveIndex] = useState(0);
+  const baseId = useId();
+  const card = cards[activeIndex] ?? cards[0];
+  const subheader = [card.version, card.releaseDate]
+    .filter(Boolean)
+    .join(' · ');
+  const multiModel = cards.length > 1;
+  const tabId = (index: number) => `${baseId}-tab-${index}`;
+  const panelId = (index: number) => `${baseId}-panel-${index}`;
+
+  // Roving-tabindex arrow-key navigation per the WAI-ARIA tabs pattern.
+  const onTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>) => {
+    const last = cards.length - 1;
+    let next: number | undefined;
+    if (event.key === 'ArrowRight') {
+      next = activeIndex === last ? 0 : activeIndex + 1;
+    } else if (event.key === 'ArrowLeft') {
+      next = activeIndex === 0 ? last : activeIndex - 1;
+    } else if (event.key === 'Home') {
+      next = 0;
+    } else if (event.key === 'End') {
+      next = last;
+    }
+    if (next === undefined) {
+      return;
+    }
+    event.preventDefault();
+    setActiveIndex(next);
+    document.getElementById(tabId(next))?.focus();
+  };
+
+  const panelProps = multiModel
+    ? {
+        role: 'tabpanel' as const,
+        id: panelId(activeIndex),
+        'aria-labelledby': tabId(activeIndex),
+        tabIndex: 0,
+      }
+    : {};
+
+  return (
+    <div className="overflow-hidden bg-white border border-solid rounded-2xl border-slate-200">
+      {multiModel && (
+        <div
+          role="tablist"
+          aria-label="Model cards"
+          className="flex border-0 border-b border-solid border-slate-200"
+        >
+          {cards.map((c, index) => (
+            <button
+              key={`${c.modelName}-${c.version}`}
+              id={tabId(index)}
+              type="button"
+              role="tab"
+              aria-selected={index === activeIndex}
+              // Only the active tab's panel is rendered, so only it has a
+              // valid aria-controls target.
+              aria-controls={index === activeIndex ? panelId(index) : undefined}
+              tabIndex={index === activeIndex ? 0 : -1}
+              onClick={() => setActiveIndex(index)}
+              onKeyDown={onTabKeyDown}
+              className={`px-5 py-3 text-sm font-semibold bg-transparent border-0 cursor-pointer ${
+                index === activeIndex
+                  ? 'text-zinc-900 border-b-2 border-solid border-indigo-500'
+                  : 'text-zinc-500 hover:text-zinc-800'
+              }`}
+            >
+              {c.modelName}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="px-5 pt-3 pb-2" {...panelProps}>
+        {multiModel ? (
+          <>
+            {subheader !== '' && (
+              <div className="mb-1 text-sm text-zinc-500">{subheader}</div>
+            )}
+            <ModelCardView card={card} hideHeader />
+          </>
+        ) : (
+          <ModelCardView card={card} />
+        )}
+      </div>
+    </div>
+  );
 }
 
 export default function IntegrationConfigForm() {
@@ -238,9 +376,24 @@ export default function IntegrationConfigForm() {
     if (response?.config != null) {
       const cred = response.config.apiCredential;
       if (cred.__typename === 'PluginIntegrationApiCredential') {
+        const jsonKeys = new Set(
+          response.config.configurationFields
+            .filter(
+              (field) =>
+                field.inputType === GQLIntegrationConfigFieldInputType.Json,
+            )
+            .map((field) => field.key),
+        );
+        // JSON fields are edited as JSON text, so a saved string like "trust"
+        // must come back quoted to round-trip.
         setApiCredential({
           __typename: 'PluginIntegrationApiCredential',
-          credential: cred.credential ?? {},
+          credential: Object.fromEntries(
+            Object.entries(cred.credential ?? {}).map(([key, value]) => [
+              key,
+              jsonKeys.has(key) ? JSON.stringify(value) : value,
+            ]),
+          ),
         });
       } else {
         setApiCredential(cred);
@@ -282,8 +435,36 @@ export default function IntegrationConfigForm() {
     'OPEN_AI',
     'ZENTROPI',
   ].includes(integrationName);
+  const configurationFields = apiConfig?.configurationFields ?? [];
+  const jsonFieldKeys = new Set(
+    configurationFields
+      .filter(
+        (field) => field.inputType === GQLIntegrationConfigFieldInputType.Json,
+      )
+      .map((field) => field.key),
+  );
+  const pluginCredential =
+    apiCredential.__typename === 'PluginIntegrationApiCredential'
+      ? (apiCredential.credential ?? {})
+      : {};
   const validationMessage = (() => {
     if (isPluginIntegration) {
+      const missing = configurationFields.find(
+        (field) =>
+          field.required && isBlankFieldValue(pluginCredential[field.key]),
+      );
+      if (missing) {
+        return `Please enter ${missing.label}`;
+      }
+      const invalidJson = configurationFields.find(
+        (field) =>
+          jsonFieldKeys.has(field.key) &&
+          !isBlankFieldValue(pluginCredential[field.key]) &&
+          parseJsonField(pluginCredential[field.key]) === INVALID_JSON,
+      );
+      if (invalidJson) {
+        return `${invalidJson.label} must be valid JSON`;
+      }
       return undefined;
     }
     if (
@@ -297,12 +478,16 @@ export default function IntegrationConfigForm() {
       return 'Please input the Google Content Safety API key';
     }
 
-    if (
-      'openAi' in mappedApiCredential &&
-      !(mappedApiCredential['openAi'] as GQLOpenAiIntegrationApiCredential)
-        .apiKey
-    ) {
-      return 'Please input the OpenAI API key';
+    if ('openAi' in mappedApiCredential) {
+      const openAi = mappedApiCredential[
+        'openAi'
+      ] as GQLOpenAiIntegrationApiCredential;
+      // The Moderation API key and the CSAM Classifier key are independent
+      // (they may belong to different OpenAI orgs), so either one alone is a
+      // valid configuration.
+      if (!openAi.apiKey && !openAi.csamClassifierApiKey) {
+        return 'Please input the OpenAI API key or CSAM Classifier API key';
+      }
     }
 
     if (
@@ -338,10 +523,26 @@ export default function IntegrationConfigForm() {
           },
         ];
         if (isPluginIntegration) {
-          const cred =
-            apiCredential.__typename === 'PluginIntegrationApiCredential'
-              ? (apiCredential.credential ?? {})
-              : {};
+          // Blank optional fields are omitted so plugins see them as unset.
+          const optionalKeys = new Set(
+            configurationFields
+              .filter((field) => !field.required)
+              .map((field) => field.key),
+          );
+          const cred = Object.fromEntries(
+            Object.entries(pluginCredential)
+              .filter(
+                ([key, value]) =>
+                  key !== 'name' &&
+                  !(optionalKeys.has(key) && isBlankFieldValue(value)),
+              )
+              .map(([key, value]) => {
+                const parsed = jsonFieldKeys.has(key)
+                  ? parseJsonField(value)
+                  : value;
+                return [key, parsed === INVALID_JSON ? value : parsed];
+              }),
+          );
           await setPluginConfig({
             variables: {
               input: { integrationId: integrationName, credential: cred },
@@ -435,9 +636,10 @@ export default function IntegrationConfigForm() {
     }
   };
 
-  const apiModelCard = response?.config?.modelCard;
+  const modelCards = response?.config?.modelCards ?? [];
+  const primaryModelCard = modelCards[0];
   const apiModelCardLearnMoreUrl = response?.config?.modelCardLearnMoreUrl;
-  const hasModelCard = apiModelCard != null;
+  const hasModelCard = primaryModelCard != null;
 
   return (
     <div className="flex flex-col text-start">
@@ -458,10 +660,12 @@ export default function IntegrationConfigForm() {
         )}
       </div>
 
-      {hasModelCard && apiModelCard ? (
+      {primaryModelCard != null ? (
         <div className="flex flex-col lg:flex-row gap-8 w-full max-w-7xl">
-          <div className="flex-1 min-w-0">
-            <ModelCardView card={apiModelCard} />
+          <div className="flex flex-col flex-1 min-w-0">
+            {/* Keyed by integration so the active tab resets when the form is
+                reused for a different integration. */}
+            <IntegrationModelCards key={integrationName} cards={modelCards} />
           </div>
           <div className="flex flex-col lg:w-96 shrink-0">
             {apiModelCardLearnMoreUrl != null && (
@@ -484,9 +688,11 @@ export default function IntegrationConfigForm() {
             <IntegrationConfigApiCredentialsSection
               name={integrationName}
               apiCredential={apiCredential}
+              savedApiCredential={apiConfig?.apiCredential}
               setApiCredential={(cred: GQLIntegrationApiCredential) =>
                 setApiCredential(cred)
               }
+              configurationFields={configurationFields}
               compact
             />
             {saveButton}
@@ -497,9 +703,11 @@ export default function IntegrationConfigForm() {
           <IntegrationConfigApiCredentialsSection
             name={integrationName}
             apiCredential={apiCredential}
+            savedApiCredential={apiConfig?.apiCredential}
             setApiCredential={(cred: GQLIntegrationApiCredential) =>
               setApiCredential(cred)
             }
+            configurationFields={configurationFields}
           />
           {saveButton}
         </>
