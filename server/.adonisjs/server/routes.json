@@ -1,0 +1,405 @@
+{
+  "root": [
+    {
+      "domain": "root",
+      "pattern": "/api/v1/ready",
+      "matchers": {},
+      "tokens": [
+        { "old": "/api/v1/ready", "type": 0, "val": "api", "end": "" },
+        { "old": "/api/v1/ready", "type": 0, "val": "v1", "end": "" },
+        { "old": "/api/v1/ready", "type": 0, "val": "ready", "end": "" }
+      ],
+      "meta": { "params": [] },
+      "methods": ["GET", "HEAD"],
+      "middleware": {}
+    },
+    {
+      "domain": "root",
+      "pattern": "/api/v1/saml/login/:orgId",
+      "matchers": {},
+      "tokens": [
+        {
+          "old": "/api/v1/saml/login/:orgId",
+          "type": 0,
+          "val": "api",
+          "end": ""
+        },
+        {
+          "old": "/api/v1/saml/login/:orgId",
+          "type": 0,
+          "val": "v1",
+          "end": ""
+        },
+        {
+          "old": "/api/v1/saml/login/:orgId",
+          "type": 0,
+          "val": "saml",
+          "end": ""
+        },
+        {
+          "old": "/api/v1/saml/login/:orgId",
+          "type": 0,
+          "val": "login",
+          "end": ""
+        },
+        {
+          "old": "/api/v1/saml/login/:orgId",
+          "type": 1,
+          "val": "orgId",
+          "end": ""
+        }
+      ],
+      "meta": { "params": ["orgId"] },
+      "name": "saml.login",
+      "handler": {
+        "method": "login",
+        "reference": [null, "login"],
+        "importExpression": "async () => __vite_ssr_dynamic_import__(\"/app/controllers/saml_controller.ts\")",
+        "name": "SamlController"
+      },
+      "methods": ["GET", "HEAD"],
+      "middleware": {}
+    },
+    {
+      "domain": "root",
+      "pattern": "/api/v1/saml/login/:orgId/callback",
+      "matchers": {},
+      "tokens": [
+        {
+          "old": "/api/v1/saml/login/:orgId/callback",
+          "type": 0,
+          "val": "api",
+          "end": ""
+        },
+        {
+          "old": "/api/v1/saml/login/:orgId/callback",
+          "type": 0,
+          "val": "v1",
+          "end": ""
+        },
+        {
+          "old": "/api/v1/saml/login/:orgId/callback",
+          "type": 0,
+          "val": "saml",
+          "end": ""
+        },
+        {
+          "old": "/api/v1/saml/login/:orgId/callback",
+          "type": 0,
+          "val": "login",
+          "end": ""
+        },
+        {
+          "old": "/api/v1/saml/login/:orgId/callback",
+          "type": 1,
+          "val": "orgId",
+          "end": ""
+        },
+        {
+          "old": "/api/v1/saml/login/:orgId/callback",
+          "type": 0,
+          "val": "callback",
+          "end": ""
+        }
+      ],
+      "meta": { "params": ["orgId"] },
+      "name": "saml.callback",
+      "handler": {
+        "method": "callback",
+        "reference": [null, "callback"],
+        "importExpression": "async () => __vite_ssr_dynamic_import__(\"/app/controllers/saml_controller.ts\")",
+        "name": "SamlController"
+      },
+      "methods": ["POST"],
+      "middleware": {}
+    },
+    {
+      "domain": "root",
+      "pattern": "/api/v1/graphql",
+      "matchers": {},
+      "tokens": [
+        { "old": "/api/v1/graphql", "type": 0, "val": "api", "end": "" },
+        { "old": "/api/v1/graphql", "type": 0, "val": "v1", "end": "" },
+        { "old": "/api/v1/graphql", "type": 0, "val": "graphql", "end": "" }
+      ],
+      "meta": { "params": [] },
+      "name": "graphql",
+      "handler": {
+        "method": "handle",
+        "reference": [null, "handle"],
+        "importExpression": "async () => __vite_ssr_dynamic_import__(\"/app/controllers/graphql_controller.ts\")",
+        "name": "GraphqlController"
+      },
+      "methods": ["HEAD", "OPTIONS", "GET", "POST", "PUT", "PATCH", "DELETE"],
+      "middleware": {}
+    },
+    {
+      "domain": "root",
+      "pattern": "/api/v1/graphql/*",
+      "matchers": {},
+      "tokens": [
+        { "old": "/api/v1/graphql/*", "type": 0, "val": "api", "end": "" },
+        { "old": "/api/v1/graphql/*", "type": 0, "val": "v1", "end": "" },
+        { "old": "/api/v1/graphql/*", "type": 0, "val": "graphql", "end": "" },
+        { "old": "/api/v1/graphql/*", "type": 2, "val": "*", "end": "" }
+      ],
+      "meta": { "params": [] },
+      "name": "graphql.subpath",
+      "handler": {
+        "method": "handle",
+        "reference": [null, "handle"],
+        "importExpression": "async () => __vite_ssr_dynamic_import__(\"/app/controllers/graphql_controller.ts\")",
+        "name": "GraphqlController"
+      },
+      "methods": ["HEAD", "OPTIONS", "GET", "POST", "PUT", "PATCH", "DELETE"],
+      "middleware": {}
+    },
+    {
+      "domain": "root",
+      "pattern": "/api/v1/items/async",
+      "matchers": {},
+      "tokens": [
+        { "old": "/api/v1/items/async", "type": 0, "val": "api", "end": "" },
+        { "old": "/api/v1/items/async", "type": 0, "val": "v1", "end": "" },
+        { "old": "/api/v1/items/async", "type": 0, "val": "items", "end": "" },
+        { "old": "/api/v1/items/async", "type": 0, "val": "async", "end": "" }
+      ],
+      "meta": { "params": [] },
+      "methods": ["POST"],
+      "middleware": {}
+    },
+    {
+      "domain": "root",
+      "pattern": "/api/v1/item_types",
+      "matchers": {},
+      "tokens": [
+        { "old": "/api/v1/item_types", "type": 0, "val": "api", "end": "" },
+        { "old": "/api/v1/item_types", "type": 0, "val": "v1", "end": "" },
+        {
+          "old": "/api/v1/item_types",
+          "type": 0,
+          "val": "item_types",
+          "end": ""
+        }
+      ],
+      "meta": { "params": [] },
+      "methods": ["GET", "HEAD"],
+      "middleware": {}
+    },
+    {
+      "domain": "root",
+      "pattern": "/api/v1/content",
+      "matchers": {},
+      "tokens": [
+        { "old": "/api/v1/content", "type": 0, "val": "api", "end": "" },
+        { "old": "/api/v1/content", "type": 0, "val": "v1", "end": "" },
+        { "old": "/api/v1/content", "type": 0, "val": "content", "end": "" }
+      ],
+      "meta": { "params": [] },
+      "methods": ["POST"],
+      "middleware": {}
+    },
+    {
+      "domain": "root",
+      "pattern": "/api/v1/report",
+      "matchers": {},
+      "tokens": [
+        { "old": "/api/v1/report", "type": 0, "val": "api", "end": "" },
+        { "old": "/api/v1/report", "type": 0, "val": "v1", "end": "" },
+        { "old": "/api/v1/report", "type": 0, "val": "report", "end": "" }
+      ],
+      "meta": { "params": [] },
+      "methods": ["POST"],
+      "middleware": {}
+    },
+    {
+      "domain": "root",
+      "pattern": "/api/v1/report/appeal",
+      "matchers": {},
+      "tokens": [
+        { "old": "/api/v1/report/appeal", "type": 0, "val": "api", "end": "" },
+        { "old": "/api/v1/report/appeal", "type": 0, "val": "v1", "end": "" },
+        {
+          "old": "/api/v1/report/appeal",
+          "type": 0,
+          "val": "report",
+          "end": ""
+        },
+        {
+          "old": "/api/v1/report/appeal",
+          "type": 0,
+          "val": "appeal",
+          "end": ""
+        }
+      ],
+      "meta": { "params": [] },
+      "methods": ["POST"],
+      "middleware": {}
+    },
+    {
+      "domain": "root",
+      "pattern": "/api/v1/policies",
+      "matchers": {},
+      "tokens": [
+        { "old": "/api/v1/policies", "type": 0, "val": "api", "end": "" },
+        { "old": "/api/v1/policies", "type": 0, "val": "v1", "end": "" },
+        { "old": "/api/v1/policies", "type": 0, "val": "policies", "end": "" }
+      ],
+      "meta": { "params": [] },
+      "methods": ["GET", "HEAD"],
+      "middleware": {}
+    },
+    {
+      "domain": "root",
+      "pattern": "/api/v1/user_scores",
+      "matchers": {},
+      "tokens": [
+        { "old": "/api/v1/user_scores", "type": 0, "val": "api", "end": "" },
+        { "old": "/api/v1/user_scores", "type": 0, "val": "v1", "end": "" },
+        {
+          "old": "/api/v1/user_scores",
+          "type": 0,
+          "val": "user_scores",
+          "end": ""
+        }
+      ],
+      "meta": { "params": [] },
+      "methods": ["GET", "HEAD"],
+      "middleware": {}
+    },
+    {
+      "domain": "root",
+      "pattern": "/api/v1/actions",
+      "matchers": {},
+      "tokens": [
+        { "old": "/api/v1/actions", "type": 0, "val": "api", "end": "" },
+        { "old": "/api/v1/actions", "type": 0, "val": "v1", "end": "" },
+        { "old": "/api/v1/actions", "type": 0, "val": "actions", "end": "" }
+      ],
+      "meta": { "params": [] },
+      "methods": ["GET", "HEAD"],
+      "middleware": {}
+    },
+    {
+      "domain": "root",
+      "pattern": "/api/v1/actions",
+      "matchers": {},
+      "tokens": [
+        { "old": "/api/v1/actions", "type": 0, "val": "api", "end": "" },
+        { "old": "/api/v1/actions", "type": 0, "val": "v1", "end": "" },
+        { "old": "/api/v1/actions", "type": 0, "val": "actions", "end": "" }
+      ],
+      "meta": { "params": [] },
+      "methods": ["POST"],
+      "middleware": {}
+    },
+    {
+      "domain": "root",
+      "pattern": "/api/v1/integration-logos/:integrationId/with-background",
+      "matchers": {},
+      "tokens": [
+        {
+          "old": "/api/v1/integration-logos/:integrationId/with-background",
+          "type": 0,
+          "val": "api",
+          "end": ""
+        },
+        {
+          "old": "/api/v1/integration-logos/:integrationId/with-background",
+          "type": 0,
+          "val": "v1",
+          "end": ""
+        },
+        {
+          "old": "/api/v1/integration-logos/:integrationId/with-background",
+          "type": 0,
+          "val": "integration-logos",
+          "end": ""
+        },
+        {
+          "old": "/api/v1/integration-logos/:integrationId/with-background",
+          "type": 1,
+          "val": "integrationId",
+          "end": ""
+        },
+        {
+          "old": "/api/v1/integration-logos/:integrationId/with-background",
+          "type": 0,
+          "val": "with-background",
+          "end": ""
+        }
+      ],
+      "meta": { "params": ["integrationId"] },
+      "methods": ["GET", "HEAD"],
+      "middleware": {}
+    },
+    {
+      "domain": "root",
+      "pattern": "/api/v1/integration-logos/:integrationId",
+      "matchers": {},
+      "tokens": [
+        {
+          "old": "/api/v1/integration-logos/:integrationId",
+          "type": 0,
+          "val": "api",
+          "end": ""
+        },
+        {
+          "old": "/api/v1/integration-logos/:integrationId",
+          "type": 0,
+          "val": "v1",
+          "end": ""
+        },
+        {
+          "old": "/api/v1/integration-logos/:integrationId",
+          "type": 0,
+          "val": "integration-logos",
+          "end": ""
+        },
+        {
+          "old": "/api/v1/integration-logos/:integrationId",
+          "type": 1,
+          "val": "integrationId",
+          "end": ""
+        }
+      ],
+      "meta": { "params": ["integrationId"] },
+      "methods": ["GET", "HEAD"],
+      "middleware": {}
+    },
+    {
+      "domain": "root",
+      "pattern": "/api/v1/moderation_activity/export",
+      "matchers": {},
+      "tokens": [
+        {
+          "old": "/api/v1/moderation_activity/export",
+          "type": 0,
+          "val": "api",
+          "end": ""
+        },
+        {
+          "old": "/api/v1/moderation_activity/export",
+          "type": 0,
+          "val": "v1",
+          "end": ""
+        },
+        {
+          "old": "/api/v1/moderation_activity/export",
+          "type": 0,
+          "val": "moderation_activity",
+          "end": ""
+        },
+        {
+          "old": "/api/v1/moderation_activity/export",
+          "type": 0,
+          "val": "export",
+          "end": ""
+        }
+      ],
+      "meta": { "params": [] },
+      "methods": ["GET", "HEAD"],
+      "middleware": {}
+    }
+  ]
+}

@@ -29,7 +29,9 @@ export default class GraphqlController {
       httpGraphQLRequest: {
         method: ctx.request.method().toUpperCase(),
         headers,
-        search: ctx.request.parsedUrl.search ?? '',
+        search: ctx.request.parsedUrl.query
+          ? `?${ctx.request.parsedUrl.query}`
+          : '',
         // Only JSON bodies reach Apollo, so its content-type and CSRF checks
         // see what the client sent.
         body: jsonBody(ctx),

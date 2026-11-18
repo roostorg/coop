@@ -40,8 +40,10 @@ export function registerRoutes(
           ]);
 
           // Apollo answers on any path under /graphql.
-          router.any('/graphql', [GraphqlController, 'handle']);
-          router.any('/graphql/*', [GraphqlController, 'handle']);
+          router.any('/graphql', [GraphqlController, 'handle']).as('graphql');
+          router
+            .any('/graphql/*', [GraphqlController, 'handle'])
+            .as('graphql.subpath');
 
           for (const controller of Object.values(controllers)) {
             for (const it of controller.routes) {

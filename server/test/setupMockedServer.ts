@@ -44,9 +44,14 @@ export async function makeMockedServer(
   await tdb.begin();
 
   const deps = await getBottleContainerWithIOMocks({ kyselyPool: tdb.pool });
+  // Close the pool if the app fails to boot, so one failure can't use up
+  // Postgres connections for the rest of the run.
   const { app: server, shutdown: shutdownServer } = await makeServer(deps, {
     environment: 'test',
     extraRoutes: opts.extraRoutes,
+  }).catch(async (error: unknown) => {
+    await tdb.end();
+    throw error;
   });
   const request = superTest.agent(server);
 

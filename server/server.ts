@@ -29,7 +29,11 @@ export default async function makeWWWServer(
   const { app } = await createCoopApp(environment, { deps });
   await app.boot();
 
-  let handle!: (req: IncomingMessage, res: ServerResponse) => Promise<void>;
+  // `undefined` when AdonisJS answers a malformed URL itself (400).
+  let handle!: (
+    req: IncomingMessage,
+    res: ServerResponse,
+  ) => Promise<unknown> | undefined;
   let setNodeServer!: (server: NodeServer) => void;
   await app.start(async () => {
     const server = await app.container.make('server');

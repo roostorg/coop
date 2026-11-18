@@ -1,5 +1,6 @@
-import { appKey, http } from './app.js';
+import { http } from './app.js';
 import bodyparser from './bodyparser.js';
+import encryption from './encryption.js';
 import logger from './logger.js';
 
 /**
@@ -7,7 +8,8 @@ import logger from './logger.js';
  * the `config/` directory. Passed to `app.useConfig()` in `adonis/createApp.ts`.
  */
 export default {
-  app: { appKey, http },
+  app: { http },
+  encryption,
   bodyparser,
   logger,
 };
