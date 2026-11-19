@@ -16,12 +16,13 @@ import {
   useGQLManualReviewMetricsQuery,
 } from '../../../graphql/generated';
 import { TimeWindow } from '../rules/dashboard/visualization/RulesDashboardInsights';
+import ManualReviewQueueStatus from './ManualReviewQueueStatus';
 import {
   filterCountsInTimeWindow,
   getPreviousInclusiveTimeWindow,
 } from './mrtAnalyticsUtils';
 
-type ManualReviewAnalyticsDashboardTab = 'home' | 'custom';
+type ManualReviewAnalyticsDashboardTab = 'home' | 'custom' | 'queues';
 
 gql`
   query ManualReviewMetrics {
@@ -169,26 +170,29 @@ export default function ManualReviewAnalyticsDashboard() {
         title="Manual Review Analytics"
         subtitle="Track user reports and monitor your moderators' decisions."
         rightComponent={
-          <div className="flex items-center gap-4">
-            <div className="font-semibold text-slate-500">Date Range</div>
-            <DateRangePicker
-              initialDateFrom={timeWindow.start}
-              initialDateTo={timeWindow.end}
-              onUpdate={({ range }) => {
-                setTimeWindow({
-                  start: range.from,
-                  end: range.to ?? range.from,
-                });
-              }}
-              align="end"
-            />
-          </div>
+          activeTab === 'queues' ? undefined : (
+            <div className="flex items-center gap-4">
+              <div className="font-semibold text-slate-500">Date Range</div>
+              <DateRangePicker
+                initialDateFrom={timeWindow.start}
+                initialDateTo={timeWindow.end}
+                onUpdate={({ range }) => {
+                  setTimeWindow({
+                    start: range.from,
+                    end: range.to ?? range.from,
+                  });
+                }}
+                align="end"
+              />
+            </div>
+          )
         }
       />
       <TabBar<ManualReviewAnalyticsDashboardTab>
         tabs={[
           { label: 'Home', value: 'home' },
           { label: 'My Custom Dashboard', value: 'custom' },
+          { label: 'Queue status', value: 'queues' },
         ]}
         initialSelectedTab={'home'}
         onTabClick={setActiveTab}
@@ -218,8 +222,10 @@ export default function ManualReviewAnalyticsDashboard() {
           }
           currentlyOpenJobs={data?.getTotalPendingJobsCount ?? 0}
         />
-      ) : (
+      ) : activeTab === 'custom' ? (
         <ManualReviewCustomCharts timeWindow={timeWindow} />
+      ) : (
+        <ManualReviewQueueStatus />
       )}
     </div>
   );
