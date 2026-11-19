@@ -14,6 +14,7 @@ import {
 } from '@roostorg/coop-types';
 
 import { OPENAI_CSAM_CLASSIFIER_MODEL_CARD } from './openAiCsamModelCard.js';
+import { SENTINEL_MODEL_CARD } from './sentinelModelCard.js';
 
 export type {
   ModelCard,
@@ -428,12 +429,20 @@ const ZENTROPI: IntegrationManifestEntry = {
   requiresConfig: true,
 };
 
+const SENTINEL: IntegrationManifestEntry = {
+  modelCard: SENTINEL_MODEL_CARD,
+  title: 'Sentinel',
+  docsUrl: 'https://github.com/Roblox/sentinel',
+  requiresConfig: true,
+};
+
 /** Built-in integration manifests (id -> entry). Merged with loaded plugins by the integration registry. */
 export const BUILT_IN_MANIFESTS: Readonly<
   Record<string, IntegrationManifestEntry>
 > = {
   GOOGLE_CONTENT_SAFETY_API: GOOGLE_CONTENT_SAFETY,
   OPEN_AI: OPENAI,
+  SENTINEL,
   ZENTROPI,
 };
 
