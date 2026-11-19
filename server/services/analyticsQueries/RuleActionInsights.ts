@@ -461,7 +461,7 @@ class RuleActionInsights {
 
     return results.map((result) => ({
       date: warehouseDateToDateOnlyString(result.DS),
-      count: result.count,
+      count: Number(result.count),
     }));
   }
 }

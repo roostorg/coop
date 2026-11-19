@@ -95,7 +95,7 @@ export default class UserStrikeOperations {
             action_parameters: thresholdSettings.actionParameters,
           }),
         )
-        .where('id', '=', Number(thresholdSettings.id))
+        .where('id', '=', sql<number>`${thresholdSettings.id}::int`)
         .where('org_id', '=', orgId)
         .returning(userStrikeThresholdSelection)
         .executeTakeFirstOrThrow();
@@ -149,14 +149,14 @@ export default class UserStrikeOperations {
   }) {
     const { orgId, id, threshold } = opts;
 
-    const rowsDeleted = await this.pgQuery
+    const { numDeletedRows } = await this.pgQuery
       .deleteFrom('public.user_strike_thresholds')
       .where('org_id', '=', orgId)
-      .where('id', '=', Number(id))
+      .where('id', '=', sql<number>`${id}::int`)
       .where('threshold', '=', threshold)
-      .execute();
+      .executeTakeFirstOrThrow();
 
-    return rowsDeleted.length === 1;
+    return numDeletedRows === 1n;
   }
 
   #getPgQuery(readFromReplica: boolean = false) {

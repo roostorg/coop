@@ -157,17 +157,19 @@ export function internalMakeUserStatisticsService(
       orgId: string,
       userItemIdentifier: ItemIdentifier,
     ) {
-      return warehouseQuery
+      const rows = await warehouseQuery
         .selectFrom('USER_STATISTICS_SERVICE.SUBMISSION_STATS')
         .select([
           'ITEM_TYPE_ID as itemTypeId',
-          warehouseQuery.fn.sum<number>('NUM_SUBMISSIONS').as('count'),
+          warehouseQuery.fn.sum<number | string>('NUM_SUBMISSIONS').as('count'),
         ])
         .where('ORG_ID', '=', orgId)
         .where('USER_TYPE_ID', '=', userItemIdentifier.typeId)
         .where(sql`LOWER(USER_ID)`, '=', userItemIdentifier.id.toLowerCase())
         .groupBy('ITEM_TYPE_ID')
         .execute();
+      // SUM over an integer column comes back as a numeric string.
+      return rows.map((row) => ({ ...row, count: Number(row.count) }));
     },
   };
 }
