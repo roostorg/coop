@@ -111,7 +111,7 @@ services:
       - POSTGRES_DB=postgres
       - POSTGRES_HOST=postgres
     ports:
-      - '9876:9876'
+      - '127.0.0.1:9876:9876'
     depends_on:
       - postgres
 
@@ -124,7 +124,7 @@ services:
     volumes:
       - scylla_data:/var/lib/scylla
     ports:
-      - '9042:9042'
+      - '127.0.0.1:9042:9042'
     healthcheck:
       # nodetool status only confirms gossip is up, not that the CQL port
       # (9042) is accepting and completing queries yet — that gap lets
@@ -184,9 +184,9 @@ services:
   jaeger:
     image: jaegertracing/all-in-one:1.76.0
     ports:
-      - '16686:16686'
-      - '14268'
-      - '14250'
+      - '127.0.0.1:16686:16686'
+      - '127.0.0.1::14268'
+      - '127.0.0.1::14250'
     environment:
       - LOG_LEVEL=info
 
@@ -199,18 +199,18 @@ services:
       - ./otel-collector.yaml:/etc/otel-collector.yaml
     command: ['--config=/etc/otel-collector.yaml']
     ports:
-      - '1888:1888' # pprof extension
-      - '13133:13133' # health_check extension
-      - '4317:4317' # OTLP gRPC receiver
-      - '55670:55679' # zpages extension
+      - '127.0.0.1:1888:1888' # pprof extension
+      - '127.0.0.1:13133:13133' # health_check extension
+      - '127.0.0.1:4317:4317' # OTLP gRPC receiver
+      - '127.0.0.1:55670:55679' # zpages extension
     depends_on:
       - jaeger
 
   clickhouse:
     image: clickhouse/clickhouse-server:24.3
     ports:
-      - '8123:8123' # HTTP interface
-      - '9000:9000' # Native TCP interface
+      - '127.0.0.1:8123:8123' # HTTP interface
+      - '127.0.0.1:9000:9000' # Native TCP interface
     volumes:
       - clickhouse_data:/var/lib/clickhouse
     environment:
