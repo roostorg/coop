@@ -10,7 +10,7 @@ name: Security backports
 on:
   # Runs main's copy of this workflow and scripts; never checks out PR code.
   pull_request_target: # zizmor: ignore[dangerous-triggers]
-    types: [closed, labeled]
+    types: [closed, labeled, unlabeled]
     branches: [main, 'release/**']
   release:
     types: [published]
@@ -19,7 +19,7 @@ on:
   workflow_dispatch:
     inputs:
       pr:
-        description: Only backport this PR number
+        description: Only add this PR number; fixes already in the backport PR stay
         required: false
         type: string
       retry:

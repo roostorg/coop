@@ -1,9 +1,16 @@
 import assert from 'node:assert/strict';
-import { execSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { execSync, spawnSync } from 'node:child_process';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import {
   alreadyOnBranch,
@@ -13,6 +20,7 @@ import {
   combinedBody,
   combinedReleaseNotes,
   createBranchMessage,
+  directDependencyChanges,
   failureComment,
   latestStableTag,
   lockfileDelta,
@@ -195,6 +203,7 @@ test('backportBody warns when several packages change', () => {
       releaseNotes: 'Fix x',
       credit: '[#7](u) by [@a](v)',
       upgrades: [{ name: 'qs', from: ['6.0.0'], to: '6.0.1' }],
+      directChanges: ['qs'],
     },
     target,
   );
@@ -213,10 +222,14 @@ test('backportBody warns when several packages change', () => {
         { name: 'qs', from: ['6.0.0'], to: '6.0.1' },
         { name: 'foo', from: [], to: '1.0.0' },
       ],
+      directChanges: ['foo', 'qs'],
     },
     target,
   );
-  assert.match(many, /WARNING/);
+  assert.match(
+    many,
+    /WARNING\]\n> This changes 2 direct dependencies \(`foo`, `qs`\)/,
+  );
 });
 
 test('the command in the missing-branch warning creates the branch at the tag', () => {
@@ -381,4 +394,248 @@ test('release-drafter.yml credits each note of a combined backport PR', () => {
       '- Fix three ([#3](https://github.com/roostorg/coop/pull/3) by [@u3](https://github.com/u3))',
     ].join('\n'),
   );
+});
+
+const importers = (deps) =>
+  [
+    "lockfileVersion: '9.0'",
+    '',
+    'importers:',
+    '',
+    '  server:',
+    '    dependencies:',
+    ...Object.entries(deps).flatMap(([name, version]) => [
+      `      ${name.startsWith('@') ? `'${name}'` : name}:`,
+      `        specifier: ^${version}`,
+      `        version: ${version}(graphql@16.0.0)`,
+    ]),
+    '',
+    'packages:',
+    '',
+  ].join('\n');
+
+test('directDependencyChanges ignores transitive and peer-only changes', () => {
+  const before = importers({ qs: '6.0.0', '@a/b': '1.0.0' });
+  assert.deepEqual(
+    directDependencyChanges(
+      before,
+      importers({ qs: '6.0.1', '@a/b': '1.0.0' }).replace(
+        '1.0.0(graphql@16.0.0)',
+        '1.0.0(graphql@16.1.0)',
+      ),
+    ),
+    ['qs'],
+  );
+  assert.deepEqual(
+    directDependencyChanges(
+      before,
+      importers({ qs: '6.0.1', '@a/b': '1.1.0' }),
+    ),
+    ['@a/b', 'qs'],
+  );
+});
+
+// A stub `gh` for the combined-PR test: serves state.json and logs writes.
+const STUB_GH = `#!/usr/bin/env node
+const fs = require('node:fs');
+const file = process.env.STUB_GH_STATE;
+const state = JSON.parse(fs.readFileSync(file, 'utf8'));
+const args = process.argv.slice(2);
+const opt = (n) => { const i = args.indexOf(n); return i === -1 ? undefined : args[i + 1]; };
+const out = (v) => process.stdout.write(typeof v === 'string' ? v + '\\n' : JSON.stringify(v));
+const save = () => fs.writeFileSync(file, JSON.stringify(state));
+if (args[0] === 'pr' && args[1] === 'list') {
+  if (opt('--label')) return out(state.prs);
+  const open = state.combinedPr && opt('--state') === 'open';
+  return out(opt('--head') === state.combinedBranch && open ? [state.combinedPr] : []);
+}
+if (args[0] === 'api') return out([[]]);
+state.writes.push(args.slice(0, 2).join(' '));
+if (args[1] === 'create') {
+  const url = 'https://github.com/x/y/pull/100';
+  state.combinedPr = { number: 100, url, body: fs.readFileSync(opt('--body-file'), 'utf8') };
+} else if (args[1] === 'edit' && opt('--body-file')) {
+  state.combinedPr.body = fs.readFileSync(opt('--body-file'), 'utf8');
+} else if (args[1] === 'close') {
+  state.combinedPr = null;
+}
+save();
+`;
+
+test('the combined backport PR is built, extended, rebuilt and closed', () => {
+  const dir = mkdtempSync(path.join(tmpdir(), 'security-backport-'));
+  const script = fileURLToPath(
+    new URL('security-backport.mjs', import.meta.url),
+  );
+  const stateFile = path.join(dir, 'state.json');
+  const branch = 'backport/security-to-release/1.3';
+  try {
+    mkdirSync(path.join(dir, 'bin'));
+    writeFileSync(path.join(dir, 'bin', 'gh'), STUB_GH, { mode: 0o755 });
+    const env = {
+      ...process.env,
+      PATH: `${path.join(dir, 'bin')}:${process.env.PATH}`,
+      STUB_GH_STATE: stateFile,
+      GITHUB_REPOSITORY: 'x/y',
+      BACKPORT_PUSH_URL: path.join(dir, 'origin.git'),
+      GIT_AUTHOR_NAME: 't',
+      GIT_AUTHOR_EMAIL: 't@t',
+      GIT_COMMITTER_NAME: 't',
+      GIT_COMMITTER_EMAIL: 't@t',
+    };
+    const sh = (cmd, cwd = path.join(dir, 'work')) =>
+      execSync(cmd, { cwd, env, encoding: 'utf8', stdio: 'pipe' }).trim();
+    const origin = (cmd) => sh(`git ${cmd}`, path.join(dir, 'origin.git'));
+    const state = () => JSON.parse(readFileSync(stateFile, 'utf8'));
+    const setState = (f) => {
+      const s = state();
+      f(s);
+      writeFileSync(stateFile, JSON.stringify(s));
+    };
+    sh(
+      'git init -q --bare -b main origin.git && git clone -q origin.git work',
+      dir,
+    );
+    sh('echo base > README && git add README && git commit -qm 1.3.0');
+    sh(
+      'git tag 1.3.0 && git push -q origin main 1.3.0 HEAD:refs/heads/release/1.3',
+    );
+    writeFileSync(
+      stateFile,
+      JSON.stringify({
+        prs: [],
+        combinedBranch: branch,
+        combinedPr: null,
+        writes: [],
+      }),
+    );
+    const mergeFix = (n) => {
+      sh(
+        `git switch -q main && echo ${n} > fix${n}.txt && git add fix${n}.txt`,
+      );
+      sh(`git commit -qm "fix: fix ${n} (#${n})" && git push -q origin main`);
+      const oid = sh('git rev-parse HEAD');
+      setState((s) =>
+        s.prs.push({
+          number: n,
+          title: `fix: fix ${n}`,
+          body: `## Release notes\n\nFix ${n}\n`,
+          url: `https://github.com/x/y/pull/${n}`,
+          mergeCommit: { oid },
+          mergedAt: `2026-11-18T00:00:0${n}Z`,
+          author: { login: `user${n}`, is_bot: false },
+          labels: [{ name: 'security-update' }],
+        }),
+      );
+    };
+    const label = (n, labels) =>
+      setState((s) => {
+        s.prs.find((p) => p.number === n).labels = labels.map((name) => ({
+          name,
+        }));
+      });
+    // One workflow run: prepare, then publish if the plan has anything to push.
+    const runWorkflow = (args = '') => {
+      sh(`rm -rf run && git clone -q origin.git run`, dir);
+      setState((s) => (s.writes = []));
+      const opts = {
+        cwd: path.join(dir, 'run'),
+        env: { ...env, BACKPORT_WORKDIR: path.join(dir, 'plan') },
+      };
+      sh(`rm -rf plan`, dir);
+      const prepare = spawnSync(
+        'node',
+        [script, 'prepare', ...args.split(' ').filter(Boolean)],
+        { ...opts, encoding: 'utf8' },
+      );
+      if (prepare.status !== 0)
+        return { status: prepare.status, out: prepare.stdout };
+      const plan = JSON.parse(
+        readFileSync(path.join(dir, 'plan', 'plan.json'), 'utf8'),
+      );
+      if (plan.combined.changed) {
+        const publish = spawnSync('node', [script, 'publish'], {
+          ...opts,
+          encoding: 'utf8',
+        });
+        assert.equal(publish.status, 0, publish.stderr);
+      }
+      return { status: 0, plan, writes: state().writes };
+    };
+    const picked = () =>
+      origin(`log --format=%s release/1.3..${branch}`).split('\n');
+
+    mergeFix(1);
+    mergeFix(2);
+    let r = runWorkflow();
+    assert.deepEqual(r.writes, ['pr create', 'pr edit']);
+    assert.deepEqual(picked(), ['fix: fix 2 (#2)', 'fix: fix 1 (#1)']);
+    assert.match(state().combinedPr.body, /- Fix 1 \(\[#1\]/);
+
+    r = runWorkflow();
+    assert.equal(
+      r.plan.combined.changed,
+      false,
+      'a run with nothing new pushes nothing',
+    );
+
+    const before = origin(`rev-parse ${branch}`);
+    mergeFix(3);
+    runWorkflow();
+    assert.doesNotThrow(() =>
+      origin(`merge-base --is-ancestor ${before} ${branch}`),
+    );
+    assert.equal(picked().length, 3);
+
+    label(2, ['security-update', 'no-backport']);
+    runWorkflow();
+    assert.deepEqual(picked(), ['fix: fix 3 (#3)', 'fix: fix 1 (#1)']);
+
+    sh(
+      'git fetch -q && git switch -q -c rel origin/release/1.3 && echo m > m.txt',
+    );
+    sh(
+      'git add m.txt && git commit -qm manual && git push -q origin rel:release/1.3',
+    );
+    runWorkflow();
+    assert.doesNotThrow(() =>
+      origin(`merge-base --is-ancestor release/1.3 ${branch}`),
+    );
+    assert.equal(picked().length, 2);
+
+    label(3, []);
+    setState((s) => (s.prs = s.prs.filter((p) => p.number !== 3)));
+    runWorkflow();
+    assert.deepEqual(
+      picked(),
+      ['fix: fix 1 (#1)'],
+      'an unlabelled fix is dropped',
+    );
+
+    mergeFix(4);
+    r = runWorkflow('--pr 4');
+    assert.deepEqual(
+      picked(),
+      ['fix: fix 4 (#4)', 'fix: fix 1 (#1)'],
+      '--pr keeps the others',
+    );
+
+    sh(`git fetch -q origin ${branch} && git switch -q -c hand FETCH_HEAD`);
+    sh(
+      `echo h > h.txt && git add h.txt && git commit -qm hand && git push -q origin hand:${branch}`,
+    );
+    const handHead = origin(`rev-parse ${branch}`);
+    r = runWorkflow();
+    assert.equal(r.status, 1);
+    assert.match(r.out, /has commits the workflow did not add/);
+    assert.equal(origin(`rev-parse ${branch}`), handHead);
+
+    origin(`update-ref refs/heads/${branch} ${handHead}~1`);
+    label(1, ['security-update', 'no-backport']);
+    label(4, ['security-update', 'no-backport']);
+    r = runWorkflow();
+    assert.deepEqual(r.writes, ['pr close']);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

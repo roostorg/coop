@@ -73,6 +73,50 @@ export function lockfilePackages(text) {
   return out;
 }
 
+// The version of each direct dependency in a v9 pnpm-lock.yaml's
+// `importers:` section, keyed by `<importer> <name>`, without peer suffixes.
+export function lockfileDirectDeps(text) {
+  const out = new Map();
+  let inImporters = false;
+  let importer;
+  let name;
+  for (const line of text.split('\n')) {
+    if (/^\S/.test(line)) {
+      inImporters = line.startsWith('importers:');
+      continue;
+    }
+    if (!inImporters) continue;
+    let m;
+    if ((m = /^ {2}(\S[^:]*):$/.exec(line))) importer = m[1];
+    else if ((m = /^ {6}(?:'([^']+)'|([^\s'][^:]*)):$/.exec(line)))
+      name = m[1] ?? m[2];
+    else if ((m = /^ {8}version: (.+)$/.exec(line)))
+      out.set(`${importer} ${name}`, m[1].replace(/\(.*$/, ''));
+  }
+  return out;
+}
+
+// The direct dependencies whose version differs between two lockfiles.
+export function directDependencyChanges(before, after) {
+  const a = lockfileDirectDeps(before);
+  const b = lockfileDirectDeps(after);
+  const names = new Set();
+  for (const key of new Set([...a.keys(), ...b.keys()])) {
+    if (a.get(key) !== b.get(key)) names.add(key.slice(key.indexOf(' ') + 1));
+  }
+  return [...names].sort();
+}
+
+// The direct dependencies that commit `sha` changes, e.g. several for a
+// grouped Dependabot update.
+function sourceDirectChanges(sha) {
+  if (!commitTouches(sha, 'pnpm-lock.yaml')) return [];
+  return directDependencyChanges(
+    gitShow(`${sha}^1`, 'pnpm-lock.yaml'),
+    gitShow(sha, 'pnpm-lock.yaml'),
+  );
+}
+
 function nameOf(key) {
   return key.slice(0, key.indexOf('@', 1));
 }
@@ -414,15 +458,14 @@ function prepare({ prFilter, retry }) {
       );
       continue;
     }
-    const result = combined.pick(pr, sha, workdir);
-    if (result.separate) {
+    if (sourceDirectChanges(sha).length > 1) {
       // Grouped updates are reviewed on their own; see backportBody.
       record(plan, backportOne({ pr, sha, target, base, workdir }), skip);
-    } else if (result.ok) {
-      combined.add(pr, result);
-    } else {
-      record(plan, result, skip);
+      continue;
     }
+    const result = combined.pick(pr, sha);
+    if (result.ok) combined.add(pr, result);
+    else record(plan, result, skip);
   }
 
   combined.finish();
@@ -510,15 +553,24 @@ function openCombined({ repo, target, base, prs }) {
       '--format=%H%x00%B%x01',
       `${base}..${remote}`,
     ]);
-    const found = cherryPicks(log, bySha);
+    // A cherry-pick of a main commit whose PR lost the label counts as
+    // declined; anything else the workflow didn't add stops the run.
+    const found = cherryPicks(log, {
+      has: (s) =>
+        bySha.has(s) ||
+        tryRun('git', ['merge-base', '--is-ancestor', s, 'origin/main']).ok,
+    });
     foreign = found.foreign;
     for (const [source, commit] of found.picks) {
+      if (!bySha.has(source)) continue;
       included.set(bySha.get(source).number, {
         upgrades: commitUpgrades(commit),
       });
     }
-    const declined = [...found.picks.keys()].some((s) =>
-      bySha.get(s).labels?.some((l) => l.name === DECLINE_LABEL),
+    const declined = [...found.picks.keys()].some(
+      (s) =>
+        !bySha.has(s) ||
+        bySha.get(s).labels?.some((l) => l.name === DECLINE_LABEL),
     );
     rebuild =
       declined ||
@@ -567,13 +619,12 @@ function openCombined({ repo, target, base, prs }) {
     pick(pr, sha) {
       const before = run('git', ['rev-parse', 'HEAD'], { cwd: dir });
       const result = pickAndCheck({ pr, sha, target, dir, before });
-      const packages = new Set((result.upgrades ?? []).map((u) => u.name));
-      if (!result.ok || packages.size > 1) {
+      if (result.ok) {
+        console.log(`#${pr.number}: added to ${branch}`);
+      } else {
         tryRun('git', ['cherry-pick', '--abort'], { cwd: dir });
         run('git', ['reset', '--quiet', '--hard', before], { cwd: dir });
       }
-      if (result.ok && packages.size > 1) return { separate: true };
-      if (result.ok) console.log(`#${pr.number}: added to ${branch}`);
       return result;
     },
     finish() {
@@ -772,6 +823,7 @@ function backportOne({ pr, sha, target, base, workdir, existingRef }) {
     head,
     releaseNotes: releaseNotesSection(pr.body),
     upgrades: result.upgrades,
+    directChanges: sourceDirectChanges(sha),
   };
 }
 
@@ -781,7 +833,6 @@ export function backportBody(b, target) {
     '',
     `Cherry-picked from ${b.sha} with \`git cherry-pick -x\`. Merge with a merge commit or rebase so that the \`(cherry picked from commit …)\` line stays on \`${target.branch}\`.`,
   ];
-  const packages = new Set(b.upgrades.map((u) => u.name));
   if (b.upgrades.length > 0) {
     lines.push(
       '',
@@ -793,11 +844,12 @@ export function backportBody(b, target) {
       ),
     );
   }
-  if (packages.size > 1) {
+  const direct = b.directChanges ?? [];
+  if (direct.length > 1) {
     lines.push(
       '',
       `> [!WARNING]`,
-      `> This changes ${packages.size} packages. If the source PR grouped security updates with other updates, keep only the security updates (see "Cherry-picking deterministically" in the security release runbook) before marking this ready.`,
+      `> This changes ${direct.length} direct dependencies (${direct.map((n) => `\`${n}\``).join(', ')}). If the source PR grouped security updates with other updates, keep only the security updates (see "Cherry-picking deterministically" in the security release runbook) before marking this ready.`,
     );
   }
   lines.push(
@@ -850,7 +902,7 @@ export function combinedBody(entries, target) {
   const lines = [
     `Security fixes from \`main\` for ${target.next}, cherry-picked onto \`${target.branch}\` with \`git cherry-pick -x\` by the security backport workflow. Each run adds new \`security-update\` PRs and rewrites this description, so don't push to this branch or edit this description.`,
     '',
-    `Merge with **Rebase and merge**, so that each \`(cherry picked from commit …)\` line stays on \`${target.branch}\`.`,
+    `Merge with **Rebase and merge**, so that each \`(cherry picked from commit …)\` line stays on \`${target.branch}\`. The workflow keeps adding fixes while this PR is open, so check the list below again right before merging.`,
     '',
     ...entries.flatMap((e) => [
       `- #${e.pr} (${e.sha.slice(0, 12)})`,
@@ -887,7 +939,7 @@ function publish() {
       '--repo',
       repo,
       '--comment',
-      'Every fix in this PR was declined or is already on the release branch, so the security backport workflow closed it.',
+      'Nothing is left to backport in this PR: each fix was declined, is already on the release branch, or failed to apply (see the comments on its PR). The security backport workflow closed it.',
     ]);
     summaryRows.push(`- Closed ${combined.pr.url}: nothing left in it`);
   } else if (combined?.changed) {
@@ -904,6 +956,7 @@ function publish() {
     }
     const bodyFile = path.join(workdir, 'body-combined.md');
     writeFileSync(bodyFile, combined.body);
+    const title = `fix: backport security fixes to ${target.branch} for ${target.next}`;
     const url =
       combined.pr?.url ??
       gh([
@@ -916,13 +969,23 @@ function publish() {
         '--head',
         combined.branch,
         '--title',
-        `fix: backport security fixes to ${target.branch} for ${target.next}`,
+        title,
         '--body-file',
         bodyFile,
         '--draft',
       ]);
     if (combined.pr) {
-      gh(['pr', 'edit', url, '--repo', repo, '--body-file', bodyFile]);
+      gh([
+        'pr',
+        'edit',
+        url,
+        '--repo',
+        repo,
+        '--title',
+        title,
+        '--body-file',
+        bodyFile,
+      ]);
     }
     label(
       repo,
@@ -941,7 +1004,7 @@ function publish() {
     }
     const bodyFile = path.join(workdir, `body-${b.pr}.md`);
     writeFileSync(bodyFile, backportBody(b, target));
-    const draft = new Set(b.upgrades.map((u) => u.name)).size > 1;
+    const draft = (b.directChanges ?? []).length > 1;
     const url = gh([
       'pr',
       'create',

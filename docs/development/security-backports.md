@@ -14,13 +14,13 @@ The **Security backports** workflow (`.github/workflows/security-backport.yml`) 
 
 - **Keeps one draft backport PR** to `release/x.y`, from the `backport/security-to-release/x.y` branch, with every PR merged to `main` with the `security-update` label. A PR qualifies whether the label came from the [labeling workflow](https://github.com/roostorg/coop/pull/1519) or from a person, and whether it was added before or after the merge. The workflow cherry-picks each PR's merge commit onto the branch with `git cherry-pick -x`, labels the backport PR `security-update`, and rewrites its description on every run: the source PRs, their lockfile changes, and their `## Release notes` sections, each credited to its source PR and author. Release Drafter reads the credit of the last note from an `<!-- original-credit: … -->` comment, which takes the place of the backport PR's own credit.
 
-  Don't push to the branch or edit the description. To change a release note, edit the source PR's `## Release notes` section, e.g. to add one to a Dependabot PR, and rerun the workflow. Mark the backport PR ready and merge it with **Rebase and merge** when the release is due; the next security PR starts a new one.
+  Don't push to the branch or edit the description. To change a release note, edit the source PR's `## Release notes` section, e.g. to add one to a Dependabot PR, and rerun the workflow. Mark the backport PR ready and merge it with **Rebase and merge** when the release is due; the next security PR starts a new one. The workflow keeps adding fixes while the PR is open, so check its list again right before merging.
 
 - **Keeps a draft release** for `x.y.(z+1)` targeting `release/x.y`. Release Drafter collects the release notes of the PRs merged into `release/x.y` since `x.y.z`. Draft releases are visible only to people with write access.
 
-It runs when a PR to `main` is merged or labelled `security-update` or `no-backport`, when a PR to `release/**` is merged, when a release is published, daily, and on demand. Every run checks all `security-update` PRs merged since `release/x.y` diverged from `main`. A run skips a PR that is already on `release/x.y`, that has its own backport PR (open, merged or closed), that is labelled `no-backport`, or whose backport already failed.
+It runs when a PR to `main` is merged or labelled or unlabelled `security-update` or `no-backport`, when a PR to `release/**` is merged, when a release is published, daily, and on demand. Every run checks all `security-update` PRs merged since `release/x.y` diverged from `main`. A run skips a PR that is already on `release/x.y`, that has its own backport PR (open, merged or closed), that is labelled `no-backport`, or whose backport already failed.
 
-When `release/x.y` moves, e.g. after a manual backport is merged, or a PR in the backport PR is labelled `no-backport`, the workflow rebuilds the branch from `release/x.y` and force-pushes it with a lease. It never force-pushes another branch. If the branch has commits the workflow didn't add, the run fails instead of dropping them: remove them, or merge or close the PR. A rebuild that leaves nothing in the PR closes it.
+When `release/x.y` moves, e.g. after a manual backport is merged, or a PR in the backport PR is labelled `no-backport` or loses its `security-update` label, the workflow rebuilds the branch from `release/x.y` and force-pushes it with a lease. It never force-pushes another branch. If the branch has commits the workflow didn't add, the run fails instead of dropping them: remove them, or merge or close the PR. A rebuild that leaves nothing in the PR closes it.
 
 To decline a backport, label its source PR `no-backport`; for a fix in its own backport PR, close that PR without merging. The workflow won't backport it again.
 
@@ -34,7 +34,7 @@ A cherry-pick that applies cleanly changes the same lines of `pnpm-lock.yaml` as
 
 It never re-resolves the lockfile. If a check fails or the lockfile conflicts, the PR goes to the manual path below.
 
-If a backport changes more than one package, as with a grouped Dependabot PR, it gets its own draft PR from a `backport/<n>-to-release/x.y` branch, with a warning that lists the version changes. Keep only the security updates before marking it ready. Its `## Release notes` section ends with the `original-credit` comment; keep that as the section's last line.
+If a source PR changes more than one direct dependency, as with a grouped Dependabot PR, its backport gets its own draft PR from a `backport/<n>-to-release/x.y` branch, with a warning that lists the version changes. Keep only the security updates before marking it ready. Its `## Release notes` section ends with the `original-credit` comment; keep that as the section's last line.
 
 ## When it fails
 
