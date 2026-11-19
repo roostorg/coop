@@ -1546,6 +1546,16 @@ export class ManualReviewToolService {
     );
   }
 
+  /**
+   * Obliterates the Bull queue behind every one of an org's review queues,
+   * leaving the Postgres rows alone. For callers that discard their database
+   * writes some other way but still need the Redis side cleaned up, since no
+   * Postgres transaction can reach it.
+   */
+  async obliterateAllQueuesForOrg(orgId: string) {
+    return this.queueOps.obliterateAllQueuesForOrg(orgId);
+  }
+
   async resolveContentForReview(opts: {
     queueId: string;
     reviewerId: string;
