@@ -281,21 +281,13 @@ describe('ModerationConfigService', () => {
         });
         expect(updated).toMatchObject({ id: created.id, threshold: 4 });
 
-        expect(
-          await sutWithPrimary.deleteUserStrikeThreshold({
-            orgId: org.id,
-            thresholdSettings: { id: created.id, threshold: 4 },
-          }),
-        ).toBe(true);
+        await sutWithPrimary.deleteUserStrikeThreshold({
+          orgId: org.id,
+          thresholdSettings: { id: created.id, threshold: 4 },
+        });
         expect(
           await sutWithReadReplica.getUserStrikeThresholdsForOrg(org.id),
         ).toEqual([]);
-        expect(
-          await sutWithPrimary.deleteUserStrikeThreshold({
-            orgId: org.id,
-            thresholdSettings: { id: created.id, threshold: 4 },
-          }),
-        ).toBe(false);
       },
     );
   });

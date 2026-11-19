@@ -172,13 +172,13 @@ class UserManagementService {
   }
 
   async deleteInvite(inviteId: string, orgId: string): Promise<boolean> {
-    const { numDeletedRows } = await this.pgQuery
+    const result = await this.pgQuery
       .deleteFrom('public.invite_user_tokens')
       .where('id', '=', sql<number>`${inviteId}::int`)
       .where('org_id', '=', orgId)
-      .executeTakeFirstOrThrow();
+      .execute();
 
-    return numDeletedRows > 0n;
+    return result.length > 0;
   }
 
   async upsertUserInterfaceSettings(input: {

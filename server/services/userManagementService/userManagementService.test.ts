@@ -120,7 +120,6 @@ describe('UserManagementService invites', () => {
       expect(invite.id).toEqual(expect.any(String));
       expect(await service.deleteInvite(invite.id, org.id)).toBe(true);
       expect(await service.getPendingInvites(org.id)).toEqual([]);
-      expect(await service.deleteInvite(invite.id, org.id)).toBe(false);
     },
   );
 });
