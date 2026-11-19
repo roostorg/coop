@@ -164,7 +164,7 @@ class UserManagementService {
       .execute();
 
     return result.map((row) => ({
-      id: row.id,
+      id: String(row.id),
       email: row.email,
       role: row.role,
       createdAt: row.created_at.toISOString(),
@@ -174,7 +174,7 @@ class UserManagementService {
   async deleteInvite(inviteId: string, orgId: string): Promise<boolean> {
     const result = await this.pgQuery
       .deleteFrom('public.invite_user_tokens')
-      .where('id', '=', inviteId)
+      .where('id', '=', Number(inviteId))
       .where('org_id', '=', orgId)
       .execute();
 

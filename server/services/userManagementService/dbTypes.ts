@@ -68,7 +68,7 @@ export type UserManagementPg = {
   'public.roles': CoreAppTablesPg['public.roles'];
   'public.role_permissions': CoreAppTablesPg['public.role_permissions'];
   'public.invite_user_tokens': {
-    id: GeneratedAlways<string>;
+    id: GeneratedAlways<number>;
     token: string;
     email: string;
     role_id: string;

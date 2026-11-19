@@ -413,6 +413,7 @@ export default class ReportingRules {
 
     return reportingRules.map((it) => ({
       ...it,
+      version: it.version.toISOString(),
       policyIds: filterNullOrUndefined(it.policyIds),
     }));
   }

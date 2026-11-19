@@ -149,7 +149,7 @@ export type ManualReviewToolServicePg = {
     sequence_number: GeneratedAlways<number>;
     destination_queue_id: GeneratedAlways<string>;
     is_current: GeneratedAlways<boolean>;
-    version: GeneratedAlways<string>;
+    version: GeneratedAlways<Date>;
   };
   'manual_review_tool.routing_rules_to_item_types': {
     routing_rule_id: string;
@@ -179,7 +179,7 @@ export type ManualReviewToolServicePg = {
     sequence_number: GeneratedAlways<number>;
     destination_queue_id: GeneratedAlways<string>;
     is_current: GeneratedAlways<boolean>;
-    version: GeneratedAlways<string>;
+    version: GeneratedAlways<Date>;
   };
   'manual_review_tool.appeals_routing_rules_to_item_types': {
     appeals_routing_rule_id: string;

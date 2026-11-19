@@ -230,6 +230,67 @@ describe('ModerationConfigService', () => {
     );
   });
 
+  describe('#getRuleByIdAndOrg lastActionDate', () => {
+    const testWithRuleRow = makeTransactionalTestWithFixture(
+      async ({ deps }) => {
+        const base = await setupOrg(deps);
+        const { user } = await createUser(deps.KyselyPg, base.org.id);
+        const rule = await createRule(deps.KyselyPg, base.org.id, {
+          creator: user,
+          name: 'lastActionDate fixture rule',
+          ruleType: RuleType.USER,
+          status: RuleStatus.DRAFT,
+          conditionSet: minimalRuleConditionSet,
+        });
+        await deps.KyselyPg.updateTable('public.rules')
+          .set({ last_action_date: '2026-01-02' })
+          .where('id', '=', rule.id)
+          .execute();
+        return { ...base, ruleId: rule.id };
+      },
+    );
+
+    testWithRuleRow(
+      'returns the date column as a YYYY-MM-DD string',
+      async ({ sutWithPrimary, org, ruleId }) => {
+        const row = await sutWithPrimary.getRuleByIdAndOrg(ruleId, org.id, {
+          readFromReplica: false,
+        });
+        expect(row!.lastActionDate).toBe('2026-01-02');
+      },
+    );
+  });
+
+  describe('user strike thresholds', () => {
+    testWithOrg(
+      'exposes the integer id as a string that update and delete accept',
+      async ({ sutWithPrimary, sutWithReadReplica, org }) => {
+        const created = await sutWithPrimary.createUserStrikeThreshold({
+          orgId: org.id,
+          thresholdSettings: { threshold: 3, actions: [] },
+        });
+        expect(created.id).toEqual(expect.any(String));
+        const [read] = await sutWithReadReplica.getUserStrikeThresholdsForOrg(
+          org.id,
+        );
+        expect(read.id).toBe(created.id);
+
+        const updated = await sutWithPrimary.updateUserStrikeThreshold({
+          orgId: org.id,
+          thresholdSettings: { id: created.id, threshold: 4 },
+        });
+        expect(updated).toMatchObject({ id: created.id, threshold: 4 });
+
+        expect(
+          await sutWithPrimary.deleteUserStrikeThreshold({
+            orgId: org.id,
+            thresholdSettings: { id: created.id, threshold: 4 },
+          }),
+        ).toBe(true);
+      },
+    );
+  });
+
   describe('ItemType-Returning methods', () => {
     describe('hidden fields', () => {
       testWithOrg(

@@ -507,7 +507,7 @@ export default class AppealsJobRouting {
       | Transaction<ManualReviewToolServicePg>
       | Kysely<ManualReviewToolServicePg>,
   ) {
-    return db
+    const rules = await db
       .selectFrom(
         'manual_review_tool.appeals_routing_rule_versions as routing_rules',
       )
@@ -539,6 +539,10 @@ export default class AppealsJobRouting {
       ])
       .orderBy('routing_rules.sequence_number')
       .execute();
+    return rules.map((rule) => ({
+      ...rule,
+      version: rule.version.toISOString(),
+    }));
   }
 
   async close() {
