@@ -34,8 +34,7 @@ export const http = defineConfig({
   allowMethodSpoofing: false,
   // Lets services read the current HttpContext without threading it through.
   useAsyncLocalStorage: true,
-  // ETags on bodies. AdonisJS sends strong ETags (`"…"`) where Express sent
-  // weak ones (`W/"…"`).
+  // Weak ETags on bodies, as Express sent (see adonis/weakEtags.ts).
   etag: true,
   // Behind NLB -> ALB; see force_https_middleware.ts.
   trustProxy: () => true,

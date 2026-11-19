@@ -1,6 +1,8 @@
 import { Ignitor } from '@adonisjs/core';
 import type { AppEnvironments } from '@adonisjs/core/types/app';
 
+import './weakEtags.js';
+
 import rcFile from '../adonisrc.js';
 import config from '../config/index.js';
 import { type Dependencies } from '../iocContainer/index.js';

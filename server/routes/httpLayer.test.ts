@@ -24,6 +24,8 @@ describe('HTTP layer', () => {
     expect(res.headers['x-content-type-options']).toBe('nosniff');
     expect(res.headers['strict-transport-security']).toBeDefined();
     expect(res.headers['x-powered-by']).toBeUndefined();
+    // Weak ETags, as Express sent; clients may hold them in caches.
+    expect(res.headers.etag).toMatch(/^W\/"/);
   });
 
   test('answers CORS preflights for any path', async () => {
