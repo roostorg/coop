@@ -33,7 +33,7 @@ async function runFixture(kind: string, signal?: NodeJS.Signals) {
   if (signal) {
     // Signal only once the handlers are installed; before that, the signal's
     // default action would kill the child.
-    await new Promise<void>((resolve) => {
+    const ready = new Promise<void>((resolve) => {
       child.stdout.on('data', (chunk: string) => {
         stdout += chunk;
         if (stdout.includes('ready\n')) {
@@ -41,6 +41,12 @@ async function runFixture(kind: string, signal?: NodeJS.Signals) {
         }
       });
     });
+    await Promise.race([
+      ready,
+      exited.then(([code]) => {
+        throw new Error(`child exited ${code} before ready: ${stderr}`);
+      }),
+    ]);
     child.kill(signal);
   }
 

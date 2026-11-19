@@ -3,6 +3,9 @@ import { runWorkerOrJob } from '../../bin/runWorkerOrJobLib.js';
 // Child process for bin/runWorkerOrJobLib.test.ts. argv[2] picks what to run:
 // `worker` and `job` run until aborted; `failing-job` rejects at once.
 const kind = process.argv[2];
+if (kind !== 'worker' && kind !== 'job' && kind !== 'failing-job') {
+  throw new Error(`Unknown kind: ${kind}`);
+}
 
 // The interval keeps the process alive, as a real worker's open connections do.
 const waitForAbort = async (signal?: AbortSignal) =>
