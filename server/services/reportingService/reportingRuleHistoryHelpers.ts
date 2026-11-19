@@ -90,6 +90,9 @@ export async function getSimplifiedRuleHistory<K extends VersionedField>(
   // we could do it by issuing two queries, if not filtering in the db
   // eventually becomes a perf issue]. For now, though, we get back all
   // the versions and filter here, client-side.
+  if (ruleIds?.length === 0) {
+    return [];
+  }
   const allVersions = (await getRawHistory(fields, ruleIds)).map((it) => ({
     ...it,
     approxVersion: new Date(it.exactVersion),

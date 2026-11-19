@@ -1,4 +1,5 @@
 import getBottle, { type Dependencies } from '../../iocContainer/index.js';
+import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
 import { RuleStatus } from '../moderationConfigService/index.js';
 import {
   buildSimplifiedHistoryQuery,
@@ -136,6 +137,17 @@ describe('RuleHistory Service', () => {
       );
 
       expect(res.map((row) => row.id)).toEqual(['old-seed', 'new-rule']);
+    });
+  });
+
+  describe('with an empty rule id list', () => {
+    const testWithDeps = makeTransactionalTestWithFixture(() => ({}));
+
+    testWithDeps('returns no versions', async ({ deps }) => {
+      expect(await deps.getSimplifiedRuleHistory(['name'], [])).toEqual([]);
+      expect(
+        await deps.ReportingService.getReportingRuleHistory(['name'], []),
+      ).toEqual([]);
     });
   });
 });

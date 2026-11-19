@@ -2692,6 +2692,12 @@ describe('ModerationConfigService', () => {
             thresholdSettings: { id: threshold.id, threshold: 3 },
           }),
         ).toBe(false);
+        expect(
+          await sut.deleteUserStrikeThreshold({
+            orgId: org.id,
+            thresholdSettings: { id: threshold.id, threshold: 4 },
+          }),
+        ).toBe(false);
         expect(await sut.getUserStrikeThresholdsForOrg(org.id)).toHaveLength(1);
 
         expect(
