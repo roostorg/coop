@@ -94,3 +94,44 @@ describe('UserManagementService #generatePasswordResetTokenForUser', () => {
     );
   }
 });
+
+describe('UserManagementService #deleteInvite', () => {
+  const testWithInvite = makeTransactionalTestWithFixture(async ({ deps }) => {
+    const local = await createOrg(deps);
+    const foreign = await createOrg(deps);
+    // Seeds the org's system roles, which invites reference.
+    await createUser(deps.KyselyPg, local.org.id);
+    const service = new UserManagementService(deps.KyselyPg, vi.fn(), {
+      uiUrl: 'https://example.invalid',
+    });
+    await service.createInviteUserToken({
+      email: 'invitee@example.invalid',
+      role: 'MODERATOR',
+      orgId: local.org.id,
+    });
+    const [invite] = await service.getPendingInvites(local.org.id);
+    return {
+      service,
+      invite,
+      orgId: local.org.id,
+      foreignOrgId: foreign.org.id,
+    };
+  });
+
+  testWithInvite(
+    'returns false unless the invite is deleted',
+    async ({ service, invite, orgId, foreignOrgId }) => {
+      expect(
+        await service.deleteInvite(
+          String(Number(invite.id) + 1_000_000),
+          orgId,
+        ),
+      ).toBe(false);
+      expect(await service.deleteInvite(invite.id, foreignOrgId)).toBe(false);
+      expect(await service.getPendingInvites(orgId)).toHaveLength(1);
+
+      expect(await service.deleteInvite(invite.id, orgId)).toBe(true);
+      expect(await service.getPendingInvites(orgId)).toEqual([]);
+    },
+  );
+});

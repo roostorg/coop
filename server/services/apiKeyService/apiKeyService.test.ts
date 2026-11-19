@@ -130,4 +130,36 @@ describe('ApiKeyService', () => {
       });
     },
   );
+
+  testWithOrgs(
+    'deleteApiKey and deactivateApiKey return false unless a key in the org is changed',
+    async ({ deps, orgA, orgB }) => {
+      const key = await deps.ApiKeyService.getActiveApiKeyForOrg(orgA.org.id);
+      const unknownId = crypto.randomUUID();
+
+      expect(
+        await deps.ApiKeyService.deactivateApiKey(unknownId, orgA.org.id),
+      ).toBe(false);
+      expect(
+        await deps.ApiKeyService.deactivateApiKey(key!.id, orgB.org.id),
+      ).toBe(false);
+      expect(
+        await deps.ApiKeyService.deleteApiKey(unknownId, orgA.org.id),
+      ).toBe(false);
+      expect(await deps.ApiKeyService.deleteApiKey(key!.id, orgB.org.id)).toBe(
+        false,
+      );
+      expect(await deps.ApiKeyService.validateApiKey(orgA.apiKey)).toBe(
+        orgA.org.id,
+      );
+
+      expect(
+        await deps.ApiKeyService.deactivateApiKey(key!.id, orgA.org.id),
+      ).toBe(true);
+      expect(await deps.ApiKeyService.validateApiKey(orgA.apiKey)).toBeNull();
+      expect(await deps.ApiKeyService.deleteApiKey(key!.id, orgA.org.id)).toBe(
+        true,
+      );
+    },
+  );
 });

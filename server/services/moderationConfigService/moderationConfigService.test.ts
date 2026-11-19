@@ -18,6 +18,7 @@ import { makeTestWithFixture } from '../../test/utils.js';
 import { ErrorType } from '../../utils/errors.js';
 import { makeKyselyTransactionWithRetry } from '../../utils/kyselyTransactionWithRetry.js';
 import { type Satisfies } from '../../utils/typescript-types.js';
+import { UserPermission } from '../userManagementService/index.js';
 import { type ModerationConfigServicePg } from './dbTypes.js';
 import {
   RuleStatus,
@@ -2576,5 +2577,147 @@ describe('ModerationConfigService', () => {
         expect(fetched!.name).toEqual(itemType.name);
       },
     );
+  });
+
+  describe('Delete methods report whether a row was deleted', () => {
+    const managePolicies = (orgId: string) => ({
+      userId: '',
+      permissions: [UserPermission.MANAGE_POLICIES],
+      orgId,
+    });
+
+    const testWithTwoOrgs = makeTransactionalTestWithFixture(
+      async ({ deps }) => {
+        const base = await setupOrg(deps);
+        const { org: otherOrg } = await createOrg(
+          {
+            KyselyPg: deps.KyselyPg,
+            ModerationConfigService: deps.ModerationConfigService,
+            ApiKeyService: deps.ApiKeyService,
+          },
+          uid(),
+        );
+        const onDeletePolicyId = vi.fn(async () => {});
+        const sut = new ModerationConfigService(
+          deps.KyselyPg,
+          deps.KyselyPgReadReplica,
+          onDeletePolicyId,
+        );
+        return { ...base, otherOrg, sut, onDeletePolicyId };
+      },
+    );
+
+    testWithTwoOrgs(
+      '#deletePolicy returns false and skips cleanup unless the policy is deleted',
+      async ({ sut, org, otherOrg, onDeletePolicyId }) => {
+        const policy = await sut.createPolicy({
+          orgId: org.id,
+          policy: { name: 'To delete' },
+          invokedBy: managePolicies(org.id),
+        });
+
+        expect(
+          await sut.deletePolicy({
+            orgId: org.id,
+            policyId: uid(),
+            invokedBy: managePolicies(org.id),
+          }),
+        ).toBe(false);
+        expect(
+          await sut.deletePolicy({
+            orgId: otherOrg.id,
+            policyId: policy.id,
+            invokedBy: managePolicies(otherOrg.id),
+          }),
+        ).toBe(false);
+        expect(onDeletePolicyId).not.toHaveBeenCalled();
+        expect(
+          await sut.getPolicy({ orgId: org.id, policyId: policy.id }),
+        ).toBeDefined();
+
+        expect(
+          await sut.deletePolicy({
+            orgId: org.id,
+            policyId: policy.id,
+            invokedBy: managePolicies(org.id),
+          }),
+        ).toBe(true);
+        expect(onDeletePolicyId).toHaveBeenCalledWith({
+          policyId: policy.id,
+          orgId: org.id,
+        });
+      },
+    );
+
+    testWithTwoOrgs(
+      '#deleteTextBank returns false unless the text bank is deleted',
+      async ({ sut, org, otherOrg }) => {
+        const textBank = await sut.createTextBank(org.id, {
+          name: 'To delete',
+          description: null,
+          type: 'STRING' as const,
+          strings: ['a'],
+        });
+
+        expect(await sut.deleteTextBank(org.id, uid())).toBe(false);
+        expect(await sut.deleteTextBank(otherOrg.id, textBank.id)).toBe(false);
+        expect(
+          await sut.getTextBank({ orgId: org.id, id: textBank.id }),
+        ).toEqual(textBank);
+
+        expect(await sut.deleteTextBank(org.id, textBank.id)).toBe(true);
+      },
+    );
+
+    testWithTwoOrgs(
+      '#deleteUserStrikeThreshold returns false unless the threshold is deleted',
+      async ({ sut, org, otherOrg }) => {
+        const threshold = await sut.createUserStrikeThreshold({
+          orgId: org.id,
+          thresholdSettings: { threshold: 3, actions: [] },
+        });
+
+        expect(
+          await sut.deleteUserStrikeThreshold({
+            orgId: org.id,
+            thresholdSettings: {
+              id: String(Number(threshold.id) + 1_000_000),
+              threshold: 3,
+            },
+          }),
+        ).toBe(false);
+        expect(
+          await sut.deleteUserStrikeThreshold({
+            orgId: otherOrg.id,
+            thresholdSettings: { id: threshold.id, threshold: 3 },
+          }),
+        ).toBe(false);
+        expect(await sut.getUserStrikeThresholdsForOrg(org.id)).toHaveLength(1);
+
+        expect(
+          await sut.deleteUserStrikeThreshold({
+            orgId: org.id,
+            thresholdSettings: { id: threshold.id, threshold: 3 },
+          }),
+        ).toBe(true);
+      },
+    );
+  });
+
+  describe('#getActions with an empty id list', () => {
+    testWithOrg('returns no actions', async ({ sutWithPrimary, org }) => {
+      await sutWithPrimary.createAction(org.id, {
+        name: faker.string.alphanumeric(16),
+        description: null,
+        type: 'CUSTOM_ACTION',
+        callbackUrl: 'https://example.com',
+        callbackUrlHeaders: null,
+        callbackUrlBody: null,
+      });
+
+      expect(
+        await sutWithPrimary.getActions({ orgId: org.id, ids: [] }),
+      ).toEqual([]);
+    });
   });
 });
