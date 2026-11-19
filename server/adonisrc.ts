@@ -16,7 +16,7 @@ export default defineConfig({
     commands: 'commands',
   },
   providers: [
-    async () => import('@adonisjs/core/providers/app_provider'),
+    async () => import('./providers/app_provider.js'),
     async () => import('./providers/coop_provider.js'),
   ],
   commands: [

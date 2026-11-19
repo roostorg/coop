@@ -75,7 +75,14 @@ async function call(name, method, path, { headers = {}, body, raw } = {}) {
   for (const k of HEADERS) {
     const v = res.headers.get(k);
     if (v !== null)
-      h[k] = k === 'etag' || k === 'last-modified' ? '<present>' : v;
+      h[k] =
+        k === 'etag'
+          ? v.startsWith('W/')
+            ? '<weak>'
+            : '<strong>'
+          : k === 'last-modified'
+            ? '<present>'
+            : v;
   }
   const sc = res.headers.getSetCookie();
   if (sc.length) h['set-cookie'] = sc.map(normCookie);

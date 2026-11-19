@@ -2,7 +2,7 @@ import { type HttpContext } from '@adonisjs/core/http';
 import { type NextFn } from '@adonisjs/core/types/http';
 import helmet from 'helmet';
 
-const securityHeaders = helmet(
+export const securityHeaders = helmet(
   process.env.NODE_ENV === 'production'
     ? {}
     : {

@@ -2,7 +2,7 @@ import { type HttpContext } from '@adonisjs/core/http';
 import { type NextFn } from '@adonisjs/core/types/http';
 import cors from 'cors';
 
-const corsHeaders = cors();
+export const corsHeaders = cors();
 
 /**
  * The `cors` package with its defaults, run on the Node request and response,

@@ -6,11 +6,12 @@ import { ATTR_HTTP_ROUTE } from '@opentelemetry/semantic-conventions';
 import { jsonStringify } from '../../utils/encoding.js';
 
 /**
- * Names the HTTP server span after the matched route, as
- * `@opentelemetry/instrumentation-express` did: OpenTelemetry has no AdonisJS
- * instrumentation, so without this every span would be named just `POST`.
- * Also records the request body when LOG_REQUEST_BODY=true, which the express
- * instrumentation's `requestHook` in nodejs-instrumentation does for Express.
+ * Names the HTTP server span after the matched route (`POST /api/v1/...`)
+ * and sets `http.route`; without this, `nodejs-instrumentation`'s HTTP spans
+ * are named just `POST`. Also records the request body when
+ * LOG_REQUEST_BODY=true. `@adonisjs/otel`'s middleware does the first part,
+ * but the package also starts its own OpenTelemetry SDK, which would clash
+ * with the `nodejs-instrumentation` preload.
  */
 export default class RequestSpanMiddleware {
   async handle(ctx: HttpContext, next: NextFn) {

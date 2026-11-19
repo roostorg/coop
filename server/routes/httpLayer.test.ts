@@ -60,6 +60,43 @@ describe('HTTP layer', () => {
     expect(res.body).toEqual({ data: { __typename: 'Query' } });
   });
 
+  test('keeps whitespace in JSON strings as sent', async () => {
+    // AdonisJS v7 trims every string in a JSON body unless told not to; a
+    // padded name must not match the `Query` type.
+    const res = await request
+      .post('/api/v1/graphql')
+      .send({
+        query: 'query Q($x: String!) { __type(name: $x) { name } }',
+        variables: { x: '  Query\t' },
+      })
+      .expect(200);
+    expect(res.body).toEqual({ data: { __type: null } });
+  });
+
+  test('answers an undecodable URL with a JSON 400 and the usual headers', async () => {
+    const res = await request.get('/api/v1/%E0%A4%A').expect(400);
+    expect(res.headers['content-type']).toBe('application/json; charset=utf-8');
+    expect(res.headers['access-control-allow-origin']).toBe('*');
+    expect(res.headers['x-content-type-options']).toBe('nosniff');
+    expect(res.body).toMatchObject({
+      errors: [{ status: 400, title: 'Malformed URL.' }],
+    });
+  });
+
+  // The next two pin behaviour that differs from Express, so a change to it
+  // is a deliberate decision (see the PoC's compatibility notes).
+  test('matches routes on the percent-decoded path', async () => {
+    await request.get('/api/v1/%72eady').expect(200);
+  });
+
+  test('echoes a client-sent X-Request-Id', async () => {
+    const res = await request
+      .get('/api/v1/ready')
+      .set('X-Request-Id', 'client-chosen')
+      .expect(200);
+    expect(res.headers['x-request-id']).toBe('client-chosen');
+  });
+
   test('ignores non-JSON bodies on GraphQL', async () => {
     await request
       .post('/api/v1/graphql')

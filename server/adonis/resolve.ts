@@ -7,7 +7,7 @@ import { type Context } from '../graphql/resolvers.js';
 import { type Dependencies } from '../iocContainer/index.js';
 
 /**
- * Typed `ctx.containerResolver.make(key)`. AdonisJS v6 types the request's
+ * Typed `ctx.containerResolver.make(key)`. AdonisJS types the request's
  * resolver as `ContainerResolver<any>`, so string-keyed bindings resolve to
  * `any` without this.
  */
