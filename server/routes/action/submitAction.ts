@@ -10,7 +10,10 @@ import {
   fromCorrelationId,
   toCorrelationId,
 } from '../../utils/correlationIds.js';
-import { ErrorType, makeUnauthorizedError } from '../../utils/errors.js';
+import {
+  makeBadRequestError,
+  makeUnauthorizedError,
+} from '../../utils/errors.js';
 import { type RequestHandlerWithBodies } from '../../utils/route-helpers.js';
 import { type SubmitActionInput } from './ActionRoutes.js';
 
@@ -59,13 +62,13 @@ Dependencies): RequestHandlerWithBodies<SubmitActionInput, undefined> {
     )[0];
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (action === undefined) {
-      return next({
-        status: 400,
-        type: [ErrorType.InvalidUserInput],
-        title: 'Invalid Action',
-        detail: `Couldn\'t find an action for your org with ID: ${actionId}`,
-        requestId: fromCorrelationId(requestId),
-      });
+      return next(
+        makeBadRequestError('Invalid Action', {
+          detail: `Couldn't find an action for your org with ID: ${actionId}`,
+          requestId: fromCorrelationId(requestId),
+          shouldErrorSpan: false,
+        }),
+      );
     }
 
     const itemType = await getItemTypeEventuallyConsistent({
@@ -73,13 +76,13 @@ Dependencies): RequestHandlerWithBodies<SubmitActionInput, undefined> {
       typeSelector: { id: itemTypeId },
     });
     if (itemType === undefined) {
-      return next({
-        status: 400,
-        type: [ErrorType.InvalidUserInput],
-        title: 'Invalid Item Type ID',
-        detail: `Couldn\'t find an Item Type for your org with ID: ${itemTypeId}`,
-        requestId: fromCorrelationId(requestId),
-      });
+      return next(
+        makeBadRequestError('Invalid Item Type ID', {
+          detail: `Couldn't find an Item Type for your org with ID: ${itemTypeId}`,
+          requestId: fromCorrelationId(requestId),
+          shouldErrorSpan: false,
+        }),
+      );
     }
     const policies = await (async () => {
       if (policyIds === undefined) {

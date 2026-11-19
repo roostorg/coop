@@ -17,7 +17,11 @@ export default function getUserScores({
       typeof id !== 'string' ||
       typeof typeId !== 'string'
     ) {
-      return next(new Error('id and typeId are required'));
+      return next(
+        makeBadRequestError('id and typeId are required', {
+          shouldErrorSpan: false,
+        }),
+      );
     }
 
     // Get orgId from request (set by API key middleware)
