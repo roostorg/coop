@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import { Kysely } from 'kysely';
+import { Kysely, sql } from 'kysely';
 import { type UnionToIntersection } from 'type-fest';
 import { uid } from 'uid';
 import { vi } from 'vitest';
@@ -177,6 +177,24 @@ describe('ModerationConfigService', () => {
   const testWithOrg = makeTransactionalTestWithFixture(async ({ deps }) =>
     setupOrg(deps),
   );
+
+  describe('public.actions action_type', () => {
+    for (const actionType of ['REJECT_APPEAL', 'ACCEPT_APPEAL']) {
+      testWithOrg(
+        `rejects ${actionType}, which ActionType can't represent`,
+        async ({ deps, org }) => {
+          await expect(
+            sql`
+              insert into public.actions
+                (id, org_id, name, action_type, penalty, apply_user_strikes)
+              values
+                (${uid()}, ${org.id}, 'unsupported', ${actionType}, 'NONE', false)
+            `.execute(deps.KyselyPg),
+          ).rejects.toThrow('actions_action_type_supported');
+        },
+      );
+    }
+  });
 
   describe('#getRuleByIdAndOrg', () => {
     const testWithRuleRow = makeTransactionalTestWithFixture(
