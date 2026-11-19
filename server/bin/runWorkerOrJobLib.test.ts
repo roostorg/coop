@@ -5,18 +5,15 @@ import { fileURLToPath } from 'node:url';
 const fixturePath = fileURLToPath(
   new URL('../test/stubs/runTrivialWorkerOrJob.ts', import.meta.url),
 );
+const transpileHooksPath = fileURLToPath(
+  new URL('../test/stubs/transpileTsHooks.ts', import.meta.url),
+);
 
 async function runFixture(kind: string, signal?: NodeJS.Signals) {
   const child = spawn(
     process.execPath,
-    ['--loader', 'ts-node/esm', fixturePath, kind],
-    {
-      env: {
-        ...process.env,
-        TS_NODE_TRANSPILE_ONLY: 'true',
-        NODE_NO_WARNINGS: '1',
-      },
-    },
+    ['--import', transpileHooksPath, fixturePath, kind],
+    { env: { ...process.env, NODE_NO_WARNINGS: '1' } },
   );
 
   let stdout = '';
