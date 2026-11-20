@@ -116,8 +116,6 @@ export type ModerationConfigServicePg = {
       ENQUEUE_TO_NCMEC: { callback_url: null };
       ENQUEUE_TO_MRT: { callback_url: null };
       ENQUEUE_AUTHOR_TO_MRT: { callback_url: null };
-      REJECT_APPEAL: { callback_url: null };
-      ACCEPT_APPEAL: { callback_url: null };
     }
   >;
   'public.rules_latest_versions': {
