@@ -1,4 +1,4 @@
-import type { RequestHandler } from 'express';
+import { type HttpContext } from '@adonisjs/core/http';
 import type { JsonObject } from 'type-fest';
 import {
   getMetadata,
@@ -8,32 +8,41 @@ import {
 } from 'valibot';
 
 import { makeBadRequestError } from './errors.js';
+import { type RouteMiddleware } from './route-helpers.js';
 
 /**
- * Build an Express middleware that validates `req.body` against `schema`.
+ * The request's JSON body, or `undefined` when it has none or it isn't JSON:
+ * what `express.json()` left in `req.body`. AdonisJS' `request.body()` is `{}`
+ * in those cases, which would change the validation errors callers get.
+ */
+export function jsonBody(ctx: HttpContext): unknown {
+  return ctx.request.hasBody() && ctx.request.is(['application/json'])
+    ? ctx.request.body()
+    : undefined;
+}
+
+/**
+ * Build a route middleware that validates the JSON body against `schema`.
  *
- * On failure the middleware forwards a `BadRequestError` (a `CoopError`) to the
- * standard Express error handler, which serializes it into the project's
- * canonical `{ errors: [...] }` shape. The parsed output is intentionally
- * discarded so transformations and object-key handling do not alter the body
- * received by the route handler.
+ * On failure it throws a `BadRequestError` (a `CoopError`), which the
+ * exception handler serializes into the project's canonical
+ * `{ errors: [...] }` shape. The parsed output is intentionally discarded so
+ * transformations and object-key handling do not alter the body received by
+ * the route handler.
  */
 export function createBodySchemaValidator<ReqBody extends JsonObject>(
   schema: GenericSchema<ReqBody, unknown>,
-): RequestHandler {
-  return (req, _res, next) => {
-    const result = safeParse(schema, req.body, { abortEarly: false });
-    if (result.success) {
-      next();
-      return;
-    }
-
-    next(
-      makeBadRequestError('Request body failed schema validation.', {
+): RouteMiddleware {
+  return async (ctx, next) => {
+    const body = jsonBody(ctx);
+    const result = safeParse(schema, body, { abortEarly: false });
+    if (!result.success) {
+      throw makeBadRequestError('Request body failed schema validation.', {
         shouldErrorSpan: false,
-        ...formatValidationIssues(result.issues, schema, req.body),
-      }),
-    );
+        ...formatValidationIssues(result.issues, schema, body),
+      });
+    }
+    return next();
   };
 }
 

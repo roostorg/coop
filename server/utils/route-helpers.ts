@@ -1,21 +1,40 @@
-import { type RequestHandler } from 'express';
-import { type ParamsDictionary, type Query } from 'express-serve-static-core';
+import { type HttpContext } from '@adonisjs/core/http';
+import { type NextFn } from '@adonisjs/core/types/http';
 import { type JsonObject, type JsonValue, type ReadonlyDeep } from 'type-fest';
 import { type GenericSchema } from 'valibot';
 
 import { type Dependencies } from '../iocContainer/index.js';
 
-export type RequestHandlerWithBodies<
+declare module '@adonisjs/core/http' {
+  interface HttpContext {
+    /** Set by the API key middleware (`utils/apiKeyMiddleware.ts`). */
+    orgId?: string;
+  }
+}
+
+/**
+ * A route handler. It returns the response body (`undefined` for an empty
+ * response), so the body is type checked against `ResBody` the way
+ * an Express `res.json()` call would be. Status and headers go on
+ * `ctx.response`.
+ *
+ * AdonisJS writes the response only after the handler's promise settles.
+ * A handler that must reply first and keep working afterwards calls
+ * `ctx.response.finish()` to flush the response early.
+ */
+export type RouteHandler<
   ReqBody extends JsonObject,
   // @ts-ignore Silence error w/ hitting TS max recursion limit before the type param is actually bound.
-  ResBody extends ReadonlyDeep<JsonValue> | undefined, // undefined is used to indicate a 204 response
-> = RequestHandler<
-  ParamsDictionary,
-  ResBody,
-  ReqBody,
-  Query,
-  Record<string, unknown>
->;
+  ResBody extends ReadonlyDeep<JsonValue> | undefined, // undefined is used to indicate an empty response
+> = (
+  ctx: HttpContext,
+  body: ReqBody,
+) => Promise<ResBody | void> | ResBody | void;
+
+export type RouteMiddleware = (
+  ctx: HttpContext,
+  next: NextFn,
+) => Promise<unknown> | unknown;
 
 export type Route<
   ReqBody extends JsonObject,
@@ -23,18 +42,16 @@ export type Route<
 > = {
   path: string;
   method: 'get' | 'post' | 'patch' | 'delete';
-  handler: (
-    deps: Dependencies,
-  ) =>
-    | RequestHandlerWithBodies<ReqBody, ResBody>
-    | RequestHandlerWithBodies<ReqBody, ResBody>[];
+  handler: (deps: Dependencies) => RouteHandler<ReqBody, ResBody>;
+  /** Runs before the handler, after body validation. */
+  middleware?: (deps: Dependencies) => RouteMiddleware[];
   name?: string;
   bodySchema?: GenericSchema<ReqBody, unknown>;
 };
 
 type RouteOpts<ReqBody extends JsonObject> = Pick<
   Route<ReqBody, ReadonlyDeep<JsonValue> | undefined>,
-  'name' | 'bodySchema'
+  'name' | 'bodySchema' | 'middleware'
 >;
 
 function makeRoute<
@@ -56,11 +73,6 @@ function makeRoute<
   };
 }
 
-// Some helpers function for making route objects, to bring back the ergonomics
-// of app.get('/', ...handlers) while still getting the benefits of returned
-// route objects (whereas app[method]() just triggers the side effect of
-// registering a route with the internal express router).
-// We don't use partial application here to help TS.
 type MakeRouteBoundArgs<
   ReqBody extends JsonObject,
   ResBody extends ReadonlyDeep<JsonValue> | undefined,
@@ -75,6 +87,8 @@ type MakeRouteBoundArgs<
       handler: Route<ReqBody, ResBody>['handler'],
     ];
 
+// Route objects (rather than calling `router.post()` directly) keep each
+// controller's routes as data, registered in one place by `start/routes.ts`.
 export const route = {
   // @ts-ignore Silence error w/ hitting TS max recursion limit before the type param is actually bound.
   get<ResBody extends ReadonlyDeep<JsonValue> | undefined>(
@@ -108,3 +122,14 @@ export const route = {
     return (makeRoute as any)('delete', ...args) as Route<never, ResBody>;
   },
 };
+
+/**
+ * An error a handler rejects the request with from inside a `try` block whose
+ * `catch` must not see it. Under Express these were `return next(err)` calls,
+ * which don't throw, so the surrounding `catch` (which turns failures into a
+ * 500) never ran; a plain `throw err` would now reach it. The `catch` rethrows
+ * `rejection.error` instead.
+ */
+export class RouteRejection {
+  constructor(public readonly error: unknown) {}
+}

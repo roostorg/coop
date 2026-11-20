@@ -1,5 +1,6 @@
-import { type Request, type Response } from 'express';
+import { type ServerResponse } from 'node:http';
 
+import { type BridgedRequest } from '../../app/middleware/session_bridge_middleware.js';
 import { type GraphQLUserParent } from '../datasources/userKyselyPersistence.js';
 
 /**
@@ -11,8 +12,8 @@ import { type GraphQLUserParent } from '../datasources/userKyselyPersistence.js'
  * GraphQL subscriptions, we replicate the small surface area we need here.
  */
 export type PassportGqlContext = {
-  req: Request;
-  res: Response;
+  req: BridgedRequest;
+  res: ServerResponse;
   getUser: () => GraphQLUserParent | undefined;
   login: (user: GraphQLUserParent) => Promise<void>;
   logout: () => Promise<void>;
@@ -22,13 +23,15 @@ export type PassportGqlContext = {
  * Build the passport-flavored slice of the Apollo resolver context.
  *
  * - `getUser()` reads `req.user`, populated by passport's session middleware
- *   via `passport.deserializeUser` (wired in `server/api.ts`).
+ *   via `passport.deserializeUser` (wired in
+ *   `app/middleware/session_bridge_middleware.ts`).
  * - `login` / `logout` promisify the standard `req.login` / `req.logout` calls
- *   that `app.use(passport.session())` attaches to every request.
+ *   that `passport.initialize()` attaches to every request (run by
+ *   `app/middleware/session_bridge_middleware.ts`).
  */
 export function buildPassportContext(
-  req: Request,
-  res: Response,
+  req: BridgedRequest,
+  res: ServerResponse,
 ): PassportGqlContext {
   return {
     req,

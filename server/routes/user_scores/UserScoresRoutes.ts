@@ -8,9 +8,10 @@ export type GetUserScoresOutput = number;
 export default {
   pathPrefix: '/user_scores',
   routes: [
-    route.get<GetUserScoresOutput>('/', (deps) => [
-      createApiKeyMiddleware<never, GetUserScoresOutput>(deps),
-      getUserScores(deps),
-    ]),
+    route.get<GetUserScoresOutput>(
+      '/',
+      { middleware: (deps) => [createApiKeyMiddleware(deps)] },
+      getUserScores,
+    ),
   ] as ControllerRouteList,
 } satisfies Controller;

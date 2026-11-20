@@ -11,9 +11,10 @@ export type GetPoliciesOutput = {
 export default {
   pathPrefix: '/policies',
   routes: [
-    route.get<GetPoliciesOutput>('/', (deps) => [
-      createApiKeyMiddleware<never, GetPoliciesOutput>(deps),
-      getPolicies(deps),
-    ]),
+    route.get<GetPoliciesOutput>(
+      '/',
+      { middleware: (deps) => [createApiKeyMiddleware(deps)] },
+      getPolicies,
+    ),
   ] as ControllerRouteList,
 } satisfies Controller;

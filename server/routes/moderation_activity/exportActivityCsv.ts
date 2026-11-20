@@ -1,5 +1,6 @@
 import * as v from 'valibot';
 
+import { getSessionUser } from '../../app/middleware/session_bridge_middleware.js';
 import { type Dependencies } from '../../iocContainer/index.js';
 import {
   type ActivityCsvLookups,
@@ -13,7 +14,7 @@ import {
   makeUnauthenticatedError,
   makeUnauthorizedError,
 } from '../../utils/errors.js';
-import { type RequestHandlerWithBodies } from '../../utils/route-helpers.js';
+import { type RouteHandler } from '../../utils/route-helpers.js';
 import { streamActivityCsv } from './streamActivityCsv.js';
 
 const MAX_EXPORT_SPAN_DAYS = 400;
@@ -140,43 +141,35 @@ async function loadLookups(
 
 export default function exportActivityCsv(
   deps: Dependencies,
-): RequestHandlerWithBodies<never, undefined> {
-  return async (req, res, next) => {
-    const user = req.user as SessionUser | undefined;
+): RouteHandler<never, undefined> {
+  return async (ctx) => {
+    const user = getSessionUser(ctx) as SessionUser | undefined;
     if (user == null) {
-      return next(
-        makeUnauthenticatedError('Authenticated user required', {
-          shouldErrorSpan: false,
-        }),
-      );
+      throw makeUnauthenticatedError('Authenticated user required', {
+        shouldErrorSpan: false,
+      });
     }
 
     if (!user.getPermissions().includes(UserPermission.VIEW_MRT_DATA)) {
-      return next(
-        makeUnauthorizedError(
-          'You do not have permission to export moderation activity.',
-          { shouldErrorSpan: false },
-        ),
+      throw makeUnauthorizedError(
+        'You do not have permission to export moderation activity.',
+        { shouldErrorSpan: false },
       );
     }
 
-    const site = req.get('Sec-Fetch-Site');
+    const site = ctx.request.header('Sec-Fetch-Site');
     if (site === 'cross-site' || site === 'same-site') {
-      return next(
-        makeUnauthorizedError('Exports must be started from Coop.', {
-          shouldErrorSpan: false,
-        }),
-      );
+      throw makeUnauthorizedError('Exports must be started from Coop.', {
+        shouldErrorSpan: false,
+      });
     }
 
-    const input = parseExportInput(req.query['input']);
+    const input = parseExportInput(ctx.request.qs()['input']);
     if (typeof input === 'string') {
-      return next(
-        makeBadRequestError('Invalid export filters.', {
-          shouldErrorSpan: false,
-          detail: input,
-        }),
-      );
+      throw makeBadRequestError('Invalid export filters.', {
+        shouldErrorSpan: false,
+        detail: input,
+      });
     }
 
     const view = input.view ?? 'ALL';
@@ -184,13 +177,18 @@ export default function exportActivityCsv(
 
     try {
       const lookups = await loadLookups(deps, user);
-      res.status(200);
-      res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-      res.setHeader(
+      ctx.response.status(200);
+      ctx.response.header('Content-Type', 'text/csv; charset=utf-8');
+      ctx.response.header(
         'Content-Disposition',
         `attachment; filename="${includeActions ? 'moderation-activity' : 'decisions'}.csv"`,
       );
-      res.setHeader('Cache-Control', 'no-store');
+      ctx.response.header('Cache-Control', 'no-store');
+      // Flush the headers now and stream rows straight to the Node response;
+      // AdonisJS' `response.stream()` would buffer nothing but needs a
+      // Readable, and writing directly keeps back-pressure handling in
+      // `streamActivityCsv`.
+      ctx.response.writeHead(200);
       await streamActivityCsv({
         pages: deps.ModerationActivityFeed.iterateAll({
           userPermissions: user.getPermissions(),
@@ -198,17 +196,17 @@ export default function exportActivityCsv(
           input: toFeedFilter(input),
           view,
         }),
-        out: res,
+        out: ctx.response.response,
         includeActions,
         lookups,
       });
     } catch (e) {
-      if (!res.headersSent) {
-        return next(e);
+      if (!ctx.response.headersSent) {
+        throw e;
       }
       const error = e instanceof Error ? e : new Error(String(e));
-      res.destroy(error);
-      return next(error);
+      ctx.response.response.destroy(error);
+      throw error;
     }
   };
 }

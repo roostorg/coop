@@ -6,9 +6,10 @@ import getItemTypes, { type GetItemTypesOutput } from './getItemTypes.js';
 export default {
   pathPrefix: '/item_types',
   routes: [
-    route.get<GetItemTypesOutput>('/', (deps) => [
-      createApiKeyMiddleware<never, GetItemTypesOutput>(deps),
-      getItemTypes(deps),
-    ]),
+    route.get<GetItemTypesOutput>(
+      '/',
+      { middleware: (deps) => [createApiKeyMiddleware(deps)] },
+      getItemTypes,
+    ),
   ] as ControllerRouteList,
 } satisfies Controller;

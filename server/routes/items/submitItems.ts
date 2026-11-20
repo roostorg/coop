@@ -26,7 +26,7 @@ import {
   type CoopError,
 } from '../../utils/errors.js';
 import { safeGet, withRetries } from '../../utils/misc.js';
-import { type RequestHandlerWithBodies } from '../../utils/route-helpers.js';
+import { type RouteHandler } from '../../utils/route-helpers.js';
 import { addHashesToImageFields } from './hashImageFields.js';
 import { type SubmitItemsInput } from './ItemRoutes.js';
 
@@ -61,8 +61,8 @@ export default function submitItems({
   itemSubmissionQueueBulkWrite,
   HMAHashBankService,
 }: // @ts-ignore
-Dependencies): RequestHandlerWithBodies<SubmitItemsInput, undefined> {
-  return async (req, res, next) => {
+Dependencies): RouteHandler<SubmitItemsInput, undefined> {
+  return async (ctx, body) => {
     // Generate an id for this request to correlate logs. It doesn't need to be
     // random for security (i.e., uuidv4), and making it time-based could
     // actually be convenient, so that's what we do. We'll eventually get much
@@ -71,23 +71,20 @@ Dependencies): RequestHandlerWithBodies<SubmitItemsInput, undefined> {
     const requestId = toCorrelationId({ type: 'post-items', id: uuidv1() });
 
     // Get orgId from request (set by API key middleware)
-    if (!hasOrgId(req)) {
-      return next(
-        makeBadRequestError('Invalid API Key', {
-          detail:
-            'Something went wrong finding or validating your API key. ' +
-            'Make sure the proper key is provided in the x-api-key header.',
-          requestId: fromCorrelationId(requestId),
-          shouldErrorSpan: true,
-        }),
-      );
+    if (!hasOrgId(ctx)) {
+      throw makeBadRequestError('Invalid API Key', {
+        detail:
+          'Something went wrong finding or validating your API key. ' +
+          'Make sure the proper key is provided in the x-api-key header.',
+        requestId: fromCorrelationId(requestId),
+        shouldErrorSpan: true,
+      });
     }
 
-    const { orgId } = req;
+    const { orgId } = ctx;
 
     // TODO: error handling. Our controllers still need much better error
     // handling abstractions.
-    const { body } = req;
     const { items } = body;
 
     Meter.itemSubmissionsCounter.add(items.length);
@@ -159,7 +156,7 @@ Dependencies): RequestHandlerWithBodies<SubmitItemsInput, undefined> {
           );
         }),
       );
-      return next(new AggregateError(errors));
+      throw new AggregateError(errors);
     }
 
     // Send a configurable percentage of traffic to the async processing queue
@@ -247,13 +244,14 @@ Dependencies): RequestHandlerWithBodies<SubmitItemsInput, undefined> {
       );
 
       if (enqueueFailed) {
-        res.status(500).end();
+        ctx.response.status(500);
         return;
       }
-      res.status(202).end();
+      ctx.response.status(202);
     } else {
       // Return 202 immediately now that validation is complete, then keep executing other code
-      res.status(202).end();
+      ctx.response.status(202).header('Content-Length', 0);
+      ctx.response.finish();
 
       // Convert the item submission to something that gets accepted by the Rule
       // Engine, will get replaced after RuleEngine takes an ItemSubmission rather

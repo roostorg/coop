@@ -1,13 +1,14 @@
-import { type JsonObject, type JsonValue, type ReadonlyDeep } from 'type-fest';
+import { type HttpContext } from '@adonisjs/core/http';
 import { v1 as uuidv1 } from 'uuid';
 
+import { resolve } from '../adonis/resolve.js';
 import { type Dependencies } from '../iocContainer/index.js';
 import { fromCorrelationId, toCorrelationId } from './correlationIds.js';
 import {
   makeServiceUnavailableError,
   makeUnauthenticatedError,
 } from './errors.js';
-import { type RequestHandlerWithBodies } from './route-helpers.js';
+import { type RouteMiddleware } from './route-helpers.js';
 
 /**
  * Request type that includes orgId property set by API key middleware
@@ -22,19 +23,14 @@ export interface RequestWithOrgId {
  * checked (e.g. the database is unreachable) -- a lookup failure says nothing
  * about whether the caller's key is valid.
  */
-export function createApiKeyMiddleware<
-  ReqBody extends JsonObject = JsonObject,
-  ResBody extends ReadonlyDeep<JsonValue> | undefined =
-    ReadonlyDeep<JsonValue> | undefined,
->({
-  ApiKeyService,
+export function createApiKeyMiddleware({
   Tracer,
-}: Pick<Dependencies, 'ApiKeyService' | 'Tracer'>): RequestHandlerWithBodies<
-  ReqBody,
-  ResBody
-> {
-  return async (req, _res, next) => {
-    const providedKey = req.header('x-api-key');
+}: Pick<Dependencies, 'Tracer'>): RouteMiddleware {
+  return async (ctx, next) => {
+    // Resolved per request from the AdonisJS container, where it's a native
+    // binding (see providers/coop_provider.ts).
+    const ApiKeyService = await resolve(ctx, 'ApiKeyService');
+    const providedKey = ctx.request.header('x-api-key');
     let orgId: string | null;
 
     try {
@@ -54,17 +50,15 @@ export function createApiKeyMiddleware<
         type: 'api-key-validation',
         id: uuidv1(),
       });
-      return next(
-        makeServiceUnavailableError('Unable to validate API key', {
-          detail:
-            "Coop couldn't check your API key right now. This is a temporary " +
-            'server-side problem, not a problem with your key; please retry.',
-          requestId: fromCorrelationId(requestId),
-          // Kept for server-side logging; never serialized to the client.
-          cause: error,
-          shouldErrorSpan: true,
-        }),
-      );
+      throw makeServiceUnavailableError('Unable to validate API key', {
+        detail:
+          "Coop couldn't check your API key right now. This is a temporary " +
+          'server-side problem, not a problem with your key; please retry.',
+        requestId: fromCorrelationId(requestId),
+        // Kept for server-side logging; never serialized to the client.
+        cause: error,
+        shouldErrorSpan: true,
+      });
     }
 
     if (!orgId) {
@@ -73,31 +67,26 @@ export function createApiKeyMiddleware<
         id: uuidv1(),
       });
 
-      return next(
-        makeUnauthenticatedError('Invalid API Key', {
-          detail:
-            'Something went wrong finding or validating your API key. ' +
-            'Make sure the proper key is provided in the x-api-key header.',
-          requestId: fromCorrelationId(requestId),
-          shouldErrorSpan: true,
-        }),
-      );
+      throw makeUnauthenticatedError('Invalid API Key', {
+        detail:
+          'Something went wrong finding or validating your API key. ' +
+          'Make sure the proper key is provided in the x-api-key header.',
+        requestId: fromCorrelationId(requestId),
+        shouldErrorSpan: true,
+      });
     }
 
-    // Store orgId on the request for use by route handlers
-    (req as unknown as RequestWithOrgId).orgId = orgId;
-    next();
+    // Store orgId on the context for use by route handlers
+    ctx.orgId = orgId;
+    return next();
   };
 }
 
 /**
- * Type guard to check if request has orgId set by the API key middleware
+ * Type guard to check if the API key middleware set an orgId on the context
  */
-export function hasOrgId(req: unknown): req is RequestWithOrgId {
-  return (
-    typeof req === 'object' &&
-    req !== null &&
-    'orgId' in req &&
-    typeof req.orgId === 'string'
-  );
+export function hasOrgId(
+  ctx: HttpContext,
+): ctx is HttpContext & RequestWithOrgId {
+  return typeof ctx.orgId === 'string';
 }

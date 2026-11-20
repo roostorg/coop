@@ -1,9 +1,7 @@
-import path from 'node:path';
-
 import { type Dependencies } from '../../iocContainer/index.js';
 import { getIntegrationRegistry } from '../../services/integrationRegistry/index.js';
 import { makeNotFoundError } from '../../utils/errors.js';
-import { type RequestHandlerWithBodies } from '../../utils/route-helpers.js';
+import { type RouteHandler } from '../../utils/route-helpers.js';
 
 /**
  * GET /integration-logos/:integrationId — serves the plugin logo file when
@@ -12,38 +10,32 @@ import { type RequestHandlerWithBodies } from '../../utils/route-helpers.js';
  */
 export default function serveIntegrationLogo(
   _deps: Dependencies,
-): RequestHandlerWithBodies<Record<string, never>, undefined> {
-  return (req, res, next) => {
-    const rawIntegrationId = req.params['integrationId'];
+): RouteHandler<Record<string, never>, undefined> {
+  return (ctx) => {
+    const rawIntegrationId = ctx.params['integrationId'];
     const integrationId =
       typeof rawIntegrationId === 'string' ? rawIntegrationId : undefined;
     if (!integrationId || integrationId.length === 0) {
-      return next(
-        makeNotFoundError('Missing integration id.', { shouldErrorSpan: true }),
-      );
+      throw makeNotFoundError('Missing integration id.', {
+        shouldErrorSpan: true,
+      });
     }
     const filePath =
       getIntegrationRegistry().getPluginLogoFilePath(integrationId);
     if (filePath === undefined) {
-      return next(
-        makeNotFoundError('Integration logo not found.', {
-          shouldErrorSpan: true,
-        }),
-      );
+      throw makeNotFoundError('Integration logo not found.', {
+        shouldErrorSpan: true,
+      });
     }
     // Path was validated at plugin load (under package root); safe to send.
-    res.setHeader('Cache-Control', 'public, max-age=86400');
+    ctx.response.header('Cache-Control', 'public, max-age=86400');
     // Public plugin asset; opt out of helmet's strict same-origin CORP default
     // so the SPA can load it via <img src> when deployed on a different origin
     // than the API.
-    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-    // Sending relative to `root` limits send's dotfile check to the file name;
-    // otherwise pnpm's node_modules/.pnpm path is rejected as a dotfile.
-    const options = { root: path.dirname(filePath) };
-    res.sendFile(path.basename(filePath), options, (err?: Error) => {
-      if (err && !res.headersSent) {
-        next(err);
-      }
-    });
+    ctx.response.header('Cross-Origin-Resource-Policy', 'cross-origin');
+    // Adonis streams the file and sets Content-Type, Content-Length,
+    // Last-Modified and ETag. It doesn't
+    // answer Range requests.
+    ctx.response.download(filePath, true);
   };
 }
