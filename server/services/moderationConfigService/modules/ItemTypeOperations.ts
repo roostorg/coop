@@ -116,7 +116,7 @@ export default class ItemTypeOperations {
           pgQuery,
         })
           .where('id', '=', id)
-          .where('version', '=', version)
+          .where('version', '=', sql<Date>`${version}::timestamptz`)
           .executeTakeFirst();
 
         return itemType !== undefined

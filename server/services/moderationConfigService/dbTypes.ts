@@ -1,5 +1,5 @@
 import { type ItemTypeKind } from '@roostorg/coop-types';
-import { type Generated, type GeneratedAlways } from 'kysely';
+import { type ColumnType, type Generated, type GeneratedAlways } from 'kysely';
 import { type JsonObject, type JsonValue } from 'type-fest';
 
 import { type TaggedUnionFromCases } from '../../utils/typescript-types.js';
@@ -56,7 +56,7 @@ export type ModerationConfigServicePg = {
     is_deleted_field: GeneratedAlways<string | null>;
     ip_address_field: GeneratedAlways<string | null>;
     email_field: GeneratedAlways<string | null>;
-    version: GeneratedAlways<string>;
+    version: GeneratedAlways<Date>;
     is_current: GeneratedAlways<boolean>;
   };
   'public.rules_and_item_types': {
@@ -132,7 +132,8 @@ export type ModerationConfigServicePg = {
     tags: string[];
     max_daily_actions: number | null;
     daily_actions_run: number;
-    last_action_date: string | null;
+    // A Postgres `date`: pg parses it to a Date, but writes take 'YYYY-MM-DD'.
+    last_action_date: ColumnType<Date | null, string | null, string | null>;
     created_at: GeneratedAlways<Date>;
     updated_at: GeneratedAlways<Date>;
     org_id: string;
@@ -161,7 +162,7 @@ export type ModerationConfigServicePg = {
     apply_user_strike_count_config_to_children: Generated<boolean>;
   };
   'public.user_strike_thresholds': {
-    id: GeneratedAlways<string>;
+    id: GeneratedAlways<number>;
     org_id: string;
     threshold: number;
     actions: string[];

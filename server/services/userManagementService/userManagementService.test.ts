@@ -6,6 +6,35 @@ import createUser from '../../test/fixtureHelpers/createUser.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
 import UserManagementService from './userManagementService.js';
 
+describe('UserManagementService invites', () => {
+  const testWithOrg = makeTransactionalTestWithFixture(async ({ deps }) => {
+    const { org } = await createOrg(deps);
+    // Seeds the org's system roles, which invites reference.
+    await createUser(deps.KyselyPg, org.id);
+    const service = new UserManagementService(
+      deps.KyselyPg,
+      vi.fn(async () => true),
+      { uiUrl: 'https://example.invalid' },
+    );
+    return { org, service };
+  });
+
+  testWithOrg(
+    'exposes the integer invite id as a string that deleteInvite accepts',
+    async ({ org, service }) => {
+      await service.createInviteUserToken({
+        email: 'invitee@example.invalid',
+        role: 'MODERATOR',
+        orgId: org.id,
+      });
+      const [invite] = await service.getPendingInvites(org.id);
+      expect(invite.id).toEqual(expect.any(String));
+      expect(await service.deleteInvite(invite.id, org.id)).toBe(true);
+      expect(await service.getPendingInvites(org.id)).toEqual([]);
+    },
+  );
+});
+
 describe('UserManagementService #generatePasswordResetTokenForUser', () => {
   const testWithUsers = makeTransactionalTestWithFixture(async ({ deps }) => {
     const local = await createOrg(deps);

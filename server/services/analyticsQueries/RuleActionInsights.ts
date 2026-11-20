@@ -131,8 +131,8 @@ class RuleActionInsights {
     const results = await this.kyselyWarehouse
       .selectFrom('RULE_EXECUTION_STATISTICS')
       .select((eb) => [
-        eb.fn.sum<number>('NUM_PASSES').as('totalMatches'),
-        eb.fn.sum<number>('NUM_RUNS').as('totalRequests'),
+        eb.fn.sum<number | string>('NUM_PASSES').as('totalMatches'),
+        eb.fn.sum<number | string>('NUM_RUNS').as('totalRequests'),
         eb.fn<WarehouseDate>('date', ['TS_START_INCLUSIVE']).as('date'),
       ])
       .where('ORG_ID', '=', orgId)
@@ -148,7 +148,9 @@ class RuleActionInsights {
       .execute();
 
     return results.map((result) => ({
-      ...result,
+      // SUM over an integer column comes back as a numeric string.
+      totalMatches: Number(result.totalMatches),
+      totalRequests: Number(result.totalRequests),
       // NB: this cast is likely not correct, as I believe result.date is a
       // WarehouseDate, which means this toJSON method returns a non-standard
       // string result, as WarehouseDate overrides Date.prototype.toJSON().
@@ -459,7 +461,7 @@ class RuleActionInsights {
 
     return results.map((result) => ({
       date: warehouseDateToDateOnlyString(result.DS),
-      count: result.count,
+      count: Number(result.count),
     }));
   }
 }

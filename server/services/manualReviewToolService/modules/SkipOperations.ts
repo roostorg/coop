@@ -62,7 +62,7 @@ export default class SkipOperations {
       .selectFrom('manual_review_tool.moderator_skips')
       .select([
         sql<string>`date_trunc(${timeDivision}, ts, ${timeZone})`.as('time'),
-        sql<number>`COUNT(*)`.as('count'),
+        sql<number>`COUNT(*)::int`.as('count'),
       ])
       .$if(groupBy.includes('queue_id'), (qb) => qb.select('queue_id'))
       .$if(groupBy.includes('reviewer_id'), (qb) => qb.select('user_id'))

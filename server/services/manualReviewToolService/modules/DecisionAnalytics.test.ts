@@ -252,4 +252,43 @@ describe('DecisionAnalytics', () => {
       expect(secondPage).toEqual([]);
     },
   );
+
+  testWithDecisions()(
+    'returns resolved and skipped job counts as numbers',
+    async ({ org, user, queue, mrtService, insertDecision }) => {
+      await insertDecision(minutesAfterBase(0));
+      await insertDecision(minutesAfterBase(1));
+      const resolved = await mrtService.getResolvedJobCounts({
+        orgId: org.id,
+        groupBy: ['reviewer_id'],
+        timeDivision: 'DAY',
+        timeZone: 'UTC',
+        filterBy: {
+          startDate: minutesAfterBase(-60),
+          endDate: minutesAfterBase(60),
+          queueIds: [],
+          reviewerIds: [user.id],
+        },
+      });
+      expect(resolved.map((it) => it.count)).toEqual([2]);
+
+      const skip = { orgId: org.id, queueId: queue.id, userId: user.id };
+      await mrtService.logSkip({ ...skip, jobId: uuidv1() });
+      await mrtService.logSkip({ ...skip, jobId: uuidv1() });
+      const now = Date.now();
+      const skipped = await mrtService.getSkippedJobCounts({
+        orgId: org.id,
+        groupBy: ['reviewer_id'],
+        timeDivision: 'DAY',
+        timeZone: 'UTC',
+        filterBy: {
+          startDate: new Date(now - 3_600_000),
+          endDate: new Date(now + 3_600_000),
+          queueIds: [],
+          userIds: [user.id],
+        },
+      });
+      expect(skipped.map((it) => it.count)).toEqual([2]);
+    },
+  );
 });

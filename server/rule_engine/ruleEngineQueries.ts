@@ -186,7 +186,7 @@ export const makeRecordRuleActionLimitUsage = inject(
             daily_actions_run: sql`daily_actions_run + 1`,
           })
           .where('id', 'in', [...ruleIds])
-          .where('last_action_date', '=', today)
+          .where('last_action_date', '=', sql<Date>`${today}::date`)
           .execute();
 
         await trx
@@ -199,7 +199,7 @@ export const makeRecordRuleActionLimitUsage = inject(
           .where((eb) =>
             eb.or([
               eb('last_action_date', 'is', null),
-              eb('last_action_date', '!=', today),
+              eb('last_action_date', '!=', sql<Date>`${today}::date`),
             ]),
           )
           .execute();

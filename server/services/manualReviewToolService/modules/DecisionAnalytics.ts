@@ -52,7 +52,7 @@ export default class DecisionAnalytics {
         sql<string>`DATE_TRUNC(${timeDivision}, decided_at, ${timeZone})`.as(
           'time',
         ),
-        sql<number>`COUNT(DISTINCT (item_id, item_type_id))`.as('count'),
+        sql<number>`COUNT(DISTINCT (item_id, item_type_id))::int`.as('count'),
       ])
       .$if(groupBy.includes('action_id'), (qb) => qb.select('action_id'))
       .$if(groupBy.includes('queue_id'), (qb) => qb.select('queue_id'))
@@ -119,7 +119,7 @@ export default class DecisionAnalytics {
     return this.pgQuery
       .selectFrom('manual_review_tool.dim_mrt_decisions_materialized')
       .select([
-        sql<number>`COUNT(DISTINCT (item_id, item_type_id))`.as('count'),
+        sql<number>`COUNT(DISTINCT (item_id, item_type_id))::int`.as('count'),
         'action_id',
         'type',
       ])
@@ -242,7 +242,7 @@ export default class DecisionAnalytics {
         sql<string>`date_trunc(${timeDivision}, created_at, ${timeZone})`.as(
           'time',
         ),
-        sql<number>`COUNT(DISTINCT(item_id, item_type_id))`.as('count'),
+        sql<number>`COUNT(DISTINCT(item_id, item_type_id))::int`.as('count'),
       ])
       .$if(groupBy.includes('item_type_id'), (qb) => qb.select('item_type_id'))
       .$if(groupBy.includes('queue_id'), (qb) => qb.select('queue_id'))
@@ -498,7 +498,7 @@ export default class DecisionAnalytics {
         sql<string>`date_trunc(${timeDivision}, created_at, ${timeZone})`.as(
           'time',
         ),
-        sql<number>`COUNT(DISTINCT id)`.as('count'),
+        sql<number>`COUNT(DISTINCT id)::int`.as('count'),
       ])
       .$if(groupBy.includes('queue_id'), (qb) => qb.select('queue_id'))
       .$if(groupBy.includes('reviewer_id'), (qb) => qb.select('reviewer_id'))
