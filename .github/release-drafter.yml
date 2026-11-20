@@ -37,8 +37,9 @@ replacers:
   - target: change-body
     section: '## Release notes'
     not-found: empty
+  # Keep the credit comment that security backport PRs end with; see the last replacer.
   - target: change-body
-    search: '/<!--[\s\S]*?-->/g'
+    search: '/<!--(?! original-credit: [^\n]*? -->\s*$)[\s\S]*?-->/g'
     replace: ''
   - target: change-body
     search: '/((?:^|\r?\n)[ \t]*(?:-{3,}|\*{3,}|_{3,})\s*)+$/'
@@ -49,5 +50,9 @@ replacers:
   - target: change-body
     search: '/^(?![-*][ \t]+)(?=\S)/'
     replace: '- '
+  # Credit a security backport to the source PR and its author, not the backport
+  # PR and the app that opened it.
+  - search: '/\s*<!-- original-credit: (\[#\d+\]\(https:\/\/github\.com\/roostorg\/coop\/pull\/\d+\) by \[@[\w-]+(?:\[bot\])?\]\(https:\/\/github\.com\/(?:apps\/)?[\w-]+\)) --> \(\[#\d+\]\(\S+\) by .*\)$/gm'
+    replace: ' ($1)'
 template: |
   $CHANGES
