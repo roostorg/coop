@@ -36,6 +36,7 @@ import { type Dependencies } from './iocContainer/index.js';
 import { safeGetEnvInt } from './iocContainer/utils.js';
 import controllers from './routes/index.js';
 import { createBodySchemaValidator } from './utils/bodySchemaValidation.js';
+import { toCoopErrorIfClientRequestError } from './utils/clientRequestErrors.js';
 import { jsonStringify } from './utils/encoding.js';
 import {
   getErrorsFromAggregateError,
@@ -172,16 +173,13 @@ export default async function makeApiServer(deps: Dependencies) {
 
   app.get(
     '/saml/login/:orgId',
-    passport.authenticate('saml', { failureRedirect: '/', failureFlash: true }),
+    passport.authenticate('saml', { failureRedirect: '/' }),
   );
 
   app.post(
     `/saml/login/:orgId/callback`,
     express.urlencoded(),
-    passport.authenticate('saml', {
-      failureRedirect: '/',
-      failureFlash: true,
-    }),
+    passport.authenticate('saml', { failureRedirect: '/' }),
     (_req, res) => {
       res.redirect(`${deps.ConfigService.uiUrl}/dashboard`);
     },
@@ -321,7 +319,7 @@ export default async function makeApiServer(deps: Dependencies) {
         // processing work in the background, and that work errors.
         if (!res.headersSent) {
           const safeErrors = errors.map((it) =>
-            sanitizeError(it),
+            sanitizeError(toCoopErrorIfClientRequestError(it)),
           ) satisfies SerializableError[] as NonEmptyArray<SerializableError>;
 
           res.status(pickStatus(safeErrors)).json({ errors: safeErrors });
