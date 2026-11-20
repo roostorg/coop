@@ -886,8 +886,11 @@ export default class QueueOperations {
       userIds,
       queueIds,
     });
+    if (queueIds.length === 0) {
+      return;
+    }
 
-    return this.pgQuery
+    await this.pgQuery
       .insertInto('manual_review_tool.users_and_accessible_queues')
       .values(
         userIds.flatMap((userId) =>
@@ -909,8 +912,11 @@ export default class QueueOperations {
       userIds: [userId],
       queueIds,
     });
+    if (queueIds.length === 0) {
+      return;
+    }
 
-    return this.pgQuery
+    await this.pgQuery
       .deleteFrom('manual_review_tool.users_and_accessible_queues')
       .where('user_id', '=', userId)
       .where('queue_id', 'in', queueIds)
@@ -2659,6 +2665,9 @@ async function assertQueuesInOrg(
   opts: { orgId: string; queueIds: readonly string[] },
 ) {
   const { orgId, queueIds } = opts;
+  if (queueIds.length === 0) {
+    return;
+  }
   const inOrgQueues = await db
     .selectFrom('manual_review_tool.manual_review_queues')
     .select('id')
@@ -2679,6 +2688,9 @@ async function assertUsersInOrg(
   opts: { orgId: string; userIds: readonly string[] },
 ) {
   const { orgId, userIds } = opts;
+  if (userIds.length === 0) {
+    return;
+  }
   const inOrgUsers = await db
     .selectFrom('public.users')
     .select('id')

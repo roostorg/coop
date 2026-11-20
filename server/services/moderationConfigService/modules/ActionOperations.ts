@@ -415,6 +415,9 @@ export default class ActionOperations {
     readFromReplica?: boolean;
   }) {
     const { ids, orgId, readFromReplica } = opts;
+    if (ids?.length === 0) {
+      return [];
+    }
     const pgQuery = this.#getPgQuery(readFromReplica);
     const query = pgQuery
       .selectFrom('public.actions')

@@ -157,9 +157,9 @@ class ApiKeyService {
       .set({ is_active: false })
       .where('id', '=', keyId)
       .where('org_id', '=', orgId)
-      .execute();
+      .executeTakeFirst();
 
-    return result.length > 0;
+    return result.numUpdatedRows === 1n;
   }
 
   /**
@@ -181,9 +181,9 @@ class ApiKeyService {
       .deleteFrom('public.api_keys')
       .where('id', '=', keyId)
       .where('org_id', '=', orgId)
-      .execute();
+      .executeTakeFirst();
 
-    return result.length > 0;
+    return result.numDeletedRows === 1n;
   }
   /**
    * Gets the org ID from an activated API key

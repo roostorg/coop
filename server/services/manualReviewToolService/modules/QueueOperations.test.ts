@@ -442,6 +442,36 @@ describe('QueueOperations', () => {
     });
 
   testWithTwoOrgs()(
+    'treats an empty queue list as a no-op but still checks the user’s org',
+    async ({ attacker, victim, mrtService }) => {
+      for (const mutate of [
+        mrtService.addAccessibleQueuesForUser.bind(mrtService),
+        mrtService.removeAccessibleQueuesForUser.bind(mrtService),
+      ]) {
+        await mutate({
+          orgId: attacker.org.id,
+          userId: attacker.user.id,
+          queueIds: [],
+        });
+        await expect(
+          mutate({
+            orgId: attacker.org.id,
+            userId: victim.user.id,
+            queueIds: [],
+          }),
+        ).rejects.toMatchObject({ name: 'AccessibleQueueNotInOrgError' });
+      }
+      expect(
+        await mrtService.getUsersWhoCanSeeQueue({
+          orgId: attacker.org.id,
+          queueId: attacker.queue.id,
+          userId: attacker.user.id,
+        }),
+      ).toEqual([{ userId: attacker.user.id }]);
+    },
+  );
+
+  testWithTwoOrgs()(
     'grants and revokes queue access only for users and queues in the caller’s org',
     async ({ attacker, victim, mrtService, deps }) => {
       const { user: attackerMember } = await createUser(
