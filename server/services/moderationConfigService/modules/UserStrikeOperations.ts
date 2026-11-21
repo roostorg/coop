@@ -1,48 +1,57 @@
-import { type Kysely } from 'kysely';
 import { type JsonObject } from 'type-fest';
 
+import {
+  fromJsonColumn,
+  managerOf,
+  toJsonColumn,
+  transactionWithRetry,
+  type TypeormDb,
+} from '../../../storage/typeorm/db.js';
+import { UserStrikeThresholds } from '../../../storage/typeorm/entities/index.js';
 import {
   CoopError,
   ErrorType,
   type ErrorInstanceData,
 } from '../../../utils/errors.js';
 import { isUniqueViolationError } from '../../../utils/kysely.js';
-import {
-  makeKyselyTransactionWithRetry,
-  type KyselyTransactionWithRetry,
-} from '../../../utils/kyselyTransactionWithRetry.js';
 import { removeUndefinedKeys } from '../../../utils/misc.js';
-import { type ModerationConfigServicePg } from '../dbTypes.js';
 
-const userStrikeThresholdSelection = [
-  'id',
-  'org_id as orgId',
-  'threshold',
-  'actions',
-  'action_parameters as actionParameters',
-] as const;
+type UserStrikeThresholdRow = {
+  id: string;
+  orgId: string;
+  threshold: number;
+  actions: string[];
+  actionParameters: JsonObject;
+};
+
+function toRow(entity: UserStrikeThresholds): UserStrikeThresholdRow {
+  return {
+    // int4 in the database; the GraphQL ID (and the Kysely type) is a string.
+    id: String(entity.id),
+    orgId: entity.org_id,
+    threshold: entity.threshold,
+    actions: entity.actions,
+    actionParameters: fromJsonColumn(entity.action_parameters),
+  };
+}
 
 export default class UserStrikeOperations {
-  private readonly transactionWithRetry: KyselyTransactionWithRetry<ModerationConfigServicePg>;
-
   constructor(
-    private readonly pgQuery: Kysely<ModerationConfigServicePg>,
-    private readonly pgQueryReplica: Kysely<ModerationConfigServicePg>,
-  ) {
-    this.transactionWithRetry = makeKyselyTransactionWithRetry(this.pgQuery);
-  }
+    private readonly pgQuery: TypeormDb,
+    private readonly pgQueryReplica: TypeormDb,
+  ) {}
 
   async getUserStrikeThresholds(opts: {
     orgId: string;
     readFromReplica?: boolean;
-  }) {
-    const { orgId, readFromReplica } = opts;
-    const pgQuery = this.#getPgQuery(readFromReplica);
-    const query = pgQuery
-      .selectFrom('public.user_strike_thresholds')
-      .select(userStrikeThresholdSelection)
-      .where('org_id', '=', orgId);
-    return query.execute();
+  }): Promise<UserStrikeThresholdRow[]> {
+    const manager = await managerOf(
+      opts.readFromReplica ? this.pgQueryReplica : this.pgQuery,
+    );
+    const rows = await manager.find(UserStrikeThresholds, {
+      where: { org_id: opts.orgId },
+    });
+    return rows.map(toRow);
   }
 
   async createUserStrikeThreshold(opts: {
@@ -52,20 +61,26 @@ export default class UserStrikeOperations {
       actions: string[];
       actionParameters?: JsonObject;
     };
-  }) {
-    const { orgId: org_id, thresholdSettings } = opts;
-
+  }): Promise<UserStrikeThresholdRow> {
+    const { orgId, thresholdSettings } = opts;
+    const manager = await managerOf(this.pgQuery);
     try {
-      return await this.pgQuery
-        .insertInto('public.user_strike_thresholds')
+      const result = await manager
+        .createQueryBuilder()
+        .insert()
+        .into(UserStrikeThresholds)
         .values({
-          org_id,
+          org_id: orgId,
           threshold: thresholdSettings.threshold,
           actions: thresholdSettings.actions,
-          action_parameters: thresholdSettings.actionParameters ?? {},
+          // TypeORM's QueryDeepPartialEntity recursion on type-fest's
+          // JsonObject hits TS2589 ("excessively deep") here.
+          action_parameters: (thresholdSettings.actionParameters ??
+            {}) as object,
         })
-        .returning(userStrikeThresholdSelection)
-        .executeTakeFirstOrThrow();
+        .returning('*')
+        .execute();
+      return toRow(result.raw[0] as UserStrikeThresholds);
     } catch (e: unknown) {
       throw isUniqueViolationError(e)
         ? makeThresholdAlreadyExistsError({ shouldErrorSpan: true })
@@ -81,29 +96,41 @@ export default class UserStrikeOperations {
       actions?: string[];
       actionParameters?: JsonObject;
     };
-  }) {
+  }): Promise<UserStrikeThresholdRow> {
     const { orgId, thresholdSettings } = opts;
-
+    const manager = await managerOf(this.pgQuery);
+    let rows: UserStrikeThresholds[];
     try {
-      return await this.pgQuery
-        .updateTable('public.user_strike_thresholds')
+      const result = await manager
+        .createQueryBuilder()
+        .update(UserStrikeThresholds)
         .set(
           removeUndefinedKeys({
             threshold: thresholdSettings.threshold,
             actions: thresholdSettings.actions,
-            action_parameters: thresholdSettings.actionParameters,
+            action_parameters:
+              thresholdSettings.actionParameters &&
+              toJsonColumn(thresholdSettings.actionParameters),
           }),
         )
-        .where('id', '=', thresholdSettings.id)
-        .where('org_id', '=', orgId)
-        .returning(userStrikeThresholdSelection)
-        .executeTakeFirstOrThrow();
+        .where('id = :id AND org_id = :orgId', {
+          id: thresholdSettings.id,
+          orgId,
+        })
+        .returning('*')
+        .execute();
+      rows = result.raw as UserStrikeThresholds[];
     } catch (e: unknown) {
       throw isUniqueViolationError(e)
         ? makeThresholdAlreadyExistsError({ shouldErrorSpan: true })
         : e;
     }
+    if (rows.length === 0) {
+      throw new Error('No user strike threshold to update');
+    }
+    return toRow(rows[0]);
   }
+
   /**
    * Set all user strike thresholds for an organization.
    * this replaces all existing thresholds with the new set
@@ -116,27 +143,19 @@ export default class UserStrikeOperations {
       actionParameters?: JsonObject;
     }[];
   }) {
-    await this.transactionWithRetry(async (trx) => {
-      await trx
-        .deleteFrom('public.user_strike_thresholds')
-        .where('org_id', '=', opts.orgId)
-        .execute();
+    await transactionWithRetry(this.pgQuery, {}, async (manager) => {
+      await manager.delete(UserStrikeThresholds, { org_id: opts.orgId });
       for (const threshold of opts.thresholds) {
-        await trx
-          .insertInto('public.user_strike_thresholds')
-          .values({
+        await manager.upsert(
+          UserStrikeThresholds,
+          {
             org_id: opts.orgId,
             threshold: threshold.threshold,
             actions: [...threshold.actions],
-            action_parameters: threshold.actionParameters ?? {},
-          })
-          .onConflict((oc) =>
-            oc.columns(['org_id', 'threshold']).doUpdateSet({
-              actions: [...threshold.actions],
-              action_parameters: threshold.actionParameters ?? {},
-            }),
-          )
-          .execute();
+            action_parameters: toJsonColumn(threshold.actionParameters ?? {}),
+          },
+          ['org_id', 'threshold'],
+        );
       }
     });
   }
@@ -147,19 +166,13 @@ export default class UserStrikeOperations {
     id: string;
   }) {
     const { orgId, id, threshold } = opts;
-
-    const rowsDeleted = await this.pgQuery
-      .deleteFrom('public.user_strike_thresholds')
-      .where('org_id', '=', orgId)
-      .where('id', '=', id)
-      .where('threshold', '=', threshold)
-      .execute();
-
-    return rowsDeleted.length === 1;
-  }
-
-  #getPgQuery(readFromReplica: boolean = false) {
-    return readFromReplica ? this.pgQueryReplica : this.pgQuery;
+    const manager = await managerOf(this.pgQuery);
+    const result = await manager.delete(UserStrikeThresholds, {
+      org_id: orgId,
+      id: Number(id),
+      threshold,
+    });
+    return result.affected === 1;
   }
 }
 

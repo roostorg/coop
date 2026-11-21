@@ -1,31 +1,53 @@
-import type { Kysely } from 'kysely';
 import { uid } from 'uid';
 
+import { managerOf, type TypeormDb } from '../../../storage/typeorm/db.js';
+import {
+  TextBanks,
+  type TextBankType,
+} from '../../../storage/typeorm/entities/index.js';
 import {
   CoopError,
   ErrorType,
   type ErrorInstanceData,
 } from '../../../utils/errors.js';
 import { isUniqueViolationError } from '../../../utils/kysely.js';
-import type { ModerationConfigServicePg } from '../dbTypes.js';
+import { removeUndefinedKeys } from '../../../utils/misc.js';
 
-const TEXT_BANK_COLUMNS = [
-  'id',
-  'name',
-  'description',
-  'type',
-  'strings',
-  'org_id as orgId',
-  'created_at as createdAt',
-  'updated_at as updatedAt',
-  'owner_id as ownerId',
-] as const;
+type TextBankRow = {
+  id: string;
+  name: string;
+  description: string | null;
+  type: TextBankType;
+  strings: string[];
+  orgId: string;
+  createdAt: Date;
+  updatedAt: Date;
+  ownerId: string | null;
+};
+
+function toRow(bank: TextBanks): TextBankRow {
+  return {
+    id: bank.id,
+    name: bank.name,
+    description: bank.description,
+    type: bank.type,
+    strings: bank.strings,
+    orgId: bank.org_id,
+    createdAt: bank.created_at,
+    updatedAt: bank.updated_at,
+    ownerId: bank.owner_id,
+  };
+}
 
 export default class MatchingBankOperations {
   constructor(
-    private readonly pgQuery: Kysely<ModerationConfigServicePg>,
-    private readonly pgQueryReplica: Kysely<ModerationConfigServicePg>,
+    private readonly pgQuery: TypeormDb,
+    private readonly pgQueryReplica: TypeormDb,
   ) {}
+
+  async #manager(readFromReplica?: boolean) {
+    return managerOf(readFromReplica ? this.pgQueryReplica : this.pgQuery);
+  }
 
   async getTextBank(opts: {
     orgId: string;
@@ -33,14 +55,10 @@ export default class MatchingBankOperations {
     readFromReplica?: boolean;
   }) {
     const { orgId, id, readFromReplica } = opts;
-    const pgQuery = readFromReplica ? this.pgQueryReplica : this.pgQuery;
-
-    const textBank = await pgQuery
-      .selectFrom('public.text_banks')
-      .select(TEXT_BANK_COLUMNS)
-      .where('org_id', '=', orgId)
-      .where('id', '=', id)
-      .executeTakeFirst();
+    const manager = await this.#manager(readFromReplica);
+    const textBank = await manager.findOne(TextBanks, {
+      where: { org_id: orgId, id },
+    });
 
     if (!textBank) {
       throw new CoopError({
@@ -52,20 +70,15 @@ export default class MatchingBankOperations {
       });
     }
 
-    return textBank;
+    return toRow(textBank);
   }
 
   async getTextBanks(opts: { orgId: string; readFromReplica?: boolean }) {
-    const { orgId, readFromReplica } = opts;
-    const pgQuery = readFromReplica ? this.pgQueryReplica : this.pgQuery;
-
-    const textBanks = await pgQuery
-      .selectFrom('public.text_banks')
-      .select(TEXT_BANK_COLUMNS)
-      .where('org_id', '=', orgId)
-      .execute();
-
-    return textBanks;
+    const manager = await this.#manager(opts.readFromReplica);
+    const textBanks = await manager.find(TextBanks, {
+      where: { org_id: opts.orgId },
+    });
+    return textBanks.map(toRow);
   }
 
   async createTextBank(
@@ -79,10 +92,13 @@ export default class MatchingBankOperations {
     },
   ) {
     const { name, description, type, strings, ownerId } = input;
+    const manager = await this.#manager();
 
     try {
-      const newTextBank = await this.pgQuery
-        .insertInto('public.text_banks')
+      const result = await manager
+        .createQueryBuilder()
+        .insert()
+        .into(TextBanks)
         .values({
           id: uid(),
           name,
@@ -91,12 +107,11 @@ export default class MatchingBankOperations {
           strings,
           org_id: orgId,
           updated_at: new Date(),
-          owner_id: ownerId,
+          owner_id: ownerId ?? null,
         })
-        .returning(TEXT_BANK_COLUMNS)
-        .executeTakeFirstOrThrow();
-
-      return newTextBank;
+        .returning('*')
+        .execute();
+      return toRow(result.raw[0] as TextBanks);
     } catch (error) {
       if (isUniqueViolationError(error)) {
         throw makeMatchingBankNameExistsError({ shouldErrorSpan: true });
@@ -117,40 +132,43 @@ export default class MatchingBankOperations {
     },
   ) {
     const { id, name, description, type, strings, ownerId } = input;
+    const manager = await this.#manager();
 
+    let rows: TextBanks[];
     try {
-      const updatedTextBank = await this.pgQuery
-        .updateTable('public.text_banks')
-        .set({
-          name,
-          description,
-          type,
-          strings,
-          owner_id: ownerId,
-          updated_at: new Date(),
-        })
-        .where('id', '=', id)
-        .where('org_id', '=', orgId)
-        .returning(TEXT_BANK_COLUMNS)
-        .executeTakeFirstOrThrow();
-
-      return updatedTextBank;
+      const result = await manager
+        .createQueryBuilder()
+        .update(TextBanks)
+        .set(
+          removeUndefinedKeys({
+            name,
+            description,
+            type,
+            strings,
+            owner_id: ownerId,
+            updated_at: new Date(),
+          }),
+        )
+        .where('id = :id AND org_id = :orgId', { id, orgId })
+        .returning('*')
+        .execute();
+      rows = result.raw as TextBanks[];
     } catch (error) {
       if (isUniqueViolationError(error)) {
         throw makeMatchingBankNameExistsError({ shouldErrorSpan: true });
       }
       throw error;
     }
+    if (rows.length === 0) {
+      throw new Error('No text bank to update');
+    }
+    return toRow(rows[0]);
   }
 
   async deleteTextBank(orgId: string, id: string) {
-    const rowsDeleted = await this.pgQuery
-      .deleteFrom('public.text_banks')
-      .where('id', '=', id)
-      .where('org_id', '=', orgId)
-      .execute();
-
-    return rowsDeleted.length === 1;
+    const manager = await this.#manager();
+    const result = await manager.delete(TextBanks, { id, org_id: orgId });
+    return result.affected === 1;
   }
 }
 

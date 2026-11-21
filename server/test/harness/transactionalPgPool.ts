@@ -73,6 +73,9 @@ function rejectUnsupportedTransactionControl(
   );
 }
 
+const TYPEORM_SAVEPOINT =
+  /^(savepoint|release savepoint|rollback to savepoint) typeorm_\d+$/;
+
 export function createTransactionalTestDb(
   config: pg.ClientConfig,
 ): TransactionalTestDb {
@@ -172,6 +175,24 @@ export function createTransactionalTestDb(
       return result;
     }
 
+    // TypeORM nests transactions with its own `SAVEPOINT typeorm_<n>` /
+    // `RELEASE SAVEPOINT` / `ROLLBACK TO SAVEPOINT` statements. Inside an
+    // application transaction those already act on a savepoint below ours, so
+    // they're safe to pass through.
+    if (txMutex !== null && TYPEORM_SAVEPOINT.test(normalized)) {
+      return client.query(textOrConfig);
+    }
+    // TypeORM sets the isolation level in a separate statement after
+    // `START TRANSACTION`. Postgres only allows that as the first statement of
+    // the real (outer) transaction, so it's dropped, just as the isolation
+    // level in Kysely's `start transaction isolation level ...` is.
+    if (
+      txMutex !== null &&
+      normalized.startsWith('set transaction isolation level')
+    ) {
+      return { rows: [], rowCount: 0, command: 'SET', fields: [] };
+    }
+
     rejectUnsupportedTransactionControl(normalized, text);
 
     // Outside a transaction, queue to
@@ -192,18 +213,40 @@ export function createTransactionalTestDb(
     query: runQuery,
     // Keep the pinned connection alive across the whole test.
     release() {},
+    // TypeORM's query runner subscribes to client errors.
+    on(event: string, listener: (...args: unknown[]) => void) {
+      client.on(event as 'error', listener);
+      return facadeClient;
+    },
+    removeListener(event: string, listener: (...args: unknown[]) => void) {
+      client.removeListener(event, listener);
+      return facadeClient;
+    },
   };
 
   const pool = {
     Client: pg.Client,
     options: config,
-    async connect() {
-      return facadeClient;
+    // Promise style (Kysely, connect-pg-simple) and callback style (TypeORM).
+    connect(
+      callback?: (
+        err: Error | undefined,
+        client: typeof facadeClient,
+        release: () => void,
+      ) => void,
+    ): Promise<typeof facadeClient> | undefined {
+      if (callback) {
+        callback(undefined, facadeClient, facadeClient.release);
+        return undefined;
+      }
+      return Promise.resolve(facadeClient);
     },
     async query(textOrConfig: string | pg.QueryConfig, values?: unknown[]) {
       return runQuery(textOrConfig, values);
     },
-    async end() {},
+    async end(callback?: (err?: Error) => void) {
+      callback?.();
+    },
     on() {},
   };
 

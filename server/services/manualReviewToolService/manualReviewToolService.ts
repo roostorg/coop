@@ -2,12 +2,14 @@
 
 import { SpanStatusCode } from '@opentelemetry/api';
 import { type ItemIdentifier } from '@roostorg/coop-types';
-import { type Kysely, type Transaction } from 'kysely';
+import { type Kysely } from 'kysely';
 import _ from 'lodash';
 import { type Opaque } from 'type-fest';
+import { type EntityManager } from 'typeorm';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import { type ConsumerDirectives } from '../../lib/cache/index.js';
+import { type TypeormDb } from '../../storage/typeorm/db.js';
 import { jsonStringify } from '../../utils/encoding.js';
 import {
   isCoopErrorOfType,
@@ -16,7 +18,6 @@ import {
 } from '../../utils/errors.js';
 import { isUniqueViolationError } from '../../utils/kysely.js';
 import type { OmitEach, ReplaceDeep } from '../../utils/typescript-types.js';
-import { type CombinedPg } from '../combinedDbTypes.js';
 import {
   getFieldValueForRole,
   getFieldValueOrValues,
@@ -28,10 +29,7 @@ import {
   resolveManualReviewContentSafely,
   type ManualReviewContentResolver,
 } from '../manualReviewContentResolver.js';
-import {
-  type ModerationConfigService,
-  type ModerationConfigServicePg,
-} from '../moderationConfigService/index.js';
+import { type ModerationConfigService } from '../moderationConfigService/index.js';
 import { type PartialItemsService } from '../partialItemsService/index.js';
 import {
   UserPermission,
@@ -351,6 +349,8 @@ export class ManualReviewToolService {
     readonly routingRuleExecutionLogger: Dependencies['RoutingRuleExecutionLogger'],
     readonly pgQuery: Kysely<ManualReviewToolServicePg>,
     readonly pgQueryReadReplica: Kysely<ManualReviewToolServicePg>,
+    // TypeORM PoC: modules ported off Kysely use this instead of pgQuery.
+    readonly typeormPg: TypeormDb,
     readonly userStatisticsService: UserStatisticsService,
     readonly getCustomActionsByIds: Dependencies['getActionsByIdEventuallyConsistent'],
     private readonly tracer: Dependencies['Tracer'],
@@ -410,9 +410,7 @@ export class ManualReviewToolService {
       getUserHasExistingNcmecReport,
       meter,
     );
-    this.jobRendering = new JobRendering(
-      pgQuery.$extendTables<ModerationConfigServicePg>(),
-    );
+    this.jobRendering = new JobRendering(typeormPg);
     this.jobPriorityWeights = new JobPriorityWeights(pgQuery);
     this.decisionAnalytics = new DecisionAnalytics(pgQueryReadReplica);
     this.commentOps = new CommentOperations(pgQuery);
@@ -430,18 +428,12 @@ export class ManualReviewToolService {
   }
 
   forTransaction(
-    trx: Transaction<CombinedPg>,
+    manager: EntityManager,
   ): Pick<
     ManualReviewToolService,
     'getHiddenFieldsForItemType' | 'setHiddenFieldsForItemType'
   > {
-    return new JobRendering(
-      trx
-        .$extendTables<ManualReviewToolServicePg>()
-        .$pickTables<
-          keyof (ManualReviewToolServicePg & ModerationConfigServicePg)
-        >(),
-    );
+    return new JobRendering(manager);
   }
 
   /**

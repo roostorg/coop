@@ -1,28 +1,21 @@
-import { type Kysely } from 'kysely';
-import _ from 'lodash';
-
 import { inject } from '../iocContainer/utils.js';
-import { type ManualReviewToolServicePg } from '../services/manualReviewToolService/index.js';
-import { makeKyselyTransactionWithRetry } from '../utils/kyselyTransactionWithRetry.js';
+import { transactionWithRetry, type TypeormDb } from '../storage/typeorm/db.js';
+import { ViewMaintenanceMetadata } from '../storage/typeorm/entities/index.js';
 import { MINUTE_MS } from '../utils/time.js';
 
+const MATERIALIZED_TABLE = 'manual_review_tool.dim_mrt_decisions_materialized';
+
 export default inject(
-  ['closeSharedResourcesForShutdown', 'KyselyPg'],
-  (sharedResourceShutdown, pgQuery: Kysely<ManualReviewToolServicePg>) => {
-    const transactionWithRetry = makeKyselyTransactionWithRetry(pgQuery);
+  ['closeSharedResourcesForShutdown', 'TypeormPg'],
+  (sharedResourceShutdown, db: TypeormDb) => {
     return {
       type: 'Job' as const,
       async run() {
-        await transactionWithRetry(async (trx) => {
-          const lastTimestamp = await trx
-            .selectFrom('public.view_maintenance_metadata')
-            .select('last_insert')
-            .where(
-              'table_name',
-              '=',
-              'manual_review_tool.dim_mrt_decisions_materialized',
-            )
-            .executeTakeFirst();
+        await transactionWithRetry(db, {}, async (manager) => {
+          const lastTimestamp = await manager.findOneBy(
+            ViewMaintenanceMetadata,
+            { table_name: MATERIALIZED_TABLE },
+          );
 
           if (!lastTimestamp) {
             throw new Error('No last_insert timestamp found for the table');
@@ -37,21 +30,19 @@ export default inject(
             ? new Date(lastInsertMs - MINUTE_MS)
             : new Date(0);
 
-          const insertedRows = await trx
-            .insertInto('manual_review_tool.dim_mrt_decisions_materialized')
-            .expression(
-              trx
-                .selectFrom('manual_review_tool.dim_mrt_decisions')
-                .selectAll()
-                .where('decided_at', '>', oneMinutePrevious),
-            )
-            // since we are going back in time by 1 minute, we will likely be
-            // re-inserting some rows, which should lead to unique constraint
-            // violations. In this case we just want to ignore those rows to avoid
-            // duplicate data
-            .onConflict((oc) => oc.doNothing())
-            .returning('decided_at')
-            .execute();
+          // Raw SQL: TypeORM's insert builder has no INSERT ... SELECT.
+          //
+          // Since we go back in time by 1 minute, we will likely re-insert
+          // some rows, which would violate that unique index. In this case we
+          // just want to ignore those rows to avoid duplicate data.
+          const insertedRows: { decided_at: Date }[] = await manager.query(
+            `INSERT INTO manual_review_tool.dim_mrt_decisions_materialized
+             SELECT * FROM manual_review_tool.dim_mrt_decisions
+             WHERE decided_at > $1
+             ON CONFLICT DO NOTHING
+             RETURNING decided_at`,
+            [oneMinutePrevious],
+          );
 
           if (insertedRows.length === 0) {
             return;
@@ -62,17 +53,11 @@ export default inject(
             insertedRows[0].decided_at,
           );
 
-          await trx
-            .updateTable('public.view_maintenance_metadata')
-            .set({
-              last_insert: latestDecidedAt,
-            })
-            .where(
-              'table_name',
-              '=',
-              'manual_review_tool.dim_mrt_decisions_materialized',
-            )
-            .execute();
+          await manager.update(
+            ViewMaintenanceMetadata,
+            { table_name: MATERIALIZED_TABLE },
+            { last_insert: latestDecidedAt },
+          );
         });
       },
       async shutdown() {

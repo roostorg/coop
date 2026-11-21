@@ -1,5 +1,7 @@
+import { type EntityManager } from 'typeorm';
+
 import { type Dependencies } from '../iocContainer/index.js';
-import { makeKyselyTransactionWithRetry } from '../utils/kyselyTransactionWithRetry.js';
+import { transactionWithRetry } from '../storage/typeorm/db.js';
 import { safePick } from '../utils/misc.js';
 
 /**
@@ -42,7 +44,8 @@ export function makeGqlServices(deps: Dependencies) {
   ]);
   return {
     ...services,
-    transaction: makeKyselyTransactionWithRetry(deps.KyselyPg),
+    transaction: async <R>(callback: (manager: EntityManager) => Promise<R>) =>
+      transactionWithRetry(deps.TypeormPg, {}, callback),
   };
 }
 

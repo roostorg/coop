@@ -1,24 +1,19 @@
 import { faker } from '@faker-js/faker';
-import { Kysely } from 'kysely';
 import { type UnionToIntersection } from 'type-fest';
 import { uid } from 'uid';
 import { vi } from 'vitest';
 
 import getBottle from '../../iocContainer/index.js';
+import { type TypeormHandle } from '../../storage/typeorm/dataSource.js';
+import { transactionWithRetry } from '../../storage/typeorm/db.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import createRule from '../../test/fixtureHelpers/createRule.js';
 import createUser from '../../test/fixtureHelpers/createUser.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
 import { type MockedServer } from '../../test/setupMockedServer.js';
-import {
-  makeMockPgDialect,
-  type MockPgExecute,
-} from '../../test/stubs/KyselyPg.js';
 import { makeTestWithFixture } from '../../test/utils.js';
 import { ErrorType } from '../../utils/errors.js';
-import { makeKyselyTransactionWithRetry } from '../../utils/kyselyTransactionWithRetry.js';
 import { type Satisfies } from '../../utils/typescript-types.js';
-import { type ModerationConfigServicePg } from './dbTypes.js';
 import {
   RuleStatus,
   RuleType,
@@ -42,29 +37,27 @@ type ItemTypeMutationMethod =
 
 async function mutateItemTypeAndHiddenFields<T extends ItemTypeMutationMethod>(
   config: ModerationConfigService,
-  deps: Pick<TestDeps, 'KyselyPg' | 'ManualReviewToolService'>,
+  deps: Pick<TestDeps, 'TypeormPg' | 'ManualReviewToolService'>,
   orgId: string,
   method: T,
   input: Parameters<ModerationConfigService[T]>[1],
   hiddenFields: readonly string[],
 ) {
-  const item = await makeKyselyTransactionWithRetry(deps.KyselyPg)(
-    async (trx) => {
-      const transactionConfig = config.forTransaction(trx);
-      const review = deps.ManualReviewToolService.forTransaction(trx);
-      try {
-        const item = await transactionConfig[method](orgId, input as never);
-        await review.setHiddenFieldsForItemType({
-          orgId,
-          itemTypeId: item.id,
-          hiddenFields,
-        });
-        return item;
-      } finally {
-        await transactionConfig.close();
-      }
-    },
-  );
+  const item = await transactionWithRetry(deps.TypeormPg, {}, async (trx) => {
+    const transactionConfig = config.forTransaction(trx);
+    const review = deps.ManualReviewToolService.forTransaction(trx);
+    try {
+      const item = await transactionConfig[method](orgId, input as never);
+      await review.setHiddenFieldsForItemType({
+        orgId,
+        itemTypeId: item.id,
+        hiddenFields,
+      });
+      return item;
+    } finally {
+      await transactionConfig.close();
+    }
+  });
   await config.invalidateLatestItemTypesCache(orgId);
   return item;
 }
@@ -77,24 +70,22 @@ async function mutateItemTypeAndHiddenFields<T extends ItemTypeMutationMethod>(
 //
 // To test that the correct db is queried (i.e., replicas vs the primary), we
 // use two service instances, each with access only to the db we expect to be
-// hit; the other db is a kysely instance that throws if it's ever used.
+// hit; the other db is a handle that throws if it's ever used.
 function makeSuts(primary: Sut, replica: Sut) {
-  const kyselyShouldBeUnused = new Kysely<ModerationConfigServicePg>({
-    dialect: makeMockPgDialect(
-      vi.fn<MockPgExecute>().mockImplementation(async () => {
-        throw new Error('Did not expect this kysely instance to be used!');
-      }),
-    ),
-  });
+  const dbShouldBeUnused = {
+    get: vi.fn(async () => {
+      throw new Error('Did not expect this db handle to be used!');
+    }),
+  } as unknown as TypeormHandle;
 
   return {
     sutWithPrimary: new ModerationConfigService(
       primary,
-      kyselyShouldBeUnused,
+      dbShouldBeUnused,
       async () => {},
     ),
     sutWithReadReplica: new ModerationConfigService(
-      kyselyShouldBeUnused,
+      dbShouldBeUnused,
       replica,
       async () => {},
     ),
@@ -102,7 +93,7 @@ function makeSuts(primary: Sut, replica: Sut) {
 }
 
 async function setupOrg(deps: TestDeps) {
-  const suts = makeSuts(deps.KyselyPg, deps.KyselyPgReadReplica);
+  const suts = makeSuts(deps.TypeormPg, deps.TypeormPgReadReplica);
   const { org, defaultUserItemType } = await createOrg(
     {
       KyselyPg: deps.KyselyPg,
@@ -177,6 +168,58 @@ describe('ModerationConfigService', () => {
   const testWithOrg = makeTransactionalTestWithFixture(async ({ deps }) =>
     setupOrg(deps),
   );
+
+  // Behaviour that changed when these methods moved from Kysely to TypeORM.
+  describe('TypeORM port behaviour', () => {
+    testWithOrg(
+      'getActions with an empty id list returns no actions',
+      async ({ sutWithPrimary, org }) => {
+        expect(
+          await sutWithPrimary.getActions({ orgId: org.id, ids: [] }),
+        ).toEqual([]);
+      },
+    );
+
+    testWithOrg(
+      'deleteTextBank reports whether a bank was deleted',
+      async ({ sutWithPrimary, org }) => {
+        const bank = await sutWithPrimary.createTextBank(org.id, {
+          name: `bank-${uid()}`,
+          description: null,
+          type: 'STRING',
+          strings: ['a'],
+        });
+        expect(await sutWithPrimary.deleteTextBank(org.id, bank.id)).toBe(true);
+        expect(await sutWithPrimary.deleteTextBank(org.id, bank.id)).toBe(
+          false,
+        );
+      },
+    );
+
+    testWithOrg(
+      'user strike thresholds have string ids and report deletes',
+      async ({ sutWithPrimary, org }) => {
+        const created = await sutWithPrimary.createUserStrikeThreshold({
+          orgId: org.id,
+          thresholdSettings: { threshold: 3, actions: [] },
+        });
+        expect(typeof created.id).toBe('string');
+        const thresholdSettings = { id: created.id, threshold: 3 };
+        expect(
+          await sutWithPrimary.deleteUserStrikeThreshold({
+            orgId: org.id,
+            thresholdSettings,
+          }),
+        ).toBe(true);
+        expect(
+          await sutWithPrimary.deleteUserStrikeThreshold({
+            orgId: org.id,
+            thresholdSettings,
+          }),
+        ).toBe(false);
+      },
+    );
+  });
 
   describe('#getRuleByIdAndOrg', () => {
     const testWithRuleRow = makeTransactionalTestWithFixture(
@@ -525,7 +568,7 @@ describe('ModerationConfigService', () => {
             schemaFieldRoles: {},
           });
           await expect(
-            makeKyselyTransactionWithRetry(deps.KyselyPg)(async (trx) => {
+            transactionWithRetry(deps.TypeormPg, {}, async (trx) => {
               const transactionConfig = sutWithPrimary.forTransaction(trx);
               const review = deps.ManualReviewToolService.forTransaction(trx);
               try {
@@ -888,7 +931,7 @@ describe('ModerationConfigService', () => {
         testWithOrg(
           'should query from the proper db',
           async ({ sutWithPrimary, sutWithReadReplica, org }) => {
-            // These tests will throw if the wrong db is used (see kyselyShouldBeUnused)
+            // These tests will throw if the wrong db is used (see dbShouldBeUnused)
             await sutWithPrimary.getItemTypesForAction({
               orgId: org.id,
               actionId: 'someId',
@@ -2523,8 +2566,8 @@ describe('ModerationConfigService', () => {
     const testWithHistoricalItemType = makeTestWithFixture(async () => {
       const { container } = await getBottle();
       const sut = new ModerationConfigService(
-        container.KyselyPg,
-        container.KyselyPgReadReplica,
+        container.TypeormPg,
+        container.TypeormPgReadReplica,
         async () => {},
       );
       const { org, cleanup: orgCleanup } = await createOrg(
@@ -2549,6 +2592,8 @@ describe('ModerationConfigService', () => {
         async cleanup() {
           await orgCleanup();
           await Promise.all([
+            container.TypeormPg.destroy(),
+            container.TypeormPgReadReplica.destroy(),
             container.KyselyPg.destroy(),
             container.KyselyPgReadReplica.destroy(),
           ]);

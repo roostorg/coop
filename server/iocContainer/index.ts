@@ -249,6 +249,7 @@ import {
   type IDataWarehouse,
   type IDataWarehouseDialect,
 } from '../storage/dataWarehouse/index.js';
+import { TypeormHandle } from '../storage/typeorm/dataSource.js';
 import { cached, type Cached } from '../utils/caching.js';
 import { CoopMeter } from '../utils/CoopMeter.js';
 import {
@@ -340,6 +341,12 @@ export interface Dependencies {
   // non-Kysely Postgres consumers (e.g., the express-session store) can
   // share the same pool instead of opening their own.
   KyselyPgPool: pg.Pool;
+  KyselyPgReadReplicaPool: pg.Pool;
+
+  // TypeORM PoC: DataSources sharing the Kysely pools. See
+  // storage/typeorm/dataSource.ts.
+  TypeormPg: TypeormHandle;
+  TypeormPgReadReplica: TypeormHandle;
 
   // Similar to our Kysely services, we register the services as Scylla<any> so
   // that each dependent service can type its arg more specifically with the set
@@ -606,20 +613,42 @@ export default async function getBottle(
       }),
   );
 
+  // Shared by KyselyPgReadReplica (which ends it on shutdown) and
+  // TypeormPgReadReplica, so the two don't each open a replica pool.
+  bottle.factory('KyselyPgReadReplicaPool', () =>
+    createPgPool({
+      ...getPgMasterConnectionInfo(),
+      max: parseInt(process.env.DATABASE_READ_POOL_MAX ?? '150'),
+      host: safeGetEnvVar('DATABASE_READ_ONLY_HOST'),
+    }),
+  );
+
   bottle.factory(
     'KyselyPgReadReplica',
-    () =>
+    (container) =>
       new Kysely<CombinedPg>({
         dialect: new PostgresDialect({
           controlClient: pg.Client,
-          pool: createPgPool({
-            ...getPgMasterConnectionInfo(),
-            max: parseInt(process.env.DATABASE_READ_POOL_MAX ?? '150'),
-            host: safeGetEnvVar('DATABASE_READ_ONLY_HOST'),
-          }),
+          pool: container.KyselyPgReadReplicaPool,
           cursor: Cursor,
         }),
         log: kyselyLogLevels,
+      }),
+  );
+
+  bottle.factory(
+    'TypeormPg',
+    (container) =>
+      new TypeormHandle(container.KyselyPgPool, {
+        printQueries: isEnvTrue('DATABASE_PRINT_LOGS'),
+      }),
+  );
+
+  bottle.factory(
+    'TypeormPgReadReplica',
+    (container) =>
+      new TypeormHandle(container.KyselyPgReadReplicaPool, {
+        printQueries: isEnvTrue('DATABASE_PRINT_LOGS'),
       }),
   );
 
@@ -963,8 +992,8 @@ export default async function getBottle(
     'ModerationConfigService',
     (container) =>
       new ModerationConfigService(
-        container.KyselyPg,
-        container.KyselyPgReadReplica,
+        container.TypeormPg,
+        container.TypeormPgReadReplica,
         async (_) => {},
       ),
   );
@@ -992,6 +1021,7 @@ export default async function getBottle(
       container.RoutingRuleExecutionLogger,
       container.KyselyPg,
       container.KyselyPgReadReplica,
+      container.TypeormPg,
       container.UserStatisticsService,
       container.getActionsByIdEventuallyConsistent,
       container.Tracer,
@@ -1752,7 +1782,7 @@ export default async function getBottle(
   register(bottle, 'SigningKeyPairService', makeSigningKeyPairService);
   bottle.factory(
     'SigningKeyPairStorageService',
-    (container) => new PostgresSigningKeyPairStorage(container.KyselyPg),
+    (container) => new PostgresSigningKeyPairStorage(container.TypeormPg),
   );
   bottle.value('ConfigService', { uiUrl: safeGetEnvVar('UI_URL') });
   bottle.value('S3StoreObjectFactory', s3StoreObjectFactory);
@@ -1837,6 +1867,8 @@ export default async function getBottle(
             'DataWarehouseDialect',
             'DataWarehouseAnalytics',
             'ReportingAnalyticsAdapter',
+            'TypeormPg',
+            'TypeormPgReadReplica',
             'KyselyPg',
             'KyselyPgReadReplica',
             'getEnabledRulesForItemTypeEventuallyConsistent',

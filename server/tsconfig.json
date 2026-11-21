@@ -31,7 +31,11 @@
     // fails `pnpm run typecheck`.
     "types": ["node", "vitest/globals"],
     "skipLibCheck": true,
-    "sourceMap": true
+    "sourceMap": true,
+    // TypeORM entities use legacy (experimental) decorators. Column types are
+    // always explicit because Vitest's esbuild transform does not support
+    // emitDecoratorMetadata.
+    "experimentalDecorators": true
   },
   // https://stackoverflow.com/questions/51610583/ts-node-ignores-d-ts-files-while-tsc-successfully-compiles-the-project
   "files": ["decs.d.ts"],

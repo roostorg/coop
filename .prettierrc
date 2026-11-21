@@ -9,5 +9,6 @@
     "",
     "^[./]"
   ],
-  "importOrderTypeScriptVersion": "4.9.0"
+  "importOrderTypeScriptVersion": "4.9.0",
+  "importOrderParserPlugins": ["typescript", "jsx", "decorators-legacy"]
 }

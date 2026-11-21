@@ -1,9 +1,14 @@
 import crypto from 'node:crypto';
-import type { Kysely } from 'kysely';
+import { type JsonObject } from 'type-fest';
 
+import {
+  managerOf,
+  toJsonColumn,
+  type TypeormDb,
+} from '../../storage/typeorm/db.js';
+import { SigningKeys } from '../../storage/typeorm/entities/index.js';
 import { jsonParse, jsonStringify, type JsonOf } from '../../utils/encoding.js';
 import { CoopError, ErrorType } from '../../utils/errors.js';
-import { type CombinedPg } from '../combinedDbTypes.js';
 import {
   type SigningKeyId,
   type SigningKeyPairStorage,
@@ -23,7 +28,7 @@ type JWTCryptoKeyPairWithAlgorithm = {
  * PostgreSQL storage for signing key pairs
  */
 export class PostgresSigningKeyPairStorage implements SigningKeyPairStorage {
-  constructor(private readonly db: Kysely<CombinedPg>) {}
+  constructor(private readonly db: TypeormDb) {}
 
   async storeKeyPair(
     keyId: SigningKeyId,
@@ -45,29 +50,28 @@ export class PostgresSigningKeyPairStorage implements SigningKeyPairStorage {
       },
     };
 
-    // Store in PostgreSQL as JSONB
-    await this.db
-      .insertInto('public.signing_keys')
-      .values({
+    // Store in PostgreSQL as JSONB. TypeORM serializes jsonb values itself, so
+    // this passes the object; a pre-stringified value would be stored as a
+    // JSON string scalar.
+    const manager = await managerOf(this.db);
+    await manager.upsert(
+      SigningKeys,
+      {
         org_id: keyId.orgId,
-        key_data: jsonStringify(keyData),
-      })
-      .onConflict((oc) =>
-        oc.column('org_id').doUpdateSet({
-          key_data: jsonStringify(keyData),
-        }),
-      )
-      .execute();
+        key_data: toJsonColumn(keyData as unknown as JsonObject),
+      },
+      ['org_id'],
+    );
   }
 
   private async fetchKeyPair(
     keyId: SigningKeyId,
   ): Promise<crypto.webcrypto.CryptoKeyPair> {
-    const result = await this.db
-      .selectFrom('public.signing_keys')
-      .select(['key_data'])
-      .where('org_id', '=', keyId.orgId)
-      .executeTakeFirst();
+    const manager = await managerOf(this.db);
+    const result = await manager.findOne(SigningKeys, {
+      select: { key_data: true },
+      where: { org_id: keyId.orgId },
+    });
 
     if (!result) {
       throw new CoopError({
@@ -83,7 +87,7 @@ export class PostgresSigningKeyPairStorage implements SigningKeyPairStorage {
     const keyData: JWTCryptoKeyPairWithAlgorithm =
       typeof result.key_data === 'string'
         ? jsonParse(result.key_data as JsonOf<JWTCryptoKeyPairWithAlgorithm>)
-        : result.key_data;
+        : (result.key_data as unknown as JWTCryptoKeyPairWithAlgorithm);
     const { privateKeyWithAlgorithm, publicKeyWithAlgorithm } = keyData;
 
     return {

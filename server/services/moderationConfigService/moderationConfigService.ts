@@ -1,11 +1,10 @@
-import { type Kysely, type Transaction } from 'kysely';
 import _ from 'lodash';
 import { type JsonObject, type ReadonlyDeep } from 'type-fest';
+import { type EntityManager } from 'typeorm';
 
 import { type ConsumerDirectives } from '../../lib/cache/index.js';
-import { type CombinedPg } from '../combinedDbTypes.js';
+import { type TypeormDb } from '../../storage/typeorm/db.js';
 import type { Invoker } from '../userManagementService/index.js';
-import { type ModerationConfigServicePg } from './dbTypes.js';
 import {
   type ItemTypeErrorType,
   type LocationBankErrorType,
@@ -83,8 +82,8 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
   private readonly ruleReadOps: RuleReadOperations;
 
   constructor(
-    pgQuery: Kysely<ModerationConfigServicePg>,
-    pgQueryReplica: Kysely<ModerationConfigServicePg>,
+    pgQuery: TypeormDb,
+    pgQueryReplica: TypeormDb,
     private readonly onDeletePolicyId: (opts: {
       policyId: string;
       orgId: string;
@@ -109,9 +108,8 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
     return this.itemTypeOps.getItemTypes(opts);
   }
 
-  forTransaction(trx: Transaction<CombinedPg>) {
-    const query = trx.$pickTables<keyof ModerationConfigServicePg>();
-    return new ModerationConfigService(query, query, this.onDeletePolicyId);
+  forTransaction(manager: EntityManager) {
+    return new ModerationConfigService(manager, manager, this.onDeletePolicyId);
   }
 
   async invalidateLatestItemTypesCache(orgId: string): Promise<void> {
