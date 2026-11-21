@@ -36,21 +36,33 @@ describe('computeUserScore', () => {
     ).toBe(3);
   });
 
-  test('should apply only the most-severe penalty per item submission', async () => {
-    const sut = computeUserScore.bind(null, userSubmissionStatistics, [
-      { actionId: '1', policyId: '1', count: 1, itemSubmissionIds: ['a'] },
-      { actionId: '2', policyId: '1', count: 1, itemSubmissionIds: ['a'] },
-    ]);
+  test.each(['a', '__proto__', 'constructor'])(
+    'applies only the most-severe penalty for submission %s',
+    async (submissionId) => {
+      const sut = computeUserScore.bind(null, userSubmissionStatistics, [
+        {
+          actionId: '1',
+          policyId: '1',
+          count: 1,
+          itemSubmissionIds: [submissionId],
+        },
+        {
+          actionId: '2',
+          policyId: '1',
+          count: 1,
+          itemSubmissionIds: [submissionId],
+        },
+      ]);
 
-    // should use penalty 4 for submission `a`, because that's the highest
-    // first-strike penalty among the (action, policy) pairs that `a` matched.
-    expect(
-      await sut([
-        { actionId: '1', policyId: '1', penalties: [2, 12] },
-        { actionId: '2', policyId: '1', penalties: [4] },
-      ]),
-    ).toBe(4);
-  });
+      // The highest first-strike penalty is 4, regardless of the submission ID.
+      expect(
+        await sut([
+          { actionId: '1', policyId: '1', penalties: [2, 12] },
+          { actionId: '2', policyId: '1', penalties: [4] },
+        ]),
+      ).toBe(4);
+    },
+  );
 
   test('should return expected results', async () => {
     const sut = computeUserScore.bind(

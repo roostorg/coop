@@ -10,7 +10,7 @@ import {
   type TaggedScalar,
 } from '@roostorg/coop-types';
 
-import { hasOwn } from '../../utils/misc.js';
+import { getOwn, hasOwn } from '../../utils/misc.js';
 import {
   type FieldRoleToScalarType,
   type ItemSchema,
@@ -56,8 +56,9 @@ export function getFieldValueOrValues<T extends FieldType>(
       // because the type that TS infers when trying to generate a single,
       // callable signature for `getValues` is not correct (and has never as
       // its argument types).
+      // eslint-disable-next-line security/detect-object-injection -- field type selects a built-in handler
       fieldTypeHandlers[type]
-        .getValues(data[name] as never, container as never)
+        .getValues(getOwn(data, name) as never, container as never)
         .map(
           (value) =>
             // eslint-disable-next-line @typescript-eslint/consistent-type-assertions
@@ -83,7 +84,7 @@ export function getFieldValueForRole<
   role: Role,
   data: NormalizedItemData,
 ) {
-  const fieldName = schemaFieldRoles[role];
+  const fieldName = getOwn(schemaFieldRoles, role);
   const field = schema.find((it) => it.name === fieldName);
   if (field === undefined) {
     return undefined;

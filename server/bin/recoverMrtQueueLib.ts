@@ -274,6 +274,7 @@ export async function runEnqueueWorkers(
           mode,
           reportHistoryByItem,
         );
+        // eslint-disable-next-line security/detect-object-injection -- result is a fixed recovery outcome, not an item key
         stats[result]++;
       } catch (e: unknown) {
         stats.failed++;

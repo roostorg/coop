@@ -1,5 +1,7 @@
 import _ from 'lodash';
 
+import { getOwn } from '../../utils/misc.js';
+
 const { omit } = _;
 
 /**
@@ -64,7 +66,7 @@ export function oneOfInputToTaggedUnion<
   const [inputKey, inputValue] = inputFilledEntries[0];
 
   return {
-    type: inputKeyToTypeValueMap[inputKey],
+    type: getOwn(inputKeyToTypeValueMap, inputKey),
     ...omit(inputValue, '_'),
   } as unknown as Exclude<
     {

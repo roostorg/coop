@@ -22,11 +22,11 @@ export async function seedSystemRolesForOrg(
     const insertedRoles = await tx
       .insertInto('public.roles')
       .values(
-        Object.values(UserRole).map((roleKey) => ({
+        Object.entries(SystemRoleDefaults).map(([roleKey, defaults]) => ({
           org_id: orgId,
           key: roleKey,
-          display_name: SystemRoleDefaults[roleKey].displayName,
-          description: SystemRoleDefaults[roleKey].description,
+          display_name: defaults.displayName,
+          description: defaults.description,
           is_system: true,
         })),
       )
