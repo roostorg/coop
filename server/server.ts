@@ -1,10 +1,32 @@
+import 'reflect-metadata';
+
+import { NestFactory } from '@nestjs/core';
+import {
+  ExpressAdapter,
+  type NestExpressApplication,
+} from '@nestjs/platform-express';
+import cors from 'cors';
 import express from 'express';
+import helmet from 'helmet';
 
-import makeApiApp from './api.js';
 import { type Dependencies } from './iocContainer/index.js';
+import { AppModule } from './nest/app.module.js';
+import {
+  makeSessionMiddleware,
+  PASSPORT,
+  SESSION_STORE,
+} from './nest/auth/auth.module.js';
+import { CoopNestLogger } from './nest/coopLogger.js';
 
+// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+const env = process.env.NODE_ENV || 'development';
+const API_PREFIX = '/api/v1';
+
+/**
+ * Builds the NestJS app and returns its underlying Express instance, so
+ * `bin/www.ts` and the supertest harnesses use it as before.
+ */
 export default async function makeWWWServer(deps: Dependencies) {
-  const { app: apiApp, shutdown } = await makeApiApp(deps);
   const app = express();
 
   // Traffic is routed to our app via: NLB -> ALB -> Express. The
@@ -48,7 +70,65 @@ export default async function makeWWWServer(deps: Dependencies) {
     next();
   });
 
-  app.use('/api/v1', apiApp);
+  const nestApp = await NestFactory.create<NestExpressApplication>(
+    AppModule.forRoot(deps),
+    new ExpressAdapter(app),
+    // Nest's own body parser defaults to a 100kb limit; Coop accepts 50mb.
+    { bodyParser: false, logger: new CoopNestLogger(), abortOnError: false },
+  );
+  nestApp.setGlobalPrefix(API_PREFIX);
 
-  return { app, shutdown };
+  // Express middleware, in the order the API has always applied it, mounted on
+  // /api/v1 like the old API sub-app. It runs before every Nest route
+  // (registered by init() below).
+  nestApp.use(API_PREFIX, cors());
+  nestApp.use(
+    API_PREFIX,
+    helmet(
+      env === 'production'
+        ? {}
+        : {
+            contentSecurityPolicy: {
+              directives: {
+                defaultSrc: ["'self'"],
+                scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
+                styleSrc: ["'self'", "'unsafe-inline'"],
+                imgSrc: ["'self'", 'data:', 'blob:', 'https:', 'http:'],
+                connectSrc: ["'self'", 'ws:', 'wss:', 'https:', 'http:'],
+                fontSrc: ["'self'", 'data:', 'https:'],
+                frameSrc: ["'self'"],
+              },
+            },
+          },
+    ),
+  );
+  nestApp.use(API_PREFIX, express.json({ limit: '50mb' }));
+  // The health check stays outside the session, as it was before.
+  const sessionMiddleware = makeSessionMiddleware(
+    nestApp.get(SESSION_STORE),
+    nestApp.get(PASSPORT),
+  );
+  for (const middleware of sessionMiddleware) {
+    // req.path is relative to the mount point. Express matches routes
+    // case-insensitively and with an optional trailing slash.
+    const skipHealthCheck: express.RequestHandler = (req, res, next) =>
+      /^\/ready\/?$/i.test(req.path) ? next() : middleware(req, res, next);
+    // Keep the inner middleware's name (session, initialize, authenticate):
+    // OpenTelemetry's Express instrumentation names spans after it.
+    Object.defineProperty(skipHealthCheck, 'name', { value: middleware.name });
+    nestApp.use(API_PREFIX, skipHealthCheck);
+  }
+
+  await nestApp.init();
+
+  return {
+    app,
+    async shutdown() {
+      // Closes Apollo and the session store (AuthModule.onApplicationShutdown).
+      await Promise.all([
+        nestApp.close(),
+        deps.closeSharedResourcesForShutdown(),
+      ]);
+    },
+  };
 }

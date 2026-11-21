@@ -7,7 +7,7 @@ import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../test/fixtureHelpers/createUser.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
 import { createBodySchemaValidator } from '../../utils/bodySchemaValidation.js';
-import itemRoutes from './ItemRoutes.js';
+import { submitItemsInputSchema } from './ItemRoutes.js';
 
 describe('POST Items', () => {
   const testWithFixture = makeTransactionalTestWithFixture(async ({ deps }) => {
@@ -155,9 +155,7 @@ describe('POST Items', () => {
 test('POST /items/async accepts object data and rejects arrays and null', async () => {
   const app = express();
   app.use(express.json());
-  const schema = itemRoutes.routes.find(
-    ({ method, path }) => method === 'post' && path === '/async/',
-  )!.bodySchema!;
+  const schema = submitItemsInputSchema;
   app.post(
     '/api/v1/items/async',
     createBodySchemaValidator(schema),
@@ -183,9 +181,7 @@ test('POST /items/async accepts object data and rejects arrays and null', async 
 test('POST /items/async requires exactly one valid item type selector branch', async () => {
   const app = express();
   app.use(express.json());
-  const schema = itemRoutes.routes.find(
-    ({ method, path }) => method === 'post' && path === '/async/',
-  )!.bodySchema!;
+  const schema = submitItemsInputSchema;
   app.post(
     '/api/v1/items/async',
     createBodySchemaValidator(schema),

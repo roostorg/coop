@@ -12,7 +12,7 @@ import typeDefs from '../schema.js';
 import { authSchemaWrapper } from '../utils/authorization.js';
 import { formatGraphQLError } from '../utils/formatError.js';
 import { resolvers as itemResolvers } from './itemType.js';
-import { resolvers as reviewResolvers } from './manualReviewTool.js';
+import { resolvers as reviewResolvers } from './manualReviewTool.resolvers.js';
 
 const secret = { videoUrl: 'https://media.example/private?signature=secret' };
 const item = {

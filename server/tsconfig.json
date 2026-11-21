@@ -31,7 +31,12 @@
     // fails `pnpm run typecheck`.
     "types": ["node", "vitest/globals"],
     "skipLibCheck": true,
-    "sourceMap": true
+    "sourceMap": true,
+    // NestJS decorators. tsc emits design-type metadata, but Vitest's transform
+    // does not, so Nest classes name every injection token explicitly
+    // (`@Inject(...)`) and work in both.
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
   },
   // https://stackoverflow.com/questions/51610583/ts-node-ignores-d-ts-files-while-tsc-successfully-compiles-the-project
   "files": ["decs.d.ts"],

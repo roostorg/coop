@@ -33,7 +33,6 @@ declare module '../index.js' {
 }
 
 const workerAndJobFactories = {
-  ItemProcessingWorker: makeItemProcessingWorker,
   RunUserRulesJob: makeRunUserRulesJob,
   RefreshMRTDecisionsMaterializedViewJob:
     makeRefreshMRTDecisionsMaterializedViewJob,
@@ -42,15 +41,22 @@ const workerAndJobFactories = {
   RetryFailedNcmecDecisionsJob: makeRetryFailedNcmecDecisionsJob,
 } satisfies Record<string, AnnotatedFactory<WorkerOrJob>>;
 
-export type WorkerOrJobName = keyof typeof workerAndJobFactories;
+export type WorkerOrJobName =
+  keyof typeof workerAndJobFactories | 'ItemProcessingWorker';
 
-export const WORKER_AND_JOB_NAMES = Object.keys(
-  workerAndJobFactories,
-) as WorkerOrJobName[];
+export const WORKER_AND_JOB_NAMES = [
+  'ItemProcessingWorker',
+  ...Object.keys(workerAndJobFactories),
+] as WorkerOrJobName[];
 
 export function registerWorkersAndJobs(bottle: Bottle<Dependencies>) {
-  for (const name of WORKER_AND_JOB_NAMES) {
-    register(bottle, name, workerAndJobFactories[name]);
+  // The item-processing worker is a NestJS app context; it gets the whole
+  // container, which the Nest app bridges into its DI.
+  bottle.factory('ItemProcessingWorker', (container) =>
+    makeItemProcessingWorker(container),
+  );
+  for (const [name, factory] of Object.entries(workerAndJobFactories)) {
+    register(bottle, name as keyof typeof workerAndJobFactories, factory);
   }
 }
 

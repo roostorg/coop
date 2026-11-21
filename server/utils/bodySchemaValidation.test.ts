@@ -2,7 +2,10 @@ import type { Request, Response } from 'express';
 import * as v from 'valibot';
 import { vi } from 'vitest';
 
-import reportingRoutes from '../routes/reporting/ReportingRoutes.js';
+import {
+  appealItemInputSchema,
+  reportItemInputSchema,
+} from '../routes/reporting/ReportingRoutes.js';
 import { rawItemSubmissionSchema } from '../services/itemProcessingService/index.js';
 import { createBodySchemaValidator } from './bodySchemaValidation.js';
 import { CoopError } from './errors.js';
@@ -182,7 +185,7 @@ describe('createBodySchemaValidator', () => {
 
   test('preserves the required-field order for appeals', () => {
     const { next } = invoke(
-      createBodySchemaValidator(reportingRoutes.routes[1].bodySchema!),
+      createBodySchemaValidator(appealItemInputSchema),
       {},
     );
     expect(firstNextArg(next)).toMatchObject({
@@ -193,15 +196,12 @@ describe('createBodySchemaValidator', () => {
   });
 
   test('rejects arrays for an optional report reason object', () => {
-    const { next } = invoke(
-      createBodySchemaValidator(reportingRoutes.routes[0].bodySchema!),
-      {
-        reporter: { kind: 'user', typeId: 'user', id: 'reporter' },
-        reportedAt: '2026-01-01',
-        reportedItem: { id: 'item', typeId: 'post', data: {} },
-        reportedForReason: [],
-      },
-    );
+    const { next } = invoke(createBodySchemaValidator(reportItemInputSchema), {
+      reporter: { kind: 'user', typeId: 'user', id: 'reporter' },
+      reportedAt: '2026-01-01',
+      reportedItem: { id: 'item', typeId: 'post', data: {} },
+      reportedForReason: [],
+    });
     expect(firstNextArg(next)).toMatchObject({
       pointer: '/reportedForReason',
       detail: '/reportedForReason: must be object',

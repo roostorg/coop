@@ -554,7 +554,11 @@ module.exports = {
         objectLiteralTypeAssertions: 'allow-as-parameter',
       },
     ],
-    '@typescript-eslint/no-extraneous-class': ['error'],
+    // NestJS modules are decorated classes with no members.
+    '@typescript-eslint/no-extraneous-class': [
+      'error',
+      { allowWithDecorator: true },
+    ],
     // TODO: re-enable as 'error' and fix violations in follow-up PR
     '@typescript-eslint/no-unnecessary-condition': [
       'warn',

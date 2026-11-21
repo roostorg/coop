@@ -3,10 +3,8 @@ import ActionRoutes from './action/ActionRoutes.js';
 import ContentRoutes from './content/ContentRoutes.js';
 import IntegrationLogosRoutes from './integration_logos/IntegrationLogosRoutes.js';
 import ItemTypeRoutes from './item_types/ItemTypeRoutes.js';
-import ItemRoutes from './items/ItemRoutes.js';
 import ModerationActivityRoutes from './moderation_activity/ModerationActivityRoutes.js';
 import PoliciesRoutes from './policies/PoliciesRoutes.js';
-import ReportingRoutes from './reporting/ReportingRoutes.js';
 import UserScoresRoutes from './user_scores/UserScoresRoutes.js';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- Controllers collect heterogeneous request and response body types.
@@ -19,11 +17,11 @@ export type Controller = {
   routes: ControllerRouteList;
 };
 
+// Routes still served through the Express bridge (nest/rest/legacyRoutes.module.ts).
+// POST /items/async and /report are Nest controllers in nest/rest/.
 export default {
-  Items: ItemRoutes,
   ItemTypes: ItemTypeRoutes,
   Content: ContentRoutes,
-  Reporting: ReportingRoutes,
   Policies: PoliciesRoutes,
   UserScores: UserScoresRoutes,
   Actions: ActionRoutes,
