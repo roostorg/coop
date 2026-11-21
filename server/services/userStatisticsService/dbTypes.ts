@@ -7,15 +7,6 @@ export type UserStatisticsServiceWarehouse = {
   'USER_STATISTICS_SERVICE.USER_SCORES': UserScores;
 };
 
-export type UserStatisticsServicePg = {
-  'user_statistics_service.user_scores': {
-    org_id: string;
-    user_id: string;
-    user_type_id: string;
-    score: number;
-  };
-};
-
 export type LifetimeActionStats = {
   ORG_ID: string;
   USER_ID: string;

@@ -15,13 +15,13 @@ describe('UserManagementService role persistence', () => {
   const testWithFixture = makeTransactionalTestWithFixture(async ({ deps }) => {
     const { org } = await createOrg(
       {
-        KyselyPg: deps.KyselyPg,
+        PrismaPg: deps.PrismaPg,
         ModerationConfigService: deps.ModerationConfigService,
         ApiKeyService: deps.ApiKeyService,
       },
       uid(),
     );
-    await seedSystemRolesForOrg(deps.KyselyPg, org.id);
+    await seedSystemRolesForOrg(deps.PrismaPg, org.id);
     return { org };
   });
 

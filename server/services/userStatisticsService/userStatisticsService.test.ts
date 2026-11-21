@@ -1,10 +1,7 @@
 import { Kysely } from 'kysely';
 import { vi } from 'vitest';
 
-import {
-  makeMockPgDialect,
-  type MockPgExecute,
-} from '../../test/stubs/KyselyPg.js';
+import { type PrismaPgClient } from '../../storage/prisma/index.js';
 import {
   makeMockWarehouseDialect,
   type WarehouseExecute,
@@ -25,13 +22,16 @@ describe('UserStatisticsService', () => {
           return { rows: [] };
         });
 
-      const pgReadMock = vi
-        .fn<MockPgExecute>()
-        .mockResolvedValue({ rows: [], command: 'SELECT', rowCount: 0 });
-
-      const pgWriteMock = vi
-        .fn<MockPgExecute>()
-        .mockResolvedValue({ rows: [], command: 'SELECT', rowCount: 0 });
+      // Records every model/method the service touches on the Prisma client.
+      const makePrismaSpy = (spy: (key: string | symbol) => void) =>
+        new Proxy({} as PrismaPgClient, {
+          get(_target, key) {
+            spy(key);
+            return undefined;
+          },
+        });
+      const pgReadMock = vi.fn();
+      const pgWriteMock = vi.fn();
 
       const fetchUserActionStatisticsMock = vi
         .fn<ReturnType<typeof makeFetchUserActionStatistics>>()
@@ -46,8 +46,8 @@ describe('UserStatisticsService', () => {
       });
 
       const sut = internalMakeUserStatisticsService(
-        new Kysely({ dialect: makeMockPgDialect(pgWriteMock) }),
-        new Kysely({ dialect: makeMockPgDialect(pgReadMock) }),
+        makePrismaSpy(pgWriteMock),
+        makePrismaSpy(pgReadMock),
         warehouseKysely,
         fetchUserActionStatisticsMock,
         fetchUserSubmissionStatisticsMock,

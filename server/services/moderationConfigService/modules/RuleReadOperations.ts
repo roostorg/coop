@@ -1,7 +1,8 @@
-import { sql, type Kysely } from 'kysely';
-
+import {
+  Prisma,
+  type PrismaPgQueryable,
+} from '../../../storage/prisma/index.js';
 import { getUtcDateOnlyString } from '../../../utils/time.js';
-import { type ModerationConfigServicePg } from '../dbTypes.js';
 import {
   RuleStatus,
   RuleType,
@@ -13,27 +14,26 @@ import {
   type PlainRuleWithLatestVersion,
 } from '../types/rules.js';
 
-const ruleSelect = [
-  'r.id',
-  'r.name',
-  'r.description',
-  'r.status_if_unexpired as statusIfUnexpired',
-  'r.tags',
-  'r.max_daily_actions as maxDailyActions',
-  'r.daily_actions_run as dailyActionsRun',
-  'r.last_action_date as lastActionDate',
-  'r.created_at as createdAt',
-  'r.updated_at as updatedAt',
-  'r.org_id as orgId',
-  'r.creator_id as creatorId',
-  'r.expiration_time as expirationTime',
-  'r.condition_set as conditionSet',
-  'r.alarm_status as alarmStatus',
-  'r.alarm_status_set_at as alarmStatusSetAt',
-  'r.rule_type as ruleType',
-  'r.parent_id as parentId',
-  'rlv.version as latestVersionString',
-] as const;
+const ruleSelect = Prisma.sql`
+  r.id,
+  r.name,
+  r.description,
+  r.status_if_unexpired AS "statusIfUnexpired",
+  r.tags,
+  r.max_daily_actions AS "maxDailyActions",
+  r.daily_actions_run AS "dailyActionsRun",
+  r.last_action_date AS "lastActionDate",
+  r.created_at AS "createdAt",
+  r.updated_at AS "updatedAt",
+  r.org_id AS "orgId",
+  r.creator_id AS "creatorId",
+  r.expiration_time AS "expirationTime",
+  r.condition_set AS "conditionSet",
+  r.alarm_status::text AS "alarmStatus",
+  r.alarm_status_set_at AS "alarmStatusSetAt",
+  r.rule_type::text AS "ruleType",
+  r.parent_id AS "parentId",
+  rlv.version AS "latestVersionString"`;
 
 type RuleRow = {
   id: string;
@@ -50,7 +50,7 @@ type RuleRow = {
   creatorId: string;
   expirationTime: Date | null;
   conditionSet: ConditionSet;
-  // Kysely returns the Postgres enum as a plain string; cast in rowToPlainRuleWithLatest.
+  // Selected as text; cast in rowToPlainRuleWithLatest.
   alarmStatus: string;
   alarmStatusSetAt: Date;
   ruleType: RuleType;
@@ -59,7 +59,7 @@ type RuleRow = {
 };
 
 function enabledQuotaWhere(today: string) {
-  return sql<boolean>`(r.max_daily_actions is null or r.last_action_date is distinct from ${today}::date or (r.max_daily_actions is not null and r.daily_actions_run < r.max_daily_actions))`;
+  return Prisma.sql`(r.max_daily_actions is null or r.last_action_date is distinct from ${today}::date or (r.max_daily_actions is not null and r.daily_actions_run < r.max_daily_actions))`;
 }
 
 function rowToPlainRuleWithLatest(row: RuleRow): PlainRuleWithLatestVersion {
@@ -94,30 +94,22 @@ function rowToPlainRuleWithLatest(row: RuleRow): PlainRuleWithLatestVersion {
 
 export default class RuleReadOperations {
   constructor(
-    private readonly pgQuery: Kysely<ModerationConfigServicePg>,
-    private readonly pgQueryReplica: Kysely<ModerationConfigServicePg>,
+    private readonly pgQuery: PrismaPgQueryable,
+    private readonly pgQueryReplica: PrismaPgQueryable,
   ) {}
 
   async getEnabledRulesForItemType(itemTypeId: string) {
     const today = String(getUtcDateOnlyString());
-    const rows = (await this.pgQueryReplica
-      .selectFrom('public.rules as r')
-      .innerJoin('public.rules_and_item_types as rit', 'rit.rule_id', 'r.id')
-      .leftJoin('public.rules_latest_versions as rlv', 'rlv.rule_id', 'r.id')
-      .select(ruleSelect)
-      .where('rit.item_type_id', '=', itemTypeId)
-      .where((eb) =>
-        eb.or([
-          eb('r.expiration_time', 'is', null),
-          eb('r.expiration_time', '>', sql<Date>`now()`),
-        ]),
-      )
-      .where('r.status_if_unexpired', 'in', [
-        RuleStatus.LIVE,
-        RuleStatus.BACKGROUND,
-      ])
-      .where(enabledQuotaWhere(today))
-      .execute()) as RuleRow[];
+    // prisma-raw: join to a view with no relation (rules_latest_versions) + column-to-column quota predicate
+    const rows = await this.pgQueryReplica.$queryRaw<RuleRow[]>`
+      SELECT ${ruleSelect}
+      FROM public.rules AS r
+      INNER JOIN public.rules_and_item_types AS rit ON rit.rule_id = r.id
+      LEFT JOIN public.rules_latest_versions AS rlv ON rlv.rule_id = r.id
+      WHERE rit.item_type_id = ${itemTypeId}
+        AND (r.expiration_time IS NULL OR r.expiration_time > now())
+        AND r.status_if_unexpired IN (${RuleStatus.LIVE}, ${RuleStatus.BACKGROUND})
+        AND ${enabledQuotaWhere(today)}`;
 
     return rows.map(rowToPlainRuleWithLatest);
   }
@@ -135,13 +127,15 @@ export default class RuleReadOperations {
   ): Promise<PlainRuleWithLatestVersion | null> {
     const readFromReplica = opts?.readFromReplica ?? true;
     const pg = readFromReplica ? this.pgQueryReplica : this.pgQuery;
-    const row = (await pg
-      .selectFrom('public.rules as r')
-      .leftJoin('public.rules_latest_versions as rlv', 'rlv.rule_id', 'r.id')
-      .select(ruleSelect)
-      .where('r.id', '=', ruleId)
-      .where('r.org_id', '=', orgId)
-      .executeTakeFirst()) as RuleRow | undefined;
+    // prisma-raw: join to a view with no relation (rules_latest_versions)
+    const row = (
+      await pg.$queryRaw<RuleRow[]>`
+      SELECT ${ruleSelect}
+      FROM public.rules AS r
+      LEFT JOIN public.rules_latest_versions AS rlv ON rlv.rule_id = r.id
+      WHERE r.id = ${ruleId} AND r.org_id = ${orgId}
+      LIMIT 1`
+    ).at(0);
 
     if (row == null) {
       return null;
@@ -159,39 +153,31 @@ export default class RuleReadOperations {
   ): Promise<PlainRuleWithLatestVersion[]> {
     const readFromReplica = opts?.readFromReplica ?? true;
     const pg = readFromReplica ? this.pgQueryReplica : this.pgQuery;
-    const rows = (await pg
-      .selectFrom('public.rules as r')
-      .leftJoin('public.rules_latest_versions as rlv', 'rlv.rule_id', 'r.id')
-      .select(ruleSelect)
-      .where('r.org_id', '=', orgId)
-      .orderBy('r.name', 'asc')
-      .execute()) as RuleRow[];
+    // prisma-raw: join to a view with no relation (rules_latest_versions)
+    const rows = await pg.$queryRaw<RuleRow[]>`
+      SELECT ${ruleSelect}
+      FROM public.rules AS r
+      LEFT JOIN public.rules_latest_versions AS rlv ON rlv.rule_id = r.id
+      WHERE r.org_id = ${orgId}
+      ORDER BY r.name ASC`;
 
     return rows.map(rowToPlainRuleWithLatest);
   }
 
   async findEnabledUserRules() {
     const today = String(getUtcDateOnlyString());
-    const rows = (await this.pgQueryReplica
-      .selectFrom('public.rules as r')
-      .leftJoin('public.rules_latest_versions as rlv', 'rlv.rule_id', 'r.id')
-      .select(ruleSelect)
-      .where('r.rule_type', '=', RuleType.USER)
-      .where(
-        sql<boolean>`not exists (select 1 from public.rules_and_item_types rit where rit.rule_id = r.id)`,
-      )
-      .where((eb) =>
-        eb.or([
-          eb('r.expiration_time', 'is', null),
-          eb('r.expiration_time', '>', sql<Date>`now()`),
-        ]),
-      )
-      .where('r.status_if_unexpired', 'in', [
-        RuleStatus.LIVE,
-        RuleStatus.BACKGROUND,
-      ])
-      .where(enabledQuotaWhere(today))
-      .execute()) as RuleRow[];
+    // prisma-raw: join to a view with no relation (rules_latest_versions) + column-to-column quota predicate
+    const rows = await this.pgQueryReplica.$queryRaw<RuleRow[]>`
+      SELECT ${ruleSelect}
+      FROM public.rules AS r
+      LEFT JOIN public.rules_latest_versions AS rlv ON rlv.rule_id = r.id
+      WHERE r.rule_type = ${RuleType.USER}::rule_type
+        AND NOT EXISTS (
+          SELECT 1 FROM public.rules_and_item_types rit WHERE rit.rule_id = r.id
+        )
+        AND (r.expiration_time IS NULL OR r.expiration_time > now())
+        AND r.status_if_unexpired IN (${RuleStatus.LIVE}, ${RuleStatus.BACKGROUND})
+        AND ${enabledQuotaWhere(today)}`;
 
     return rows.map(rowToPlainRuleWithLatest);
   }

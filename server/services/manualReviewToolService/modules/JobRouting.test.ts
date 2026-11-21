@@ -17,6 +17,7 @@ import { itemSubmissionToItemSubmissionWithTypeIdentifier } from '../../itemProc
 import { toNormalizedItemDataOrErrors } from '../../itemProcessingService/toNormalizedItemDataOrErrors.js';
 import { SignalType } from '../../signalsService/index.js';
 import { UserPermission } from '../../userManagementService/index.js';
+import { type CreateRoutingRuleInput } from './JobRouting.js';
 
 describe('JobRouting tests', () => {
   const jobRoutingTestWithFixtures = makeTransactionalTestWithFixture(
@@ -24,13 +25,13 @@ describe('JobRouting tests', () => {
       const manualReviewToolService = deps.ManualReviewToolService;
       const { org } = await createOrg(
         {
-          KyselyPg: deps.KyselyPg,
+          PrismaPg: deps.PrismaPg,
           ModerationConfigService: deps.ModerationConfigService,
           ApiKeyService: deps.ApiKeyService,
         },
         uid(),
       );
-      const { user } = await createUser(deps.KyselyPg, org.id);
+      const { user } = await createUser(deps.PrismaPg, org.id);
       const userId = user.id;
       const { itemTypes } = await createContentItemTypes({
         moderationConfigService: deps.ModerationConfigService,
@@ -226,17 +227,116 @@ describe('JobRouting tests', () => {
   );
 
   jobRoutingTestWithFixtures(
+    'maps duplicate names and unknown rules to routing rule errors',
+    async ({ manualReviewToolService, org, itemType, anotherQueue }) => {
+      for (const isAppealsRule of [false, true]) {
+        const input: CreateRoutingRuleInput = {
+          orgId: org.id,
+          name: `dup-${isAppealsRule}`,
+          status: 'LIVE',
+          itemTypeIds: [itemType.id as NonEmptyString],
+          creatorId: '',
+          conditionSet: {
+            conjunction: 'OR',
+            conditions: [
+              {
+                input: { type: 'CONTENT_COOP_INPUT', name: 'Source' },
+                threshold: 'never-matches',
+                comparator: 'EQUALS',
+              },
+            ],
+          },
+          destinationQueueId: anotherQueue.id,
+          isAppealsRule,
+        };
+        await manualReviewToolService.createRoutingRule(input);
+        // routing_rules' unique name constraint is DEFERRABLE INITIALLY
+        // DEFERRED, so it only fires on a real COMMIT, which this test's
+        // savepoint never issues; appeals_routing_rules' index is immediate.
+        if (isAppealsRule) {
+          await expect(
+            manualReviewToolService.createRoutingRule(input),
+          ).rejects.toMatchObject({ name: 'RoutingRuleNameExistsError' });
+        }
+        await expect(
+          manualReviewToolService.updateRoutingRule({
+            id: uid(),
+            orgId: org.id,
+            name: 'renamed',
+            isAppealsRule,
+          }),
+        ).rejects.toMatchObject({ name: 'NotFoundError' });
+      }
+
+      const [rule] = await manualReviewToolService.getRoutingRules({
+        orgId: org.id,
+        directives: { maxAge: 0 },
+      });
+      expect(rule.itemTypeIds).toEqual([itemType.id]);
+      // The matview's version column is timestamptz; the driver returns a Date.
+      expect(rule.version as unknown).toBeInstanceOf(Date);
+    },
+  );
+
+  jobRoutingTestWithFixtures(
+    'rejects an update with an empty item type list instead of dropping every item type',
+    async ({ manualReviewToolService, org, itemType, anotherQueue }) => {
+      for (const isAppealsRule of [false, true]) {
+        const created = await manualReviewToolService.createRoutingRule({
+          orgId: org.id,
+          name: `empty-item-types-${isAppealsRule}`,
+          status: 'LIVE',
+          itemTypeIds: [itemType.id as NonEmptyString],
+          creatorId: '',
+          conditionSet: {
+            conjunction: 'OR',
+            conditions: [
+              {
+                input: { type: 'CONTENT_COOP_INPUT', name: 'Source' },
+                threshold: 'never-matches',
+                comparator: 'EQUALS',
+              },
+            ],
+          },
+          destinationQueueId: anotherQueue.id,
+          isAppealsRule,
+        });
+        await expect(
+          manualReviewToolService.updateRoutingRule({
+            id: created.id,
+            orgId: org.id,
+            itemTypeIds: [] as unknown as [NonEmptyString],
+            isAppealsRule,
+          }),
+        ).rejects.toThrow('itemTypeIds must not be empty');
+        const rules = isAppealsRule
+          ? await manualReviewToolService.getAppealsRoutingRules({
+              orgId: org.id,
+              directives: { maxAge: 0 },
+            })
+          : await manualReviewToolService.getRoutingRules({
+              orgId: org.id,
+              directives: { maxAge: 0 },
+            });
+        expect(rules.find((it) => it.id === created.id)?.itemTypeIds).toEqual([
+          itemType.id,
+        ]);
+      }
+    },
+  );
+
+  jobRoutingTestWithFixtures(
     "reorderRoutingRules does not change another organization's routing rules",
     async ({ manualReviewToolService, org, deps }) => {
       const { org: otherOrg } = await createOrg(
         {
-          KyselyPg: deps.KyselyPg,
+          PrismaPg: deps.PrismaPg,
           ModerationConfigService: deps.ModerationConfigService,
           ApiKeyService: deps.ApiKeyService,
         },
         uid(),
       );
-      const { user: otherUser } = await createUser(deps.KyselyPg, otherOrg.id);
+      const { user: otherUser } = await createUser(deps.PrismaPg, otherOrg.id);
       const { itemTypes: otherItemTypes } = await createContentItemTypes({
         moderationConfigService: deps.ModerationConfigService,
         orgId: otherOrg.id,
@@ -283,11 +383,11 @@ describe('JobRouting tests', () => {
 
       const getPersistedRoutingRuleOrder = async (orgId: string) =>
         (
-          await deps.KyselyPg.selectFrom('manual_review_tool.routing_rules')
-            .select('id')
-            .where('org_id', '=', orgId)
-            .orderBy('sequence_number')
-            .execute()
+          await deps.PrismaPg.routing_rules.findMany({
+            select: { id: true },
+            where: { org_id: orgId },
+            orderBy: { sequence_number: 'asc' },
+          })
         ).map((rule) => rule.id);
 
       const otherOrgOrder = await getPersistedRoutingRuleOrder(otherOrg.id);

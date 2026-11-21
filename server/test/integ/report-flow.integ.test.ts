@@ -54,7 +54,7 @@ describe('Report flow (integration)', () => {
 
     const orgFixture = await createOrg(
       {
-        KyselyPg: harness.deps.KyselyPg,
+        PrismaPg: harness.deps.PrismaPg,
         ModerationConfigService: harness.deps.ModerationConfigService,
         ApiKeyService: harness.deps.ApiKeyService,
       },
@@ -68,7 +68,7 @@ describe('Report flow (integration)', () => {
     // USER *item type* used as the reporter / content creator below — coop
     // users authenticate into the dashboard; item-type users are reported
     // entities in the customer's product.
-    const userFixture = await createUser(harness.deps.KyselyPg, orgId);
+    const userFixture = await createUser(harness.deps.PrismaPg, orgId);
     userCleanup = userFixture.cleanup;
 
     // The submitReport handler's MRT enqueue silently fails if no default queue

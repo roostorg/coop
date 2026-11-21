@@ -1,6 +1,4 @@
-import { type Kysely } from 'kysely';
-
-import { type CoreAppTablesPg } from '../../services/coreAppTables.js';
+import { Prisma, type PrismaPgQueryable } from '../../storage/prisma/index.js';
 import {
   validateOrgCreateInput,
   validateOrgUpdatePatch,
@@ -20,12 +18,7 @@ export type GraphQLOrgParent = {
   onCallAlertEmail: string | null;
 };
 
-/**
- * Functions in this module only touch `public.orgs`; typing the param as
- * `Kysely<CoreAppTablesPg>` lets callers pass either `Dependencies['KyselyPg']`
- * (`Kysely<any>`) or a more specific `Kysely<CombinedPg>` without casting.
- */
-type OrgsDb = Kysely<CoreAppTablesPg>;
+type OrgsDb = PrismaPgQueryable;
 
 function rowToGraphQLOrgParent(row: {
   id: string;
@@ -47,36 +40,24 @@ export async function kyselyOrgFindById(
   db: OrgsDb,
   id: string,
 ): Promise<GraphQLOrgParent | undefined> {
-  const row = await db
-    .selectFrom('public.orgs')
-    .selectAll()
-    .where('id', '=', id)
-    .executeTakeFirst();
-  return row === undefined ? undefined : rowToGraphQLOrgParent(row);
+  const row = await db.orgs.findFirst({ where: { id } });
+  return row === null ? undefined : rowToGraphQLOrgParent(row);
 }
 
 export async function kyselyOrgFindByName(
   db: OrgsDb,
   name: string,
 ): Promise<GraphQLOrgParent | undefined> {
-  const row = await db
-    .selectFrom('public.orgs')
-    .selectAll()
-    .where('name', '=', name)
-    .executeTakeFirst();
-  return row === undefined ? undefined : rowToGraphQLOrgParent(row);
+  const row = await db.orgs.findFirst({ where: { name } });
+  return row === null ? undefined : rowToGraphQLOrgParent(row);
 }
 
 export async function kyselyOrgFindByEmail(
   db: OrgsDb,
   email: string,
 ): Promise<GraphQLOrgParent | undefined> {
-  const row = await db
-    .selectFrom('public.orgs')
-    .selectAll()
-    .where('email', '=', email)
-    .executeTakeFirst();
-  return row === undefined ? undefined : rowToGraphQLOrgParent(row);
+  const row = await db.orgs.findFirst({ where: { email } });
+  return row === null ? undefined : rowToGraphQLOrgParent(row);
 }
 
 export async function kyselyOrgInsert(opts: {
@@ -106,9 +87,8 @@ export async function kyselyOrgInsert(opts: {
   }
 
   const now = new Date();
-  const row = await opts.db
-    .insertInto('public.orgs')
-    .values({
+  const row = await opts.db.orgs.create({
+    data: {
       id: opts.id,
       email: opts.email,
       name: opts.name,
@@ -117,9 +97,8 @@ export async function kyselyOrgInsert(opts: {
       created_at: now,
       updated_at: now,
       on_call_alert_email: opts.onCallAlertEmail ?? null,
-    })
-    .returningAll()
-    .executeTakeFirstOrThrow();
+    },
+  });
   return rowToGraphQLOrgParent(row);
 }
 
@@ -163,19 +142,25 @@ export async function kyselyOrgUpdate(
     update.on_call_alert_email = patch.onCallAlertEmail;
   }
 
-  const row = await db
-    .updateTable('public.orgs')
-    .set(update)
-    .where('id', '=', orgId)
-    .returningAll()
-    .executeTakeFirst();
-
-  return row === undefined ? undefined : rowToGraphQLOrgParent(row);
+  try {
+    const row = await db.orgs.update({ data: update, where: { id: orgId } });
+    return rowToGraphQLOrgParent(row);
+  } catch (e) {
+    // `update` throws P2025 when no row matches; the contract here is
+    // "undefined when the org is missing".
+    if (
+      e instanceof Prisma.PrismaClientKnownRequestError &&
+      e.code === 'P2025'
+    ) {
+      return undefined;
+    }
+    throw e;
+  }
 }
 
 export async function kyselyOrgDeleteById(
   db: OrgsDb,
   orgId: string,
 ): Promise<void> {
-  await db.deleteFrom('public.orgs').where('id', '=', orgId).execute();
+  await db.orgs.deleteMany({ where: { id: orgId } });
 }

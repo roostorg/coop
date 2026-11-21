@@ -4,12 +4,18 @@ import { type ItemIdentifier } from '@roostorg/coop-types';
 import { Queue, Worker, type Job } from 'bullmq';
 import { type Cluster } from 'ioredis';
 import type IORedis from 'ioredis';
-import { type Kysely, type Transaction } from 'kysely';
 import pLimit from 'p-limit';
 import { type Opaque, type ReadonlyDeep } from 'type-fest';
 import { v1 as uuidv1 } from 'uuid';
 
 import { type Dependencies } from '../../../iocContainer/index.js';
+import {
+  assertNonEmptyIdList,
+  type Prisma,
+  type PrismaPgClient,
+  type PrismaPgQueryable,
+  type PrismaPgTransaction,
+} from '../../../storage/prisma/index.js';
 import { cached, type Cached } from '../../../utils/caching.js';
 import { filterNullOrUndefined } from '../../../utils/collections.js';
 import {
@@ -25,14 +31,15 @@ import {
   type ErrorInstanceData,
 } from '../../../utils/errors.js';
 import {
+  getPgErrorDetails,
   isForeignKeyViolationError,
   isUniqueViolationError,
 } from '../../../utils/kysely.js';
-import {
-  makeKyselyTransactionWithRetry,
-  type KyselyTransactionWithRetry,
-} from '../../../utils/kyselyTransactionWithRetry.js';
 import { removeUndefinedKeys, safePick } from '../../../utils/misc.js';
+import {
+  makePrismaTransactionWithRetry,
+  type PrismaTransactionWithRetry,
+} from '../../../utils/prismaTransactionWithRetry.js';
 import { replaceEmptyStringWithNull } from '../../../utils/string.js';
 import { WEEK_MS } from '../../../utils/time.js';
 import {
@@ -51,7 +58,6 @@ import {
 import {
   type ClearReportsDisposition,
   type ClearReportsScope,
-  type ManualReviewToolServicePg,
 } from '../dbTypes.js';
 import {
   type AppealEnqueueSourceInfo,
@@ -100,19 +106,43 @@ const PENDING_JOB_INDEX_BACKFILL_BATCH_SIZE = 1_000;
 
 const PENDING_JOB_STATES = new Set(['waiting', 'prioritized', 'delayed']);
 
-const PgQueueSelection = [
-  'id',
-  'org_id as orgId',
-  'name',
-  'description',
-  'is_default_queue as isDefaultQueue',
-  'created_at as createdAt',
-  'is_appeals_queue as isAppealsQueue',
-  'auto_close_jobs as autoCloseJobs',
-  'job_sort_type as jobSortType',
-  'clear_reports_disposition as clearReportsDisposition',
-  'clear_reports_scope as clearReportsScope',
-] as const;
+const pgQueueSelect = {
+  id: true,
+  org_id: true,
+  name: true,
+  description: true,
+  is_default_queue: true,
+  created_at: true,
+  is_appeals_queue: true,
+  auto_close_jobs: true,
+  job_sort_type: true,
+  clear_reports_disposition: true,
+  clear_reports_scope: true,
+} as const satisfies Prisma.manual_review_queuesSelect;
+
+type PgQueueRow = Prisma.manual_review_queuesGetPayload<{
+  select: typeof pgQueueSelect;
+}>;
+
+// The varchar columns behind jobSortType and the clearReports* fields are
+// constrained by CHECKs that Prisma doesn't see, so it types them as string.
+function toManualReviewQueue(row: PgQueueRow): ManualReviewQueue {
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    name: row.name,
+    description: row.description,
+    isDefaultQueue: row.is_default_queue,
+    createdAt: row.created_at,
+    isAppealsQueue: row.is_appeals_queue,
+    // Nullable in the DB; the Kysely table type declared it non-null too.
+    autoCloseJobs: row.auto_close_jobs as boolean,
+    jobSortType: row.job_sort_type as JobSortType,
+    clearReportsDisposition:
+      row.clear_reports_disposition as ClearReportsDisposition | null,
+    clearReportsScope: row.clear_reports_scope as ClearReportsScope,
+  };
+}
 
 // BullJobId represents the ID we give a job within Bull. It's only unique among
 // the pending jobs within a single queue. Over time, multiple jobs will end up
@@ -183,19 +213,19 @@ export default class QueueOperations {
   private readonly getBullAppealWorker: Cached<
     Bind1<typeof getBullWorker<ManualReviewAppealJob>>
   >;
-  private readonly transactionWithRetry: KyselyTransactionWithRetry<ManualReviewToolServicePg>;
+  private readonly transactionWithRetry: PrismaTransactionWithRetry;
   private readonly pendingJobIndex: PendingJobIndex;
   readonly #pendingJobIndexBackfills = new Map<string, Promise<void>>();
 
   constructor(
-    private readonly pgQuery: Kysely<ManualReviewToolServicePg>,
-    private readonly pgQueryReadReplica: Kysely<ManualReviewToolServicePg>,
+    private readonly prisma: PrismaPgClient,
+    private readonly prismaReadReplica: PrismaPgClient,
     private readonly moderationConfigService: Dependencies['ModerationConfigService'],
     private readonly redis: RedisConnection,
     private readonly tracer: Dependencies['Tracer'],
     private readonly meter?: Dependencies['Meter'],
   ) {
-    this.transactionWithRetry = makeKyselyTransactionWithRetry(this.pgQuery);
+    this.transactionWithRetry = makePrismaTransactionWithRetry(this.prisma);
     this.pendingJobIndex = new PendingJobIndex(redis);
     // Reassingment here is a hack to work around TS syntax limitations
     // with generic instantiation expressions.
@@ -245,13 +275,11 @@ export default class QueueOperations {
   async checkQueueExists(orgId: string, queueId: string) {
     // NB: this intentionally hits the primary, to make sure we're giving an
     // accurate result before creating the Bull queue.
-    const queue = await this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_queues')
-      .select(PgQueueSelection)
-      .where('org_id', '=', orgId)
-      .where('id', '=', queueId)
-      .executeTakeFirst();
-    if (queue === undefined) {
+    const queue = await this.prisma.manual_review_queues.findFirst({
+      select: pgQueueSelect,
+      where: { org_id: orgId, id: queueId },
+    });
+    if (queue === null) {
       throw makeQueueDoesNotExistError({ shouldErrorSpan: true });
     }
   }
@@ -311,29 +339,26 @@ export default class QueueOperations {
     // Defense-in-depth org-scoping: every user granted access to the new
     // queue must belong to the caller's org. The queue itself is always
     // created in the caller's org (orgId from the invoker).
-    await assertUsersInOrg(this.pgQuery, { orgId, userIds });
-    await assertRolesInOrg(this.pgQuery, { orgId, roleIds });
+    await assertUsersInOrg(this.prisma, { orgId, userIds });
+    await assertRolesInOrg(this.prisma, { orgId, roleIds });
     const uniqueRoleIds = [...new Set(roleIds)];
 
     let createdQueue: ManualReviewQueue;
     try {
       createdQueue = await this.transactionWithRetry(async (transaction) => {
-        // In newer versions of kysely, this is greatly simplified with
-        // `transaction.selectNoFrom(eb => eb.exists(...))`, but we're blocked on
-        // updating by https://github.com/kysely-org/kysely/issues/577#issuecomment-1804900006
-        const orgHasQueuesAlready = await transaction
-          .selectFrom('manual_review_tool.manual_review_queues')
-          .where('org_id', '=', orgId)
-          .where('is_appeals_queue', '=', isAppealsQueue ?? false)
-          .limit(1)
-          .execute()
-          .then((queues) => queues.length > 0);
+        const orgHasQueuesAlready =
+          (await transaction.manual_review_queues.findFirst({
+            select: { id: true },
+            where: {
+              org_id: orgId,
+              is_appeals_queue: isAppealsQueue ?? false,
+            },
+          })) !== null;
 
-        const queue = await transaction
-          .insertInto('manual_review_tool.manual_review_queues')
-          .returning(PgQueueSelection)
-          .values([
-            {
+        const queue = toManualReviewQueue(
+          await transaction.manual_review_queues.create({
+            select: pgQueueSelect,
+            data: {
               id: uuidv1(),
               name,
               org_id: orgId,
@@ -345,29 +370,23 @@ export default class QueueOperations {
               clear_reports_disposition: clearReportsDisposition ?? null,
               clear_reports_scope: clearReportsScope ?? 'CURRENT_QUEUE',
             },
-          ])
-          .executeTakeFirstOrThrow();
+          }),
+        );
 
-        await transaction
-          .insertInto('manual_review_tool.users_and_accessible_queues')
-          .values(
-            userIds.map((userId) => ({
-              queue_id: queue.id,
-              user_id: userId,
-            })),
-          )
-          .executeTakeFirstOrThrow();
+        await transaction.users_and_accessible_queues.createMany({
+          data: userIds.map((userId) => ({
+            queue_id: queue.id,
+            user_id: userId,
+          })),
+        });
 
         if (uniqueRoleIds.length > 0) {
-          await transaction
-            .insertInto('manual_review_tool.roles_and_accessible_queues')
-            .values(
-              uniqueRoleIds.map((roleId) => ({
-                queue_id: queue.id,
-                role_id: roleId,
-              })),
-            )
-            .execute();
+          await transaction.roles_and_accessible_queues.createMany({
+            data: uniqueRoleIds.map((roleId) => ({
+              queue_id: queue.id,
+              role_id: roleId,
+            })),
+          });
         }
 
         await this.updateHiddenActionsForQueue({
@@ -438,70 +457,60 @@ export default class QueueOperations {
     // access must belong to the caller's org. Reject before any write so a
     // cross-org queueId or userId can't mutate users_and_accessible_queues
     // rows belonging to another org.
-    await assertUsersAndQueuesInOrg(this.pgQuery, {
+    await assertUsersAndQueuesInOrg(this.prisma, {
       orgId,
       userIds,
       queueIds: [queueId],
     });
-    await assertRolesInOrg(this.pgQuery, { orgId, roleIds });
+    await assertRolesInOrg(this.prisma, { orgId, roleIds });
 
     return this.transactionWithRetry(async (transaction) => {
-      const [updatedQueue, _, __] = await Promise.all([
-        transaction
-          .updateTable('manual_review_tool.manual_review_queues')
-          .set(
-            removeUndefinedKeys({
-              name,
-              description: replaceEmptyStringWithNull(description),
-              auto_close_jobs: autoCloseJobs,
-              job_sort_type: jobSortType,
-              // null disables the feature and must survive removeUndefinedKeys.
-              clear_reports_disposition: clearReportsDisposition,
-              clear_reports_scope: clearReportsScope,
-            }),
-          )
-          .where('id', '=', queueId)
-          .where('org_id', '=', orgId)
-          .returning(PgQueueSelection)
-          .executeTakeFirstOrThrow(),
-        transaction
-          .insertInto('manual_review_tool.users_and_accessible_queues')
-          .values(
-            userIds.map((userId) => ({
-              queue_id: queueId,
-              user_id: userId,
-            })),
-          )
-          .onConflict((oc) => oc.doNothing())
-          .executeTakeFirstOrThrow(),
-        transaction
-          .deleteFrom('manual_review_tool.users_and_accessible_queues')
-          .where('queue_id', '=', queueId)
-          .where('user_id', 'not in', userIds)
-          .executeTakeFirstOrThrow(),
-      ]);
+      // Statements on an interactive transaction share one connection, so
+      // these run in order rather than concurrently.
+      const [updatedQueue] =
+        (await transaction.manual_review_queues.updateManyAndReturn({
+          select: pgQueueSelect,
+          where: { id: queueId, org_id: orgId },
+          data: removeUndefinedKeys({
+            name,
+            description: replaceEmptyStringWithNull(description),
+            auto_close_jobs: autoCloseJobs,
+            job_sort_type: jobSortType,
+            // null disables the feature and must survive removeUndefinedKeys.
+            clear_reports_disposition: clearReportsDisposition,
+            clear_reports_scope: clearReportsScope,
+          }),
+        })) as (PgQueueRow | undefined)[];
+      if (updatedQueue === undefined) {
+        // Kysely's executeTakeFirstOrThrow threw a generic NoResultError here.
+        throw makeQueueDoesNotExistError({ shouldErrorSpan: true });
+      }
+      await transaction.users_and_accessible_queues.createMany({
+        data: userIds.map((userId) => ({
+          queue_id: queueId,
+          user_id: userId,
+        })),
+        skipDuplicates: true,
+      });
+      await transaction.users_and_accessible_queues.deleteMany({
+        where: { queue_id: queueId, user_id: { notIn: [...userIds] } },
+      });
 
       if (roleIds.length > 0) {
-        await transaction
-          .insertInto('manual_review_tool.roles_and_accessible_queues')
-          .values(
-            roleIds.map((roleId) => ({
-              queue_id: queueId,
-              role_id: roleId,
-            })),
-          )
-          .onConflict((oc) => oc.doNothing())
-          .execute();
-        await transaction
-          .deleteFrom('manual_review_tool.roles_and_accessible_queues')
-          .where('queue_id', '=', queueId)
-          .where('role_id', 'not in', roleIds)
-          .execute();
+        await transaction.roles_and_accessible_queues.createMany({
+          data: roleIds.map((roleId) => ({
+            queue_id: queueId,
+            role_id: roleId,
+          })),
+          skipDuplicates: true,
+        });
+        await transaction.roles_and_accessible_queues.deleteMany({
+          where: { queue_id: queueId, role_id: { notIn: [...roleIds] } },
+        });
       } else {
-        await transaction
-          .deleteFrom('manual_review_tool.roles_and_accessible_queues')
-          .where('queue_id', '=', queueId)
-          .execute();
+        await transaction.roles_and_accessible_queues.deleteMany({
+          where: { queue_id: queueId },
+        });
       }
 
       await this.updateHiddenActionsForQueue({
@@ -519,7 +528,7 @@ export default class QueueOperations {
           actionIds: clearReportsTriggerActionIds,
         });
       }
-      return updatedQueue;
+      return toManualReviewQueue(updatedQueue);
     });
   }
 
@@ -535,7 +544,7 @@ export default class QueueOperations {
     }
     const queue = await this.getOrCreateBullQueue({ orgId, queueId });
 
-    let numDeletedRows: bigint;
+    let numDeletedRows: number;
     try {
       numDeletedRows = await this.transactionWithRetry(async (transaction) => {
         // Delete the queue scoped by org first. If it doesn't belong to the
@@ -543,25 +552,22 @@ export default class QueueOperations {
         // join rows. `users_and_accessible_queues` has no `org_id` column,
         // so an unscoped delete would otherwise wipe another org's access
         // rows when the parent delete matches 0 rows.
-        const queueDelete = await transaction
-          .deleteFrom('manual_review_tool.manual_review_queues')
-          .where('id', '=', queueId)
-          .where('org_id', '=', orgId)
-          .executeTakeFirst();
+        const queueDelete = await transaction.manual_review_queues.deleteMany({
+          where: { id: queueId, org_id: orgId },
+        });
 
-        if (queueDelete.numDeletedRows === 0n) {
-          return 0n;
+        if (queueDelete.count === 0) {
+          return 0;
         }
 
-        await transaction
-          .deleteFrom('manual_review_tool.users_and_accessible_queues')
-          .where('queue_id', '=', queueId)
-          .execute();
+        await transaction.users_and_accessible_queues.deleteMany({
+          where: { queue_id: queueId },
+        });
 
-        return queueDelete.numDeletedRows;
+        return queueDelete.count;
       });
     } catch (e) {
-      const constraint = (e as { constraint?: string }).constraint;
+      const constraint = getPgErrorDetails(e)?.constraint;
       if (
         isForeignKeyViolationError(e) &&
         (constraint === 'routing_rules_destination_queue_id_fkey' ||
@@ -570,18 +576,14 @@ export default class QueueOperations {
         // routing_rules and appeals_routing_rules have RESTRICT FKs to this
         // queue. Query for their names so the error message is actionable.
         const [routingRules, appealsRoutingRules] = await Promise.all([
-          this.pgQuery
-            .selectFrom('manual_review_tool.routing_rules')
-            .select(['name'])
-            .where('destination_queue_id', '=', queueId)
-            .where('org_id', '=', orgId)
-            .execute(),
-          this.pgQuery
-            .selectFrom('manual_review_tool.appeals_routing_rules')
-            .select(['name'])
-            .where('destination_queue_id', '=', queueId)
-            .where('org_id', '=', orgId)
-            .execute(),
+          this.prisma.routing_rules.findMany({
+            select: { name: true },
+            where: { destination_queue_id: queueId, org_id: orgId },
+          }),
+          this.prisma.appeals_routing_rules.findMany({
+            select: { name: true },
+            where: { destination_queue_id: queueId, org_id: orgId },
+          }),
         ]);
         const ruleNames = [
           ...routingRules.map((r) => r.name),
@@ -594,12 +596,12 @@ export default class QueueOperations {
       throw e;
     }
 
-    if (numDeletedRows === 1n) {
+    if (numDeletedRows === 1) {
       try {
         await queue.obliterate({ force: true });
       } catch (e) {
         // The DB row is already gone at this point, so a retry would see
-        // numDeletedRows === 0n and skip obliterate() entirely, silently
+        // numDeletedRows === 0 and skip obliterate() entirely, silently
         // leaving orphaned Bull/Redis data behind. Best-effort cleanup:
         // surface the failure to the active tracing span (mirrors the
         // pattern used elsewhere, e.g. `UserApi.logout`) so ops can run
@@ -612,7 +614,7 @@ export default class QueueOperations {
         .catch((e: unknown) => this.tracer.logActiveSpanFailedIfAny(e));
     }
 
-    return numDeletedRows === 1n;
+    return numDeletedRows === 1;
   }
 
   async deleteManualReviewQueueForTestsDO_NOT_USE(
@@ -631,59 +633,46 @@ export default class QueueOperations {
     // so we must delete any referencing rules before deleting the queue.
     const numDeletedRows = await this.transactionWithRetry(
       async (transaction) => {
-        await transaction
-          .deleteFrom('manual_review_tool.routing_rules')
-          .where('destination_queue_id', '=', queueId)
-          .where('org_id', '=', orgId)
-          .execute();
+        await transaction.routing_rules.deleteMany({
+          where: { destination_queue_id: queueId, org_id: orgId },
+        });
 
-        await transaction
-          .deleteFrom('manual_review_tool.appeals_routing_rules')
-          .where('destination_queue_id', '=', queueId)
-          .where('org_id', '=', orgId)
-          .execute();
+        await transaction.appeals_routing_rules.deleteMany({
+          where: { destination_queue_id: queueId, org_id: orgId },
+        });
 
-        const queueDelete = await transaction
-          .deleteFrom('manual_review_tool.manual_review_queues')
-          .where('id', '=', queueId)
-          .where('org_id', '=', orgId)
-          .executeTakeFirst();
+        const queueDelete = await transaction.manual_review_queues.deleteMany({
+          where: { id: queueId, org_id: orgId },
+        });
 
-        if (queueDelete.numDeletedRows === 0n) {
-          return 0n;
+        if (queueDelete.count === 0) {
+          return 0;
         }
 
-        await transaction
-          .deleteFrom('manual_review_tool.users_and_accessible_queues')
-          .where('queue_id', '=', queueId)
-          .execute();
+        await transaction.users_and_accessible_queues.deleteMany({
+          where: { queue_id: queueId },
+        });
 
-        return queueDelete.numDeletedRows;
+        return queueDelete.count;
       },
     );
 
-    return numDeletedRows === 1n;
+    return numDeletedRows === 1;
   }
 
   async getDefaultQueueIdForOrg(orgId: string) {
-    const queue = await this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_queues')
-      .select(['id'])
-      .where('org_id', '=', orgId)
-      .where('is_appeals_queue', '=', false)
-      .where('is_default_queue', '=', true)
-      .executeTakeFirstOrThrow();
+    const queue = await this.prisma.manual_review_queues.findFirstOrThrow({
+      select: { id: true },
+      where: { org_id: orgId, is_appeals_queue: false, is_default_queue: true },
+    });
     return queue.id;
   }
 
   async getDefaultAppealsQueueIdForOrg(orgId: string) {
-    const queue = await this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_queues')
-      .select(['id'])
-      .where('org_id', '=', orgId)
-      .where('is_appeals_queue', '=', true)
-      .where('is_default_queue', '=', true)
-      .executeTakeFirstOrThrow();
+    const queue = await this.prisma.manual_review_queues.findFirstOrThrow({
+      select: { id: true },
+      where: { org_id: orgId, is_appeals_queue: true, is_default_queue: true },
+    });
     return queue.id;
   }
 
@@ -704,44 +693,33 @@ export default class QueueOperations {
       return [];
     }
 
-    return this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_queues')
-      .select(PgQueueSelection)
-      .where('org_id', '=', orgId)
-      .$if(queueIds != null, (query) => query.where('id', 'in', queueIds ?? []))
-      .$if(!bypassQueuePermissions, (query) =>
-        query.where((eb) =>
-          eb.or([
-            eb('id', 'in', this.individuallyAccessibleQueueIds(userId)),
-            eb('id', 'in', this.roleAccessibleQueueIds(userId, orgId)),
-          ]),
-        ),
-      )
-      .execute();
+    const rows = await this.prisma.manual_review_queues.findMany({
+      select: pgQueueSelect,
+      where: {
+        org_id: orgId,
+        ...(queueIds != null ? { id: { in: [...queueIds] } } : {}),
+        ...(!bypassQueuePermissions
+          ? { OR: this.accessibleQueueFilters(userId, orgId) }
+          : {}),
+      },
+    });
+    return rows.map(toManualReviewQueue);
   }
 
   // A queue is accessible when the reviewer is individually assigned to it, or
-  // when their role is assigned to it (see `roleAccessibleQueueIds`).
-  private individuallyAccessibleQueueIds(userId: string) {
-    return this.pgQuery
-      .selectFrom('manual_review_tool.users_and_accessible_queues')
-      .select('queue_id')
-      .where('user_id', '=', userId);
-  }
-
-  private roleAccessibleQueueIds(userId: string, orgId: string) {
-    return this.pgQuery
-      .selectFrom('manual_review_tool.roles_and_accessible_queues')
-      .select('queue_id')
-      .where(
-        'role_id',
-        '=',
-        this.pgQuery
-          .selectFrom('public.users')
-          .select('role_id')
-          .where('id', '=', userId)
-          .where('org_id', '=', orgId),
-      );
+  // when their role is assigned to it.
+  private accessibleQueueFilters(
+    userId: string,
+    orgId: string,
+  ): Prisma.manual_review_queuesWhereInput[] {
+    return [
+      { users_and_accessible_queues: { some: { user_id: userId } } },
+      {
+        roles_and_accessible_queues: {
+          some: { roles: { users: { some: { id: userId, org_id: orgId } } } },
+        },
+      },
+    ];
   }
 
   async getQueueForOrg(opts: {
@@ -750,47 +728,30 @@ export default class QueueOperations {
     queueId: string;
   }) {
     const { orgId, userId, queueId } = opts;
-    return this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_queues')
-      .select(PgQueueSelection)
-      .where('org_id', '=', orgId)
-      .where('id', '=', queueId)
-      .where((eb) =>
-        eb.or([
-          eb('id', 'in', this.individuallyAccessibleQueueIds(userId)),
-          eb('id', 'in', this.roleAccessibleQueueIds(userId, orgId)),
-        ]),
-      )
-      .executeTakeFirst();
+    const row = await this.prisma.manual_review_queues.findFirst({
+      select: pgQueueSelect,
+      where: {
+        org_id: orgId,
+        id: queueId,
+        OR: this.accessibleQueueFilters(userId, orgId),
+      },
+    });
+    return row === null ? undefined : toManualReviewQueue(row);
   }
 
   async getFavoriteQueuesForUser(opts: { orgId: string; userId: string }) {
     const { orgId, userId } = opts;
-    return this.pgQuery
-      .selectFrom(
-        'manual_review_tool.users_and_favorite_mrt_queues as favorite_queues',
-      )
-      .innerJoin(
-        'manual_review_tool.manual_review_queues as queues',
-        'favorite_queues.queue_id',
-        'queues.id',
-      )
-      .select([
-        'queues.id',
-        'queues.org_id as orgId',
-        'queues.name',
-        'queues.description',
-        'queues.is_default_queue as isDefaultQueue',
-        'queues.created_at as createdAt',
-        'queues.is_appeals_queue as isAppealsQueue',
-        'queues.auto_close_jobs as autoCloseJobs',
-        'queues.job_sort_type as jobSortType',
-        'queues.clear_reports_disposition as clearReportsDisposition',
-        'queues.clear_reports_scope as clearReportsScope',
-      ])
-      .where('favorite_queues.user_id', '=', userId)
-      .where('favorite_queues.org_id', '=', orgId)
-      .execute();
+    // (user_id, queue_id) is the favorites PK, so this matches the inner join
+    // one-to-one.
+    const rows = await this.prisma.manual_review_queues.findMany({
+      select: pgQueueSelect,
+      where: {
+        users_and_favorite_mrt_queues: {
+          some: { user_id: userId, org_id: orgId },
+        },
+      },
+    });
+    return rows.map(toManualReviewQueue);
   }
 
   async addFavoriteQueueForUser(opts: {
@@ -799,11 +760,10 @@ export default class QueueOperations {
     queueId: string;
   }) {
     const { userId, orgId, queueId } = opts;
-    await this.pgQuery
-      .insertInto('manual_review_tool.users_and_favorite_mrt_queues')
-      .values({ user_id: userId, org_id: orgId, queue_id: queueId })
-      .onConflict((oc) => oc.doNothing())
-      .execute();
+    await this.prisma.users_and_favorite_mrt_queues.createMany({
+      data: { user_id: userId, org_id: orgId, queue_id: queueId },
+      skipDuplicates: true,
+    });
   }
 
   async removeFavoriteQueueForUser(opts: {
@@ -812,67 +772,46 @@ export default class QueueOperations {
     queueId: string;
   }) {
     const { userId, orgId, queueId } = opts;
-    await this.pgQuery
-      .deleteFrom('manual_review_tool.users_and_favorite_mrt_queues')
-      .where('user_id', '=', userId)
-      .where('org_id', '=', orgId)
-      .where('queue_id', '=', queueId)
-      .execute();
+    await this.prisma.users_and_favorite_mrt_queues.deleteMany({
+      where: { user_id: userId, org_id: orgId, queue_id: queueId },
+    });
   }
 
   async getAllQueuesForOrgAndDangerouslyBypassPermissioning(orgId: string) {
-    return this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_queues')
-      .select(PgQueueSelection)
-      .where('org_id', '=', orgId)
-      .execute();
+    const rows = await this.prisma.manual_review_queues.findMany({
+      select: pgQueueSelect,
+      where: { org_id: orgId },
+    });
+    return rows.map(toManualReviewQueue);
   }
 
   async getQueueForOrgAndDangerouslyBypassPermissioning(opts: {
     orgId: string;
     queueId: string;
   }) {
-    return this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_queues')
-      .select(PgQueueSelection)
-      .where('org_id', '=', opts.orgId)
-      .where('id', '=', opts.queueId)
-      .executeTakeFirst();
+    const row = await this.prisma.manual_review_queues.findFirst({
+      select: pgQueueSelect,
+      where: { org_id: opts.orgId, id: opts.queueId },
+    });
+    return row === null ? undefined : toManualReviewQueue(row);
   }
 
   async getUsersWhoCanSeeQueue(opts: { orgId: string; queueId: string }) {
     const { orgId, queueId } = opts;
-    return this.pgQuery
-      .selectFrom('manual_review_tool.users_and_accessible_queues')
-      .select(['user_id as userId'])
-      .where('queue_id', '=', queueId)
-      .where(
-        'queue_id',
-        'in',
-        this.pgQuery
-          .selectFrom('manual_review_tool.manual_review_queues')
-          .select('id')
-          .where('org_id', '=', orgId),
-      )
-      .execute();
+    const rows = await this.prisma.users_and_accessible_queues.findMany({
+      select: { user_id: true },
+      where: { queue_id: queueId, manual_review_queues: { org_id: orgId } },
+    });
+    return rows.map((it) => ({ userId: it.user_id }));
   }
 
   async getAssignedRoleIdsForQueue(opts: { orgId: string; queueId: string }) {
     const { orgId, queueId } = opts;
-    const rows = await this.pgQuery
-      .selectFrom('manual_review_tool.roles_and_accessible_queues')
-      .select(['role_id as roleId'])
-      .where('queue_id', '=', queueId)
-      .where(
-        'queue_id',
-        'in',
-        this.pgQuery
-          .selectFrom('manual_review_tool.manual_review_queues')
-          .select('id')
-          .where('org_id', '=', orgId),
-      )
-      .execute();
-    return rows.map((it) => it.roleId);
+    const rows = await this.prisma.roles_and_accessible_queues.findMany({
+      select: { role_id: true },
+      where: { queue_id: queueId, manual_review_queues: { org_id: orgId } },
+    });
+    return rows.map((it) => it.role_id);
   }
 
   async addAccessibleQueuesForUser(opts: {
@@ -881,21 +820,18 @@ export default class QueueOperations {
     queueIds: readonly string[];
   }) {
     const { orgId, userIds, queueIds } = opts;
-    await assertUsersAndQueuesInOrg(this.pgQuery, {
+    await assertUsersAndQueuesInOrg(this.prisma, {
       orgId,
       userIds,
       queueIds,
     });
 
-    return this.pgQuery
-      .insertInto('manual_review_tool.users_and_accessible_queues')
-      .values(
-        userIds.flatMap((userId) =>
-          queueIds.map((queueId) => ({ queue_id: queueId, user_id: userId })),
-        ),
-      )
-      .onConflict((oc) => oc.doNothing())
-      .execute();
+    return this.prisma.users_and_accessible_queues.createMany({
+      data: userIds.flatMap((userId) =>
+        queueIds.map((queueId) => ({ queue_id: queueId, user_id: userId })),
+      ),
+      skipDuplicates: true,
+    });
   }
 
   async removeAccessibleQueuesForUser(opts: {
@@ -904,17 +840,15 @@ export default class QueueOperations {
     queueIds: readonly string[];
   }) {
     const { orgId, userId, queueIds } = opts;
-    await assertUsersAndQueuesInOrg(this.pgQuery, {
+    await assertUsersAndQueuesInOrg(this.prisma, {
       orgId,
       userIds: [userId],
       queueIds,
     });
 
-    return this.pgQuery
-      .deleteFrom('manual_review_tool.users_and_accessible_queues')
-      .where('user_id', '=', userId)
-      .where('queue_id', 'in', queueIds)
-      .execute();
+    return this.prisma.users_and_accessible_queues.deleteMany({
+      where: { user_id: userId, queue_id: { in: [...queueIds] } },
+    });
   }
 
   async #getJob(
@@ -1482,12 +1416,10 @@ export default class QueueOperations {
     if (!isParsableExternalId(jobId)) {
       return undefined;
     }
-    const row = await this.pgQuery
-      .selectFrom('manual_review_tool.job_creations')
-      .select(['queue_id'])
-      .where('org_id', '=', orgId)
-      .where('id', '=', jobId)
-      .executeTakeFirst();
+    const row = await this.prisma.job_creations.findFirst({
+      select: { queue_id: true },
+      where: { org_id: orgId, id: jobId },
+    });
     if (row) {
       const jobs = await this.getJobs({
         orgId,
@@ -1649,14 +1581,17 @@ export default class QueueOperations {
 
       // Race condition: a job can be decided but not yet dequeued.
       // If the front job already has a decision, remove it and grab the next.
-      const decision = await this.pgQueryReadReplica
-        .selectFrom('manual_review_tool.manual_review_decisions')
-        .where('created_at', '>=', new Date('2023-10-01'))
-        .where('org_id', '=', orgId)
-        .where('id', '=', jobIdToGuid(job.data.id))
-        .executeTakeFirst();
+      const decision =
+        await this.prismaReadReplica.manual_review_decisions.findFirst({
+          select: { id: true },
+          where: {
+            created_at: { gte: new Date('2023-10-01') },
+            org_id: orgId,
+            id: jobIdToGuid(job.data.id),
+          },
+        });
 
-      if (decision === undefined) {
+      if (decision === null) {
         return { job: job.data, lockToken };
       }
 
@@ -1711,15 +1646,17 @@ export default class QueueOperations {
 
         // Race condition: a job can be decided but not yet dequeued.
         // If the front job already has a decision, remove it and grab the next.
-        const decision = await this.pgQueryReadReplica
-          .selectFrom('manual_review_tool.manual_review_decisions')
-          .select(['decision_components'])
-          .where('created_at', '>=', new Date('2023-10-01'))
-          .where('org_id', '=', orgId)
-          .where('id', '=', jobIdToGuid(convertedJob.data.id))
-          .executeTakeFirst();
+        const decision =
+          await this.prismaReadReplica.manual_review_decisions.findFirst({
+            select: { decision_components: true },
+            where: {
+              created_at: { gte: new Date('2023-10-01') },
+              org_id: orgId,
+              id: jobIdToGuid(convertedJob.data.id),
+            },
+          });
 
-        if (decision === undefined) {
+        if (decision === null) {
           return { job: convertedJob.data, lockToken };
         }
 
@@ -2349,15 +2286,16 @@ export default class QueueOperations {
     }
     // Check postgres for creations within the last 7 days so we don't have to
     // search every bull queue for every item.
-    const recentJobCreationQueues = await this.pgQuery
-      .selectFrom('manual_review_tool.job_creations')
-      .select(['queue_id'])
-      .where('org_id', '=', orgId)
-      .where('item_id', '=', itemId)
-      .where('item_type_id', '=', itemTypeId)
-      .where('created_at', '>=', new Date(Date.now() - WEEK_MS))
-      .where('queue_id', 'in', queueIds)
-      .execute();
+    const recentJobCreationQueues = await this.prisma.job_creations.findMany({
+      select: { queue_id: true },
+      where: {
+        org_id: orgId,
+        item_id: itemId,
+        item_type_id: itemTypeId,
+        created_at: { gte: new Date(Date.now() - WEEK_MS) },
+        queue_id: { in: queueIds },
+      },
+    });
     const jobsWithQueue = await Promise.all(
       recentJobCreationQueues.map(async (rows) => {
         const queueId = rows.queue_id;
@@ -2382,12 +2320,10 @@ export default class QueueOperations {
   async getHiddenActionsForQueue(opts: { queueId: string; orgId: string }) {
     const { queueId, orgId } = opts;
     return (
-      await this.pgQuery
-        .selectFrom('manual_review_tool.queues_and_hidden_actions')
-        .select(['action_id'])
-        .where('queue_id', '=', queueId)
-        .where('org_id', '=', orgId)
-        .execute()
+      await this.prisma.queues_and_hidden_actions.findMany({
+        select: { action_id: true },
+        where: { queue_id: queueId, org_id: orgId },
+      })
     ).map((it) => it.action_id);
   }
 
@@ -2398,7 +2334,7 @@ export default class QueueOperations {
     actionIdsToHide: readonly string[];
     actionIdsToUnhide: readonly string[];
     orgId: string;
-    transaction?: Transaction<ManualReviewToolServicePg>;
+    transaction?: PrismaPgTransaction;
   }) {
     const { transaction, queueId, actionIdsToHide, actionIdsToUnhide, orgId } =
       opts;
@@ -2407,28 +2343,26 @@ export default class QueueOperations {
       return undefined;
     }
 
-    const queryInterface = transaction ?? this.pgQuery;
+    const queryInterface: PrismaPgQueryable = transaction ?? this.prisma;
 
     if (actionIdsToHide.length > 0) {
-      await queryInterface
-        .insertInto('manual_review_tool.queues_and_hidden_actions')
-        .values(
-          actionIdsToHide.map((actionId) => ({
-            queue_id: queueId,
-            action_id: actionId,
-            org_id: orgId,
-          })),
-        )
-        .execute();
+      await queryInterface.queues_and_hidden_actions.createMany({
+        data: actionIdsToHide.map((actionId) => ({
+          queue_id: queueId,
+          action_id: actionId,
+          org_id: orgId,
+        })),
+      });
     }
 
     if (actionIdsToUnhide.length > 0) {
-      await queryInterface
-        .deleteFrom('manual_review_tool.queues_and_hidden_actions')
-        .where('queue_id', '=', queueId)
-        .where('org_id', '=', orgId)
-        .where('action_id', 'in', actionIdsToUnhide)
-        .execute();
+      await queryInterface.queues_and_hidden_actions.deleteMany({
+        where: {
+          queue_id: queueId,
+          org_id: orgId,
+          action_id: { in: [...actionIdsToUnhide] },
+        },
+      });
     }
   }
 
@@ -2439,14 +2373,10 @@ export default class QueueOperations {
   }): Promise<string[]> {
     const { queueId, orgId } = opts;
     return (
-      await this.pgQuery
-        .selectFrom(
-          'manual_review_tool.queues_and_clear_reports_trigger_actions',
-        )
-        .select(['action_id'])
-        .where('queue_id', '=', queueId)
-        .where('org_id', '=', orgId)
-        .execute()
+      await this.prisma.queues_and_clear_reports_trigger_actions.findMany({
+        select: { action_id: true },
+        where: { queue_id: queueId, org_id: orgId },
+      })
     ).map((it) => it.action_id);
   }
 
@@ -2455,31 +2385,24 @@ export default class QueueOperations {
     queueId: string;
     orgId: string;
     actionIds: readonly string[];
-    transaction?: Transaction<ManualReviewToolServicePg>;
+    transaction?: PrismaPgTransaction;
   }) {
     const { queueId, orgId, actionIds, transaction } = opts;
-    const queryInterface = transaction ?? this.pgQuery;
+    const queryInterface: PrismaPgQueryable = transaction ?? this.prisma;
 
-    await queryInterface
-      .deleteFrom('manual_review_tool.queues_and_clear_reports_trigger_actions')
-      .where('queue_id', '=', queueId)
-      .where('org_id', '=', orgId)
-      .execute();
+    await queryInterface.queues_and_clear_reports_trigger_actions.deleteMany({
+      where: { queue_id: queueId, org_id: orgId },
+    });
 
     const uniqueActionIds = [...new Set(actionIds)];
     if (uniqueActionIds.length > 0) {
-      await queryInterface
-        .insertInto(
-          'manual_review_tool.queues_and_clear_reports_trigger_actions',
-        )
-        .values(
-          uniqueActionIds.map((actionId) => ({
-            queue_id: queueId,
-            action_id: actionId,
-            org_id: orgId,
-          })),
-        )
-        .execute();
+      await queryInterface.queues_and_clear_reports_trigger_actions.createMany({
+        data: uniqueActionIds.map((actionId) => ({
+          queue_id: queueId,
+          action_id: actionId,
+          org_id: orgId,
+        })),
+      });
     }
   }
 }
@@ -2655,16 +2578,15 @@ const makeAccessibleQueueNotInOrgError = (data: ErrorInstanceData) =>
  * org. Defense-in-depth org-scoping for accessible-queue mutations.
  */
 async function assertQueuesInOrg(
-  db: Kysely<ManualReviewToolServicePg>,
+  db: PrismaPgQueryable,
   opts: { orgId: string; queueIds: readonly string[] },
 ) {
   const { orgId, queueIds } = opts;
-  const inOrgQueues = await db
-    .selectFrom('manual_review_tool.manual_review_queues')
-    .select('id')
-    .where('org_id', '=', orgId)
-    .where('id', 'in', queueIds)
-    .execute();
+  assertNonEmptyIdList('queueIds', queueIds);
+  const inOrgQueues = await db.manual_review_queues.findMany({
+    select: { id: true },
+    where: { org_id: orgId, id: { in: [...queueIds] } },
+  });
   if (inOrgQueues.length !== new Set(queueIds).size) {
     throw makeAccessibleQueueNotInOrgError({ shouldErrorSpan: true });
   }
@@ -2675,16 +2597,15 @@ async function assertQueuesInOrg(
  * org. Defense-in-depth org-scoping for accessible-queue mutations.
  */
 async function assertUsersInOrg(
-  db: Kysely<ManualReviewToolServicePg>,
+  db: PrismaPgQueryable,
   opts: { orgId: string; userIds: readonly string[] },
 ) {
   const { orgId, userIds } = opts;
-  const inOrgUsers = await db
-    .selectFrom('public.users')
-    .select('id')
-    .where('org_id', '=', orgId)
-    .where('id', 'in', userIds)
-    .execute();
+  assertNonEmptyIdList('userIds', userIds);
+  const inOrgUsers = await db.users.findMany({
+    select: { id: true },
+    where: { org_id: orgId, id: { in: [...userIds] } },
+  });
   if (inOrgUsers.length !== new Set(userIds).size) {
     throw makeAccessibleQueueNotInOrgError({ shouldErrorSpan: true });
   }
@@ -2692,19 +2613,17 @@ async function assertUsersInOrg(
 
 /** Rejects before any write if a target role does not belong to the caller's org. */
 async function assertRolesInOrg(
-  db: Kysely<ManualReviewToolServicePg>,
+  db: PrismaPgQueryable,
   opts: { orgId: string; roleIds: readonly string[] },
 ) {
   const { orgId, roleIds } = opts;
   if (roleIds.length === 0) {
     return;
   }
-  const inOrgRoles = await db
-    .selectFrom('public.roles')
-    .select('id')
-    .where('org_id', '=', orgId)
-    .where('id', 'in', roleIds)
-    .execute();
+  const inOrgRoles = await db.roles.findMany({
+    select: { id: true },
+    where: { org_id: orgId, id: { in: [...roleIds] } },
+  });
   if (inOrgRoles.length !== new Set(roleIds).size) {
     throw makeAccessibleQueueNotInOrgError({ shouldErrorSpan: true });
   }
@@ -2715,7 +2634,7 @@ async function assertRolesInOrg(
  * caller's org.
  */
 async function assertUsersAndQueuesInOrg(
-  db: Kysely<ManualReviewToolServicePg>,
+  db: PrismaPgQueryable,
   opts: {
     orgId: string;
     userIds: readonly string[];

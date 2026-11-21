@@ -1,9 +1,11 @@
 import crypto from 'node:crypto';
-import type { Kysely } from 'kysely';
 
+import {
+  type Prisma,
+  type PrismaPgClient,
+} from '../../storage/prisma/index.js';
 import { jsonParse, jsonStringify, type JsonOf } from '../../utils/encoding.js';
 import { CoopError, ErrorType } from '../../utils/errors.js';
-import { type CombinedPg } from '../combinedDbTypes.js';
 import {
   type SigningKeyId,
   type SigningKeyPairStorage,
@@ -23,7 +25,7 @@ type JWTCryptoKeyPairWithAlgorithm = {
  * PostgreSQL storage for signing key pairs
  */
 export class PostgresSigningKeyPairStorage implements SigningKeyPairStorage {
-  constructor(private readonly db: Kysely<CombinedPg>) {}
+  constructor(private readonly db: PrismaPgClient) {}
 
   async storeKeyPair(
     keyId: SigningKeyId,
@@ -45,29 +47,24 @@ export class PostgresSigningKeyPairStorage implements SigningKeyPairStorage {
       },
     };
 
-    // Store in PostgreSQL as JSONB
-    await this.db
-      .insertInto('public.signing_keys')
-      .values({
-        org_id: keyId.orgId,
-        key_data: jsonStringify(keyData),
-      })
-      .onConflict((oc) =>
-        oc.column('org_id').doUpdateSet({
-          key_data: jsonStringify(keyData),
-        }),
-      )
-      .execute();
+    // Store in PostgreSQL as JSONB. Prisma needs the object itself: a JSON
+    // string would be stored as a JSON string, not parsed into an object.
+    // The JWK types aren't assignable to Prisma's JSON input type.
+    const keyDataJson = keyData as unknown as Prisma.InputJsonObject;
+    await this.db.signing_keys.upsert({
+      where: { org_id: keyId.orgId },
+      create: { org_id: keyId.orgId, key_data: keyDataJson },
+      update: { key_data: keyDataJson },
+    });
   }
 
   private async fetchKeyPair(
     keyId: SigningKeyId,
   ): Promise<crypto.webcrypto.CryptoKeyPair> {
-    const result = await this.db
-      .selectFrom('public.signing_keys')
-      .select(['key_data'])
-      .where('org_id', '=', keyId.orgId)
-      .executeTakeFirst();
+    const result = await this.db.signing_keys.findUnique({
+      select: { key_data: true },
+      where: { org_id: keyId.orgId },
+    });
 
     if (!result) {
       throw new CoopError({
@@ -83,7 +80,8 @@ export class PostgresSigningKeyPairStorage implements SigningKeyPairStorage {
     const keyData: JWTCryptoKeyPairWithAlgorithm =
       typeof result.key_data === 'string'
         ? jsonParse(result.key_data as JsonOf<JWTCryptoKeyPairWithAlgorithm>)
-        : result.key_data;
+        : // `JsonValue`; this column only holds what `storeKeyPair` wrote.
+          (result.key_data as unknown as JWTCryptoKeyPairWithAlgorithm);
     const { privateKeyWithAlgorithm, publicKeyWithAlgorithm } = keyData;
 
     return {

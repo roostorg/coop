@@ -1,9 +1,9 @@
 /* eslint-disable max-lines */
-import { sql, type Kysely } from 'kysely';
 import { match } from 'ts-pattern';
 import { type JsonObject } from 'type-fest';
 
 import { type Dependencies } from '../../../iocContainer/index.js';
+import { Prisma, type PrismaPgClient } from '../../../storage/prisma/index.js';
 import { filterNullOrUndefined } from '../../../utils/collections.js';
 import { jsonStringify } from '../../../utils/encoding.js';
 import {
@@ -11,6 +11,7 @@ import {
   ErrorType,
   type ErrorInstanceData,
 } from '../../../utils/errors.js';
+import { getPgErrorDetails } from '../../../utils/kysely.js';
 import { assertUnreachable } from '../../../utils/misc.js';
 import { isValidDate } from '../../../utils/time.js';
 import { isNonEmptyString } from '../../../utils/typescript-types.js';
@@ -271,7 +272,7 @@ export const NCMEC_ESCALATION_SKIP_WARNING =
 export default class JobDecisioning {
   constructor(
     private readonly queueOps: QueueOperations,
-    private readonly pgQuery: Kysely<ManualReviewToolServicePg>,
+    private readonly prisma: PrismaPgClient,
     readonly getCustomActionsByIds: GetActionsByIdEventuallyConsistent,
     readonly onRecordDecision: (params: OnRecordDecisionInput) => Promise<void>,
     private readonly moderationConfigService: Dependencies['ModerationConfigService'],
@@ -1004,9 +1005,9 @@ export default class JobDecisioning {
             })
         : null;
 
-    await this.pgQuery
-      .insertInto('manual_review_tool.manual_review_decisions')
-      .values({
+    await this.prisma.manual_review_decisions.create({
+      select: { id: true },
+      data: {
         id,
         job_payload: job,
         queue_id: queueId,
@@ -1021,8 +1022,8 @@ export default class JobDecisioning {
         item_created_at: itemCreatedAt,
         decision_reason: decisionReason,
         assigned_at: assignedAt,
-      })
-      .execute();
+      },
+    });
 
     const attributes = {
       queue_id: queueId,
@@ -1058,35 +1059,16 @@ export default class JobDecisioning {
 
   async getNcmecDecisions(opts: { startDate: Date; endDate: Date }) {
     const { startDate, endDate } = opts;
-    const allNcmecDecisions = await this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_decisions')
-      .where(({ eb, selectFrom }) => {
-        return eb.exists(
-          selectFrom(
-            sql`unnest(manual_review_tool.manual_review_decisions.decision_components)`.as(
-              'decision_component',
-            ),
-          )
-            .selectAll()
-            .where(
-              sql<string>`decision_component->>'type'`,
-              '=',
-              'SUBMIT_NCMEC_REPORT',
-            ),
-        );
-      })
-      .where('created_at', '>=', startDate)
-      .where('created_at', '<=', endDate)
-      .select([
-        'org_id',
-        'decision_components',
-        'job_payload',
-        'id',
-        'queue_id',
-        'reviewer_id',
-        'created_at',
-      ])
-      .execute();
+    // prisma-raw: EXISTS over unnest() of a jsonb[] column
+    const allNcmecDecisions = await this.prisma.$queryRaw<NcmecDecisionRow[]>(
+      Prisma.sql`
+        SELECT ${ncmecDecisionColumns}
+        FROM manual_review_tool.manual_review_decisions
+        WHERE ${hasNcmecComponentSql}
+          AND created_at >= ${startDate}
+          AND created_at <= ${endDate}
+      `,
+    );
     // There shouldn't be any decisions from deprecated job payload types, so
     // filter them out to satisfy ts
     return filterNullOrUndefined(
@@ -1115,36 +1097,17 @@ export default class JobDecisioning {
       Number.isFinite(requestedLimit) && requestedLimit > 0
         ? Math.min(Math.floor(requestedLimit), 500)
         : 500;
-    const allNcmecDecisions = await this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_decisions')
-      .where('org_id', '=', orgId)
-      .where(({ eb, selectFrom }) => {
-        return eb.exists(
-          selectFrom(
-            sql`unnest(manual_review_tool.manual_review_decisions.decision_components)`.as(
-              'decision_component',
-            ),
-          )
-            .selectAll()
-            .where(
-              sql<string>`decision_component->>'type'`,
-              '=',
-              'SUBMIT_NCMEC_REPORT',
-            ),
-        );
-      })
-      .select([
-        'org_id',
-        'decision_components',
-        'job_payload',
-        'id',
-        'queue_id',
-        'reviewer_id',
-        'created_at',
-      ])
-      .orderBy('created_at', 'desc')
-      .limit(safeLimit)
-      .execute();
+    // prisma-raw: EXISTS over unnest() of a jsonb[] column
+    const allNcmecDecisions = await this.prisma.$queryRaw<NcmecDecisionRow[]>(
+      Prisma.sql`
+        SELECT ${ncmecDecisionColumns}
+        FROM manual_review_tool.manual_review_decisions
+        WHERE org_id = ${orgId}
+          AND ${hasNcmecComponentSql}
+        ORDER BY created_at DESC
+        LIMIT ${safeLimit}
+      `,
+    );
     return filterNullOrUndefined(
       allNcmecDecisions.map((it) => {
         if (
@@ -1166,23 +1129,23 @@ export default class JobDecisioning {
     decisionId: string;
   }) {
     const { orgId, decisionId } = opts;
-    const row = await this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_decisions')
-      .where('id', '=', decisionId)
-      .where('org_id', '=', orgId)
-      .select([
-        'org_id',
-        'decision_components',
-        'job_payload',
-        'id',
-        'queue_id',
-        'reviewer_id',
-        'created_at',
-      ])
-      .executeTakeFirst();
-    if (!row) {
+    const prismaRow = await this.prisma.manual_review_decisions.findFirst({
+      where: { id: decisionId, org_id: orgId },
+      select: {
+        org_id: true,
+        decision_components: true,
+        job_payload: true,
+        id: true,
+        queue_id: true,
+        reviewer_id: true,
+        created_at: true,
+      },
+    });
+    if (!prismaRow) {
       return undefined;
     }
+    // JSON columns come back as Prisma.JsonValue; cast to the stored shape.
+    const row = prismaRow as unknown as NcmecDecisionRow;
     // Only return decisions that actually contain a SUBMIT_NCMEC_REPORT
     // component so callers get the same `not_found` shape for both
     // "wrong-org" and "wrong-decision-type" lookups.
@@ -1202,12 +1165,11 @@ export default class JobDecisioning {
   }
 
   async getIgnoreCallbackForOrg(orgId: string): Promise<string | undefined> {
-    const settings = await this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_tool_settings')
-      .where('org_id', '=', orgId)
-      .select('ignore_callback_url as ignoreCallback')
-      .executeTakeFirst();
-    return settings?.ignoreCallback ?? undefined;
+    const settings = await this.prisma.manual_review_tool_settings.findUnique({
+      where: { org_id: orgId },
+      select: { ignore_callback_url: true },
+    });
+    return settings?.ignore_callback_url ?? undefined;
   }
 }
 
@@ -1216,13 +1178,31 @@ export default class JobDecisioning {
  * already been logged.
  */
 function isDecisionAlreadyLoggedError(error: unknown) {
+  // Prisma's message is "Unique constraint failed on the fields: (`id`)", so
+  // match on the SQLSTATE and constraint name instead of pg's message text.
+  const details = getPgErrorDetails(error);
   return (
-    error instanceof Error &&
-    error.message.includes(
-      'duplicate key value violates unique constraint "manual_review_decisions_pkey"',
-    )
+    details?.code === '23505' &&
+    details.constraint === 'manual_review_decisions_pkey'
   );
 }
+
+type NcmecDecisionRow = Pick<
+  ManualReviewToolServicePg['manual_review_tool.manual_review_decisions'],
+  | 'org_id'
+  | 'decision_components'
+  | 'job_payload'
+  | 'id'
+  | 'queue_id'
+  | 'reviewer_id'
+> & { created_at: Date };
+
+const ncmecDecisionColumns = Prisma.sql`org_id, decision_components, job_payload, id, queue_id, reviewer_id, created_at`;
+
+const hasNcmecComponentSql = Prisma.sql`EXISTS (
+  SELECT * FROM unnest(manual_review_tool.manual_review_decisions.decision_components) AS decision_component
+  WHERE decision_component->>'type' = ${'SUBMIT_NCMEC_REPORT'}
+)`;
 
 export type SubmitDecisionErrorType =
   | 'JobHasAlreadyBeenSubmittedError'

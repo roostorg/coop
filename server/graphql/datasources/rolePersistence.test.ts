@@ -19,7 +19,7 @@ describe('seedSystemRolesForOrg', () => {
   const testWithFixture = makeTransactionalTestWithFixture(async ({ deps }) => {
     const { org } = await createOrg(
       {
-        KyselyPg: deps.KyselyPg,
+        PrismaPg: deps.PrismaPg,
         ModerationConfigService: deps.ModerationConfigService,
         ApiKeyService: deps.ApiKeyService,
       },
@@ -36,7 +36,7 @@ describe('seedSystemRolesForOrg', () => {
   testWithFixture(
     'persists every system role for a fresh organization',
     async ({ deps, org }) => {
-      await seedSystemRolesForOrg(deps.KyselyPg, org.id);
+      await seedSystemRolesForOrg(deps.PrismaPg, org.id);
 
       const roles = await deps.KyselyPg.selectFrom('public.roles')
         .select('key')
@@ -51,10 +51,10 @@ describe('seedSystemRolesForOrg', () => {
   testWithFixture(
     'links a subsequently inserted admin user to the persisted admin role',
     async ({ deps, org }) => {
-      await seedSystemRolesForOrg(deps.KyselyPg, org.id);
+      await seedSystemRolesForOrg(deps.PrismaPg, org.id);
       const userId = uid();
       await kyselyUserInsert({
-        db: deps.KyselyPg,
+        db: deps.PrismaPg,
         id: userId,
         orgId: org.id,
         email: `${uid()}@example.com`,
@@ -84,7 +84,7 @@ describe('seedSystemRolesForOrg', () => {
   testWithFixture(
     'persists default metadata and permissions for each role',
     async ({ deps, org }) => {
-      await seedSystemRolesForOrg(deps.KyselyPg, org.id);
+      await seedSystemRolesForOrg(deps.PrismaPg, org.id);
 
       const roles = await deps.KyselyPg.selectFrom('public.roles')
         .select(['id', 'key', 'display_name', 'description', 'is_system'])
@@ -128,7 +128,7 @@ describe('seedSystemRolesForOrg', () => {
         .values({ role_id: admin.id, permission: 'MANAGE_ORG' })
         .execute();
 
-      await seedSystemRolesForOrg(deps.KyselyPg, org.id);
+      await seedSystemRolesForOrg(deps.PrismaPg, org.id);
 
       const roles = await deps.KyselyPg.selectFrom('public.roles')
         .select(['id', 'key', 'display_name', 'description'])
@@ -166,7 +166,7 @@ describe('seedSystemRolesForOrg', () => {
   );
 
   testWithFixture('is a no-op when invoked again', async ({ deps, org }) => {
-    await seedSystemRolesForOrg(deps.KyselyPg, org.id);
+    await seedSystemRolesForOrg(deps.PrismaPg, org.id);
     const readState = async () => ({
       roles: await deps.KyselyPg.selectFrom('public.roles')
         .selectAll()
@@ -183,7 +183,7 @@ describe('seedSystemRolesForOrg', () => {
     });
     const before = await readState();
 
-    await seedSystemRolesForOrg(deps.KyselyPg, org.id);
+    await seedSystemRolesForOrg(deps.PrismaPg, org.id);
 
     expect(await readState()).toEqual(before);
   });
@@ -193,13 +193,13 @@ describe('role persistence', () => {
   const testWithFixture = makeTransactionalTestWithFixture(async ({ deps }) => {
     const { org } = await createOrg(
       {
-        KyselyPg: deps.KyselyPg,
+        PrismaPg: deps.PrismaPg,
         ModerationConfigService: deps.ModerationConfigService,
         ApiKeyService: deps.ApiKeyService,
       },
       uid(),
     );
-    await seedSystemRolesForOrg(deps.KyselyPg, org.id);
+    await seedSystemRolesForOrg(deps.PrismaPg, org.id);
     return { org };
   });
 
@@ -234,7 +234,7 @@ describe('role persistence', () => {
         })
         .execute();
 
-      const roles = await kyselyListRolesForOrg(deps.KyselyPg, org.id);
+      const roles = await kyselyListRolesForOrg(deps.PrismaPg, org.id);
 
       expect(roles.map(({ key }) => key)).toEqual(Object.values(UserRole));
       expect(roles.every(({ id }) => typeof id === 'string')).toBe(true);
@@ -256,7 +256,7 @@ describe('role persistence', () => {
         rejectedByAdmin: boolean,
       ) =>
         kyselyUserInsert({
-          db: deps.KyselyPg,
+          db: deps.PrismaPg,
           id: uid(),
           orgId: org.id,
           email: `${uid()}@example.com`,
@@ -272,7 +272,7 @@ describe('role persistence', () => {
       await insertUser(UserRole.MODERATOR, false, false);
       await insertUser(UserRole.EXTERNAL_MODERATOR, true, true);
 
-      const roles = await kyselyListRolesForOrg(deps.KyselyPg, org.id);
+      const roles = await kyselyListRolesForOrg(deps.PrismaPg, org.id);
 
       expect(roles.find(({ key }) => key === UserRole.ADMIN)?.userCount).toBe(
         1,
@@ -291,7 +291,7 @@ describe('role persistence', () => {
     async ({ deps, org }) => {
       const userId = uid();
       await kyselyUserInsert({
-        db: deps.KyselyPg,
+        db: deps.PrismaPg,
         id: userId,
         orgId: org.id,
         email: `${uid()}@example.com`,
@@ -319,12 +319,12 @@ describe('role persistence', () => {
         .returning('id')
         .executeTakeFirstOrThrow();
 
-      const renamed = await kyselyRenameRole(deps.KyselyPg, {
+      const renamed = await kyselyRenameRole(deps.PrismaPg, {
         orgId: org.id,
         roleKey: UserRole.ADMIN,
         displayName: 'Organization owner',
       });
-      const updated = await kyselyUpdateRolePermissions(deps.KyselyPg, {
+      const updated = await kyselyUpdateRolePermissions(deps.PrismaPg, {
         orgId: org.id,
         roleKey: UserRole.ADMIN,
         permissions: [],

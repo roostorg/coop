@@ -1,88 +1,84 @@
-import { type Kysely, type Updateable } from 'kysely';
+import {
+  type Prisma,
+  type PrismaPgClient,
+} from '../../../storage/prisma/index.js';
 
-import { type ManualReviewToolServicePg } from '../dbTypes.js';
-
-type SettingsUpdate = Updateable<
-  Omit<
-    ManualReviewToolServicePg['manual_review_tool.manual_review_tool_settings'],
-    'org_id'
-  >
+type SettingsUpdate = Partial<
+  Omit<Prisma.manual_review_tool_settingsUncheckedCreateInput, 'org_id'>
 >;
 
+const defaultSettings = {
+  requires_policy_for_decisions: false,
+  mrt_requires_decision_reason_on_action: false,
+  mrt_requires_decision_reason_on_ignore: false,
+  hide_skip_button_for_non_admins: false,
+  preview_jobs_view_enabled: false,
+  ignore_callback_url: null,
+} satisfies SettingsUpdate;
+
 export default class ManualReviewToolSettings {
-  constructor(readonly pgQuery: Kysely<ManualReviewToolServicePg>) {}
+  constructor(readonly prisma: PrismaPgClient) {}
 
   async upsertDefaultSettings(opts: { orgId: string }) {
     const { orgId } = opts;
 
-    await this.pgQuery
-      .insertInto('manual_review_tool.manual_review_tool_settings')
-      .values({
-        org_id: orgId,
-        requires_policy_for_decisions: false,
-        mrt_requires_decision_reason_on_action: false,
-        mrt_requires_decision_reason_on_ignore: false,
-        hide_skip_button_for_non_admins: false,
-        preview_jobs_view_enabled: false,
-        ignore_callback_url: null,
-      })
-      .onConflict((oc) => oc.column('org_id').doNothing())
-      .execute();
+    await this.prisma.manual_review_tool_settings.createMany({
+      data: { org_id: orgId, ...defaultSettings },
+      skipDuplicates: true,
+    });
   }
 
   async getRequiresPolicyForDecisions(orgId: string) {
-    const requiresPolicyForDecisionsRow = await this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_tool_settings')
-      .select(['org_id', 'requires_policy_for_decisions'])
-      .where('org_id', '=', orgId)
-      .executeTakeFirst();
+    const requiresPolicyForDecisionsRow =
+      await this.prisma.manual_review_tool_settings.findUnique({
+        select: { org_id: true, requires_policy_for_decisions: true },
+        where: { org_id: orgId },
+      });
     return (
       requiresPolicyForDecisionsRow?.requires_policy_for_decisions ?? false
     );
   }
 
   async getRequiresDecisionReason(orgId: string) {
-    const decisionReasonRow = await this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_tool_settings')
-      .select(['org_id', 'mrt_requires_decision_reason_on_action'])
-      .where('org_id', '=', orgId)
-      .executeTakeFirst();
+    const decisionReasonRow =
+      await this.prisma.manual_review_tool_settings.findUnique({
+        select: { org_id: true, mrt_requires_decision_reason_on_action: true },
+        where: { org_id: orgId },
+      });
     return decisionReasonRow?.mrt_requires_decision_reason_on_action ?? false;
   }
 
   async getRequiresDecisionReasonOnIgnore(orgId: string) {
-    const decisionReasonRow = await this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_tool_settings')
-      .select(['org_id', 'mrt_requires_decision_reason_on_ignore'])
-      .where('org_id', '=', orgId)
-      .executeTakeFirst();
+    const decisionReasonRow =
+      await this.prisma.manual_review_tool_settings.findUnique({
+        select: { org_id: true, mrt_requires_decision_reason_on_ignore: true },
+        where: { org_id: orgId },
+      });
     return decisionReasonRow?.mrt_requires_decision_reason_on_ignore ?? false;
   }
 
   async getHideSkipButtonForNonAdmins(orgId: string) {
-    const hideSkipButtonRow = await this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_tool_settings')
-      .select(['org_id', 'hide_skip_button_for_non_admins'])
-      .where('org_id', '=', orgId)
-      .executeTakeFirst();
+    const hideSkipButtonRow =
+      await this.prisma.manual_review_tool_settings.findUnique({
+        select: { org_id: true, hide_skip_button_for_non_admins: true },
+        where: { org_id: orgId },
+      });
     return hideSkipButtonRow?.hide_skip_button_for_non_admins ?? false;
   }
 
   async getPreviewJobsViewEnabled(orgId: string) {
-    const row = await this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_tool_settings')
-      .select(['preview_jobs_view_enabled'])
-      .where('org_id', '=', orgId)
-      .executeTakeFirst();
+    const row = await this.prisma.manual_review_tool_settings.findUnique({
+      select: { preview_jobs_view_enabled: true },
+      where: { org_id: orgId },
+    });
     return row?.preview_jobs_view_enabled ?? false;
   }
 
   async getIgnoreCallbackUrl(orgId: string) {
-    const row = await this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_tool_settings')
-      .select(['ignore_callback_url'])
-      .where('org_id', '=', orgId)
-      .executeTakeFirst();
+    const row = await this.prisma.manual_review_tool_settings.findUnique({
+      select: { ignore_callback_url: true },
+      where: { org_id: orgId },
+    });
     return row?.ignore_callback_url ?? null;
   }
 
@@ -92,20 +88,11 @@ export default class ManualReviewToolSettings {
     orgId: string,
     changes: SettingsUpdate,
   ): Promise<void> {
-    await this.pgQuery
-      .insertInto('manual_review_tool.manual_review_tool_settings')
-      .values({
-        org_id: orgId,
-        requires_policy_for_decisions: false,
-        mrt_requires_decision_reason_on_action: false,
-        mrt_requires_decision_reason_on_ignore: false,
-        hide_skip_button_for_non_admins: false,
-        preview_jobs_view_enabled: false,
-        ignore_callback_url: null,
-        ...changes,
-      })
-      .onConflict((oc) => oc.column('org_id').doUpdateSet(changes))
-      .execute();
+    await this.prisma.manual_review_tool_settings.upsert({
+      where: { org_id: orgId },
+      create: { org_id: orgId, ...defaultSettings, ...changes },
+      update: changes,
+    });
   }
 
   async updateRequiresPolicyForDecisions(orgId: string, enabled: boolean) {

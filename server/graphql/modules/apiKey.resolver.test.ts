@@ -43,7 +43,7 @@ describe('API key GraphQL authorization', () => {
     async ({ deps, server }) => {
       const local = await createOrg(deps);
       const foreign = await createOrg(deps);
-      const { user } = await createUser(deps.KyselyPg, local.org.id, {
+      const { user } = await createUser(deps.PrismaPg, local.org.id, {
         approvedByAdmin: true,
         loginMethods: ['password'],
         password: 'Api-key-test-password',
@@ -119,7 +119,7 @@ describe('API key GraphQL authorization', () => {
             fc.asyncProperty(
               fc.subarray(unrelatedPermissions),
               async (permissions) => {
-                await kyselyUpdateRolePermissions(deps.KyselyPg, {
+                await kyselyUpdateRolePermissions(deps.PrismaPg, {
                   orgId: user.orgId,
                   roleKey: user.role,
                   permissions,
@@ -157,7 +157,7 @@ describe('API key GraphQL authorization', () => {
   testWithKeys(
     'MANAGE_ORG can check that an API key exists without revealing it',
     async ({ deps, user, session }) => {
-      await kyselyUpdateRolePermissions(deps.KyselyPg, {
+      await kyselyUpdateRolePermissions(deps.PrismaPg, {
         orgId: user.orgId,
         roleKey: user.role,
         permissions: [UserPermission.MANAGE_ORG],
@@ -177,7 +177,7 @@ describe('API key GraphQL authorization', () => {
   testWithKeys(
     'MANAGE_ORG rotates only the caller API key and returns the usable replacement',
     async ({ deps, local, foreign, user, session, snapshot }) => {
-      await kyselyUpdateRolePermissions(deps.KyselyPg, {
+      await kyselyUpdateRolePermissions(deps.PrismaPg, {
         orgId: user.orgId,
         roleKey: user.role,
         permissions: [UserPermission.MANAGE_ORG],
@@ -220,7 +220,7 @@ describe('API key GraphQL authorization', () => {
   testWithKeys(
     'MANAGE_ORG rotates only the caller persisted webhook signing key',
     async ({ deps, local, foreign, user, session, snapshot }) => {
-      await kyselyUpdateRolePermissions(deps.KyselyPg, {
+      await kyselyUpdateRolePermissions(deps.PrismaPg, {
         orgId: user.orgId,
         roleKey: user.role,
         permissions: [UserPermission.MANAGE_ORG],

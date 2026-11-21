@@ -1,8 +1,6 @@
 import { faker } from '@faker-js/faker';
-import { Kysely } from 'kysely';
 import { type UnionToIntersection } from 'type-fest';
 import { uid } from 'uid';
-import { vi } from 'vitest';
 
 import getBottle from '../../iocContainer/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
@@ -10,15 +8,10 @@ import createRule from '../../test/fixtureHelpers/createRule.js';
 import createUser from '../../test/fixtureHelpers/createUser.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
 import { type MockedServer } from '../../test/setupMockedServer.js';
-import {
-  makeMockPgDialect,
-  type MockPgExecute,
-} from '../../test/stubs/KyselyPg.js';
 import { makeTestWithFixture } from '../../test/utils.js';
 import { ErrorType } from '../../utils/errors.js';
-import { makeKyselyTransactionWithRetry } from '../../utils/kyselyTransactionWithRetry.js';
+import { makePrismaTransactionWithRetry } from '../../utils/prismaTransactionWithRetry.js';
 import { type Satisfies } from '../../utils/typescript-types.js';
-import { type ModerationConfigServicePg } from './dbTypes.js';
 import {
   RuleStatus,
   RuleType,
@@ -42,13 +35,13 @@ type ItemTypeMutationMethod =
 
 async function mutateItemTypeAndHiddenFields<T extends ItemTypeMutationMethod>(
   config: ModerationConfigService,
-  deps: Pick<TestDeps, 'KyselyPg' | 'ManualReviewToolService'>,
+  deps: Pick<TestDeps, 'PrismaPg' | 'ManualReviewToolService'>,
   orgId: string,
   method: T,
   input: Parameters<ModerationConfigService[T]>[1],
   hiddenFields: readonly string[],
 ) {
-  const item = await makeKyselyTransactionWithRetry(deps.KyselyPg)(
+  const item = await makePrismaTransactionWithRetry(deps.PrismaPg)(
     async (trx) => {
       const transactionConfig = config.forTransaction(trx);
       const review = deps.ManualReviewToolService.forTransaction(trx);
@@ -77,24 +70,25 @@ async function mutateItemTypeAndHiddenFields<T extends ItemTypeMutationMethod>(
 //
 // To test that the correct db is queried (i.e., replicas vs the primary), we
 // use two service instances, each with access only to the db we expect to be
-// hit; the other db is a kysely instance that throws if it's ever used.
+// hit; the other db is a client that throws if it's ever used.
 function makeSuts(primary: Sut, replica: Sut) {
-  const kyselyShouldBeUnused = new Kysely<ModerationConfigServicePg>({
-    dialect: makeMockPgDialect(
-      vi.fn<MockPgExecute>().mockImplementation(async () => {
-        throw new Error('Did not expect this kysely instance to be used!');
-      }),
-    ),
-  });
+  const prismaShouldBeUnused = new Proxy(
+    {},
+    {
+      get() {
+        throw new Error('Did not expect this prisma client to be used!');
+      },
+    },
+  ) as Sut;
 
   return {
     sutWithPrimary: new ModerationConfigService(
       primary,
-      kyselyShouldBeUnused,
+      prismaShouldBeUnused,
       async () => {},
     ),
     sutWithReadReplica: new ModerationConfigService(
-      kyselyShouldBeUnused,
+      prismaShouldBeUnused,
       replica,
       async () => {},
     ),
@@ -102,10 +96,10 @@ function makeSuts(primary: Sut, replica: Sut) {
 }
 
 async function setupOrg(deps: TestDeps) {
-  const suts = makeSuts(deps.KyselyPg, deps.KyselyPgReadReplica);
+  const suts = makeSuts(deps.PrismaPg, deps.PrismaPgReadReplica);
   const { org, defaultUserItemType } = await createOrg(
     {
-      KyselyPg: deps.KyselyPg,
+      PrismaPg: deps.PrismaPg,
       ModerationConfigService: deps.ModerationConfigService,
       ApiKeyService: deps.ApiKeyService,
     },
@@ -182,8 +176,8 @@ describe('ModerationConfigService', () => {
     const testWithRuleRow = makeTransactionalTestWithFixture(
       async ({ deps }) => {
         const base = await setupOrg(deps);
-        const { user } = await createUser(deps.KyselyPg, base.org.id);
-        const rule = await createRule(deps.KyselyPg, base.org.id, {
+        const { user } = await createUser(deps.PrismaPg, base.org.id);
+        const rule = await createRule(deps.PrismaPg, base.org.id, {
           creator: user,
           name: 'getRuleByIdAndOrg fixture rule',
           ruleType: RuleType.USER,
@@ -212,7 +206,7 @@ describe('ModerationConfigService', () => {
       async ({ sutWithPrimary, deps, ruleId }) => {
         const { org: otherOrg } = await createOrg(
           {
-            KyselyPg: deps.KyselyPg,
+            PrismaPg: deps.PrismaPg,
             ModerationConfigService: deps.ModerationConfigService,
             ApiKeyService: deps.ApiKeyService,
           },
@@ -279,7 +273,7 @@ describe('ModerationConfigService', () => {
 
           const { org: otherOrg } = await createOrg(
             {
-              KyselyPg: deps.KyselyPg,
+              PrismaPg: deps.PrismaPg,
               ModerationConfigService: deps.ModerationConfigService,
               ApiKeyService: deps.ApiKeyService,
             },
@@ -466,7 +460,7 @@ describe('ModerationConfigService', () => {
           });
           const { org: otherOrg } = await createOrg(
             {
-              KyselyPg: deps.KyselyPg,
+              PrismaPg: deps.PrismaPg,
               ModerationConfigService: deps.ModerationConfigService,
               ApiKeyService: deps.ApiKeyService,
             },
@@ -525,7 +519,7 @@ describe('ModerationConfigService', () => {
             schemaFieldRoles: {},
           });
           await expect(
-            makeKyselyTransactionWithRetry(deps.KyselyPg)(async (trx) => {
+            makePrismaTransactionWithRetry(deps.PrismaPg)(async (trx) => {
               const transactionConfig = sutWithPrimary.forTransaction(trx);
               const review = deps.ManualReviewToolService.forTransaction(trx);
               try {
@@ -888,7 +882,7 @@ describe('ModerationConfigService', () => {
         testWithOrg(
           'should query from the proper db',
           async ({ sutWithPrimary, sutWithReadReplica, org }) => {
-            // These tests will throw if the wrong db is used (see kyselyShouldBeUnused)
+            // These tests will throw if the wrong db is used (see prismaShouldBeUnused)
             await sutWithPrimary.getItemTypesForAction({
               orgId: org.id,
               actionId: 'someId',
@@ -1363,7 +1357,7 @@ describe('ModerationConfigService', () => {
           async ({ sutWithPrimary, deps, action }) => {
             const { org: otherOrg } = await createOrg(
               {
-                KyselyPg: deps.KyselyPg,
+                PrismaPg: deps.PrismaPg,
                 ModerationConfigService: deps.ModerationConfigService,
                 ApiKeyService: deps.ApiKeyService,
               },
@@ -1650,7 +1644,7 @@ describe('ModerationConfigService', () => {
           async ({ sutWithPrimary, deps, org, action }) => {
             const { org: otherOrg } = await createOrg(
               {
-                KyselyPg: deps.KyselyPg,
+                PrismaPg: deps.PrismaPg,
                 ModerationConfigService: deps.ModerationConfigService,
                 ApiKeyService: deps.ApiKeyService,
               },
@@ -1678,7 +1672,7 @@ describe('ModerationConfigService', () => {
               name: faker.string.alphanumeric(16),
               schemaFieldRoles: { displayName: 'fakeField' },
             });
-            const rule = await createRule(deps.KyselyPg, org.id);
+            const rule = await createRule(deps.PrismaPg, org.id);
 
             await deps.KyselyPg.insertInto('public.actions_and_item_types')
               .values({ action_id: action.id, item_type_id: itemType.id })
@@ -1808,7 +1802,7 @@ describe('ModerationConfigService', () => {
           // ANY(...) predicate alone has no tenant scope).
           const { org: otherOrg } = await createOrg(
             {
-              KyselyPg: deps.KyselyPg,
+              PrismaPg: deps.PrismaPg,
               ModerationConfigService: deps.ModerationConfigService,
               ApiKeyService: deps.ApiKeyService,
             },
@@ -1833,7 +1827,7 @@ describe('ModerationConfigService', () => {
           const base = await setupOrg(deps);
           const { sutWithPrimary, org } = base;
 
-          const rule = await createRule(deps.KyselyPg, org.id);
+          const rule = await createRule(deps.PrismaPg, org.id);
           const action = await sutWithPrimary.createAction(org.id, {
             name: faker.string.alphanumeric(16),
             description: null,
@@ -1866,7 +1860,7 @@ describe('ModerationConfigService', () => {
         async ({ sutWithPrimary, deps, rule }) => {
           const { org: otherOrg } = await createOrg(
             {
-              KyselyPg: deps.KyselyPg,
+              PrismaPg: deps.PrismaPg,
               ModerationConfigService: deps.ModerationConfigService,
               ApiKeyService: deps.ApiKeyService,
             },
@@ -1911,7 +1905,7 @@ describe('ModerationConfigService', () => {
       const testWithUserAndOrg = makeTransactionalTestWithFixture(
         async ({ deps }) => {
           const base = await setupOrg(deps);
-          const { user } = await createUser(deps.KyselyPg, base.org.id);
+          const { user } = await createUser(deps.PrismaPg, base.org.id);
           return { ...base, user, deps };
         },
       );
@@ -2084,7 +2078,7 @@ describe('ModerationConfigService', () => {
         async ({ sutWithPrimary, org, user, deps }) => {
           const other = await setupOrg(deps);
           const { user: otherUser } = await createUser(
-            deps.KyselyPg,
+            deps.PrismaPg,
             other.org.id,
           );
           const otherParent = await other.sutWithPrimary.createPolicy({
@@ -2523,13 +2517,13 @@ describe('ModerationConfigService', () => {
     const testWithHistoricalItemType = makeTestWithFixture(async () => {
       const { container } = await getBottle();
       const sut = new ModerationConfigService(
-        container.KyselyPg,
-        container.KyselyPgReadReplica,
+        container.PrismaPg,
+        container.PrismaPgReadReplica,
         async () => {},
       );
       const { org, cleanup: orgCleanup } = await createOrg(
         {
-          KyselyPg: container.KyselyPg,
+          PrismaPg: container.PrismaPg,
           ModerationConfigService: container.ModerationConfigService,
           ApiKeyService: container.ApiKeyService,
         },
@@ -2548,6 +2542,10 @@ describe('ModerationConfigService', () => {
         itemType,
         async cleanup() {
           await orgCleanup();
+          await Promise.all([
+            container.PrismaPg.$disconnect(),
+            container.PrismaPgReadReplica.$disconnect(),
+          ]);
           await Promise.all([
             container.KyselyPg.destroy(),
             container.KyselyPgReadReplica.destroy(),

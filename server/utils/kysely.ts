@@ -6,6 +6,7 @@ import {
 } from 'kysely';
 import { type IfAny, type Simplify, type UnionToIntersection } from 'type-fest';
 
+import { safeGet } from './misc.js';
 import { type PickEach } from './typescript-types.js';
 
 export const isUniqueViolationError = isPgErrorWithCode.bind(null, '23505');
@@ -15,11 +16,61 @@ export const isCheckViolationError = isPgErrorWithCode.bind(null, '23514');
 
 // See https://github.com/postgres/postgres/blob/eb81e8e7902f63c4d292638edc8b7e92b766a692/src/backend/utils/errcodes.txt#L227
 function isPgErrorWithCode(code: string, error: unknown) {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    (error as { code?: unknown }).code === code
-  );
+  return getPgErrorDetails(error)?.code === code;
+}
+
+/**
+ * The SQLSTATE and constraint behind a Postgres error, whether it reached us
+ * raw from `pg` (Kysely) or wrapped in a Prisma `PrismaClientKnownRequestError`
+ * (whose driver adapter keeps the original under `meta.driverAdapterError`).
+ */
+export function getPgErrorDetails(
+  error: unknown,
+): { code: string; constraint?: string; table?: string } | undefined {
+  if (typeof error !== 'object' || error === null) {
+    return undefined;
+  }
+  // A query error arrives wrapped in PrismaClientKnownRequestError; an error
+  // raised by COMMIT itself (e.g. a DEFERRABLE constraint) arrives as the bare
+  // DriverAdapterError, with the same `cause` shape.
+  const cause =
+    typeof safeGet(error, ['cause', 'originalCode']) === 'string'
+      ? safeGet(error, ['cause'])
+      : safeGet(error, ['meta', 'driverAdapterError', 'cause']);
+  if (typeof cause === 'object' && cause !== null) {
+    const { originalCode, constraint, table, originalMessage } = cause as {
+      originalCode?: unknown;
+      constraint?: { index?: unknown };
+      table?: unknown;
+      originalMessage?: unknown;
+    };
+    if (typeof originalCode !== 'string') {
+      return undefined;
+    }
+    const constraintName =
+      typeof constraint?.index === 'string'
+        ? constraint.index
+        : typeof originalMessage === 'string'
+          ? /constraint "([^"]+)"/.exec(originalMessage)?.[1]
+          : undefined;
+    return {
+      code: originalCode,
+      ...(constraintName !== undefined ? { constraint: constraintName } : {}),
+      ...(typeof table === 'string' ? { table } : {}),
+    };
+  }
+  const { code, constraint, table } = error as {
+    code?: unknown;
+    constraint?: unknown;
+    table?: unknown;
+  };
+  return typeof code === 'string'
+    ? {
+        code,
+        ...(typeof constraint === 'string' ? { constraint } : {}),
+        ...(typeof table === 'string' ? { table } : {}),
+      }
+    : undefined;
 }
 
 type SelectionToAliasMap<T extends string> = Simplify<

@@ -2,12 +2,6 @@
 
 import { makeEnumLike } from '@roostorg/coop-types';
 import {
-  sql,
-  type CaseWhenBuilder,
-  type Kysely,
-  type Transaction,
-} from 'kysely';
-import {
   type ReadonlyDeep,
   type ReadonlyObjectDeep,
 } from 'type-fest/source/readonly-deep.js';
@@ -16,6 +10,12 @@ import { v1 as uuidv1 } from 'uuid';
 import { type Dependencies } from '../../../iocContainer/index.js';
 import { type ConsumerDirectives } from '../../../lib/cache/index.js';
 import { type RuleExecutionResult } from '../../../rule_engine/RuleEvaluator.js';
+import {
+  assertNonEmptyIdList,
+  Prisma,
+  type PrismaPgClient,
+  type PrismaPgQueryable,
+} from '../../../storage/prisma/index.js';
 import { cached } from '../../../utils/caching.js';
 import { moveArrayElement } from '../../../utils/collections.js';
 import { getSourceType } from '../../../utils/correlationIds.js';
@@ -26,10 +26,14 @@ import {
 } from '../../../utils/errors.js';
 import { equalLengthZip } from '../../../utils/fp-helpers.js';
 import {
-  makeKyselyTransactionWithRetry,
-  type KyselyTransactionWithRetry,
-} from '../../../utils/kyselyTransactionWithRetry.js';
+  getPgErrorDetails,
+  isUniqueViolationError,
+} from '../../../utils/kysely.js';
 import { __throw, removeUndefinedKeys } from '../../../utils/misc.js';
+import {
+  makePrismaTransactionWithRetry,
+  type PrismaTransactionWithRetry,
+} from '../../../utils/prismaTransactionWithRetry.js';
 import { replaceEmptyStringWithNull } from '../../../utils/string.js';
 import {
   type NonEmptyArray,
@@ -40,7 +44,6 @@ import { type RuleExecutionCorrelationId } from '../../analyticsLoggers/ruleExec
 import { type ItemSubmission } from '../../itemProcessingService/index.js';
 import { itemSubmissionWithTypeIdentifierToItemSubmission } from '../../itemProcessingService/makeItemSubmissionWithTypeIdentifier.js';
 import { type ConditionSet } from '../../moderationConfigService/index.js';
-import { type ManualReviewToolServicePg } from '../dbTypes.js';
 import { type ManualReviewJobPayload } from '../manualReviewToolService.js';
 import type QueueOperations from './QueueOperations.js';
 
@@ -94,23 +97,78 @@ export type ReorderRoutingRulesInput = {
   isAppealsRule?: boolean;
 };
 
-const routingRuleSelection = [
-  'id',
-  'org_id as orgId',
-  'creator_id as creatorId',
-  'name',
-  'description',
-  'status',
-  'condition_set as conditionSet',
-  'destination_queue_id as destinationQueueId',
-] as const;
+export const routingRuleSelect = {
+  id: true,
+  org_id: true,
+  creator_id: true,
+  name: true,
+  description: true,
+  status: true,
+  condition_set: true,
+  destination_queue_id: true,
+} as const;
+
+export type RoutingRuleRow = {
+  id: string;
+  org_id: string;
+  creator_id: string;
+  name: string;
+  description: string | null;
+  status: RoutingRuleStatus;
+  condition_set: Prisma.JsonValue;
+  destination_queue_id: string;
+};
+
+/**
+ * Shared with AppealsJobRouting. `condition_set` comes back from Prisma as
+ * untyped JSON; Kysely's table type declared it as ConditionSet.
+ */
+export function toRoutingRuleWithoutItemTypes(row: RoutingRuleRow) {
+  return {
+    id: row.id,
+    orgId: row.org_id,
+    creatorId: row.creator_id,
+    name: row.name,
+    description: row.description,
+    status: row.status,
+    conditionSet: row.condition_set as unknown as ConditionSet,
+    destinationQueueId: row.destination_queue_id,
+  };
+}
+
+/** A current rule version with its item types, as the routing read returns it. */
+export type RoutingRuleVersionRow = {
+  id: string;
+  orgId: string;
+  creatorId: string;
+  name: string;
+  description: string | null;
+  status: RoutingRuleStatus;
+  conditionSet: ConditionSet;
+  destinationQueueId: string;
+  itemTypeIds: string[];
+  // The matview column is timestamptz, so the driver returns a Date at
+  // runtime (as it did under Kysely, whose table type also claimed string).
+  version: string;
+};
+
+/**
+ * Thrown inside the update transaction when no rule matched; stands in for
+ * Kysely's NoResultError from executeTakeFirstOrThrow.
+ */
+export class RoutingRuleNoResultError extends Error {
+  constructor() {
+    super('no result');
+    this.name = 'RoutingRuleNoResultError';
+  }
+}
 
 export default class JobRouting {
   private readonly routingRulesCache;
-  private readonly transactionWithRetry: KyselyTransactionWithRetry<ManualReviewToolServicePg>;
+  private readonly transactionWithRetry: PrismaTransactionWithRetry;
 
   constructor(
-    private readonly pgQuery: Kysely<ManualReviewToolServicePg>,
+    private readonly prisma: PrismaPgClient,
     private readonly queueOps: QueueOperations,
     private readonly moderationConfigService: Dependencies['ModerationConfigService'],
     private readonly ruleEvaluator: Dependencies['RuleEvaluator'],
@@ -118,10 +176,10 @@ export default class JobRouting {
   ) {
     this.routingRulesCache = cached({
       producer: async (orgId: string) =>
-        this.#getRoutingRulesBypassCache(orgId, pgQuery),
+        this.#getRoutingRulesBypassCache(orgId, prisma),
       directives: { freshUntilAge: 15, maxStale: [0, 2, 2] },
     });
-    this.transactionWithRetry = makeKyselyTransactionWithRetry(this.pgQuery);
+    this.transactionWithRetry = makePrismaTransactionWithRetry(this.prisma);
   }
 
   async getRoutingRules(opts: {
@@ -151,38 +209,36 @@ export default class JobRouting {
     await this.queueOps.checkQueueExists(orgId, destinationQueueId);
 
     return this.transactionWithRetry(async (trx) => {
-      const routingRule = await trx
-        .insertInto('manual_review_tool.routing_rules')
-        .values(({ selectFrom }) => ({
-          id: uuidv1(),
-          org_id: orgId,
-          name,
-          description: replaceEmptyStringWithNull(description),
-          status,
-          condition_set: conditionSet,
-          destination_queue_id: destinationQueueId,
-          creator_id: creatorId,
-          sequence_number: selectFrom('manual_review_tool.routing_rules')
-            .where('org_id', '=', orgId)
-            .select(
-              sql<number>`coalesce(max(sequence_number), 0) + 1`.as(
-                'sequence_number',
-              ),
-            ),
-        }))
-        .returning(routingRuleSelection)
-        .executeTakeFirstOrThrow();
+      // Kysely computed this in an INSERT ... (SELECT max(...)) subquery;
+      // Prisma's create can't embed a subquery, so it's a separate read in
+      // the same transaction (same race window under READ COMMITTED).
+      const { _max } = await trx.routing_rules.aggregate({
+        where: { org_id: orgId },
+        _max: { sequence_number: true },
+      });
+      const routingRule = toRoutingRuleWithoutItemTypes(
+        await trx.routing_rules.create({
+          select: routingRuleSelect,
+          data: {
+            id: uuidv1(),
+            org_id: orgId,
+            name,
+            description: replaceEmptyStringWithNull(description),
+            status,
+            condition_set: conditionSet,
+            destination_queue_id: destinationQueueId,
+            creator_id: creatorId,
+            sequence_number: (_max.sequence_number ?? 0) + 1,
+          },
+        }),
+      );
 
-      await trx
-        .insertInto('manual_review_tool.routing_rules_to_item_types')
-        .values(
-          itemTypeIds.map((itemTypeId) => ({
-            routing_rule_id: routingRule.id,
-            item_type_id: itemTypeId,
-          })),
-        )
-        .returning('item_type_id as itemTypeId')
-        .execute();
+      await trx.routing_rules_to_item_types.createMany({
+        data: itemTypeIds.map((itemTypeId) => ({
+          routing_rule_id: routingRule.id,
+          item_type_id: itemTypeId,
+        })),
+      });
 
       if (sequenceNumber) {
         await this.#reorderOneRoutingRule(
@@ -232,47 +288,37 @@ export default class JobRouting {
     }
 
     return this.transactionWithRetry(async (trx) => {
-      const updatedRoutingRule = await trx
-        .updateTable('manual_review_tool.routing_rules')
-        .set(
-          removeUndefinedKeys({
-            name,
-            description: replaceEmptyStringWithNull(description),
-            status,
-            condition_set: conditionSet,
-            destination_queue_id: destinationQueueId,
-          }),
-        )
-        .where('id', '=', id)
-        .where('org_id', '=', orgId)
-        .returning(routingRuleSelection)
-        .executeTakeFirstOrThrow();
+      const [updatedRow] = (await trx.routing_rules.updateManyAndReturn({
+        select: routingRuleSelect,
+        where: { id, org_id: orgId },
+        data: removeUndefinedKeys({
+          name,
+          description: replaceEmptyStringWithNull(description),
+          status,
+          condition_set: conditionSet,
+          destination_queue_id: destinationQueueId,
+        }),
+      })) as (RoutingRuleRow | undefined)[];
+      if (updatedRow === undefined) {
+        throw new RoutingRuleNoResultError();
+      }
+      const updatedRoutingRule = toRoutingRuleWithoutItemTypes(updatedRow);
 
       if (itemTypeIds) {
+        assertNonEmptyIdList('itemTypeIds', itemTypeIds);
         // delete item types that will no longer be used
-        await trx
-          .deleteFrom('manual_review_tool.routing_rules_to_item_types')
-          .where(({ eb, and }) =>
-            and([
-              eb('routing_rule_id', '=', id),
-              eb('item_type_id', 'not in', itemTypeIds),
-            ]),
-          )
-          .execute();
+        await trx.routing_rules_to_item_types.deleteMany({
+          where: { routing_rule_id: id, item_type_id: { notIn: itemTypeIds } },
+        });
 
         // insert new item types, ignore if they're already there
-        await trx
-          .insertInto('manual_review_tool.routing_rules_to_item_types')
-          .values(
-            itemTypeIds.map((itemTypeId) => ({
-              routing_rule_id: id,
-              item_type_id: itemTypeId,
-            })),
-          )
-          .onConflict((oc) =>
-            oc.columns(['routing_rule_id', 'item_type_id']).doNothing(),
-          )
-          .execute();
+        await trx.routing_rules_to_item_types.createMany({
+          data: itemTypeIds.map((itemTypeId) => ({
+            routing_rule_id: id,
+            item_type_id: itemTypeId,
+          })),
+          skipDuplicates: true,
+        });
       }
 
       if (sequenceNumber) {
@@ -320,31 +366,24 @@ export default class JobRouting {
   }): Promise<boolean> {
     const { id, orgId } = input;
     const result = await this.transactionWithRetry(async (trx) =>
-      trx
-        .deleteFrom('manual_review_tool.routing_rules')
-        .where('id', '=', id)
-        .where('org_id', '=', orgId)
-        .executeTakeFirst(),
+      trx.routing_rules.deleteMany({ where: { id, org_id: orgId } }),
     );
-    return result.numDeletedRows === 1n;
+    return result.count === 1;
   }
 
   async reorderRoutingRules(
     input: ReorderRoutingRulesInput,
-    db:
-      | Transaction<ManualReviewToolServicePg>
-      | Kysely<ManualReviewToolServicePg> = this.pgQuery,
+    db: PrismaPgQueryable = this.prisma,
   ) {
     // get existing rules in any order
-    const rules = await db
-      .selectFrom('manual_review_tool.routing_rules')
-      .select(['id', 'sequence_number as sequenceNumber'])
-      .where('org_id', '=', input.orgId)
-      .execute();
+    const rules = await db.routing_rules.findMany({
+      select: { id: true, sequence_number: true },
+      where: { org_id: input.orgId },
+    });
 
     // assign new indices to old indices
     const sequenceMapping = rules.map((rule) => ({
-      old: rule.sequenceNumber,
+      old: rule.sequence_number,
       new: input.order.indexOf(rule.id),
     }));
 
@@ -352,32 +391,22 @@ export default class JobRouting {
     // there will be a unique sequence_number constraint violation,
     // even despite it being marked as `deferrable initially deferred`.
     // As an added benefit, the CASE WHEN ... END query is also faster.
-    await db
-      .updateTable('manual_review_tool.routing_rules')
-      .set((eb) => ({
-        sequence_number: sequenceMapping
-          .reduce(
-            (acc, seqChange) =>
-              acc
-                .when('sequence_number', '=', seqChange.old)
-                .then(seqChange.new),
-            // .case() is of type CaseBuilder, but .case().when().then() is of
-            // type CaseWhenBuilder, so we either have to set the accumulator
-            // to .case.when().then() and slice the array of changes to skip
-            // step 1, or cast the accumulator to CaseWhenBuilder. The latter
-            // seems cleaner.
-            eb.case() as unknown as CaseWhenBuilder<
-              ManualReviewToolServicePg,
-              'manual_review_tool.routing_rules',
-              unknown,
-              number
-            >,
-          )
-          .else(eb.ref('sequence_number'))
-          .end(),
-      }))
-      .where('org_id', '=', input.orgId)
-      .execute();
+    // An org with no rules has nothing to renumber (Kysely emitted an invalid
+    // `CASE ELSE ... END` here).
+    if (sequenceMapping.length > 0) {
+      // prisma-raw: CASE expression in UPDATE SET
+      await db.$executeRaw(Prisma.sql`
+        UPDATE manual_review_tool.routing_rules
+        SET sequence_number = CASE ${Prisma.join(
+          sequenceMapping.map(
+            (seqChange) =>
+              Prisma.sql`WHEN sequence_number = ${seqChange.old}::int THEN ${seqChange.new}::int`,
+          ),
+          ' ',
+        )} ELSE sequence_number END
+        WHERE org_id = ${input.orgId}
+      `);
+    }
 
     // Reuse the existing getRoutingRules function to get the rules in the new
     // order. Alternatively, we could have had a 'returning' clause on the
@@ -390,17 +419,14 @@ export default class JobRouting {
 
   async #getRoutingRulesOrder(
     orgId: string,
-    db:
-      | Transaction<ManualReviewToolServicePg>
-      | Kysely<ManualReviewToolServicePg> = this.pgQuery,
+    db: PrismaPgQueryable = this.prisma,
   ) {
     return (
-      await db
-        .selectFrom('manual_review_tool.routing_rules')
-        .select(['id'])
-        .where('org_id', '=', orgId)
-        .orderBy('sequence_number', 'asc')
-        .execute()
+      await db.routing_rules.findMany({
+        select: { id: true },
+        where: { org_id: orgId },
+        orderBy: { sequence_number: 'asc' },
+      })
     ).map((rule) => rule.id);
   }
 
@@ -408,9 +434,7 @@ export default class JobRouting {
     orgId: string,
     routingRuleId: string,
     newSequenceNumber: number,
-    db:
-      | Transaction<ManualReviewToolServicePg>
-      | Kysely<ManualReviewToolServicePg> = this.pgQuery,
+    db: PrismaPgQueryable = this.prisma,
   ) {
     const currentOrder = await this.#getRoutingRulesOrder(orgId, db);
 
@@ -445,17 +469,14 @@ export default class JobRouting {
    */
   async #getItemTypeIdsForRoutingRule(
     routingRuleId: string,
-    db:
-      | Transaction<ManualReviewToolServicePg>
-      | Kysely<ManualReviewToolServicePg> = this.pgQuery,
+    db: PrismaPgQueryable = this.prisma,
   ) {
-    const results = await db
-      .selectFrom('manual_review_tool.routing_rules_to_item_types')
-      .select('item_type_id as itemTypeId')
-      .where('routing_rule_id', '=', routingRuleId)
-      .execute();
+    const results = await db.routing_rules_to_item_types.findMany({
+      select: { item_type_id: true },
+      where: { routing_rule_id: routingRuleId },
+    });
 
-    return results.map((row) => row.itemTypeId);
+    return results.map((row) => row.item_type_id);
   }
 
   /**
@@ -584,42 +605,38 @@ export default class JobRouting {
     );
   }
 
-  async #getRoutingRulesBypassCache(
-    orgId: string,
-    db:
-      | Transaction<ManualReviewToolServicePg>
-      | Kysely<ManualReviewToolServicePg>,
-  ) {
-    return db
-      .selectFrom('manual_review_tool.routing_rule_versions as routing_rules')
-      .innerJoin(
-        'manual_review_tool.routing_rules_to_item_types as rules_to_item_types',
-        'routing_rules.id',
-        'rules_to_item_types.routing_rule_id',
-      )
-      .where('routing_rules.org_id', '=', orgId)
-      .where('routing_rules.is_current', '=', true)
-      .select([
-        ...routingRuleSelection,
-        sql<string[]>`json_agg(rules_to_item_types.item_type_id)`.as(
-          'itemTypeIds',
-        ),
-        'version',
-      ])
-      .groupBy([
-        'routing_rules.id',
-        'routing_rules.org_id',
-        'routing_rules.creator_id',
-        'routing_rules.name',
-        'routing_rules.description',
-        'routing_rules.status',
-        'routing_rules.condition_set',
-        'routing_rules.destination_queue_id',
-        'routing_rules.version',
-        'routing_rules.sequence_number',
-      ])
-      .orderBy('routing_rules.sequence_number')
-      .execute();
+  async #getRoutingRulesBypassCache(orgId: string, db: PrismaPgQueryable) {
+    // prisma-raw: json_agg aggregate over a matview join (views have no relations)
+    return db.$queryRaw<RoutingRuleVersionRow[]>(Prisma.sql`
+      SELECT
+        routing_rules.id,
+        routing_rules.org_id AS "orgId",
+        routing_rules.creator_id AS "creatorId",
+        routing_rules.name,
+        routing_rules.description,
+        routing_rules.status::text AS status,
+        routing_rules.condition_set AS "conditionSet",
+        routing_rules.destination_queue_id AS "destinationQueueId",
+        json_agg(rules_to_item_types.item_type_id) AS "itemTypeIds",
+        routing_rules.version
+      FROM manual_review_tool.routing_rule_versions AS routing_rules
+      INNER JOIN manual_review_tool.routing_rules_to_item_types AS rules_to_item_types
+        ON routing_rules.id = rules_to_item_types.routing_rule_id
+      WHERE routing_rules.org_id = ${orgId}
+        AND routing_rules.is_current = true
+      GROUP BY
+        routing_rules.id,
+        routing_rules.org_id,
+        routing_rules.creator_id,
+        routing_rules.name,
+        routing_rules.description,
+        routing_rules.status,
+        routing_rules.condition_set,
+        routing_rules.destination_queue_id,
+        routing_rules.version,
+        routing_rules.sequence_number
+      ORDER BY routing_rules.sequence_number
+    `);
   }
 
   async close() {
@@ -634,15 +651,13 @@ export type RoutingRuleErrorType =
 
 function isRoutingRuleNameExistsError(error: unknown) {
   return (
-    error instanceof Error &&
-    error.message.includes(
-      'duplicate key value violates unique constraint "routing_rules_org_id_name_key"',
-    )
+    isUniqueViolationError(error) &&
+    getPgErrorDetails(error)?.constraint === 'routing_rules_org_id_name_key'
   );
 }
 
-function isRoutingRuleNotFoundError(error: unknown) {
-  return error instanceof Error && error.message.includes('no result');
+export function isRoutingRuleNotFoundError(error: unknown) {
+  return error instanceof RoutingRuleNoResultError;
 }
 
 export const makeRoutingRuleNameExistsError = (data: ErrorInstanceData) =>

@@ -26,7 +26,7 @@ describe('QueueOperations job priorities', () => {
 
       const { org, cleanup: orgCleanup } = await createOrg(
         {
-          KyselyPg: container.KyselyPg,
+          PrismaPg: container.PrismaPg,
           ModerationConfigService: container.ModerationConfigService,
           ApiKeyService: container.ApiKeyService,
         },
@@ -34,7 +34,7 @@ describe('QueueOperations job priorities', () => {
       );
 
       const { user, cleanup: userCleanup } = await createUser(
-        container.KyselyPg,
+        container.PrismaPg,
         org.id,
       );
 

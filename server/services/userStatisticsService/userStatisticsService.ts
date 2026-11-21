@@ -8,12 +8,10 @@ import { type ReadonlyDeep } from 'type-fest';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
+import { type PrismaPgClient } from '../../storage/prisma/index.js';
 import { type PolicyActionPenalties } from '../policyActionPenalties.js';
 import { initialUserScore, type UserScore } from './computeUserScore.js';
-import {
-  type UserStatisticsServicePg,
-  type UserStatisticsServiceWarehouse,
-} from './dbTypes.js';
+import { type UserStatisticsServiceWarehouse } from './dbTypes.js';
 import {
   makeFetchUserActionStatistics,
   type UserActionStatistics,
@@ -37,8 +35,8 @@ import {
 // exported here but is _not_ exported from index.js, does make those arguments
 // customizable, so that we can replace them with mocks in the tests.
 function makeUserStatisticsService(
-  pgQuery: Kysely<UserStatisticsServicePg>,
-  pgQueryReplica: Kysely<UserStatisticsServicePg>,
+  pgQuery: PrismaPgClient,
+  pgQueryReplica: PrismaPgClient,
   dialect: Dependencies['DataWarehouseDialect'],
   _tracer: Dependencies['Tracer'],
 ) {
@@ -54,8 +52,8 @@ function makeUserStatisticsService(
 }
 
 export function internalMakeUserStatisticsService(
-  _pgQuery: Kysely<UserStatisticsServicePg>,
-  pgQueryReplica: Kysely<UserStatisticsServicePg>,
+  _pgQuery: PrismaPgClient,
+  pgQueryReplica: PrismaPgClient,
   warehouseQuery: Kysely<UserStatisticsServiceWarehouse>,
   _fetchUserActionStatistics: ReturnType<typeof makeFetchUserActionStatistics>,
   _fetchUserSubmissionStatistics: ReturnType<
@@ -68,13 +66,14 @@ export function internalMakeUserStatisticsService(
      * table that stores recent (but not necessarily fully up-to-date) scores.
      */
     async getUserScore(orgId: string, userItemIdentifier: ItemIdentifier) {
-      const { score } = (await pgQueryReplica
-        .selectFrom('user_statistics_service.user_scores')
-        .select('score')
-        .where('org_id', '=', orgId)
-        .where('user_type_id', '=', userItemIdentifier.typeId)
-        .where('user_id', '=', userItemIdentifier.id)
-        .executeTakeFirst()) ?? { score: initialUserScore };
+      const { score } = (await pgQueryReplica.user_scores.findFirst({
+        select: { score: true },
+        where: {
+          org_id: orgId,
+          user_type_id: userItemIdentifier.typeId,
+          user_id: userItemIdentifier.id,
+        },
+      })) ?? { score: initialUserScore };
 
       return score as UserScore;
     },
@@ -93,18 +92,18 @@ export function internalMakeUserStatisticsService(
       for (let i = 0; i < opts.users.length; i += CHUNK) {
         const chunk = opts.users.slice(i, i + CHUNK);
         if (chunk.length === 0) continue;
-        const rows = await pgQueryReplica
-          .selectFrom('user_statistics_service.user_scores')
-          .select(['user_type_id', 'user_id', 'score'])
-          .where('org_id', '=', opts.orgId)
-          .where((eb) =>
-            eb(
-              eb.refTuple('user_type_id', 'user_id'),
-              'in',
-              chunk.map((user) => eb.tuple(user.typeId, user.id)),
-            ),
-          )
-          .execute();
+        // Prisma has no row-value `IN`; an OR of (type, id) pairs is
+        // equivalent.
+        const rows = await pgQueryReplica.user_scores.findMany({
+          select: { user_type_id: true, user_id: true, score: true },
+          where: {
+            org_id: opts.orgId,
+            OR: chunk.map((user) => ({
+              user_type_id: user.typeId,
+              user_id: user.id,
+            })),
+          },
+        });
         for (const row of rows) {
           result.set(
             `${row.user_type_id}\x00${row.user_id}`,
@@ -177,7 +176,7 @@ export type UserStatisticsService = ReturnType<
 >;
 
 export default inject(
-  ['KyselyPg', 'KyselyPgReadReplica', 'DataWarehouseDialect', 'Tracer'],
+  ['PrismaPg', 'PrismaPgReadReplica', 'DataWarehouseDialect', 'Tracer'],
   makeUserStatisticsService,
 );
 

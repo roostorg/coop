@@ -38,14 +38,14 @@ describe('QueueOperations', () => {
     makeTransactionalTestWithFixture(async ({ deps }) => {
       const { org } = await createOrg(
         {
-          KyselyPg: deps.KyselyPg,
+          PrismaPg: deps.PrismaPg,
           ModerationConfigService: deps.ModerationConfigService,
           ApiKeyService: deps.ApiKeyService,
         },
         uid(),
       );
 
-      const { user } = await createUser(deps.KyselyPg, org.id);
+      const { user } = await createUser(deps.PrismaPg, org.id);
       const { itemTypes } = await createContentItemTypes({
         moderationConfigService: deps.ModerationConfigService,
         orgId: org.id,
@@ -79,7 +79,7 @@ describe('QueueOperations', () => {
         user,
         actions,
         queue,
-        kyselyPg: deps.KyselyPg,
+        prisma: deps.PrismaPg,
         mrtService: deps.ManualReviewToolService,
       };
     });
@@ -194,7 +194,7 @@ describe('QueueOperations', () => {
   testWithQueueAndActions()(
     'getReviewableQueuesForUser excludes a queue the user is not a member of',
     async ({ org, queue, mrtService, deps }) => {
-      const { user: outsider } = await createUser(deps.KyselyPg, org.id);
+      const { user: outsider } = await createUser(deps.PrismaPg, org.id);
       const reviewable = await mrtService.getReviewableQueuesForUser({
         invoker: {
           userId: outsider.id,
@@ -233,7 +233,7 @@ describe('QueueOperations', () => {
   testWithQueueAndActions()(
     'getReviewableQueuesForUser lets EDIT_MRT_QUEUES holders view every queue',
     async ({ org, queue, mrtService, deps }) => {
-      const { user: outsider } = await createUser(deps.KyselyPg, org.id);
+      const { user: outsider } = await createUser(deps.PrismaPg, org.id);
       const reviewable = await mrtService.getReviewableQueuesForUser({
         invoker: {
           userId: outsider.id,
@@ -248,7 +248,7 @@ describe('QueueOperations', () => {
   testWithQueueAndActions()(
     'getReviewableQueuesForUser filters requested queue IDs by reviewer access',
     async ({ org, queue, user, mrtService, deps }) => {
-      const { user: outsider } = await createUser(deps.KyselyPg, org.id);
+      const { user: outsider } = await createUser(deps.PrismaPg, org.id);
       await expect(
         mrtService.getReviewableQueuesForUser({
           invoker: {
@@ -275,7 +275,7 @@ describe('QueueOperations', () => {
   testWithQueueAndActions()(
     'getReviewableQueuesForUser lets a queue manager filter without membership',
     async ({ org, queue, mrtService, deps }) => {
-      const { user: outsider } = await createUser(deps.KyselyPg, org.id);
+      const { user: outsider } = await createUser(deps.PrismaPg, org.id);
       await expect(
         mrtService.getReviewableQueuesForUser({
           invoker: {
@@ -291,7 +291,7 @@ describe('QueueOperations', () => {
 
   testWithQueueAndActions()(
     'getExistingJobsForItem is scoped to the given queue IDs',
-    async ({ org, queue, user, mrtService, kyselyPg }) => {
+    async ({ org, queue, user, mrtService, prisma }) => {
       const jobPayload = makeDummyMrtJobPayload();
       await mrtService['queueOps']['addJob']({
         orgId: org.id,
@@ -301,9 +301,8 @@ describe('QueueOperations', () => {
       });
       const itemId = jobPayload.payload.item.itemId;
       const itemTypeId = jobPayload.payload.item.itemTypeIdentifier.id;
-      await kyselyPg
-        .insertInto('manual_review_tool.job_creations')
-        .values({
+      await prisma.job_creations.create({
+        data: {
           id: bullJobIdtoExternalJobId(
             itemIdToBullJobId({ id: itemId, typeId: itemTypeId }),
           ),
@@ -313,8 +312,8 @@ describe('QueueOperations', () => {
           queue_id: queue.id,
           created_at: new Date(),
           enqueue_source_info: {},
-        })
-        .execute();
+        },
+      });
 
       const inQueue = await mrtService.getExistingJobsForItem({
         orgId: org.id,
@@ -419,13 +418,13 @@ describe('QueueOperations', () => {
       const buildOrg = async () => {
         const { org } = await createOrg(
           {
-            KyselyPg: deps.KyselyPg,
+            PrismaPg: deps.PrismaPg,
             ModerationConfigService: deps.ModerationConfigService,
             ApiKeyService: deps.ApiKeyService,
           },
           uid(),
         );
-        const { user } = await createUser(deps.KyselyPg, org.id);
+        const { user } = await createUser(deps.PrismaPg, org.id);
         const { queue } = await createMrtQueue({
           orgId: org.id,
           mrtService: deps.ManualReviewToolService,
@@ -445,11 +444,11 @@ describe('QueueOperations', () => {
     'grants and revokes queue access only for users and queues in the caller’s org',
     async ({ attacker, victim, mrtService, deps }) => {
       const { user: attackerMember } = await createUser(
-        deps.KyselyPg,
+        deps.PrismaPg,
         attacker.org.id,
       );
       const { user: victimMember } = await createUser(
-        deps.KyselyPg,
+        deps.PrismaPg,
         victim.org.id,
       );
       const tenants = [
@@ -514,11 +513,9 @@ describe('QueueOperations', () => {
           fc.array(operation, { minLength: 1 }),
           async (operations) => {
             // The outer fixture rolls back per test, not per generated case.
-            await deps.KyselyPg.deleteFrom(
-              'manual_review_tool.users_and_accessible_queues',
-            )
-              .where('queue_id', 'in', allQueueIds)
-              .execute();
+            await deps.PrismaPg.users_and_accessible_queues.deleteMany({
+              where: { queue_id: { in: allQueueIds } },
+            });
             let expected: string[] = [];
 
             for (const op of operations) {
@@ -550,12 +547,11 @@ describe('QueueOperations', () => {
                 });
               }
 
-              const stored = await deps.KyselyPg.selectFrom(
-                'manual_review_tool.users_and_accessible_queues',
-              )
-                .select(['user_id', 'queue_id'])
-                .where('queue_id', 'in', allQueueIds)
-                .execute();
+              const stored =
+                await deps.PrismaPg.users_and_accessible_queues.findMany({
+                  select: { user_id: true, queue_id: true },
+                  where: { queue_id: { in: allQueueIds } },
+                });
               expect(
                 new Set(stored.map((row) => `${row.user_id}:${row.queue_id}`)),
               ).toEqual(new Set(expected));
@@ -723,16 +719,16 @@ describe('QueueOperations', () => {
     makeTransactionalTestWithFixture(async ({ deps }) => {
       const { org } = await createOrg(
         {
-          KyselyPg: deps.KyselyPg,
+          PrismaPg: deps.PrismaPg,
           ModerationConfigService: deps.ModerationConfigService,
           ApiKeyService: deps.ApiKeyService,
         },
         uid(),
       );
-      const { user: creator } = await createUser(deps.KyselyPg, org.id, {
+      const { user: creator } = await createUser(deps.PrismaPg, org.id, {
         role: UserRole.ADMIN,
       });
-      const { user: moderator } = await createUser(deps.KyselyPg, org.id, {
+      const { user: moderator } = await createUser(deps.PrismaPg, org.id, {
         role: UserRole.MODERATOR,
       });
       return {
@@ -742,6 +738,7 @@ describe('QueueOperations', () => {
         apiKeyService: deps.ApiKeyService,
         moderationConfigService: deps.ModerationConfigService,
         kyselyPg: deps.KyselyPg,
+        prisma: deps.PrismaPg,
         mrtService: deps.ManualReviewToolService,
       };
     });
@@ -753,16 +750,15 @@ describe('QueueOperations', () => {
   });
 
   const getRoleId = async (
-    db: QueueFixtureRole['kyselyPg'],
+    db: QueueFixtureRole['prisma'],
     orgId: string,
     role: UserRole,
   ) =>
-    db
-      .selectFrom('public.roles')
-      .select('id')
-      .where('org_id', '=', orgId)
-      .where('key', '=', role)
-      .executeTakeFirstOrThrow()
+    db.roles
+      .findFirstOrThrow({
+        select: { id: true },
+        where: { org_id: orgId, key: role },
+      })
       .then((row) => row.id);
 
   const createQueueWithRoles = async (
@@ -791,8 +787,8 @@ describe('QueueOperations', () => {
 
   testWithRoleAssignableQueue()(
     'a role assigned to a queue grants its members reviewer access',
-    async ({ org, creator, moderator, mrtService, kyselyPg }) => {
-      const roleId = await getRoleId(kyselyPg, org.id, UserRole.MODERATOR);
+    async ({ org, creator, moderator, mrtService, prisma }) => {
+      const roleId = await getRoleId(prisma, org.id, UserRole.MODERATOR);
       const queue = await createQueueWithRoles(mrtService, org, creator, [
         roleId,
       ]);
@@ -806,8 +802,8 @@ describe('QueueOperations', () => {
 
   testWithRoleAssignableQueue()(
     'a repeated role assignment creates the queue with one assignment and grants access',
-    async ({ org, creator, moderator, mrtService, kyselyPg }) => {
-      const roleId = await getRoleId(kyselyPg, org.id, UserRole.MODERATOR);
+    async ({ org, creator, moderator, mrtService, prisma }) => {
+      const roleId = await getRoleId(prisma, org.id, UserRole.MODERATOR);
       const queue = await createQueueWithRoles(mrtService, org, creator, [
         roleId,
         roleId,
@@ -840,8 +836,8 @@ describe('QueueOperations', () => {
 
   testWithRoleAssignableQueue()(
     'getQueueForOrg returns a role-accessible queue for a moderator',
-    async ({ org, creator, moderator, mrtService, kyselyPg }) => {
-      const roleId = await getRoleId(kyselyPg, org.id, UserRole.MODERATOR);
+    async ({ org, creator, moderator, mrtService, prisma }) => {
+      const roleId = await getRoleId(prisma, org.id, UserRole.MODERATOR);
       const queue = await createQueueWithRoles(mrtService, org, creator, [
         roleId,
       ]);
@@ -857,8 +853,8 @@ describe('QueueOperations', () => {
 
   testWithRoleAssignableQueue()(
     'updating queue assignments replaces direct users and roles',
-    async ({ org, creator, moderator, mrtService, kyselyPg }) => {
-      const roleId = await getRoleId(kyselyPg, org.id, UserRole.MODERATOR);
+    async ({ org, creator, moderator, mrtService, prisma }) => {
+      const roleId = await getRoleId(prisma, org.id, UserRole.MODERATOR);
       const queue = await createQueueWithRoles(mrtService, org, creator, []);
       const assignment = fc.record({
         direct: fc.boolean(),
@@ -869,7 +865,7 @@ describe('QueueOperations', () => {
         fc.asyncProperty(assignment, assignment, async (initial, next) => {
           // Reset inside the property so every generated case and shrink starts
           // from its own independently seeded assignments.
-          await seedQueueAssignments(kyselyPg, {
+          await seedQueueAssignments(prisma, {
             queueId: queue.id,
             userIds: initial.direct ? [creator.id, moderator.id] : [creator.id],
             roleIds: initial.role ? [roleId] : [],
@@ -930,8 +926,8 @@ describe('QueueOperations', () => {
 
   testWithRoleAssignableQueue()(
     'returns reviewable queues within the caller’s org based on permissions and user or role assignments',
-    async ({ org, creator, moderator, mrtService, kyselyPg, deps }) => {
-      const roleId = await getRoleId(kyselyPg, org.id, UserRole.MODERATOR);
+    async ({ org, creator, moderator, mrtService, prisma, deps }) => {
+      const roleId = await getRoleId(prisma, org.id, UserRole.MODERATOR);
       const directQueue = await createQueueWithRoles(
         mrtService,
         org,
@@ -951,14 +947,14 @@ describe('QueueOperations', () => {
         [],
       );
       for (const queue of [directQueue, bothQueue]) {
-        await seedQueueAssignments(kyselyPg, {
+        await seedQueueAssignments(prisma, {
           queueId: queue.id,
           userIds: [creator.id, moderator.id],
           roleIds: queue.id === bothQueue.id ? [roleId] : [],
         });
       }
       const { org: otherOrg } = await createOrg(deps);
-      const { user: otherUser } = await createUser(kyselyPg, otherOrg.id);
+      const { user: otherUser } = await createUser(deps.PrismaPg, otherOrg.id);
       const foreignQueue = await createQueueWithRoles(
         mrtService,
         otherOrg,
@@ -1034,25 +1030,25 @@ describe('QueueOperations', () => {
       creator,
       moderator,
       mrtService,
-      kyselyPg,
+      prisma,
       moderationConfigService,
       apiKeyService,
     }) => {
-      const roleId = await getRoleId(kyselyPg, org.id, UserRole.MODERATOR);
+      const roleId = await getRoleId(prisma, org.id, UserRole.MODERATOR);
       const queue = await createQueueWithRoles(mrtService, org, creator, [
         roleId,
       ]);
       const { org: otherOrg } = await createOrg(
         {
-          KyselyPg: kyselyPg,
+          PrismaPg: prisma,
           ModerationConfigService: moderationConfigService,
           ApiKeyService: apiKeyService,
         },
         uid(),
       );
-      await createUser(kyselyPg, otherOrg.id, { role: UserRole.MODERATOR });
+      await createUser(prisma, otherOrg.id, { role: UserRole.MODERATOR });
       const otherRoleId = await getRoleId(
-        kyselyPg,
+        prisma,
         otherOrg.id,
         UserRole.MODERATOR,
       );
@@ -1089,12 +1085,10 @@ describe('QueueOperations', () => {
   type QueueFixture = Parameters<
     Parameters<ReturnType<typeof testWithQueueAndActions>>[1]
   >[0];
-  type RuleTable =
-    | 'manual_review_tool.routing_rules'
-    | 'manual_review_tool.appeals_routing_rules';
+  type RuleTable = 'routing_rules' | 'appeals_routing_rules';
 
   const expectDeletionBlockedByRoutingRule = async (
-    { org, user, mrtService, kyselyPg }: QueueFixture,
+    { org, user, mrtService, prisma }: QueueFixture,
     table: RuleTable,
     ruleName: string,
   ) => {
@@ -1111,27 +1105,27 @@ describe('QueueOperations', () => {
         orgId: org.id,
       },
     });
-    await kyselyPg
-      .insertInto(table)
-      .values({
-        id: uuidv1(),
-        org_id: org.id,
-        name: ruleName,
-        description: null,
-        status: 'LIVE',
-        condition_set: { conditions: [], conjunction: 'AND' },
-        destination_queue_id: secondQueue.id,
-        creator_id: user.id,
-        sequence_number: 99,
-      })
-      .execute();
+    const rule = {
+      id: uuidv1(),
+      org_id: org.id,
+      name: ruleName,
+      description: null,
+      status: 'LIVE',
+      condition_set: { conditions: [], conjunction: 'AND' },
+      destination_queue_id: secondQueue.id,
+      creator_id: user.id,
+      sequence_number: 99,
+    } as const;
+    await (table === 'routing_rules'
+      ? prisma.routing_rules.create({ data: rule })
+      : prisma.appeals_routing_rules.create({ data: rule }));
     await expect(
       mrtService.deleteManualReviewQueue(org.id, secondQueue.id),
     ).rejects.toMatchObject({ name: 'QueueHasDependentRoutingRulesError' });
-    await kyselyPg
-      .deleteFrom(table)
-      .where('destination_queue_id', '=', secondQueue.id)
-      .execute();
+    const ruleWhere = { where: { destination_queue_id: secondQueue.id } };
+    await (table === 'routing_rules'
+      ? prisma.routing_rules.deleteMany(ruleWhere)
+      : prisma.appeals_routing_rules.deleteMany(ruleWhere));
     await mrtService.deleteManualReviewQueueForTestsDO_NOT_USE(
       org.id,
       secondQueue.id,
@@ -1141,11 +1135,7 @@ describe('QueueOperations', () => {
   testWithQueueAndActions()(
     'deleteManualReviewQueue rejects when a routing rule references the queue',
     async (ctx) =>
-      expectDeletionBlockedByRoutingRule(
-        ctx,
-        'manual_review_tool.routing_rules',
-        'block-rule',
-      ),
+      expectDeletionBlockedByRoutingRule(ctx, 'routing_rules', 'block-rule'),
   );
 
   testWithQueueAndActions()(
@@ -1153,7 +1143,7 @@ describe('QueueOperations', () => {
     async (ctx) =>
       expectDeletionBlockedByRoutingRule(
         ctx,
-        'manual_review_tool.appeals_routing_rules',
+        'appeals_routing_rules',
         'block-appeals-rule',
       ),
   );
@@ -1162,7 +1152,7 @@ describe('QueueOperations', () => {
 // Helpers
 
 async function seedQueueAssignments(
-  db: Dependencies['KyselyPg'],
+  db: Dependencies['PrismaPg'],
   {
     queueId,
     userIds,
@@ -1173,24 +1163,20 @@ async function seedQueueAssignments(
     roleIds: readonly string[];
   },
 ) {
-  await db
-    .deleteFrom('manual_review_tool.users_and_accessible_queues')
-    .where('queue_id', '=', queueId)
-    .execute();
-  await db
-    .deleteFrom('manual_review_tool.roles_and_accessible_queues')
-    .where('queue_id', '=', queueId)
-    .execute();
+  await db.users_and_accessible_queues.deleteMany({
+    where: { queue_id: queueId },
+  });
+  await db.roles_and_accessible_queues.deleteMany({
+    where: { queue_id: queueId },
+  });
   if (userIds.length > 0) {
-    await db
-      .insertInto('manual_review_tool.users_and_accessible_queues')
-      .values(userIds.map((userId) => ({ queue_id: queueId, user_id: userId })))
-      .execute();
+    await db.users_and_accessible_queues.createMany({
+      data: userIds.map((userId) => ({ queue_id: queueId, user_id: userId })),
+    });
   }
   if (roleIds.length > 0) {
-    await db
-      .insertInto('manual_review_tool.roles_and_accessible_queues')
-      .values(roleIds.map((roleId) => ({ queue_id: queueId, role_id: roleId })))
-      .execute();
+    await db.roles_and_accessible_queues.createMany({
+      data: roleIds.map((roleId) => ({ queue_id: queueId, role_id: roleId })),
+    });
   }
 }

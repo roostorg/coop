@@ -2,12 +2,15 @@
 
 import { SpanStatusCode } from '@opentelemetry/api';
 import { type ItemIdentifier } from '@roostorg/coop-types';
-import { type Kysely, type Transaction } from 'kysely';
 import _ from 'lodash';
 import { type Opaque } from 'type-fest';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import { type ConsumerDirectives } from '../../lib/cache/index.js';
+import {
+  type PrismaPgClient,
+  type PrismaPgTransaction,
+} from '../../storage/prisma/index.js';
 import { jsonStringify } from '../../utils/encoding.js';
 import {
   isCoopErrorOfType,
@@ -16,7 +19,6 @@ import {
 } from '../../utils/errors.js';
 import { isUniqueViolationError } from '../../utils/kysely.js';
 import type { OmitEach, ReplaceDeep } from '../../utils/typescript-types.js';
-import { type CombinedPg } from '../combinedDbTypes.js';
 import {
   getFieldValueForRole,
   getFieldValueOrValues,
@@ -28,10 +30,7 @@ import {
   resolveManualReviewContentSafely,
   type ManualReviewContentResolver,
 } from '../manualReviewContentResolver.js';
-import {
-  type ModerationConfigService,
-  type ModerationConfigServicePg,
-} from '../moderationConfigService/index.js';
+import { type ModerationConfigService } from '../moderationConfigService/index.js';
 import { type PartialItemsService } from '../partialItemsService/index.js';
 import {
   UserPermission,
@@ -44,7 +43,6 @@ import {
 import {
   type ClearReportsDisposition,
   type ClearReportsScope,
-  type ManualReviewToolServicePg,
 } from './dbTypes.js';
 import AppealsJobRouting from './modules/AppealsJobRouting.js';
 import ClaimOperations from './modules/ClaimOperations.js';
@@ -349,8 +347,8 @@ export class ManualReviewToolService {
     readonly redis: Dependencies['IORedis'],
     readonly ruleEvaluator: Dependencies['RuleEvaluator'],
     readonly routingRuleExecutionLogger: Dependencies['RoutingRuleExecutionLogger'],
-    readonly pgQuery: Kysely<ManualReviewToolServicePg>,
-    readonly pgQueryReadReplica: Kysely<ManualReviewToolServicePg>,
+    readonly prisma: PrismaPgClient,
+    readonly prismaReadReplica: PrismaPgClient,
     readonly userStatisticsService: UserStatisticsService,
     readonly getCustomActionsByIds: Dependencies['getActionsByIdEventuallyConsistent'],
     private readonly tracer: Dependencies['Tracer'],
@@ -371,8 +369,8 @@ export class ManualReviewToolService {
   ) {
     this.priorityRecomputeLock = new PriorityRecomputeLock(this.redis);
     this.queueOps = new QueueOperations(
-      pgQuery,
-      pgQueryReadReplica,
+      prisma,
+      prismaReadReplica,
       moderationConfigService,
       redis,
       tracer,
@@ -383,24 +381,24 @@ export class ManualReviewToolService {
       userStatisticsService,
     );
     this.jobRouting = new JobRouting(
-      pgQuery,
+      prisma,
       this.queueOps,
       moderationConfigService,
       ruleEvaluator,
       routingRuleExecutionLogger,
     );
     this.appealsJobRouting = new AppealsJobRouting(
-      pgQuery,
+      prisma,
       this.queueOps,
       moderationConfigService,
       ruleEvaluator,
       //routingRuleExecutionLogger,
     );
-    this.manualReviewToolSettings = new ManualReviewToolSettings(pgQuery);
-    this.claimOps = new ClaimOperations(pgQuery);
+    this.manualReviewToolSettings = new ManualReviewToolSettings(prisma);
+    this.claimOps = new ClaimOperations(prisma);
     this.jobDecisioning = new JobDecisioning(
       this.queueOps,
-      pgQuery,
+      prisma,
       getCustomActionsByIds,
       onRecordDecision,
       moderationConfigService,
@@ -410,13 +408,11 @@ export class ManualReviewToolService {
       getUserHasExistingNcmecReport,
       meter,
     );
-    this.jobRendering = new JobRendering(
-      pgQuery.$extendTables<ModerationConfigServicePg>(),
-    );
-    this.jobPriorityWeights = new JobPriorityWeights(pgQuery);
-    this.decisionAnalytics = new DecisionAnalytics(pgQueryReadReplica);
-    this.commentOps = new CommentOperations(pgQuery);
-    this.skipOps = new SkipOperations(pgQuery, this.queueOps, meter);
+    this.jobRendering = new JobRendering(prisma);
+    this.jobPriorityWeights = new JobPriorityWeights(prisma);
+    this.decisionAnalytics = new DecisionAnalytics(prismaReadReplica);
+    this.commentOps = new CommentOperations(prisma);
+    this.skipOps = new SkipOperations(prisma, this.queueOps, meter);
     this.reporterInvalidation = new ReporterInvalidation(
       this.queueOps,
       this.tracer,
@@ -430,18 +426,12 @@ export class ManualReviewToolService {
   }
 
   forTransaction(
-    trx: Transaction<CombinedPg>,
+    trx: PrismaPgTransaction,
   ): Pick<
     ManualReviewToolService,
     'getHiddenFieldsForItemType' | 'setHiddenFieldsForItemType'
   > {
-    return new JobRendering(
-      trx
-        .$extendTables<ManualReviewToolServicePg>()
-        .$pickTables<
-          keyof (ManualReviewToolServicePg & ModerationConfigServicePg)
-        >(),
-    );
+    return new JobRendering(trx);
   }
 
   /**
@@ -632,22 +622,22 @@ export class ManualReviewToolService {
             }
 
             // log job creation/enqueue to postgres
-            this.pgQuery
-              .insertInto('manual_review_tool.job_creations')
-              .values({
-                id: job.id,
-                org_id: job.orgId,
-                item_id: job.payload.item.itemId,
-                item_type_id: job.payload.item.itemTypeIdentifier.id,
-                queue_id: targetQueueForNewJob,
-                enqueue_source_info: input.enqueueSourceInfo,
-                policy_ids: input.policyIds,
-                created_at: new Date(),
+            this.prisma.job_creations
+              .createMany({
+                data: {
+                  id: job.id,
+                  org_id: job.orgId,
+                  item_id: job.payload.item.itemId,
+                  item_type_id: job.payload.item.itemTypeIdentifier.id,
+                  queue_id: targetQueueForNewJob,
+                  enqueue_source_info: input.enqueueSourceInfo,
+                  policy_ids: input.policyIds,
+                  created_at: new Date(),
+                },
+                // Re-enqueues (merged reports) re-run this path; keep the
+                // original row.
+                skipDuplicates: true,
               })
-              // Re-enqueues (merged reports) re-run this path; keep the
-              // original row.
-              .onConflict((oc) => oc.column('id').doNothing())
-              .execute()
               .catch(() => {}); // don't throw if logging fails
 
             return { targetQueueForNewJob, job };
@@ -752,20 +742,20 @@ export class ManualReviewToolService {
               return;
             }
 
-            this.pgQuery
-              .insertInto('manual_review_tool.job_creations')
-              .values({
-                id: job.id,
-                org_id: job.orgId,
-                item_id: job.payload.item.itemId,
-                item_type_id: job.payload.item.itemTypeIdentifier.id,
-                queue_id: targetQueueForNewJob,
-                enqueue_source_info: input.enqueueSourceInfo,
-                policy_ids: input.policyIds,
-                created_at: new Date(),
+            this.prisma.job_creations
+              .createMany({
+                data: {
+                  id: job.id,
+                  org_id: job.orgId,
+                  item_id: job.payload.item.itemId,
+                  item_type_id: job.payload.item.itemTypeIdentifier.id,
+                  queue_id: targetQueueForNewJob,
+                  enqueue_source_info: input.enqueueSourceInfo,
+                  policy_ids: input.policyIds,
+                  created_at: new Date(),
+                },
+                skipDuplicates: true,
               })
-              .onConflict((oc) => oc.column('id').doNothing())
-              .execute()
               .catch(() => {}); // don't throw if logging fails
 
             return { targetQueueForNewJob, job };

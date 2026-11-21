@@ -74,10 +74,12 @@ allowBuilds:
   '@mongodb-js/zstd': true
   '@apollo/protobufjs': false
   '@parcel/watcher': false
+  '@prisma/engines': false
   core-js: false
   core-js-pure: false
   esbuild: false
   msgpackr-extract: false
   nice-napi: false
+  prisma: false
   protobufjs: false
   unrs-resolver: false

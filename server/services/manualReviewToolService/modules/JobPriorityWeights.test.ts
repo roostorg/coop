@@ -2,6 +2,7 @@ import { uid } from 'uid';
 
 import createOrg from '../../../test/fixtureHelpers/createOrg.js';
 import { makeTransactionalTestWithFixture } from '../../../test/harness/transactionalTest.js';
+import { getPgErrorDetails } from '../../../utils/kysely.js';
 import { MAX_JOB_PRIORITY_WEIGHT } from './JobPriority.js';
 import JobPriorityWeights from './JobPriorityWeights.js';
 
@@ -11,14 +12,14 @@ describe('JobPriorityWeights', () => {
       const pgQuery = deps.KyselyPg;
       const { org } = await createOrg(
         {
-          KyselyPg: pgQuery,
+          PrismaPg: deps.PrismaPg,
           ModerationConfigService: deps.ModerationConfigService,
           ApiKeyService: deps.ApiKeyService,
         },
         uid(),
       );
       return {
-        ops: new JobPriorityWeights(pgQuery),
+        ops: new JobPriorityWeights(deps.PrismaPg),
         pgQuery,
         orgId: org.id,
         mrtService: deps.ManualReviewToolService,
@@ -71,7 +72,7 @@ describe('JobPriorityWeights', () => {
       async ({ ops, orgId, deps }) => {
         const { org: otherOrg } = await createOrg(
           {
-            KyselyPg: deps.KyselyPg,
+            PrismaPg: deps.PrismaPg,
             ModerationConfigService: deps.ModerationConfigService,
             ApiKeyService: deps.ApiKeyService,
           },
@@ -257,7 +258,9 @@ describe('JobPriorityWeights', () => {
           ops.upsertForOrg('org-that-does-not-exist', [
             { property: 'numReports', weight: 1 },
           ]),
-        ).rejects.toMatchObject({ code: '23503' });
+        ).rejects.toSatisfy(
+          (e: unknown) => getPgErrorDetails(e)?.code === '23503',
+        );
       },
     );
   });

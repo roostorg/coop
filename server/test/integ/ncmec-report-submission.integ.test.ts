@@ -54,7 +54,7 @@ describe('NCMEC report and submission (integration)', () => {
 
     const orgFixture = await createOrg(
       {
-        KyselyPg: harness.deps.KyselyPg,
+        PrismaPg: harness.deps.PrismaPg,
         ModerationConfigService: harness.deps.ModerationConfigService,
         ApiKeyService: harness.deps.ApiKeyService,
       },
@@ -64,7 +64,7 @@ describe('NCMEC report and submission (integration)', () => {
     userItemTypeId = orgFixture.defaultUserItemType.id;
     orgCleanup = orgFixture.cleanup;
 
-    const reviewerFixture = await createUser(harness.deps.KyselyPg, orgId, {
+    const reviewerFixture = await createUser(harness.deps.PrismaPg, orgId, {
       password: REVIEWER_PASSWORD,
       loginMethods: ['password'],
       approvedByAdmin: true,
@@ -403,11 +403,15 @@ describe('NCMEC report and submission (integration)', () => {
       const reportRow = await waitFor(
         `ncmec_reports row for user ${creatorUserId}`,
         async () =>
-          harness!.deps.KyselyPg.selectFrom('ncmec_reporting.ncmec_reports')
-            .select(['report_id', 'is_test', 'reviewer_id', 'reported_media'])
-            .where('org_id', '=', orgId)
-            .where('user_id', '=', creatorUserId)
-            .executeTakeFirst(),
+          harness!.deps.PrismaPg.ncmec_reports.findFirst({
+            select: {
+              report_id: true,
+              is_test: true,
+              reviewer_id: true,
+              reported_media: true,
+            },
+            where: { org_id: orgId, user_id: creatorUserId },
+          }),
       );
 
       expect(reportRow.report_id).toBe(ncmecReportId);

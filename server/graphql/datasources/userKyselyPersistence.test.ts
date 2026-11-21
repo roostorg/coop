@@ -37,13 +37,13 @@ describe('userKyselyPersistence', () => {
   const testWithFixture = makeTransactionalTestWithFixture(async ({ deps }) => {
     const { org } = await createOrg(
       {
-        KyselyPg: deps.KyselyPg,
+        PrismaPg: deps.PrismaPg,
         ModerationConfigService: deps.ModerationConfigService,
         ApiKeyService: deps.ApiKeyService,
       },
       uid(),
     );
-    await seedSystemRolesForOrg(deps.KyselyPg, org.id);
+    await seedSystemRolesForOrg(deps.PrismaPg, org.id);
     return { org };
   });
 
@@ -53,7 +53,7 @@ describe('userKyselyPersistence', () => {
       async ({ deps, org }) => {
         const input = samlUserInput(org.id);
         const inserted = await kyselyUserInsert({
-          db: deps.KyselyPg,
+          db: deps.PrismaPg,
           ...input,
         });
         expect(inserted).toMatchObject({
@@ -88,8 +88,8 @@ describe('userKyselyPersistence', () => {
       'updating role swaps role_id so getPermissions() reflects the new role',
       async ({ deps, org }) => {
         const input = samlUserInput(org.id);
-        await kyselyUserInsert({ db: deps.KyselyPg, ...input });
-        const updated = await kyselyUserUpdate(deps.KyselyPg, input.id, {
+        await kyselyUserInsert({ db: deps.PrismaPg, ...input });
+        const updated = await kyselyUserUpdate(deps.PrismaPg, input.id, {
           role: UserRole.ANALYST,
         });
         expect(updated!.role).toBe(UserRole.ANALYST);
@@ -123,7 +123,7 @@ describe('userKyselyPersistence', () => {
 
         const input = samlUserInput(org.id);
         const inserted = await kyselyUserInsert({
-          db: deps.KyselyPg,
+          db: deps.PrismaPg,
           ...input,
         });
         expect(inserted.getPermissions()).toEqual(['MANAGE_ORG']);
@@ -145,7 +145,7 @@ describe('userKyselyPersistence', () => {
 
         const input = samlUserInput(org.id);
         const inserted = await kyselyUserInsert({
-          db: deps.KyselyPg,
+          db: deps.PrismaPg,
           ...input,
         });
         expect(inserted.getPermissions()).toEqual([]);
@@ -162,7 +162,7 @@ describe('userKyselyPersistence', () => {
 
         await expect(
           kyselyUserInsert({
-            db: deps.KyselyPg,
+            db: deps.PrismaPg,
             ...samlUserInput(org.id),
           }),
         ).rejects.toThrow();
@@ -174,7 +174,7 @@ describe('userKyselyPersistence', () => {
       async ({ deps, org }) => {
         const id = uid();
         const row = await kyselyUserInsert({
-          db: deps.KyselyPg,
+          db: deps.PrismaPg,
           id,
           orgId: org.id,
           email: faker.internet.email(),
@@ -194,7 +194,7 @@ describe('userKyselyPersistence', () => {
       async ({ deps, org }) => {
         await expect(
           kyselyUserInsert({
-            db: deps.KyselyPg,
+            db: deps.PrismaPg,
             id: uid(),
             orgId: org.id,
             email: 'not-an-email',
@@ -213,7 +213,7 @@ describe('userKyselyPersistence', () => {
       async ({ deps, org }) => {
         await expect(
           kyselyUserInsert({
-            db: deps.KyselyPg,
+            db: deps.PrismaPg,
             id: uid(),
             orgId: org.id,
             email: faker.internet.email(),
@@ -233,10 +233,10 @@ describe('userKyselyPersistence', () => {
       'findById / findByEmail / findByIdAndOrg return the row when it exists',
       async ({ deps, org }) => {
         const input = samlUserInput(org.id);
-        await kyselyUserInsert({ db: deps.KyselyPg, ...input });
-        const byId = await kyselyUserFindById(deps.KyselyPg, input.id);
-        const byEmail = await kyselyUserFindByEmail(deps.KyselyPg, input.email);
-        const byIdAndOrg = await kyselyUserFindByIdAndOrg(deps.KyselyPg, {
+        await kyselyUserInsert({ db: deps.PrismaPg, ...input });
+        const byId = await kyselyUserFindById(deps.PrismaPg, input.id);
+        const byEmail = await kyselyUserFindByEmail(deps.PrismaPg, input.email);
+        const byIdAndOrg = await kyselyUserFindByIdAndOrg(deps.PrismaPg, {
           id: input.id,
           orgId: org.id,
         });
@@ -251,14 +251,14 @@ describe('userKyselyPersistence', () => {
       'find helpers return undefined (not null) when missing',
       async ({ deps, org }) => {
         const byId = await kyselyUserFindById(
-          deps.KyselyPg,
+          deps.PrismaPg,
           `missing-${uid()}`,
         );
         const byEmail = await kyselyUserFindByEmail(
-          deps.KyselyPg,
+          deps.PrismaPg,
           `missing-${uid()}@example.com`,
         );
-        const byIdAndOrg = await kyselyUserFindByIdAndOrg(deps.KyselyPg, {
+        const byIdAndOrg = await kyselyUserFindByIdAndOrg(deps.PrismaPg, {
           id: `missing-${uid()}`,
           orgId: org.id,
         });
@@ -273,8 +273,8 @@ describe('userKyselyPersistence', () => {
       'findByIdAndOrg returns undefined when the user exists in a different org',
       async ({ deps, org }) => {
         const input = samlUserInput(org.id);
-        await kyselyUserInsert({ db: deps.KyselyPg, ...input });
-        const result = await kyselyUserFindByIdAndOrg(deps.KyselyPg, {
+        await kyselyUserInsert({ db: deps.PrismaPg, ...input });
+        const result = await kyselyUserFindByIdAndOrg(deps.PrismaPg, {
           id: input.id,
           orgId: `different-org-${uid()}`,
         });
@@ -285,11 +285,11 @@ describe('userKyselyPersistence', () => {
     testWithFixture(
       'findByIds returns [] for an empty input and handles mixed hits',
       async ({ deps, org }) => {
-        expect(await kyselyUserFindByIds(deps.KyselyPg, [])).toEqual([]);
+        expect(await kyselyUserFindByIds(deps.PrismaPg, [])).toEqual([]);
 
         const input = samlUserInput(org.id);
-        await kyselyUserInsert({ db: deps.KyselyPg, ...input });
-        const rows = await kyselyUserFindByIds(deps.KyselyPg, [
+        await kyselyUserInsert({ db: deps.PrismaPg, ...input });
+        const rows = await kyselyUserFindByIds(deps.PrismaPg, [
           input.id,
           `missing-${uid()}`,
         ]);
@@ -303,9 +303,9 @@ describe('userKyselyPersistence', () => {
       async ({ deps, org }) => {
         const a = samlUserInput(org.id);
         const b = samlUserInput(org.id);
-        await kyselyUserInsert({ db: deps.KyselyPg, ...a });
-        await kyselyUserInsert({ db: deps.KyselyPg, ...b });
-        const rows = await kyselyUserListByOrg(deps.KyselyPg, org.id);
+        await kyselyUserInsert({ db: deps.PrismaPg, ...a });
+        await kyselyUserInsert({ db: deps.PrismaPg, ...b });
+        const rows = await kyselyUserListByOrg(deps.PrismaPg, org.id);
         const ids = rows.map((r) => r.id);
         expect(ids).toEqual(expect.arrayContaining([a.id, b.id]));
         expect(rows.every((r) => r.orgId === org.id)).toBe(true);
@@ -316,7 +316,7 @@ describe('userKyselyPersistence', () => {
       'find and list helpers derive role from the linked role row',
       async ({ deps, org }) => {
         const input = samlUserInput(org.id);
-        await kyselyUserInsert({ db: deps.KyselyPg, ...input });
+        await kyselyUserInsert({ db: deps.PrismaPg, ...input });
         const analyst = await deps.KyselyPg.selectFrom('public.roles')
           .select('id')
           .where('org_id', '=', org.id)
@@ -327,11 +327,11 @@ describe('userKyselyPersistence', () => {
           .where('id', '=', input.id)
           .execute();
 
-        expect((await kyselyUserFindById(deps.KyselyPg, input.id))!.role).toBe(
+        expect((await kyselyUserFindById(deps.PrismaPg, input.id))!.role).toBe(
           UserRole.ANALYST,
         );
         expect(
-          (await kyselyUserListByOrg(deps.KyselyPg, org.id)).find(
+          (await kyselyUserListByOrg(deps.PrismaPg, org.id)).find(
             ({ id }) => id === input.id,
           )!.role,
         ).toBe(UserRole.ANALYST);
@@ -344,14 +344,14 @@ describe('userKyselyPersistence', () => {
       'throws when updating to a missing org-scoped role',
       async ({ deps, org }) => {
         const input = samlUserInput(org.id);
-        await kyselyUserInsert({ db: deps.KyselyPg, ...input });
+        await kyselyUserInsert({ db: deps.PrismaPg, ...input });
         await deps.KyselyPg.deleteFrom('public.roles')
           .where('org_id', '=', org.id)
           .where('key', '=', UserRole.ANALYST)
           .execute();
 
         await expect(
-          kyselyUserUpdate(deps.KyselyPg, input.id, {
+          kyselyUserUpdate(deps.PrismaPg, input.id, {
             role: UserRole.ANALYST,
           }),
         ).rejects.toThrow();
@@ -362,9 +362,9 @@ describe('userKyselyPersistence', () => {
       'throws an invariant error for a malformed patch',
       async ({ deps, org }) => {
         const input = samlUserInput(org.id);
-        await kyselyUserInsert({ db: deps.KyselyPg, ...input });
+        await kyselyUserInsert({ db: deps.PrismaPg, ...input });
         await expect(
-          kyselyUserUpdate(deps.KyselyPg, input.id, {
+          kyselyUserUpdate(deps.PrismaPg, input.id, {
             email: 'not-an-email',
           }),
         ).rejects.toThrow(/kyselyUserUpdate invariant violated: email/);
@@ -375,7 +375,7 @@ describe('userKyselyPersistence', () => {
       'returns undefined when the user does not exist',
       async ({ deps }) => {
         const result = await kyselyUserUpdate(
-          deps.KyselyPg,
+          deps.PrismaPg,
           `missing-${uid()}`,
           { firstName: 'Nobody' },
         );
@@ -391,8 +391,8 @@ describe('userKyselyPersistence', () => {
           loginMethods: ['password'] as const,
           password: 'placeholder',
         };
-        await kyselyUserInsert({ db: deps.KyselyPg, ...input });
-        const skipped = await kyselyUserUpdate(deps.KyselyPg, input.id, {
+        await kyselyUserInsert({ db: deps.PrismaPg, ...input });
+        const skipped = await kyselyUserUpdate(deps.PrismaPg, input.id, {
           firstName: null,
           lastName: null,
           email: null,
@@ -413,8 +413,8 @@ describe('userKyselyPersistence', () => {
       'password: null is a valid patch and leaves the column null on a SAML user',
       async ({ deps, org }) => {
         const input = samlUserInput(org.id);
-        await kyselyUserInsert({ db: deps.KyselyPg, ...input });
-        const updated = await kyselyUserUpdate(deps.KyselyPg, input.id, {
+        await kyselyUserInsert({ db: deps.PrismaPg, ...input });
+        const updated = await kyselyUserUpdate(deps.PrismaPg, input.id, {
           password: null,
         });
         expect(updated!.password).toBeNull();
@@ -431,9 +431,9 @@ describe('userKyselyPersistence', () => {
           loginMethods: ['password'] as const,
           password: 'placeholder',
         };
-        await kyselyUserInsert({ db: deps.KyselyPg, ...input });
+        await kyselyUserInsert({ db: deps.PrismaPg, ...input });
         await expect(
-          kyselyUserUpdate(deps.KyselyPg, input.id, { password: null }),
+          kyselyUserUpdate(deps.PrismaPg, input.id, { password: null }),
         ).rejects.toThrow(/password_null_when_not_present/);
       },
     );
@@ -442,7 +442,7 @@ describe('userKyselyPersistence', () => {
       'updates provided fields and bumps updated_at',
       async ({ deps, org }) => {
         const input = samlUserInput(org.id);
-        await kyselyUserInsert({ db: deps.KyselyPg, ...input });
+        await kyselyUserInsert({ db: deps.PrismaPg, ...input });
         const beforeRow = await deps.KyselyPg.selectFrom('public.users')
           .select(['updated_at'])
           .where('id', '=', input.id)
@@ -450,7 +450,7 @@ describe('userKyselyPersistence', () => {
 
         await new Promise((resolve) => setTimeout(resolve, 5));
 
-        const updated = await kyselyUserUpdate(deps.KyselyPg, input.id, {
+        const updated = await kyselyUserUpdate(deps.PrismaPg, input.id, {
           firstName: 'Updated',
           approvedByAdmin: true,
         });
@@ -473,27 +473,27 @@ describe('userKyselyPersistence', () => {
       'add / list / remove round-trip (and add is idempotent)',
       async ({ deps, org }) => {
         const input = samlUserInput(org.id);
-        await kyselyUserInsert({ db: deps.KyselyPg, ...input });
+        await kyselyUserInsert({ db: deps.PrismaPg, ...input });
         // `users_and_favorite_rules.rule_id` has a FK to `public.rules`, so
         // we need a real rule row.
-        const rule = await createRule(deps.KyselyPg, org.id, {
+        const rule = await createRule(deps.PrismaPg, org.id, {
           creatorId: input.id,
         });
         expect(
-          await kyselyUserListFavoriteRuleIds(deps.KyselyPg, input.id),
+          await kyselyUserListFavoriteRuleIds(deps.PrismaPg, input.id),
         ).toEqual([]);
 
-        await kyselyUserAddFavoriteRule(deps.KyselyPg, input.id, rule.id);
+        await kyselyUserAddFavoriteRule(deps.PrismaPg, input.id, rule.id);
         // Second add must be a no-op (matches Sequelize `addFavoriteRules`).
-        await kyselyUserAddFavoriteRule(deps.KyselyPg, input.id, rule.id);
+        await kyselyUserAddFavoriteRule(deps.PrismaPg, input.id, rule.id);
 
         expect(
-          await kyselyUserListFavoriteRuleIds(deps.KyselyPg, input.id),
+          await kyselyUserListFavoriteRuleIds(deps.PrismaPg, input.id),
         ).toEqual([rule.id]);
 
-        await kyselyUserRemoveFavoriteRule(deps.KyselyPg, input.id, rule.id);
+        await kyselyUserRemoveFavoriteRule(deps.PrismaPg, input.id, rule.id);
         expect(
-          await kyselyUserListFavoriteRuleIds(deps.KyselyPg, input.id),
+          await kyselyUserListFavoriteRuleIds(deps.PrismaPg, input.id),
         ).toEqual([]);
       },
     );

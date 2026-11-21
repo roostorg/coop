@@ -1,0 +1,1570 @@
+generator client {
+  provider        = "prisma-client"
+  output          = "../prisma-generated"
+  previewFeatures = ["partialIndexes", "views"]
+  moduleFormat    = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas  = ["jobs", "manual_review_tool", "models_service", "ncmec_reporting", "public", "reporting_rules", "signal_auth_service", "signals_service", "user_management_service", "user_statistics_service"]
+}
+
+model scheduled_jobs_info {
+  job_name String   @id @db.VarChar(255)
+  last_run DateTime @db.Timestamptz(6)
+
+  @@schema("jobs")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model appeals_routing_rule_history {
+  id                   String                      @db.VarChar(255)
+  org_id               String                      @db.VarChar(255)
+  name                 String                      @db.VarChar(255)
+  description          String?                     @db.VarChar(255)
+  status               appeals_routing_rule_status
+  creator_id           String                      @db.VarChar(255)
+  condition_set        Json
+  sequence_number      Int
+  destination_queue_id String                      @db.VarChar(255)
+  sys_period           Unsupported("tstzrange")
+
+  @@ignore
+  @@schema("manual_review_tool")
+}
+
+model appeals_routing_rules {
+  id                                  String                                @id @db.VarChar(255)
+  org_id                              String                                @db.VarChar(255)
+  name                                String                                @db.VarChar(255)
+  description                         String?                               @db.VarChar(255)
+  status                              appeals_routing_rule_status           @default(LIVE)
+  created_at                          DateTime                              @default(now()) @db.Timestamptz(6)
+  creator_id                          String                                @db.VarChar(255)
+  condition_set                       Json
+  sequence_number                     Int
+  destination_queue_id                String                                @db.VarChar(255)
+  sys_period                          Unsupported("tstzrange")              @default(dbgenerated("tstzrange(CURRENT_TIMESTAMP, NULL::timestamp with time zone)"))
+  manual_review_queues                manual_review_queues                  @relation(fields: [destination_queue_id], references: [id], onUpdate: NoAction)
+  appeals_routing_rules_to_item_types appeals_routing_rules_to_item_types[]
+
+  @@unique([org_id, name])
+  @@unique([org_id, sequence_number])
+  @@schema("manual_review_tool")
+}
+
+model appeals_routing_rules_to_item_types {
+  item_type_id            String                @db.VarChar(255)
+  appeals_routing_rule_id String                @db.VarChar(255)
+  appeals_routing_rules   appeals_routing_rules @relation(fields: [appeals_routing_rule_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "appeals_routing_rules_to_item_type_appeals_routing_rule_id_fkey")
+
+  @@id([item_type_id, appeals_routing_rule_id])
+  @@schema("manual_review_tool")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model dim_mrt_decisions_materialized {
+  org_id       String?   @db.VarChar(255)
+  item_id      String?
+  action_id    String?
+  policy_id    String?
+  type         String?
+  item_type_id String?
+  queue_id     String?   @db.VarChar(255)
+  reviewer_id  String?   @db.VarChar(255)
+  ds           DateTime? @db.Date
+  job_id       String?
+  decided_at   DateTime? @db.Timestamptz(6)
+
+  @@index([decided_at], map: "manual_decisions_view_dec_at_idx")
+  @@ignore
+  @@schema("manual_review_tool")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model job_claims {
+  org_id               String               @db.VarChar(255)
+  queue_id             String               @db.VarChar(255)
+  user_id              String               @db.VarChar(255)
+  job_id               String
+  claimed_at           DateTime             @default(now()) @db.Timestamptz(6)
+  manual_review_queues manual_review_queues @relation(fields: [queue_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([org_id, claimed_at], map: "idx_job_claims_org_claimed_at")
+  @@index([org_id, job_id, claimed_at(sort: Desc)], map: "idx_job_claims_org_job_claimed_at")
+  @@index([org_id, job_id, user_id, claimed_at(sort: Desc)], map: "idx_job_claims_org_job_user_claimed_at")
+  @@ignore
+  @@schema("manual_review_tool")
+}
+
+model job_comments {
+  id           String   @id @db.VarChar(255)
+  job_id       String
+  org_id       String   @db.VarChar(255)
+  author_id    String   @db.VarChar(255)
+  comment_text String
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+
+  @@schema("manual_review_tool")
+}
+
+model job_creations {
+  id                  String   @id
+  org_id              String   @db.VarChar(255)
+  queue_id            String   @db.VarChar(255)
+  item_id             String
+  item_type_id        String
+  created_at          DateTime @default(now()) @db.Timestamptz(6)
+  enqueue_source_info Json
+  policy_ids          String[] @default([])
+
+  @@index([created_at], map: "jobs_created_at_brin_idx", type: Brin)
+  @@schema("manual_review_tool")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model job_priority_weights {
+  org_id     String   @db.VarChar(255)
+  property   String   @db.VarChar(64)
+  weight     Decimal  @default(1) @db.Decimal
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
+  orgs       orgs     @relation(fields: [org_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([org_id, property])
+  @@schema("manual_review_tool")
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model manual_review_decisions {
+  id                  String    @id @db.Uuid
+  job_payload         Json
+  queue_id            String    @db.VarChar(255)
+  reviewer_id         String    @db.VarChar(255)
+  org_id              String    @db.VarChar(255)
+  created_at          DateTime  @default(now()) @db.Timestamptz(6)
+  decision_components Json[]
+  related_actions     Json[]    @default([])
+  enqueue_source_info Json?
+  item_created_at     DateTime? @db.Timestamptz(6)
+  decision_reason     String?
+  assigned_at         DateTime? @db.Timestamptz(6)
+
+  @@index([org_id, created_at], map: "idx_manual_review_decisions_org_created_assigned", where: raw("(assigned_at IS NOT NULL)"))
+  @@index([org_id, created_at(sort: Desc), id(sort: Desc)], map: "idx_mrt_decisions_org_created_id")
+  @@index([created_at])
+  @@index([org_id], map: "mrt_decisions_org_id_idx")
+  @@schema("manual_review_tool")
+}
+
+model manual_review_hidden_item_fields {
+  org_id        String   @db.VarChar(255)
+  item_type_id  String   @db.VarChar(255)
+  hidden_fields String[] @default([])
+
+  @@id([org_id, item_type_id])
+  @@schema("manual_review_tool")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model manual_review_queues {
+  id                                       String                                     @id @db.VarChar(255)
+  name                                     String                                     @db.VarChar(255)
+  created_at                               DateTime                                   @default(now()) @db.Timestamptz(6)
+  updated_at                               DateTime                                   @default(now()) @db.Timestamptz(6)
+  org_id                                   String                                     @db.VarChar(255)
+  is_default_queue                         Boolean                                    @default(false)
+  description                              String?                                    @db.VarChar(255)
+  is_appeals_queue                         Boolean                                    @default(false)
+  auto_close_jobs                          Boolean?                                   @default(false)
+  clear_reports_disposition                String?                                    @db.VarChar(64)
+  clear_reports_scope                      String                                     @default("CURRENT_QUEUE") @db.VarChar(64)
+  job_sort_type                            String                                     @default("FIFO") @db.VarChar(16)
+  appeals_routing_rules                    appeals_routing_rules[]
+  job_claims                               job_claims[]                               @ignore
+  moderator_skips                          moderator_skips[]                          @ignore
+  queues_and_clear_reports_trigger_actions queues_and_clear_reports_trigger_actions[]
+  queues_and_hidden_actions                queues_and_hidden_actions[]
+  roles_and_accessible_queues              roles_and_accessible_queues[]
+  routing_rules                            routing_rules[]
+  users_and_accessible_queues              users_and_accessible_queues[]
+  users_and_favorite_mrt_queues            users_and_favorite_mrt_queues[]
+  ncmec_org_settings                       ncmec_org_settings[]
+
+  @@unique([org_id, is_default_queue, is_appeals_queue], map: "manual_review_queue_is_default", where: raw("(is_default_queue = true)"))
+  @@unique([org_id, name, is_appeals_queue], map: "manual_review_queue_unique_name")
+  @@index([org_id], map: "manual_review_decisions_org_id")
+  @@index([org_id], map: "manual_review_queue_org_id")
+  @@schema("manual_review_tool")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model manual_review_tool_settings {
+  org_id                                 String   @id @db.VarChar(255)
+  requires_policy_for_decisions          Boolean  @default(false)
+  mrt_requires_decision_reason_on_action Boolean  @default(false)
+  hide_skip_button_for_non_admins        Boolean? @default(false)
+  ignore_callback_url                    String?  @db.VarChar(255)
+  preview_jobs_view_enabled              Boolean  @default(false)
+  mrt_requires_decision_reason_on_ignore Boolean  @default(false)
+
+  @@schema("manual_review_tool")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model moderator_skips {
+  org_id               String               @db.VarChar(255)
+  queue_id             String               @db.VarChar(255)
+  user_id              String               @db.VarChar(255)
+  job_id               String
+  ts                   DateTime             @default(now()) @db.Timestamptz(6)
+  manual_review_queues manual_review_queues @relation(fields: [queue_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@ignore
+  @@schema("manual_review_tool")
+}
+
+model queues_and_clear_reports_trigger_actions {
+  queue_id             String               @db.VarChar(255)
+  action_id            String               @db.VarChar(255)
+  org_id               String               @db.VarChar(255)
+  manual_review_queues manual_review_queues @relation(fields: [queue_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "queues_and_clear_reports_trigger_actions_queue_fkey")
+
+  @@id([queue_id, action_id])
+  @@index([org_id], map: "idx_queues_and_clear_reports_trigger_actions_org_id")
+  @@schema("manual_review_tool")
+}
+
+model queues_and_hidden_actions {
+  queue_id             String               @db.VarChar(255)
+  action_id            String               @db.VarChar(255)
+  org_id               String               @db.VarChar(255)
+  manual_review_queues manual_review_queues @relation(fields: [queue_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "queue_fkey")
+
+  @@id([queue_id, action_id], map: "queues_and_actions_pkey")
+  @@schema("manual_review_tool")
+}
+
+model roles_and_accessible_queues {
+  queue_id             String               @db.VarChar(255)
+  role_id              String               @db.Uuid
+  manual_review_queues manual_review_queues @relation(fields: [queue_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  roles                roles                @relation(fields: [role_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([queue_id, role_id])
+  @@index([role_id])
+  @@schema("manual_review_tool")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model routing_rule_history {
+  id                   String                   @db.VarChar(255)
+  org_id               String                   @db.VarChar(255)
+  name                 String                   @db.VarChar(255)
+  description          String?                  @db.VarChar(255)
+  status               routing_rule_status
+  creator_id           String                   @db.VarChar(255)
+  condition_set        Json
+  sequence_number      Int
+  destination_queue_id String                   @db.VarChar(255)
+  sys_period           Unsupported("tstzrange")
+
+  @@ignore
+  @@schema("manual_review_tool")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model routing_rules {
+  id                          String                        @id @db.VarChar(255)
+  org_id                      String                        @db.VarChar(255)
+  name                        String                        @db.VarChar(255)
+  description                 String?                       @db.VarChar(255)
+  status                      routing_rule_status           @default(LIVE)
+  created_at                  DateTime                      @default(now()) @db.Timestamptz(6)
+  creator_id                  String                        @db.VarChar(255)
+  condition_set               Json
+  sequence_number             Int
+  destination_queue_id        String                        @db.VarChar(255)
+  sys_period                  Unsupported("tstzrange")      @default(dbgenerated("tstzrange(CURRENT_TIMESTAMP, NULL::timestamp with time zone)"))
+  manual_review_queues        manual_review_queues          @relation(fields: [destination_queue_id], references: [id], onUpdate: NoAction)
+  routing_rules_to_item_types routing_rules_to_item_types[]
+
+  @@unique([org_id, name])
+  @@unique([org_id, sequence_number])
+  @@schema("manual_review_tool")
+}
+
+model routing_rules_to_item_types {
+  item_type_id    String        @db.VarChar(255)
+  routing_rule_id String        @db.VarChar(255)
+  routing_rules   routing_rules @relation(fields: [routing_rule_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([item_type_id, routing_rule_id])
+  @@schema("manual_review_tool")
+}
+
+model users_and_accessible_queues {
+  user_id              String               @db.VarChar(255)
+  queue_id             String               @db.VarChar(255)
+  manual_review_queues manual_review_queues @relation(fields: [queue_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([user_id, queue_id], map: "user_to_accessible_queues_pkey")
+  @@schema("manual_review_tool")
+}
+
+model users_and_favorite_mrt_queues {
+  user_id              String               @db.VarChar(255)
+  queue_id             String               @db.VarChar(255)
+  org_id               String               @db.VarChar(255)
+  manual_review_queues manual_review_queues @relation(fields: [queue_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([user_id, queue_id])
+  @@index([user_id], map: "user_favorite_mrt_queues_idx")
+  @@schema("manual_review_tool")
+}
+
+model models {
+  id                      String       @id @db.VarChar(255)
+  org_id                  String       @db.VarChar(255)
+  policy_id               String       @db.VarChar
+  policy_semantic_version Int
+  status                  model_status
+  family                  model_family
+  version                 Int
+  item_requirement        String?
+  name                    String       @db.VarChar(100)
+
+  @@unique([org_id, name], map: "unique_org_name")
+  @@schema("models_service")
+}
+
+model org_to_partially_labeled_dataset {
+  org_id                       String
+  partially_labeled_dataset_id String
+
+  @@id([org_id, partially_labeled_dataset_id])
+  @@schema("models_service")
+}
+
+model unknown_labeled_items {
+  id                      String       @id @db.VarChar(255)
+  org_id                  String       @db.VarChar(255)
+  item_id                 String       @db.VarChar(255)
+  item_type_id            String       @db.VarChar(255)
+  policy_id               String       @db.VarChar(255)
+  policy_semantic_version Int
+  unknown_type            unknown_type
+  sampling_strategy       String       @db.VarChar(255)
+
+  @@schema("models_service")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model ncmec_org_settings {
+  org_id                                             String                @id @db.VarChar(255)
+  username                                           String                @db.VarChar(255)
+  password                                           String                @db.VarChar(255)
+  contact_email                                      String?               @db.VarChar(255)
+  more_info_url                                      String?               @db.VarChar(255)
+  company_template                                   String?               @db.VarChar(255)
+  legal_url                                          String?               @db.VarChar(255)
+  created_at                                         DateTime              @default(now()) @db.Timestamptz(6)
+  updated_at                                         DateTime              @default(now()) @db.Timestamptz(6)
+  ncmec_preservation_endpoint                        String?               @db.VarChar(255)
+  ncmec_additional_info_endpoint                     String?               @db.VarChar(255)
+  policies_applied_to_actions_run_on_report_creation String[]              @db.VarChar(255)
+  actions_to_run_upon_report_creation                String[]              @db.VarChar(255)
+  default_ncmec_queue_id                             String?               @db.VarChar(255)
+  default_internet_detail_type                       String?               @db.VarChar(50)
+  terms_of_service                                   String?
+  contact_person_email                               String?               @db.VarChar(255)
+  contact_person_first_name                          String?               @db.VarChar(255)
+  contact_person_last_name                           String?               @db.VarChar(255)
+  contact_person_phone                               String?               @db.VarChar(50)
+  media_review_requirement                           String                @default("ALL") @db.VarChar(16)
+  min_media_to_review                                Int?
+  manual_review_queues                               manual_review_queues? @relation(fields: [default_ncmec_queue_id], references: [id], onUpdate: NoAction, map: "ncmec_org_settings_default_ncmec_queue_fkey")
+
+  @@schema("ncmec_reporting")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model ncmec_reports {
+  org_id            String   @db.VarChar(255)
+  report_id         String   @id @db.VarChar(255)
+  user_id           String
+  created_at        DateTime @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime @default(now()) @db.Timestamptz(6)
+  user_item_type_id String
+  reported_media    Json[]
+  report_xml        String   @db.Xml
+  additional_files  Json[]
+  reviewer_id       String?  @db.VarChar(255)
+  is_test           Boolean?
+  reported_messages Json[]
+  incident_type     String?
+
+  @@index([user_id, user_item_type_id, org_id], map: "idx_user_type_org_test", where: raw("(is_test = false)"))
+  @@schema("ncmec_reporting")
+}
+
+model ncmec_reports_errors {
+  job_id       String                    @id
+  user_id      String
+  user_type_id String
+  status       ncmec_report_error_status
+  retry_count  Int
+  last_error   String                    @db.VarChar
+
+  @@schema("ncmec_reporting")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model actions {
+  id                           String                   @id @db.VarChar(255)
+  name                         String                   @db.VarChar(255)
+  description                  String?                  @db.VarChar(255)
+  callback_url                 String?                  @db.VarChar(255)
+  created_at                   DateTime                 @default(now()) @db.Timestamptz(6)
+  updated_at                   DateTime                 @default(now()) @db.Timestamptz(6)
+  org_id                       String                   @db.VarChar(255)
+  callback_url_headers         Json?
+  callback_url_body            Json?
+  penalty                      user_penalty_severity    @default(NONE)
+  sys_period                   Unsupported("tstzrange") @default(dbgenerated("tstzrange(CURRENT_TIMESTAMP, NULL::timestamp with time zone)"))
+  action_type                  action_type              @default(CUSTOM_ACTION)
+  applies_to_all_items_of_kind item_type_kind[]         @default([])
+  apply_user_strikes           Boolean                  @default(false)
+  custom_mrt_api_params        Json[]                   @default([])
+  orgs                         orgs                     @relation(fields: [org_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  actions_and_item_types       actions_and_item_types[]
+  rules_and_actions            rules_and_actions[]
+
+  @@unique([org_id, name])
+  @@unique([org_id, action_type], map: "actions_unique_enqueue_to_mrt_action_type", where: raw("(action_type = 'ENQUEUE_TO_MRT'::action_type)"))
+  @@schema("public")
+}
+
+model actions_and_item_types {
+  created_at   DateTime                 @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime                 @default(now()) @db.Timestamptz(6)
+  action_id    String                   @db.VarChar(255)
+  item_type_id String                   @db.VarChar(255)
+  sys_period   Unsupported("tstzrange") @default(dbgenerated("tstzrange(CURRENT_TIMESTAMP, NULL::timestamp with time zone)"))
+  actions      actions                  @relation(fields: [action_id], references: [id], onDelete: Cascade)
+  item_types   item_types               @relation(fields: [item_type_id], references: [id], onDelete: Cascade)
+
+  @@id([action_id, item_type_id])
+  @@schema("public")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model actions_and_item_types_history {
+  action_id    String                   @db.VarChar(255)
+  item_type_id String                   @db.VarChar(255)
+  sys_period   Unsupported("tstzrange")
+
+  @@ignore
+  @@schema("public")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model actions_history {
+  id                           String                   @db.VarChar(255)
+  name                         String                   @db.VarChar(255)
+  description                  String?                  @db.VarChar(255)
+  callback_url                 String?                  @db.VarChar(255)
+  org_id                       String                   @db.VarChar(255)
+  callback_url_headers         Json?
+  callback_url_body            Json?
+  penalty                      user_penalty_severity
+  sys_period                   Unsupported("tstzrange")
+  action_type                  action_type              @default(CUSTOM_ACTION)
+  applies_to_all_items_of_kind item_type_kind[]         @default([])
+
+  @@ignore
+  @@schema("public")
+}
+
+model api_keys {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  org_id       String    @db.VarChar(255)
+  key_hash     String    @unique @db.VarChar(255)
+  name         String    @db.VarChar(255)
+  description  String?
+  is_active    Boolean   @default(true)
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime  @default(now()) @db.Timestamptz(6)
+  last_used_at DateTime? @db.Timestamptz(6)
+  created_by   String?   @db.VarChar(255)
+  users        users?    @relation(fields: [created_by], references: [id], onUpdate: NoAction)
+  orgs         orgs      @relation(fields: [org_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([org_id, is_active], map: "idx_api_keys_active", where: raw("(is_active = true)"))
+  @@index([key_hash], map: "idx_api_keys_key_hash")
+  @@index([org_id], map: "idx_api_keys_org_id")
+  @@schema("public")
+}
+
+model backtests {
+  id                      String          @id @db.VarChar(255)
+  rule_id                 String          @db.VarChar(255)
+  creator_id              String          @db.VarChar(255)
+  sample_desired_size     Int
+  sample_actual_size      Int             @default(0)
+  sample_start_at         DateTime        @db.Timestamptz(6)
+  sample_end_at           DateTime        @db.Timestamptz(6)
+  sampling_complete       Boolean         @default(false)
+  content_items_processed Int             @default(0)
+  content_items_matched   Int             @default(0)
+  created_at              DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime        @db.Timestamptz(6)
+  cancelation_date        DateTime?       @db.Timestamptz(6)
+  status                  backtest_status @default(dbgenerated("\nCASE\n    WHEN (cancelation_date IS NOT NULL) THEN 'CANCELED'::backtest_status\n    WHEN ((sampling_complete = false) OR (content_items_processed < sample_actual_size)) THEN 'RUNNING'::backtest_status\n    ELSE 'COMPLETE'::backtest_status\nEND"))
+  users                   users           @relation(fields: [creator_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  rules                   rules           @relation(fields: [rule_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+model hash_banks {
+  id            Int       @id @default(autoincrement())
+  org_id        String    @db.VarChar(255)
+  name          String    @db.VarChar(255)
+  hma_name      String    @unique @db.VarChar(255)
+  description   String?
+  source        String?   @db.VarChar(255)
+  enabled_ratio Float     @default(1.0)
+  created_at    DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime? @default(now()) @db.Timestamptz(6)
+  orgs          orgs      @relation(fields: [org_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([org_id, name], map: "unique_org_bank_name")
+  @@index([hma_name], map: "idx_hash_banks_hma_name")
+  @@index([org_id], map: "idx_hash_banks_org_id")
+  @@schema("public")
+}
+
+model invite_user_tokens {
+  id         Int      @id @default(autoincrement())
+  token      String   @db.VarChar(255)
+  email      String   @db.VarChar(255)
+  role       String?  @db.VarChar(255)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
+  org_id     String?  @db.VarChar(255)
+  role_id    String   @db.Uuid
+  orgs       orgs?    @relation(fields: [org_id], references: [id])
+  roles      roles    @relation(fields: [role_id], references: [id], onUpdate: NoAction)
+
+  @@index([role_id])
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model item_types {
+  id                     String                   @id @db.VarChar(255)
+  org_id                 String                   @db.VarChar(255)
+  name                   String                   @db.VarChar(255)
+  description            String?                  @db.VarChar(255)
+  kind                   item_type_kind
+  fields                 Json[]
+  created_at             DateTime                 @default(now()) @db.Timestamptz(6)
+  display_name_field     String?                  @db.VarChar(255)
+  creator_id_field       String?                  @db.VarChar(255)
+  thread_id_field        String?                  @db.VarChar(255)
+  parent_id_field        String?                  @db.VarChar(255)
+  created_at_field       String?                  @db.VarChar(255)
+  profile_icon_field     String?                  @db.VarChar(255)
+  sys_period             Unsupported("tstzrange") @default(dbgenerated("tstzrange(CURRENT_TIMESTAMP, NULL::timestamp with time zone)"))
+  is_default_user        Boolean                  @default(false)
+  background_image_field String?                  @db.VarChar(255)
+  is_deleted_field       String?                  @db.VarChar(255)
+  ip_address_field       String?                  @db.VarChar(255)
+  email_field            String?                  @db.VarChar(255)
+  actions_and_item_types actions_and_item_types[]
+  orgs                   orgs                     @relation(fields: [org_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  rules_and_item_types   rules_and_item_types[]
+
+  @@unique([org_id, is_default_user], map: "item_types_is_default_user", where: raw("(is_default_user = true)"))
+  @@unique([org_id, name], map: "org_id_name_key")
+  @@schema("public")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model item_types_history {
+  id                     String                   @db.VarChar(255)
+  org_id                 String                   @db.VarChar(255)
+  name                   String                   @db.VarChar(255)
+  description            String?                  @db.VarChar(255)
+  kind                   item_type_kind
+  fields                 Json[]
+  display_name_field     String?                  @db.VarChar(255)
+  creator_id_field       String?                  @db.VarChar(255)
+  thread_id_field        String?                  @db.VarChar(255)
+  parent_id_field        String?                  @db.VarChar(255)
+  created_at_field       String?                  @db.VarChar(255)
+  profile_icon_field     String?                  @db.VarChar(255)
+  sys_period             Unsupported("tstzrange")
+  is_default_user        Boolean                  @default(false)
+  background_image_field String?                  @db.VarChar(255)
+  is_deleted_field       String?                  @db.VarChar(255)
+  ip_address_field       String?                  @db.VarChar(255)
+  email_field            String?                  @db.VarChar(255)
+
+  @@ignore
+  @@schema("public")
+}
+
+model location_bank_locations {
+  id                String         @id @db.VarChar(255)
+  bank_id           String         @db.VarChar(255)
+  geometry          Json
+  bounds            Json?
+  name              String?        @db.VarChar(255)
+  google_place_info Json?
+  created_at        DateTime       @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime       @default(now()) @db.Timestamptz(6)
+  location_banks    location_banks @relation(fields: [bank_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([bank_id])
+  @@schema("public")
+}
+
+model location_banks {
+  id                        String                    @id @db.VarChar(255)
+  name                      String                    @db.VarChar(255)
+  description               String?                   @db.VarChar(255)
+  org_id                    String                    @db.VarChar(255)
+  owner_id                  String                    @db.VarChar(255)
+  created_at                DateTime                  @default(now()) @db.Timestamptz(6)
+  updated_at                DateTime                  @db.Timestamptz(6)
+  full_places_api_responses Json[]                    @default([])
+  location_bank_locations   location_bank_locations[]
+  orgs                      orgs                      @relation(fields: [org_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users                     users                     @relation(fields: [owner_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([org_id, name])
+  @@schema("public")
+}
+
+model media_banks {
+  id          String   @id @db.VarChar(255)
+  name        String   @db.VarChar(255)
+  description String?  @db.VarChar(255)
+  created_at  DateTime @db.Timestamptz(6)
+  updated_at  DateTime @db.Timestamptz(6)
+  org_id      String   @db.VarChar(255)
+  owner_id    String   @db.VarChar(255)
+  orgs        orgs     @relation(fields: [org_id], references: [id], onDelete: SetNull)
+  users       users    @relation(fields: [owner_id], references: [id], onDelete: SetNull)
+
+  @@schema("public")
+}
+
+model notifications {
+  id        String    @id @db.VarChar(255)
+  userId    String    @db.VarChar(255)
+  type      String    @db.VarChar(255)
+  data      Json
+  message   String
+  createdAt DateTime  @default(now()) @db.Timestamptz(6)
+  readAt    DateTime? @db.Timestamptz(6)
+  users     users     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model org_settings {
+  org_id                             String   @id @db.VarChar(255)
+  partial_items_endpoint             String?  @db.VarChar(255)
+  has_reporting_rules_enabled        Boolean? @default(false)
+  has_appeals_enabled                Boolean? @default(false)
+  appeal_callback_url                String?
+  appeal_callback_headers            Json?
+  appeal_callback_body               Json?
+  allow_multiple_policies_per_action Boolean? @default(false)
+  user_strike_ttl_days               Int?     @default(90)
+  saml_enabled                       Boolean  @default(false)
+  sso_url                            String?  @db.VarChar(255)
+  cert                               String?
+  show_usage_statistics              Boolean  @default(false)
+  partial_items_request_headers      Json?
+
+  @@schema("public")
+}
+
+model orgs {
+  id                     String                   @id @db.VarChar(255)
+  email                  String                   @unique @db.VarChar(255)
+  name                   String                   @unique @db.VarChar(255)
+  website_url            String                   @unique @db.VarChar(255)
+  api_key_id             String?                  @db.VarChar(255)
+  created_at             DateTime                 @db.Timestamptz(6)
+  updated_at             DateTime                 @db.Timestamptz(6)
+  on_call_alert_email    String?                  @db.VarChar(255)
+  job_priority_weights   job_priority_weights[]
+  actions                actions[]
+  api_keys               api_keys[]
+  hash_banks             hash_banks[]
+  invite_user_tokens     invite_user_tokens[]
+  item_types             item_types[]
+  location_banks         location_banks[]
+  media_banks            media_banks[]
+  policies               policies[]
+  roles                  roles[]
+  rules                  rules[]
+  signing_keys           signing_keys?
+  text_banks             text_banks[]
+  user_strike_thresholds user_strike_thresholds[]
+  users                  users[]
+  integration_configs    integration_configs[]
+  open_ai_configs        open_ai_configs?
+
+  @@schema("public")
+}
+
+model policies {
+  id                                         String                   @id @db.VarChar(255)
+  name                                       String                   @db.VarChar(255)
+  org_id                                     String                   @db.VarChar(255)
+  parent_id                                  String?                  @db.VarChar(255)
+  created_at                                 DateTime                 @default(now()) @db.Timestamptz(6)
+  updated_at                                 DateTime                 @db.Timestamptz(6)
+  penalty                                    user_penalty_severity    @default(NONE)
+  policy_text                                String?                  @db.VarChar
+  sys_period                                 Unsupported("tstzrange") @default(dbgenerated("tstzrange(CURRENT_TIMESTAMP, NULL::timestamp with time zone)"))
+  policy_type                                policy_type?
+  semantic_version                           Int                      @default(1)
+  enforcement_guidelines                     String?                  @db.VarChar
+  user_strike_count                          Int                      @default(1)
+  apply_user_strike_count_config_to_children Boolean                  @default(false)
+  orgs                                       orgs                     @relation(fields: [org_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  policies                                   policies?                @relation("policiesTopolicies", fields: [parent_id], references: [id], onDelete: Cascade)
+  other_policies                             policies[]               @relation("policiesTopolicies")
+  rules_and_policies                         rules_and_policies[]
+
+  @@unique([org_id, name], map: "idx_unique_orgid_name")
+  @@schema("public")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model policy_history {
+  id          String                   @db.VarChar(255)
+  name        String                   @db.VarChar(255)
+  org_id      String                   @db.VarChar(255)
+  parent_id   String?                  @db.VarChar(255)
+  penalty     user_penalty_severity
+  policy_text String?                  @db.VarChar
+  sys_period  Unsupported("tstzrange")
+
+  @@ignore
+  @@schema("public")
+}
+
+model role_permissions {
+  role_id    String @db.Uuid
+  permission String @db.VarChar(255)
+  roles      roles  @relation(fields: [role_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([role_id, permission])
+  @@schema("public")
+}
+
+model roles {
+  id                          String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  org_id                      String                        @db.VarChar(255)
+  key                         String                        @db.VarChar(255)
+  display_name                String                        @db.VarChar(255)
+  description                 String?
+  is_system                   Boolean                       @default(false)
+  created_at                  DateTime                      @default(now()) @db.Timestamptz(6)
+  updated_at                  DateTime                      @default(now()) @db.Timestamptz(6)
+  roles_and_accessible_queues roles_and_accessible_queues[]
+  invite_user_tokens          invite_user_tokens[]
+  role_permissions            role_permissions[]
+  orgs                        orgs                          @relation(fields: [org_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users                       users[]
+
+  @@unique([org_id, key], map: "roles_org_key_unique")
+  @@index([org_id])
+  @@schema("public")
+}
+
+model rules {
+  id                       String                     @id @db.VarChar(255)
+  name                     String                     @db.VarChar(255)
+  description              String?                    @db.VarChar(255)
+  status_if_unexpired      String                     @default("DRAFT") @db.VarChar(255)
+  tags                     String[]                   @default([]) @db.VarChar(255)
+  max_daily_actions        Int?
+  daily_actions_run        Int?                       @default(0)
+  last_action_date         DateTime?                  @db.Date
+  created_at               DateTime                   @db.Timestamptz(6)
+  updated_at               DateTime                   @db.Timestamptz(6)
+  org_id                   String                     @db.VarChar(255)
+  creator_id               String                     @db.VarChar(255)
+  expiration_time          DateTime?                  @db.Timestamptz(6)
+  condition_set            Json
+  alarm_status             enum_rule_alarm_status     @default(INSUFFICIENT_DATA)
+  alarm_status_set_at      DateTime                   @default(now()) @db.Timestamptz(6)
+  sys_period               Unsupported("tstzrange")   @default(dbgenerated("tstzrange(CURRENT_TIMESTAMP, NULL::timestamp with time zone)"))
+  rule_type                rule_type                  @default(CONTENT)
+  parent_id                String?                    @db.VarChar(255)
+  rate_limit_config        Json?
+  backtests                backtests[]
+  users                    users                      @relation(fields: [creator_id], references: [id], onDelete: SetNull)
+  orgs                     orgs                       @relation(fields: [org_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  rules_and_actions        rules_and_actions[]
+  rules_and_item_types     rules_and_item_types[]
+  rules_and_policies       rules_and_policies[]
+  users_and_favorite_rules users_and_favorite_rules[]
+
+  @@unique([org_id, name])
+  @@schema("public")
+}
+
+model rules_and_actions {
+  created_at        DateTime                 @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime                 @default(now()) @db.Timestamptz(6)
+  action_id         String                   @db.VarChar(255)
+  rule_id           String                   @db.VarChar(255)
+  sys_period        Unsupported("tstzrange") @default(dbgenerated("tstzrange(CURRENT_TIMESTAMP, NULL::timestamp with time zone)"))
+  action_parameters Json                     @default("{}")
+  actions           actions                  @relation(fields: [action_id], references: [id], onDelete: Cascade)
+  rules             rules                    @relation(fields: [rule_id], references: [id], onDelete: Cascade)
+
+  @@id([action_id, rule_id])
+  @@index([rule_id])
+  @@schema("public")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model rules_and_actions_history {
+  action_id         String                   @db.VarChar(255)
+  rule_id           String                   @db.VarChar(255)
+  sys_period        Unsupported("tstzrange")
+  action_parameters Json?
+
+  @@ignore
+  @@schema("public")
+}
+
+model rules_and_item_types {
+  created_at   DateTime                 @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime                 @default(now()) @db.Timestamptz(6)
+  item_type_id String                   @db.VarChar(255)
+  rule_id      String                   @db.VarChar(255)
+  sys_period   Unsupported("tstzrange") @default(dbgenerated("tstzrange(CURRENT_TIMESTAMP, NULL::timestamp with time zone)"))
+  item_types   item_types               @relation(fields: [item_type_id], references: [id], onDelete: Cascade)
+  rules        rules                    @relation(fields: [rule_id], references: [id], onDelete: Cascade)
+
+  @@id([rule_id, item_type_id])
+  @@schema("public")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model rules_and_item_types_history {
+  item_type_id String                   @db.VarChar(255)
+  rule_id      String                   @db.VarChar(255)
+  sys_period   Unsupported("tstzrange")
+
+  @@ignore
+  @@schema("public")
+}
+
+model rules_and_policies {
+  created_at DateTime                 @db.Timestamptz(6)
+  updated_at DateTime                 @db.Timestamptz(6)
+  policy_id  String                   @db.VarChar(255)
+  rule_id    String                   @db.VarChar(255)
+  sys_period Unsupported("tstzrange") @default(dbgenerated("tstzrange(CURRENT_TIMESTAMP, NULL::timestamp with time zone)"))
+  policies   policies                 @relation(fields: [policy_id], references: [id], onDelete: Cascade)
+  rules      rules                    @relation(fields: [rule_id], references: [id], onDelete: Cascade)
+
+  @@id([policy_id, rule_id])
+  @@schema("public")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model rules_and_policies_history {
+  policy_id  String                   @db.VarChar(255)
+  rule_id    String                   @db.VarChar(255)
+  sys_period Unsupported("tstzrange")
+
+  @@ignore
+  @@schema("public")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model rules_history {
+  id                  String                   @db.VarChar(255)
+  name                String                   @db.VarChar(255)
+  status_if_unexpired String                   @db.VarChar(255)
+  tags                String[]                 @db.VarChar(255)
+  max_daily_actions   Int?
+  org_id              String                   @db.VarChar(255)
+  creator_id          String                   @db.VarChar(255)
+  expiration_time     DateTime?                @db.Timestamptz(6)
+  condition_set       Json
+  sys_period          Unsupported("tstzrange")
+  description         String?                  @db.VarChar(255)
+  rule_type           rule_type                @default(CONTENT)
+  parent_id           String?                  @db.VarChar(255)
+  rate_limit_config   Json?
+
+  @@ignore
+  @@schema("public")
+}
+
+model session {
+  sid    String   @id @db.VarChar
+  sess   Json     @db.Json
+  expire DateTime @db.Timestamp(6)
+
+  @@index([expire], map: "idx_session_expire")
+  @@schema("public")
+}
+
+model signing_keys {
+  org_id     String   @id @db.VarChar(255)
+  key_data   Json
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
+  orgs       orgs     @relation(fields: [org_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([org_id], map: "idx_signing_keys_org_id")
+  @@schema("public")
+}
+
+model text_banks {
+  id          String         @id @db.VarChar(255)
+  name        String         @db.VarChar(255)
+  description String?        @db.VarChar(255)
+  created_at  DateTime       @default(now()) @db.Timestamptz(6)
+  updated_at  DateTime       @db.Timestamptz(6)
+  org_id      String         @db.VarChar(255)
+  owner_id    String?        @db.VarChar(255)
+  type        text_bank_type @default(STRING)
+  strings     String[]       @default([]) @db.VarChar(2000)
+  orgs        orgs           @relation(fields: [org_id], references: [id], onDelete: Cascade)
+  users       users?         @relation(fields: [owner_id], references: [id])
+
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model user_strike_thresholds {
+  id                Int      @id @default(autoincrement())
+  org_id            String   @db.VarChar(255)
+  threshold         Int
+  actions           String[] @default([]) @db.VarChar(255)
+  action_parameters Json     @default("{}")
+  orgs              orgs     @relation(fields: [org_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([org_id, threshold], map: "unique_org_threshold_pair")
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model users {
+  id                       String                     @id @db.VarChar(255)
+  email                    String                     @unique @db.VarChar(255)
+  password                 String?                    @db.VarChar(255)
+  first_name               String                     @db.VarChar(255)
+  last_name                String                     @db.VarChar(255)
+  role                     String?                    @db.VarChar(255)
+  approved_by_admin        Boolean?                   @default(false)
+  rejected_by_admin        Boolean?                   @default(false)
+  created_at               DateTime                   @db.Timestamptz(6)
+  updated_at               DateTime                   @db.Timestamptz(6)
+  org_id                   String                     @db.VarChar(255)
+  login_methods            login_method_enum[]        @default([password])
+  role_id                  String                     @db.Uuid
+  api_keys                 api_keys[]
+  backtests                backtests[]
+  location_banks           location_banks[]
+  media_banks              media_banks[]
+  notifications            notifications[]
+  rules                    rules[]
+  text_banks               text_banks[]
+  orgs                     orgs                       @relation(fields: [org_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  roles                    roles                      @relation(fields: [role_id], references: [id], onUpdate: NoAction)
+  users_and_favorite_rules users_and_favorite_rules[]
+
+  @@index([role_id])
+  @@schema("public")
+}
+
+model users_and_favorite_rules {
+  user_id    String   @db.VarChar(255)
+  rule_id    String   @db.VarChar(255)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @db.Timestamptz(6)
+  rules      rules    @relation(fields: [rule_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users      users    @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@id([user_id, rule_id])
+  @@index([user_id], map: "user_favorite_rules_idx")
+  @@schema("public")
+}
+
+model view_maintenance_metadata {
+  table_name  String   @id
+  last_insert DateTime @default(dbgenerated("'-infinity'::timestamp without time zone")) @db.Timestamp(6)
+
+  @@schema("public")
+}
+
+/// The underlying table does not contain a valid unique identifier and can therefore currently not be handled by Prisma Client.
+model reporting_rule_history {
+  id            String                   @db.VarChar(255)
+  org_id        String                   @db.VarChar(255)
+  name          String                   @db.VarChar(255)
+  description   String?                  @db.VarChar(255)
+  status        reporting_rule_status
+  creator_id    String                   @db.VarChar(255)
+  condition_set Json
+  sys_period    Unsupported("tstzrange")
+
+  @@ignore
+  @@schema("reporting_rules")
+}
+
+/// This model has constraints using non-default deferring rules and requires additional setup for migrations. Visit https://pris.ly/d/constraint-deferring for more info.
+model reporting_rules {
+  id                            String                          @id @db.VarChar(255)
+  org_id                        String                          @db.VarChar(255)
+  name                          String                          @db.VarChar(255)
+  description                   String?                         @db.VarChar(255)
+  status                        reporting_rule_status           @default(DRAFT)
+  created_at                    DateTime                        @default(now()) @db.Timestamptz(6)
+  creator_id                    String                          @db.VarChar(255)
+  condition_set                 Json
+  sys_period                    Unsupported("tstzrange")        @default(dbgenerated("tstzrange(CURRENT_TIMESTAMP, NULL::timestamp with time zone)"))
+  reporting_rules_to_actions    reporting_rules_to_actions[]
+  reporting_rules_to_item_types reporting_rules_to_item_types[]
+  reporting_rules_to_policies   reporting_rules_to_policies[]
+
+  @@unique([org_id, name])
+  @@schema("reporting_rules")
+}
+
+model reporting_rules_to_actions {
+  action_id         String          @db.VarChar(255)
+  reporting_rule_id String          @db.VarChar(255)
+  created_at        DateTime        @default(now()) @db.Timestamptz(6)
+  reporting_rules   reporting_rules @relation(fields: [reporting_rule_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "reporting_rules_to_actions_fkey")
+
+  @@id([action_id, reporting_rule_id])
+  @@schema("reporting_rules")
+}
+
+model reporting_rules_to_item_types {
+  item_type_id      String          @db.VarChar(255)
+  reporting_rule_id String          @db.VarChar(255)
+  created_at        DateTime        @default(now()) @db.Timestamptz(6)
+  reporting_rules   reporting_rules @relation(fields: [reporting_rule_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "reporting_rules_to_item_types_fkey")
+
+  @@id([item_type_id, reporting_rule_id])
+  @@schema("reporting_rules")
+}
+
+model reporting_rules_to_policies {
+  policy_id         String          @db.VarChar(255)
+  reporting_rule_id String          @db.VarChar(255)
+  created_at        DateTime        @default(now()) @db.Timestamptz(6)
+  reporting_rules   reporting_rules @relation(fields: [reporting_rule_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "reporting_rules_to_policies_fkey")
+
+  @@id([policy_id, reporting_rule_id])
+  @@schema("reporting_rules")
+}
+
+model google_content_safety_configs {
+  org_id     String   @id @db.VarChar(255)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  updated_at DateTime @default(now()) @db.Timestamptz(6)
+  api_key    String   @db.VarChar(255)
+
+  @@schema("signal_auth_service")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model integration_configs {
+  org_id         String   @db.VarChar(255)
+  integration_id String   @db.VarChar(255)
+  config         Json     @default("{}")
+  created_at     DateTime @default(now()) @db.Timestamptz(6)
+  updated_at     DateTime @default(now()) @db.Timestamptz(6)
+  orgs           orgs     @relation(fields: [org_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([org_id, integration_id])
+  @@schema("signal_auth_service")
+}
+
+model open_ai_configs {
+  org_id                  String   @id @db.VarChar(255)
+  created_at              DateTime @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime @default(now()) @db.Timestamptz(6)
+  api_key                 String   @db.VarChar(255)
+  csam_classifier_api_key String?  @db.VarChar(255)
+  orgs                    orgs     @relation(fields: [org_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("signal_auth_service")
+}
+
+model zentropi_configs {
+  org_id           String   @id @db.VarChar(255)
+  created_at       DateTime @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime @default(now()) @db.Timestamptz(6)
+  api_key          String   @db.VarChar(255)
+  labeler_versions Json?    @default("[]")
+
+  @@schema("signal_auth_service")
+}
+
+model models_eligible_as_signals {
+  org_id   String @db.VarChar(255)
+  model_id String @db.VarChar(255)
+  version  Int
+
+  @@id([model_id, version])
+  @@schema("signals_service")
+}
+
+model org_default_user_interface_settings {
+  org_id                      String  @id @db.VarChar(255)
+  moderator_safety_mute_video Boolean @default(true)
+  moderator_safety_grayscale  Boolean @default(true)
+  moderator_safety_blur_level Int     @default(2)
+  moderator_safety_sepia      Boolean @default(false)
+
+  @@schema("user_management_service")
+}
+
+model password_reset_tokens {
+  hashed_token String   @id @db.VarChar(255)
+  created_at   DateTime @db.Timestamptz(6)
+  org_id       String   @db.VarChar(255)
+  user_id      String   @db.VarChar(255)
+
+  @@schema("user_management_service")
+}
+
+model user_interface_settings {
+  user_id                     String   @id @db.VarChar(255)
+  moderator_safety_mute_video Boolean?
+  moderator_safety_grayscale  Boolean?
+  moderator_safety_blur_level Int?
+  mrt_chart_configurations    Json[]
+  moderator_safety_sepia      Boolean?
+
+  @@schema("user_management_service")
+}
+
+model user_scores {
+  org_id       String @db.VarChar(255)
+  user_id      String @db.VarChar(255)
+  score        Float
+  user_type_id String @db.VarChar(255)
+
+  @@id([org_id, user_id, user_type_id])
+  @@schema("user_statistics_service")
+}
+
+view action_latest_versions {
+  action_id String? @db.VarChar(255)
+  version   String?
+
+  @@schema("public")
+}
+
+view appeals_routing_rule_latest_versions {
+  appeals_routing_rule_id String? @db.VarChar(255)
+  version                 String?
+
+  @@schema("manual_review_tool")
+}
+
+view dim_mrt_decisions {
+  org_id       String?   @db.VarChar(255)
+  item_id      String?
+  action_id    String?
+  policy_id    String?
+  type         String?
+  item_type_id String?
+  queue_id     String?   @db.VarChar(255)
+  reviewer_id  String?   @db.VarChar(255)
+  ds           DateTime? @db.Date
+  job_id       String?
+  decided_at   DateTime? @db.Timestamptz(6)
+
+  @@schema("manual_review_tool")
+}
+
+view routing_rule_latest_versions {
+  routing_rule_id String? @db.VarChar(255)
+  version         String?
+
+  @@schema("manual_review_tool")
+}
+
+view policy_latest_versions {
+  policy_id String? @db.VarChar(255)
+  version   String?
+
+  @@schema("public")
+}
+
+view rules_latest_versions {
+  rule_id String? @db.VarChar(255)
+  version String?
+
+  @@schema("public")
+}
+
+view reporting_rule_latest_versions {
+  reporting_rule_id String? @db.VarChar(255)
+  version           String?
+
+  @@schema("reporting_rules")
+}
+
+view flattened_job_creations {
+  id           String?
+  org_id       String?   @db.VarChar(255)
+  queue_id     String?   @db.VarChar(255)
+  item_id      String?
+  item_type_id String?
+  created_at   DateTime? @db.Timestamptz(6)
+  source_kind  String?
+  rule_id      String?
+  policy_id    String?
+
+  @@schema("manual_review_tool")
+}
+
+view item_type_latest_versions {
+  item_type_id String? @db.VarChar(255)
+  version      String?
+
+  @@schema("public")
+}
+
+enum appeals_routing_rule_status {
+  LIVE
+
+  @@schema("manual_review_tool")
+}
+
+enum routing_rule_status {
+  LIVE
+
+  @@schema("manual_review_tool")
+}
+
+enum action_type {
+  CUSTOM_ACTION
+  ENQUEUE_TO_MRT
+  ENQUEUE_TO_NCMEC
+  ENQUEUE_AUTHOR_TO_MRT
+  REJECT_APPEAL
+  ACCEPT_APPEAL
+
+  @@schema("public")
+}
+
+enum backtest_status {
+  RUNNING
+  COMPLETE
+  CANCELED
+
+  @@schema("public")
+}
+
+enum enum_conditions_type {
+  BASIC
+  CUSTOM
+
+  @@schema("public")
+}
+
+enum enum_jobs_status {
+  open
+  closed
+
+  @@schema("public")
+}
+
+enum enum_rule_alarm_status {
+  ALARM
+  OK
+  INSUFFICIENT_DATA
+
+  @@schema("public")
+}
+
+enum enum_rules_condition_set_conjunction {
+  AND
+  NONE
+  OR
+  XOR
+
+  @@schema("public")
+}
+
+enum enum_rules_status {
+  BACKGROUND
+  DEPRECATED
+  DRAFT
+  LIVE
+  ARCHIVED
+
+  @@schema("public")
+}
+
+enum enum_signals_type {
+  CUSTOM
+  TEXT_MATCHING_CONTAINS_TEXT
+  TEXT_MATCHING_NOT_CONTAINS_TEXT
+  TEXT_MATCHING_CONTAINS_REGEX
+  TEXT_MATCHING_NOT_CONTAINS_REGEX
+  TEXT_SIMILARITY_SCORE
+  IMAGE_EXACT_MATCH
+  IMAGE_SIMILARITY_SCORE
+  GOOGLE_CONTENT_SAFETY_API
+  ZENTROPI_LABELER
+
+  @@schema("public")
+}
+
+enum item_type_kind {
+  CONTENT
+  USER
+  THREAD
+
+  @@schema("public")
+}
+
+enum login_method_enum {
+  password
+  saml
+
+  @@schema("public")
+}
+
+enum model_family {
+  embedded_text_kernelized_svm_001                     @map("embedded-text-kernelized-svm-001")
+  EMBEDDED_IMAGE_KERNELIZED_SVM_001
+  EMBEDDED_TEXT_AND_IMAGE_ENSEMBLE_KERNELIZED_SVMS_001
+  GPT_4O_MINI_001
+
+  @@schema("public")
+}
+
+enum model_status {
+  READY_TO_TRAIN
+  TRAINING
+  FROZEN
+
+  @@schema("public")
+}
+
+enum ncmec_report_error_status {
+  RETRYABLE_ERROR
+  PERMANENT_ERROR
+
+  @@schema("public")
+}
+
+enum policy_type {
+  HATE
+  VIOLENCE
+  HARRASSMENT
+  SEXUAL_CONTENT
+  SPAM
+  DRUG_SALES
+  WEAPON_SALES
+  TERRORISM
+  SEXUAL_EXPLOITATION
+  SELF_HARM_AND_SUICIDE
+  GROOMING
+  PROFANITY
+  PRIVACY
+  FRAUD_AND_DECEPTION
+
+  @@schema("public")
+}
+
+enum rule_type {
+  CONTENT
+  USER
+
+  @@schema("public")
+}
+
+enum text_bank_type {
+  STRING
+  REGEX
+
+  @@schema("public")
+}
+
+enum unknown_type {
+  EDGE_CASE
+  NEEDS_CONTEXT
+
+  @@schema("public")
+}
+
+enum user_penalty_severity {
+  NONE
+  LOW
+  MEDIUM
+  HIGH
+  SEVERE
+
+  @@schema("public")
+}
+
+enum reporting_rule_status {
+  DRAFT
+  BACKGROUND
+  LIVE
+  ARCHIVED
+
+  @@schema("reporting_rules")
+}
+
+// Materialized views. `prisma db pull` does not introspect these, so they are
+// declared by hand; Prisma never creates, alters or refreshes them.
+
+view appeals_routing_rule_versions {
+  id                   String                       @db.VarChar(255)
+  name                 String?                      @db.VarChar(255)
+  org_id               String?                      @db.VarChar(255)
+  description          String?                      @db.VarChar(255)
+  status               appeals_routing_rule_status?
+  creator_id           String?                      @db.VarChar(255)
+  condition_set        Json?
+  sequence_number      Int?
+  destination_queue_id String?                      @db.VarChar(255)
+  version              DateTime                     @db.Timestamptz(6)
+  is_current           Boolean?
+
+  @@unique([id, version])
+  @@schema("manual_review_tool")
+}
+
+view routing_rule_versions {
+  id                   String               @db.VarChar(255)
+  name                 String?              @db.VarChar(255)
+  org_id               String?              @db.VarChar(255)
+  description          String?              @db.VarChar(255)
+  status               routing_rule_status?
+  creator_id           String?              @db.VarChar(255)
+  condition_set        Json?
+  sequence_number      Int?
+  destination_queue_id String?              @db.VarChar(255)
+  version              DateTime             @db.Timestamptz(6)
+  is_current           Boolean?
+
+  @@unique([id, version])
+  @@schema("manual_review_tool")
+}
+
+view action_versions {
+  id                           String                 @db.VarChar(255)
+  name                         String?                @db.VarChar(255)
+  description                  String?                @db.VarChar(255)
+  callback_url                 String?                @db.VarChar(255)
+  org_id                       String?                @db.VarChar(255)
+  callback_url_headers         Json?
+  callback_url_body            Json?
+  penalty                      user_penalty_severity?
+  applies_to_all_items_of_kind item_type_kind[]
+  version                      DateTime               @db.Timestamptz(6)
+  is_current                   Boolean?
+
+  @@unique([id, version])
+  @@schema("public")
+}
+
+view item_type_versions {
+  id                     String          @db.VarChar(255)
+  name                   String?         @db.VarChar(255)
+  description            String?         @db.VarChar(255)
+  fields                 Json[]
+  org_id                 String?         @db.VarChar(255)
+  kind                   item_type_kind?
+  display_name_field     String?         @db.VarChar(255)
+  creator_id_field       String?         @db.VarChar(255)
+  thread_id_field        String?         @db.VarChar(255)
+  parent_id_field        String?         @db.VarChar(255)
+  created_at_field       String?         @db.VarChar(255)
+  is_deleted_field       String?         @db.VarChar(255)
+  profile_icon_field     String?         @db.VarChar(255)
+  background_image_field String?         @db.VarChar(255)
+  ip_address_field       String?         @db.VarChar(255)
+  email_field            String?         @db.VarChar(255)
+  is_default_user        Boolean?
+  version                DateTime        @db.Timestamptz(6)
+  is_current             Boolean?
+
+  @@unique([id, version])
+  @@schema("public")
+}
+
+view policy_versions {
+  id         String                 @db.VarChar(255)
+  name       String?                @db.VarChar(255)
+  org_id     String?                @db.VarChar(255)
+  parent_id  String?                @db.VarChar(255)
+  penalty    user_penalty_severity?
+  version    DateTime               @db.Timestamptz(6)
+  is_current Boolean?
+
+  @@unique([id, version])
+  @@schema("public")
+}
+
+view rule_versions {
+  id                  String     @db.VarChar(255)
+  name                String?    @db.VarChar(255)
+  description         String?    @db.VarChar(255)
+  status_if_unexpired String?    @db.VarChar(255)
+  tags                String[]   @db.VarChar(255)
+  max_daily_actions   Int?
+  org_id              String?    @db.VarChar(255)
+  creator_id          String?    @db.VarChar(255)
+  expiration_time     DateTime?  @db.Timestamptz(6)
+  rule_type           rule_type?
+  condition_set       Json?
+  is_current          Boolean?
+  action_ids          String[]   @db.VarChar
+  item_type_ids       String[]   @db.VarChar
+  policy_ids          String[]   @db.VarChar
+  version             DateTime   @db.Timestamptz(6)
+
+  @@unique([id, version])
+  @@schema("public")
+}
+
+view reporting_rule_versions {
+  id            String                 @db.VarChar(255)
+  name          String?                @db.VarChar(255)
+  org_id        String?                @db.VarChar(255)
+  description   String?                @db.VarChar(255)
+  status        reporting_rule_status?
+  creator_id    String?                @db.VarChar(255)
+  condition_set Json?
+  version       DateTime               @db.Timestamptz(6)
+  is_current    Boolean?
+
+  @@unique([id, version])
+  @@schema("reporting_rules")
+}

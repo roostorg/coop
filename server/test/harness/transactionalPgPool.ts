@@ -172,6 +172,17 @@ export function createTransactionalTestDb(
       return result;
     }
 
+    // Prisma's pg adapter opens a transaction with `BEGIN` and then a separate
+    // `SET TRANSACTION ISOLATION LEVEL ...`. Inside a savepoint Postgres
+    // rejects that statement, so the requested level is dropped; every test
+    // runs at the outer transaction's level.
+    if (
+      txMutex !== null &&
+      normalized.startsWith('set transaction isolation level')
+    ) {
+      return { command: 'SET', rowCount: null, rows: [], fields: [] };
+    }
+
     rejectUnsupportedTransactionControl(normalized, text);
 
     // Outside a transaction, queue to
@@ -192,9 +203,20 @@ export function createTransactionalTestDb(
     query: runQuery,
     // Keep the pinned connection alive across the whole test.
     release() {},
+    // Prisma's pg adapter subscribes to connection errors for the lifetime of
+    // each transaction.
+    on() {
+      return facadeClient;
+    },
+    removeListener() {
+      return facadeClient;
+    },
   };
 
-  const pool = {
+  // Prisma's pg adapter only reuses a pool that is `instanceof pg.Pool`;
+  // anything else it treats as connection config and opens its own pool,
+  // bypassing the harness. Hence the prototype.
+  const pool = Object.assign(Object.create(pg.Pool.prototype) as object, {
     Client: pg.Client,
     options: config,
     async connect() {
@@ -204,8 +226,13 @@ export function createTransactionalTestDb(
       return runQuery(textOrConfig, values);
     },
     async end() {},
-    on() {},
-  };
+    on() {
+      return pool;
+    },
+    removeListener() {
+      return pool;
+    },
+  });
 
   return {
     pool: pool as unknown as pg.Pool,

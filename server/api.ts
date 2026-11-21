@@ -58,7 +58,7 @@ const sessionStore = connectPgSimple(session);
 export default async function makeApiServer(deps: Dependencies) {
   const app = express();
   const passport = new Passport();
-  const { KyselyPg, KyselyPgPool } = deps;
+  const { PrismaPg, KyselyPgPool } = deps;
 
   app.use(cors());
 
@@ -119,7 +119,7 @@ export default async function makeApiServer(deps: Dependencies) {
     req: Request,
     profile: Profile | null,
     done: VerifiedCallback,
-  ) => resolveSamlUser(KyselyPg, deps.Tracer, req, profile, done);
+  ) => resolveSamlUser(PrismaPg, deps.Tracer, req, profile, done);
 
   passport.use(
     new MultiSamlStrategy(
@@ -193,7 +193,7 @@ export default async function makeApiServer(deps: Dependencies) {
 
   passport.deserializeUser(async (id, done) => {
     try {
-      const user = await kyselyUserFindById(KyselyPg, String(id));
+      const user = await kyselyUserFindById(PrismaPg, String(id));
       if (user == null) {
         return done(
           makeNotFoundError(`Session user ${String(id)} not found`, {

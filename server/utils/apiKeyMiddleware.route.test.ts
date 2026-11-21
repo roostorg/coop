@@ -11,7 +11,7 @@ describe('API key middleware through the HTTP stack (#676)', () => {
   const testWithFixture = makeTransactionalTestWithFixture(async ({ deps }) => {
     const { apiKey } = await createOrg(
       {
-        KyselyPg: deps.KyselyPg,
+        PrismaPg: deps.PrismaPg,
         ModerationConfigService: deps.ModerationConfigService,
         ApiKeyService: deps.ApiKeyService,
       },

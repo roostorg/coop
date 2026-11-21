@@ -11,7 +11,7 @@ import { logErrorAndThrow } from '../utils.js';
 export default async function createOrg(
   deps: Pick<
     Dependencies,
-    'KyselyPg' | 'ModerationConfigService' | 'ApiKeyService'
+    'PrismaPg' | 'ModerationConfigService' | 'ApiKeyService'
   >,
   id?: string,
   extra: {
@@ -21,7 +21,7 @@ export default async function createOrg(
   const orgId = id ?? uid();
 
   const org = await kyselyOrgInsert({
-    db: deps.KyselyPg,
+    db: deps.PrismaPg,
     id: orgId,
     name: `Dummy_Company_Name_${orgId}`,
     email: faker.internet.email(),
@@ -50,7 +50,7 @@ export default async function createOrg(
     apiKey,
     defaultUserItemType,
     async cleanup() {
-      await kyselyOrgDeleteById(deps.KyselyPg, orgId);
+      await kyselyOrgDeleteById(deps.PrismaPg, orgId);
     },
   };
 }

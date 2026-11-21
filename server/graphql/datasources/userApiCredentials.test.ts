@@ -1,50 +1,36 @@
 import bcrypt from 'bcryptjs';
-import { type Kysely } from 'kysely';
 import { vi } from 'vitest';
 
+import { type Dependencies } from '../../iocContainer/index.js';
 import {
   hashPassword,
   passwordMatchesHash,
 } from '../../services/userManagementService/index.js';
 import { verifyEmailPasswordCredentials } from './userApiCredentials.js';
 
-// `verifyEmailPasswordCredentials` only touches the injected Kysely instance
+// `verifyEmailPasswordCredentials` only touches the injected Prisma client
 // (user lookup + the rehash-on-login update); `orgSettingsService` and
 // `tracer` are separate mocks below.
-function makeMockKyselyPg(opts: {
+function makeMockPrisma(opts: {
   userRow: Record<string, unknown> | undefined;
   updateShouldThrow?: boolean;
 }) {
-  const selectExecuteTakeFirst = vi.fn().mockResolvedValue(opts.userRow);
-  const selectBuilder = {
-    select: vi.fn().mockReturnThis(),
-    where: vi.fn().mockReturnThis(),
-    executeTakeFirst: selectExecuteTakeFirst,
-  };
-  const selectFrom = vi.fn().mockReturnValue(selectBuilder);
+  const findFirst = vi.fn().mockResolvedValue(opts.userRow ?? null);
 
-  const updateExecute = vi.fn();
+  const updateMany = vi.fn();
   if (opts.updateShouldThrow) {
-    updateExecute.mockRejectedValue(new Error('update failed'));
+    updateMany.mockRejectedValue(new Error('update failed'));
   } else {
-    // Kysely's `execute()` on an update resolves to UpdateResult[]; the
-    // rehash path ignores it (zero matched rows = lost the CAS, no-op).
-    updateExecute.mockResolvedValue([]);
+    // The rehash path ignores the count (zero matched rows = lost the CAS,
+    // no-op).
+    updateMany.mockResolvedValue({ count: 0 });
   }
-  const updateBuilder = {
-    set: vi.fn().mockReturnThis(),
-    where: vi.fn().mockReturnThis(),
-    execute: updateExecute,
-  };
-  const updateTable = vi.fn().mockReturnValue(updateBuilder);
 
-  const kyselyPg = {
-    selectFrom,
-    updateTable,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- test stub
-  } as unknown as Kysely<any>;
+  const prisma = {
+    users: { findFirst, updateMany },
+  } as unknown as Dependencies['PrismaPg'];
 
-  return { kyselyPg, selectFrom, updateTable, updateBuilder };
+  return { prisma, findFirst, updateMany };
 }
 
 function makeUserRow(overrides: Partial<Record<string, unknown>> = {}) {
@@ -54,11 +40,10 @@ function makeUserRow(overrides: Partial<Record<string, unknown>> = {}) {
     password: 'placeholder',
     first_name: 'Test',
     last_name: 'User',
-    role: 'ADMIN',
+    roles: { key: 'ADMIN', role_permissions: [] },
     approved_by_admin: true,
     rejected_by_admin: false,
     login_methods: ['password'],
-    permissions: [],
     created_at: new Date(),
     updated_at: new Date(),
     org_id: 'org-456',
@@ -66,12 +51,12 @@ function makeUserRow(overrides: Partial<Record<string, unknown>> = {}) {
   };
 }
 
-function makeDeps(kyselyPg: Kysely<unknown>) {
+function makeDeps(prisma: Dependencies['PrismaPg']) {
   const getSamlSettings = vi.fn().mockResolvedValue(null);
   const logActiveSpanFailedIfAny = vi.fn();
   return {
     deps: {
-      kyselyPg,
+      prisma,
       orgSettingsService: { getSamlSettings } as unknown as never,
       tracer: { logActiveSpanFailedIfAny } as unknown as never,
     },
@@ -86,10 +71,8 @@ describe('verifyEmailPasswordCredentials', () => {
   it('rehashes a legacy bcrypt hash to Argon2id on successful login', async () => {
     const legacyBcryptHash = await bcrypt.hash(password, 5);
     const userRow = makeUserRow({ password: legacyBcryptHash });
-    const { kyselyPg, updateTable, updateBuilder } = makeMockKyselyPg({
-      userRow,
-    });
-    const { deps } = makeDeps(kyselyPg);
+    const { prisma, updateMany } = makeMockPrisma({ userRow });
+    const { deps } = makeDeps(prisma);
 
     const result = await verifyEmailPasswordCredentials(
       deps,
@@ -98,8 +81,8 @@ describe('verifyEmailPasswordCredentials', () => {
     );
 
     expect(result.id).toBe('user-123');
-    expect(updateTable).toHaveBeenCalledWith('public.users');
-    const [[persistedPatch]] = updateBuilder.set.mock.calls;
+    expect(updateMany).toHaveBeenCalledTimes(1);
+    const [[{ data: persistedPatch, where }]] = updateMany.mock.calls;
     expect(persistedPatch.password).toMatch(
       /^\$argon2id\$v=19\$m=19456,t=2,p=1\$/,
     );
@@ -107,12 +90,7 @@ describe('verifyEmailPasswordCredentials', () => {
     // the exact hash that was just verified, not the user id alone, so a
     // concurrent password change can never be clobbered by a rehash of the
     // old plaintext.
-    expect(updateBuilder.where).toHaveBeenCalledWith('id', '=', 'user-123');
-    expect(updateBuilder.where).toHaveBeenCalledWith(
-      'password',
-      '=',
-      legacyBcryptHash,
-    );
+    expect(where).toEqual({ id: 'user-123', password: legacyBcryptHash });
     // Verified through `passwordMatchesHash` — the same path a real login
     // takes — rather than reimplementing the comparison in the test.
     await expect(
@@ -123,25 +101,25 @@ describe('verifyEmailPasswordCredentials', () => {
   it('does not rehash when the stored hash is already a current Argon2id hash', async () => {
     const currentHash = await hashPassword(password);
     const userRow = makeUserRow({ password: currentHash });
-    const { kyselyPg, updateTable } = makeMockKyselyPg({ userRow });
-    const { deps } = makeDeps(kyselyPg);
+    const { prisma, updateMany } = makeMockPrisma({ userRow });
+    const { deps } = makeDeps(prisma);
 
     await verifyEmailPasswordCredentials(deps, 'test@example.com', password);
 
-    expect(updateTable).not.toHaveBeenCalled();
+    expect(updateMany).not.toHaveBeenCalled();
   });
 
   it('rejects a wrong password and does not attempt a rehash write', async () => {
     const legacyBcryptHash = await bcrypt.hash(password, 5);
     const userRow = makeUserRow({ password: legacyBcryptHash });
-    const { kyselyPg, updateTable } = makeMockKyselyPg({ userRow });
-    const { deps } = makeDeps(kyselyPg);
+    const { prisma, updateMany } = makeMockPrisma({ userRow });
+    const { deps } = makeDeps(prisma);
 
     await expect(
       verifyEmailPasswordCredentials(deps, 'test@example.com', 'wrong'),
     ).rejects.toThrow();
 
-    expect(updateTable).not.toHaveBeenCalled();
+    expect(updateMany).not.toHaveBeenCalled();
   });
 
   it('surfaces a generic internal-server error and logs when the stored hash cannot be evaluated', async () => {
@@ -154,25 +132,25 @@ describe('verifyEmailPasswordCredentials', () => {
     const userRow = makeUserRow({
       password: '$argon2id$v=19$m=19456,t=2,p=1$!!!!$!!!!',
     });
-    const { kyselyPg, updateTable } = makeMockKyselyPg({ userRow });
-    const { deps, logActiveSpanFailedIfAny } = makeDeps(kyselyPg);
+    const { prisma, updateMany } = makeMockPrisma({ userRow });
+    const { deps, logActiveSpanFailedIfAny } = makeDeps(prisma);
 
     await expect(
       verifyEmailPasswordCredentials(deps, 'test@example.com', password),
     ).rejects.toMatchObject({ name: 'InternalServerError' });
 
     expect(logActiveSpanFailedIfAny).toHaveBeenCalled();
-    expect(updateTable).not.toHaveBeenCalled();
+    expect(updateMany).not.toHaveBeenCalled();
   });
 
   it('fails the login when the rehash write throws', async () => {
     const legacyBcryptHash = await bcrypt.hash(password, 5);
     const userRow = makeUserRow({ password: legacyBcryptHash });
-    const { kyselyPg } = makeMockKyselyPg({
+    const { prisma } = makeMockPrisma({
       userRow,
       updateShouldThrow: true,
     });
-    const { deps, logActiveSpanFailedIfAny } = makeDeps(kyselyPg);
+    const { deps, logActiveSpanFailedIfAny } = makeDeps(prisma);
 
     // A failing write means something is wrong with the database, and the
     // login fails loudly rather than being quietly downgraded to a success

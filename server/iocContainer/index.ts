@@ -249,6 +249,10 @@ import {
   type IDataWarehouse,
   type IDataWarehouseDialect,
 } from '../storage/dataWarehouse/index.js';
+import {
+  makePrismaClient,
+  type PrismaPgClient,
+} from '../storage/prisma/index.js';
 import { cached, type Cached } from '../utils/caching.js';
 import { CoopMeter } from '../utils/CoopMeter.js';
 import {
@@ -340,6 +344,14 @@ export interface Dependencies {
   // non-Kysely Postgres consumers (e.g., the express-session store) can
   // share the same pool instead of opening their own.
   KyselyPgPool: pg.Pool;
+  // The read-replica `pg.Pool`, shared by KyselyPgReadReplica and
+  // PrismaPgReadReplica.
+  KyselyPgReadReplicaPool: pg.Pool;
+
+  // Prisma clients over the same pools as KyselyPg / KyselyPgReadReplica, so
+  // the two can coexist during an incremental port.
+  PrismaPg: PrismaPgClient;
+  PrismaPgReadReplica: PrismaPgClient;
 
   // Similar to our Kysely services, we register the services as Scylla<any> so
   // that each dependent service can type its arg more specifically with the set
@@ -480,6 +492,10 @@ export function getPgConnectionParams(): pg.ClientConfig {
     port: parseInt(process.env.DATABASE_PORT ?? '5432'),
     host: safeGetEnvVar('DATABASE_HOST'),
     ssl: isEnvTrue('DATABASE_SSL') ? { rejectUnauthorized: false } : undefined,
+    // Prisma's pg adapter discards the offset Postgres sends with each
+    // timestamptz and reads it as UTC, and binds Dates as zone-less UTC
+    // strings, so every session must run in UTC.
+    options: '-c TimeZone=UTC',
   };
 }
 
@@ -606,21 +622,37 @@ export default async function getBottle(
       }),
   );
 
+  bottle.factory('KyselyPgReadReplicaPool', () =>
+    createPgPool({
+      ...getPgMasterConnectionInfo(),
+      max: parseInt(process.env.DATABASE_READ_POOL_MAX ?? '150'),
+      host: safeGetEnvVar('DATABASE_READ_ONLY_HOST'),
+    }),
+  );
+
   bottle.factory(
     'KyselyPgReadReplica',
-    () =>
+    (container) =>
       new Kysely<CombinedPg>({
         dialect: new PostgresDialect({
           controlClient: pg.Client,
-          pool: createPgPool({
-            ...getPgMasterConnectionInfo(),
-            max: parseInt(process.env.DATABASE_READ_POOL_MAX ?? '150'),
-            host: safeGetEnvVar('DATABASE_READ_ONLY_HOST'),
-          }),
+          pool: container.KyselyPgReadReplicaPool,
           cursor: Cursor,
         }),
         log: kyselyLogLevels,
       }),
+  );
+
+  bottle.factory('PrismaPg', (container) =>
+    makePrismaClient(container.KyselyPgPool, {
+      logQueries: isEnvTrue('DATABASE_PRINT_LOGS'),
+    }),
+  );
+
+  bottle.factory('PrismaPgReadReplica', (container) =>
+    makePrismaClient(container.KyselyPgReadReplicaPool, {
+      logQueries: isEnvTrue('DATABASE_PRINT_LOGS'),
+    }),
   );
 
   // AUTH-enabled Redis (e.g. ElastiCache with an auth token) rejects every
@@ -963,8 +995,8 @@ export default async function getBottle(
     'ModerationConfigService',
     (container) =>
       new ModerationConfigService(
-        container.KyselyPg,
-        container.KyselyPgReadReplica,
+        container.PrismaPg,
+        container.PrismaPgReadReplica,
         async (_) => {},
       ),
   );
@@ -990,8 +1022,8 @@ export default async function getBottle(
       container.IORedis,
       container.RuleEvaluator,
       container.RoutingRuleExecutionLogger,
-      container.KyselyPg,
-      container.KyselyPgReadReplica,
+      container.PrismaPg,
+      container.PrismaPgReadReplica,
       container.UserStatisticsService,
       container.getActionsByIdEventuallyConsistent,
       container.Tracer,
@@ -1646,8 +1678,7 @@ export default async function getBottle(
   );
 
   bottle.factory('getImageBankEventuallyConsistent', (container) => {
-    const kyselyPg = container.KyselyPg;
-    const hashBankService = new HashBankService(kyselyPg);
+    const hashBankService = new HashBankService(container.PrismaPg);
 
     return cached({
       async producer({ orgId, bankId }) {
@@ -1752,7 +1783,7 @@ export default async function getBottle(
   register(bottle, 'SigningKeyPairService', makeSigningKeyPairService);
   bottle.factory(
     'SigningKeyPairStorageService',
-    (container) => new PostgresSigningKeyPairStorage(container.KyselyPg),
+    (container) => new PostgresSigningKeyPairStorage(container.PrismaPg),
   );
   bottle.value('ConfigService', { uiUrl: safeGetEnvVar('UI_URL') });
   bottle.value('S3StoreObjectFactory', s3StoreObjectFactory);

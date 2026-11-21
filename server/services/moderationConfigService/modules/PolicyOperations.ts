@@ -1,7 +1,9 @@
-import { type Kysely, type Transaction } from 'kysely';
-import { type Writable } from 'type-fest';
 import { uid } from 'uid';
 
+import {
+  type Prisma,
+  type PrismaPgQueryable,
+} from '../../../storage/prisma/index.js';
 import {
   CoopError,
   ErrorType,
@@ -9,85 +11,55 @@ import {
   makeUnauthorizedError,
   type ErrorInstanceData,
 } from '../../../utils/errors.js';
-import {
-  isUniqueViolationError,
-  type FixKyselyRowCorrelation,
-} from '../../../utils/kysely.js';
-import {
-  makeKyselyTransactionWithRetry,
-  type KyselyTransactionWithRetry,
-} from '../../../utils/kyselyTransactionWithRetry.js';
+import { isUniqueViolationError } from '../../../utils/kysely.js';
 import { removeUndefinedKeys } from '../../../utils/misc.js';
 import {
   UserPermission,
   type Invoker,
 } from '../../userManagementService/index.js';
-import { type ModerationConfigServicePg } from '../dbTypes.js';
 import { type Policy } from '../index.js';
+import { runInPrismaTransaction } from '../prismaTransaction.js';
 import type { PolicyMutationInvoker, PolicyType } from '../types/policies.js';
 
-const policyDbSelection = [
-  'id',
-  'name',
-  'org_id as orgId',
-  'parent_id as parentId',
-  'created_at as createdAt',
-  'updated_at as updatedAt',
-  'policy_text as policyText',
-  'enforcement_guidelines as enforcementGuidelines',
-  'sys_period as sysPeriod',
-  'policy_type as policyType',
-  'semantic_version as semanticVersion',
-  'user_strike_count as userStrikeCount',
-  'apply_user_strike_count_config_to_children as applyUserStrikeCountConfigToChildren',
-  'penalty',
-] as const;
+// `sys_period` is a tstzrange column that Prisma can't read (Unsupported), so
+// unlike the Kysely selection it is not part of the row.
+const policyPrismaSelect = {
+  id: true,
+  name: true,
+  org_id: true,
+  parent_id: true,
+  created_at: true,
+  updated_at: true,
+  policy_text: true,
+  enforcement_guidelines: true,
+  policy_type: true,
+  semantic_version: true,
+  user_strike_count: true,
+  apply_user_strike_count_config_to_children: true,
+  penalty: true,
+} as const satisfies Prisma.policiesSelect;
 
-const policyJoinDbSelection = [
-  'rap.rule_id as ruleId',
-  'p.id',
-  'p.name',
-  'p.org_id as orgId',
-  'p.parent_id as parentId',
-  'p.created_at as createdAt',
-  'p.updated_at as updatedAt',
-  'p.policy_text as policyText',
-  'p.enforcement_guidelines as enforcementGuidelines',
-  'p.sys_period as sysPeriod',
-  'p.policy_type as policyType',
-  'p.semantic_version as semanticVersion',
-  'p.user_strike_count as userStrikeCount',
-  'p.apply_user_strike_count_config_to_children as applyUserStrikeCountConfigToChildren',
-  'p.penalty',
-] as const;
-
-type PolicyDbResult = FixKyselyRowCorrelation<
-  ModerationConfigServicePg['public.policies'],
-  typeof policyDbSelection
->;
+type PolicyPrismaRow = Prisma.policiesGetPayload<{
+  select: typeof policyPrismaSelect;
+}>;
 
 export default class PolicyOperations {
-  private readonly transactionWithRetry: KyselyTransactionWithRetry<ModerationConfigServicePg>;
-
   constructor(
-    private readonly pgQuery: Kysely<ModerationConfigServicePg>,
-    private readonly pgQueryReplica: Kysely<ModerationConfigServicePg>,
+    private readonly pgQuery: PrismaPgQueryable,
+    private readonly pgQueryReplica: PrismaPgQueryable,
     private readonly onDeletePolicyId: (opts: {
       policyId: string;
       orgId: string;
     }) => Promise<void>,
-  ) {
-    this.transactionWithRetry = makeKyselyTransactionWithRetry(this.pgQuery);
-  }
+  ) {}
 
   async getPolicies(opts: { orgId: string; readFromReplica?: boolean }) {
     const { orgId, readFromReplica } = opts;
     const pgQuery = this.#getPgQuery(readFromReplica);
-    const query = pgQuery
-      .selectFrom('public.policies')
-      .select(policyDbSelection)
-      .where('org_id', '=', orgId);
-    const results = (await query.execute()) as PolicyDbResult[];
+    const results = await pgQuery.policies.findMany({
+      select: policyPrismaSelect,
+      where: { org_id: orgId },
+    });
 
     return results.map((it) => this.#dbResultToPolicy(it));
   }
@@ -102,12 +74,10 @@ export default class PolicyOperations {
       return [];
     }
     const pgQuery = this.#getPgQuery(readFromReplica ?? true);
-    const results = (await pgQuery
-      .selectFrom('public.policies')
-      .select(policyDbSelection)
-      .where('org_id', '=', orgId)
-      .where('id', 'in', [...ids])
-      .execute()) as PolicyDbResult[];
+    const results = await pgQuery.policies.findMany({
+      select: policyPrismaSelect,
+      where: { org_id: orgId, id: { in: [...ids] } },
+    });
 
     return results.map((it) => this.#dbResultToPolicy(it));
   }
@@ -121,19 +91,15 @@ export default class PolicyOperations {
       return {};
     }
     const pgQuery = this.#getPgQuery(readFromReplica ?? true);
-    type Row = PolicyDbResult & { ruleId: string };
-    const rows = (await pgQuery
-      .selectFrom('public.rules_and_policies as rap')
-      .innerJoin('public.policies as p', 'p.id', 'rap.policy_id')
-      .select(policyJoinDbSelection)
-      .where('rap.rule_id', 'in', [...ruleIds])
-      .execute()) as Row[];
+    const rows = await pgQuery.rules_and_policies.findMany({
+      select: { rule_id: true, policies: { select: policyPrismaSelect } },
+      where: { rule_id: { in: [...ruleIds] } },
+    });
 
     const out: Record<string, Policy[]> = {};
     for (const row of rows) {
-      const { ruleId, ...policyFields } = row;
-      const policy = this.#dbResultToPolicy(policyFields);
-      (out[ruleId] ??= []).push(policy);
+      const policy = this.#dbResultToPolicy(row.policies);
+      (out[row.rule_id] ??= []).push(policy);
     }
     return out;
   }
@@ -145,14 +111,12 @@ export default class PolicyOperations {
   }) {
     const { orgId, policyId, readFromReplica } = opts;
     const pgQuery = this.#getPgQuery(readFromReplica);
-    const query = pgQuery
-      .selectFrom('public.policies')
-      .select(policyDbSelection)
-      .where('org_id', '=', orgId)
-      .where('id', '=', policyId);
-    const result = await query.executeTakeFirst();
+    const result = await pgQuery.policies.findFirst({
+      select: policyPrismaSelect,
+      where: { org_id: orgId, id: policyId },
+    });
 
-    return result === undefined ? undefined : this.#dbResultToPolicy(result);
+    return result === null ? undefined : this.#dbResultToPolicy(result);
   }
 
   async createPolicy(opts: {
@@ -192,14 +156,14 @@ export default class PolicyOperations {
 
     try {
       const id = uid();
-      const newPolicy = await this.transactionWithRetry(
-        { isolationLevel: 'serializable' },
+      const newPolicy = await runInPrismaTransaction(
+        this.pgQuery,
+        { isolationLevel: 'Serializable' },
         async (trx) => {
           const policies = await this.#getPolicyParents(trx, org_id);
           this.#validateParent(policies, id, parent_id);
-          return trx
-            .insertInto('public.policies')
-            .values({
+          return trx.policies.create({
+            data: {
               id,
               name,
               org_id,
@@ -214,9 +178,9 @@ export default class PolicyOperations {
                 user_strike_count,
                 apply_user_strike_count_config_to_children,
               }),
-            })
-            .returning(policyDbSelection)
-            .executeTakeFirstOrThrow();
+            },
+            select: policyPrismaSelect,
+          });
         },
       );
 
@@ -255,8 +219,9 @@ export default class PolicyOperations {
     }
 
     try {
-      const updatedPolicy = await this.transactionWithRetry(
-        { isolationLevel: 'serializable' },
+      const updatedPolicy = await runInPrismaTransaction(
+        this.pgQuery,
+        { isolationLevel: 'Serializable' },
         async (trx) => {
           const policies = await this.#getPolicyParents(trx, orgId);
           const current = policies.find(({ id }) => id === policy.id);
@@ -268,25 +233,21 @@ export default class PolicyOperations {
           const proposedParent =
             policy.parentId === undefined ? current.parent_id : policy.parentId;
           this.#validateParent(policies, policy.id, proposedParent);
-          return trx
-            .updateTable('public.policies')
-            .set(
-              removeUndefinedKeys({
-                name: policy.name,
-                parent_id: policy.parentId,
-                policy_text: policy.policyText,
-                enforcement_guidelines: policy.enforcementGuidelines,
-                policy_type: policy.policyType,
-                user_strike_count: policy.userStrikeCount ?? undefined,
-                apply_user_strike_count_config_to_children:
-                  policy.applyUserStrikeCountConfigToChildren ?? undefined,
-                updated_at: new Date(),
-              }),
-            )
-            .where('org_id', '=', orgId)
-            .where('id', '=', policy.id)
-            .returning(policyDbSelection)
-            .executeTakeFirstOrThrow();
+          return trx.policies.update({
+            data: removeUndefinedKeys({
+              name: policy.name,
+              parent_id: policy.parentId,
+              policy_text: policy.policyText,
+              enforcement_guidelines: policy.enforcementGuidelines,
+              policy_type: policy.policyType,
+              user_strike_count: policy.userStrikeCount ?? undefined,
+              apply_user_strike_count_config_to_children:
+                policy.applyUserStrikeCountConfigToChildren ?? undefined,
+              updated_at: new Date(),
+            }),
+            where: { org_id: orgId, id: policy.id },
+            select: policyPrismaSelect,
+          });
         },
       );
 
@@ -311,40 +272,47 @@ export default class PolicyOperations {
       );
     }
 
-    const rowsDeleted = await this.pgQuery
-      .deleteFrom('public.policies')
-      .where('org_id', '=', orgId)
-      .where('id', '=', policyId)
-      .execute();
+    await this.pgQuery.policies.deleteMany({
+      where: { org_id: orgId, id: policyId },
+    });
 
-    if (rowsDeleted.length === 1) {
-      // We don't need to wait for this to complete before returning.
-      // Additionally, if it fails, we don't want to throw an error because
-      // it's not critical that it succeeds, it's just a 'best effort' cleanup.
-      this.onDeletePolicyId({ policyId, orgId }).catch(() => {});
-      return true;
-    }
-
-    return false;
+    // Unconditional, as in the Kysely implementation, whose check on the
+    // length of `execute()`'s result (always one DeleteResult) always passed.
+    // We don't need to wait for this to complete before returning.
+    // Additionally, if it fails, we don't want to throw an error because
+    // it's not critical that it succeeds, it's just a 'best effort' cleanup.
+    this.onDeletePolicyId({ policyId, orgId }).catch(() => {});
+    return true;
   }
 
-  #dbResultToPolicy(it: PolicyDbResult) {
-    return it satisfies Writable<Policy> as Policy;
+  #dbResultToPolicy(it: PolicyPrismaRow): Policy {
+    return {
+      id: it.id,
+      name: it.name,
+      orgId: it.org_id,
+      parentId: it.parent_id,
+      createdAt: it.created_at,
+      updatedAt: it.updated_at,
+      policyText: it.policy_text,
+      enforcementGuidelines: it.enforcement_guidelines,
+      policyType: it.policy_type,
+      semanticVersion: it.semantic_version,
+      userStrikeCount: it.user_strike_count,
+      applyUserStrikeCountConfigToChildren:
+        it.apply_user_strike_count_config_to_children,
+      penalty: it.penalty,
+    };
   }
 
   #getPgQuery(readFromReplica: boolean = false) {
     return readFromReplica ? this.pgQueryReplica : this.pgQuery;
   }
 
-  async #getPolicyParents(
-    trx: Transaction<ModerationConfigServicePg>,
-    orgId: string,
-  ) {
-    return trx
-      .selectFrom('public.policies')
-      .select(['id', 'parent_id'])
-      .where('org_id', '=', orgId)
-      .execute();
+  async #getPolicyParents(trx: PrismaPgQueryable, orgId: string) {
+    return trx.policies.findMany({
+      select: { id: true, parent_id: true },
+      where: { org_id: orgId },
+    });
   }
 
   #validateParent(

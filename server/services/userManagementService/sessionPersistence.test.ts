@@ -18,7 +18,7 @@ describe('password recovery session persistence', () => {
     async ({ deps, server }) => {
       const { org } = await createOrg(deps);
       const { org: foreignOrg } = await createOrg(deps);
-      const { user } = await createUser(deps.KyselyPg, org.id, {
+      const { user } = await createUser(deps.PrismaPg, org.id, {
         approvedByAdmin: true,
         loginMethods: ['password'],
         password: initialPassword,
@@ -37,7 +37,7 @@ describe('password recovery session persistence', () => {
         await expectSessionIdentity(session, user);
 
       const createObserver = async (orgId: string) => {
-        const { user: observer } = await createUser(deps.KyselyPg, orgId, {
+        const { user: observer } = await createUser(deps.PrismaPg, orgId, {
           approvedByAdmin: true,
           loginMethods: ['password'],
           password: initialPassword,

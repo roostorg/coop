@@ -20,7 +20,7 @@ it('authenticates sessions after another app has shut down', async () => {
   try {
     const { org } = await createOrg(deps);
     const password = 'Session-isolation-test-password-123!';
-    const { user } = await createUser(deps.KyselyPg, org.id, {
+    const { user } = await createUser(deps.PrismaPg, org.id, {
       approvedByAdmin: true,
       loginMethods: ['password'],
       password,
@@ -55,7 +55,7 @@ describe('session authentication', () => {
     async ({ deps, request: session }) => {
       const { org } = await createOrg(deps);
       const password = 'Session-test-password-123!';
-      const { user } = await createUser(deps.KyselyPg, org.id, {
+      const { user } = await createUser(deps.PrismaPg, org.id, {
         approvedByAdmin: true,
         loginMethods: ['password'],
         password,
@@ -84,7 +84,7 @@ describe('session authentication', () => {
     async ({ deps, session, user }) => {
       const { org: foreignOrg } = await createOrg(deps);
       const { user: foreignUser } = await createUser(
-        deps.KyselyPg,
+        deps.PrismaPg,
         foreignOrg.id,
         {
           approvedByAdmin: true,
@@ -141,7 +141,7 @@ describe('session authentication', () => {
       const { org: foreignOrg } = await createOrg(deps);
       const foreignPassword = 'Foreign-user-password-456!';
       const { user: foreignUser } = await createUser(
-        deps.KyselyPg,
+        deps.PrismaPg,
         foreignOrg.id,
         {
           approvedByAdmin: true,

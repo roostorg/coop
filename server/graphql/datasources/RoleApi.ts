@@ -1,8 +1,5 @@
-import { type Kysely } from 'kysely';
-
 import { type Dependencies } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
-import { type CombinedPg } from '../../services/combinedDbTypes.js';
 import {
   type PermissionGroup,
   type UserPermission,
@@ -19,15 +16,11 @@ import {
 /**
  * GraphQL data source for the role-editor surface. Mirrors the existing
  * Api/Persistence split (see {@link UserAPI}/{@link kyselyUserFindById}):
- * the persistence module owns Kysely queries; this class is the DI-wired
+ * the persistence module owns the Postgres queries; this class is the DI-wired
  * adapter resolvers reach for via `context.dataSources.roleAPI`.
  */
 class RoleAPI {
-  private readonly db: Kysely<CombinedPg>;
-
-  constructor(db: Dependencies['KyselyPg']) {
-    this.db = db as Kysely<CombinedPg>;
-  }
+  constructor(private readonly db: Dependencies['PrismaPg']) {}
 
   async listRolesForOrg(orgId: string): Promise<RoleParent[]> {
     return kyselyListRolesForOrg(this.db, orgId);
@@ -55,5 +48,5 @@ class RoleAPI {
   }
 }
 
-export default inject(['KyselyPg'], RoleAPI);
+export default inject(['PrismaPg'], RoleAPI);
 export type { RoleAPI };

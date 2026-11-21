@@ -1,11 +1,9 @@
-import { type Kysely } from 'kysely';
 import { uid } from 'uid';
 
 import {
   kyselyCreateRule,
   kyselyDeleteRule,
 } from '../../graphql/datasources/ruleKyselyPersistence.js';
-import { type CombinedPg } from '../../services/combinedDbTypes.js';
 import {
   ConditionConjunction,
   RuleAlarmStatus,
@@ -14,6 +12,7 @@ import {
   type ConditionSet,
 } from '../../services/moderationConfigService/index.js';
 import { SignalType } from '../../services/signalsService/index.js';
+import { type PrismaPgClient } from '../../storage/prisma/index.js';
 import { jsonStringify } from '../../utils/encoding.js';
 import { logErrorAndThrow } from '../utils.js';
 import createUser from './createUser.js';
@@ -37,7 +36,7 @@ const DEFAULT_CONDITION_SET: ConditionSet = {
 };
 
 export default async function createRule(
-  db: Kysely<CombinedPg>,
+  db: PrismaPgClient,
   orgId: string,
   extra: {
     creatorId?: string;
@@ -83,12 +82,10 @@ export default async function createRule(
   // seed a different alarm status (e.g. anomaly-detection snapshot fixtures).
   const alarmStatus = extra.alarmStatus ?? RuleAlarmStatus.INSUFFICIENT_DATA;
   if (alarmStatus !== RuleAlarmStatus.INSUFFICIENT_DATA) {
-    await db
-      .updateTable('public.rules')
-      .set({ alarm_status: alarmStatus, alarm_status_set_at: new Date() })
-      .where('id', '=', ruleId)
-      .where('org_id', '=', orgId)
-      .execute();
+    await db.rules.updateMany({
+      data: { alarm_status: alarmStatus, alarm_status_set_at: new Date() },
+      where: { id: ruleId, org_id: orgId },
+    });
   }
 
   return {

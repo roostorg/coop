@@ -1,4 +1,4 @@
-import { vi, type Mock, type Mocked } from 'vitest';
+import { vi, type Mocked } from 'vitest';
 
 import {
   type Dependencies,
@@ -13,7 +13,7 @@ import { makeTransactionalTestWithFixture } from '../../test/harness/transaction
 import { RuleAlarmStatus } from '../moderationConfigService/index.js';
 import DetectRulePassRateAnomaliesJob from './detectRulePassRateAnomaliesJob.js';
 
-function makeMockKyselyForRules(
+function makeMockPrismaForRules(
   fakeRules: Array<{
     id: string;
     orgId: string;
@@ -24,55 +24,31 @@ function makeMockKyselyForRules(
   }>,
   orgRows: Array<{ id: string; on_call_alert_email: string | null }>,
 ) {
-  const updateExecute = vi.fn().mockResolvedValue(undefined);
-  const mockDb = {
-    selectFrom: vi.fn((table: string) => {
-      const chain: {
-        select: Mock;
-        where: Mock;
-        execute: Mock;
-      } = {
-        select: vi.fn(),
-        where: vi.fn(),
-        execute: vi.fn(),
-      };
-      chain.select.mockReturnValue(chain);
-      chain.where.mockReturnValue(chain);
-      chain.execute.mockImplementation(async () => {
-        if (table === 'public.rules') {
-          return fakeRules.map((r) => ({
-            id: r.id,
-            org_id: r.orgId,
-            creator_id: r.creatorId,
-            name: r.name,
-            alarm_status: r.alarmStatus,
-            status_if_unexpired: r.statusIfUnexpired,
-          }));
-        }
-        if (table === 'public.orgs') {
-          return orgRows;
-        }
-        return [];
-      });
-      return chain;
-    }),
-    updateTable: vi.fn(() => ({
-      set: vi.fn().mockReturnValue({
-        where: vi.fn().mockReturnValue({
-          execute: updateExecute,
-        }),
-      }),
-    })),
-    __updateExecute: updateExecute,
+  return {
+    rules: {
+      findMany: vi.fn(async () =>
+        fakeRules.map((r) => ({
+          id: r.id,
+          org_id: r.orgId,
+          creator_id: r.creatorId,
+          name: r.name,
+          alarm_status: r.alarmStatus,
+          status_if_unexpired: r.statusIfUnexpired,
+        })),
+      ),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+    },
+    orgs: {
+      findMany: vi.fn(async () => orgRows),
+    },
   };
-  return mockDb;
 }
 
 describe('Detect Rule Anomalies', () => {
   describe('worker', () => {
     const testWithFixture = makeTransactionalTestWithFixture(
       async ({ deps }) => {
-        const { ModerationConfigService, ApiKeyService, KyselyPg } = deps;
+        const { ModerationConfigService, ApiKeyService, PrismaPg } = deps;
 
         // Make some fake rules (w/ stable ids so we can match them in a snapshot)
         // in different initial alarm statuses, to test all 9 combinations [i.e.,
@@ -81,69 +57,69 @@ describe('Detect Rule Anomalies', () => {
         // the test transaction and rolled back afterward, so the stable ids never
         // leak across runs.
         const { org } = await createOrg({
-          KyselyPg,
+          PrismaPg,
           ModerationConfigService,
           ApiKeyService,
         });
         const { org: org2 } = await createOrg(
           {
-            KyselyPg,
+            PrismaPg,
             ModerationConfigService,
             ApiKeyService,
           },
           undefined,
           { onCallAlertEmail: 'test@gmail.com' },
         );
-        const { user: ruleOwner } = await createUser(KyselyPg, org.id, {
+        const { user: ruleOwner } = await createUser(PrismaPg, org.id, {
           id: 'cb34377bcc3',
         });
-        const { user: ruleOwner2 } = await createUser(KyselyPg, org.id, {
+        const { user: ruleOwner2 } = await createUser(PrismaPg, org.id, {
           id: 'cb34377bcc4',
         });
         const fakeRules = await Promise.all([
-          createRule(KyselyPg, org.id, {
+          createRule(PrismaPg, org.id, {
             alarmStatus: RuleAlarmStatus.ALARM,
             id: '9d237a650c1',
             creator: ruleOwner,
           }),
-          createRule(KyselyPg, org.id, {
+          createRule(PrismaPg, org.id, {
             alarmStatus: RuleAlarmStatus.ALARM,
             id: '386da8abc3b',
             creator: ruleOwner,
           }),
-          createRule(KyselyPg, org.id, {
+          createRule(PrismaPg, org.id, {
             alarmStatus: RuleAlarmStatus.ALARM,
             id: 'd237a650c13',
             creator: ruleOwner,
           }),
 
-          createRule(KyselyPg, org.id, {
+          createRule(PrismaPg, org.id, {
             alarmStatus: RuleAlarmStatus.OK,
             id: '86da8abc3b6',
             creator: ruleOwner,
           }),
-          createRule(KyselyPg, org.id, {
+          createRule(PrismaPg, org.id, {
             alarmStatus: RuleAlarmStatus.OK,
             id: 'fdb4ee86f93',
             creator: ruleOwner,
           }),
-          createRule(KyselyPg, org.id, {
+          createRule(PrismaPg, org.id, {
             alarmStatus: RuleAlarmStatus.OK,
             id: '237a650c134',
             creator: ruleOwner,
           }),
 
-          createRule(KyselyPg, org2.id, {
+          createRule(PrismaPg, org2.id, {
             alarmStatus: RuleAlarmStatus.INSUFFICIENT_DATA,
             id: 'db4ee86f938',
             creator: ruleOwner2,
           }),
-          createRule(KyselyPg, org2.id, {
+          createRule(PrismaPg, org2.id, {
             alarmStatus: RuleAlarmStatus.INSUFFICIENT_DATA,
             id: '37a650c1342',
             creator: ruleOwner2,
           }),
-          createRule(KyselyPg, org2.id, {
+          createRule(PrismaPg, org2.id, {
             alarmStatus: RuleAlarmStatus.INSUFFICIENT_DATA,
             id: 'b4ee86f9386',
             creator: ruleOwner2,
@@ -190,13 +166,13 @@ describe('Detect Rule Anomalies', () => {
           getNotificationsForUser: vi.fn(),
         };
 
-        const mockKysely = makeMockKyselyForRules(mockDummyRules, [
+        const mockPrisma = makeMockPrismaForRules(mockDummyRules, [
           { id: org.id, on_call_alert_email: null },
           { id: org2.id, on_call_alert_email: 'test@gmail.com' },
         ]);
 
         return {
-          mockKysely,
+          mockPrisma,
           mockNotificationsService,
           mockGetCurrentPeriodRuleAlarmStatuses,
           mockDummyRules,
@@ -207,13 +183,13 @@ describe('Detect Rule Anomalies', () => {
     testWithFixture(
       'should generate the proper notifications + update rules',
       async ({
-        mockKysely,
+        mockPrisma,
         mockNotificationsService,
         mockGetCurrentPeriodRuleAlarmStatuses,
         mockDummyRules,
       }) => {
         const worker = DetectRulePassRateAnomaliesJob(
-          mockKysely as unknown as Dependencies['KyselyPg'],
+          mockPrisma as unknown as Dependencies['PrismaPg'],
           mockNotificationsService,
           mockGetCurrentPeriodRuleAlarmStatuses,
           vi.fn<() => Promise<void>>(),
@@ -304,7 +280,9 @@ describe('Detect Rule Anomalies', () => {
         const expectedUpdates = mockDummyRules.filter(
           (_rule, i) => ![0, 4, 8].includes(i),
         ).length;
-        expect(mockKysely.updateTable).toHaveBeenCalledTimes(expectedUpdates);
+        expect(mockPrisma.rules.updateMany).toHaveBeenCalledTimes(
+          expectedUpdates,
+        );
       },
     );
   });
