@@ -225,12 +225,16 @@ describe('API key GraphQL authorization', () => {
       ).toEqual(before.apiKeys.filter((key) => key.org_id === foreign.org.id));
       expect(after.signingKeys).toEqual(before.signingKeys);
       expect(await deps.ApiKeyService.validateApiKey(local.apiKey)).toBeNull();
-      expect(await deps.ApiKeyService.validateApiKey(rotated.apiKey)).toBe(
-        local.org.id,
-      );
-      expect(await deps.ApiKeyService.validateApiKey(foreign.apiKey)).toBe(
-        foreign.org.id,
-      );
+      expect(
+        await deps.ApiKeyService.validateApiKey(rotated.apiKey),
+      ).toMatchObject({
+        orgId: local.org.id,
+      });
+      expect(
+        await deps.ApiKeyService.validateApiKey(foreign.apiKey),
+      ).toMatchObject({
+        orgId: foreign.org.id,
+      });
     },
   );
 

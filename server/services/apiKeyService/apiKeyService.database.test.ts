@@ -18,9 +18,11 @@ describe('ApiKeyService database behavior', () => {
   testWithOrgs(
     'stores a hashed new key without invalidating existing keys',
     async ({ deps, orgA, orgB }) => {
-      expect(await deps.ApiKeyService.validateApiKey(orgA.apiKey)).toBe(
-        orgA.org.id,
-      );
+      expect(
+        await deps.ApiKeyService.validateApiKey(orgA.apiKey),
+      ).toMatchObject({
+        orgId: orgA.org.id,
+      });
 
       const result = await deps.ApiKeyService.createApiKey(
         orgA.org.id,
@@ -45,15 +47,21 @@ describe('ApiKeyService database behavior', () => {
       expect(await deps.ApiKeyService.getApiKeysForOrg(orgA.org.id)).toEqual(
         expect.arrayContaining([result.record]),
       );
-      expect(await deps.ApiKeyService.validateApiKey(orgA.apiKey)).toBe(
-        orgA.org.id,
-      );
-      expect(await deps.ApiKeyService.validateApiKey(result.apiKey)).toBe(
-        orgA.org.id,
-      );
-      expect(await deps.ApiKeyService.validateApiKey(orgB.apiKey)).toBe(
-        orgB.org.id,
-      );
+      expect(
+        await deps.ApiKeyService.validateApiKey(orgA.apiKey),
+      ).toMatchObject({
+        orgId: orgA.org.id,
+      });
+      expect(
+        await deps.ApiKeyService.validateApiKey(result.apiKey),
+      ).toMatchObject({
+        orgId: orgA.org.id,
+      });
+      expect(
+        await deps.ApiKeyService.validateApiKey(orgB.apiKey),
+      ).toMatchObject({
+        orgId: orgB.org.id,
+      });
     },
   );
 
@@ -101,9 +109,11 @@ describe('ApiKeyService database behavior', () => {
       const validationTime = new Date('2026-01-02T03:04:05.000Z');
       vi.setSystemTime(validationTime);
 
-      expect(await deps.ApiKeyService.validateApiKey(orgA.apiKey)).toBe(
-        orgA.org.id,
-      );
+      expect(
+        await deps.ApiKeyService.validateApiKey(orgA.apiKey),
+      ).toMatchObject({
+        orgId: orgA.org.id,
+      });
       expect(
         await deps.ApiKeyService.getActiveApiKeyForOrg(orgA.org.id),
       ).toMatchObject({
