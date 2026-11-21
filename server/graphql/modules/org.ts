@@ -50,7 +50,7 @@ const typeDefs = /* GraphQL */ `
     banks: MatchingBanks
     policies: [Policy!]!
     mrtQueues: [ManualReviewQueue!]!
-    apiKey: String!
+    apiKey: String! @deprecated(reason: "Use Query.apiKeys instead.")
     publicSigningKey: String!
     integrationConfigs: [IntegrationConfig!]!
     hasReportingRulesEnabled: Boolean!

@@ -267,6 +267,7 @@ export type CoopErrorName =
   | 'UnauthorizedError'
   // apiKey errors
   | 'RotateApiKeyError'
+  | 'ApiKeyMutationError'
   | 'RotateWebhookSigningKeyError'
   // gql mutation errors
   | UserErrorType

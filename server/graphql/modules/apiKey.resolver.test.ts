@@ -1,270 +1,555 @@
-import fc from 'fast-check';
+import { makeExecutableSchema } from '@graphql-tools/schema';
+import { graphql } from 'graphql/index.js';
+import { vi } from 'vitest';
 
 import { UserPermission } from '../../services/userManagementService/index.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
-import createSession from '../../test/fixtureHelpers/createSession.js';
 import createUser from '../../test/fixtureHelpers/createUser.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
-import { jsonStringify } from '../../utils/encoding.js';
-import { kyselyUpdateRolePermissions } from '../datasources/rolePersistence.js';
+import { disableConsoleLogging } from '../../test/setupMockedServer.js';
+import { type GQLCreateApiKeySuccessResponse } from '../generated.js';
+import {
+  Mutation as MutationResolvers,
+  Query as QueryResolvers,
+  resolvers,
+  typeDefs,
+} from './apiKey.js';
 
-describe('API key GraphQL authorization', () => {
-  const unrelatedPermissions = Object.values(UserPermission).filter(
-    (permission) => permission !== UserPermission.MANAGE_ORG,
-  );
-  const rotateApiKey = /* GraphQL */ `
-    mutation {
-      rotateApiKey(input: { name: "replacement", description: "test key" }) {
-        __typename
-        ... on RotateApiKeySuccessResponse {
-          apiKey
-          record {
-            id
-            name
-            description
-            isActive
-            createdBy
-          }
-        }
-      }
-    }
-  `;
-  const rotateWebhookSigningKey = /* GraphQL */ `
-    mutation {
-      rotateWebhookSigningKey {
-        __typename
-        ... on RotateWebhookSigningKeySuccessResponse {
-          publicSigningKey
-        }
-      }
-    }
-  `;
-  const testWithKeys = makeTransactionalTestWithFixture(
-    async ({ deps, server }) => {
-      const local = await createOrg(deps);
-      const foreign = await createOrg(deps);
-      const { user } = await createUser(deps.KyselyPg, local.org.id, {
-        approvedByAdmin: true,
-        loginMethods: ['password'],
-        password: 'Api-key-test-password',
-      });
-      for (const tenant of [local, foreign]) {
-        await deps.SigningKeyPairService.createAndStoreSigningKeys(
-          tenant.org.id,
-        );
-      }
-      const snapshot = async () => ({
-        apiKeys: await deps.KyselyPg.selectFrom('public.api_keys')
-          .selectAll()
-          .where('org_id', 'in', [local.org.id, foreign.org.id])
-          .orderBy('id')
-          .execute(),
-        signingKeys: await deps.KyselyPg.selectFrom('public.signing_keys')
-          .selectAll()
-          .where('org_id', 'in', [local.org.id, foreign.org.id])
-          .orderBy('org_id')
-          .execute(),
-      });
-      const session = await createSession(
-        server,
-        user.email,
-        'Api-key-test-password',
-      );
-      return { local, foreign, user, session, snapshot };
-    },
-  );
+const Query = QueryResolvers as {
+  apiKey: (
+    parent: unknown,
+    args: Record<string, never>,
+    ctx: unknown,
+  ) => Promise<string>;
+};
 
-  for (const [operation, query] of [
-    ['Query.apiKey', '{ apiKey }'],
-    ['Org.apiKey', '{ myOrg { apiKey } }'],
-    ['Org.publicSigningKey', '{ myOrg { publicSigningKey } }'],
-    ['Mutation.rotateApiKey', rotateApiKey],
-    ['Mutation.rotateWebhookSigningKey', rotateWebhookSigningKey],
-  ]) {
-    describe(operation, () => {
-      testWithKeys(
-        'rejects unauthenticated requests without disclosing or changing keys',
-        async ({ local, foreign, request, snapshot }) => {
-          const before = await snapshot();
+const Mutation = MutationResolvers as {
+  rotateApiKey: (
+    parent: unknown,
+    args: { input: { id: string } },
+    ctx: unknown,
+  ) => Promise<unknown>;
+  rotateWebhookSigningKey: (
+    parent: unknown,
+    args: Record<string, never>,
+    ctx: unknown,
+  ) => Promise<unknown>;
+};
 
-          const response = await request
-            .post('/api/v1/graphql')
-            .send({ query })
-            .expect(200);
+describe('apiKey resolvers', () => {
+  const schema = makeExecutableSchema({
+    typeDefs: [
+      typeDefs,
+      `interface Error { title: String! status: Int! type: [String!]! pointer: String detail: String requestId: String }`,
+    ],
+    resolvers,
+  });
 
-          expect(response.body.errors).toEqual([
-            expect.objectContaining({
-              extensions: expect.objectContaining({ code: 'UNAUTHENTICATED' }),
-            }),
-          ]);
-          for (const secret of [
-            local.apiKey,
-            foreign.apiKey,
-            ...before.apiKeys.map((key) => key.key_hash),
-          ])
-            expect(jsonStringify(response.body)).not.toContain(secret);
-          expect(jsonStringify(response.body)).not.toContain(
-            'BEGIN PUBLIC KEY',
-          );
-          expect(await snapshot()).toEqual(before);
-        },
-      );
-
-      testWithKeys(
-        'requires MANAGE_ORG regardless of other permissions',
-        async ({ deps, local, foreign, user, session, snapshot }) => {
-          const before = await snapshot();
-
-          await fc.assert(
-            fc.asyncProperty(
-              fc.subarray(unrelatedPermissions),
-              async (permissions) => {
-                await kyselyUpdateRolePermissions(deps.KyselyPg, {
-                  orgId: user.orgId,
-                  roleKey: user.role,
-                  permissions,
-                });
-
-                const response = await session
-                  .post('/api/v1/graphql')
-                  .send({ query })
-                  .expect(200);
-
-                expect(response.body.errors).toEqual([
-                  expect.objectContaining({
-                    extensions: expect.objectContaining({ code: 'FORBIDDEN' }),
-                  }),
-                ]);
-                for (const secret of [
-                  local.apiKey,
-                  foreign.apiKey,
-                  ...before.apiKeys.map((key) => key.key_hash),
-                ])
-                  expect(jsonStringify(response.body)).not.toContain(secret);
-                expect(jsonStringify(response.body)).not.toContain(
-                  'BEGIN PUBLIC KEY',
-                );
-                expect(await snapshot()).toEqual(before);
-              },
-            ),
-            { numRuns: 10, examples: [[[]], [unrelatedPermissions]] },
-          );
-        },
-      );
-    });
+  function makeCtx(permissions: readonly UserPermission[]) {
+    const getActiveApiKeyForOrg = vi.fn(async () => ({ key: 'secret' }));
+    const rotateApiKey = vi.fn();
+    const rotateWebhookSigningKey = vi.fn();
+    const ctx = {
+      getUser: () => ({
+        id: 'user-1',
+        orgId: 'org-1',
+        getPermissions: () => permissions,
+      }),
+      services: {
+        ApiKeyService: { getActiveApiKeyForOrg, rotateApiKey },
+      },
+      dataSources: { orgAPI: { rotateWebhookSigningKey } },
+    };
+    return {
+      ctx,
+      getActiveApiKeyForOrg,
+      rotateApiKey,
+      rotateWebhookSigningKey,
+    };
   }
 
-  testWithKeys(
-    'MANAGE_ORG can check that an API key exists without revealing it',
-    async ({ deps, user, session }) => {
-      await kyselyUpdateRolePermissions(deps.KyselyPg, {
-        orgId: user.orgId,
-        roleKey: user.role,
-        permissions: [UserPermission.MANAGE_ORG],
-      });
+  describe.each(['createApiKey', 'updateApiKey'] as const)(
+    '%s validation',
+    (operation) => {
+      const source =
+        operation === 'createApiKey'
+          ? 'mutation Save($input: CreateApiKeyInput!) { createApiKey(input: $input) { ... on CreateApiKeySuccessResponse { record { name description } } } }'
+          : 'mutation Save($input: UpdateApiKeyInput!) { updateApiKey(input: $input) { ... on UpdateApiKeySuccessResponse { record { name description } } } }';
 
-      const response = await session
-        .post('/api/v1/graphql')
-        .send({ query: '{ apiKey }' })
-        .expect(200);
-
-      expect(response.body).toEqual({
-        data: { apiKey: 'API key exists (hidden for security)' },
-      });
-    },
-  );
-
-  testWithKeys(
-    'MANAGE_ORG rotates only the caller API key and returns the usable replacement',
-    async ({ deps, local, foreign, user, session, snapshot }) => {
-      await kyselyUpdateRolePermissions(deps.KyselyPg, {
-        orgId: user.orgId,
-        roleKey: user.role,
-        permissions: [UserPermission.MANAGE_ORG],
-      });
-      const before = await snapshot();
-
-      const response = await session
-        .post('/api/v1/graphql')
-        .send({ query: rotateApiKey })
-        .expect(200);
-
-      expect(response.body.errors).toBeUndefined();
-      const rotated = response.body.data.rotateApiKey;
-      expect(rotated).toEqual({
-        __typename: 'RotateApiKeySuccessResponse',
-        apiKey: expect.any(String),
-        record: {
-          id: expect.any(String),
-          name: 'replacement',
-          description: 'test key',
+      async function save(name: string, description?: string | null) {
+        const { ctx } = makeCtx([UserPermission.MANAGE_ORG]);
+        const record = {
+          id: 'key-1',
+          name,
+          description,
           isActive: true,
-          createdBy: user.id,
-        },
-      });
-      const after = await snapshot();
-      expect(
-        after.apiKeys.filter((key) => key.org_id === foreign.org.id),
-      ).toEqual(before.apiKeys.filter((key) => key.org_id === foreign.org.id));
-      expect(after.signingKeys).toEqual(before.signingKeys);
-      expect(await deps.ApiKeyService.validateApiKey(local.apiKey)).toBeNull();
-      expect(await deps.ApiKeyService.validateApiKey(rotated.apiKey)).toBe(
-        local.org.id,
-      );
-      expect(await deps.ApiKeyService.validateApiKey(foreign.apiKey)).toBe(
-        foreign.org.id,
-      );
-    },
-  );
-
-  testWithKeys(
-    'MANAGE_ORG rotates only the caller persisted webhook signing key',
-    async ({ deps, local, foreign, user, session, snapshot }) => {
-      await kyselyUpdateRolePermissions(deps.KyselyPg, {
-        orgId: user.orgId,
-        roleKey: user.role,
-        permissions: [UserPermission.MANAGE_ORG],
-      });
-      const before = await snapshot();
-      const previous = await session
-        .post('/api/v1/graphql')
-        .send({ query: '{ myOrg { publicSigningKey } }' });
-      expect(previous.body.errors).toBeUndefined();
-
-      const response = await session
-        .post('/api/v1/graphql')
-        .send({ query: rotateWebhookSigningKey })
-        .expect(200);
-
-      expect(response.body).toEqual({
-        data: {
-          rotateWebhookSigningKey: {
-            __typename: 'RotateWebhookSigningKeySuccessResponse',
-            publicSigningKey: expect.stringContaining('BEGIN PUBLIC KEY'),
+          createdAt: new Date(),
+          lastUsedAt: null,
+          createdBy: 'user-1',
+        };
+        const service = vi.fn(async () =>
+          operation === 'createApiKey' ? { apiKey: 'secret', record } : record,
+        );
+        const result = await graphql({
+          schema,
+          source,
+          variableValues: {
+            input: {
+              ...(operation === 'updateApiKey' ? { id: 'key-1' } : {}),
+              name,
+              description,
+            },
           },
+          contextValue: {
+            ...ctx,
+            services: { ApiKeyService: { [operation]: service } },
+          },
+        });
+        return { result, service };
+      }
+
+      it.each([
+        ['', null, 'API key name must not be empty'],
+        [' \t\n ', null, 'API key name must not be empty'],
+        ['n'.repeat(256), null, 'API key name must be at most 255 characters'],
+        [
+          'Reports',
+          'd'.repeat(2001),
+          'API key description must be at most 2000 characters',
+        ],
+      ] as const)(
+        'rejects invalid metadata (%#)',
+        async (name, description, message) => {
+          const { result, service } = await save(name, description);
+          expect(result.errors?.[0]).toMatchObject({
+            message,
+            extensions: { code: 'BAD_USER_INPUT' },
+          });
+          expect(service).not.toHaveBeenCalled();
         },
-      });
-      const current =
-        response.body.data.rotateWebhookSigningKey.publicSigningKey;
-      expect(current).not.toBe(previous.body.data.myOrg.publicSigningKey);
-      const reread = await session
-        .post('/api/v1/graphql')
-        .send({ query: '{ myOrg { publicSigningKey } }' });
-      expect(reread.body).toEqual({
-        data: { myOrg: { publicSigningKey: current } },
-      });
-      const after = await snapshot();
-      expect(after.apiKeys).toEqual(before.apiKeys);
-      expect(
-        after.signingKeys.filter((key) => key.org_id === foreign.org.id),
-      ).toEqual(
-        before.signingKeys.filter((key) => key.org_id === foreign.org.id),
       );
-      expect(
-        after.signingKeys.find((key) => key.org_id === local.org.id)?.key_data,
-      ).not.toEqual(
-        before.signingKeys.find((key) => key.org_id === local.org.id)?.key_data,
+
+      it.each([
+        [' Reports ', ' Ingestion ', 'Reports', 'Ingestion'],
+        ['Reports', ' \t ', 'Reports', null],
+        ['Reports', null, 'Reports', null],
+        ['Reports', undefined, 'Reports', null],
+        [
+          ` ${'n'.repeat(255)} `,
+          ` ${'d'.repeat(2000)} `,
+          'n'.repeat(255),
+          'd'.repeat(2000),
+        ],
+      ] as const)(
+        'normalizes valid metadata (%#)',
+        async (name, description, expectedName, expectedDescription) => {
+          const { result, service } = await save(name, description);
+          expect(result.errors).toBeUndefined();
+          expect(service).toHaveBeenCalledWith(
+            ...(operation === 'createApiKey'
+              ? ['org-1', expectedName, expectedDescription, 'user-1']
+              : ['key-1', 'org-1', expectedName, expectedDescription]),
+          );
+        },
       );
     },
   );
+
+  describe('mutation responses', () => {
+    const record = {
+      id: 'key-1',
+      name: 'Reports',
+      description: null,
+      isActive: true,
+      createdAt: new Date(),
+      lastUsedAt: null,
+      createdBy: 'user-1',
+    };
+
+    it.each([
+      ['createApiKey', '(input: { name: "Reports" })'],
+      ['updateApiKey', '(input: { id: "key-1", name: "Reports" })'],
+      ['deleteApiKey', '(id: "key-1")'],
+      ['rotateApiKey', '(input: { id: "key-1" })'],
+    ] as const)(
+      'returns a sanitized error payload when %s fails',
+      async (operation, args) => {
+        const { ctx } = makeCtx([UserPermission.MANAGE_ORG]);
+        const restoreLogging = disableConsoleLogging();
+        try {
+          const result = await graphql({
+            schema,
+            source: `mutation { ${operation}${args} { ... on Error { status detail } } }`,
+            contextValue: {
+              ...ctx,
+              services: {
+                ApiKeyService: {
+                  [operation]: vi.fn(async () => {
+                    throw new Error('private database details');
+                  }),
+                },
+              },
+            },
+          });
+          expect(result.errors).toBeUndefined();
+          expect(result.data?.[operation]).toEqual({
+            status: 500,
+            detail:
+              operation === 'rotateApiKey'
+                ? 'An error occurred while rotating the API key'
+                : 'An error occurred while managing the API key',
+          });
+        } finally {
+          restoreLogging();
+        }
+      },
+    );
+
+    it.each([
+      [
+        'createApiKey',
+        '(input: { name: "Reports" })',
+        'CreateApiKeySuccessResponse',
+        { apiKey: 'secret', record },
+      ],
+      [
+        'updateApiKey',
+        '(input: { id: "key-1", name: "Reports" })',
+        'UpdateApiKeySuccessResponse',
+        record,
+      ],
+      ['deleteApiKey', '(id: "key-1")', 'DeleteApiKeySuccessResponse', true],
+      [
+        'rotateApiKey',
+        '(input: { id: "key-1" })',
+        'RotateApiKeySuccessResponse',
+        { apiKey: 'secret', record },
+      ],
+    ] as const)(
+      'returns a success payload for %s',
+      async (operation, args, successType, value) => {
+        const { ctx } = makeCtx([UserPermission.MANAGE_ORG]);
+        const result = await graphql({
+          schema,
+          source: `mutation { ${operation}${args} { __typename ... on ${successType} { ${operation === 'deleteApiKey' ? 'id' : 'record { id }'} } } }`,
+          contextValue: {
+            ...ctx,
+            services: {
+              ApiKeyService: { [operation]: vi.fn(async () => value) },
+            },
+          },
+        });
+        expect(result.errors).toBeUndefined();
+        expect(result.data?.[operation]).toEqual({
+          __typename: successType,
+          ...(operation === 'deleteApiKey'
+            ? { id: 'key-1' }
+            : { record: { id: 'key-1' } }),
+        });
+      },
+    );
+
+    it.each([
+      ['updateApiKey', '(input: { id: "key-1", name: "Reports" })', null],
+      ['deleteApiKey', '(id: "key-1")', false],
+      ['rotateApiKey', '(input: { id: "key-1" })', null],
+    ] as const)(
+      'returns a not-found error payload for %s',
+      async (operation, args, value) => {
+        const { ctx } = makeCtx([UserPermission.MANAGE_ORG]);
+        const result = await graphql({
+          schema,
+          source: `mutation { ${operation}${args} { __typename ... on Error { status type detail } } }`,
+          contextValue: {
+            ...ctx,
+            services: {
+              ApiKeyService: { [operation]: vi.fn(async () => value) },
+            },
+          },
+        });
+        expect(result.errors).toBeUndefined();
+        expect(result.data?.[operation]).toEqual({
+          __typename:
+            operation === 'rotateApiKey'
+              ? 'RotateApiKeyError'
+              : 'ApiKeyMutationError',
+          status: 404,
+          type: ['/errors/not-found'],
+          detail: 'API key not found',
+        });
+      },
+    );
+  });
+
+  describe('multiple-key management', () => {
+    const testWithOrg = makeTransactionalTestWithFixture(async ({ deps }) => {
+      const { org, apiKey } = await createOrg(deps);
+      const { user } = await createUser(deps.KyselyPg, org.id);
+      const execute = async (
+        source: string,
+        variableValues?: Record<string, unknown>,
+      ) =>
+        graphql({
+          schema,
+          source,
+          variableValues,
+          contextValue: { getUser: () => user, services: deps },
+        });
+      const { org: otherOrg } = await createOrg(deps);
+      const foreignKey = await deps.ApiKeyService.createApiKey(
+        otherOrg.id,
+        'Foreign key',
+        null,
+        null,
+      );
+      return { org, apiKey, user, foreignKey, execute };
+    });
+
+    const operations = [
+      '{ apiKeys { id name } }',
+      'mutation { createApiKey(input: { name: "Reports" }) { __typename } }',
+      'mutation { deleteApiKey(id: "key-2") { __typename } }',
+      'mutation { updateApiKey(input: { id: "key-2", name: "Renamed" }) { __typename } }',
+    ];
+
+    it.each(operations)('requires an administrator for %s', async (source) => {
+      const { ctx } = makeCtx([UserPermission.VIEW_MRT]);
+      const forbidden = await graphql({ schema, source, contextValue: ctx });
+      expect(forbidden.errors?.[0].message).toBe(
+        'User does not have permission to manage API keys',
+      );
+      const unauthenticated = await graphql({
+        schema,
+        source,
+        contextValue: { ...ctx, getUser: () => null },
+      });
+      expect(unauthenticated.errors?.[0].message).toBe(
+        'Authenticated user required',
+      );
+    });
+
+    testWithOrg(
+      'creates, edits, and deletes only keys in the authenticated organization',
+      async ({ deps, execute, org, apiKey, user, foreignKey }) => {
+        const created = await execute(`mutation {
+            createApiKey(input: { name: "Reports", description: "Report ingestion" }) {
+              ... on CreateApiKeySuccessResponse {
+                apiKey
+                record { id name description isActive createdAt lastUsedAt createdBy }
+              }
+            }
+          }`);
+        expect(created.errors).toBeUndefined();
+        const { apiKey: secret, record } = created.data!
+          .createApiKey as GQLCreateApiKeySuccessResponse;
+        expect(record).toEqual({
+          id: expect.any(String),
+          name: 'Reports',
+          description: 'Report ingestion',
+          isActive: true,
+          createdAt: expect.any(String),
+          lastUsedAt: null,
+          createdBy: user.id,
+        });
+        expect(await deps.ApiKeyService.validateApiKey(secret)).toBe(org.id);
+
+        const listed = await execute(
+          '{ apiKeys { id name description isActive createdAt lastUsedAt createdBy } }',
+        );
+        expect(listed.errors).toBeUndefined();
+        expect(listed.data!.apiKeys).toHaveLength(2);
+        expect(listed.data!.apiKeys).toEqual(
+          expect.arrayContaining([
+            { ...record, lastUsedAt: expect.any(String) },
+          ]),
+        );
+        expect(listed.data!.apiKeys).not.toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({ id: foreignKey.record.id }),
+          ]),
+        );
+
+        const update = `mutation Update($id: ID!) {
+          updateApiKey(input: { id: $id, name: "Renamed reports", description: null }) {
+            ... on UpdateApiKeySuccessResponse {
+              record { id name description isActive createdAt lastUsedAt createdBy }
+            }
+            ... on ApiKeyMutationError { __typename status }
+          }
+        }`;
+        const edited = await execute(update, { id: record.id });
+        expect(edited.errors).toBeUndefined();
+        expect(edited.data!.updateApiKey).toEqual({
+          record: {
+            ...record,
+            name: 'Renamed reports',
+            description: null,
+            lastUsedAt: expect.any(String),
+          },
+        });
+        expect(await deps.ApiKeyService.getOrgIdFromActivatedKey(secret)).toBe(
+          org.id,
+        );
+        const foreignEdit = await execute(update, { id: foreignKey.record.id });
+        expect(foreignEdit.errors).toBeUndefined();
+        expect(foreignEdit.data!.updateApiKey).toEqual({
+          __typename: 'ApiKeyMutationError',
+          status: 404,
+        });
+
+        const foreignDeletion = await execute(
+          'mutation Delete($id: ID!) { deleteApiKey(id: $id) { __typename ... on DeleteApiKeySuccessResponse { id } ... on ApiKeyMutationError { status } } }',
+          { id: foreignKey.record.id },
+        );
+        expect(foreignDeletion.errors).toBeUndefined();
+        expect(foreignDeletion.data!.deleteApiKey).toEqual({
+          __typename: 'ApiKeyMutationError',
+          status: 404,
+        });
+        expect(await deps.ApiKeyService.validateApiKey(foreignKey.apiKey)).toBe(
+          foreignKey.record.orgId,
+        );
+
+        const deleted = await execute(
+          'mutation Delete($id: ID!) { deleteApiKey(id: $id) { __typename ... on DeleteApiKeySuccessResponse { id } ... on ApiKeyMutationError { status } } }',
+          { id: record.id },
+        );
+        expect(deleted.errors).toBeUndefined();
+        expect(deleted.data!.deleteApiKey).toEqual({
+          __typename: 'DeleteApiKeySuccessResponse',
+          id: record.id,
+        });
+        expect(await deps.ApiKeyService.validateApiKey(secret)).toBeNull();
+        expect(await deps.ApiKeyService.validateApiKey(apiKey)).toBe(org.id);
+
+        const stored = await deps.KyselyPg.selectFrom('public.api_keys')
+          .select('id')
+          .where('id', '=', record.id)
+          .executeTakeFirst();
+        expect(stored).toBeUndefined();
+        const deletedAgain = await execute(
+          'mutation Delete($id: ID!) { deleteApiKey(id: $id) { __typename ... on DeleteApiKeySuccessResponse { id } ... on ApiKeyMutationError { status } } }',
+          { id: record.id },
+        );
+        expect(deletedAgain.errors).toBeUndefined();
+        expect(deletedAgain.data!.deleteApiKey).toEqual({
+          __typename: 'ApiKeyMutationError',
+          status: 404,
+        });
+        const hiddenHash = await execute('{ apiKeys { keyHash } }');
+        expect(hiddenHash.errors?.[0].message).toContain(
+          'Cannot query field "keyHash"',
+        );
+      },
+    );
+
+    testWithOrg(
+      'excludes inactive database keys from management and authentication',
+      async ({ deps, org, execute }) => {
+        const { apiKey, record } = await deps.ApiKeyService.createApiKey(
+          org.id,
+          'Inactive key',
+          null,
+          null,
+        );
+        await deps.KyselyPg.updateTable('public.api_keys')
+          .set({ is_active: false })
+          .where('id', '=', record.id)
+          .execute();
+
+        const listed = await execute('{ apiKeys { id } }');
+        expect(listed.errors).toBeUndefined();
+        expect(listed.data!.apiKeys).not.toContainEqual({ id: record.id });
+        const edited = await execute(
+          'mutation Edit($id: ID!) { updateApiKey(input: { id: $id, name: "Renamed" }) { ... on ApiKeyMutationError { __typename status } } }',
+          { id: record.id },
+        );
+        expect(edited.errors).toBeUndefined();
+        expect(edited.data!.updateApiKey).toEqual({
+          __typename: 'ApiKeyMutationError',
+          status: 404,
+        });
+        expect(await deps.ApiKeyService.validateApiKey(apiKey)).toBeNull();
+      },
+    );
+  });
+
+  describe('Query.apiKey', () => {
+    it('throws unauthenticatedError when caller is not authenticated', async () => {
+      const { ctx, getActiveApiKeyForOrg } = makeCtx([
+        UserPermission.MANAGE_ORG,
+      ]);
+      const unauthenticatedCtx = { ...ctx, getUser: () => null };
+      await expect(Query.apiKey({}, {}, unauthenticatedCtx)).rejects.toThrow(
+        'Authenticated user required',
+      );
+      expect(getActiveApiKeyForOrg).not.toHaveBeenCalled();
+    });
+
+    it('throws forbiddenError when caller lacks MANAGE_ORG', async () => {
+      const { ctx, getActiveApiKeyForOrg } = makeCtx([UserPermission.VIEW_MRT]);
+      await expect(Query.apiKey({}, {}, ctx)).rejects.toThrow(
+        'User does not have permission to view the org API key',
+      );
+      expect(getActiveApiKeyForOrg).not.toHaveBeenCalled();
+    });
+
+    it('returns the existence indicator when caller has MANAGE_ORG', async () => {
+      const { ctx, getActiveApiKeyForOrg } = makeCtx([
+        UserPermission.MANAGE_ORG,
+      ]);
+      await expect(Query.apiKey({}, {}, ctx)).resolves.toBe(
+        'API key exists (hidden for security)',
+      );
+      expect(getActiveApiKeyForOrg).toHaveBeenCalledWith('org-1');
+    });
+  });
+
+  describe('Mutation.rotateApiKey', () => {
+    it('throws unauthenticatedError when caller is not authenticated', async () => {
+      const { ctx, rotateApiKey } = makeCtx([UserPermission.MANAGE_ORG]);
+      const unauthenticatedCtx = { ...ctx, getUser: () => null };
+      await expect(
+        Mutation.rotateApiKey(
+          {},
+          { input: { id: 'key-2' } },
+          unauthenticatedCtx,
+        ),
+      ).rejects.toThrow('Authenticated user required');
+      expect(rotateApiKey).not.toHaveBeenCalled();
+    });
+
+    it('throws forbiddenError when caller lacks MANAGE_ORG', async () => {
+      const { ctx, rotateApiKey } = makeCtx([UserPermission.VIEW_MRT]);
+      await expect(
+        Mutation.rotateApiKey({}, { input: { id: 'key-2' } }, ctx),
+      ).rejects.toThrow('User does not have permission to rotate the API key');
+      expect(rotateApiKey).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Mutation.rotateWebhookSigningKey', () => {
+    it('throws unauthenticatedError when caller is not authenticated', async () => {
+      const { ctx, rotateWebhookSigningKey } = makeCtx([
+        UserPermission.MANAGE_ORG,
+      ]);
+      const unauthenticatedCtx = { ...ctx, getUser: () => null };
+      await expect(
+        Mutation.rotateWebhookSigningKey({}, {}, unauthenticatedCtx),
+      ).rejects.toThrow('Authenticated user required');
+      expect(rotateWebhookSigningKey).not.toHaveBeenCalled();
+    });
+
+    it('throws forbiddenError when caller lacks MANAGE_ORG', async () => {
+      const { ctx, rotateWebhookSigningKey } = makeCtx([
+        UserPermission.VIEW_MRT,
+      ]);
+      await expect(
+        Mutation.rotateWebhookSigningKey({}, {}, ctx),
+      ).rejects.toThrow(
+        'User does not have permission to rotate the webhook signing key',
+      );
+      expect(rotateWebhookSigningKey).not.toHaveBeenCalled();
+    });
+  });
 });
