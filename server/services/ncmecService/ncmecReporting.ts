@@ -2,18 +2,18 @@
 import { type ReadableStream } from 'node:stream/web';
 import type { Exception } from '@opentelemetry/api';
 import { makeEnumLike, type ItemIdentifier } from '@roostorg/coop-types';
-import { sql, type Kysely } from 'kysely';
+import { and, desc, eq, gte, or, sql } from 'drizzle-orm';
 import _ from 'lodash';
 import { FormData } from 'undici';
 import * as v from 'valibot';
 import { js2xml } from 'xml-js';
 
 import { type Dependencies } from '../../iocContainer/index.js';
+import { schema, type CoopDb } from '../../storage/postgres/drizzle.js';
 import { jsonStringify } from '../../utils/encoding.js';
-import { type FixKyselyRowCorrelation } from '../../utils/kysely.js';
 import { logErrorJson } from '../../utils/logging.js';
 import { assertUnreachable, withRetries } from '../../utils/misc.js';
-import { type CollapseCases } from '../../utils/typescript-types.js';
+import { type NonEmptyArray } from '../../utils/typescript-types.js';
 import { rawItemDataSchema } from '../itemProcessingService/index.js';
 import { type RawItemData } from '../itemProcessingService/toNormalizedItemDataOrErrors.js';
 import type {
@@ -1281,60 +1281,100 @@ export type NcmecMessagesReport = {
 type NcmecReportResult =
   'ALL_MEDIA_MISSING' | 'SUCCESS' | 'UNSUPPORTED_ORG' | 'FAILURE';
 
-const actionsOnReportCreationAndPoliciesSelection = [
-  'actions_to_run_upon_report_creation as actionsToRunIds',
-  'policies_applied_to_actions_run_on_report_creation as policyIds',
-] as const;
-
+// The ncmec_org_settings_must_have_both_policy_and_actions_on_submiss check
+// constraint guarantees both columns are null or both are non-empty.
 type ActionsOnReportCreationAndPoliciesSelectionResult =
-  FixKyselyRowCorrelation<
-    NcmecReportingServicePg['ncmec_reporting.ncmec_org_settings'],
-    typeof actionsOnReportCreationAndPoliciesSelection
-  >;
+  | {
+      actionsToRunIds: NonEmptyArray<string>;
+      policyIds: NonEmptyArray<string>;
+    }
+  | { actionsToRunIds: null; policyIds: null };
+
+type NcmecOrgSettingsRow =
+  NcmecReportingServicePg['ncmec_reporting.ncmec_org_settings'];
+
+const orgSettings = schema.ncmecOrgSettings;
+const reports = schema.ncmecReports;
+const reportErrors = schema.ncmecReportsErrors;
+
+// Every ncmec_org_settings column under its snake_case name, matching the
+// `NcmecOrgSettingsRow` shape callers of getNCMECConfig use.
+const orgSettingsRowColumns = {
+  org_id: orgSettings.orgId,
+  username: orgSettings.username,
+  password: orgSettings.password,
+  contact_email: orgSettings.contactEmail,
+  more_info_url: orgSettings.moreInfoUrl,
+  company_template: orgSettings.companyTemplate,
+  legal_url: orgSettings.legalUrl,
+  created_at: orgSettings.createdAt,
+  updated_at: orgSettings.updatedAt,
+  ncmec_preservation_endpoint: orgSettings.ncmecPreservationEndpoint,
+  ncmec_additional_info_endpoint: orgSettings.ncmecAdditionalInfoEndpoint,
+  policies_applied_to_actions_run_on_report_creation:
+    orgSettings.policiesAppliedToActionsRunOnReportCreation,
+  actions_to_run_upon_report_creation:
+    orgSettings.actionsToRunUponReportCreation,
+  default_ncmec_queue_id: orgSettings.defaultNcmecQueueId,
+  default_internet_detail_type: orgSettings.defaultInternetDetailType,
+  terms_of_service: orgSettings.termsOfService,
+  contact_person_email: orgSettings.contactPersonEmail,
+  contact_person_first_name: orgSettings.contactPersonFirstName,
+  contact_person_last_name: orgSettings.contactPersonLastName,
+  contact_person_phone: orgSettings.contactPersonPhone,
+  media_review_requirement: orgSettings.mediaReviewRequirement,
+  min_media_to_review: orgSettings.minMediaToReview,
+};
 
 export default class NcmecReporting {
   constructor(
-    private pgQuery: Kysely<NcmecReportingServicePg>,
-    private pqQueryReadReplica: Kysely<NcmecReportingServicePg>,
+    private pgQuery: CoopDb,
+    private pqQueryReadReplica: CoopDb,
     private fetchHTTP: Dependencies['fetchHTTP'],
     private signingKeyPairService: Dependencies['SigningKeyPairService'],
     private readonly tracer: Dependencies['Tracer'],
   ) {}
   async hasNCMECReportingEnabled(orgId: string) {
-    const ncmecOrgSettings = await this.pgQuery
-      .selectFrom('ncmec_reporting.ncmec_org_settings')
-      .select(['org_id'])
-      .where('org_id', '=', orgId)
-      .executeTakeFirst();
-    return ncmecOrgSettings?.org_id != null;
+    const ncmecOrgSettings = (
+      await this.pgQuery
+        .select({ orgId: orgSettings.orgId })
+        .from(orgSettings)
+        .where(eq(orgSettings.orgId, orgId))
+        .limit(1)
+    ).at(0);
+    return ncmecOrgSettings != null;
   }
 
   async getNCMECConfig(
     orgId: string,
-  ): Promise<
-    NcmecReportingServicePg['ncmec_reporting.ncmec_org_settings'] | undefined
-  > {
-    const row = await this.pgQuery
-      .selectFrom('ncmec_reporting.ncmec_org_settings')
-      .selectAll()
-      .where('org_id', '=', orgId)
-      .executeTakeFirst();
-    return row as
-      NcmecReportingServicePg['ncmec_reporting.ncmec_org_settings'] | undefined;
+  ): Promise<NcmecOrgSettingsRow | undefined> {
+    const row = (
+      await this.pgQuery
+        .select(orgSettingsRowColumns)
+        .from(orgSettings)
+        .where(eq(orgSettings.orgId, orgId))
+        .limit(1)
+    ).at(0);
+    // The Drizzle model can't express the actions/policies correlation or the
+    // media_review_requirement CHECK; see NcmecOrgSettingsRow.
+    return row as NcmecOrgSettingsRow | undefined;
   }
 
   async getNCMECActionsToRunAndPolicies(
     orgId: string,
   ): Promise<ActionsOnReportCreationAndPoliciesSelectionResult | undefined> {
-    const row = await this.pgQuery
-      .selectFrom('ncmec_reporting.ncmec_org_settings')
-      .select(actionsOnReportCreationAndPoliciesSelection)
-      .where('org_id', '=', orgId)
-      .executeTakeFirst();
+    const row = (
+      await this.pgQuery
+        .select({
+          actionsToRunIds: orgSettings.actionsToRunUponReportCreation,
+          policyIds: orgSettings.policiesAppliedToActionsRunOnReportCreation,
+        })
+        .from(orgSettings)
+        .where(eq(orgSettings.orgId, orgId))
+        .limit(1)
+    ).at(0);
 
-    return row
-      ? (row satisfies CollapseCases<ActionsOnReportCreationAndPoliciesSelectionResult> as ActionsOnReportCreationAndPoliciesSelectionResult)
-      : undefined;
+    return row as ActionsOnReportCreationAndPoliciesSelectionResult | undefined;
   }
 
   async getNCMECAdditionalInfo(
@@ -1444,31 +1484,29 @@ export default class NcmecReporting {
     const { orgId, reviewerId } = opts;
     return (
       this.pqQueryReadReplica
-        .selectFrom('ncmec_reporting.ncmec_reports')
-        .select([
-          'created_at as ts',
-          'report_id as reportId',
-          'user_id as userId',
-          'user_item_type_id as userItemTypeId',
-          'reviewer_id as reviewerId',
-          'reported_media as reportedMedia',
-          'report_xml as reportXml',
-          'additional_files as additionalFiles',
-          'reported_messages as reportedMessages',
-          'is_test as isTest',
-        ])
-        .where('org_id', '=', orgId)
-        .where((eb) =>
-          eb.or([
-            eb('is_test', '=', false),
-            eb('reviewer_id', '=', reviewerId),
-          ]),
+        .select({
+          ts: reports.createdAt,
+          reportId: reports.reportId,
+          userId: reports.userId,
+          userItemTypeId: reports.userItemTypeId,
+          reviewerId: reports.reviewerId,
+          reportedMedia: reports.reportedMedia,
+          reportXml: reports.reportXml,
+          additionalFiles: reports.additionalFiles,
+          reportedMessages: reports.reportedMessages,
+          isTest: reports.isTest,
+        })
+        .from(reports)
+        .where(
+          and(
+            eq(reports.orgId, orgId),
+            or(eq(reports.isTest, false), eq(reports.reviewerId, reviewerId)),
+          ),
         )
-        .orderBy('ts', 'desc')
+        .orderBy(desc(reports.createdAt))
         // TODO: Paginate the NCMEC Reports page and make the search function
         // issue a new query.
         .limit(300)
-        .execute()
     );
   }
 
@@ -1483,39 +1521,41 @@ export default class NcmecReporting {
   async getUsersWithNcmecDecision(opts: { startDate: Date }) {
     const { startDate } = opts;
     return this.pqQueryReadReplica
-      .selectFrom('ncmec_reporting.ncmec_reports')
-      .select([
-        'user_id as userId',
-        'user_item_type_id as userItemTypeId',
-        'org_id as orgId',
-        sql<boolean>`bool_or(is_test is not true)`.as('hasProductionReport'),
-        sql<Date | null>`max(created_at) filter (where is_test)`.as(
-          'latestTestReportAt',
-        ),
-      ])
-      .where('created_at', '>=', startDate)
-      .groupBy(['user_id', 'user_item_type_id', 'org_id'])
-      .execute();
+      .select({
+        userId: reports.userId,
+        userItemTypeId: reports.userItemTypeId,
+        orgId: reports.orgId,
+        hasProductionReport: sql<boolean>`bool_or(${reports.isTest} is not true)`,
+        // mapWith decodes the timestamptz like the column itself; a bare
+        // sql<Date> fragment would come back as a string.
+        latestTestReportAt:
+          sql<Date | null>`max(${reports.createdAt}) filter (where ${reports.isTest})`.mapWith(
+            reports.createdAt,
+          ),
+      })
+      .from(reports)
+      .where(gte(reports.createdAt, startDate))
+      .groupBy(reports.userId, reports.userItemTypeId, reports.orgId);
   }
 
   async getNcmecReportById(opts: { orgId: string; reportId: string }) {
     const { orgId, reportId } = opts;
-    return this.pqQueryReadReplica
-      .selectFrom('ncmec_reporting.ncmec_reports')
-      .select([
-        'created_at as ts',
-        'report_id as reportId',
-        'user_id as userId',
-        'user_item_type_id as userItemTypeId',
-        'reviewer_id as reviewerId',
-        'reported_media as reportedMedia',
-        'report_xml as reportXml',
-        'additional_files as additionalFiles',
-        'reported_messages as reportedMessages',
-      ])
-      .where('org_id', '=', orgId)
-      .where('report_id', '=', reportId)
-      .executeTakeFirst();
+    const rows = await this.pqQueryReadReplica
+      .select({
+        ts: reports.createdAt,
+        reportId: reports.reportId,
+        userId: reports.userId,
+        userItemTypeId: reports.userItemTypeId,
+        reviewerId: reports.reviewerId,
+        reportedMedia: reports.reportedMedia,
+        reportXml: reports.reportXml,
+        additionalFiles: reports.additionalFiles,
+        reportedMessages: reports.reportedMessages,
+      })
+      .from(reports)
+      .where(and(eq(reports.orgId, orgId), eq(reports.reportId, reportId)))
+      .limit(1);
+    return rows.at(0);
   }
 
   async #sendUserPreservationRequest(input: {
@@ -1567,23 +1607,27 @@ export default class NcmecReporting {
   }
 
   async ncmecPreservationEndpoint(orgId: string): Promise<string | undefined> {
-    const rows = await this.pgQuery
-      .selectFrom('ncmec_reporting.ncmec_org_settings')
-      .select(['ncmec_preservation_endpoint'])
-      .where('org_id', '=', orgId)
-      .executeTakeFirst();
-    return rows?.ncmec_preservation_endpoint ?? undefined;
+    const row = (
+      await this.pgQuery
+        .select({ endpoint: orgSettings.ncmecPreservationEndpoint })
+        .from(orgSettings)
+        .where(eq(orgSettings.orgId, orgId))
+        .limit(1)
+    ).at(0);
+    return row?.endpoint ?? undefined;
   }
 
   async ncmecAdditionalInfoEndpoint(
     orgId: string,
   ): Promise<string | undefined> {
-    const rows = await this.pgQuery
-      .selectFrom('ncmec_reporting.ncmec_org_settings')
-      .select(['ncmec_additional_info_endpoint'])
-      .where('org_id', '=', orgId)
-      .executeTakeFirst();
-    return rows?.ncmec_additional_info_endpoint ?? undefined;
+    const row = (
+      await this.pgQuery
+        .select({ endpoint: orgSettings.ncmecAdditionalInfoEndpoint })
+        .from(orgSettings)
+        .where(eq(orgSettings.orgId, orgId))
+        .limit(1)
+    ).at(0);
+    return row?.endpoint ?? undefined;
   }
 
   async getUserHasExistingNcmeReport(params: {
@@ -1592,14 +1636,20 @@ export default class NcmecReporting {
     userItemTypeId: string;
   }) {
     const { orgId, userId, userItemTypeId } = params;
-    const firstReport = await this.pgQuery
-      .selectFrom('ncmec_reporting.ncmec_reports')
-      .select(['report_id'])
-      .where('org_id', '=', orgId)
-      .where('user_id', '=', userId)
-      .where('user_item_type_id', '=', userItemTypeId)
-      .where('is_test', '=', false)
-      .executeTakeFirst();
+    const firstReport = (
+      await this.pgQuery
+        .select({ reportId: reports.reportId })
+        .from(reports)
+        .where(
+          and(
+            eq(reports.orgId, orgId),
+            eq(reports.userId, userId),
+            eq(reports.userItemTypeId, userItemTypeId),
+            eq(reports.isTest, false),
+          ),
+        )
+        .limit(1)
+    ).at(0);
     return firstReport != null;
   }
 
@@ -1612,16 +1662,19 @@ export default class NcmecReporting {
   }): Promise<number[]> {
     const { orgId, userId, userItemTypeId } = params;
     const rows = await this.pgQuery
-      .selectFrom('ncmec_reporting.ncmec_reports')
-      .select(['report_id'])
-      .where('org_id', '=', orgId)
-      .where('user_id', '=', userId)
-      .where('user_item_type_id', '=', userItemTypeId)
-      .where('is_test', '=', false)
-      .orderBy('created_at', 'desc')
-      .execute();
+      .select({ reportId: reports.reportId })
+      .from(reports)
+      .where(
+        and(
+          eq(reports.orgId, orgId),
+          eq(reports.userId, userId),
+          eq(reports.userItemTypeId, userItemTypeId),
+          eq(reports.isTest, false),
+        ),
+      )
+      .orderBy(desc(reports.createdAt));
     return rows
-      .map((r) => parseInt(r.report_id, 10))
+      .map((r) => parseInt(r.reportId, 10))
       .filter((n) => Number.isFinite(n));
   }
 
@@ -1687,20 +1740,23 @@ export default class NcmecReporting {
             throw new Error('org id not found');
           }
 
-          const queryResponse = await this.pgQuery
-            .selectFrom('ncmec_reporting.ncmec_org_settings')
-            .select([
-              'company_template as companyTemplate',
-              'legal_url as legalURL',
-              'default_internet_detail_type as defaultInternetDetailType',
-              'terms_of_service as termsOfService',
-              'contact_person_email as contactPersonEmail',
-              'contact_person_first_name as contactPersonFirstName',
-              'contact_person_last_name as contactPersonLastName',
-              'contact_person_phone as contactPersonPhone',
-            ])
-            .where('org_id', '=', reportParams.orgId)
-            .executeTakeFirst();
+          const queryResponse = (
+            await this.pgQuery
+              .select({
+                companyTemplate: orgSettings.companyTemplate,
+                legalURL: orgSettings.legalUrl,
+                defaultInternetDetailType:
+                  orgSettings.defaultInternetDetailType,
+                termsOfService: orgSettings.termsOfService,
+                contactPersonEmail: orgSettings.contactPersonEmail,
+                contactPersonFirstName: orgSettings.contactPersonFirstName,
+                contactPersonLastName: orgSettings.contactPersonLastName,
+                contactPersonPhone: orgSettings.contactPersonPhone,
+              })
+              .from(orgSettings)
+              .where(eq(orgSettings.orgId, reportParams.orgId))
+              .limit(1)
+          ).at(0);
 
           if (
             !queryResponse ||
@@ -1884,23 +1940,19 @@ export default class NcmecReporting {
             isTest,
           );
 
-          await this.pgQuery
-            .insertInto('ncmec_reporting.ncmec_reports')
-            .values({
-              org_id: reportParams.orgId,
-              report_id: reportId,
-              user_id: reportParams.reportedUser.id,
-
-              user_item_type_id: reportParams.reportedUser.typeId,
-              reviewer_id: reportParams.reviewerId,
-              reported_media: reportedMedia,
-              report_xml: xml,
-              additional_files: additionalFiles,
-              reported_messages: threadCsvs,
-              incident_type: reportParams.incidentType,
-              is_test: isTest,
-            })
-            .execute();
+          await this.pgQuery.insert(reports).values({
+            orgId: reportParams.orgId,
+            reportId,
+            userId: reportParams.reportedUser.id,
+            userItemTypeId: reportParams.reportedUser.typeId,
+            reviewerId: reportParams.reviewerId,
+            reportedMedia,
+            reportXml: xml,
+            additionalFiles,
+            reportedMessages: threadCsvs,
+            incidentType: reportParams.incidentType,
+            isTest,
+          });
 
           if (ncmecConfig?.ncmec_preservation_endpoint && isTest === false) {
             await this.#sendUserPreservationRequest({
@@ -2278,23 +2330,23 @@ export default class NcmecReporting {
       // Atomic increment in `doUpdateSet` avoids the read-modify-write race
       // when two retries land on the same job_id concurrently.
       await this.pgQuery
-        .insertInto('ncmec_reporting.ncmec_reports_errors')
+        .insert(reportErrors)
         .values({
-          job_id: opts.jobId,
-          user_id: opts.userId,
-          user_type_id: opts.userTypeId,
+          jobId: opts.jobId,
+          userId: opts.userId,
+          userTypeId: opts.userTypeId,
           status,
-          last_error: opts.error,
-          retry_count: 1,
+          lastError: opts.error,
+          retryCount: 1,
         })
-        .onConflict((oc) =>
-          oc.columns(['job_id']).doUpdateSet({
-            retry_count: sql`ncmec_reporting.ncmec_reports_errors.retry_count + 1`,
-            last_error: opts.error,
+        .onConflictDoUpdate({
+          target: reportErrors.jobId,
+          set: {
+            retryCount: sql`${reportErrors.retryCount} + 1`,
+            lastError: opts.error,
             status,
-          }),
-        )
-        .execute();
+          },
+        });
     } catch (e: unknown) {
       // eslint-disable-next-line no-restricted-syntax
       logErrorJson({
@@ -2384,10 +2436,14 @@ export default class NcmecReporting {
   }
 
   async getCybertipAuthenticationCredentials(orgId: string) {
-    return this.pgQuery
-      .selectFrom('ncmec_reporting.ncmec_org_settings')
-      .select(['username', 'password'])
-      .where('org_id', '=', orgId)
-      .executeTakeFirst();
+    const rows = await this.pgQuery
+      .select({
+        username: orgSettings.username,
+        password: orgSettings.password,
+      })
+      .from(orgSettings)
+      .where(eq(orgSettings.orgId, orgId))
+      .limit(1);
+    return rows.at(0);
   }
 }

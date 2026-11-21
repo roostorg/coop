@@ -1,14 +1,14 @@
 import { type Exception } from '@opentelemetry/api';
-import { type Kysely } from 'kysely';
+import { eq } from 'drizzle-orm';
 import _ from 'lodash';
 import { type ReadonlyDeep } from 'type-fest';
 import { uid } from 'uid';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
+import { schema, type CoopDb } from '../../storage/postgres/drizzle.js';
 import { type NonEmptyArray } from '../../utils/typescript-types.js';
 import { CoopEmailAddress } from '../sendEmailService/sendEmailService.js';
-import { type NotificationsServicePg } from './dbTypes.js';
 import { formatNotification } from './notificationFormatter.js';
 
 const { omit } = _;
@@ -71,21 +71,28 @@ type CreateNotificationInput<T extends NotificationType> = Pick<
 
 class NotificationsService {
   constructor(
-    private readonly query: Kysely<NotificationsServicePg>,
+    private readonly query: CoopDb,
     private readonly sendEmail: Dependencies['sendEmail'],
     private readonly configService: Dependencies['ConfigService'],
     private readonly tracer: Dependencies['Tracer'],
   ) {}
 
   async getNotificationsForUser(userId: string): Promise<Notification[]> {
+    const { notifications } = schema;
     return (
       this.query
-        .selectFrom('notifications')
         // Don't select userId since it isn't technically part of the
         // Notification type and we don't want callers to depend on it.
-        .select(['id', 'type', 'message', 'data', 'readAt', 'createdAt'])
-        .where('userId', '=', userId)
-        .execute()
+        .select({
+          id: notifications.id,
+          type: notifications.type,
+          message: notifications.message,
+          data: notifications.data,
+          readAt: notifications.readAt,
+          createdAt: notifications.createdAt,
+        })
+        .from(notifications)
+        .where(eq(notifications.userId, userId))
     );
   }
 
@@ -125,22 +132,26 @@ class NotificationsService {
     // gets lost. Ditto for writing the notifications. This is fine for now.
     await Promise.all([
       ...emailMessages.map(async (msg) => this.sendEmail(msg).catch(() => {})),
-      this.query
-        .insertInto('notifications')
-        .values(toUserNotifications)
-        .execute()
-        .catch((e) => {
-          const activeSpan = this.tracer.getActiveSpan();
-          if (activeSpan?.isRecording()) {
-            activeSpan.recordException(e as Exception);
-          }
-        }),
+      // Drizzle throws synchronously on an empty values list, so skip the
+      // insert when no recipient is a user.
+      (toUserNotifications.length === 0
+        ? Promise.resolve()
+        : this.query
+            .insert(schema.notifications)
+            .values(toUserNotifications)
+            .then(() => {})
+      ).catch((e: unknown) => {
+        const activeSpan = this.tracer.getActiveSpan();
+        if (activeSpan?.isRecording()) {
+          activeSpan.recordException(e as Exception);
+        }
+      }),
     ]);
   }
 }
 
 export default inject(
-  ['KyselyPg', 'sendEmail', 'ConfigService', 'Tracer'],
+  ['DrizzlePg', 'sendEmail', 'ConfigService', 'Tracer'],
   NotificationsService,
 );
 export { type NotificationsService };

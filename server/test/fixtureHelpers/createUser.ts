@@ -1,5 +1,4 @@
 import { faker } from '@faker-js/faker';
-import { type Kysely } from 'kysely';
 import { uid } from 'uid';
 
 // Test fixtures may create intentionally minimal organizations without roles.
@@ -8,12 +7,12 @@ import {
   kyselyUserDeleteById,
   kyselyUserInsert,
 } from '../../graphql/datasources/userKyselyPersistence.js';
-import { type CombinedPg } from '../../services/combinedDbTypes.js';
 import { type LoginMethod } from '../../services/coreAppTables.js';
 import {
   hashPassword,
   UserRole,
 } from '../../services/userManagementService/index.js';
+import { type CoopDb } from '../../storage/postgres/drizzle.js';
 import { logErrorAndThrow } from '../utils.js';
 
 // SAML-only by default keeps the `password_null_when_not_present` CHECK
@@ -21,7 +20,7 @@ import { logErrorAndThrow } from '../utils.js';
 const DEFAULT_LOGIN_METHODS: readonly LoginMethod[] = ['saml'];
 
 export default async function createUser(
-  db: Kysely<CombinedPg>,
+  db: CoopDb,
   orgId: string,
   extra: {
     id?: string;

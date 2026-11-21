@@ -1,7 +1,8 @@
-import { type Kysely, type Transaction } from 'kysely';
+import { and, eq, inArray } from 'drizzle-orm';
 import { type Writable } from 'type-fest';
 import { uid } from 'uid';
 
+import { schema, type CoopDbOrTx } from '../../../storage/postgres/drizzle.js';
 import {
   CoopError,
   ErrorType,
@@ -9,85 +10,67 @@ import {
   makeUnauthorizedError,
   type ErrorInstanceData,
 } from '../../../utils/errors.js';
-import {
-  isUniqueViolationError,
-  type FixKyselyRowCorrelation,
-} from '../../../utils/kysely.js';
-import {
-  makeKyselyTransactionWithRetry,
-  type KyselyTransactionWithRetry,
-} from '../../../utils/kyselyTransactionWithRetry.js';
+import { isUniqueViolationError } from '../../../utils/kysely.js';
 import { removeUndefinedKeys } from '../../../utils/misc.js';
 import {
   UserPermission,
   type Invoker,
 } from '../../userManagementService/index.js';
-import { type ModerationConfigServicePg } from '../dbTypes.js';
 import { type Policy } from '../index.js';
 import type { PolicyMutationInvoker, PolicyType } from '../types/policies.js';
+import { runInTransaction } from './drizzleTx.js';
 
-const policyDbSelection = [
-  'id',
-  'name',
-  'org_id as orgId',
-  'parent_id as parentId',
-  'created_at as createdAt',
-  'updated_at as updatedAt',
-  'policy_text as policyText',
-  'enforcement_guidelines as enforcementGuidelines',
-  'sys_period as sysPeriod',
-  'policy_type as policyType',
-  'semantic_version as semanticVersion',
-  'user_strike_count as userStrikeCount',
-  'apply_user_strike_count_config_to_children as applyUserStrikeCountConfigToChildren',
-  'penalty',
-] as const;
+const policies = schema.policies;
 
-const policyJoinDbSelection = [
-  'rap.rule_id as ruleId',
-  'p.id',
-  'p.name',
-  'p.org_id as orgId',
-  'p.parent_id as parentId',
-  'p.created_at as createdAt',
-  'p.updated_at as updatedAt',
-  'p.policy_text as policyText',
-  'p.enforcement_guidelines as enforcementGuidelines',
-  'p.sys_period as sysPeriod',
-  'p.policy_type as policyType',
-  'p.semantic_version as semanticVersion',
-  'p.user_strike_count as userStrikeCount',
-  'p.apply_user_strike_count_config_to_children as applyUserStrikeCountConfigToChildren',
-  'p.penalty',
-] as const;
+const policyDbSelection = {
+  id: policies.id,
+  name: policies.name,
+  orgId: policies.orgId,
+  parentId: policies.parentId,
+  createdAt: policies.createdAt,
+  updatedAt: policies.updatedAt,
+  policyText: policies.policyText,
+  enforcementGuidelines: policies.enforcementGuidelines,
+  sysPeriod: policies.sysPeriod,
+  policyType: policies.policyType,
+  semanticVersion: policies.semanticVersion,
+  userStrikeCount: policies.userStrikeCount,
+  applyUserStrikeCountConfigToChildren:
+    policies.applyUserStrikeCountConfigToChildren,
+  penalty: policies.penalty,
+};
 
-type PolicyDbResult = FixKyselyRowCorrelation<
-  ModerationConfigServicePg['public.policies'],
-  typeof policyDbSelection
->;
+type PolicyDbResult = {
+  [
+    K in keyof typeof policyDbSelection
+  ]: (typeof policyDbSelection)[K]['_']['data'] extends infer D
+    ? (typeof policyDbSelection)[K]['_']['notNull'] extends true
+      ? D
+      : D | null
+    : never;
+};
+
+function throwNoResult(): never {
+  throw new Error('no result');
+}
 
 export default class PolicyOperations {
-  private readonly transactionWithRetry: KyselyTransactionWithRetry<ModerationConfigServicePg>;
-
   constructor(
-    private readonly pgQuery: Kysely<ModerationConfigServicePg>,
-    private readonly pgQueryReplica: Kysely<ModerationConfigServicePg>,
+    private readonly pgQuery: CoopDbOrTx,
+    private readonly pgQueryReplica: CoopDbOrTx,
     private readonly onDeletePolicyId: (opts: {
       policyId: string;
       orgId: string;
     }) => Promise<void>,
-  ) {
-    this.transactionWithRetry = makeKyselyTransactionWithRetry(this.pgQuery);
-  }
+  ) {}
 
   async getPolicies(opts: { orgId: string; readFromReplica?: boolean }) {
     const { orgId, readFromReplica } = opts;
     const pgQuery = this.#getPgQuery(readFromReplica);
-    const query = pgQuery
-      .selectFrom('public.policies')
+    const results = await pgQuery
       .select(policyDbSelection)
-      .where('org_id', '=', orgId);
-    const results = (await query.execute()) as PolicyDbResult[];
+      .from(policies)
+      .where(eq(policies.orgId, orgId));
 
     return results.map((it) => this.#dbResultToPolicy(it));
   }
@@ -102,12 +85,10 @@ export default class PolicyOperations {
       return [];
     }
     const pgQuery = this.#getPgQuery(readFromReplica ?? true);
-    const results = (await pgQuery
-      .selectFrom('public.policies')
+    const results = await pgQuery
       .select(policyDbSelection)
-      .where('org_id', '=', orgId)
-      .where('id', 'in', [...ids])
-      .execute()) as PolicyDbResult[];
+      .from(policies)
+      .where(and(eq(policies.orgId, orgId), inArray(policies.id, [...ids])));
 
     return results.map((it) => this.#dbResultToPolicy(it));
   }
@@ -121,13 +102,12 @@ export default class PolicyOperations {
       return {};
     }
     const pgQuery = this.#getPgQuery(readFromReplica ?? true);
-    type Row = PolicyDbResult & { ruleId: string };
-    const rows = (await pgQuery
-      .selectFrom('public.rules_and_policies as rap')
-      .innerJoin('public.policies as p', 'p.id', 'rap.policy_id')
-      .select(policyJoinDbSelection)
-      .where('rap.rule_id', 'in', [...ruleIds])
-      .execute()) as Row[];
+    const rap = schema.rulesAndPolicies;
+    const rows = await pgQuery
+      .select({ ruleId: rap.ruleId, ...policyDbSelection })
+      .from(rap)
+      .innerJoin(policies, eq(policies.id, rap.policyId))
+      .where(inArray(rap.ruleId, [...ruleIds]));
 
     const out: Record<string, Policy[]> = {};
     for (const row of rows) {
@@ -145,12 +125,11 @@ export default class PolicyOperations {
   }) {
     const { orgId, policyId, readFromReplica } = opts;
     const pgQuery = this.#getPgQuery(readFromReplica);
-    const query = pgQuery
-      .selectFrom('public.policies')
+    const [result] = await pgQuery
       .select(policyDbSelection)
-      .where('org_id', '=', orgId)
-      .where('id', '=', policyId);
-    const result = await query.executeTakeFirst();
+      .from(policies)
+      .where(and(eq(policies.orgId, orgId), eq(policies.id, policyId)))
+      .limit(1);
 
     return result === undefined ? undefined : this.#dbResultToPolicy(result);
   }
@@ -192,32 +171,34 @@ export default class PolicyOperations {
 
     try {
       const id = uid();
-      const newPolicy = await this.transactionWithRetry(
-        { isolationLevel: 'serializable' },
+      const newPolicy = await runInTransaction(
+        this.pgQuery,
         async (trx) => {
-          const policies = await this.#getPolicyParents(trx, org_id);
-          this.#validateParent(policies, id, parent_id);
-          return trx
-            .insertInto('public.policies')
+          const parents = await this.#getPolicyParents(trx, org_id);
+          this.#validateParent(parents, id, parent_id);
+          const [row] = await trx
+            .insert(policies)
             .values({
               id,
               name,
-              org_id,
+              orgId: org_id,
               penalty: 'NONE',
-              semantic_version: 1,
-              updated_at: new Date(),
+              semanticVersion: 1,
+              updatedAt: new Date(),
               ...removeUndefinedKeys({
-                parent_id,
-                policy_text,
-                enforcement_guidelines,
-                policy_type,
-                user_strike_count,
-                apply_user_strike_count_config_to_children,
+                parentId: parent_id,
+                policyText: policy_text,
+                enforcementGuidelines: enforcement_guidelines,
+                policyType: policy_type,
+                userStrikeCount: user_strike_count,
+                applyUserStrikeCountConfigToChildren:
+                  apply_user_strike_count_config_to_children,
               }),
             })
-            .returning(policyDbSelection)
-            .executeTakeFirstOrThrow();
+            .returning(policyDbSelection);
+          return row ?? throwNoResult();
         },
+        { isolationLevel: 'serializable' },
       );
 
       return this.#dbResultToPolicy(newPolicy);
@@ -255,11 +236,11 @@ export default class PolicyOperations {
     }
 
     try {
-      const updatedPolicy = await this.transactionWithRetry(
-        { isolationLevel: 'serializable' },
+      const updatedPolicy = await runInTransaction(
+        this.pgQuery,
         async (trx) => {
-          const policies = await this.#getPolicyParents(trx, orgId);
-          const current = policies.find(({ id }) => id === policy.id);
+          const parents = await this.#getPolicyParents(trx, orgId);
+          const current = parents.find(({ id }) => id === policy.id);
           if (current === undefined) {
             throw makeNotFoundError('Policy not found', {
               shouldErrorSpan: true,
@@ -267,27 +248,27 @@ export default class PolicyOperations {
           }
           const proposedParent =
             policy.parentId === undefined ? current.parent_id : policy.parentId;
-          this.#validateParent(policies, policy.id, proposedParent);
-          return trx
-            .updateTable('public.policies')
+          this.#validateParent(parents, policy.id, proposedParent);
+          const [row] = await trx
+            .update(policies)
             .set(
               removeUndefinedKeys({
                 name: policy.name,
-                parent_id: policy.parentId,
-                policy_text: policy.policyText,
-                enforcement_guidelines: policy.enforcementGuidelines,
-                policy_type: policy.policyType,
-                user_strike_count: policy.userStrikeCount ?? undefined,
-                apply_user_strike_count_config_to_children:
+                parentId: policy.parentId,
+                policyText: policy.policyText,
+                enforcementGuidelines: policy.enforcementGuidelines,
+                policyType: policy.policyType,
+                userStrikeCount: policy.userStrikeCount ?? undefined,
+                applyUserStrikeCountConfigToChildren:
                   policy.applyUserStrikeCountConfigToChildren ?? undefined,
-                updated_at: new Date(),
+                updatedAt: new Date(),
               }),
             )
-            .where('org_id', '=', orgId)
-            .where('id', '=', policy.id)
-            .returning(policyDbSelection)
-            .executeTakeFirstOrThrow();
+            .where(and(eq(policies.orgId, orgId), eq(policies.id, policy.id)))
+            .returning(policyDbSelection);
+          return row ?? throwNoResult();
         },
+        { isolationLevel: 'serializable' },
       );
 
       return this.#dbResultToPolicy(updatedPolicy);
@@ -311,21 +292,17 @@ export default class PolicyOperations {
       );
     }
 
-    const rowsDeleted = await this.pgQuery
-      .deleteFrom('public.policies')
-      .where('org_id', '=', orgId)
-      .where('id', '=', policyId)
-      .execute();
+    await this.pgQuery
+      .delete(policies)
+      .where(and(eq(policies.orgId, orgId), eq(policies.id, policyId)));
 
-    if (rowsDeleted.length === 1) {
-      // We don't need to wait for this to complete before returning.
-      // Additionally, if it fails, we don't want to throw an error because
-      // it's not critical that it succeeds, it's just a 'best effort' cleanup.
-      this.onDeletePolicyId({ policyId, orgId }).catch(() => {});
-      return true;
-    }
-
-    return false;
+    // Kysely's `execute()` on a DELETE always returned one result object, so
+    // the old `rowsDeleted.length === 1` check always passed; kept as-is.
+    // We don't need to wait for this to complete before returning.
+    // Additionally, if it fails, we don't want to throw an error because
+    // it's not critical that it succeeds, it's just a 'best effort' cleanup.
+    this.onDeletePolicyId({ policyId, orgId }).catch(() => {});
+    return true;
   }
 
   #dbResultToPolicy(it: PolicyDbResult) {
@@ -336,15 +313,11 @@ export default class PolicyOperations {
     return readFromReplica ? this.pgQueryReplica : this.pgQuery;
   }
 
-  async #getPolicyParents(
-    trx: Transaction<ModerationConfigServicePg>,
-    orgId: string,
-  ) {
+  async #getPolicyParents(trx: CoopDbOrTx, orgId: string) {
     return trx
-      .selectFrom('public.policies')
-      .select(['id', 'parent_id'])
-      .where('org_id', '=', orgId)
-      .execute();
+      .select({ id: policies.id, parent_id: policies.parentId })
+      .from(policies)
+      .where(eq(policies.orgId, orgId));
   }
 
   #validateParent(

@@ -1,22 +1,28 @@
-import type { Kysely } from 'kysely';
+import { and, eq } from 'drizzle-orm';
 
 import { inject } from '../../iocContainer/utils.js';
-import type { SSOServicePg } from './dbTypes.js';
+import { schema, type CoopDb } from '../../storage/postgres/drizzle.js';
 
 export class SSOService {
-  constructor(private readonly pgQuery: Kysely<SSOServicePg>) {}
+  constructor(private readonly db: CoopDb) {}
 
   // Throws is SSO is not enabled for an org
   async getSSORedirectUrlForUserEmail(email: string) {
-    const { org_id: orgId } = await this.pgQuery
-      .selectFrom('users')
-      .innerJoin('org_settings', 'users.org_id', 'org_settings.org_id')
-      .where('users.email', '=', email)
-      .where('org_settings.saml_enabled', '=', true)
-      .select('users.org_id')
-      .executeTakeFirstOrThrow();
-    return `/api/v1/saml/login/${orgId}`;
+    const { users, orgSettings } = schema;
+    const row = (
+      await this.db
+        .select({ orgId: users.orgId })
+        .from(users)
+        .innerJoin(orgSettings, eq(users.orgId, orgSettings.orgId))
+        .where(and(eq(users.email, email), eq(orgSettings.samlEnabled, true)))
+        .limit(1)
+    ).at(0);
+    if (row === undefined) {
+      // Same message as Kysely's NoResultError, which this used to throw.
+      throw new Error('no result');
+    }
+    return `/api/v1/saml/login/${row.orgId}`;
   }
 }
 
-export default inject(['KyselyPg'], SSOService);
+export default inject(['DrizzlePg'], SSOService);

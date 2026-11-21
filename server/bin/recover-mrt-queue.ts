@@ -30,6 +30,7 @@
  *     [--apply] \
  *     [--no-report-history]
  */
+import { and, desc, eq, gte, inArray, lt, or } from 'drizzle-orm';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 
@@ -39,6 +40,7 @@ import {
   type JobId,
   type ReportHistory,
 } from '../services/manualReviewToolService/index.js';
+import { schema } from '../storage/postgres/drizzle.js';
 import { jsonStringify } from '../utils/encoding.js';
 import {
   isRecoveryMode,
@@ -99,7 +101,7 @@ const argv = await yargs(hideBin(process.argv))
   .parse();
 
 // Fail fast on obviously bad ids before issuing DB queries. SQL safety
-// itself comes from Kysely parameterization, not this check.
+// itself comes from query parameterization, not this check.
 const ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 function assertIdShape(name: string, value: string) {
   if (!ID_PATTERN.test(value)) {
@@ -162,6 +164,14 @@ async function resolveMode(
   return { mode, detectedMode, defaultNcmecQueueId, modeSource };
 }
 
+type JobCreationRow = {
+  id: string;
+  item_id: string;
+  item_type_id: string;
+  created_at: Date;
+  policy_ids: string[];
+};
+
 async function loadCandidates(
   container: Awaited<ReturnType<typeof getBottle>>['container'],
 ): Promise<Candidate[]> {
@@ -189,28 +199,33 @@ async function loadCandidates(
   };
 
   while (true) {
-    let q = container.KyselyPg.selectFrom('manual_review_tool.job_creations')
-      .select(['id', 'item_id', 'item_type_id', 'created_at', 'policy_ids'])
-      .where('org_id', '=', argv.orgId)
-      .where('queue_id', '=', argv.queueId)
-      .where('created_at', '>=', since);
-
-    if (cursorCreatedAt != null && cursorId != null) {
-      const cAt = cursorCreatedAt;
-      const cId = cursorId;
-      q = q.where((eb) =>
-        eb.or([
-          eb('created_at', '<', cAt),
-          eb.and([eb('created_at', '=', cAt), eb('id', '<', cId)]),
-        ]),
-      );
-    }
-
-    const page = await q
-      .orderBy('created_at', 'desc')
-      .orderBy('id', 'desc')
-      .limit(PAGE_SIZE)
-      .execute();
+    const jc = schema.jobCreations;
+    const cAt = cursorCreatedAt;
+    const cId = cursorId;
+    // Annotated: the loop-carried cursor otherwise makes TS infer `any`.
+    const page: JobCreationRow[] = await container.DrizzlePg.select({
+      id: jc.id,
+      item_id: jc.itemId,
+      item_type_id: jc.itemTypeId,
+      created_at: jc.createdAt,
+      policy_ids: jc.policyIds,
+    })
+      .from(jc)
+      .where(
+        and(
+          eq(jc.orgId, argv.orgId),
+          eq(jc.queueId, argv.queueId),
+          gte(jc.createdAt, since),
+          cAt != null && cId != null
+            ? or(
+                lt(jc.createdAt, cAt),
+                and(eq(jc.createdAt, cAt), lt(jc.id, cId)),
+              )
+            : undefined,
+        ),
+      )
+      .orderBy(desc(jc.createdAt), desc(jc.id))
+      .limit(PAGE_SIZE);
 
     if (page.length === 0) break;
     totalRowsLoaded += page.length;
@@ -248,13 +263,10 @@ async function loadCandidates(
     }
     for (let i = 0; i < newGuids.length; i += DECISION_CHUNK) {
       const chunk = newGuids.slice(i, i + DECISION_CHUNK);
-      const decisionRows = await container.KyselyPg.selectFrom(
-        'manual_review_tool.manual_review_decisions',
-      )
-        .select(['id'])
-        .where('org_id', '=', argv.orgId)
-        .where('id', 'in', chunk)
-        .execute();
+      const mrd = schema.manualReviewDecisions;
+      const decisionRows = await container.DrizzlePg.select({ id: mrd.id })
+        .from(mrd)
+        .where(and(eq(mrd.orgId, argv.orgId), inArray(mrd.id, chunk)));
       for (const r of decisionRows) decidedGuids.add(r.id);
     }
 

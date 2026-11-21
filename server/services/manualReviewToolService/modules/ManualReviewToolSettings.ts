@@ -1,89 +1,71 @@
-import { type Kysely, type Updateable } from 'kysely';
+import { eq } from 'drizzle-orm';
 
-import { type ManualReviewToolServicePg } from '../dbTypes.js';
+import { schema, type CoopDb } from '../../../storage/postgres/drizzle.js';
 
-type SettingsUpdate = Updateable<
-  Omit<
-    ManualReviewToolServicePg['manual_review_tool.manual_review_tool_settings'],
-    'org_id'
-  >
->;
+const { manualReviewToolSettings: settings } = schema;
+
+type SettingsUpdate = Partial<Omit<typeof settings.$inferInsert, 'orgId'>>;
+
+const defaultSettings = {
+  requiresPolicyForDecisions: false,
+  mrtRequiresDecisionReasonOnAction: false,
+  mrtRequiresDecisionReasonOnIgnore: false,
+  hideSkipButtonForNonAdmins: false,
+  previewJobsViewEnabled: false,
+  ignoreCallbackUrl: null,
+} satisfies SettingsUpdate;
 
 export default class ManualReviewToolSettings {
-  constructor(readonly pgQuery: Kysely<ManualReviewToolServicePg>) {}
+  constructor(readonly db: CoopDb) {}
 
   async upsertDefaultSettings(opts: { orgId: string }) {
     const { orgId } = opts;
 
-    await this.pgQuery
-      .insertInto('manual_review_tool.manual_review_tool_settings')
-      .values({
-        org_id: orgId,
-        requires_policy_for_decisions: false,
-        mrt_requires_decision_reason_on_action: false,
-        mrt_requires_decision_reason_on_ignore: false,
-        hide_skip_button_for_non_admins: false,
-        preview_jobs_view_enabled: false,
-        ignore_callback_url: null,
-      })
-      .onConflict((oc) => oc.column('org_id').doNothing())
-      .execute();
+    await this.db
+      .insert(settings)
+      .values({ orgId, ...defaultSettings })
+      .onConflictDoNothing({ target: settings.orgId });
+  }
+
+  async #getSettingsRow(orgId: string) {
+    const row = (
+      await this.db
+        .select()
+        .from(settings)
+        .where(eq(settings.orgId, orgId))
+        .limit(1)
+    ).at(0);
+    return row;
   }
 
   async getRequiresPolicyForDecisions(orgId: string) {
-    const requiresPolicyForDecisionsRow = await this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_tool_settings')
-      .select(['org_id', 'requires_policy_for_decisions'])
-      .where('org_id', '=', orgId)
-      .executeTakeFirst();
-    return (
-      requiresPolicyForDecisionsRow?.requires_policy_for_decisions ?? false
-    );
+    const row = await this.#getSettingsRow(orgId);
+    return row?.requiresPolicyForDecisions ?? false;
   }
 
   async getRequiresDecisionReason(orgId: string) {
-    const decisionReasonRow = await this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_tool_settings')
-      .select(['org_id', 'mrt_requires_decision_reason_on_action'])
-      .where('org_id', '=', orgId)
-      .executeTakeFirst();
-    return decisionReasonRow?.mrt_requires_decision_reason_on_action ?? false;
+    const row = await this.#getSettingsRow(orgId);
+    return row?.mrtRequiresDecisionReasonOnAction ?? false;
   }
 
   async getRequiresDecisionReasonOnIgnore(orgId: string) {
-    const decisionReasonRow = await this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_tool_settings')
-      .select(['org_id', 'mrt_requires_decision_reason_on_ignore'])
-      .where('org_id', '=', orgId)
-      .executeTakeFirst();
-    return decisionReasonRow?.mrt_requires_decision_reason_on_ignore ?? false;
+    const row = await this.#getSettingsRow(orgId);
+    return row?.mrtRequiresDecisionReasonOnIgnore ?? false;
   }
 
   async getHideSkipButtonForNonAdmins(orgId: string) {
-    const hideSkipButtonRow = await this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_tool_settings')
-      .select(['org_id', 'hide_skip_button_for_non_admins'])
-      .where('org_id', '=', orgId)
-      .executeTakeFirst();
-    return hideSkipButtonRow?.hide_skip_button_for_non_admins ?? false;
+    const row = await this.#getSettingsRow(orgId);
+    return row?.hideSkipButtonForNonAdmins ?? false;
   }
 
   async getPreviewJobsViewEnabled(orgId: string) {
-    const row = await this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_tool_settings')
-      .select(['preview_jobs_view_enabled'])
-      .where('org_id', '=', orgId)
-      .executeTakeFirst();
-    return row?.preview_jobs_view_enabled ?? false;
+    const row = await this.#getSettingsRow(orgId);
+    return row?.previewJobsViewEnabled ?? false;
   }
 
   async getIgnoreCallbackUrl(orgId: string) {
-    const row = await this.pgQuery
-      .selectFrom('manual_review_tool.manual_review_tool_settings')
-      .select(['ignore_callback_url'])
-      .where('org_id', '=', orgId)
-      .executeTakeFirst();
-    return row?.ignore_callback_url ?? null;
+    const row = await this.#getSettingsRow(orgId);
+    return row?.ignoreCallbackUrl ?? null;
   }
 
   // Orgs created before this table existed have no row, so a bare UPDATE would
@@ -92,51 +74,37 @@ export default class ManualReviewToolSettings {
     orgId: string,
     changes: SettingsUpdate,
   ): Promise<void> {
-    await this.pgQuery
-      .insertInto('manual_review_tool.manual_review_tool_settings')
-      .values({
-        org_id: orgId,
-        requires_policy_for_decisions: false,
-        mrt_requires_decision_reason_on_action: false,
-        mrt_requires_decision_reason_on_ignore: false,
-        hide_skip_button_for_non_admins: false,
-        preview_jobs_view_enabled: false,
-        ignore_callback_url: null,
-        ...changes,
-      })
-      .onConflict((oc) => oc.column('org_id').doUpdateSet(changes))
-      .execute();
+    await this.db
+      .insert(settings)
+      .values({ orgId, ...defaultSettings, ...changes })
+      .onConflictDoUpdate({ target: settings.orgId, set: changes });
   }
 
   async updateRequiresPolicyForDecisions(orgId: string, enabled: boolean) {
-    await this.upsertSettings(orgId, {
-      requires_policy_for_decisions: enabled,
-    });
+    await this.upsertSettings(orgId, { requiresPolicyForDecisions: enabled });
   }
 
   async updateRequiresDecisionReason(orgId: string, enabled: boolean) {
     await this.upsertSettings(orgId, {
-      mrt_requires_decision_reason_on_action: enabled,
+      mrtRequiresDecisionReasonOnAction: enabled,
     });
   }
 
   async updateRequiresDecisionReasonOnIgnore(orgId: string, enabled: boolean) {
     await this.upsertSettings(orgId, {
-      mrt_requires_decision_reason_on_ignore: enabled,
+      mrtRequiresDecisionReasonOnIgnore: enabled,
     });
   }
 
   async updateHideSkipButtonForNonAdmins(orgId: string, enabled: boolean) {
-    await this.upsertSettings(orgId, {
-      hide_skip_button_for_non_admins: enabled,
-    });
+    await this.upsertSettings(orgId, { hideSkipButtonForNonAdmins: enabled });
   }
 
   async updatePreviewJobsViewEnabled(orgId: string, enabled: boolean) {
-    await this.upsertSettings(orgId, { preview_jobs_view_enabled: enabled });
+    await this.upsertSettings(orgId, { previewJobsViewEnabled: enabled });
   }
 
   async updateIgnoreCallbackUrl(orgId: string, url: string | null) {
-    await this.upsertSettings(orgId, { ignore_callback_url: url });
+    await this.upsertSettings(orgId, { ignoreCallbackUrl: url });
   }
 }

@@ -3,6 +3,7 @@ import { vi } from 'vitest';
 
 import * as networking from '../../services/networkingService/index.js';
 import { UserPermission } from '../../services/userManagementService/index.js';
+import { schema } from '../../storage/postgres/drizzle.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import createSession from '../../test/fixtureHelpers/createSession.js';
 import createUser from '../../test/fixtureHelpers/createUser.js';
@@ -166,7 +167,7 @@ describe('NCMEC read surfaces require VIEW_CHILD_SAFETY_DATA', () => {
     async ({ deps, server }) => {
       const local = await createOrg(deps);
       const foreign = await createOrg(deps);
-      const { user } = await createUser(deps.KyselyPg, local.org.id, {
+      const { user } = await createUser(deps.DrizzlePg, local.org.id, {
         approvedByAdmin: true,
         loginMethods: ['password'],
         password: 'Ncmec-test-password',
@@ -174,7 +175,7 @@ describe('NCMEC read surfaces require VIEW_CHILD_SAFETY_DATA', () => {
       const createReport = async (tenant: typeof local, label: string) => {
         // Non-test reports by another reviewer are visible to authorized org members.
         const { user: reviewer } = await createUser(
-          deps.KyselyPg,
+          deps.DrizzlePg,
           tenant.org.id,
         );
         const marker = `synthetic-protected-${label}`;
@@ -200,20 +201,23 @@ describe('NCMEC read surfaces require VIEW_CHILD_SAFETY_DATA', () => {
             },
           ],
         };
-        await deps.KyselyPg.insertInto('ncmec_reporting.ncmec_reports')
-          .values({
-            org_id: tenant.org.id,
-            report_id: report.reportId,
-            user_id: report.userId,
-            user_item_type_id: tenant.defaultUserItemType.id,
-            reviewer_id: reviewer.id,
-            report_xml: report.reportXml,
-            reported_media: report.reportedMedia,
-            additional_files: report.additionalFiles,
-            reported_messages: report.reportedMessages,
-            is_test: false,
-          })
-          .execute();
+        await deps.DrizzlePg.insert(schema.ncmecReports).values({
+          orgId: tenant.org.id,
+          reportId: report.reportId,
+          userId: report.userId,
+          userItemTypeId: tenant.defaultUserItemType.id,
+          reviewerId: reviewer.id,
+          reportXml: report.reportXml,
+          // The query only reads `id` and `xml`; the rest completes the stored shape.
+          reportedMedia: report.reportedMedia.map((media) => ({
+            ...media,
+            typeId: tenant.defaultUserItemType.id,
+            ncmecFileId: `${media.id}-file`,
+          })),
+          additionalFiles: report.additionalFiles,
+          reportedMessages: report.reportedMessages,
+          isTest: false,
+        });
         return report;
       };
       const localReport = await createReport(local, 'local');
@@ -341,7 +345,7 @@ describe('NCMEC read surfaces require VIEW_CHILD_SAFETY_DATA', () => {
             fc.asyncProperty(
               fc.subarray(unrelatedPermissions),
               async (permissions) => {
-                await kyselyUpdateRolePermissions(deps.KyselyPg, {
+                await kyselyUpdateRolePermissions(deps.DrizzlePg, {
                   orgId: user.orgId,
                   roleKey: user.role,
                   permissions,
@@ -372,7 +376,7 @@ describe('NCMEC read surfaces require VIEW_CHILD_SAFETY_DATA', () => {
   testWithReports(
     'VIEW_CHILD_SAFETY_DATA lists only reports from the caller organization',
     async ({ deps, user, session, localReport }) => {
-      await kyselyUpdateRolePermissions(deps.KyselyPg, {
+      await kyselyUpdateRolePermissions(deps.DrizzlePg, {
         orgId: user.orgId,
         roleKey: user.role,
         permissions: [UserPermission.VIEW_CHILD_SAFETY_DATA],
@@ -392,7 +396,7 @@ describe('NCMEC read surfaces require VIEW_CHILD_SAFETY_DATA', () => {
   testWithReports(
     'VIEW_CHILD_SAFETY_DATA reads a report from the caller organization',
     async ({ deps, user, session, localReport }) => {
-      await kyselyUpdateRolePermissions(deps.KyselyPg, {
+      await kyselyUpdateRolePermissions(deps.DrizzlePg, {
         orgId: user.orgId,
         roleKey: user.role,
         permissions: [UserPermission.VIEW_CHILD_SAFETY_DATA],
@@ -413,7 +417,7 @@ describe('NCMEC read surfaces require VIEW_CHILD_SAFETY_DATA', () => {
   testWithReports(
     'VIEW_CHILD_SAFETY_DATA cannot read a report from another organization',
     async ({ deps, user, session, foreignReport }) => {
-      await kyselyUpdateRolePermissions(deps.KyselyPg, {
+      await kyselyUpdateRolePermissions(deps.DrizzlePg, {
         orgId: user.orgId,
         roleKey: user.role,
         permissions: [UserPermission.VIEW_CHILD_SAFETY_DATA],
@@ -434,7 +438,7 @@ describe('NCMEC read surfaces require VIEW_CHILD_SAFETY_DATA', () => {
   testWithReports(
     'returns no conversations for an authorized caller without making external requests',
     async ({ deps, user, session, variables }) => {
-      await kyselyUpdateRolePermissions(deps.KyselyPg, {
+      await kyselyUpdateRolePermissions(deps.DrizzlePg, {
         orgId: user.orgId,
         roleKey: user.role,
         permissions: [UserPermission.VIEW_CHILD_SAFETY_DATA],

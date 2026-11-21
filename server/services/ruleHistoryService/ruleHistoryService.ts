@@ -3,11 +3,13 @@
  * history/versions. The underlying `rule_versions` view is read-only, so this
  * surface intentionally only exposes queries — no mutations.
  */
-import { sql, type Kysely } from 'kysely';
+import { asc, inArray, isNotNull, sql, type SQLWrapper } from 'drizzle-orm';
+import { type PgColumn } from 'drizzle-orm/pg-core';
 import _ from 'lodash';
 import { type CamelCasedProperties, type Simplify } from 'type-fest';
 
 import { inject } from '../../iocContainer/utils.js';
+import { schema, type CoopDb } from '../../storage/postgres/drizzle.js';
 import { camelToSnakeCase } from '../../utils/misc.js';
 import {
   type Bind1,
@@ -61,17 +63,14 @@ type PublicRuleVersion = Simplify<
   }
 >;
 
-// The db tables that this service should be able to "see"/query.
-type RuleHistoryServicePg = { rule_versions: RuleVersion };
-
 type VersionedField = Exclude<
   keyof PublicRuleVersion,
   'id' | 'isCurrent' | 'approxVersion' | 'exactVersion'
 >;
 
 export const makeGetSimplifiedRuleHistory = inject(
-  ['KyselyPg'],
-  function (db: Kysely<RuleHistoryServicePg>) {
+  ['DrizzlePg'],
+  function (db: CoopDb) {
     return async function <K extends VersionedField>(
       ...getHistoryArgs: Parameters<Bind1<typeof getSimplifiedRuleHistory<K>>>
     ) {
@@ -171,41 +170,32 @@ export async function getSimplifiedRuleHistory<K extends VersionedField>(
  * getSimplifiedRuleHistory with this.
  */
 export function buildSimplifiedHistoryQuery<K extends VersionedField>(
-  db: Kysely<RuleHistoryServicePg>,
+  db: CoopDb,
   fields: readonly K[],
   ruleIds?: readonly string[],
-  numVersions?: number,
+  // Never applied: the Kysely version called `.limit()` without using the
+  // (immutable) builder it returned. Kept that way to preserve behaviour.
+  _numVersions?: number,
 ) {
   // To build our query, we convert the camelCased fields from the public
-  // interface to their snake_case names in the db. In terms of the types, we:
-  //
-  // 1. want TS to verify that  `CamelToSnakeCase<K> extends keyof RuleVersion`.
-  //    I.e., we want TS to check that each snake_cased-version of an incoming
-  //    field actually corresponds to a column in the db. Unfortunately, TS
-  //    isn't smart enough for this. But, it can check that
-  //    `CamelToSnakeCase<VersionedField> extends keyof RuleVersion`, so we'll
-  //    have it do that. We then know that `K extends VersionedField`.
-  //
-  // 2. We want `K` to influence the return type. E.g., if K is `'name'`, then
-  //    the returned object can't have any other PublicRuleVersion fields
-  //    (except `id` and `exactVersion`). However, we have to throw away some
-  //    type information about exactly which fields we're selecting by "up
-  //    casting" from CamelToSnakeCase<K>[] to simply (keyof RuleVersion)[],
-  //    because `CamelToSnakeCase<K>` is too dynamic for kysely (which'll try to
-  //    inspect these strings to verify that they're valid column names,
-  //    possibly with aliases).
-  //
-  // The type annotation on `dbFields` has TS verify point (1) above, and the
-  // cast on the return type from `execute()` recovers the info about which
-  // fields might have been selected in our final results.
-  const dbFieldsAndAliases = _.uniq(fields).map((publicField) => [
-    camelToSnakeCase(publicField),
-    publicField,
-  ]);
+  // interface to their snake_case names in the db. The type annotation on
+  // `dbFields` has TS verify that every snake_cased VersionedField is a
+  // column of the view; `versionColumns` maps each name to its model column,
+  // so the selected values keep the column's decoding (e.g. timestamptz ->
+  // Date), which raw `sql` fragments would lose. The cast on the return type
+  // from `execute()` recovers the info about which fields were selected.
+  const dbFieldsAndAliases = _.uniq(fields).map(
+    (publicField) =>
+      [
+        camelToSnakeCase(publicField) as CamelToSnakeCase<VersionedField>,
+        publicField,
+      ] as const,
+  );
 
-  const dbFields: readonly (keyof RuleVersion)[] = dbFieldsAndAliases.map(
-    ([dbField]) => dbField,
-  ) as readonly CamelToSnakeCase<VersionedField>[];
+  const dbFields: readonly CamelToSnakeCase<VersionedField>[] =
+    dbFieldsAndAliases.map(([dbField]) => dbField);
+
+  const v = schema.ruleVersions;
 
   // The idea here is to select all version rows for the relevant rules, but
   // then add a column to each result that identifies all rows that have the
@@ -215,20 +205,24 @@ export function buildSimplifiedHistoryQuery<K extends VersionedField>(
   // the first version that had each set of `fields` values with version rows
   // that immediately follow it, when the only changes in the immediately
   // following rows are irrelevant from the POV of our consumer's `fields`.
-  const versionsWithFirstVersionGroupId = db
-    .selectFrom('rule_versions')
-    .select([
-      ...dbFields,
-      'id',
-      'version',
-      sql<string>`first_value(version)
+  const t1 = db
+    .select({
+      ...pickColumns(dbFields),
+      id: v.id,
+      version: v.version,
+      firstVersion: sql<Date>`first_value(${v.version})
           OVER (
-            PARTITION BY id, ${sql.join(dbFields.map((it) => sql.ref(it)))}
-            ORDER BY version asc
+            PARTITION BY ${v.id}, ${sql.join(
+              dbFields.map((it) => versionColumns[it]),
+              sql`, `,
+            )}
+            ORDER BY ${v.version} asc
           )`.as('first_version'),
-    ])
-    .$if(ruleIds != null, (qb) => qb.where('id', 'in', ruleIds!))
-    .orderBy('version', 'asc');
+    })
+    .from(v)
+    .where(ruleIds != null ? inArray(v.id, [...ruleIds]) : undefined)
+    .orderBy(asc(v.version))
+    .as('t1');
 
   // When we build our condensed version history, unfortunately we can't just
   // return the first row that had each set of `fields` values (with
@@ -248,33 +242,36 @@ export function buildSimplifiedHistoryQuery<K extends VersionedField>(
   // salient fields differs between adjacent raw versions), and only track the
   // versions of those moments (setting other rows to have a null version).
   // Then, we discard the null-versioned rows.
-  const simplifiedHistoryQuery = db
-    .selectFrom(
-      db
-        .selectFrom(versionsWithFirstVersionGroupId.as('t1'))
-        .select([
-          'id',
-          ...dbFields,
-          sql<string | null>`CASE
-              WHEN lag(first_version, 1, version)
-                      OVER (PARTITION BY id ORDER BY version asc) <> first_version
-                THEN version
-              WHEN first_version = version THEN version
+  const t1Fields = t1 as unknown as Record<string, SQLWrapper>;
+  const t2 = db
+    .select({
+      id: t1.id,
+      ...Object.fromEntries(dbFields.map((it) => [it, t1Fields[it]])),
+      version: sql<Date | null>`CASE
+              WHEN lag(${t1.firstVersion}, 1, ${t1.version})
+                      OVER (PARTITION BY ${t1.id} ORDER BY ${t1.version} asc) <> ${t1.firstVersion}
+                THEN ${t1.version}
+              WHEN ${t1.firstVersion} = ${t1.version} THEN ${t1.version}
               ELSE NULL
             END`.as('version'),
-        ])
-        .as('t2'),
-    )
-    .select([
-      'id',
-      ...dbFieldsAndAliases.map(([field, alias]) => sql.ref(field).as(alias)),
-      sql<string>`version::text`.as('exactVersion'),
-    ])
-    .where('version', 'is not', null);
+    })
+    .from(t1)
+    .as('t2');
 
-  if (numVersions) {
-    simplifiedHistoryQuery.limit(numVersions);
-  }
+  const t2Fields = t2 as unknown as Record<string, SQLWrapper>;
+  const simplifiedHistoryQuery = db
+    .select({
+      id: t2.id,
+      ...Object.fromEntries(
+        dbFieldsAndAliases.map(([field, alias]) => [
+          alias,
+          sql`${t2Fields[field]}`.mapWith(versionColumns[field]),
+        ]),
+      ),
+      exactVersion: sql<string>`${t2.version}::text`,
+    })
+    .from(t2)
+    .where(isNotNull(t2.version));
 
   return {
     async execute() {
@@ -286,9 +283,27 @@ export function buildSimplifiedHistoryQuery<K extends VersionedField>(
       >;
     },
     compile() {
-      return simplifiedHistoryQuery.compile();
+      const { sql, params } = simplifiedHistoryQuery.toSQL();
+      return { sql, parameters: params };
     },
   };
+}
+
+const versionColumns = {
+  name: schema.ruleVersions.name,
+  status_if_unexpired: schema.ruleVersions.statusIfUnexpired,
+  tags: schema.ruleVersions.tags,
+  max_daily_actions: schema.ruleVersions.maxDailyActions,
+  org_id: schema.ruleVersions.orgId,
+  creator_id: schema.ruleVersions.creatorId,
+  expiration_time: schema.ruleVersions.expirationTime,
+  condition_set: schema.ruleVersions.conditionSet,
+  action_ids: schema.ruleVersions.actionIds,
+  item_type_ids: schema.ruleVersions.itemTypeIds,
+} satisfies Record<CamelToSnakeCase<VersionedField>, PgColumn>;
+
+function pickColumns(names: readonly (keyof typeof versionColumns)[]) {
+  return Object.fromEntries(names.map((it) => [it, versionColumns[it]]));
 }
 
 export type GetSimplifiedRuleHistory = ReturnType<

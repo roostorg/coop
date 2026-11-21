@@ -1,6 +1,7 @@
 import { uid } from 'uid';
 
 import { NcmecReporting } from '../../services/ncmecService/index.js';
+import { schema } from '../../storage/postgres/drizzle.js';
 import createOrg from '../fixtureHelpers/createOrg.js';
 import { makeStubFetchHTTP } from '../fixtureHelpers/makeStubFetchHTTP.js';
 import { makeTransactionalTestWithFixture } from '../harness/transactionalTest.js';
@@ -10,41 +11,39 @@ describe('NcmecReporting.getUsersWithNcmecDecision (integration)', () => {
     const orgId = uid();
     const orgFixture = await createOrg(
       {
-        KyselyPg: deps.KyselyPg,
+        DrizzlePg: deps.DrizzlePg,
         ModerationConfigService: deps.ModerationConfigService,
         ApiKeyService: deps.ApiKeyService,
       },
       orgId,
     );
     const ncmecReporting = new NcmecReporting(
-      deps.KyselyPg,
-      deps.KyselyPgReadReplica,
+      deps.DrizzlePg,
+      deps.DrizzlePgReadReplica,
       makeStubFetchHTTP(uid(), 'f1').fetchHTTP,
       deps.SigningKeyPairService,
       deps.Tracer,
     );
     const userItemTypeId = orgFixture.defaultUserItemType.id;
     const insertReport = async (userId: string, isTest: boolean | null) =>
-      deps.KyselyPg.insertInto('ncmec_reporting.ncmec_reports')
-        .values({
-          org_id: orgId,
-          report_id: uid(),
-          user_id: userId,
-          user_item_type_id: userItemTypeId,
-          reported_media: [
-            {
-              id: uid(),
-              typeId: userItemTypeId,
-              xml: '<file/>',
-              ncmecFileId: 'f1',
-            },
-          ],
-          report_xml: '<report/>',
-          additional_files: [],
-          reported_messages: [],
-          ...(isTest === null ? {} : { is_test: isTest }),
-        })
-        .execute();
+      deps.DrizzlePg.insert(schema.ncmecReports).values({
+        orgId,
+        reportId: uid(),
+        userId,
+        userItemTypeId,
+        reportedMedia: [
+          {
+            id: uid(),
+            typeId: userItemTypeId,
+            xml: '<file/>',
+            ncmecFileId: 'f1',
+          },
+        ],
+        reportXml: '<report/>',
+        additionalFiles: [],
+        reportedMessages: [],
+        ...(isTest === null ? {} : { isTest }),
+      });
     return { orgId, ncmecReporting, insertReport };
   });
 

@@ -6,9 +6,11 @@
  * row appears or a timeout elapses.
  */
 import { type ItemIdentifier } from '@roostorg/coop-types';
+import { and, eq } from 'drizzle-orm';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import { itemIdentifierToScyllaItemIdentifier } from '../../scylla/index.js';
+import { schema } from '../../storage/postgres/drizzle.js';
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 const DEFAULT_INTERVAL_MS = 250;
@@ -251,7 +253,7 @@ export async function waitForReportInClickHouse(
  * they expect to see.
  */
 export async function waitForJobCreationInPostgres(
-  deps: Pick<Dependencies, 'KyselyPg'>,
+  deps: Pick<Dependencies, 'DrizzlePg'>,
   opts: {
     orgId: string;
     itemIdentifier: ItemIdentifier;
@@ -262,23 +264,25 @@ export async function waitForJobCreationInPostgres(
   return waitFor(
     `job_creations row for item ${itemIdentifier.id}`,
     async () => {
-      const row = await deps.KyselyPg.selectFrom(
-        'manual_review_tool.job_creations',
-      )
-        .select([
-          'id',
-          'org_id',
-          'item_id',
-          'item_type_id',
-          'queue_id',
-          'enqueue_source_info',
-        ])
-        .where('org_id', '=', orgId)
-        .where('item_id', '=', itemIdentifier.id)
-        .where('item_type_id', '=', itemIdentifier.typeId)
-        .limit(1)
-        .executeTakeFirst();
-      return row ?? null;
+      const { jobCreations } = schema;
+      const rows = await deps.DrizzlePg.select({
+        id: jobCreations.id,
+        org_id: jobCreations.orgId,
+        item_id: jobCreations.itemId,
+        item_type_id: jobCreations.itemTypeId,
+        queue_id: jobCreations.queueId,
+        enqueue_source_info: jobCreations.enqueueSourceInfo,
+      })
+        .from(jobCreations)
+        .where(
+          and(
+            eq(jobCreations.orgId, orgId),
+            eq(jobCreations.itemId, itemIdentifier.id),
+            eq(jobCreations.itemTypeId, itemIdentifier.typeId),
+          ),
+        )
+        .limit(1);
+      return rows.at(0) ?? null;
     },
     { timeoutMs: opts.timeoutMs },
   );

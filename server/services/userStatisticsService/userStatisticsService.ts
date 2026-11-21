@@ -3,17 +3,16 @@
  * service.
  */
 import { type ItemIdentifier } from '@roostorg/coop-types';
+import { and, sql as dsql, eq } from 'drizzle-orm';
 import { sql, type Kysely } from 'kysely';
 import { type ReadonlyDeep } from 'type-fest';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
+import { schema, type CoopDb } from '../../storage/postgres/drizzle.js';
 import { type PolicyActionPenalties } from '../policyActionPenalties.js';
 import { initialUserScore, type UserScore } from './computeUserScore.js';
-import {
-  type UserStatisticsServicePg,
-  type UserStatisticsServiceWarehouse,
-} from './dbTypes.js';
+import { type UserStatisticsServiceWarehouse } from './dbTypes.js';
 import {
   makeFetchUserActionStatistics,
   type UserActionStatistics,
@@ -37,8 +36,8 @@ import {
 // exported here but is _not_ exported from index.js, does make those arguments
 // customizable, so that we can replace them with mocks in the tests.
 function makeUserStatisticsService(
-  pgQuery: Kysely<UserStatisticsServicePg>,
-  pgQueryReplica: Kysely<UserStatisticsServicePg>,
+  pgQuery: CoopDb,
+  pgQueryReplica: CoopDb,
   dialect: Dependencies['DataWarehouseDialect'],
   _tracer: Dependencies['Tracer'],
 ) {
@@ -54,27 +53,35 @@ function makeUserStatisticsService(
 }
 
 export function internalMakeUserStatisticsService(
-  _pgQuery: Kysely<UserStatisticsServicePg>,
-  pgQueryReplica: Kysely<UserStatisticsServicePg>,
+  _pgQuery: CoopDb,
+  pgQueryReplica: CoopDb,
   warehouseQuery: Kysely<UserStatisticsServiceWarehouse>,
   _fetchUserActionStatistics: ReturnType<typeof makeFetchUserActionStatistics>,
   _fetchUserSubmissionStatistics: ReturnType<
     typeof makeFetchUserSubmissionStatistics
   >,
 ) {
+  const userScores = schema.userScores;
   return {
     /**
      * Gets a user's score from the "user scores cache", which is the postgres
      * table that stores recent (but not necessarily fully up-to-date) scores.
      */
     async getUserScore(orgId: string, userItemIdentifier: ItemIdentifier) {
-      const { score } = (await pgQueryReplica
-        .selectFrom('user_statistics_service.user_scores')
-        .select('score')
-        .where('org_id', '=', orgId)
-        .where('user_type_id', '=', userItemIdentifier.typeId)
-        .where('user_id', '=', userItemIdentifier.id)
-        .executeTakeFirst()) ?? { score: initialUserScore };
+      const row = (
+        await pgQueryReplica
+          .select({ score: userScores.score })
+          .from(userScores)
+          .where(
+            and(
+              eq(userScores.orgId, orgId),
+              eq(userScores.userTypeId, userItemIdentifier.typeId),
+              eq(userScores.userId, userItemIdentifier.id),
+            ),
+          )
+          .limit(1)
+      ).at(0);
+      const { score } = row ?? { score: initialUserScore };
 
       return score as UserScore;
     },
@@ -93,21 +100,27 @@ export function internalMakeUserStatisticsService(
       for (let i = 0; i < opts.users.length; i += CHUNK) {
         const chunk = opts.users.slice(i, i + CHUNK);
         if (chunk.length === 0) continue;
+        // Drizzle has no row-value (tuple) IN, so build it as a SQL fragment.
+        const tuples = dsql.join(
+          chunk.map((user) => dsql`(${user.typeId}, ${user.id})`),
+          dsql`, `,
+        );
         const rows = await pgQueryReplica
-          .selectFrom('user_statistics_service.user_scores')
-          .select(['user_type_id', 'user_id', 'score'])
-          .where('org_id', '=', opts.orgId)
-          .where((eb) =>
-            eb(
-              eb.refTuple('user_type_id', 'user_id'),
-              'in',
-              chunk.map((user) => eb.tuple(user.typeId, user.id)),
+          .select({
+            userTypeId: userScores.userTypeId,
+            userId: userScores.userId,
+            score: userScores.score,
+          })
+          .from(userScores)
+          .where(
+            and(
+              eq(userScores.orgId, opts.orgId),
+              dsql`(${userScores.userTypeId}, ${userScores.userId}) in (${tuples})`,
             ),
-          )
-          .execute();
+          );
         for (const row of rows) {
           result.set(
-            `${row.user_type_id}\x00${row.user_id}`,
+            `${row.userTypeId}\x00${row.userId}`,
             row.score as UserScore,
           );
         }
@@ -177,7 +190,7 @@ export type UserStatisticsService = ReturnType<
 >;
 
 export default inject(
-  ['KyselyPg', 'KyselyPgReadReplica', 'DataWarehouseDialect', 'Tracer'],
+  ['DrizzlePg', 'DrizzlePgReadReplica', 'DataWarehouseDialect', 'Tracer'],
   makeUserStatisticsService,
 );
 

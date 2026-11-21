@@ -6,10 +6,12 @@
  * Usage in the server image:
  *   node bin/get-invite-token.js --email "user@example.com"
  */
+import { desc, eq } from 'drizzle-orm';
 import yargs from 'yargs';
 import { hideBin } from 'yargs/helpers';
 
 import getBottle from '../iocContainer/index.js';
+import { schema } from '../storage/postgres/drizzle.js';
 
 const argv = await yargs(hideBin(process.argv))
   .options({
@@ -27,14 +29,12 @@ async function getInviteToken() {
   const container = bottle.container;
 
   try {
-    const result = await container.KyselyPg.selectFrom(
-      'public.invite_user_tokens',
-    )
-      .selectAll()
-      .where('email', '=', argv.email)
-      .orderBy('created_at', 'desc')
-      .limit(1)
-      .execute();
+    const { inviteUserTokens } = schema;
+    const result = await container.DrizzlePg.select()
+      .from(inviteUserTokens)
+      .where(eq(inviteUserTokens.email, argv.email))
+      .orderBy(desc(inviteUserTokens.createdAt))
+      .limit(1);
 
     if (result.length === 0) {
       console.log(`\n❌ No invite token found for email: ${argv.email}\n`);
@@ -51,8 +51,8 @@ async function getInviteToken() {
     console.log('═'.repeat(60));
     console.log(`Email:         ${invite.email}`);
     console.log(`Role:          ${invite.role}`);
-    console.log(`Organization:  ${invite.org_id}`);
-    console.log(`Created At:    ${invite.created_at}`);
+    console.log(`Organization:  ${invite.orgId}`);
+    console.log(`Created At:    ${invite.createdAt}`);
     console.log('\n' + '═'.repeat(60));
     console.log('🔗 Signup URL:');
     console.log('═'.repeat(60));

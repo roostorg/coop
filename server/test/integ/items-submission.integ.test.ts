@@ -32,7 +32,7 @@ describe('Items submission (integration)', () => {
 
     const orgFixture = await createOrg(
       {
-        KyselyPg: harness.deps.KyselyPg,
+        DrizzlePg: harness.deps.DrizzlePg,
         ModerationConfigService: harness.deps.ModerationConfigService,
         ApiKeyService: harness.deps.ApiKeyService,
       },

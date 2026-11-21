@@ -14,11 +14,15 @@ export const isNotNullViolationError = isPgErrorWithCode.bind(null, '23502');
 export const isCheckViolationError = isPgErrorWithCode.bind(null, '23514');
 
 // See https://github.com/postgres/postgres/blob/eb81e8e7902f63c4d292638edc8b7e92b766a692/src/backend/utils/errcodes.txt#L227
-function isPgErrorWithCode(code: string, error: unknown) {
+// Drizzle wraps driver errors in a DrizzleQueryError whose `cause` is the pg
+// error, so look one level down too.
+function isPgErrorWithCode(code: string, error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) {
+    return false;
+  }
   return (
-    typeof error === 'object' &&
-    error !== null &&
-    (error as { code?: unknown }).code === code
+    (error as { code?: unknown }).code === code ||
+    isPgErrorWithCode(code, (error as { cause?: unknown }).cause)
   );
 }
 

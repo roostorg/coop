@@ -1,20 +1,17 @@
+import { eq, inArray } from 'drizzle-orm';
 import lodash from 'lodash';
 
 import { inject } from '../../iocContainer/utils.js';
+import { schema } from '../../storage/postgres/drizzle.js';
 import { type NonEmptyArray } from '../../utils/typescript-types.js';
 import { RuleAlarmStatus } from '../moderationConfigService/index.js';
 import { NotificationType } from '../notificationsService/notificationsService.js';
 
 const { capitalize, keyBy } = lodash;
 
-type OrgAlertRow = {
-  id: string;
-  on_call_alert_email: string | null;
-};
-
 export default inject(
   [
-    'KyselyPg',
+    'DrizzlePg',
     'NotificationsService',
     'getCurrentPeriodRuleAlarmStatuses',
     'closeSharedResourcesForShutdown',
@@ -35,38 +32,40 @@ export default inject(
         return;
       }
 
+      const { rules: rulesTable, orgs } = schema;
       const rules = await db
-        .selectFrom('public.rules')
-        .select([
-          'id',
-          'org_id',
-          'creator_id',
-          'name',
-          'alarm_status',
-          'status_if_unexpired',
-        ])
-        .where('id', 'in', ruleIds)
-        .execute();
+        .select({
+          id: rulesTable.id,
+          orgId: rulesTable.orgId,
+          creatorId: rulesTable.creatorId,
+          name: rulesTable.name,
+          alarmStatus: rulesTable.alarmStatus,
+          statusIfUnexpired: rulesTable.statusIfUnexpired,
+        })
+        .from(rulesTable)
+        .where(inArray(rulesTable.id, ruleIds));
 
       const alarmStatusChangedRules = rules.filter(
-        (rule) => rule.alarm_status !== newAlarmStatusByRule[rule.id].status,
+        (rule) => rule.alarmStatus !== newAlarmStatusByRule[rule.id].status,
       );
 
-      const changedRuleOrgIds = alarmStatusChangedRules.map((it) => it.org_id);
-      let orgsForChangedRules: Record<string, OrgAlertRow> = {};
+      const changedRuleOrgIds = alarmStatusChangedRules.map((it) => it.orgId);
+      let orgsForChangedRules: Record<
+        string,
+        { id: string; onCallAlertEmail: string | null }
+      > = {};
       if (changedRuleOrgIds.length > 0) {
-        const orgRows = (await db
-          .selectFrom('public.orgs')
-          .select(['id', 'on_call_alert_email'])
-          .where('id', 'in', [...new Set(changedRuleOrgIds)])
-          .execute()) as OrgAlertRow[];
+        const orgRows = await db
+          .select({ id: orgs.id, onCallAlertEmail: orgs.onCallAlertEmail })
+          .from(orgs)
+          .where(inArray(orgs.id, [...new Set(changedRuleOrgIds)]));
         orgsForChangedRules = keyBy(orgRows, (r) => r.id);
       }
 
       const notifications = alarmStatusChangedRules
         .filter(
           (it) =>
-            it.alarm_status === RuleAlarmStatus.ALARM ||
+            it.alarmStatus === RuleAlarmStatus.ALARM ||
             newAlarmStatusByRule[it.id].status === RuleAlarmStatus.ALARM,
         )
         .flatMap((rule) => {
@@ -74,10 +73,10 @@ export default inject(
             newAlarmStatusByRule[rule.id].status === RuleAlarmStatus.ALARM;
 
           // Use a "Partial" view to make the index access return the honest
-          // "OrgAlertRow | undefined" so the runtime guard stays meaningful.
+          // "org row | undefined" so the runtime guard stays meaningful.
           const orgRow = (
             orgsForChangedRules as Partial<typeof orgsForChangedRules>
-          )[rule.org_id];
+          )[rule.orgId];
           if (!orgRow) {
             return [];
           }
@@ -97,21 +96,21 @@ export default inject(
             message: `${
               ruleNowInAlarm
                 ? `[Alarm Triggered - ${capitalize(
-                    String(rule.status_if_unexpired),
+                    String(rule.statusIfUnexpired),
                   )} Rule]`
                 : `[Alarm Cleared - ${capitalize(
-                    String(rule.status_if_unexpired),
+                    String(rule.statusIfUnexpired),
                   )} Rule]`
             } ${rule.name} has ${
               ruleNowInAlarm ? 'started' : 'stopped'
             } passing at an anomalous rate.`,
             recipients: [
-              { type: 'user_id' as const, value: rule.creator_id },
-              ...(orgRow.on_call_alert_email
+              { type: 'user_id' as const, value: rule.creatorId },
+              ...(orgRow.onCallAlertEmail
                 ? [
                     {
                       type: 'email_address' as const,
-                      value: orgRow.on_call_alert_email,
+                      value: orgRow.onCallAlertEmail,
                     },
                   ]
                 : []),
@@ -121,13 +120,12 @@ export default inject(
 
       const ruleUpdateTasks = alarmStatusChangedRules.map(async (rule) => {
         await db
-          .updateTable('public.rules')
+          .update(rulesTable)
           .set({
-            alarm_status: newAlarmStatusByRule[rule.id].status,
-            alarm_status_set_at: now,
+            alarmStatus: newAlarmStatusByRule[rule.id].status,
+            alarmStatusSetAt: now,
           })
-          .where('id', '=', rule.id)
-          .execute();
+          .where(eq(rulesTable.id, rule.id));
       });
 
       await Promise.all([

@@ -26,7 +26,7 @@ describe('QueueOperations job priorities', () => {
 
       const { org, cleanup: orgCleanup } = await createOrg(
         {
-          KyselyPg: container.KyselyPg,
+          DrizzlePg: container.DrizzlePg,
           ModerationConfigService: container.ModerationConfigService,
           ApiKeyService: container.ApiKeyService,
         },
@@ -34,7 +34,7 @@ describe('QueueOperations job priorities', () => {
       );
 
       const { user, cleanup: userCleanup } = await createUser(
-        container.KyselyPg,
+        container.DrizzlePg,
         org.id,
       );
 
@@ -54,8 +54,8 @@ describe('QueueOperations job priorities', () => {
           await queuesCleanup();
           await userCleanup();
           await orgCleanup();
-          await container.KyselyPg.destroy();
-          await container.KyselyPgReadReplica.destroy();
+          await container.KyselyPgPool.end();
+          await container.PgReadReplicaPool.end();
         },
       };
     });

@@ -1,10 +1,11 @@
-import { type Kysely } from 'kysely';
+import { and, asc, count, eq, inArray } from 'drizzle-orm';
 import { v1 as uuidv1 } from 'uuid';
 
+import { schema, type CoopDb } from '../../../storage/postgres/drizzle.js';
 import { makeNotFoundError } from '../../../utils/errors.js';
 import { isForeignKeyViolationError } from '../../../utils/kysely.js';
-import { type ManualReviewToolServicePg } from '../dbTypes.js';
-import { type JobId } from '../manualReviewToolService.js';
+
+const { jobComments, jobCreations } = schema;
 
 export type ManualReviewJobComment = {
   id: string;
@@ -13,15 +14,15 @@ export type ManualReviewJobComment = {
   createdAt: Date;
 };
 
-const manualReviewCommentDbSelection = [
-  'id',
-  'comment_text as commentText',
-  'author_id as authorId',
-  'created_at as createdAt',
-] as const;
+const manualReviewCommentDbSelection = {
+  id: jobComments.id,
+  commentText: jobComments.commentText,
+  authorId: jobComments.authorId,
+  createdAt: jobComments.createdAt,
+};
 
 export default class CommentOperations {
-  constructor(private readonly pgQuery: Kysely<ManualReviewToolServicePg>) {}
+  constructor(private readonly db: CoopDb) {}
 
   private async getRelatedJobIds(opts: {
     orgId: string;
@@ -30,12 +31,16 @@ export default class CommentOperations {
     const { orgId, jobId } = opts;
 
     // First get the item identifiers for the current job
-    const currentJob = await this.pgQuery
-      .selectFrom('manual_review_tool.job_creations')
-      .select(['item_id', 'item_type_id'])
-      .where('org_id', '=', orgId)
-      .where('id', '=', jobId as JobId)
-      .executeTakeFirst();
+    const currentJob = (
+      await this.db
+        .select({
+          itemId: jobCreations.itemId,
+          itemTypeId: jobCreations.itemTypeId,
+        })
+        .from(jobCreations)
+        .where(and(eq(jobCreations.orgId, orgId), eq(jobCreations.id, jobId)))
+        .limit(1)
+    ).at(0);
 
     if (!currentJob) {
       // Fallback to single job if current job not found in job_creations
@@ -43,44 +48,48 @@ export default class CommentOperations {
     }
 
     // Get all job IDs for the same item across all queues
-    const relatedJobIds = await this.pgQuery
-      .selectFrom('manual_review_tool.job_creations')
-      .select(['id'])
-      .where('org_id', '=', orgId)
-      .where('item_id', '=', currentJob.item_id)
-      .where('item_type_id', '=', currentJob.item_type_id)
-      .execute();
+    const relatedJobIds = await this.db
+      .select({ id: jobCreations.id })
+      .from(jobCreations)
+      .where(
+        and(
+          eq(jobCreations.orgId, orgId),
+          eq(jobCreations.itemId, currentJob.itemId),
+          eq(jobCreations.itemTypeId, currentJob.itemTypeId),
+        ),
+      );
 
     return relatedJobIds.map((row) => row.id);
   }
 
-  async getComments(opts: { orgId: string; jobId: string }) {
+  async getComments(opts: {
+    orgId: string;
+    jobId: string;
+  }): Promise<ManualReviewJobComment[]> {
     const { orgId } = opts;
     const jobIds = await this.getRelatedJobIds(opts);
 
-    const comments = await this.pgQuery
-      .selectFrom('manual_review_tool.job_comments')
+    return this.db
       .select(manualReviewCommentDbSelection)
-      .where('org_id', '=', orgId)
-      .where('job_id', 'in', jobIds as JobId[])
-      .orderBy('created_at', 'asc')
-      .execute();
-
-    return comments;
+      .from(jobComments)
+      .where(
+        and(eq(jobComments.orgId, orgId), inArray(jobComments.jobId, jobIds)),
+      )
+      .orderBy(asc(jobComments.createdAt));
   }
 
   async getCommentCount(opts: { orgId: string; jobId: string }) {
     const { orgId } = opts;
     const jobIds = await this.getRelatedJobIds(opts);
 
-    const result = await this.pgQuery
-      .selectFrom('manual_review_tool.job_comments')
-      .select((eb) => eb.fn.count('id').as('count'))
-      .where('org_id', '=', orgId)
-      .where('job_id', 'in', jobIds as JobId[])
-      .executeTakeFirst();
+    const [result] = await this.db
+      .select({ count: count(jobComments.id) })
+      .from(jobComments)
+      .where(
+        and(eq(jobComments.orgId, orgId), inArray(jobComments.jobId, jobIds)),
+      );
 
-    return result?.count ? Number(result.count) : 0;
+    return Number(result.count);
   }
 
   async addComment(opts: {
@@ -88,24 +97,15 @@ export default class CommentOperations {
     jobId: string;
     commentText: string;
     authorId: string;
-  }) {
+  }): Promise<ManualReviewJobComment> {
     const { orgId, jobId, commentText, authorId } = opts;
     try {
-      const comment = await this.pgQuery
-        .insertInto('manual_review_tool.job_comments')
-        .returning(manualReviewCommentDbSelection)
-        .values([
-          {
-            id: uuidv1(),
-            org_id: orgId,
-            job_id: jobId,
-            comment_text: commentText,
-            author_id: authorId,
-          },
-        ])
-        .executeTakeFirst();
+      const [comment] = await this.db
+        .insert(jobComments)
+        .values({ id: uuidv1(), orgId, jobId, commentText, authorId })
+        .returning(manualReviewCommentDbSelection);
 
-      return comment!;
+      return comment;
     } catch (e) {
       if (isForeignKeyViolationError(e)) {
         throw makeNotFoundError('Job not found', { shouldErrorSpan: true });
@@ -122,14 +122,17 @@ export default class CommentOperations {
     commentId: string;
   }) {
     const { orgId, jobId, userId, commentId } = opts;
-    const result = await this.pgQuery
-      .deleteFrom('manual_review_tool.job_comments')
-      .where('org_id', '=', orgId)
-      .where('job_id', '=', jobId)
-      .where('author_id', '=', userId)
-      .where('id', '=', commentId)
-      .executeTakeFirst();
+    const result = await this.db
+      .delete(jobComments)
+      .where(
+        and(
+          eq(jobComments.orgId, orgId),
+          eq(jobComments.jobId, jobId),
+          eq(jobComments.authorId, userId),
+          eq(jobComments.id, commentId),
+        ),
+      );
 
-    return result.numDeletedRows === 1n;
+    return result.rowCount === 1;
   }
 }

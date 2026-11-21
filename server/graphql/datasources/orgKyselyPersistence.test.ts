@@ -1,6 +1,8 @@
 import { faker } from '@faker-js/faker';
+import { eq } from 'drizzle-orm';
 import { uid } from 'uid';
 
+import { schema } from '../../storage/postgres/drizzle.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
 import {
@@ -15,7 +17,7 @@ describe('orgKyselyPersistence', () => {
   const testWithFixture = makeTransactionalTestWithFixture(async ({ deps }) => {
     const { org } = await createOrg(
       {
-        KyselyPg: deps.KyselyPg,
+        DrizzlePg: deps.DrizzlePg,
         ModerationConfigService: deps.ModerationConfigService,
         ApiKeyService: deps.ApiKeyService,
       },
@@ -28,9 +30,9 @@ describe('orgKyselyPersistence', () => {
     testWithFixture(
       'findById / findByName / findByEmail return the row when it exists',
       async ({ deps, org }) => {
-        const byId = await kyselyOrgFindById(deps.KyselyPg, org.id);
-        const byName = await kyselyOrgFindByName(deps.KyselyPg, org.name);
-        const byEmail = await kyselyOrgFindByEmail(deps.KyselyPg, org.email);
+        const byId = await kyselyOrgFindById(deps.DrizzlePg, org.id);
+        const byName = await kyselyOrgFindByName(deps.DrizzlePg, org.name);
+        const byEmail = await kyselyOrgFindByEmail(deps.DrizzlePg, org.email);
 
         expect(byId).toMatchObject({ id: org.id, name: org.name });
         expect(byName).toMatchObject({ id: org.id });
@@ -41,13 +43,16 @@ describe('orgKyselyPersistence', () => {
     testWithFixture(
       'findById / findByName / findByEmail return undefined (not null) when missing',
       async ({ deps }) => {
-        const byId = await kyselyOrgFindById(deps.KyselyPg, `missing-${uid()}`);
+        const byId = await kyselyOrgFindById(
+          deps.DrizzlePg,
+          `missing-${uid()}`,
+        );
         const byName = await kyselyOrgFindByName(
-          deps.KyselyPg,
+          deps.DrizzlePg,
           `missing-${uid()}`,
         );
         const byEmail = await kyselyOrgFindByEmail(
-          deps.KyselyPg,
+          deps.DrizzlePg,
           `missing-${uid()}@example.com`,
         );
 
@@ -66,7 +71,7 @@ describe('orgKyselyPersistence', () => {
       async ({ deps }) => {
         await expect(
           kyselyOrgInsert({
-            db: deps.KyselyPg,
+            db: deps.DrizzlePg,
             id: uid(),
             email: 'not-an-email',
             name: `Bad_${uid()}`,
@@ -81,7 +86,7 @@ describe('orgKyselyPersistence', () => {
       async ({ deps }) => {
         const id = uid();
         const inserted = await kyselyOrgInsert({
-          db: deps.KyselyPg,
+          db: deps.DrizzlePg,
           id,
           email: faker.internet.email(),
           name: `Insert_NoApiKey_${id}`,
@@ -91,12 +96,14 @@ describe('orgKyselyPersistence', () => {
 
         expect(inserted.id).toBe(id);
 
-        const row = await deps.KyselyPg.selectFrom('public.orgs')
-          .select(['api_key_id', 'on_call_alert_email'])
-          .where('id', '=', id)
-          .executeTakeFirstOrThrow();
-        expect(row.api_key_id).toBeNull();
-        expect(row.on_call_alert_email).toBeNull();
+        const [row] = await deps.DrizzlePg.select({
+          apiKeyId: schema.orgs.apiKeyId,
+          onCallAlertEmail: schema.orgs.onCallAlertEmail,
+        })
+          .from(schema.orgs)
+          .where(eq(schema.orgs.id, id));
+        expect(row.apiKeyId).toBeNull();
+        expect(row.onCallAlertEmail).toBeNull();
       },
     );
   });
@@ -106,7 +113,7 @@ describe('orgKyselyPersistence', () => {
       'throws an invariant error for malformed patch (defense-in-depth)',
       async ({ deps, org }) => {
         await expect(
-          kyselyOrgUpdate(deps.KyselyPg, org.id, {
+          kyselyOrgUpdate(deps.DrizzlePg, org.id, {
             // eslint-disable-next-line no-script-url
             websiteUrl: 'javascript:alert(1)',
           }),
@@ -118,7 +125,7 @@ describe('orgKyselyPersistence', () => {
       'returns undefined when the org does not exist',
       async ({ deps }) => {
         const result = await kyselyOrgUpdate(
-          deps.KyselyPg,
+          deps.DrizzlePg,
           `missing-${uid()}`,
           { name: 'whatever' },
         );
@@ -129,10 +136,10 @@ describe('orgKyselyPersistence', () => {
     testWithFixture(
       'empty-string websiteUrl is treated as "no change" (Sequelize parity)',
       async ({ deps, org }) => {
-        const before = await kyselyOrgFindById(deps.KyselyPg, org.id);
+        const before = await kyselyOrgFindById(deps.DrizzlePg, org.id);
         expect(before).toBeDefined();
 
-        const updated = await kyselyOrgUpdate(deps.KyselyPg, org.id, {
+        const updated = await kyselyOrgUpdate(deps.DrizzlePg, org.id, {
           websiteUrl: '',
         });
 
@@ -144,10 +151,10 @@ describe('orgKyselyPersistence', () => {
     testWithFixture(
       'null name / email / websiteUrl are skipped (only updated_at changes)',
       async ({ deps, org }) => {
-        const before = await kyselyOrgFindById(deps.KyselyPg, org.id);
+        const before = await kyselyOrgFindById(deps.DrizzlePg, org.id);
         expect(before).toBeDefined();
 
-        const updated = await kyselyOrgUpdate(deps.KyselyPg, org.id, {
+        const updated = await kyselyOrgUpdate(deps.DrizzlePg, org.id, {
           name: null,
           email: null,
           websiteUrl: null,
@@ -165,19 +172,19 @@ describe('orgKyselyPersistence', () => {
       async ({ deps, org }) => {
         // Start by setting a value, then verify the three semantics.
         const initial = 'oncall@example.com';
-        const set = await kyselyOrgUpdate(deps.KyselyPg, org.id, {
+        const set = await kyselyOrgUpdate(deps.DrizzlePg, org.id, {
           onCallAlertEmail: initial,
         });
         expect(set!.onCallAlertEmail).toBe(initial);
 
         // undefined -> skip (value is preserved)
-        const skipped = await kyselyOrgUpdate(deps.KyselyPg, org.id, {
+        const skipped = await kyselyOrgUpdate(deps.DrizzlePg, org.id, {
           name: 'unrelated-touch',
         });
         expect(skipped!.onCallAlertEmail).toBe(initial);
 
         // null -> clear
-        const cleared = await kyselyOrgUpdate(deps.KyselyPg, org.id, {
+        const cleared = await kyselyOrgUpdate(deps.DrizzlePg, org.id, {
           onCallAlertEmail: null,
         });
         expect(cleared!.onCallAlertEmail).toBeNull();
@@ -191,16 +198,17 @@ describe('orgKyselyPersistence', () => {
         const newWebsite = 'https://renamed.example.com';
 
         // Read updated_at directly since it isn't part of GraphQLOrgParent.
-        const beforeRow = await deps.KyselyPg.selectFrom('public.orgs')
-          .select(['updated_at'])
-          .where('id', '=', org.id)
-          .executeTakeFirstOrThrow();
+        const [beforeRow] = await deps.DrizzlePg.select({
+          updatedAt: schema.orgs.updatedAt,
+        })
+          .from(schema.orgs)
+          .where(eq(schema.orgs.id, org.id));
 
         // Tiny wait so the new updated_at is strictly greater. Without this,
         // sub-millisecond updates can produce equal timestamps on fast hosts.
         await new Promise((resolve) => setTimeout(resolve, 5));
 
-        const updated = await kyselyOrgUpdate(deps.KyselyPg, org.id, {
+        const updated = await kyselyOrgUpdate(deps.DrizzlePg, org.id, {
           name: newName,
           websiteUrl: newWebsite,
         });
@@ -208,12 +216,13 @@ describe('orgKyselyPersistence', () => {
         expect(updated!.name).toBe(newName);
         expect(updated!.websiteUrl).toBe(newWebsite);
 
-        const afterRow = await deps.KyselyPg.selectFrom('public.orgs')
-          .select(['updated_at'])
-          .where('id', '=', org.id)
-          .executeTakeFirstOrThrow();
-        expect(afterRow.updated_at.getTime()).toBeGreaterThan(
-          beforeRow.updated_at.getTime(),
+        const [afterRow] = await deps.DrizzlePg.select({
+          updatedAt: schema.orgs.updatedAt,
+        })
+          .from(schema.orgs)
+          .where(eq(schema.orgs.id, org.id));
+        expect(afterRow.updatedAt.getTime()).toBeGreaterThan(
+          beforeRow.updatedAt.getTime(),
         );
       },
     );

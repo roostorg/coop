@@ -1,11 +1,10 @@
 import crypto from 'node:crypto';
-import type { Kysely, Selectable } from 'kysely';
+import { and, desc, eq } from 'drizzle-orm';
 
 import { inject } from '../../iocContainer/utils.js';
-import { type CombinedPg } from '../combinedDbTypes.js';
-import { type ApiKeyServicePg } from './dbTypes.js';
+import { schema, type CoopDb } from '../../storage/postgres/drizzle.js';
 
-type ApiKeyRow = Selectable<ApiKeyServicePg['public.api_keys']>;
+const { apiKeys } = schema;
 
 export interface ApiKeyMetadata {
   name: string;
@@ -31,7 +30,7 @@ export interface ApiKeyRecord {
 }
 
 class ApiKeyService {
-  constructor(private readonly db: Kysely<CombinedPg>) {}
+  constructor(private readonly db: CoopDb) {}
 
   /**
    * Generates a secure random API key
@@ -62,23 +61,19 @@ class ApiKeyService {
     // Deactivate any existing active keys for this org
     await this.deactivateAllKeysForOrg(orgId);
 
-    const result = await this.db
-      .insertInto('public.api_keys')
+    const [record] = await this.db
+      .insert(apiKeys)
       .values({
-        org_id: orgId,
-        key_hash: keyHash,
+        orgId,
+        keyHash,
         name,
         description,
-        is_active: true,
-        created_by: createdBy,
+        isActive: true,
+        createdBy,
       })
-      .returningAll()
-      .executeTakeFirstOrThrow();
+      .returning();
 
-    return {
-      apiKey,
-      record: this.mapDbRecordToApiKeyRecord(result),
-    };
+    return { apiKey, record };
   }
 
   /**
@@ -97,28 +92,26 @@ class ApiKeyService {
    * Gets the active API key for an organization
    */
   async getActiveApiKeyForOrg(orgId: string): Promise<ApiKeyRecord | null> {
-    const result = await this.db
-      .selectFrom('public.api_keys')
-      .selectAll()
-      .where('org_id', '=', orgId)
-      .where('is_active', '=', true)
-      .executeTakeFirst();
+    const result = (
+      await this.db
+        .select()
+        .from(apiKeys)
+        .where(and(eq(apiKeys.orgId, orgId), eq(apiKeys.isActive, true)))
+        .limit(1)
+    ).at(0);
 
-    return result ? this.mapDbRecordToApiKeyRecord(result) : null;
+    return result ?? null;
   }
 
   /**
    * Gets all API keys for an organization
    */
   async getApiKeysForOrg(orgId: string): Promise<ApiKeyRecord[]> {
-    const results = await this.db
-      .selectFrom('public.api_keys')
-      .selectAll()
-      .where('org_id', '=', orgId)
-      .orderBy('created_at', 'desc')
-      .execute();
-
-    return results.map(this.mapDbRecordToApiKeyRecord);
+    return this.db
+      .select()
+      .from(apiKeys)
+      .where(eq(apiKeys.orgId, orgId))
+      .orderBy(desc(apiKeys.createdAt));
   }
 
   /**
@@ -127,12 +120,13 @@ class ApiKeyService {
   async validateApiKey(apiKey: string): Promise<string | null> {
     const keyHash = this.hashApiKey(apiKey);
 
-    const result = await this.db
-      .selectFrom('public.api_keys')
-      .select(['org_id', 'last_used_at'])
-      .where('key_hash', '=', keyHash)
-      .where('is_active', '=', true)
-      .executeTakeFirst();
+    const result = (
+      await this.db
+        .select({ orgId: apiKeys.orgId })
+        .from(apiKeys)
+        .where(and(eq(apiKeys.keyHash, keyHash), eq(apiKeys.isActive, true)))
+        .limit(1)
+    ).at(0);
 
     if (!result) {
       return null;
@@ -140,26 +134,24 @@ class ApiKeyService {
 
     // Update last used timestamp
     await this.db
-      .updateTable('public.api_keys')
-      .set({ last_used_at: new Date() })
-      .where('key_hash', '=', keyHash)
-      .execute();
+      .update(apiKeys)
+      .set({ lastUsedAt: new Date() })
+      .where(eq(apiKeys.keyHash, keyHash));
 
-    return result.org_id;
+    return result.orgId;
   }
 
   /**
    * Deactivates a specific API key
    */
   async deactivateApiKey(keyId: string, orgId: string): Promise<boolean> {
-    const result = await this.db
-      .updateTable('public.api_keys')
-      .set({ is_active: false })
-      .where('id', '=', keyId)
-      .where('org_id', '=', orgId)
-      .execute();
+    await this.db
+      .update(apiKeys)
+      .set({ isActive: false })
+      .where(and(eq(apiKeys.id, keyId), eq(apiKeys.orgId, orgId)));
 
-    return result.length > 0;
+    // NB: true even when no row matched (PoC keeps the existing contract).
+    return true;
   }
 
   /**
@@ -167,59 +159,40 @@ class ApiKeyService {
    */
   async deactivateAllKeysForOrg(orgId: string): Promise<void> {
     await this.db
-      .updateTable('public.api_keys')
-      .set({ is_active: false })
-      .where('org_id', '=', orgId)
-      .execute();
+      .update(apiKeys)
+      .set({ isActive: false })
+      .where(eq(apiKeys.orgId, orgId));
   }
 
   /**
    * Deletes a specific API key
    */
   async deleteApiKey(keyId: string, orgId: string): Promise<boolean> {
-    const result = await this.db
-      .deleteFrom('public.api_keys')
-      .where('id', '=', keyId)
-      .where('org_id', '=', orgId)
-      .execute();
+    await this.db
+      .delete(apiKeys)
+      .where(and(eq(apiKeys.id, keyId), eq(apiKeys.orgId, orgId)));
 
-    return result.length > 0;
+    // NB: true even when no row matched (PoC keeps the existing contract).
+    return true;
   }
   /**
    * Gets the org ID from an activated API key
    */
   async getOrgIdFromActivatedKey(apiKey: string): Promise<string | null> {
     const keyHash = this.hashApiKey(apiKey);
-    const result = await this.db
-      .selectFrom('public.api_keys')
-      .select('org_id')
-      .where('key_hash', '=', keyHash)
-      .where('is_active', '=', true)
-      .executeTakeFirst();
+    const result = (
+      await this.db
+        .select({ orgId: apiKeys.orgId })
+        .from(apiKeys)
+        .where(and(eq(apiKeys.keyHash, keyHash), eq(apiKeys.isActive, true)))
+        .limit(1)
+    ).at(0);
     if (!result) {
       return null;
     }
-    return result.org_id;
-  }
-
-  /**
-   * Maps database record to ApiKeyRecord
-   */
-  private mapDbRecordToApiKeyRecord(record: ApiKeyRow): ApiKeyRecord {
-    return {
-      id: record.id,
-      orgId: record.org_id,
-      keyHash: record.key_hash,
-      name: record.name,
-      description: record.description,
-      isActive: record.is_active,
-      createdAt: record.created_at,
-      updatedAt: record.updated_at,
-      lastUsedAt: record.last_used_at,
-      createdBy: record.created_by,
-    };
+    return result.orgId;
   }
 }
 
-export default inject(['KyselyPg'], ApiKeyService);
+export default inject(['DrizzlePg'], ApiKeyService);
 export type { ApiKeyService };

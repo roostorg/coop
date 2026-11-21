@@ -1,7 +1,17 @@
-import { sql, type Kysely } from 'kysely';
+import {
+  and,
+  asc,
+  eq,
+  gt,
+  inArray,
+  isNull,
+  or,
+  sql,
+  type SQL,
+} from 'drizzle-orm';
 
+import { schema, type CoopDbOrTx } from '../../../storage/postgres/drizzle.js';
 import { getUtcDateOnlyString } from '../../../utils/time.js';
-import { type ModerationConfigServicePg } from '../dbTypes.js';
 import {
   RuleStatus,
   RuleType,
@@ -13,27 +23,30 @@ import {
   type PlainRuleWithLatestVersion,
 } from '../types/rules.js';
 
-const ruleSelect = [
-  'r.id',
-  'r.name',
-  'r.description',
-  'r.status_if_unexpired as statusIfUnexpired',
-  'r.tags',
-  'r.max_daily_actions as maxDailyActions',
-  'r.daily_actions_run as dailyActionsRun',
-  'r.last_action_date as lastActionDate',
-  'r.created_at as createdAt',
-  'r.updated_at as updatedAt',
-  'r.org_id as orgId',
-  'r.creator_id as creatorId',
-  'r.expiration_time as expirationTime',
-  'r.condition_set as conditionSet',
-  'r.alarm_status as alarmStatus',
-  'r.alarm_status_set_at as alarmStatusSetAt',
-  'r.rule_type as ruleType',
-  'r.parent_id as parentId',
-  'rlv.version as latestVersionString',
-] as const;
+const r = schema.rules;
+const rlv = schema.rulesLatestVersions;
+
+const ruleSelect = {
+  id: r.id,
+  name: r.name,
+  description: r.description,
+  statusIfUnexpired: r.statusIfUnexpired,
+  tags: r.tags,
+  maxDailyActions: r.maxDailyActions,
+  dailyActionsRun: r.dailyActionsRun,
+  lastActionDate: r.lastActionDate,
+  createdAt: r.createdAt,
+  updatedAt: r.updatedAt,
+  orgId: r.orgId,
+  creatorId: r.creatorId,
+  expirationTime: r.expirationTime,
+  conditionSet: r.conditionSet,
+  alarmStatus: r.alarmStatus,
+  alarmStatusSetAt: r.alarmStatusSetAt,
+  ruleType: r.ruleType,
+  parentId: r.parentId,
+  latestVersionString: rlv.version,
+};
 
 type RuleRow = {
   id: string;
@@ -59,7 +72,15 @@ type RuleRow = {
 };
 
 function enabledQuotaWhere(today: string) {
-  return sql<boolean>`(r.max_daily_actions is null or r.last_action_date is distinct from ${today}::date or (r.max_daily_actions is not null and r.daily_actions_run < r.max_daily_actions))`;
+  return sql<boolean>`(${r.maxDailyActions} is null or ${r.lastActionDate} is distinct from ${today}::date or (${r.maxDailyActions} is not null and ${r.dailyActionsRun} < ${r.maxDailyActions}))`;
+}
+
+function unexpiredAndEnabledWhere(today: string): SQL[] {
+  return [
+    or(isNull(r.expirationTime), gt(r.expirationTime, sql`now()`))!,
+    inArray(r.statusIfUnexpired, [RuleStatus.LIVE, RuleStatus.BACKGROUND]),
+    enabledQuotaWhere(today),
+  ];
 }
 
 function rowToPlainRuleWithLatest(row: RuleRow): PlainRuleWithLatestVersion {
@@ -94,30 +115,21 @@ function rowToPlainRuleWithLatest(row: RuleRow): PlainRuleWithLatestVersion {
 
 export default class RuleReadOperations {
   constructor(
-    private readonly pgQuery: Kysely<ModerationConfigServicePg>,
-    private readonly pgQueryReplica: Kysely<ModerationConfigServicePg>,
+    private readonly pgQuery: CoopDbOrTx,
+    private readonly pgQueryReplica: CoopDbOrTx,
   ) {}
 
   async getEnabledRulesForItemType(itemTypeId: string) {
     const today = String(getUtcDateOnlyString());
+    const rit = schema.rulesAndItemTypes;
     const rows = (await this.pgQueryReplica
-      .selectFrom('public.rules as r')
-      .innerJoin('public.rules_and_item_types as rit', 'rit.rule_id', 'r.id')
-      .leftJoin('public.rules_latest_versions as rlv', 'rlv.rule_id', 'r.id')
       .select(ruleSelect)
-      .where('rit.item_type_id', '=', itemTypeId)
-      .where((eb) =>
-        eb.or([
-          eb('r.expiration_time', 'is', null),
-          eb('r.expiration_time', '>', sql<Date>`now()`),
-        ]),
-      )
-      .where('r.status_if_unexpired', 'in', [
-        RuleStatus.LIVE,
-        RuleStatus.BACKGROUND,
-      ])
-      .where(enabledQuotaWhere(today))
-      .execute()) as RuleRow[];
+      .from(r)
+      .innerJoin(rit, eq(rit.ruleId, r.id))
+      .leftJoin(rlv, eq(rlv.ruleId, r.id))
+      .where(
+        and(eq(rit.itemTypeId, itemTypeId), ...unexpiredAndEnabledWhere(today)),
+      )) as RuleRow[];
 
     return rows.map(rowToPlainRuleWithLatest);
   }
@@ -135,13 +147,12 @@ export default class RuleReadOperations {
   ): Promise<PlainRuleWithLatestVersion | null> {
     const readFromReplica = opts?.readFromReplica ?? true;
     const pg = readFromReplica ? this.pgQueryReplica : this.pgQuery;
-    const row = (await pg
-      .selectFrom('public.rules as r')
-      .leftJoin('public.rules_latest_versions as rlv', 'rlv.rule_id', 'r.id')
+    const [row] = (await pg
       .select(ruleSelect)
-      .where('r.id', '=', ruleId)
-      .where('r.org_id', '=', orgId)
-      .executeTakeFirst()) as RuleRow | undefined;
+      .from(r)
+      .leftJoin(rlv, eq(rlv.ruleId, r.id))
+      .where(and(eq(r.id, ruleId), eq(r.orgId, orgId)))
+      .limit(1)) as RuleRow[];
 
     if (row == null) {
       return null;
@@ -160,38 +171,29 @@ export default class RuleReadOperations {
     const readFromReplica = opts?.readFromReplica ?? true;
     const pg = readFromReplica ? this.pgQueryReplica : this.pgQuery;
     const rows = (await pg
-      .selectFrom('public.rules as r')
-      .leftJoin('public.rules_latest_versions as rlv', 'rlv.rule_id', 'r.id')
       .select(ruleSelect)
-      .where('r.org_id', '=', orgId)
-      .orderBy('r.name', 'asc')
-      .execute()) as RuleRow[];
+      .from(r)
+      .leftJoin(rlv, eq(rlv.ruleId, r.id))
+      .where(eq(r.orgId, orgId))
+      .orderBy(asc(r.name))) as RuleRow[];
 
     return rows.map(rowToPlainRuleWithLatest);
   }
 
   async findEnabledUserRules() {
     const today = String(getUtcDateOnlyString());
+    const rit = schema.rulesAndItemTypes;
     const rows = (await this.pgQueryReplica
-      .selectFrom('public.rules as r')
-      .leftJoin('public.rules_latest_versions as rlv', 'rlv.rule_id', 'r.id')
       .select(ruleSelect)
-      .where('r.rule_type', '=', RuleType.USER)
+      .from(r)
+      .leftJoin(rlv, eq(rlv.ruleId, r.id))
       .where(
-        sql<boolean>`not exists (select 1 from public.rules_and_item_types rit where rit.rule_id = r.id)`,
-      )
-      .where((eb) =>
-        eb.or([
-          eb('r.expiration_time', 'is', null),
-          eb('r.expiration_time', '>', sql<Date>`now()`),
-        ]),
-      )
-      .where('r.status_if_unexpired', 'in', [
-        RuleStatus.LIVE,
-        RuleStatus.BACKGROUND,
-      ])
-      .where(enabledQuotaWhere(today))
-      .execute()) as RuleRow[];
+        and(
+          eq(r.ruleType, RuleType.USER),
+          sql`not exists (select 1 from ${rit} where ${rit.ruleId} = ${r.id})`,
+          ...unexpiredAndEnabledWhere(today),
+        ),
+      )) as RuleRow[];
 
     return rows.map(rowToPlainRuleWithLatest);
   }

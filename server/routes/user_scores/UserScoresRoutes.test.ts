@@ -7,10 +7,10 @@ import { makeTransactionalTestWithFixture } from '../../test/harness/transaction
 describe('GET policies', () => {
   const testUserScoresRoute = makeTransactionalTestWithFixture(
     async ({ deps }) => {
-      const { ModerationConfigService, ApiKeyService, KyselyPg } = deps;
+      const { ModerationConfigService, ApiKeyService, DrizzlePg } = deps;
 
       const { org, apiKey } = await createOrg(
-        { KyselyPg, ModerationConfigService, ApiKeyService },
+        { DrizzlePg, ModerationConfigService, ApiKeyService },
         uid(),
       );
       const { itemTypes } = await createUserItemTypes({

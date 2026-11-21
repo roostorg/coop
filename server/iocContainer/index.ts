@@ -8,11 +8,9 @@ import {
   type Host as ScyllaHost,
 } from 'cassandra-driver';
 import IORedis, { type Cluster } from 'ioredis';
-import { Kysely, PostgresDialect } from 'kysely';
 import _ from 'lodash';
 import pLimit from 'p-limit';
-import pg from 'pg';
-import Cursor from 'pg-cursor';
+import type pg from 'pg';
 import { type JsonObject, type ReadonlyDeep } from 'type-fest';
 import { v1 as uuidv1 } from 'uuid';
 
@@ -100,7 +98,6 @@ import {
   makeApiKeyService,
   type ApiKeyService,
 } from '../services/apiKeyService/index.js';
-import { type CombinedPg } from '../services/combinedDbTypes.js';
 import {
   makeContentAccessService,
   type ContentAccessExtension,
@@ -249,6 +246,7 @@ import {
   type IDataWarehouse,
   type IDataWarehouseDialect,
 } from '../storage/dataWarehouse/index.js';
+import { makeDrizzle, type CoopDb } from '../storage/postgres/drizzle.js';
 import { cached, type Cached } from '../utils/caching.js';
 import { CoopMeter } from '../utils/CoopMeter.js';
 import {
@@ -321,27 +319,18 @@ export type ItemSubmissionMessageValue = {
 // Over time, defining this type inline and setting up all the container
 // bindings in this one file will get unweildy, but we'll break it up later.
 export interface Dependencies {
-  // Pg query services. See comments below.
-  // We register the services as Kysely<any> so that each service that depends
-  // on Kysely can type its arg more specifically, based on the db tables that
-  // it's supposed to be able to "see". E.g., the UserStatisticsService can type
-  // its argument as `Kysely<UserStatisticsServicePg>`, so that its code can only
-  // query the tables in the user_statistics_service schema, and the `KyselyPg`
-  // service will be assignable to that argument because of the `any`. Slightly
-  // more correct than `any`, ig, would be using a type that includes every
-  // table in every schema (but doesn't allow querying non-existent tables
-  // but idk if TS would properly/perfomantly get the variance right.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  KyselyPg: Kysely<any>;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  KyselyPgReadReplica: Kysely<any>;
-
-  // The shared master `pg.Pool` that `KyselyPg` is built on. Exposed so
-  // non-Kysely Postgres consumers (e.g., the express-session store) can
-  // share the same pool instead of opening their own.
+  // The shared master `pg.Pool` that `DrizzlePg` is built on. Exposed so
+  // other Postgres consumers (e.g., the express-session store) can share the
+  // same pool instead of opening their own.
   KyselyPgPool: pg.Pool;
+  // Pool for the read replica that `DrizzlePgReadReplica` is built on.
+  PgReadReplicaPool: pg.Pool;
 
-  // Similar to our Kysely services, we register the services as Scylla<any> so
+  // Drizzle instances for the primary db and the read replica.
+  DrizzlePg: CoopDb;
+  DrizzlePgReadReplica: CoopDb;
+
+  // We register the services as Scylla<any> so
   // that each dependent service can type its arg more specifically with the set
   // of tables it is responsible for / allowed to query.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -495,8 +484,8 @@ export default async function getBottle(
     contentAccess?: ContentAccessExtension;
   } = {},
 ) {
-  // Pool / client tuning shared by both Kysely pools. Defaults preserve our
-  // pre-Kysely behavior; env var names are generic.
+  // Pool / client tuning shared by both Postgres pools. Env var names are
+  // generic.
   const getPgPoolTuning = () => {
     const statementTimeoutMs =
       process.env.DATABASE_STATEMENT_TIMEOUT_MS?.trim();
@@ -568,59 +557,34 @@ export default async function getBottle(
     ...getPgPoolTuning(),
   });
 
-  // Kysely's default is `['error']`; opt-in to also logging every executed
-  // query (SQL, bound params, duration).
-  const kyselyLogLevels: ReadonlyArray<'query' | 'error'> = isEnvTrue(
-    'DATABASE_PRINT_LOGS',
-  )
-    ? ['query', 'error']
-    : ['error'];
-
   const bottle = new Bottle<Dependencies>();
 
   // Pg services.
   //
   // - 'KyselyPgPool' is the shared `pg.Pool` for the primary (writable) db.
-  //   Non-Kysely Postgres consumers (e.g. the express-session store in
+  //   Other Postgres consumers (e.g. the express-session store in
   //   `api.ts`) inject this so every connection passes through `createPgPool`.
-  //
-  // - 'KyselyPg' is the primary Kysely instance used across services for typed
-  //   pg queries. These queries go to our primary db, which accepts writes.
-  //
-  // - KyselyPgReadReplica gives us the same type safety, but sends queries to our
-  //   replicas, for when we only need reads and we're ok w/ eventual consistency.
+
   bottle.factory('KyselyPgPool', () =>
     createPgPool(getPgMasterConnectionInfo()),
   );
 
-  bottle.factory(
-    'KyselyPg',
-    (container) =>
-      new Kysely<CombinedPg>({
-        dialect: new PostgresDialect({
-          controlClient: pg.Client,
-          pool: container.KyselyPgPool,
-          cursor: Cursor,
-        }),
-        log: kyselyLogLevels,
-      }),
+  bottle.factory('PgReadReplicaPool', () =>
+    createPgPool({
+      ...getPgMasterConnectionInfo(),
+      max: parseInt(process.env.DATABASE_READ_POOL_MAX ?? '150'),
+      host: safeGetEnvVar('DATABASE_READ_ONLY_HOST'),
+    }),
   );
 
-  bottle.factory(
-    'KyselyPgReadReplica',
-    () =>
-      new Kysely<CombinedPg>({
-        dialect: new PostgresDialect({
-          controlClient: pg.Client,
-          pool: createPgPool({
-            ...getPgMasterConnectionInfo(),
-            max: parseInt(process.env.DATABASE_READ_POOL_MAX ?? '150'),
-            host: safeGetEnvVar('DATABASE_READ_ONLY_HOST'),
-          }),
-          cursor: Cursor,
-        }),
-        log: kyselyLogLevels,
-      }),
+  const logDrizzleQueries = isEnvTrue('DATABASE_PRINT_LOGS');
+  bottle.factory('DrizzlePg', (container) =>
+    makeDrizzle(container.KyselyPgPool, { logQueries: logDrizzleQueries }),
+  );
+  bottle.factory('DrizzlePgReadReplica', (container) =>
+    makeDrizzle(container.PgReadReplicaPool, {
+      logQueries: logDrizzleQueries,
+    }),
   );
 
   // AUTH-enabled Redis (e.g. ElastiCache with an auth token) rejects every
@@ -963,8 +927,8 @@ export default async function getBottle(
     'ModerationConfigService',
     (container) =>
       new ModerationConfigService(
-        container.KyselyPg,
-        container.KyselyPgReadReplica,
+        container.DrizzlePg,
+        container.DrizzlePgReadReplica,
         async (_) => {},
       ),
   );
@@ -990,8 +954,8 @@ export default async function getBottle(
       container.IORedis,
       container.RuleEvaluator,
       container.RoutingRuleExecutionLogger,
-      container.KyselyPg,
-      container.KyselyPgReadReplica,
+      container.DrizzlePg,
+      container.DrizzlePgReadReplica,
       container.UserStatisticsService,
       container.getActionsByIdEventuallyConsistent,
       container.Tracer,
@@ -1646,8 +1610,7 @@ export default async function getBottle(
   );
 
   bottle.factory('getImageBankEventuallyConsistent', (container) => {
-    const kyselyPg = container.KyselyPg;
-    const hashBankService = new HashBankService(kyselyPg);
+    const hashBankService = new HashBankService(container.DrizzlePg);
 
     return cached({
       async producer({ orgId, bankId }) {
@@ -1752,7 +1715,7 @@ export default async function getBottle(
   register(bottle, 'SigningKeyPairService', makeSigningKeyPairService);
   bottle.factory(
     'SigningKeyPairStorageService',
-    (container) => new PostgresSigningKeyPairStorage(container.KyselyPg),
+    (container) => new PostgresSigningKeyPairStorage(container.DrizzlePg),
   );
   bottle.value('ConfigService', { uiUrl: safeGetEnvVar('UI_URL') });
   bottle.value('S3StoreObjectFactory', s3StoreObjectFactory);
@@ -1813,7 +1776,7 @@ export default async function getBottle(
                 }[CloseMethodName];
               }[keyof Dependencies]
             >,
-            // Services that don't need cleanup
+            // Services that don't need cleanup.
             'UserStatisticsService' | 'HMAHashBankService'
           >;
 
@@ -1837,8 +1800,10 @@ export default async function getBottle(
             'DataWarehouseDialect',
             'DataWarehouseAnalytics',
             'ReportingAnalyticsAdapter',
-            'KyselyPg',
-            'KyselyPgReadReplica',
+            // The Drizzle instances hold no resources beyond these shared
+            // pools, so shutting down the pools covers them.
+            'KyselyPgPool',
+            'PgReadReplicaPool',
             'getEnabledRulesForItemTypeEventuallyConsistent',
             'getPoliciesForRulesEventuallyConsistent',
             'getActionsForRuleEventuallyConsistent',
@@ -1904,6 +1869,12 @@ export default async function getBottle(
                       } else {
                         throw err;
                       }
+                    }
+                  } else if ('end' in it && typeof it.end === 'function') {
+                    // pg.Pool#end throws if called twice, and shutdown can
+                    // run more than once.
+                    if (!('ending' in it && it.ending === true)) {
+                      await it.end();
                     }
                   } else if (
                     'flushPendingWrites' in it &&

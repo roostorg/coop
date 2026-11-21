@@ -2,12 +2,16 @@
 
 import { SpanStatusCode } from '@opentelemetry/api';
 import { type ItemIdentifier } from '@roostorg/coop-types';
-import { type Kysely, type Transaction } from 'kysely';
 import _ from 'lodash';
 import { type Opaque } from 'type-fest';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import { type ConsumerDirectives } from '../../lib/cache/index.js';
+import {
+  schema,
+  type CoopDb,
+  type CoopTx,
+} from '../../storage/postgres/drizzle.js';
 import { jsonStringify } from '../../utils/encoding.js';
 import {
   isCoopErrorOfType,
@@ -16,7 +20,6 @@ import {
 } from '../../utils/errors.js';
 import { isUniqueViolationError } from '../../utils/kysely.js';
 import type { OmitEach, ReplaceDeep } from '../../utils/typescript-types.js';
-import { type CombinedPg } from '../combinedDbTypes.js';
 import {
   getFieldValueForRole,
   getFieldValueOrValues,
@@ -28,10 +31,7 @@ import {
   resolveManualReviewContentSafely,
   type ManualReviewContentResolver,
 } from '../manualReviewContentResolver.js';
-import {
-  type ModerationConfigService,
-  type ModerationConfigServicePg,
-} from '../moderationConfigService/index.js';
+import { type ModerationConfigService } from '../moderationConfigService/index.js';
 import { type PartialItemsService } from '../partialItemsService/index.js';
 import {
   UserPermission,
@@ -44,7 +44,6 @@ import {
 import {
   type ClearReportsDisposition,
   type ClearReportsScope,
-  type ManualReviewToolServicePg,
 } from './dbTypes.js';
 import AppealsJobRouting from './modules/AppealsJobRouting.js';
 import ClaimOperations from './modules/ClaimOperations.js';
@@ -349,8 +348,8 @@ export class ManualReviewToolService {
     readonly redis: Dependencies['IORedis'],
     readonly ruleEvaluator: Dependencies['RuleEvaluator'],
     readonly routingRuleExecutionLogger: Dependencies['RoutingRuleExecutionLogger'],
-    readonly pgQuery: Kysely<ManualReviewToolServicePg>,
-    readonly pgQueryReadReplica: Kysely<ManualReviewToolServicePg>,
+    readonly drizzle: CoopDb,
+    readonly drizzleReadReplica: CoopDb,
     readonly userStatisticsService: UserStatisticsService,
     readonly getCustomActionsByIds: Dependencies['getActionsByIdEventuallyConsistent'],
     private readonly tracer: Dependencies['Tracer'],
@@ -371,8 +370,8 @@ export class ManualReviewToolService {
   ) {
     this.priorityRecomputeLock = new PriorityRecomputeLock(this.redis);
     this.queueOps = new QueueOperations(
-      pgQuery,
-      pgQueryReadReplica,
+      drizzle,
+      drizzleReadReplica,
       moderationConfigService,
       redis,
       tracer,
@@ -383,24 +382,24 @@ export class ManualReviewToolService {
       userStatisticsService,
     );
     this.jobRouting = new JobRouting(
-      pgQuery,
+      drizzle,
       this.queueOps,
       moderationConfigService,
       ruleEvaluator,
       routingRuleExecutionLogger,
     );
     this.appealsJobRouting = new AppealsJobRouting(
-      pgQuery,
+      drizzle,
       this.queueOps,
       moderationConfigService,
       ruleEvaluator,
       //routingRuleExecutionLogger,
     );
-    this.manualReviewToolSettings = new ManualReviewToolSettings(pgQuery);
-    this.claimOps = new ClaimOperations(pgQuery);
+    this.manualReviewToolSettings = new ManualReviewToolSettings(drizzle);
+    this.claimOps = new ClaimOperations(drizzle);
     this.jobDecisioning = new JobDecisioning(
       this.queueOps,
-      pgQuery,
+      drizzle,
       getCustomActionsByIds,
       onRecordDecision,
       moderationConfigService,
@@ -410,13 +409,11 @@ export class ManualReviewToolService {
       getUserHasExistingNcmecReport,
       meter,
     );
-    this.jobRendering = new JobRendering(
-      pgQuery.$extendTables<ModerationConfigServicePg>(),
-    );
-    this.jobPriorityWeights = new JobPriorityWeights(pgQuery);
-    this.decisionAnalytics = new DecisionAnalytics(pgQueryReadReplica);
-    this.commentOps = new CommentOperations(pgQuery);
-    this.skipOps = new SkipOperations(pgQuery, this.queueOps, meter);
+    this.jobRendering = new JobRendering(drizzle);
+    this.jobPriorityWeights = new JobPriorityWeights(drizzle);
+    this.decisionAnalytics = new DecisionAnalytics(drizzleReadReplica);
+    this.commentOps = new CommentOperations(drizzle);
+    this.skipOps = new SkipOperations(drizzle, this.queueOps, meter);
     this.reporterInvalidation = new ReporterInvalidation(
       this.queueOps,
       this.tracer,
@@ -430,18 +427,12 @@ export class ManualReviewToolService {
   }
 
   forTransaction(
-    trx: Transaction<CombinedPg>,
+    trx: CoopTx,
   ): Pick<
     ManualReviewToolService,
     'getHiddenFieldsForItemType' | 'setHiddenFieldsForItemType'
   > {
-    return new JobRendering(
-      trx
-        .$extendTables<ManualReviewToolServicePg>()
-        .$pickTables<
-          keyof (ManualReviewToolServicePg & ModerationConfigServicePg)
-        >(),
-    );
+    return new JobRendering(trx);
   }
 
   /**
@@ -632,22 +623,21 @@ export class ManualReviewToolService {
             }
 
             // log job creation/enqueue to postgres
-            this.pgQuery
-              .insertInto('manual_review_tool.job_creations')
+            this.drizzle
+              .insert(schema.jobCreations)
               .values({
                 id: job.id,
-                org_id: job.orgId,
-                item_id: job.payload.item.itemId,
-                item_type_id: job.payload.item.itemTypeIdentifier.id,
-                queue_id: targetQueueForNewJob,
-                enqueue_source_info: input.enqueueSourceInfo,
-                policy_ids: input.policyIds,
-                created_at: new Date(),
+                orgId: job.orgId,
+                itemId: job.payload.item.itemId,
+                itemTypeId: job.payload.item.itemTypeIdentifier.id,
+                queueId: targetQueueForNewJob,
+                enqueueSourceInfo: input.enqueueSourceInfo,
+                policyIds: input.policyIds,
+                createdAt: new Date(),
               })
               // Re-enqueues (merged reports) re-run this path; keep the
               // original row.
-              .onConflict((oc) => oc.column('id').doNothing())
-              .execute()
+              .onConflictDoNothing({ target: schema.jobCreations.id })
               .catch(() => {}); // don't throw if logging fails
 
             return { targetQueueForNewJob, job };
@@ -752,20 +742,19 @@ export class ManualReviewToolService {
               return;
             }
 
-            this.pgQuery
-              .insertInto('manual_review_tool.job_creations')
+            this.drizzle
+              .insert(schema.jobCreations)
               .values({
                 id: job.id,
-                org_id: job.orgId,
-                item_id: job.payload.item.itemId,
-                item_type_id: job.payload.item.itemTypeIdentifier.id,
-                queue_id: targetQueueForNewJob,
-                enqueue_source_info: input.enqueueSourceInfo,
-                policy_ids: input.policyIds,
-                created_at: new Date(),
+                orgId: job.orgId,
+                itemId: job.payload.item.itemId,
+                itemTypeId: job.payload.item.itemTypeIdentifier.id,
+                queueId: targetQueueForNewJob,
+                enqueueSourceInfo: input.enqueueSourceInfo,
+                policyIds: input.policyIds,
+                createdAt: new Date(),
               })
-              .onConflict((oc) => oc.column('id').doNothing())
-              .execute()
+              .onConflictDoNothing({ target: schema.jobCreations.id })
               .catch(() => {}); // don't throw if logging fails
 
             return { targetQueueForNewJob, job };

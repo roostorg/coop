@@ -1,4 +1,6 @@
-import { sql, type Kysely } from 'kysely';
+import { and, eq, ne, sql } from 'drizzle-orm';
+
+import { schema, type CoopDbOrTx } from '../../storage/postgres/drizzle.js';
 
 /**
  * Delete connect-pg-simple session rows for a user, to force re-authentication
@@ -10,19 +12,17 @@ import { sql, type Kysely } from 'kysely';
  * a self-service password change, so they aren't logged out mid-request.
  */
 export async function deleteSessionsForUser(
-  // `Kysely<any>` because the session table is managed by connect-pg-simple and
-  // is intentionally absent from our typed schema; injected instances are
-  // themselves `Kysely<any>`.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  db: Kysely<any>,
+  db: CoopDbOrTx,
   userId: string,
   opts: { exceptSid?: string } = {},
 ): Promise<void> {
-  let query = db
-    .deleteFrom('public.session')
-    .where(sql`sess -> 'passport' ->> 'user'`, '=', userId);
-  if (opts.exceptSid != null) {
-    query = query.where('sid', '!=', opts.exceptSid);
-  }
-  await query.execute();
+  const { session } = schema;
+  await db
+    .delete(session)
+    .where(
+      and(
+        eq(sql`${session.sess} -> 'passport' ->> 'user'`, userId),
+        opts.exceptSid != null ? ne(session.sid, opts.exceptSid) : undefined,
+      ),
+    );
 }

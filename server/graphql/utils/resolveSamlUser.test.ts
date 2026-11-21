@@ -36,13 +36,13 @@ describe('resolveSamlUser', () => {
   const testWithFixture = makeTransactionalTestWithFixture(async ({ deps }) => {
     const { org } = await createOrg(
       {
-        KyselyPg: deps.KyselyPg,
+        DrizzlePg: deps.DrizzlePg,
         ModerationConfigService: deps.ModerationConfigService,
         ApiKeyService: deps.ApiKeyService,
       },
       uid(),
     );
-    await seedSystemRolesForOrg(deps.KyselyPg, org.id);
+    await seedSystemRolesForOrg(deps.DrizzlePg, org.id);
     return { org };
   });
 
@@ -50,10 +50,10 @@ describe('resolveSamlUser', () => {
     'passes the user to done when the email belongs to the path org',
     async ({ deps, org }) => {
       const input = samlUserInput(org.id);
-      await kyselyUserInsert({ db: deps.KyselyPg, ...input });
+      await kyselyUserInsert({ db: deps.DrizzlePg, ...input });
       const done = vi.fn();
       await resolveSamlUser(
-        deps.KyselyPg,
+        deps.DrizzlePg,
         deps.Tracer,
         makeReq(org.id),
         { email: input.email },
@@ -72,10 +72,10 @@ describe('resolveSamlUser', () => {
     'rejects when the email belongs to a different org',
     async ({ deps, org }) => {
       const input = samlUserInput(org.id);
-      await kyselyUserInsert({ db: deps.KyselyPg, ...input });
+      await kyselyUserInsert({ db: deps.DrizzlePg, ...input });
       const done = vi.fn();
       await resolveSamlUser(
-        deps.KyselyPg,
+        deps.DrizzlePg,
         deps.Tracer,
         makeReq(`different-org-${uid()}`),
         { email: input.email },
@@ -92,7 +92,7 @@ describe('resolveSamlUser', () => {
     async ({ deps, org }) => {
       const done = vi.fn();
       await resolveSamlUser(
-        deps.KyselyPg,
+        deps.DrizzlePg,
         deps.Tracer,
         makeReq(org.id),
         { email: `missing-${uid()}@example.com` },
@@ -108,7 +108,7 @@ describe('resolveSamlUser', () => {
     async ({ deps }) => {
       const done = vi.fn();
       await resolveSamlUser(
-        deps.KyselyPg,
+        deps.DrizzlePg,
         deps.Tracer,
         makeReq(undefined),
         { email: 'a@example.com' },
@@ -130,7 +130,7 @@ describe('resolveSamlUser', () => {
       async ({ deps, org }) => {
         const done = vi.fn();
         await resolveSamlUser(
-          deps.KyselyPg,
+          deps.DrizzlePg,
           deps.Tracer,
           makeReq(org.id),
           profile,
@@ -150,7 +150,7 @@ describe('resolveSamlUser', () => {
       const arrayProfile = { email: ['a@example.com'] };
       const done = vi.fn();
       await resolveSamlUser(
-        deps.KyselyPg,
+        deps.DrizzlePg,
         deps.Tracer,
         makeReq(org.id),
         arrayProfile as unknown as Pick<Profile, 'email'>,
@@ -166,7 +166,7 @@ describe('resolveSamlUser', () => {
   test('logs to the tracer and returns an internal error on a DB failure', async () => {
     const dbError = new Error('connection refused');
     const db = {
-      selectFrom() {
+      select() {
         throw dbError;
       },
     } as unknown as UsersDb;

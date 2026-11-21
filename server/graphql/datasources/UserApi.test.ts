@@ -1,4 +1,7 @@
+import { eq } from 'drizzle-orm';
+
 import { MIN_PASSWORD_LENGTH } from '../../services/userManagementService/index.js';
+import { schema } from '../../storage/postgres/drizzle.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
 
@@ -27,10 +30,9 @@ describe('UserAPI #signUp', () => {
         ),
       ).rejects.toThrow(`at least ${MIN_PASSWORD_LENGTH} characters`);
       expect(
-        await deps.KyselyPg.selectFrom('public.users')
-          .select('id')
-          .where('org_id', '=', org.id)
-          .execute(),
+        await deps.DrizzlePg.select({ id: schema.users.id })
+          .from(schema.users)
+          .where(eq(schema.users.orgId, org.id)),
       ).toEqual([]);
     },
   );

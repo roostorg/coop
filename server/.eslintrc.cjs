@@ -286,6 +286,7 @@ const correctnessRules = {
         '**/e2e/**',
         '**/*.{spec,test}.{ts,tsx,js}',
         '**/vitest*.config.ts',
+        '**/drizzle.config.ts',
         '.storybook/**',
         '**/*.stories.tsx',
         '**/bin/**',

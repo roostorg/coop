@@ -1,14 +1,13 @@
-import { type Kysely } from 'kysely';
 import { uid } from 'uid';
 
+import { schema } from '../../storage/postgres/drizzle.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
-import { type UserStatisticsServicePg } from './dbTypes.js';
 import { internalMakeUserStatisticsService } from './userStatisticsService.js';
 
 describe('UserStatisticsService.getUserScoresForUsers', () => {
   const testWithFixtures = makeTransactionalTestWithFixture(
     async ({ deps }) => {
-      const pgQuery = deps.KyselyPg as Kysely<UserStatisticsServicePg>;
+      const pgQuery = deps.DrizzlePg;
       const sut = internalMakeUserStatisticsService(
         pgQuery,
         pgQuery,
@@ -23,15 +22,12 @@ describe('UserStatisticsService.getUserScoresForUsers', () => {
         typeId: string;
         score: number;
       }) =>
-        pgQuery
-          .insertInto('user_statistics_service.user_scores')
-          .values({
-            org_id: row.orgId ?? orgId,
-            user_id: row.userId,
-            user_type_id: row.typeId,
-            score: row.score,
-          })
-          .execute();
+        pgQuery.insert(schema.userScores).values({
+          orgId: row.orgId ?? orgId,
+          userId: row.userId,
+          userTypeId: row.typeId,
+          score: row.score,
+        });
       return { sut, orgId, insertScore };
     },
   );

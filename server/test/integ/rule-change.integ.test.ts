@@ -24,11 +24,9 @@
  * Requires: `pnpm run up && pnpm run db:update`
  */
 import { ScalarTypes } from '@roostorg/coop-types';
-import { type Kysely } from 'kysely';
 import { uid } from 'uid';
 
 import { kyselyUpdateRule } from '../../graphql/datasources/ruleKyselyPersistence.js';
-import { type CombinedPg } from '../../services/combinedDbTypes.js';
 import {
   ConditionConjunction,
   RuleStatus,
@@ -36,8 +34,8 @@ import {
   type ConditionSet,
 } from '../../services/moderationConfigService/index.js';
 import { SignalType } from '../../services/signalsService/index.js';
+import { transactionWithRetry } from '../../storage/postgres/drizzle.js';
 import { jsonStringify } from '../../utils/encoding.js';
-import { makeKyselyTransactionWithRetry } from '../../utils/kyselyTransactionWithRetry.js';
 import createActions from '../fixtureHelpers/createActions.js';
 import createContentItemTypes from '../fixtureHelpers/createContentItemTypes.js';
 import createOrg from '../fixtureHelpers/createOrg.js';
@@ -90,7 +88,7 @@ describe('Rule changes take effect (integration)', () => {
 
     const orgFixture = await createOrg(
       {
-        KyselyPg: harness.deps.KyselyPg,
+        DrizzlePg: harness.deps.DrizzlePg,
         ModerationConfigService: harness.deps.ModerationConfigService,
         ApiKeyService: harness.deps.ApiKeyService,
       },
@@ -157,7 +155,7 @@ describe('Rule changes take effect (integration)', () => {
     let rule: Awaited<ReturnType<typeof createRule>> | undefined;
 
     try {
-      rule = await createRule(harness.deps.KyselyPg, orgId, {
+      rule = await createRule(harness.deps.DrizzlePg, orgId, {
         name: `text-contains-trigger-${uid()}`,
         status: RuleStatus.LIVE,
         ruleType: RuleType.CONTENT,
@@ -212,7 +210,7 @@ describe('Rule changes take effect (integration)', () => {
     let rule: Awaited<ReturnType<typeof createRule>> | undefined;
 
     try {
-      rule = await createRule(harness.deps.KyselyPg, orgId, {
+      rule = await createRule(harness.deps.DrizzlePg, orgId, {
         name: `text-contains-update-${uid()}`,
         status: RuleStatus.LIVE,
         ruleType: RuleType.CONTENT,
@@ -250,10 +248,8 @@ describe('Rule changes take effect (integration)', () => {
       // Update the rule's condition. The cached rule list for this item type
       // is now stale; reads within `freshUntilAge` will still see the original
       // condition. There is no explicit invalidation on the rule-update path.
-      const kysely = harness.deps.KyselyPg as Kysely<CombinedPg>;
-      const transactionWithRetry = makeKyselyTransactionWithRetry(kysely);
       await transactionWithRetry(
-        { isolationLevel: 'repeatable read' },
+        harness.deps.DrizzlePg,
         async (trx) => {
           await kyselyUpdateRule(trx, {
             id: rule!.id,
@@ -274,6 +270,7 @@ describe('Rule changes take effect (integration)', () => {
             contentTypeIds: undefined,
           });
         },
+        { isolationLevel: 'repeatable read' },
       );
 
       // Wait past the cache TTL so the next read refetches and sees the update.

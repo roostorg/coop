@@ -1,10 +1,7 @@
 import { Kysely } from 'kysely';
 import { vi } from 'vitest';
 
-import {
-  makeMockPgDialect,
-  type MockPgExecute,
-} from '../../test/stubs/KyselyPg.js';
+import { type CoopDb } from '../../storage/postgres/drizzle.js';
 import {
   makeMockWarehouseDialect,
   type WarehouseExecute,
@@ -25,13 +22,13 @@ describe('UserStatisticsService', () => {
           return { rows: [] };
         });
 
-      const pgReadMock = vi
-        .fn<MockPgExecute>()
-        .mockResolvedValue({ rows: [], command: 'SELECT', rowCount: 0 });
-
-      const pgWriteMock = vi
-        .fn<MockPgExecute>()
-        .mockResolvedValue({ rows: [], command: 'SELECT', rowCount: 0 });
+      const pgAccess = vi.fn();
+      const untouchedPg = new Proxy({} as CoopDb, {
+        get(_target, prop) {
+          pgAccess(prop);
+          throw new Error(`unexpected Postgres access: ${String(prop)}`);
+        },
+      });
 
       const fetchUserActionStatisticsMock = vi
         .fn<ReturnType<typeof makeFetchUserActionStatistics>>()
@@ -46,8 +43,8 @@ describe('UserStatisticsService', () => {
       });
 
       const sut = internalMakeUserStatisticsService(
-        new Kysely({ dialect: makeMockPgDialect(pgWriteMock) }),
-        new Kysely({ dialect: makeMockPgDialect(pgReadMock) }),
+        untouchedPg,
+        untouchedPg,
         warehouseKysely,
         fetchUserActionStatisticsMock,
         fetchUserSubmissionStatisticsMock,
@@ -55,7 +52,7 @@ describe('UserStatisticsService', () => {
 
       await sut.refreshUserScoresCache(async () => []);
 
-      expect(pgWriteMock).not.toHaveBeenCalled();
+      expect(pgAccess).not.toHaveBeenCalled();
       expect(warehouseMock).not.toHaveBeenCalled();
       expect(fetchUserActionStatisticsMock).not.toHaveBeenCalled();
       expect(fetchUserSubmissionStatisticsMock).not.toHaveBeenCalled();

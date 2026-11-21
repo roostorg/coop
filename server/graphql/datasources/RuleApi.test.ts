@@ -1,5 +1,6 @@
 import { uid } from 'uid';
 
+import { schema } from '../../storage/postgres/drizzle.js';
 import createContentItemTypes from '../../test/fixtureHelpers/createContentItemTypes.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import createUser from '../../test/fixtureHelpers/createUser.js';
@@ -27,13 +28,13 @@ describe('RuleAPI', () => {
       const { ModerationConfigService } = deps;
       const { org } = await createOrg(
         {
-          KyselyPg: deps.KyselyPg,
+          DrizzlePg: deps.DrizzlePg,
           ModerationConfigService,
           ApiKeyService: deps.ApiKeyService,
         },
         uid(),
       );
-      const { user } = await createUser(deps.KyselyPg, org.id);
+      const { user } = await createUser(deps.DrizzlePg, org.id);
       const { itemTypes } = await createContentItemTypes({
         moderationConfigService: ModerationConfigService,
         orgId: org.id,
@@ -239,17 +240,15 @@ describe('RuleAPI', () => {
       );
 
       const now = new Date();
-      await deps.KyselyPg.insertInto('public.backtests')
-        .values({
-          id: uid(),
-          rule_id: rule.id,
-          creator_id: user.id,
-          sample_desired_size: 10,
-          sample_start_at: now,
-          sample_end_at: now,
-          updated_at: now,
-        })
-        .execute();
+      await deps.DrizzlePg.insert(schema.backtests).values({
+        id: uid(),
+        ruleId: rule.id,
+        creatorId: user.id,
+        sampleDesiredSize: 10,
+        sampleStartAt: now,
+        sampleEndAt: now,
+        updatedAt: now,
+      });
 
       await expect(
         deps.RuleAPIDataSource.updateContentRule({

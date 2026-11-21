@@ -1,30 +1,37 @@
-import type { Kysely } from 'kysely';
+import { and, eq } from 'drizzle-orm';
 import { uid } from 'uid';
 
+import { schema, type CoopDbOrTx } from '../../../storage/postgres/drizzle.js';
 import {
   CoopError,
   ErrorType,
   type ErrorInstanceData,
 } from '../../../utils/errors.js';
 import { isUniqueViolationError } from '../../../utils/kysely.js';
-import type { ModerationConfigServicePg } from '../dbTypes.js';
 
-const TEXT_BANK_COLUMNS = [
-  'id',
-  'name',
-  'description',
-  'type',
-  'strings',
-  'org_id as orgId',
-  'created_at as createdAt',
-  'updated_at as updatedAt',
-  'owner_id as ownerId',
-] as const;
+const textBanks = schema.textBanks;
+
+const TEXT_BANK_COLUMNS = {
+  id: textBanks.id,
+  name: textBanks.name,
+  description: textBanks.description,
+  type: textBanks.type,
+  strings: textBanks.strings,
+  orgId: textBanks.orgId,
+  createdAt: textBanks.createdAt,
+  updatedAt: textBanks.updatedAt,
+  ownerId: textBanks.ownerId,
+};
+
+// Kysely's executeTakeFirstOrThrow message, which callers may match on.
+function throwNoResult(): never {
+  throw new Error('no result');
+}
 
 export default class MatchingBankOperations {
   constructor(
-    private readonly pgQuery: Kysely<ModerationConfigServicePg>,
-    private readonly pgQueryReplica: Kysely<ModerationConfigServicePg>,
+    private readonly pgQuery: CoopDbOrTx,
+    private readonly pgQueryReplica: CoopDbOrTx,
   ) {}
 
   async getTextBank(opts: {
@@ -35,12 +42,11 @@ export default class MatchingBankOperations {
     const { orgId, id, readFromReplica } = opts;
     const pgQuery = readFromReplica ? this.pgQueryReplica : this.pgQuery;
 
-    const textBank = await pgQuery
-      .selectFrom('public.text_banks')
+    const [textBank] = await pgQuery
       .select(TEXT_BANK_COLUMNS)
-      .where('org_id', '=', orgId)
-      .where('id', '=', id)
-      .executeTakeFirst();
+      .from(textBanks)
+      .where(and(eq(textBanks.orgId, orgId), eq(textBanks.id, id)))
+      .limit(1);
 
     if (!textBank) {
       throw new CoopError({
@@ -59,13 +65,10 @@ export default class MatchingBankOperations {
     const { orgId, readFromReplica } = opts;
     const pgQuery = readFromReplica ? this.pgQueryReplica : this.pgQuery;
 
-    const textBanks = await pgQuery
-      .selectFrom('public.text_banks')
+    return pgQuery
       .select(TEXT_BANK_COLUMNS)
-      .where('org_id', '=', orgId)
-      .execute();
-
-    return textBanks;
+      .from(textBanks)
+      .where(eq(textBanks.orgId, orgId));
   }
 
   async createTextBank(
@@ -81,22 +84,21 @@ export default class MatchingBankOperations {
     const { name, description, type, strings, ownerId } = input;
 
     try {
-      const newTextBank = await this.pgQuery
-        .insertInto('public.text_banks')
+      const [newTextBank] = await this.pgQuery
+        .insert(textBanks)
         .values({
           id: uid(),
           name,
           description,
           type,
           strings,
-          org_id: orgId,
-          updated_at: new Date(),
-          owner_id: ownerId,
+          orgId,
+          updatedAt: new Date(),
+          ownerId,
         })
-        .returning(TEXT_BANK_COLUMNS)
-        .executeTakeFirstOrThrow();
+        .returning(TEXT_BANK_COLUMNS);
 
-      return newTextBank;
+      return newTextBank ?? throwNoResult();
     } catch (error) {
       if (isUniqueViolationError(error)) {
         throw makeMatchingBankNameExistsError({ shouldErrorSpan: true });
@@ -119,22 +121,21 @@ export default class MatchingBankOperations {
     const { id, name, description, type, strings, ownerId } = input;
 
     try {
-      const updatedTextBank = await this.pgQuery
-        .updateTable('public.text_banks')
+      // Drizzle skips undefined keys in .set(), as Kysely did.
+      const [updatedTextBank] = await this.pgQuery
+        .update(textBanks)
         .set({
           name,
           description,
           type,
           strings,
-          owner_id: ownerId,
-          updated_at: new Date(),
+          ownerId,
+          updatedAt: new Date(),
         })
-        .where('id', '=', id)
-        .where('org_id', '=', orgId)
-        .returning(TEXT_BANK_COLUMNS)
-        .executeTakeFirstOrThrow();
+        .where(and(eq(textBanks.id, id), eq(textBanks.orgId, orgId)))
+        .returning(TEXT_BANK_COLUMNS);
 
-      return updatedTextBank;
+      return updatedTextBank ?? throwNoResult();
     } catch (error) {
       if (isUniqueViolationError(error)) {
         throw makeMatchingBankNameExistsError({ shouldErrorSpan: true });
@@ -144,13 +145,13 @@ export default class MatchingBankOperations {
   }
 
   async deleteTextBank(orgId: string, id: string) {
-    const rowsDeleted = await this.pgQuery
-      .deleteFrom('public.text_banks')
-      .where('id', '=', id)
-      .where('org_id', '=', orgId)
-      .execute();
+    await this.pgQuery
+      .delete(textBanks)
+      .where(and(eq(textBanks.id, id), eq(textBanks.orgId, orgId)));
 
-    return rowsDeleted.length === 1;
+    // Kysely's `execute()` on a DELETE always returned one result object, so
+    // the old `rowsDeleted.length === 1` was always true; kept as-is.
+    return true;
   }
 }
 

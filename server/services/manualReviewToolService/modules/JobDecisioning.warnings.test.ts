@@ -1,8 +1,9 @@
-import { type Kysely } from 'kysely';
+import { eq } from 'drizzle-orm';
 import { uid } from 'uid';
 import { v1 as uuidv1 } from 'uuid';
 
 import getBottle from '../../../iocContainer/index.js';
+import { schema } from '../../../storage/postgres/drizzle.js';
 import createContentItemTypes from '../../../test/fixtureHelpers/createContentItemTypes.js';
 import createMrtQueue from '../../../test/fixtureHelpers/createMrtQueue.js';
 import createOrg from '../../../test/fixtureHelpers/createOrg.js';
@@ -16,7 +17,6 @@ import {
 } from '../../itemProcessingService/index.js';
 import { type ItemSubmissionWithTypeIdentifier } from '../../itemProcessingService/makeItemSubmissionWithTypeIdentifier.js';
 import { type ItemType } from '../../moderationConfigService/index.js';
-import { type NcmecReportingServicePg } from '../../ncmecService/dbTypes.js';
 import {
   NCMEC_ESCALATION_SKIP_WARNING,
   type ManualReviewDecisionComponent,
@@ -28,14 +28,14 @@ const testWithFixture = () =>
     const container = (await getBottle()).container;
     const { org, cleanup: orgCleanup } = await createOrg(
       {
-        KyselyPg: container.KyselyPg,
+        DrizzlePg: container.DrizzlePg,
         ModerationConfigService: container.ModerationConfigService,
         ApiKeyService: container.ApiKeyService,
       },
       uid(),
     );
     const { user, cleanup: userCleanup } = await createUser(
-      container.KyselyPg,
+      container.DrizzlePg,
       org.id,
     );
     const { itemTypes: userItemTypes, cleanup: userItemTypesCleanup } =
@@ -68,9 +68,9 @@ const testWithFixture = () =>
     });
 
     const mrtService = container.ManualReviewToolService;
-    const mrtPg = mrtService['pgQuery'];
+    const mrtPg = mrtService['drizzle'];
     const queueOps = mrtService['queueOps'];
-    const ncmecPg = container.KyselyPg as Kysely<NcmecReportingServicePg>;
+    const db = container.DrizzlePg;
 
     const addFreshJob = async (
       itemType: ItemType = userItemTypes[0],
@@ -134,27 +134,24 @@ const testWithFixture = () =>
       userId: string;
       userItemTypeId: string;
     }) =>
-      ncmecPg
-        .insertInto('ncmec_reporting.ncmec_reports')
-        .values({
-          org_id: org.id,
-          report_id: uuidv1(),
-          user_id: subject.userId,
-          user_item_type_id: subject.userItemTypeId,
-          reported_media: [
-            {
-              id: uuidv1(),
-              typeId: subject.userItemTypeId,
-              xml: '<fileDetails/>',
-              ncmecFileId: 'file-1',
-            },
-          ],
-          report_xml: '<report/>',
-          additional_files: null,
-          reported_messages: null,
-          is_test: false,
-        })
-        .execute();
+      db.insert(schema.ncmecReports).values({
+        orgId: org.id,
+        reportId: uuidv1(),
+        userId: subject.userId,
+        userItemTypeId: subject.userItemTypeId,
+        reportedMedia: [
+          {
+            id: uuidv1(),
+            typeId: subject.userItemTypeId,
+            xml: '<fileDetails/>',
+            ncmecFileId: 'file-1',
+          },
+        ],
+        reportXml: '<report/>',
+        additionalFiles: null,
+        reportedMessages: null,
+        isTest: false,
+      });
 
     return {
       addFreshJob,
@@ -169,18 +166,17 @@ const testWithFixture = () =>
       user,
       userItemType: userItemTypes[0],
       cleanup: async () => {
-        await ncmecPg
-          .deleteFrom('ncmec_reporting.ncmec_reports')
-          .where('org_id', '=', org.id)
-          .execute();
+        await db
+          .delete(schema.ncmecReports)
+          .where(eq(schema.ncmecReports.orgId, org.id));
         await queueCleanup();
         await contentItemTypesWithCreatorCleanup();
         await contentItemTypesWithoutCreatorCleanup();
         await userItemTypesCleanup();
         await userCleanup();
         await orgCleanup();
-        await container.KyselyPg.destroy();
-        await container.KyselyPgReadReplica.destroy();
+        await container.KyselyPgPool.end();
+        await container.PgReadReplicaPool.end();
       },
     };
   });
@@ -321,11 +317,12 @@ describe('JobDecisioning NCMEC escalation eligibility', () => {
           'Content items must have a creator ID that references a User item before they can be enqueued to NCMEC.',
       });
 
-      const decision = await mrtPg
-        .selectFrom('manual_review_tool.manual_review_decisions')
-        .select('id')
-        .where('id', '=', jobIdToGuid(dequeuedJob.job.id))
-        .executeTakeFirst();
+      const [decision] = await mrtPg
+        .select({ id: schema.manualReviewDecisions.id })
+        .from(schema.manualReviewDecisions)
+        .where(
+          eq(schema.manualReviewDecisions.id, jobIdToGuid(dequeuedJob.job.id)),
+        );
       expect(decision).toBeUndefined();
 
       await mrtService.releaseJobLock({

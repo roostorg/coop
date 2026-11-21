@@ -7,14 +7,13 @@
  * logic (i.e. run the queries against replicas, add caching, etc) and makes
  * the consumers much more unit testable.
  */
-import { sql, type Kysely } from 'kysely';
+import { and, eq, inArray, isNull, ne, or, sql } from 'drizzle-orm';
 
 import { inject } from '../iocContainer/utils.js';
-import { type CombinedPg } from '../services/combinedDbTypes.js';
 import { type LocationArea } from '../services/moderationConfigService/index.js';
+import { schema, transactionWithRetry } from '../storage/postgres/drizzle.js';
 import { cached } from '../utils/caching.js';
 import { jsonParse, jsonStringify } from '../utils/encoding.js';
-import { makeKyselyTransactionWithRetry } from '../utils/kyselyTransactionWithRetry.js';
 import { getUtcDateOnlyString } from '../utils/time.js';
 
 export const makeGetEnabledRulesForItemTypeEventuallyConsistent = inject(
@@ -91,15 +90,15 @@ export type GetActionsForRuleEventuallyConsistent = ReturnType<
 >;
 
 export const makeGetLocationBankLocationsEventuallyConsistent = inject(
-  ['KyselyPgReadReplica'],
+  ['DrizzlePgReadReplica'],
   (db) => {
     return cached({
       async producer(bankId: string) {
+        const locations = schema.locationBankLocations;
         const rows = await db
-          .selectFrom('public.location_bank_locations')
-          .selectAll()
-          .where('bank_id', '=', bankId)
-          .execute();
+          .select()
+          .from(locations)
+          .where(eq(locations.bankId, bankId));
         return rows.map(
           (r) =>
             ({
@@ -108,7 +107,7 @@ export const makeGetLocationBankLocationsEventuallyConsistent = inject(
               geometry: r.geometry as LocationArea['geometry'],
               bounds: r.bounds as LocationArea['bounds'],
               googlePlaceInfo:
-                r.google_place_info as LocationArea['googlePlaceInfo'],
+                r.googlePlaceInfo as LocationArea['googlePlaceInfo'],
             }) satisfies LocationArea,
         );
       },
@@ -167,42 +166,35 @@ export type GetImageBankEventuallyConsistent = ReturnType<
 >;
 
 export const makeRecordRuleActionLimitUsage = inject(
-  ['KyselyPg', 'Tracer'],
+  ['DrizzlePg', 'Tracer'],
   (db, tracer) => {
-    const transactionWithRetry = makeKyselyTransactionWithRetry(
-      db as Kysely<CombinedPg>,
-    );
-
     async function recordRuleActionLimitUsage(ruleIds: readonly string[]) {
       if (ruleIds.length === 0) {
         return;
       }
 
       const today = String(getUtcDateOnlyString());
-      await transactionWithRetry(async (trx) => {
+      const rules = schema.rules;
+      await transactionWithRetry(db, async (trx) => {
         await trx
-          .updateTable('public.rules')
-          .set({
-            daily_actions_run: sql`daily_actions_run + 1`,
-          })
-          .where('id', 'in', [...ruleIds])
-          .where('last_action_date', '=', today)
-          .execute();
+          .update(rules)
+          .set({ dailyActionsRun: sql`${rules.dailyActionsRun} + 1` })
+          .where(
+            and(
+              inArray(rules.id, [...ruleIds]),
+              eq(rules.lastActionDate, today),
+            ),
+          );
 
         await trx
-          .updateTable('public.rules')
-          .set({
-            daily_actions_run: 1,
-            last_action_date: today,
-          })
-          .where('id', 'in', [...ruleIds])
-          .where((eb) =>
-            eb.or([
-              eb('last_action_date', 'is', null),
-              eb('last_action_date', '!=', today),
-            ]),
-          )
-          .execute();
+          .update(rules)
+          .set({ dailyActionsRun: 1, lastActionDate: today })
+          .where(
+            and(
+              inArray(rules.id, [...ruleIds]),
+              or(isNull(rules.lastActionDate), ne(rules.lastActionDate, today)),
+            ),
+          );
       });
     }
 
