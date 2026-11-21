@@ -57,6 +57,8 @@ Or try it in your browser with nothing to install: open Coop in GitHub Codespace
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/roostorg/coop?quickstart=1)
 
+Want to populate a local instance with real content instead of test fixtures? See [`server/bin/README.md`](server/bin/README.md#atproto-demomts) for a script that feeds it live posts from the [AT Protocol](https://atproto.com/) (Bluesky) firehose.
+
 ## Learn more
 
 See our comprehensive [documentation](https://roostorg.github.io/coop/latest) covering both functional and technical information including a user guide, development guide, API reference, and integration details.
