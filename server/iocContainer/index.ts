@@ -34,6 +34,10 @@ import {
   makeItemSubmissionBulkWrite,
   type ItemSubmissionBulkWrite,
 } from '../queues/itemSubmissionQueue.js';
+import {
+  makeReportedMediaBankingEnqueue,
+  type ReportedMediaBankingEnqueue,
+} from '../queues/reportedMediaBankingQueue.js';
 import makeActionPublisher, {
   type ActionPublisher,
   type ActionTargetItem,
@@ -362,6 +366,8 @@ export interface Dependencies {
 
   itemSubmissionQueueBulkWrite: ItemSubmissionBulkWrite;
   itemSubmissionRetryQueueBulkWrite: ItemSubmissionBulkWrite;
+  /** Enqueues media of accepted NCMEC reports for hash banking. */
+  reportedMediaBankingEnqueue: ReportedMediaBankingEnqueue;
   IORedis: IORedis.Redis | Cluster;
   /**
    * Dedicated ioredis client for the items-async enqueue path. Same Redis
@@ -756,6 +762,9 @@ export default async function getBottle(
   );
   bottle.factory('itemSubmissionRetryQueueBulkWrite', (container) =>
     makeItemSubmissionBulkWrite(container.IORedis, ITEM_SUBMISSION_DLQ_NAME),
+  );
+  bottle.factory('reportedMediaBankingEnqueue', (container) =>
+    makeReportedMediaBankingEnqueue(container.IORedis),
   );
 
   // Loggers
@@ -1830,6 +1839,7 @@ export default async function getBottle(
             'Scylla',
             'itemSubmissionQueueBulkWrite',
             'itemSubmissionRetryQueueBulkWrite',
+            'reportedMediaBankingEnqueue',
             'IORedis',
             'IORedisEnqueueNoBuffer',
             // Storage abstractions

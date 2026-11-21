@@ -9,6 +9,7 @@ import {
 } from '../../workers_jobs/index.js';
 import makeItemProcessingWorker from '../../workers_jobs/ItemProcessingWorker.js';
 import makeRefreshMRTDecisionsMaterializedViewJob from '../../workers_jobs/RefreshMRTDecisionsMaterializedViewJob.js';
+import makeReportedMediaBankingWorker from '../../workers_jobs/ReportedMediaBankingWorker.js';
 import makeRetryFailedNcmecDecisionsJob from '../../workers_jobs/RetryFailedNcmecDecisionsJob.js';
 import makeRunUserRulesJob from '../../workers_jobs/RunUserRulesJob.js';
 import { type Dependencies } from '../index.js';
@@ -19,6 +20,7 @@ declare module '../index.js' {
     // NB: worker deps cannot be renamed
     // w/o breaking the deployment that starts them!
     ItemProcessingWorker: Worker;
+    ReportedMediaBankingWorker: Worker;
 
     // Jobs. Like workers, can't be renamed w/o breaking stuff.
     // The distinction between jobs and workers is that workers run continuously,
@@ -34,6 +36,7 @@ declare module '../index.js' {
 
 const workerAndJobFactories = {
   ItemProcessingWorker: makeItemProcessingWorker,
+  ReportedMediaBankingWorker: makeReportedMediaBankingWorker,
   RunUserRulesJob: makeRunUserRulesJob,
   RefreshMRTDecisionsMaterializedViewJob:
     makeRefreshMRTDecisionsMaterializedViewJob,

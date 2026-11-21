@@ -1,4 +1,5 @@
 import { uid } from 'uid';
+import { vi } from 'vitest';
 
 import { NcmecReporting } from '../../services/ncmecService/index.js';
 import createOrg from '../fixtureHelpers/createOrg.js';
@@ -22,6 +23,7 @@ describe('NcmecReporting.getUsersWithNcmecDecision (integration)', () => {
       makeStubFetchHTTP(uid(), 'f1').fetchHTTP,
       deps.SigningKeyPairService,
       deps.Tracer,
+      vi.fn(),
     );
     const userItemTypeId = orgFixture.defaultUserItemType.id;
     const insertReport = async (userId: string, isTest: boolean | null) =>

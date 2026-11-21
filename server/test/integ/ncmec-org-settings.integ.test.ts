@@ -21,6 +21,7 @@ const filledSettings = {
   contactPersonPhone: null,
   mediaReviewRequirement: 'ALL' as const,
   minMediaToReview: null,
+  reportedMediaHashBankId: null,
 };
 
 describe('NcmecService.updateNcmecOrgSettings (integration)', () => {
