@@ -1,5 +1,6 @@
 /* eslint-disable max-lines */
 import { mergeTypeDefs } from '@graphql-tools/merge';
+import { Kind, parse } from 'graphql';
 
 import { typeDefs as actionTypeDefs } from './modules/action.js';
 import { typeDefs as actionStatisticsTypeDefs } from './modules/actionStatistics.js';
@@ -486,7 +487,37 @@ const typeDefs = /* GraphQL */ `
   }
 `;
 
-export default mergeTypeDefs([
+const ROOT_TYPES = new Set(['Query', 'Mutation', 'Subscription']);
+
+export function mergeSchemaModules(modules: readonly string[]) {
+  const documents = modules.map((source) => parse(source));
+  const rootFields = new Set<string>();
+
+  // Check before merging, which can silently collapse identical declarations.
+  for (const { definitions } of documents) {
+    for (const definition of definitions) {
+      if (
+        (definition.kind !== Kind.OBJECT_TYPE_DEFINITION &&
+          definition.kind !== Kind.OBJECT_TYPE_EXTENSION) ||
+        !ROOT_TYPES.has(definition.name.value)
+      ) {
+        continue;
+      }
+
+      for (const field of definition.fields ?? []) {
+        const name = `${definition.name.value}.${field.name.value}`;
+        if (rootFields.has(name)) {
+          throw new Error(`Duplicate root field ${name}`);
+        }
+        rootFields.add(name);
+      }
+    }
+  }
+
+  return mergeTypeDefs(documents);
+}
+
+export default mergeSchemaModules([
   typeDefs,
   genericTypeDefs,
   // Modules
