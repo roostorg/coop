@@ -40,10 +40,10 @@
             const path_to_root = "../";
             const default_light_theme = "roost";
             const default_dark_theme = "roost";
-            window.path_to_searchindex_js = "../searchindex-4f8dc03e.js";
+            window.path_to_searchindex_js = "../searchindex-743390f4.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-6a539f72.js"></script>
+        <script src="../toc-66e92c8a.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -302,10 +302,10 @@ messages can contain user information:</p>
 <pre><code class="language-sh">EMAIL_TRANSPORT=console
 </code></pre>
 <h3 id="with-distributed-tracing"><a class="header" href="#with-distributed-tracing">With distributed tracing</a></h3>
-<pre><code class="language-sh">cd server &amp;&amp; pnpm run start:trace
+<pre><code class="language-sh">pnpm --filter nodejs-instrumentation run build
+cd server &amp;&amp; pnpm run start:trace
 </code></pre>
-<!-- TODO: Expand on this https://github.com/roostorg/coop/issues/416 -->
-<p>View traces at <a href="http://localhost:16686">localhost:16686</a>.</p>
+<p>View traces at <a href="http://localhost:16686">localhost:16686</a>. See <a href="observability.html">Observability</a> for details.</p>
 <h3 id="access-points"><a class="header" href="#access-points">Access points</a></h3>
 <div class="table-wrapper">
 <table>

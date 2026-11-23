@@ -40,10 +40,10 @@
             const path_to_root = "../";
             const default_light_theme = "roost";
             const default_dark_theme = "roost";
-            window.path_to_searchindex_js = "../searchindex-4f8dc03e.js";
+            window.path_to_searchindex_js = "../searchindex-743390f4.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../toc-6a539f72.js"></script>
+        <script src="../toc-66e92c8a.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -235,6 +235,9 @@
 </li>
 <li>
 <p>Third-party integration keys in <code>server/.env.example</code> are generally optional unless you are enabling the corresponding integration.</p>
+</li>
+<li>
+<p>Tracing and metrics are optional. The published server and worker images don’t load the OpenTelemetry SDK, so they export nothing by default. See <a href="observability.html#deployments">Observability</a>.</p>
 </li>
 </ul>
 <h3 id="before-going-live"><a class="header" href="#before-going-live">Before going live</a></h3>
