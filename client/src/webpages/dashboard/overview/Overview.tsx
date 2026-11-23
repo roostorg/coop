@@ -62,9 +62,12 @@ export default function Overview() {
     pollInterval: 60_000,
   });
   const [timeDivision, setTimeDivision] = useState<TimeDivisionOptions>('DAY');
-  const [customTimeWindow, setCustomTimeWindow] = useState({
-    start: startOfDay(subDays(new Date(), 6)),
-    end: endOfDay(new Date()),
+  const [customTimeWindow, setCustomTimeWindow] = useState(() => {
+    const today = new Date();
+    return {
+      start: startOfDay(subDays(today, 6)),
+      end: endOfDay(today),
+    };
   });
   if (error) {
     throw error;
