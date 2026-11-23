@@ -212,7 +212,10 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
   }`;
 
   const updateButtonOnClick = useCallback(() => {
-    const normalized = normalizeInclusiveDateRange(range);
+    const normalized = normalizeInclusiveDateRange({
+      ...range,
+      to: range.to ?? range.from,
+    });
     setRange(normalized);
     setIsOpen(false);
     onUpdate?.({ range: normalized });

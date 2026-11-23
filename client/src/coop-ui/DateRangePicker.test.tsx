@@ -11,6 +11,10 @@ import React from 'react';
 import { vi } from 'vitest';
 
 describe('DateRangePicker', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it('should render without crashing', () => {
     render(
       <DateRangePicker
@@ -115,5 +119,33 @@ describe('DateRangePicker', () => {
       differenceInMilliseconds(range.to, range.from) / 86_400_000,
     ).toBeCloseTo(6.999, 2);
     expect(formatDistance(range.to, range.from)).toBe('7 days');
+  });
+
+  it('emits the whole day when a single calendar day is selected', () => {
+    // The calendar opens on the current month.
+    vi.useFakeTimers({ toFake: ['Date'], now: new Date(2026, 10, 12) });
+    const onUpdateMock = vi.fn();
+    render(
+      <DateRangePicker
+        initialDateFrom={new Date(2026, 10, 4)}
+        initialDateTo={new Date(2026, 10, 11)}
+        onUpdate={onUpdateMock}
+        isSingleMonthOnly
+      />,
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /Nov 4, 2026 - Nov 11, 2026/i }),
+    );
+    // Clicking the current end day leaves react-day-picker with no end date.
+    fireEvent.click(screen.getByRole('gridcell', { name: '11' }));
+    fireEvent.click(screen.getByRole('button', { name: /Update/i }));
+
+    expect(onUpdateMock).toHaveBeenCalledWith({
+      range: {
+        from: startOfDay(new Date(2026, 10, 11)),
+        to: endOfDay(new Date(2026, 10, 11)),
+      },
+    });
   });
 });
