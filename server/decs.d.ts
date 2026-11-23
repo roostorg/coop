@@ -14,6 +14,8 @@ namespace NodeJS {
     DATABASE_USER?: string;
     DATABASE_PASSWORD?: string;
     DATABASE_SSL?: string;
+    DATABASE_SSL_MODE?: string;
+    DATABASE_SSL_CA?: string;
     DATABASE_POOL_MAX?: string;
     DATABASE_READ_POOL_MAX?: string;
     DATABASE_POOL_IDLE_TIMEOUT_MS?: string;

@@ -27,6 +27,17 @@ At minimum, a production deployment should provide:
 
 You will usually also want to review the pool, timeout, TLS, and keepalive settings in `server/.env.example` before going live, since the defaults are tuned for local development rather than a long-running production environment.
 
+#### Postgres TLS
+
+`DATABASE_SSL=true` (server and worker) and `API_SERVER_DATABASE_SSL=true` (migrations) turn on TLS to Postgres. By default Coop checks that the server's certificate chains to a trusted CA and matches the host name, including `DATABASE_READ_ONLY_HOST` for the read replica.
+
+- If your provider signs certificates with its own CA, as most managed Postgres services do, download its CA bundle, make it available in the server, worker and migrations containers, and set `DATABASE_SSL_CA` and `API_SERVER_DATABASE_SSL_CA` to its path. The bundle replaces Node's default CA store, so it must cover the primary and the read replica. Without it, connections fail with errors such as `UNABLE_TO_VERIFY_LEAF_SIGNATURE` or `SELF_SIGNED_CERT_IN_CHAIN`.
+- If the certificate doesn't name the host you connect to, set `DATABASE_SSL_MODE=verify-ca` and `API_SERVER_DATABASE_SSL_MODE=verify-ca` to check the certificate against the CA bundle but not the host name. `verify-ca` requires the CA bundle settings.
+- To connect without checking the certificate, for example while you get your provider's CA bundle, set `DATABASE_SSL_MODE=require` and `API_SERVER_DATABASE_SSL_MODE=require`. The connection is still encrypted but not protected against an attacker who can intercept it, so use them only as a temporary fallback. Certificate errors in the logs name these settings and link to this section.
+- `DATABASE_SSL` and `API_SERVER_DATABASE_SSL` accept `true`, `1` or `yes` to turn TLS on and `false`, `0`, `no` or an empty value to leave it off; any other value is an error. Setting a mode or CA bundle without turning TLS on is also an error, so a typo can't silently disable TLS.
+- The migrations container reads `API_SERVER_DATABASE_SSL_CA` for every `db:update`, including ClickHouse and Scylla migrations, so mount the CA bundle there whenever it's set.
+- HMA connects to Postgres through libpq and doesn't read these settings. To verify its connection, set `PGSSLMODE=verify-full` and `PGSSLROOTCERT` to the CA bundle path in the HMA container's environment.
+
 ### Optional and deployment-specific configuration
 
 Many other settings are only required if you are enabling specific features or changing backend choices:
