@@ -82,7 +82,11 @@ export default class ZentropiLabelerSignal extends SignalBase<
           'You need to input your Zentropi API key to use Zentropi signals',
       };
     }
-    if (!credential.labelerVersions?.length) {
+    if (
+      !credential.labelerVersions?.some(
+        (version) => version.id.trim().length > 0,
+      )
+    ) {
       return {
         disabled: true as const,
         disabledMessage:

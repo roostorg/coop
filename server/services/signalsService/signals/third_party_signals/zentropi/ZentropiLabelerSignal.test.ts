@@ -79,9 +79,14 @@ describe('ZentropiLabelerSignal', () => {
     expect(info.disabled).toBe(false);
   });
 
-  it.each([undefined, []])(
-    'disables the signal without configured labelers: %s',
-    async (labelerVersions) => {
+  it.each([
+    { name: 'missing list', labelerVersions: undefined },
+    { name: 'empty list', labelerVersions: [] },
+    { name: 'empty ID', labelerVersions: [{ id: '', label: 'Spam' }] },
+    { name: 'whitespace ID', labelerVersions: [{ id: '  ', label: 'Spam' }] },
+  ])(
+    'disables the signal without a usable labeler version: $name',
+    async ({ labelerVersions }) => {
       const getCredentials = vi
         .fn<GetCredentials<'ZENTROPI'>>()
         .mockResolvedValue({
@@ -98,12 +103,15 @@ describe('ZentropiLabelerSignal', () => {
     },
   );
 
-  it('enables the signal with a version-only labeler', async () => {
+  it('enables the signal with a version-only labeler alongside a blank ID', async () => {
     const getCredentials = vi
       .fn<GetCredentials<'ZENTROPI'>>()
       .mockResolvedValue({
         apiKey: 'key',
-        labelerVersions: [{ id: 'lv_abc123', label: 'Spam' }],
+        labelerVersions: [
+          { id: '', label: 'Unconfigured' },
+          { id: 'lv_abc123', label: 'Spam' },
+        ],
       });
     const signal = new ZentropiLabelerSignal(getCredentials, vi.fn());
 
