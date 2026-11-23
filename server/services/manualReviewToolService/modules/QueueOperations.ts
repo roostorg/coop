@@ -174,9 +174,10 @@ const bullResourceKey = (key: QueueKey) => `${key.orgId}:${key.queueId}`;
  * queue's stalled-job checker, so dropping one stops abandoned jobs from being
  * recovered on that queue until something requests it again.
  *
- * Holding them is cheap. `autorun` is false and nothing calls `run()`, so
- * BullMQ never opens a per-Worker blocking connection; the only per-queue cost
- * is one stalled-check timer.
+ * Each Worker holds one Redis connection of its own (BullMQ opens its
+ * blocking connection even with `autorun` false) and one stalled-check timer,
+ * so a process holds one connection per queue it has dequeued from. Queue
+ * objects share the service's connection.
  *
  * As part of handling that mismatch, this class exposes an API that solely
  * accepts and returns plain data values, as opposed to the stateful

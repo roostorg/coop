@@ -31,9 +31,8 @@ describe('KeyedResourceRegistry', () => {
   });
 
   it('collapses concurrent requests for the same key into one creation', async () => {
-    // Regression: without storing the in-flight promise, two simultaneous
-    // callers each build a Worker against the same queue, so the queue ends up
-    // with two consumers.
+    // Without storing the in-flight promise, two simultaneous callers would
+    // each build a Worker against the same queue, giving it two consumers.
     const { registry, create } = makeRegistry();
     const key = { orgId: 'org', queueId: 'q1' };
 
@@ -44,10 +43,8 @@ describe('KeyedResourceRegistry', () => {
   });
 
   it('never evicts, however many keys are registered', async () => {
-    // Regression for the original bug: these resources were held in a cache
-    // with a 128-entry LRU whose eviction called close(). The 129th active
-    // queue silently shut down the least-recently-used queue's worker, which
-    // stopped its stalled-job checker.
+    // Evicting a Worker closes it and stops its queue's stalled-job checker,
+    // so the registry must hold every key it is given, however many there are.
     const { registry } = makeRegistry();
 
     const resources = await Promise.all(
@@ -63,8 +60,8 @@ describe('KeyedResourceRegistry', () => {
   });
 
   it('keeps a resource indefinitely rather than expiring it', async () => {
-    // Regression: the previous implementation attached a 600s TTL, so job
-    // processing was torn down and rebuilt on a timer for no reason.
+    // A Worker must outlive any idle period, or its stalled-job checker stops
+    // until the queue is next requested.
     const { registry, create } = makeRegistry();
     const key = { orgId: 'org', queueId: 'q1' };
 
