@@ -9,9 +9,9 @@
 # - Grant the necessary access to `/autoinstrumentation` directory. `chmod -R go+r /autoinstrumentation`
 # - For auto-instrumentation by container injection, the Linux command cp is
 #   used and must be availabe in the image.
-FROM node:24.22.2 AS build
+FROM node:24.22.3 AS build
 
-WORKDIR /operator-build
+WORKDIR /autoinstrumentation
 
 RUN npm install -g pnpm@11.28.2
 
@@ -34,7 +34,8 @@ RUN pnpm --filter nodejs-instrumentation deploy --legacy --prod --config.node-li
 FROM busybox:1.38.0
 
 COPY --from=build /deploy/node_modules /autoinstrumentation/node_modules
-COPY --from=build /operator-build/nodejs-instrumentation/transpiled/ /autoinstrumentation
+COPY --from=build /autoinstrumentation/nodejs-instrumentation/build/ /autoinstrumentation
+COPY --from=build /deploy/package.json /autoinstrumentation/
 
 RUN chmod -R go+r /autoinstrumentation
 

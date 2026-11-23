@@ -3,12 +3,12 @@
   "type": "module",
   "version": "3.0.0",
   "description": "Shared TypeScript types for Coop: schema primitives, signal data maps, and integration contracts.",
-  "module": "transpiled/index.js",
-  "typings": "./transpiled/index.d.ts",
+  "module": "build/index.js",
+  "typings": "./build/index.d.ts",
   "scripts": {
     "build": "tsc",
     "prepublishOnly": "pnpm run build",
-    "test": "pnpm run build && node --test 'transpiled/test_scripts/**/*.test.js'"
+    "test": "pnpm run build && node --test 'build/test_scripts/**/*.test.js'"
   },
   "repository": {
     "type": "git",
@@ -17,9 +17,9 @@
   },
   "author": "Roostorg",
   "files": [
-    "transpiled"
+    "build"
   ],
-  "license": "ISC",
+  "license": "Apache-2.0",
   "devDependencies": {
     "@types/node": "^24.19.2",
     "typescript": "^5.9.3"
@@ -29,8 +29,8 @@
   },
   "exports": {
     ".": {
-      "import": "./transpiled/index.js",
-      "types": "./transpiled/index.d.ts"
+      "import": "./build/index.js",
+      "types": "./build/index.d.ts"
     }
   },
   "dependencies": {
