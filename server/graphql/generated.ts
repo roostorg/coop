@@ -691,6 +691,8 @@ export type GQLContentRule = GQLRule & {
   readonly parentId?: Maybe<Scalars['ID']['output']>;
   readonly policies: ReadonlyArray<GQLPolicy>;
   readonly status: GQLRuleStatus;
+  /** The status the rule has when it isn't past its expiration time. */
+  readonly statusIfUnexpired: GQLRuleStatus;
   readonly tags?: Maybe<ReadonlyArray<Maybe<Scalars['String']['output']>>>;
   readonly updatedAt: Scalars['String']['output'];
 };
@@ -4472,6 +4474,8 @@ export type GQLRule = {
   readonly parentId?: Maybe<Scalars['ID']['output']>;
   readonly policies: ReadonlyArray<GQLPolicy>;
   readonly status: GQLRuleStatus;
+  /** The status the rule has when it isn't past its expiration time. */
+  readonly statusIfUnexpired: GQLRuleStatus;
   readonly tags?: Maybe<ReadonlyArray<Maybe<Scalars['String']['output']>>>;
   readonly updatedAt: Scalars['String']['output'];
 };
@@ -5536,6 +5540,8 @@ export type GQLUserRule = GQLRule & {
   readonly parentId?: Maybe<Scalars['ID']['output']>;
   readonly policies: ReadonlyArray<GQLPolicy>;
   readonly status: GQLRuleStatus;
+  /** The status the rule has when it isn't past its expiration time. */
+  readonly statusIfUnexpired: GQLRuleStatus;
   readonly tags?: Maybe<ReadonlyArray<Maybe<Scalars['String']['output']>>>;
   readonly updatedAt: Scalars['String']['output'];
 };
@@ -8619,6 +8625,11 @@ export type GQLContentRuleResolvers<
     ContextType
   >;
   status?: Resolver<GQLResolversTypes['RuleStatus'], ParentType, ContextType>;
+  statusIfUnexpired?: Resolver<
+    GQLResolversTypes['RuleStatus'],
+    ParentType,
+    ContextType
+  >;
   tags?: Resolver<
     Maybe<ReadonlyArray<Maybe<GQLResolversTypes['String']>>>,
     ParentType,
@@ -15850,6 +15861,11 @@ export type GQLUserRuleResolvers<
     ContextType
   >;
   status?: Resolver<GQLResolversTypes['RuleStatus'], ParentType, ContextType>;
+  statusIfUnexpired?: Resolver<
+    GQLResolversTypes['RuleStatus'],
+    ParentType,
+    ContextType
+  >;
   tags?: Resolver<
     Maybe<ReadonlyArray<Maybe<GQLResolversTypes['String']>>>,
     ParentType,

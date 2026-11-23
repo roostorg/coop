@@ -380,6 +380,7 @@ const RULE_FIELD_FRAGMENT = gql`
     name
     description
     status
+    statusIfUnexpired
     policies {
       id
     }
@@ -1829,7 +1830,8 @@ export default function RuleForm() {
               disabled={
                 !canEditNonLiveRules ||
                 state.ruleMutationError ||
-                (rule?.status === GQLRuleStatus.Live && !canEditLiveRules) ||
+                (rule?.statusIfUnexpired === GQLRuleStatus.Live &&
+                  !canEditLiveRules) ||
                 !actionsSelected ||
                 hasInvalidThreshold ||
                 !conditionsValid
@@ -1839,7 +1841,8 @@ export default function RuleForm() {
               error={state.ruleMutationError}
               showDisabledTooltip={
                 !canEditNonLiveRules ||
-                (rule?.status === GQLRuleStatus.Live && !canEditLiveRules) ||
+                (rule?.statusIfUnexpired === GQLRuleStatus.Live &&
+                  !canEditLiveRules) ||
                 !actionsSelected ||
                 hasInvalidThreshold ||
                 !conditionsValid
@@ -2023,7 +2026,7 @@ export default function RuleForm() {
           />
           {id == null ||
           canEditLiveRules ||
-          rule?.status !== GQLRuleStatus.Live ? null : (
+          rule?.statusIfUnexpired !== GQLRuleStatus.Live ? null : (
             <div className="text-base italic">
               Note: You do not have permission to edit this rule because it is
               Live. To edit Live rules, ask your organization's administrator to

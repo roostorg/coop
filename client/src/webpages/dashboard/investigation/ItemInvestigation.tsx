@@ -1,3 +1,4 @@
+import { userHasPermissions } from '@/routing/permissions';
 import { gql } from '@apollo/client';
 import { ItemIdentifier } from '@roostorg/coop-types';
 import { Alert, Input } from 'antd';
@@ -14,6 +15,7 @@ import {
   GQLSchemaFieldRoles,
   GQLThreadItem,
   GQLUserItem,
+  GQLUserPermission,
   useGQLGetItemsWithIdLazyQuery,
   useGQLGetOrgDataQuery,
 } from '../../../graphql/generated';
@@ -65,6 +67,10 @@ gql`
       }
       requiresPolicyForDecisionsInMrt
       allowMultiplePoliciesPerAction
+    }
+    me {
+      id
+      permissions
     }
   }
 
@@ -534,7 +540,12 @@ export default function ItemInvestigation(props: {
             }}
           />
         </div>
-        {selectedItem ? <ItemAction itemIdentifier={selectedItem} /> : null}
+        {selectedItem &&
+        userHasPermissions(orgData?.me?.permissions, [
+          GQLUserPermission.ManuallyActionContent,
+        ]) ? (
+          <ItemAction itemIdentifier={selectedItem} />
+        ) : null}
       </div>
       {!selectedItem && ipAddress ? (
         <ItemsByIpAddress ipAddress={ipAddress} />

@@ -5,6 +5,7 @@ import {
   HashBankUserError,
   type HashBank,
 } from '../../../services/hmaService/index.js';
+import { UserPermission } from '../../../services/userManagementService/index.js';
 import { resolvers } from './resolvers.js';
 
 const MOCK_BANK: HashBank = {
@@ -22,7 +23,10 @@ const SECRET = 'hunter2-super-secret';
 
 function makeContext(overrides: Record<string, Mock> = {}) {
   return {
-    getUser: () => ({ orgId: 'org1' }),
+    getUser: () => ({
+      orgId: 'org1',
+      getPermissions: () => Object.values(UserPermission),
+    }),
     services: {
       HMAHashBankService: {
         createBank: vi.fn().mockResolvedValue(MOCK_BANK),

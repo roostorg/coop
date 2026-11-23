@@ -20,7 +20,11 @@ import {
   type GQLQueryResolvers,
 } from '../generated.js';
 import { type Context } from '../resolvers.js';
-import { requireChildSafetyPermission } from '../utils/authorization.js';
+import {
+  hasPermission,
+  requireChildSafetyPermission,
+  requirePermission,
+} from '../utils/authorization.js';
 import {
   forbiddenError,
   unauthenticatedError,
@@ -207,10 +211,16 @@ const Query: GQLQueryResolvers = {
     }
     const settings =
       await context.services.OrgSettingsService.getAppealSettings(user.orgId);
+    // Headers and body can hold credentials for the appeals endpoint.
+    const canManageOrg = hasPermission(user, UserPermission.MANAGE_ORG);
     return {
       appealsCallbackUrl: settings.appealCallbackUrl ?? null,
-      appealsCallbackHeaders: settings.appealCallbackHeaders ?? null,
-      appealsCallbackBody: settings.appealCallbackBody ?? null,
+      appealsCallbackHeaders: canManageOrg
+        ? (settings.appealCallbackHeaders ?? null)
+        : null,
+      appealsCallbackBody: canManageOrg
+        ? (settings.appealCallbackBody ?? null)
+        : null,
     };
   },
 };
@@ -891,10 +901,10 @@ const MatchingBanks: GQLMatchingBanksResolvers = {
 
 const Mutation: GQLMutationResolvers = {
   async updateAppealSettings(_, { input }, context) {
-    const user = context.getUser();
-    if (!user || !user.orgId) {
-      throw unauthenticatedError('User required.');
-    }
+    const user = requirePermission(
+      context.getUser(),
+      UserPermission.MANAGE_ORG,
+    );
     const settings =
       await context.services.OrgSettingsService.updateAppealSettings({
         orgId: user.orgId,
@@ -925,10 +935,10 @@ const Mutation: GQLMutationResolvers = {
   },
 
   async setAllUserStrikeThresholds(_, params, context) {
-    const user = context.getUser();
-    if (!user) {
-      throw unauthenticatedError('User required.');
-    }
+    const user = requirePermission(
+      context.getUser(),
+      UserPermission.MANAGE_ORG,
+    );
 
     const thresholds = await validateUserStrikeThresholdActionParameters(
       context,
@@ -944,10 +954,10 @@ const Mutation: GQLMutationResolvers = {
   },
 
   async updateUserStrikeTTL(_, { input }, context) {
-    const user = context.getUser();
-    if (!user) {
-      throw unauthenticatedError('User required.');
-    }
+    const user = requirePermission(
+      context.getUser(),
+      UserPermission.MANAGE_ORG,
+    );
     await context.services.OrgSettingsService.updateUserStrikeTTL({
       orgId: user.orgId,
       ttlDays: input.ttlDays,

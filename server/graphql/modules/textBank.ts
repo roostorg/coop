@@ -1,8 +1,10 @@
+import { UserPermission } from '../../services/userManagementService/index.js';
 import { isCoopErrorOfType } from '../../utils/errors.js';
 import {
   type GQLMutationResolvers,
   type GQLQueryResolvers,
 } from '../generated.js';
+import { requirePermission } from '../utils/authorization.js';
 import { unauthenticatedError } from '../utils/errors.js';
 
 const typeDefs = /* GraphQL */ `
@@ -76,10 +78,10 @@ const Query: GQLQueryResolvers = {
 
 const Mutation: GQLMutationResolvers = {
   async createTextBank(_, params, context) {
-    const user = context.getUser();
-    if (user == null) {
-      throw unauthenticatedError('User required.');
-    }
+    const user = requirePermission(
+      context.getUser(),
+      UserPermission.MUTATE_LIVE_RULES,
+    );
 
     const { name, description, type, strings } = params.input;
 
@@ -104,10 +106,10 @@ const Mutation: GQLMutationResolvers = {
     }
   },
   async updateTextBank(_, params, context) {
-    const user = context.getUser();
-    if (user == null) {
-      throw unauthenticatedError('User required.');
-    }
+    const user = requirePermission(
+      context.getUser(),
+      UserPermission.MUTATE_LIVE_RULES,
+    );
 
     const { id, name, description, type, strings } = params.input;
 
@@ -132,10 +134,10 @@ const Mutation: GQLMutationResolvers = {
     }
   },
   async deleteTextBank(_, params, context) {
-    const user = context.getUser();
-    if (user == null) {
-      throw unauthenticatedError('Authenticated user required');
-    }
+    const user = requirePermission(
+      context.getUser(),
+      UserPermission.MUTATE_LIVE_RULES,
+    );
 
     try {
       const result =
