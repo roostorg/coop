@@ -37,6 +37,52 @@ describe('mergeSchemaModules', () => {
     );
   });
 
+  test('rejects duplicate fields on custom and default operation roots', () => {
+    fc.assert(
+      fc.property(
+        fc.constantFrom('RootQuery', 'RootMutation', 'Mutation'),
+        fieldNames,
+        (rootType, field) => {
+          expect(() =>
+            mergeSchemaModules([
+              'schema { query: RootQuery }',
+              'type RootQuery { health: Boolean }',
+              ...(rootType === 'RootMutation'
+                ? ['extend schema { mutation: RootMutation }']
+                : []),
+              `type ${rootType} { ${field}: String }`,
+              `extend type ${rootType} { ${field}: String }`,
+            ]),
+          ).toThrow(`Duplicate root field ${rootType}.${field}`);
+        },
+      ),
+      {
+        examples: [
+          ['RootQuery', 'field_status'],
+          ['RootMutation', 'field_status'],
+          ['Mutation', 'field_status'],
+        ],
+      },
+    );
+  });
+
+  test('allows repeated non-root fields on a type named Query', () => {
+    fc.assert(
+      fc.property(fieldNames, (field) => {
+        const schema = buildASTSchema(
+          mergeSchemaModules([
+            'schema { query: RootQuery }',
+            `type RootQuery { nested: Query }
+             type Query { ${field}: String }`,
+            `extend type Query { ${field}: String }`,
+          ]),
+        );
+
+        expect(schema.getQueryType()?.name).toBe('RootQuery');
+      }),
+    );
+  });
+
   test('allows the same field name on different root types', () => {
     fc.assert(
       fc.property(fieldNames, (field) => {
