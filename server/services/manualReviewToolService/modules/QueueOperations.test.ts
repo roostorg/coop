@@ -1,6 +1,7 @@
 import fc from 'fast-check';
 import { uid } from 'uid';
 import { v1 as uuidv1 } from 'uuid';
+import { vi } from 'vitest';
 
 import { type Dependencies } from '../../../iocContainer/index.js';
 import createActions from '../../../test/fixtureHelpers/createActions.js';
@@ -81,6 +82,12 @@ describe('QueueOperations', () => {
         queue,
         kyselyPg: deps.KyselyPg,
         mrtService: deps.ManualReviewToolService,
+        // Bull queues live in Redis, which the transaction rollback can't
+        // reach. Obliterate everything this org created — including queues a
+        // test made directly — while the rows still exist to enumerate them.
+        async cleanup() {
+          await deps.ManualReviewToolService.obliterateAllQueuesForOrg(org.id);
+        },
       };
     });
 
@@ -434,10 +441,26 @@ describe('QueueOperations', () => {
         return { org, user, queue };
       };
 
+      const attacker = await buildOrg();
+      const victim = await buildOrg();
+
       return {
-        attacker: await buildOrg(),
-        victim: await buildOrg(),
+        attacker,
+        victim,
         mrtService: deps.ManualReviewToolService,
+        // Bull queues live in Redis, which the transaction rollback can't
+        // reach. Obliterate everything this org created — including queues a
+        // test made directly — while the rows still exist to enumerate them.
+        async cleanup() {
+          await Promise.all([
+            deps.ManualReviewToolService.obliterateAllQueuesForOrg(
+              attacker.org.id,
+            ),
+            deps.ManualReviewToolService.obliterateAllQueuesForOrg(
+              victim.org.id,
+            ),
+          ]);
+        },
       };
     });
 
@@ -1156,6 +1179,84 @@ describe('QueueOperations', () => {
         'manual_review_tool.appeals_routing_rules',
         'block-appeals-rule',
       ),
+  );
+
+  testWithQueueAndActions()(
+    'obliterateAllQueuesForOrg clears Bull state and leaves the rows alone',
+    async ({ org, user, mrtService, kyselyPg }) => {
+      const extraQueue = await mrtService.createManualReviewQueue({
+        name: `org-teardown-queue-${uid()}`,
+        description: null,
+        userIds: [user.id],
+        roleIds: [],
+        hiddenActionIds: [],
+        isAppealsQueue: false,
+        invokedBy: {
+          userId: user.id,
+          permissions: [UserPermission.EDIT_MRT_QUEUES],
+          orgId: org.id,
+        },
+      });
+
+      const queueIdsForOrg = async () =>
+        (
+          await kyselyPg
+            .selectFrom('manual_review_tool.manual_review_queues')
+            .select('id')
+            .where('org_id', '=', org.id)
+            .execute()
+        ).map((it) => it.id);
+
+      const before = await queueIdsForOrg();
+      expect(before).toContain(extraQueue.id);
+
+      // Covers every queue the org has, including the default one that
+      // `deleteManualReviewQueue` refuses to touch.
+      const obliterated = await mrtService.obliterateAllQueuesForOrg(org.id);
+      expect(obliterated).toBe(before.length);
+
+      // The Postgres rows are deliberately untouched: this only clears the
+      // Bull state in Redis, which a caller's transaction cannot reach.
+      expect(await queueIdsForOrg()).toEqual(before);
+    },
+  );
+
+  testWithQueueAndActions()(
+    'deleteManualReviewQueue closes and drops the Bull handles for the queue',
+    async ({ org, user, mrtService }) => {
+      const queueOps = mrtService['queueOps'];
+      const extraQueue = await mrtService.createManualReviewQueue({
+        name: `delete-handles-queue-${uid()}`,
+        description: null,
+        userIds: [user.id],
+        roleIds: [],
+        hiddenActionIds: [],
+        isAppealsQueue: false,
+        invokedBy: {
+          userId: user.id,
+          permissions: [UserPermission.EDIT_MRT_QUEUES],
+          orgId: org.id,
+        },
+      });
+      const key = { orgId: org.id, queueId: extraQueue.id };
+
+      // Dequeueing registers the queue's Worker, and with it the stalled-job
+      // checker and its Redis connection.
+      await queueOps.dequeueNextJobWithLock({ ...key, lockToken: user.id });
+      const worker = await queueOps['bullWorkers'].get(key);
+      const bullQueue = await queueOps['bullQueues'].get(key);
+      const closeWorker = vi.spyOn(worker, 'close');
+      const closeQueue = vi.spyOn(bullQueue, 'close');
+      const workersBefore = queueOps['bullWorkers'].size;
+
+      expect(
+        await mrtService.deleteManualReviewQueue(org.id, extraQueue.id),
+      ).toBe(true);
+
+      expect(closeWorker).toHaveBeenCalled();
+      expect(closeQueue).toHaveBeenCalled();
+      expect(queueOps['bullWorkers'].size).toBe(workersBefore - 1);
+    },
   );
 });
 
