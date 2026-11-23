@@ -75,13 +75,21 @@ export default class ZentropiLabelerSignal extends SignalBase<
 
   override async getDisabledInfo(orgId: string) {
     const credential = await this.getZentropiCredentials(orgId);
-    return !credential?.apiKey
-      ? {
-          disabled: true as const,
-          disabledMessage:
-            'You need to input your Zentropi API key to use Zentropi signals',
-        }
-      : { disabled: false as const };
+    if (!credential?.apiKey) {
+      return {
+        disabled: true as const,
+        disabledMessage:
+          'You need to input your Zentropi API key to use Zentropi signals',
+      };
+    }
+    if (!credential.labelerVersions?.length) {
+      return {
+        disabled: true as const,
+        disabledMessage:
+          'Add a labeler version in the Zentropi integration settings to use this signal.',
+      };
+    }
+    return { disabled: false as const };
   }
 
   override get eligibleInputs() {
