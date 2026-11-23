@@ -95,7 +95,8 @@ export function getOwn(
   key: PropertyKey,
 ): unknown {
   if (object == null || !Object.hasOwn(object, key)) return undefined;
-  return Reflect.get(object, key);
+  // eslint-disable-next-line security/detect-object-injection -- own property checked above
+  return (object as Record<PropertyKey, unknown>)[key];
 }
 
 /** Writes an own data property, preserving existing attributes without invoking setters. */

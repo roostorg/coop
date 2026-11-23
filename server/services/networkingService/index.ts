@@ -315,17 +315,13 @@ export async function fetchHTTP<T extends HandleResponseBody>(
           ? AbortSignal.any([timeoutSignal, callerSignal])
           : (timeoutSignal ?? callerSignal);
 
-      const maxResponseSize = query.maxResponseSize ?? '5mb';
-      const dispatcher = getOwn(
-        getOwn(agentMapping, maxResponseSize),
-        urlTrust,
-      );
-      // Do not fall back to Undici's default dispatcher for an unknown size.
-      if (!dispatcher) {
-        throw new Error(
-          'No dispatcher configured for the requested response size and URL trust level',
-        );
-      }
+      const agents = getOwn(agentMapping, query.maxResponseSize ?? '5mb')!;
+      const dispatcher =
+        urlTrust === 'trusted'
+          ? agents.trusted
+          : urlTrust === 'loopback'
+            ? agents.loopback
+            : agents.untrusted;
 
       // NB: use of fetch here is okay, since this is our wrapper function that
       // should be used instead of fetch everywhere else in the codebase

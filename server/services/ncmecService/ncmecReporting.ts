@@ -694,7 +694,8 @@ export function fileAnnotationArrayToNCMECFileAnnotation(
   };
   const result: FileAnnotations = {};
   for (const annotation of fileAnnotations) {
-    setOwn(result, getOwn(annotationFieldByType, annotation)!, undefined);
+    const field = getOwn(annotationFieldByType, annotation)!;
+    setOwn(result, field, undefined);
   }
   return result;
 }
