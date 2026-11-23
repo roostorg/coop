@@ -238,7 +238,10 @@ jobs:
             pnpm run create-org --help
             pnpm run get-invite --help
             pnpm run recover-mrt-queue --help
-            pnpm run runWorkerOrJob --help 2>&1 | tee /dev/stderr | grep -q "Invalid worker or job name argument"
+            status=0
+            output=$(pnpm run runWorkerOrJob --help 2>&1) || status=$?
+            printf "%s\n" "$output" >&2
+            [[ $status -eq 1 && "$output" == *"Invalid worker or job name argument"* ]]
           '
 
       - name: Migrate CI DBs and Test
