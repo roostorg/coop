@@ -1,0 +1,52 @@
+---
+config:
+  layout: elk
+  theme: redux
+  look: classic
+---
+flowchart LR
+    P((Platform)) -->|REST API| R
+
+    subgraph C[Coop]
+        subgraph R[Rules Engine]
+            RR{Routing Rules}
+            PR[Proactive Rules]
+            subgraph M[Matching Banks]
+                H[Hash Banks]
+                L[Location Banks]
+                T[Text Banks]
+            end
+            M --> RR
+            M --> PR
+
+            subgraph S[Signals]
+                CS[Content Safety API]
+                OAI[Moderation API]
+                ZC[CoPE]
+                O[Other Integrations]
+            end
+            S --> RR
+            S --> PR
+        end
+
+        RR --> |Child safety| Q1[Child Safety Queue]
+        RR --> |Spanish-language| Q2[Spanish Queue]
+        RR --> |Etc.| Q3[… Queue]
+        subgraph RC[Review Console]
+            Q1 --> HR{Human Review}
+            Q2 --> HR
+            Q3 --> HR
+        end
+
+        PR --> |Auto-action| A[Action]
+        HR --> |Non-violative| X((Ignore))
+        HR --> |Violates policy| A
+        HR --> |Child safety| AR[Actionable Report]
+    end
+    A --> |Webhook| P
+    AR --> A
+    AR --> N((NCMEC))
+
+    style P fill:#BBDEFB,stroke:#2962FF
+    style N fill:#E1BEE7,stroke:#AA00FF
+    style C fill:#FFF9C4,stroke:#FFD600

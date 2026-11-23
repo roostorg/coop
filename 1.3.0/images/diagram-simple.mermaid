@@ -1,0 +1,23 @@
+---
+config:
+  layout: elk
+  theme: redux
+  look: classic
+---
+flowchart LR
+    P((Platform)) -->|Items & Reports| R
+
+    subgraph C[Coop]
+        M[Matching Banks] --> R
+        S[Signals] --> R
+
+        R{Rules Engine} --> |Routing Rules| HR{Review Console}
+        R --> |Proactive Rules| A[Action]
+
+        HR --> X((Ignore))
+        HR --> A
+    end
+    A --> |Webhook| P
+
+    style P fill:#BBDEFB,stroke:#2962FF
+    style C fill:#FFF9C4,stroke:#FFD600
