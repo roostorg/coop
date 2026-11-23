@@ -14,19 +14,14 @@ export default defineConfig({
     hookTimeout: 5_000,
     setupFiles: ['./test/extendExpect.ts'],
     include: ['**/__tests__/**/*.[jt]s?(x)', '**/?(*.)+(spec|test).[tj]s?(x)'],
-    exclude: [
-      'node_modules/**',
-      'transpiled/**',
-      'e2e/**',
-      '**/*.integ.test.ts',
-    ],
+    exclude: ['node_modules/**', 'build/**', 'e2e/**', '**/*.integ.test.ts'],
     coverage: {
       provider: 'v8',
       reportsDirectory: 'reports/coverage-unit',
       include: ['**/*.ts'],
       exclude: [
         'node_modules/**',
-        'transpiled/**',
+        'build/**',
         'reports/**',
         'bin/**',
         'e2e/**',

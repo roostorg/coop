@@ -5,7 +5,7 @@
   // It differs from tsconfig.json in exactly two ways: Vitest's globals are not
   // in scope, and test files are not compiled. Together those stop a test-only
   // global (`describe`, `it`, `expect`, ...) type-checking inside production
-  // code, and stop test code being emitted into `transpiled/` and shipped in
+  // code, and stop test code being emitted into `build/` and shipped in
   // the server image.
   "extends": "./tsconfig.json",
   "compilerOptions": {

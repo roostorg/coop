@@ -79,12 +79,12 @@ docker compose -f docker-compose.images.yaml down -v
 
 ## Image details
 
-| Image             | Dockerfile          | Build target          | Base                                 |
-| ----------------- | ------------------- | --------------------- | ------------------------------------ |
-| `coop-server`     | `Dockerfile`        | `build_server`        | node:24.22.1-trixie-slim + dumb-init |
-| `coop-worker`     | `Dockerfile`        | `build_worker_runner` | node:24.22.1-trixie-slim + dumb-init |
-| `coop-client`     | `client/Dockerfile` | `serve`               | nginx:1.31.8-alpine                  |
-| `coop-migrations` | `db/Dockerfile`     | _(final stage)_       | node:24.22.1-trixie-slim             |
+| Image             | Dockerfile          | Build target          |
+| ----------------- | ------------------- | --------------------- |
+| `coop-server`     | `Dockerfile`        | `build_server`        |
+| `coop-worker`     | `Dockerfile`        | `build_worker_runner` |
+| `coop-client`     | `client/Dockerfile` | `serve`               |
+| `coop-migrations` | `db/Dockerfile`     | _(final stage)_       |
 
 The client image serves the Vite-built SPA via nginx and proxies `/api/` requests (including `/api/v1/graphql`) to a backend service named `server` on port 8080.
 
