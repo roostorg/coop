@@ -623,9 +623,7 @@ export function inject<F extends (...it: any[]) => any>(
   deps: DepName[],
   factory: F,
 ): F & { [DEPENDENCIES]: DepName[] } {
-  // eslint-disable-next-line security/detect-object-injection -- DEPENDENCIES is a module-local symbol
-  (factory as any)[DEPENDENCIES] = deps;
-  return factory as any;
+  return Object.assign(factory, { [DEPENDENCIES]: deps });
 }
 
 export function register<T extends keyof Deps & string>(
@@ -633,8 +631,7 @@ export function register<T extends keyof Deps & string>(
   name: T,
   factory: AnnotatedFactory<Deps[T]>,
 ) {
-  // eslint-disable-next-line security/detect-object-injection -- DEPENDENCIES is a module-local symbol
-  const deps = factory[DEPENDENCIES];
+  const deps = getOwn(factory, DEPENDENCIES)!;
   if (isConstructable(factory)) {
     bottle.service<T>(name, factory, ...deps);
   } else {

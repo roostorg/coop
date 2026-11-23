@@ -3,6 +3,7 @@ import { type ReadonlyDeep } from 'type-fest';
 
 import { inject } from '../../iocContainer/utils.js';
 import { jsonParse, jsonStringify, type JsonOf } from '../../utils/encoding.js';
+import { getOwn } from '../../utils/misc.js';
 import { type NonEmptyString } from '../../utils/typescript-types.js';
 import { Integration } from '../signalsService/index.js';
 import { type SignalAuthServicePg } from './dbTypes.js';
@@ -113,8 +114,7 @@ class SignalAuthService {
     integration: T,
     orgId: string,
   ): Promise<CredentialTypes[T] | undefined> {
-    // eslint-disable-next-line security/detect-object-injection -- integration selects a built-in credential implementation
-    return this.implementations[integration].get(orgId);
+    return getOwn(this.implementations, integration)!.get(orgId);
   }
 
   async set<T extends ConfigurableIntegration>(
@@ -122,16 +122,14 @@ class SignalAuthService {
     orgId: string,
     args: CredentialTypes[T],
   ): Promise<CredentialTypes[T]> {
-    // eslint-disable-next-line security/detect-object-injection -- integration selects a built-in credential implementation
-    return this.implementations[integration].set(orgId, args);
+    return getOwn(this.implementations, integration)!.set(orgId, args);
   }
 
   async delete<T extends ConfigurableIntegration>(
     integration: T,
     orgId: string,
   ): Promise<void> {
-    // eslint-disable-next-line security/detect-object-injection -- integration selects a built-in credential implementation
-    await this.implementations[integration].delete(orgId);
+    await getOwn(this.implementations, integration)!.delete(orgId);
   }
 
   /**

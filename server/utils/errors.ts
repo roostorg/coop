@@ -17,7 +17,7 @@ import { type ModerationConfigErrorType } from '../services/moderationConfigServ
 import { type PartialItemsServiceErrorType } from '../services/partialItemsService/index.js';
 import { type ReportingServiceErrorType } from '../services/reportingService/index.js';
 import { filterNullOrUndefined } from './collections.js';
-import { safePick } from './misc.js';
+import { getOwn, safePick } from './misc.js';
 
 // Keep a master list of our error types, for convenience. These are types
 // for our exposed errors, which are sent in both REST and GraphQL responses.
@@ -438,8 +438,7 @@ function isSerializableError(it: unknown): it is SerializableError {
 function isSafeError(
   it: unknown,
 ): it is SerializableError & { [safeErrorKey]: true } {
-  // eslint-disable-next-line security/detect-object-injection -- safeErrorKey is a module-local symbol
-  return isSerializableError(it) && Boolean(it[safeErrorKey]);
+  return isSerializableError(it) && Boolean(getOwn(it, safeErrorKey));
 }
 
 export function getMessageFromAggregateError(it: AggregateError): string {

@@ -284,10 +284,8 @@ export const fieldTypeHandlers: Handlers = {
         return new Error('This field, if given, must be an object.');
       }
       const { keyScalarType, valueScalarType } = container;
-      // eslint-disable-next-line security/detect-object-injection -- scalar type selects a built-in handler
-      const coerceKey = fieldTypeHandlers[keyScalarType].coerce;
-      // eslint-disable-next-line security/detect-object-injection -- scalar type selects a built-in handler
-      const coerceValue = fieldTypeHandlers[valueScalarType].coerce;
+      const coerceKey = getOwn(fieldTypeHandlers, keyScalarType)!.coerce;
+      const coerceValue = getOwn(fieldTypeHandlers, valueScalarType)!.coerce;
 
       const normalizedEntries = Object.entries(v as object)
         .map(

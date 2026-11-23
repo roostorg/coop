@@ -56,8 +56,7 @@ export function getFieldValueOrValues<T extends FieldType>(
       // because the type that TS infers when trying to generate a single,
       // callable signature for `getValues` is not correct (and has never as
       // its argument types).
-      // eslint-disable-next-line security/detect-object-injection -- field type selects a built-in handler
-      fieldTypeHandlers[type]
+      getOwn(fieldTypeHandlers, type)!
         .getValues(getOwn(data, name) as never, container as never)
         .map(
           (value) =>

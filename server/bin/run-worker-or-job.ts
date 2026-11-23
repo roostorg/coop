@@ -7,6 +7,7 @@ import {
   WORKER_AND_JOB_NAMES,
 } from '../iocContainer/services/workersAndJobs.js';
 import { logErrorJson } from '../utils/logging.js';
+import { getOwn } from '../utils/misc.js';
 
 // Validate before building the container, so a mistyped name exits without
 // opening Postgres, Redis and Scylla connections just to reject the argument.
@@ -27,8 +28,7 @@ if (!isWorkerOrJobName(workerOrJobName)) {
 
 const { container } = await getBottle();
 
-// eslint-disable-next-line security/detect-object-injection -- isWorkerOrJobName validated the name against registered workers/jobs
-const workerOrJob = container[workerOrJobName];
+const workerOrJob = getOwn(container, workerOrJobName)!;
 const controller = new AbortController();
 
 // When the worker/job finishes naturally (which only applies to jobs, as

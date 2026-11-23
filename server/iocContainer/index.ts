@@ -1871,8 +1871,8 @@ export default async function getBottle(
               serviceHasBeenAccessed(container, serviceName),
             )
             .map(
-              // eslint-disable-next-line security/detect-object-injection -- names come from the explicit shutdown service list
-              (serviceName) => [serviceName, container[serviceName]] as const,
+              (serviceName) =>
+                [serviceName, getOwn(container, serviceName)!] as const,
             );
 
           await Promise.all(

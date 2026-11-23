@@ -12,7 +12,12 @@ import { type Dependencies } from '../../iocContainer/index.js';
 import { jsonStringify } from '../../utils/encoding.js';
 import { type FixKyselyRowCorrelation } from '../../utils/kysely.js';
 import { logErrorJson } from '../../utils/logging.js';
-import { assertUnreachable, withRetries } from '../../utils/misc.js';
+import {
+  assertUnreachable,
+  getOwn,
+  setOwn,
+  withRetries,
+} from '../../utils/misc.js';
 import { type CollapseCases } from '../../utils/typescript-types.js';
 import { rawItemDataSchema } from '../itemProcessingService/index.js';
 import { type RawItemData } from '../itemProcessingService/toNormalizedItemDataOrErrors.js';
@@ -689,10 +694,7 @@ export function fileAnnotationArrayToNCMECFileAnnotation(
   };
   const result: FileAnnotations = {};
   for (const annotation of fileAnnotations) {
-    // eslint-disable-next-line security/detect-object-injection -- annotation selects a fixed NCMEC field mapping
-    const field = annotationFieldByType[annotation];
-    // eslint-disable-next-line security/detect-object-injection -- field comes from the fixed mapping above
-    result[field] = undefined;
+    setOwn(result, getOwn(annotationFieldByType, annotation)!, undefined);
   }
   return result;
 }

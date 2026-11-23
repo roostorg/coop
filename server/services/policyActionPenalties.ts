@@ -1,3 +1,4 @@
+import { getOwn } from '../utils/misc.js';
 import {
   UserPenaltySeverity,
   type ModerationConfigService,
@@ -49,8 +50,8 @@ export function computeActionPolicyPenalty(
 
   return actionPenalty === UserPenaltySeverity.NONE
     ? 0
-    : // eslint-disable-next-line security/detect-object-injection -- both keys are UserPenaltySeverity enum values
-      penaltySeverityMap[actionPenalty] + penaltySeverityMap[policyPenalty];
+    : getOwn(penaltySeverityMap, actionPenalty)! +
+        getOwn(penaltySeverityMap, policyPenalty)!;
 }
 
 export async function getPolicyActionPenaltiesForOrg(

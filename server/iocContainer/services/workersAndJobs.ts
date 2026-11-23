@@ -2,6 +2,7 @@ import type Bottle from '@ethanresnick/bottlejs';
 
 import { makeDetectRulePassRateAnomaliesJob } from '../../services/ruleAnomalyDetectionService/index.js';
 import { makeRefreshUserScoresCacheJob } from '../../services/userStatisticsService/index.js';
+import { getOwn } from '../../utils/misc.js';
 import {
   type Job,
   type Worker,
@@ -50,8 +51,7 @@ export const WORKER_AND_JOB_NAMES = Object.keys(
 
 export function registerWorkersAndJobs(bottle: Bottle<Dependencies>) {
   for (const name of WORKER_AND_JOB_NAMES) {
-    // eslint-disable-next-line security/detect-object-injection -- names come from the factory registry's own keys
-    register(bottle, name, workerAndJobFactories[name]);
+    register(bottle, name, getOwn(workerAndJobFactories, name)!);
   }
 }
 

@@ -16,13 +16,16 @@ describe('Misc utils', () => {
       const prototype = Object.defineProperty({}, 'secret', {
         get: inheritedGetter,
       });
-      const object: Record<string, unknown> = Object.create(prototype, {
+      const ownKey = Symbol();
+      const object: Record<PropertyKey, unknown> = Object.create(prototype, {
         value: { value: 0 },
         empty: { value: undefined },
+        [ownKey]: { get: () => 'own' },
       });
 
       expect(getOwn(object, 'value')).toBe(0);
       expect(getOwn(object, 'empty')).toBeUndefined();
+      expect(getOwn(object, ownKey)).toBe('own');
       expect(getOwn(object, 'missing')).toBeUndefined();
       expect(getOwn(object, 'constructor')).toBeUndefined();
       expect(getOwn(object, '__proto__')).toBeUndefined();

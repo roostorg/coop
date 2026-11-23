@@ -8,6 +8,7 @@ import {
 } from 'valibot';
 
 import { makeBadRequestError } from './errors.js';
+import { getOwn } from './misc.js';
 
 /**
  * Build an Express middleware that validates `req.body` against `schema`.
@@ -174,7 +175,7 @@ function objectValidationErrors(
       .filter(([, field]) => field.type !== 'optional')
       .map(([key]) => key);
   for (const key of requiredKeys) {
-    if (input[key] === undefined) {
+    if (getOwn(input, key) === undefined) {
       errors.push({ path, message: `must have required property '${key}'` });
     }
   }
@@ -188,9 +189,10 @@ function objectValidationErrors(
   }
 
   for (const [key, field] of entries) {
-    if (input[key] !== undefined) {
+    const value = getOwn(input, key);
+    if (value !== undefined) {
       const fieldPath = `${path}/${escapeJsonPointerSegment(key)}`;
-      errors.push(...validationErrors(field, input[key], fieldPath));
+      errors.push(...validationErrors(field, value, fieldPath));
     }
   }
   return errors;
@@ -216,7 +218,7 @@ function arrayValidationErrors(
     }
   }
   input.forEach((item, index) => {
-    const field = base.item ?? base.items?.[index] ?? base.rest;
+    const field = base.item ?? base.items?.at(index) ?? base.rest;
     if (field) {
       errors.push(...validationErrors(field, item, `${path}/${index}`));
     }
