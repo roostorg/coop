@@ -315,13 +315,13 @@ export async function fetchHTTP<T extends HandleResponseBody>(
           ? AbortSignal.any([timeoutSignal, callerSignal])
           : (timeoutSignal ?? callerSignal);
 
-      const agents = getOwn(agentMapping, query.maxResponseSize ?? '5mb')!;
-      const dispatcher =
-        urlTrust === 'trusted'
-          ? agents.trusted
-          : urlTrust === 'loopback'
-            ? agents.loopback
-            : agents.untrusted;
+      const agents = getOwn(agentMapping, query.maxResponseSize ?? '5mb');
+      const dispatcher = getOwn(agents, urlTrust);
+      if (dispatcher === undefined) {
+        throw new TypeError(
+          'No dispatcher configured for the requested response size',
+        );
+      }
 
       // NB: use of fetch here is okay, since this is our wrapper function that
       // should be used instead of fetch everywhere else in the codebase
