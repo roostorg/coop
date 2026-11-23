@@ -229,6 +229,21 @@ jobs:
       - name: Build server
         run: docker compose run --rm --quiet-pull backend pnpm run build
 
+      # Start each server/bin script the way a developer does, so a script that
+      # can't load its module graph fails here. run-worker-or-job has no
+      # --help: it exits 1 rejecting the name after loading its imports.
+      - name: Smoke-test server scripts
+        run: |
+          docker compose run --rm --quiet-pull backend bash -euo pipefail -c '
+            pnpm run create-org --help
+            pnpm run get-invite --help
+            pnpm run recover-mrt-queue --help
+            status=0
+            output=$(pnpm run runWorkerOrJob --help 2>&1) || status=$?
+            printf "%s\n" "$output" >&2
+            [[ $status -eq 1 && "$output" == *"Invalid worker or job name argument"* ]]
+          '
+
       - name: Migrate CI DBs and Test
         run: |
           docker compose run --rm --quiet-pull test pnpm run test:ci --coverage
