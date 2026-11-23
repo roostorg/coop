@@ -1,6 +1,7 @@
 import fc from 'fast-check';
 import { uid } from 'uid';
 import { v1 as uuidv1 } from 'uuid';
+import { vi } from 'vitest';
 
 import { type Dependencies } from '../../../iocContainer/index.js';
 import createActions from '../../../test/fixtureHelpers/createActions.js';
@@ -1217,6 +1218,44 @@ describe('QueueOperations', () => {
       // The Postgres rows are deliberately untouched: this only clears the
       // Bull state in Redis, which a caller's transaction cannot reach.
       expect(await queueIdsForOrg()).toEqual(before);
+    },
+  );
+
+  testWithQueueAndActions()(
+    'deleteManualReviewQueue closes and drops the Bull handles for the queue',
+    async ({ org, user, mrtService }) => {
+      const queueOps = mrtService['queueOps'];
+      const extraQueue = await mrtService.createManualReviewQueue({
+        name: `delete-handles-queue-${uid()}`,
+        description: null,
+        userIds: [user.id],
+        roleIds: [],
+        hiddenActionIds: [],
+        isAppealsQueue: false,
+        invokedBy: {
+          userId: user.id,
+          permissions: [UserPermission.EDIT_MRT_QUEUES],
+          orgId: org.id,
+        },
+      });
+      const key = { orgId: org.id, queueId: extraQueue.id };
+
+      // Dequeueing registers the queue's Worker, and with it the stalled-job
+      // checker and its Redis connection.
+      await queueOps.dequeueNextJobWithLock({ ...key, lockToken: user.id });
+      const worker = await queueOps['bullWorkers'].get(key);
+      const bullQueue = await queueOps['bullQueues'].get(key);
+      const closeWorker = vi.spyOn(worker, 'close');
+      const closeQueue = vi.spyOn(bullQueue, 'close');
+      const workersBefore = queueOps['bullWorkers'].size;
+
+      expect(
+        await mrtService.deleteManualReviewQueue(org.id, extraQueue.id),
+      ).toBe(true);
+
+      expect(closeWorker).toHaveBeenCalled();
+      expect(closeQueue).toHaveBeenCalled();
+      expect(queueOps['bullWorkers'].size).toBe(workersBefore - 1);
     },
   );
 });
