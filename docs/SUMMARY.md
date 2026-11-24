@@ -29,7 +29,7 @@
   - [Docker Images](development/docker.md)
   - [Releases](development/releases.md)
     - [Vulnerability Scanning](development/vulnerability-scanning.md)
-    - [Embargoed Work](development/embargoed-work.md)
+  - [Embargoed Work](development/embargoed-work.md)
   - [Deployment](development/deployment.md)
   - [Email](development/email.md)
   - [Blocking a PR from Merging](development/blocking-merges.md)

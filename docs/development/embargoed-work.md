@@ -9,7 +9,7 @@ There are two kinds:
 - **Security copies** hold pre-disclosure security fixes.
 - **Partner copies** hold features under a partner embargo.
 
-In the commands below, `<private-repo>` is the private copy as `owner/name`, and `<ghsa-fork-url>` is the URL of a security advisory's temporary private fork.
+In the commands below, `<private-repo>` is the private copy as `owner/name`, `<branch>` is a branch in it, `<ghsa-fork-url>` is the URL of a security advisory's temporary private fork, and `<public-branch>` is a neutral branch name that can become public.
 
 The tooling lives in this repository, so every private copy gets it with the history:
 
@@ -61,7 +61,7 @@ scripts/embargo/sync-upstream.sh
 scripts/embargo/sync-upstream.sh --yes
 ```
 
-If the private copy's `main` has commits that `roostorg/coop`'s `main` lacks, the sync fails, lists them and pushes nothing. Move those commits to a branch and open a PR for them, then reset `main` to `roostorg/coop`'s `main`. A private tag with the same name as an upstream tag but a different commit is never moved; the sync fails after pushing everything else. Rename or delete the private tag.
+If the private copy's `main` has commits that `roostorg/coop`'s `main` lacks, the sync fails, lists them and pushes nothing. Usually someone merged a private PR. Save those commits on a branch and open a PR for them, then have an admin who can bypass `main`'s protection reset it to `roostorg/coop`'s `main`. A private tag with the same name as an upstream tag but a different commit is never moved; the sync fails after pushing everything else. Rename or delete the private tag.
 
 ## Reviewing work
 
@@ -70,25 +70,26 @@ If the private copy's `main` has commits that `roostorg/coop`'s `main` lacks, th
 3. Review it as you would a PR to `roostorg/coop`, with the same title format, tests and checks.
 4. Don't merge it. Merging would put the private copy's `main` ahead of `roostorg/coop`, and the sync would stop. Keep the approved PR open until [landing](#landing).
 
-While the PR waits, the sync keeps `main` current. Rebase the branch onto it from time to time, and run the lineage check, which fetches `roostorg/coop`'s `main` itself:
+While the PR waits, the sync keeps `main` current. Rebase the branch onto it from time to time, push it, and run the lineage check. The check fetches `roostorg/coop`'s `main` itself and checks the pushed branch:
 
 ```bash
 git fetch origin
 git rebase origin/main
+git push --force-with-lease
 scripts/embargo/check-lineage.sh <branch>
 ```
 
-It exits 1 and prints each failed rule with a code:
+It exits 2 if it can't run (for example in a shallow clone, or if the branch isn't pushed), and 1 if the branch fails a rule, printing each failed rule with a code:
 
 | Code      | Problem                                                     | Fix                                                                                                                 |
 | --------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| `[1]`     | The private copy's `main` has commits `roostorg/coop` lacks | Reset it to `roostorg/coop`'s `main`; it only mirrors                                                               |
+| `[1]`     | The private copy's `main` has commits `roostorg/coop` lacks | See [Keeping `main` in sync](#keeping-main-in-sync)                                                                 |
 | `[2a]`    | The branch doesn't build on `roostorg/coop`'s `main`        | Rebase onto `main`                                                                                                  |
 | `[2b]`    | The branch shares commits with another private branch       | Land the other branch first, or rebase so the branch holds only its own commits; same for a branch stacked on yours |
 | `[3]`     | The branch has merge commits                                | Rebase onto `main`                                                                                                  |
 | `[range]` | The branch has nothing to land                              | Nothing to do                                                                                                       |
 
-Force-pushing a rebase does not dismiss existing approvals, so ask for a new review if the rebase changed anything.
+Ask for a new review if a rebase changed anything; depending on the private copy's settings, a force push may not dismiss existing approvals.
 
 ## Landing
 
@@ -97,11 +98,20 @@ Land the work when its embargo ends:
 - **Security fixes** land in the same window as the release that ships them, not earlier. A fix merged to `roostorg/coop` is public, so landing it before the release is ready discloses the vulnerability with no fixed version to upgrade to. Agree the release base first, then land and release straight after: see [Security releases](security-releases.md), steps 1, 2 and 4.
 - **Partner features** land on the date agreed with the partner.
 
-Run the landing script from your clone of the private copy, with the PR's branch checked out locally. It needs git 2.40 or later. It checks the branch's lineage, replays it onto `roostorg/coop`'s current `main` without touching your working tree, squashes it into one commit and pushes that commit to a new branch on the target. It does not open the PR.
+For a security fix, pushing to the advisory's fork is still private, so you can do it ahead of the window; only the merge from the advisory waits. For a partner feature, the push to `roostorg/coop` is itself public, so it waits for the date.
 
-Run it without `--yes` first. It opens your editor with the branch's commit messages, which become the squashed commit's message; that message is public once the commit lands, so remove anything about the embargo. Check the author, message, diff stat, target and branch name it prints, then rerun with `--yes`. The pushed branch takes the private branch's name unless you pass `--remote-branch`; the name becomes public too, so pick a neutral one.
+Before landing, fix the branch's commit messages in the private PR so they say nothing about the embargo, and make sure your local branch matches the reviewed PR head; the script lands the local branch:
 
-For a security fix, the target is the advisory's temporary private fork. Bring the fork's `main` up to date first, as in [Undisclosed vulnerability: private fork](security-releases.md#undisclosed-vulnerability-private-fork), step 3, since the squashed commit builds on `roostorg/coop`'s current `main`:
+```bash
+git fetch origin
+test "$(git rev-parse <branch>)" = "$(git rev-parse origin/<branch>)"
+```
+
+Run the landing script from your clone of the private copy. It needs git 2.40 or later. It checks the branch's lineage, replays it onto `roostorg/coop`'s current `main` without touching your working tree, squashes it into one commit and pushes that commit to a new branch on the target. It does not open the PR.
+
+Run it without `--yes` first. It opens your editor with the branch's commit messages, which become the squashed commit's message, public once the commit lands. Check the author, message, diff stat, target and branch name it prints, then rerun with `--yes`. The `--yes` run opens the editor again with the original messages, not your edits, so review the message again before saving. The pushed branch takes the private branch's name unless you pass `--remote-branch`; the name becomes public too, so pick a neutral one.
+
+For a security fix, the target is the advisory's temporary private fork. Pushing to it needs the classic token from [Undisclosed vulnerability: private fork](security-releases.md#undisclosed-vulnerability-private-fork), step 2. Bring the fork's `main` up to date first, as in step 3 there, since the squashed commit builds on `roostorg/coop`'s current `main`:
 
 ```bash
 scripts/embargo/land.sh --help
@@ -109,7 +119,7 @@ scripts/embargo/land.sh <branch> --ghsa <ghsa-fork-url> --remote-branch <public-
 scripts/embargo/land.sh <branch> --ghsa <ghsa-fork-url> --remote-branch <public-branch> --yes
 ```
 
-Open the PR from the link the script prints, and follow the rest of the private-fork steps in [Security releases](security-releases.md). Actions doesn't run in the fork, so link or copy the private copy's CI results into the fork PR.
+Open the PR from the link the script prints, and follow the rest of the private-fork steps in [Security releases](security-releases.md). Actions doesn't run in the fork, so copy the private copy's CI results (check names and outcomes) into the fork PR. Don't link to them: the link names the private copy, and the fork PR's content can end up in the published advisory. When releasing from `release/x.y`, backport the merged fix as that page describes.
 
 For a partner feature, the target is `roostorg/coop`. With `--yes`, the script asks you to type the branch name to confirm:
 
@@ -122,11 +132,11 @@ Open the PR from the link the script prints. It gets the usual review and CI.
 
 Either way, the PR's title and description say nothing about the embargo or the private copy. If the script reports a lineage failure or a conflict, it changes nothing: rebase the branch in the private copy, have it reviewed again, and rerun.
 
-After the PR merges, the sync brings the commit into the private copy's `main`. Close the private PR and delete its branch.
+After the PR merges, the next sync brings the commit into the private copy's `main`; run it by hand to do that sooner. Close the private PR and delete its branch.
 
 ## Local clone setup
 
-Set up every clone of a private copy so that it can't push to `roostorg/coop` or open a PR there by accident:
+Set up every clone of a private copy so that, by default, it doesn't push to `roostorg/coop` or open PRs and issues there:
 
 ```bash
 git clone https://github.com/<private-repo>.git
@@ -143,6 +153,6 @@ git remote -v              # upstream's push URL is DISABLED
 gh repo set-default --view # prints <private-repo>
 ```
 
-`git push upstream` then fails, and `gh pr create`, `gh issue create` and other `gh` commands target the private copy. `git` and `gh` defaults are per clone, so repeat this for every clone and worktree checkout.
+`git push upstream` then fails, and `gh pr create`, `gh issue create` and other `gh` commands target the private copy. This only changes defaults: a push by URL, `gh --repo roostorg/coop` and the `GH_REPO` environment variable still reach `roostorg/coop`. The settings are per clone (worktrees share them), so repeat this for every clone.
 
-AI coding agents working in these clones need the same setup. Check it before the agent starts, and tell it that the repository is private and that nothing from it goes to `roostorg/coop`, or to any other public place, until it lands.
+AI coding agents working in these clones need the same setup. Check it before the agent starts, and tell it that the repository is private and that nothing from it goes to `roostorg/coop`, or to any other public place, until it lands. That overrides the upstream participation guidance in `AGENTS.md`. Don't share an agent's memory, notes or session context between a private clone and public work.
