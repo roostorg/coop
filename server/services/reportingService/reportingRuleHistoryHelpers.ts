@@ -71,7 +71,6 @@ export async function getSimplifiedRuleHistory<K extends VersionedField>(
   getRawHistory: (
     fields: readonly K[],
     ruleIds?: readonly string[],
-    numVersions?: number,
   ) => Promise<
     (Partial<Pick<PublicReportingRuleVersion, K>> &
       Pick<PublicReportingRuleVersion, 'id' | 'exactVersion'>)[]
@@ -91,6 +90,9 @@ export async function getSimplifiedRuleHistory<K extends VersionedField>(
   // we could do it by issuing two queries, if not filtering in the db
   // eventually becomes a perf issue]. For now, though, we get back all
   // the versions and filter here, client-side.
+  if (ruleIds?.length === 0) {
+    return [];
+  }
   const allVersions = (await getRawHistory(fields, ruleIds)).map((it) => ({
     ...it,
     approxVersion: new Date(it.exactVersion),
@@ -135,7 +137,6 @@ export function buildSimplifiedHistoryQuery<K extends VersionedField>(
   db: Kysely<ReportingServicePg>,
   fields: readonly K[],
   ruleIds?: readonly string[],
-  numVersions?: number,
 ) {
   // To build our query, we convert the camelCased fields from the public
   // interface to their snake_case names in the db. In terms of the types, we:
@@ -233,10 +234,6 @@ export function buildSimplifiedHistoryQuery<K extends VersionedField>(
       sql<string>`version::text`.as('exactVersion'),
     ])
     .where('version', 'is not', null);
-
-  if (numVersions) {
-    simplifiedHistoryQuery.limit(numVersions);
-  }
 
   return {
     async execute() {

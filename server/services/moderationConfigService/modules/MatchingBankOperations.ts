@@ -144,13 +144,13 @@ export default class MatchingBankOperations {
   }
 
   async deleteTextBank(orgId: string, id: string) {
-    const rowsDeleted = await this.pgQuery
+    const result = await this.pgQuery
       .deleteFrom('public.text_banks')
       .where('id', '=', id)
       .where('org_id', '=', orgId)
-      .execute();
+      .executeTakeFirst();
 
-    return rowsDeleted.length === 1;
+    return result.numDeletedRows === 1n;
   }
 }
 

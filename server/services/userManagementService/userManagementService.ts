@@ -176,9 +176,9 @@ class UserManagementService {
       .deleteFrom('public.invite_user_tokens')
       .where('id', '=', inviteId)
       .where('org_id', '=', orgId)
-      .execute();
+      .executeTakeFirst();
 
-    return result.length > 0;
+    return result.numDeletedRows === 1n;
   }
 
   async upsertUserInterfaceSettings(input: {

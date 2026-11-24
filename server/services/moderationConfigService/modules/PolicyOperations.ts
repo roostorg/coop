@@ -311,13 +311,13 @@ export default class PolicyOperations {
       );
     }
 
-    const rowsDeleted = await this.pgQuery
+    const result = await this.pgQuery
       .deleteFrom('public.policies')
       .where('org_id', '=', orgId)
       .where('id', '=', policyId)
-      .execute();
+      .executeTakeFirst();
 
-    if (rowsDeleted.length === 1) {
+    if (result.numDeletedRows === 1n) {
       // We don't need to wait for this to complete before returning.
       // Additionally, if it fails, we don't want to throw an error because
       // it's not critical that it succeeds, it's just a 'best effort' cleanup.
