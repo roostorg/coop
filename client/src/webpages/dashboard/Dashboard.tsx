@@ -633,7 +633,7 @@ export default function Dashboard() {
         {
           title: 'Actions' as const,
           urlPath: 'actions',
-          requiredPermissions: [GQLUserPermission.ManageOrg],
+          requiredPermissions: [GQLUserPermission.MutateNonLiveRules],
         },
         {
           title: 'API Keys' as const,

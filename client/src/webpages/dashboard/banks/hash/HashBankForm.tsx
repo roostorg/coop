@@ -12,15 +12,18 @@ import NameDescriptionInput from '../../components/NameDescriptionInput';
 
 import {
   GQLHashBankByIdDocument,
+  GQLUserPermission,
   namedOperations,
   useGQLCreateHashBankMutation,
   useGQLExchangeApiSchemaLazyQuery,
   useGQLExchangeApisQuery,
   useGQLHashBankByIdQuery,
+  useGQLPermissionsQuery,
   useGQLUpdateHashBankExchangeCredentialsMutation,
   useGQLUpdateHashBankMutation,
   type GQLExchangeApiSchemaQuery,
 } from '../../../../graphql/generated';
+import { userHasPermissions } from '../../../../routing/permissions';
 
 function userInputErrorMessage(
   error: {
@@ -237,6 +240,17 @@ export default function HashBankForm() {
   >({});
 
   const isCreating = id == null;
+  const { data: permissionsData } = useGQLPermissionsQuery();
+  const canSave = userHasPermissions(permissionsData?.me?.permissions, [
+    GQLUserPermission.MutateLiveRules,
+  ]);
+  const canSetCredentials = userHasPermissions(
+    permissionsData?.me?.permissions,
+    [GQLUserPermission.ManageOrg],
+  );
+  const noPermissionTooltip = `To ${isCreating ? 'create' : 'edit'} Hash Banks, ask your organization's admin to upgrade your role to Rules Manager or Admin.`;
+  const noCredentialsPermissionTooltip =
+    'To set exchange credentials, you need Admin permissions.';
 
   const showModal = () => setModalVisible(true);
   const hideModal = () => setModalVisible(false);
@@ -515,6 +529,11 @@ export default function HashBankForm() {
 
   const isExchangeIncomplete =
     Boolean(hasRequiredConfigMissing) || Boolean(hasRequiredCredsMissing);
+  const sendsCredentials = Boolean(
+    selectedExchangeApi && schema?.credentials_schema?.fields.length,
+  );
+  const lacksCredentialsPermission =
+    isCreating && sendsCredentials && !canSetCredentials;
 
   const modal = (
     <CoopModal
@@ -641,14 +660,21 @@ export default function HashBankForm() {
                       <CoopButton
                         title="Save Credentials"
                         loading={updateCredsMutationParams.loading}
-                        disabled={schema.credentials_schema.fields
-                          .filter((f) => f.required)
-                          .some(
-                            (f) =>
-                              editCredValues[f.name] == null ||
-                              editCredValues[f.name] === '',
-                          )}
-                        disabledTooltipTitle="Please fill in all required credential fields"
+                        disabled={
+                          !canSetCredentials ||
+                          schema.credentials_schema.fields
+                            .filter((f) => f.required)
+                            .some(
+                              (f) =>
+                                editCredValues[f.name] == null ||
+                                editCredValues[f.name] === '',
+                            )
+                        }
+                        disabledTooltipTitle={
+                          canSetCredentials
+                            ? 'Please fill in all required credential fields'
+                            : noCredentialsPermissionTooltip
+                        }
                         onClick={onUpdateCredentials}
                       />
                     </div>
@@ -772,11 +798,19 @@ export default function HashBankForm() {
       <CoopButton
         title={isCreating ? 'Create Hash Bank' : 'Save Changes'}
         loading={updateMutationParams.loading || createMutationParams.loading}
-        disabled={isCreating && Boolean(isExchangeIncomplete)}
+        disabled={
+          !canSave ||
+          lacksCredentialsPermission ||
+          (isCreating && Boolean(isExchangeIncomplete))
+        }
         disabledTooltipTitle={
-          isExchangeIncomplete
-            ? 'Please fill in all required exchange fields'
-            : undefined
+          !canSave
+            ? noPermissionTooltip
+            : lacksCredentialsPermission
+              ? noCredentialsPermissionTooltip
+              : isExchangeIncomplete
+                ? 'Please fill in all required exchange fields'
+                : undefined
         }
         onClick={isCreating ? onCreateBank : onUpdateBank}
       />

@@ -364,6 +364,16 @@ function makeReportingService(
       return reportingRules.getReportingRules(opts);
     },
 
+    async getReportingRuleStatus(opts: { id: string; orgId: string }) {
+      const row = await pgQuery
+        .selectFrom('reporting_rules.reporting_rules')
+        .select('status')
+        .where('id', '=', opts.id)
+        .where('org_id', '=', opts.orgId)
+        .executeTakeFirst();
+      return row?.status;
+    },
+
     async createReportingRule(opts: CreateReportingRuleInput) {
       return reportingRules.createReportingRule(opts);
     },

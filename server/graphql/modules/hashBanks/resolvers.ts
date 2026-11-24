@@ -2,12 +2,14 @@ import {
   HashBankUserError,
   type ExchangeCredentialJson,
 } from '../../../services/hmaService/index.js';
+import { UserPermission } from '../../../services/userManagementService/index.js';
 import { isCoopErrorOfType } from '../../../utils/errors.js';
 import type {
   GQLMutationResolvers,
   GQLQueryResolvers,
 } from '../../generated.js';
 import type { Context } from '../../resolvers.js';
+import { requirePermission } from '../../utils/authorization.js';
 import {
   forbiddenError,
   unauthenticatedError,
@@ -156,10 +158,12 @@ const Mutation: GQLMutationResolvers<Context> = {
     },
     context: Context,
   ) {
-    const user = context.getUser();
-    if (!user?.orgId) {
-      throw unauthenticatedError('User required.');
-    }
+    const user = requirePermission(
+      context.getUser(),
+      input.exchange?.credentials_json
+        ? UserPermission.MANAGE_ORG
+        : UserPermission.MUTATE_LIVE_RULES,
+    );
 
     const exchangeConfig = input.exchange
       ? {
@@ -209,10 +213,10 @@ const Mutation: GQLMutationResolvers<Context> = {
     },
     context: Context,
   ) {
-    const user = context.getUser();
-    if (!user?.orgId) {
-      throw unauthenticatedError('User required.');
-    }
+    const user = requirePermission(
+      context.getUser(),
+      UserPermission.MUTATE_LIVE_RULES,
+    );
 
     try {
       const bank = await context.services.HMAHashBankService.updateBank(
@@ -234,10 +238,10 @@ const Mutation: GQLMutationResolvers<Context> = {
   },
 
   async deleteHashBank(_: unknown, { id }: { id: string }, context: Context) {
-    const user = context.getUser();
-    if (!user?.orgId) {
-      throw unauthenticatedError('User required.');
-    }
+    const user = requirePermission(
+      context.getUser(),
+      UserPermission.MUTATE_LIVE_RULES,
+    );
 
     await context.services.HMAHashBankService.deleteBank(user.orgId, id);
     return true;
@@ -262,10 +266,10 @@ const Mutation: GQLMutationResolvers<Context> = {
     { bankId, credentialsJson }: { bankId: string; credentialsJson: string },
     context: Context,
   ) {
-    const user = context.getUser();
-    if (!user?.orgId) {
-      throw unauthenticatedError('User required.');
-    }
+    const user = requirePermission(
+      context.getUser(),
+      UserPermission.MANAGE_ORG,
+    );
 
     const id = Number(bankId);
     if (!Number.isSafeInteger(id)) {

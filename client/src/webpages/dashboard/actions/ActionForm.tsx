@@ -228,8 +228,15 @@ export default function ActionForm() {
   }
 
   const canEditActions = userHasPermissions(permissions, [
-    GQLUserPermission.ManageOrg,
+    GQLUserPermission.MutateLiveRules,
   ]);
+  // The callback headers and body can hold credentials, so only admins can
+  // see or change an existing action's callback.
+  const canEditCallback =
+    id == null ||
+    userHasPermissions(permissions, [GQLUserPermission.ManageOrg]);
+  const hiddenCallbackPlaceholder =
+    'Only admins can view or change the callback of an existing action.';
 
   const onCreateAction = async () =>
     createAction({
@@ -259,13 +266,17 @@ export default function ActionForm() {
           name: actionName!,
           description: actionDescription ?? undefined,
           itemTypeIds: actionItemTypeIds,
-          callbackUrl: actionCallbackUrl,
-          callbackUrlHeaders: actionCallbackUrlHeaders
-            ? JSON.parse(actionCallbackUrlHeaders)
-            : undefined,
-          callbackUrlBody: actionCallbackUrlBody
-            ? JSON.parse(actionCallbackUrlBody)
-            : undefined,
+          ...(canEditCallback
+            ? {
+                callbackUrl: actionCallbackUrl,
+                callbackUrlHeaders: actionCallbackUrlHeaders
+                  ? JSON.parse(actionCallbackUrlHeaders)
+                  : undefined,
+                callbackUrlBody: actionCallbackUrlBody
+                  ? JSON.parse(actionCallbackUrlBody)
+                  : undefined,
+              }
+            : {}),
           parameters: toMutationInput(actionParameters),
         },
       },
@@ -318,6 +329,7 @@ export default function ActionForm() {
         style={{ borderRadius: '8px' }}
         onChange={(e) => setActionCallbackUrl(e.target.value)}
         value={actionCallbackUrl}
+        disabled={!canEditCallback}
       />
       <div className="my-4 text-base text-zinc-900">
         <span className="font-semibold">Note</span>: For each HTTP request we
@@ -342,6 +354,8 @@ export default function ActionForm() {
 }`}
         onChange={(e) => setActionCallbackUrlHeaders(e.target.value)}
         value={actionCallbackUrlHeaders}
+        disabled={!canEditCallback}
+        {...(canEditCallback ? {} : { placeholder: hiddenCallbackPlaceholder })}
       />
       {callbackSectionHeader('Body (Optional)')}
       <div className="mb-4 text-base text-zinc-900">
@@ -362,6 +376,8 @@ export default function ActionForm() {
         style={{ borderRadius: '12px' }}
         onChange={(e) => setActionCallbackUrlBody(e.target.value)}
         value={actionCallbackUrlBody}
+        disabled={!canEditCallback}
+        {...(canEditCallback ? {} : { placeholder: hiddenCallbackPlaceholder })}
       />
     </div>
   );
@@ -466,7 +482,7 @@ export default function ActionForm() {
         loading={createMutationLoading || updateMutationLoading}
         disabledTooltipTitle={(() => {
           if (!canEditActions) {
-            return "To edit Actions, ask your organization's admin to upgrade your role to Admin.";
+            return "To edit Actions, ask your organization's admin to upgrade your role to Rules Manager or Admin.";
           }
           if (!actionName) {
             return 'Please enter a name for your Action.';

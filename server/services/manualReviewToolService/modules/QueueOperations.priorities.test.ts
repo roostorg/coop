@@ -298,7 +298,7 @@ describe('QueueOperations job priorities', () => {
         }),
       ).toBe(true);
 
-      const bullQueue = await queueOps['getOrCreateBullQueue']({
+      const bullQueue = await queueOps['bullQueues'].get({
         orgId: org.id,
         queueId: queue.id,
       });
@@ -389,7 +389,7 @@ describe('QueueOperations job priorities', () => {
         priority: 2000,
       });
 
-      const bullQueue = await queueOps['getOrCreateBullQueue']({
+      const bullQueue = await queueOps['bullQueues'].get({
         orgId: org.id,
         queueId: queue.id,
       });
@@ -426,7 +426,7 @@ describe('QueueOperations job priorities', () => {
       });
       expect(result.aborted).toBe(true);
 
-      const bullQueue = await queueOps['getOrCreateBullQueue']({
+      const bullQueue = await queueOps['bullQueues'].get({
         orgId: org.id,
         queueId: queue.id,
       });
@@ -470,7 +470,7 @@ describe('QueueOperations job priorities', () => {
       });
       await mrtService.awaitPendingPriorityRecomputes();
 
-      const bullQueue = await queueOps['getOrCreateBullQueue']({
+      const bullQueue = await queueOps['bullQueues'].get({
         orgId: org.id,
         queueId: queue.id,
       });
@@ -560,7 +560,7 @@ describe('QueueOperations job priorities', () => {
         });
       }
 
-      const bullQueue = await queueOps['getOrCreateBullQueue']({
+      const bullQueue = await queueOps['bullQueues'].get({
         orgId: org.id,
         queueId: queue.id,
       });
@@ -600,7 +600,7 @@ describe('QueueOperations job priorities', () => {
         });
       }
 
-      const bullQueue = await queueOps['getOrCreateBullQueue']({
+      const bullQueue = await queueOps['bullQueues'].get({
         orgId: org.id,
         queueId: queue.id,
       });
@@ -644,7 +644,7 @@ describe('QueueOperations job priorities', () => {
             },
           });
         }
-        const bullQueue = await queueOps['getOrCreateBullQueue']({
+        const bullQueue = await queueOps['bullQueues'].get({
           orgId: org.id,
           queueId: queue.id,
         });
@@ -665,7 +665,7 @@ describe('QueueOperations job priorities', () => {
       'keeps a job indexed when a read drops its entry mid-enqueue',
       async ({ org, queue, redis, mrtService }) => {
         const queueOps = mrtService['queueOps'];
-        const bullQueue = await queueOps['getOrCreateBullQueue']({
+        const bullQueue = await queueOps['bullQueues'].get({
           orgId: org.id,
           queueId: queue.id,
         });
@@ -823,7 +823,7 @@ describe('QueueOperations job priorities', () => {
           });
         const removedJob = await addAt('item-oldest', 0);
         await addAt('item-newer', 60_000);
-        const bullQueue = await queueOps['getOrCreateBullQueue']({
+        const bullQueue = await queueOps['bullQueues'].get({
           orgId: org.id,
           queueId: queue.id,
         });

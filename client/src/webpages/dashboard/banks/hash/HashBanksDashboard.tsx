@@ -18,10 +18,13 @@ import { stringSort } from '../../components/table/sort';
 import CustomTable from '../../components/table/Table';
 
 import {
+  GQLUserPermission,
   namedOperations,
   useGQLDeleteHashBankMutation,
   useGQLHashBanksQuery,
+  useGQLPermissionsQuery,
 } from '../../../../graphql/generated';
+import { userHasPermissions } from '../../../../routing/permissions';
 
 const getStatusColor = (enabled_ratio: number) => {
   if (enabled_ratio === 0) return 'red';
@@ -77,17 +80,23 @@ export default function HashBanksDashboard() {
     });
   }, []);
 
+  const { data: permissionsData } = useGQLPermissionsQuery();
+  const canDeleteBanks = userHasPermissions(permissionsData?.me?.permissions, [
+    GQLUserPermission.MutateLiveRules,
+  ]);
+
   const mutations = useCallback(
     (id: string) => {
       return (
         <RowMutations
           onEdit={(event: MouseEvent) => editBank(id, event)}
           onDelete={(event: MouseEvent) => showModal(id, event)}
-          canDelete={true}
+          canDelete={canDeleteBanks}
+          deleteDisabledTooltipTitle="To delete Hash Banks, ask your organization's admin to upgrade your role to Rules Manager or Admin."
         />
       );
     },
-    [editBank, showModal],
+    [canDeleteBanks, editBank, showModal],
   );
 
   const columns = useMemo(
