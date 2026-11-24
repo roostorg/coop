@@ -58,6 +58,12 @@ interface DateRange {
   to: Date | undefined;
 }
 
+/** Calendar picks are day-granular; always use full inclusive local days. */
+const normalizeInclusiveDateRange = (range: DateRange): DateRange => ({
+  from: startOfDay(range.from),
+  to: range.to != null ? endOfDay(range.to) : undefined,
+});
+
 export enum Preset {
   Today = 'Today',
   Yesterday = 'Yesterday',
@@ -206,8 +212,13 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
   }`;
 
   const updateButtonOnClick = useCallback(() => {
+    const normalized = normalizeInclusiveDateRange({
+      ...range,
+      to: range.to ?? range.from,
+    });
+    setRange(normalized);
     setIsOpen(false);
-    onUpdate?.({ range });
+    onUpdate?.({ range: normalized });
   }, [onUpdate, setIsOpen, range]);
 
   return (
@@ -276,7 +287,12 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
                   mode="range"
                   onSelect={(value: { from?: Date; to?: Date } | undefined) => {
                     if (value?.from != null) {
-                      setRange({ from: value.from, to: value?.to });
+                      setRange(
+                        normalizeInclusiveDateRange({
+                          from: value.from,
+                          to: value?.to,
+                        }),
+                      );
                     }
                   }}
                   selected={range}
@@ -301,11 +317,12 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
                   onChange={(date) => {
                     const toDate =
                       !range.to || isAfter(date, range.to) ? date : range.to;
-                    setRange((prevRange) => ({
-                      ...prevRange,
-                      from: date,
-                      to: toDate,
-                    }));
+                    setRange(
+                      normalizeInclusiveDateRange({
+                        from: date,
+                        to: toDate,
+                      }),
+                    );
                   }}
                 />
                 <div className="py-1">-</div>
@@ -315,11 +332,12 @@ export const DateRangePicker: FC<DateRangePickerProps> = ({
                     const fromDate = isBefore(date, range.from)
                       ? date
                       : range.from;
-                    setRange((prevRange) => ({
-                      ...prevRange,
-                      from: fromDate,
-                      to: date,
-                    }));
+                    setRange(
+                      normalizeInclusiveDateRange({
+                        from: fromDate,
+                        to: date,
+                      }),
+                    );
                   }}
                 />
               </div>

@@ -2,6 +2,20 @@
 
 This directory contains utility scripts for managing the Coop server.
 
+In a checkout, run each script from the `server` directory through its
+`pnpm run` script, which compiles the server and then runs the script:
+
+| Script                   | Command                      |
+| ------------------------ | ---------------------------- |
+| `create-org-and-user.ts` | `pnpm run create-org`        |
+| `get-invite-token.ts`    | `pnpm run get-invite`        |
+| `recover-mrt-queue.ts`   | `pnpm run recover-mrt-queue` |
+| `seed-clip-bank.ts`      | `pnpm run seed-clip-bank`    |
+| `run-worker-or-job.ts`   | `pnpm run runWorkerOrJob`    |
+
+The server and worker images contain the compiled scripts, so inside a
+container run them with Node directly, e.g. `node bin/get-invite-token.js`.
+
 ## get-invite-token.ts
 
 Retrieves the signup invite link for a user that was invited from the UI.
@@ -11,7 +25,7 @@ Retrieves the signup invite link for a user that was invited from the UI.
 From the `server` directory, run:
 
 ```bash
-node bin/get-invite-token.js --email "user@example.com"
+pnpm run get-invite --email "user@example.com"
 ```
 
 ### Parameters
@@ -65,7 +79,7 @@ Creates a new organization with an admin user and generates an API key.
 From the `server` directory, run:
 
 ```bash
-node bin/create-org-and-user.js \
+pnpm run create-org \
   --name "My Organization" \
   --email "admin@example.com" \
   --website "https://example.com" \
@@ -187,12 +201,12 @@ both default and NCMEC queues:
 
 ```bash
 # Dry run -- prints what would be re-enqueued, makes no changes
-node bin/recover-mrt-queue.js \
+pnpm run recover-mrt-queue \
   --orgId "<orgId>" \
   --queueId "<queueId>"
 
 # Actually re-enqueue
-node bin/recover-mrt-queue.js \
+pnpm run recover-mrt-queue \
   --orgId "<orgId>" \
   --queueId "<queueId>" \
   --apply

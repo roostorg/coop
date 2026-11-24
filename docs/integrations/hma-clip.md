@@ -183,8 +183,6 @@ It reads the `.env` in `server/`, and reaches HMA through `HMA_SERVICE_URL` ther
 
 HMA cannot list a bank's contents, and adding the same image twice stores it twice (observed even with the same content id), so the script cannot tell which images are already there: running it twice on the same directory adds the images twice. This does not change matching, but it wastes space. To start over, delete the bank and create it again.
 
-If `pnpm run` cannot start the script, build the server (`pnpm run build`) and run the compiled file instead: `node --env-file-if-exists=.env transpiled/bin/seed-clip-bank.js --org ... --bank ... --dir ...`.
-
 ## Test it through the Coop UI
 
 `hma/clip/smoke-test.sh` (above) checks HMA from the terminal. To try the whole feature as a user would, from adding a bank to seeing a matching image arrive in the review queue, follow the [CLIP testing guide](hma-clip-ui-testing.md). It uses the fixture images in `hma/clip/fixtures/`.

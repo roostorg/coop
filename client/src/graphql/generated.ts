@@ -620,6 +620,8 @@ export type GQLContentRule = GQLRule & {
   readonly parentId?: Maybe<Scalars['ID']['output']>;
   readonly policies: ReadonlyArray<GQLPolicy>;
   readonly status: GQLRuleStatus;
+  /** The status the rule has when it isn't past its expiration time. */
+  readonly statusIfUnexpired: GQLRuleStatus;
   readonly tags?: Maybe<ReadonlyArray<Maybe<Scalars['String']['output']>>>;
   readonly updatedAt: Scalars['String']['output'];
 };
@@ -4401,6 +4403,8 @@ export type GQLRule = {
   readonly parentId?: Maybe<Scalars['ID']['output']>;
   readonly policies: ReadonlyArray<GQLPolicy>;
   readonly status: GQLRuleStatus;
+  /** The status the rule has when it isn't past its expiration time. */
+  readonly statusIfUnexpired: GQLRuleStatus;
   readonly tags?: Maybe<ReadonlyArray<Maybe<Scalars['String']['output']>>>;
   readonly updatedAt: Scalars['String']['output'];
 };
@@ -5466,6 +5470,8 @@ export type GQLUserRule = GQLRule & {
   readonly parentId?: Maybe<Scalars['ID']['output']>;
   readonly policies: ReadonlyArray<GQLPolicy>;
   readonly status: GQLRuleStatus;
+  /** The status the rule has when it isn't past its expiration time. */
+  readonly statusIfUnexpired: GQLRuleStatus;
   readonly tags?: Maybe<ReadonlyArray<Maybe<Scalars['String']['output']>>>;
   readonly updatedAt: Scalars['String']['output'];
 };
@@ -7491,6 +7497,11 @@ export type GQLGetOrgDataQuery = {
           >;
         }
     >;
+  } | null;
+  readonly me?: {
+    readonly __typename: 'User';
+    readonly id: string;
+    readonly permissions: ReadonlyArray<GQLUserPermission>;
   } | null;
 };
 
@@ -20023,6 +20034,7 @@ type GQLRulesDashboardRuleFieldsFragmentContentRuleFragment = {
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly status: GQLRuleStatus;
+  readonly statusIfUnexpired: GQLRuleStatus;
   readonly creator: {
     readonly __typename: 'User';
     readonly firstName: string;
@@ -20063,6 +20075,7 @@ type GQLRulesDashboardRuleFieldsFragmentUserRuleFragment = {
   readonly createdAt: string;
   readonly updatedAt: string;
   readonly status: GQLRuleStatus;
+  readonly statusIfUnexpired: GQLRuleStatus;
   readonly creator: {
     readonly __typename: 'User';
     readonly firstName: string;
@@ -20116,6 +20129,7 @@ export type GQLRulesQuery = {
           readonly createdAt: string;
           readonly updatedAt: string;
           readonly status: GQLRuleStatus;
+          readonly statusIfUnexpired: GQLRuleStatus;
           readonly itemTypes: ReadonlyArray<
             | {
                 readonly __typename: 'ContentItemType';
@@ -20333,6 +20347,7 @@ export type GQLRulesQuery = {
           readonly createdAt: string;
           readonly updatedAt: string;
           readonly status: GQLRuleStatus;
+          readonly statusIfUnexpired: GQLRuleStatus;
           readonly conditionSet: {
             readonly __typename: 'ConditionSet';
             readonly conjunction: GQLConditionConjunction;
@@ -23621,6 +23636,7 @@ type GQLRuleFormRuleFieldsFragmentContentRuleFragment = {
   readonly name: string;
   readonly description?: string | null;
   readonly status: GQLRuleStatus;
+  readonly statusIfUnexpired: GQLRuleStatus;
   readonly tags?: ReadonlyArray<string | null> | null;
   readonly maxDailyActions?: number | null;
   readonly expirationTime?: string | null;
@@ -23912,6 +23928,7 @@ type GQLRuleFormRuleFieldsFragmentUserRuleFragment = {
   readonly name: string;
   readonly description?: string | null;
   readonly status: GQLRuleStatus;
+  readonly statusIfUnexpired: GQLRuleStatus;
   readonly tags?: ReadonlyArray<string | null> | null;
   readonly maxDailyActions?: number | null;
   readonly expirationTime?: string | null;
@@ -24214,6 +24231,7 @@ export type GQLRuleQuery = {
         readonly name: string;
         readonly description?: string | null;
         readonly status: GQLRuleStatus;
+        readonly statusIfUnexpired: GQLRuleStatus;
         readonly tags?: ReadonlyArray<string | null> | null;
         readonly maxDailyActions?: number | null;
         readonly expirationTime?: string | null;
@@ -24683,6 +24701,7 @@ export type GQLRuleQuery = {
         readonly name: string;
         readonly description?: string | null;
         readonly status: GQLRuleStatus;
+        readonly statusIfUnexpired: GQLRuleStatus;
         readonly tags?: ReadonlyArray<string | null> | null;
         readonly maxDailyActions?: number | null;
         readonly expirationTime?: string | null;
@@ -26694,6 +26713,7 @@ export const GQLRulesDashboardRuleFieldsFragmentFragmentDoc = gql`
     createdAt
     updatedAt
     status
+    statusIfUnexpired
     policies {
       name
     }
@@ -27030,6 +27050,7 @@ export const GQLRuleFormRuleFieldsFragmentFragmentDoc = gql`
     name
     description
     status
+    statusIfUnexpired
     policies {
       id
     }
@@ -31639,6 +31660,10 @@ export const GQLGetOrgDataDocument = gql`
       }
       requiresPolicyForDecisionsInMrt
       allowMultiplePoliciesPerAction
+    }
+    me {
+      id
+      permissions
     }
   }
   ${GQLItemTypeFragmentFragmentDoc}

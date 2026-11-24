@@ -1,6 +1,7 @@
 import pg from 'pg';
 
 import { logErrorJson } from '../utils/logging.js';
+import { PgClientWithSslHints } from './pgSsl.js';
 
 /**
  * Wraps `new pg.Pool` with an idle-client `'error'` listener.
@@ -9,9 +10,15 @@ import { logErrorJson } from '../utils/logging.js';
  * dropped LB connection, etc.) to `uncaughtException`, which kills the
  * process. Logging the error lets the pool replace the dead client on the
  * next checkout, which is the recovery path `pg` already supports.
+ *
+ * With TLS on, connection errors from certificate verification name the
+ * DATABASE_SSL_* setting that fixes them.
  */
 export function createPgPool(config: pg.PoolConfig): pg.Pool {
-  const pool = new pg.Pool(config);
+  const pool = new pg.Pool({
+    ...(config.ssl ? { Client: PgClientWithSslHints } : {}),
+    ...config,
+  });
 
   // Log-only; do NOT re-throw.
   pool.on('error', (err) => {

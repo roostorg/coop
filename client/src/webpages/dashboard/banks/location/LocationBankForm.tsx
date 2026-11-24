@@ -228,7 +228,7 @@ export default function LocationBankForm() {
   if (bankQueryLoading || bankFormQueryLoading) {
     return <FullScreenLoading />;
   }
-  const canEditLocationBanks = userHasPermissions(permissions, [
+  const canSave = userHasPermissions(permissions, [
     GQLUserPermission.MutateLiveRules,
   ]);
 
@@ -286,7 +286,7 @@ export default function LocationBankForm() {
     <CoopButton
       title={id == null ? 'Create Location Bank' : 'Save Changes'}
       disabled={
-        !canEditLocationBanks ||
+        !canSave ||
         bankName == null ||
         bankName.length === 0 ||
         locations.length === 0
@@ -294,8 +294,8 @@ export default function LocationBankForm() {
       loading={createMutationParams.loading || updateMutationParams.loading}
       size={'middle'}
       disabledTooltipTitle={
-        !canEditLocationBanks
-          ? "To edit Location Banks, ask your organization's admin to upgrade your role to Rules Manager or Admin."
+        !canSave
+          ? `To ${id == null ? 'create' : 'edit'} Location Banks, ask your organization's admin to upgrade your role to Rules Manager or Admin.`
           : bankName == null || bankName.length === 0
             ? 'Please provide a name for the Location Bank.'
             : locations.length === 0

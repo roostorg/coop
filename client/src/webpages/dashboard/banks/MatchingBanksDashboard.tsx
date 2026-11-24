@@ -34,7 +34,9 @@ export default function MatchingBanksDashboard() {
   useMemo(
     () =>
       setCanEditBanks(
-        userHasPermissions(permissions ?? [], [GQLUserPermission.ManageOrg]),
+        userHasPermissions(permissions ?? [], [
+          GQLUserPermission.MutateLiveRules,
+        ]),
       ),
     [permissions],
   );
@@ -56,7 +58,7 @@ export default function MatchingBanksDashboard() {
             : 'hash'
       }`}
       disabled={!canEditBanks}
-      disabledTooltipTitle="To create Matching Banks, you need Admin permissions."
+      disabledTooltipTitle="To create Matching Banks, ask your organization's admin to upgrade your role to Rules Manager or Admin."
       disabledTooltipPlacement="bottomRight"
     />
   );

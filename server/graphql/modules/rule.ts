@@ -28,6 +28,7 @@ import {
   type GQLUserRuleResolvers,
 } from '../generated.js';
 import { type Context, type ResolverMap } from '../resolvers.js';
+import { requireRuleMutationPermission } from '../utils/authorization.js';
 import { unauthenticatedError } from '../utils/errors.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 
@@ -62,6 +63,8 @@ const typeDefs = /* GraphQL */ `
     updatedAt: String!
     description: String
     status: RuleStatus!
+    "The status the rule has when it isn't past its expiration time."
+    statusIfUnexpired: RuleStatus!
     conditionSet: ConditionSet!
     actions: [Action!]!
     actionParameters: [RuleActionParameterValues!]!
@@ -84,6 +87,8 @@ const typeDefs = /* GraphQL */ `
     updatedAt: String!
     description: String
     status: RuleStatus!
+    "The status the rule has when it isn't past its expiration time."
+    statusIfUnexpired: RuleStatus!
     conditionSet: ConditionSet!
     actions: [Action!]!
     actionParameters: [RuleActionParameterValues!]!
@@ -107,6 +112,8 @@ const typeDefs = /* GraphQL */ `
     updatedAt: String!
     description: String
     status: RuleStatus!
+    "The status the rule has when it isn't past its expiration time."
+    statusIfUnexpired: RuleStatus!
     conditionSet: ConditionSet!
     actions: [Action!]!
     actionParameters: [RuleActionParameterValues!]!
@@ -507,12 +514,23 @@ const Query: GQLQueryResolvers = {
   },
 };
 
+// A live rule past its expiration time reports status EXPIRED, but an update
+// that moves the expiration makes it live again, so check the stored status.
+async function isLiveRule(context: Context, id: string, orgId: string) {
+  const rule = await context.services.ModerationConfigService.getRuleByIdAndOrg(
+    id,
+    orgId,
+    { readFromReplica: false },
+  );
+  return rule?.statusIfUnexpired === 'LIVE';
+}
+
 const Mutation: GQLMutationResolvers = {
   async createContentRule(_, params, context) {
-    const user = context.getUser();
-    if (user == null) {
-      throw unauthenticatedError('Authenticated user required');
-    }
+    const user = await requireRuleMutationPermission(
+      context.getUser(),
+      () => params.input.status === 'LIVE',
+    );
 
     try {
       const rule = await context.dataSources.ruleAPI.createContentRule(
@@ -534,12 +552,13 @@ const Mutation: GQLMutationResolvers = {
     }
   },
   async updateContentRule(_, params, context) {
+    const user = await requireRuleMutationPermission(
+      context.getUser(),
+      async (orgId) =>
+        params.input.status === 'LIVE' ||
+        isLiveRule(context, params.input.id, orgId),
+    );
     try {
-      const user = context.getUser();
-      if (user == null) {
-        throw unauthenticatedError('Authenticated user required');
-      }
-
       const rule = await context.dataSources.ruleAPI.updateContentRule({
         input: params.input,
         orgId: user.orgId,
@@ -565,10 +584,10 @@ const Mutation: GQLMutationResolvers = {
     }
   },
   async createUserRule(_, params, context) {
-    const user = context.getUser();
-    if (user == null) {
-      throw unauthenticatedError('Authenticated user required');
-    }
+    const user = await requireRuleMutationPermission(
+      context.getUser(),
+      () => params.input.status === 'LIVE',
+    );
 
     try {
       const rule = await context.dataSources.ruleAPI.createUserRule(
@@ -587,10 +606,12 @@ const Mutation: GQLMutationResolvers = {
     }
   },
   async updateUserRule(_, params, context) {
-    const user = context.getUser();
-    if (user == null) {
-      throw unauthenticatedError('Authenticated user required');
-    }
+    const user = await requireRuleMutationPermission(
+      context.getUser(),
+      async (orgId) =>
+        params.input.status === 'LIVE' ||
+        isLiveRule(context, params.input.id, orgId),
+    );
 
     try {
       const rule = await context.dataSources.ruleAPI.updateUserRule({
@@ -615,10 +636,10 @@ const Mutation: GQLMutationResolvers = {
     }
   },
   async deleteRule(_, params, context) {
-    const user = context.getUser();
-    if (user == null) {
-      throw unauthenticatedError('Authenticated user required');
-    }
+    const user = await requireRuleMutationPermission(
+      context.getUser(),
+      async (orgId) => isLiveRule(context, params.id, orgId),
+    );
 
     return context.dataSources.ruleAPI.deleteRule({
       id: params.id,

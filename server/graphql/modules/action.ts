@@ -1,7 +1,9 @@
 /* eslint-disable max-lines */
+import { isDeepStrictEqual } from 'node:util';
 import { type JsonObject } from 'type-fest';
 
 import { parseStoredParameters } from '../../services/moderationConfigService/index.js';
+import { UserPermission } from '../../services/userManagementService/index.js';
 import { isCoopErrorOfType } from '../../utils/errors.js';
 import { assertUnreachable } from '../../utils/misc.js';
 import {
@@ -14,8 +16,11 @@ import {
   type GQLEnqueueToNcmecActionResolvers,
   type GQLMutationResolvers,
   type GQLQueryResolvers,
+  type GQLUpdateActionInput,
 } from '../generated.js';
-import { unauthenticatedError } from '../utils/errors.js';
+import { type Context } from '../resolvers.js';
+import { hasPermission, requirePermission } from '../utils/authorization.js';
+import { forbiddenError, unauthenticatedError } from '../utils/errors.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 
 const typeDefs = /* GraphQL */ `
@@ -350,6 +355,18 @@ const CustomAction: GQLCustomActionResolvers = {
       actionId: action.id,
     });
   },
+  // Headers and body often carry credentials for the receiving endpoint, so
+  // only users who can edit actions may read them.
+  callbackUrlHeaders(action, _, context) {
+    return hasPermission(context.getUser(), UserPermission.MANAGE_ORG)
+      ? (action.callbackUrlHeaders as JsonObject | null)
+      : null;
+  },
+  callbackUrlBody(action, _, context) {
+    return hasPermission(context.getUser(), UserPermission.MANAGE_ORG)
+      ? (action.callbackUrlBody as JsonObject | null)
+      : null;
+  },
 };
 
 const EnqueueAuthorToMrtAction: GQLEnqueueAuthorToMrtActionResolvers = {
@@ -423,13 +440,43 @@ const Query: GQLQueryResolvers = {
   },
 };
 
+async function changesCallback(
+  context: Context,
+  orgId: string,
+  input: GQLUpdateActionInput,
+) {
+  // A null callbackUrl leaves it unchanged; null headers or body clear them.
+  const changing = [
+    ...(input.callbackUrl != null ? (['callbackUrl'] as const) : []),
+    ...(['callbackUrlHeaders', 'callbackUrlBody'] as const).filter(
+      (field) => input[field] !== undefined,
+    ),
+  ];
+  if (changing.length === 0) {
+    return false;
+  }
+  const stored = (
+    await context.services.ModerationConfigService.getActions({
+      orgId,
+      ids: [input.id],
+      readFromReplica: false,
+    })
+  ).at(0);
+  if (stored?.actionType !== 'CUSTOM_ACTION') {
+    return true;
+  }
+  return changing.some(
+    (field) => !isDeepStrictEqual(input[field] ?? null, stored[field] ?? null),
+  );
+}
+
 const Mutation: GQLMutationResolvers = {
   async createAction(_, params, context) {
+    const user = requirePermission(
+      context.getUser(),
+      UserPermission.MUTATE_LIVE_RULES,
+    );
     try {
-      const user = context.getUser();
-      if (user == null) {
-        throw unauthenticatedError('User required.');
-      }
       const action = await context.dataSources.actionAPI.createAction(
         params.input,
         user.orgId,
@@ -444,12 +491,22 @@ const Mutation: GQLMutationResolvers = {
     }
   },
   async updateAction(_, params, context) {
+    const user = requirePermission(
+      context.getUser(),
+      UserPermission.MUTATE_LIVE_RULES,
+    );
+    const { orgId } = user;
+    // The webhook carries the stored headers and body, so only users who can
+    // read them may change where it goes or what it sends.
+    if (
+      !hasPermission(user, UserPermission.MANAGE_ORG) &&
+      (await changesCallback(context, orgId, params.input))
+    ) {
+      throw forbiddenError(
+        'MANAGE_ORG permission required to change an action callback.',
+      );
+    }
     try {
-      const user = context.getUser();
-      if (user == null) {
-        throw unauthenticatedError('User required.');
-      }
-      const { orgId } = user;
       const action = await context.dataSources.actionAPI.updateAction(
         params.input,
         orgId,
@@ -464,20 +521,17 @@ const Mutation: GQLMutationResolvers = {
     }
   },
   async deleteAction(_, params, context) {
-    const user = context.getUser();
-    if (user == null) {
-      throw unauthenticatedError('User required.');
-    }
-    const { orgId } = user;
+    const { orgId } = requirePermission(
+      context.getUser(),
+      UserPermission.MUTATE_LIVE_RULES,
+    );
     return context.dataSources.actionAPI.deleteAction(orgId, params.id);
   },
   async bulkExecuteActions(_, params, context) {
-    const user = context.getUser();
-    if (user == null) {
-      throw unauthenticatedError('User required.');
-    }
-
-    const { orgId, id, email } = user;
+    const { orgId, id, email } = requirePermission(
+      context.getUser(),
+      UserPermission.MANUALLY_ACTION_CONTENT,
+    );
 
     const actionResults =
       await context.dataSources.actionAPI.bulkExecuteActions({

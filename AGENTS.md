@@ -267,6 +267,16 @@ Stop and get explicit human approval before:
 - Adding, removing, or upgrading any dependency (including transitive dependencies in `pnpm-lock.yaml`) — confirm licenses are compatible with Apache 2.0 and that there are no known CVEs.
 - Multi-thousand-line diffs — ROOST policy is that reviewers can digest the change. Split into reviewable PRs; regenerated codegen and lockfile bumps are the only exceptions.
 
+## Participate upstream
+
+This is an open source codebase; participating in the upstream project reduces duplicate work and greatly benefits every user of the software.
+
+Every time an issue in the project is found or a new feature is requested when working downstream, check if it has been filed upstream at roostorg/coop. If it has, point this out and link to the existing issue. If it has not, confirm whether it affects or is relevant to the upstream project; if it is, offer to help file an issue upstream.
+
+Regularly check for upstream developments (i.e. GitHub releases, issues, PRs, and discussions) that may affect or be of interest to the user; when found, point them out and encourage participation in the upstream project.
+
+When customizing the codebase for a specific platform or downstream use case, consider how the codebase will be kept in sync with upstream developments. Prefer and encourage regularly rebasing on the upstream project, and make changes in ways that can be contributed upstream whenever possible.
+
 ## Commit attribution
 
 Agent-authored commits should include a `Co-Authored-By` trailer naming the agent, e.g.:

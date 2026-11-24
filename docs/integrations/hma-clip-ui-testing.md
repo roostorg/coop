@@ -29,7 +29,7 @@ docker exec <postgres container> psql -U postgres -c "select id, name from publi
 Then, from the `server` directory:
 
 ```bash
-node --env-file-if-exists=.env transpiled/bin/seed-clip-bank.js \
+pnpm run seed-clip-bank \
   --org <orgId> --bank "CLIP UI test" --dir ../hma/clip/fixtures/bank --dry-run
 ```
 
@@ -41,7 +41,7 @@ Bank "CLIP UI test" (COOP_..._CLIP_UI_TEST)
 1 added, 0 failed
 ```
 
-The script reaches HMA through `HMA_SERVICE_URL` in `server/.env`, which must point at your HMA (`http://localhost:9876` in a local setup). If a run fails with `fetch failed`, that URL is wrong; you can set it for one run by putting `HMA_SERVICE_URL=http://localhost:9876` in front of the `node` command. If you prefer `pnpm run seed-clip-bank` with the same arguments, that works where ts-node starts.
+The script reaches HMA through `HMA_SERVICE_URL` in `server/.env`, which must point at your HMA (`http://localhost:9876` in a local setup). If a run fails with `fetch failed`, that URL is wrong; you can set it for one run by putting `HMA_SERVICE_URL=http://localhost:9876` in front of the `pnpm` command.
 
 HMA builds its search index on a timer, so matching starts working within about 3 minutes. To wait until the bank is searchable, run this from the repository root (it stops with a message after about 5 minutes), with the HMA bank name that the seed script printed in parentheses. It prints a dot every 10 seconds and then `indexed`:
 
