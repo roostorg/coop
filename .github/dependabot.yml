@@ -90,6 +90,10 @@ updates:
         versions: ['>4.3.2 <5.0.0']
       - dependency-name: 'typescript'
         versions: ['>=5.0.0 <6.0.0']
+      # 5.5.2 caps @graphql-tools/utils below 12.0.2, which pulls a version
+      # with high-severity advisories into the server's runtime dependencies.
+      - dependency-name: '@apollo/server'
+        versions: ['5.5.2']
     groups:
       npm-prod-security:
         dependency-type: 'production'
