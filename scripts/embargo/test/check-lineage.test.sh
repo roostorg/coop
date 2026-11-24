@@ -212,6 +212,23 @@ run fix
 expect 'merge commit fails check 3' 1 'FAIL \[3\]' '^  [0-9a-f]+ merge topic$' 'PASS \[2b\]'
 
 setup
+git checkout -q -b other upstream/main
+commit 'other one'
+commit 'other two'
+git push -q origin other
+git checkout -q -b forkfix other~1
+commit 'forkfix one'
+run --rev HEAD other
+expect '<remote>/<branch> that is not an ancestor of --rev is not excluded from 2b' 1 'FAIL \[2b\]' '^  [0-9a-f]+ other one$' 'also on: origin/other'
+
+setup
+git checkout -q --orphan fix
+commit 'unrelated one'
+git push -q origin fix
+run fix
+expect 'branch with no shared history fails check 2a' 1 'FAIL \[2a\]: fix shares no history'
+
+setup
 git checkout -q -b fix upstream/main
 git push -q origin fix
 run fix
@@ -282,6 +299,9 @@ expect 'unresolvable --rev is an environment error' 2 'could not resolve --rev'
 status=0
 out=$("$script" --upstream-url "$tmp/does-not-exist.git" main 2>&1) || status=$?
 expect 'upstream fetch failure is an environment error' 2 'could not fetch main from'
+git --git-dir=../private.git branch -q -m main renamed
+run --rev HEAD fix
+expect 'missing <remote>/main is an environment error' 2 'no branch main on origin'
 run --remote nowhere main
 expect 'unknown remote is an environment error' 2 'no such remote: nowhere'
 git clone -q --depth 1 "file://$(git remote get-url origin)" ../shallow 2>/dev/null

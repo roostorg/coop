@@ -2,7 +2,7 @@ name: Embargo lineage
 
 # Private copies of roostorg/coop only: checks that a PR branch holds only
 # upstream main plus its own commits (scripts/embargo/check-lineage.sh), so it
-# can land publicly. Never runs in roostorg/coop or in public forks.
+# can land publicly. Never runs in roostorg/coop or in public repositories.
 
 on:
   pull_request:
@@ -15,47 +15,43 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  visibility:
-    name: Check repository visibility
-    if: github.repository != 'roostorg/coop'
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      contents: read
-    outputs:
-      private: ${{ steps.repo.outputs.private }}
-    steps:
-      - name: Check that this repository is private
-        id: repo
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-        run: echo "private=$(gh api "repos/$REPO" --jq .private)" >> "$GITHUB_OUTPUT"
-
   lineage:
     name: Lineage
-    needs: visibility
-    if: needs.visibility.outputs.private == 'true'
+    # pull_request payloads always carry repository.private, so this needs no
+    # API call that could fail and skip the check.
+    if: github.repository != 'roostorg/coop' && github.event.repository.private
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: read
     steps:
-      - name: Require base main
+      - name: Require base main and a same-repository branch
         env:
           BASE_REF: ${{ github.base_ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          REPO: ${{ github.repository }}
         run: |
+          failed=0
           if [[ "$BASE_REF" != 'main' ]]; then
             echo "::error title=Lineage::PRs must target main, not $BASE_REF: land stacked work one branch at a time."
-            exit 1
+            failed=1
           fi
+          # The check identifies the PR's own branch by name, which only holds
+          # for branches in this repository.
+          if [[ "$HEAD_REPO" != "$REPO" ]]; then
+            echo '::error title=Lineage::PRs must come from a branch in this repository, not a fork.'
+            failed=1
+          fi
+          exit "$failed"
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
 
-      # Runs main's copy of the script so a PR cannot weaken its own check.
+      # Runs main's copy of the script so a PR's edits to the script do not
+      # apply to its own check. Edits to this workflow file do; protect it
+      # with review rules in each private copy.
       - name: Check lineage
         env:
           HEAD_REF: ${{ github.head_ref }}

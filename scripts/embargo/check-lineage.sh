@@ -22,7 +22,8 @@ refs/embargo/upstream/main, and checks:
   2a  merge-base(<branch>, upstream main) is on upstream main's first-parent
       history.
   2b  Every commit in upstream/main..<branch> is reachable from no other
-      branch of <remote>.
+      branch of <remote>. <remote>/<branch> itself is skipped only when it
+      is an ancestor of (or equal to) the tip being checked.
   3   No merge commits in upstream/main..<branch>.
 
 It also fails when upstream/main..<branch> is empty: there is nothing to land.
@@ -40,6 +41,10 @@ Options:
   --no-fetch-remote    Use the existing refs/remotes/<remote>/* instead of
                        fetching <remote> first. Upstream is always fetched.
   -h, --help           Show this help.
+
+Examples:
+  scripts/embargo/check-lineage.sh fix-something
+  scripts/embargo/check-lineage.sh --rev "$(git rev-parse fix-something)" fix-something
 
 Exit codes:
   0  All checks passed.
@@ -103,11 +108,15 @@ fi
   exit 2
 }
 branch="${branch#refs/heads/}"
-git check-ref-format --branch "$branch" >/dev/null 2>&1 || die "not a valid branch name: $branch"
 
+command -v git >/dev/null || die 'git is required'
+git check-ref-format --branch "$branch" >/dev/null 2>&1 || die "not a valid branch name: $branch"
 git rev-parse --git-dir >/dev/null 2>&1 || die 'not inside a git repository'
 [[ "$(git rev-parse --is-shallow-repository)" == 'false' ]] ||
   die 'the repository is a shallow clone; lineage needs full history (git fetch --unshallow)'
+
+# Any failure not handled explicitly is an environment error, never a pass.
+trap 'echo "$PROG: error: unexpected failure at line $LINENO" >&2; exit 2' ERR
 
 if [[ "$fetch_remote" -eq 1 ]]; then
   git remote get-url "$remote" >/dev/null 2>&1 || die "no such remote: $remote"
@@ -152,9 +161,10 @@ pass() {
 }
 
 list_commits() {
-  local c
+  local c line
   for c in "$@"; do
-    echo "  $(git log -1 --no-show-signature --format='%h %s' "$c")" >&2
+    line=$(git log -1 --no-show-signature --format='%h %s' "$c")
+    echo "  $line" >&2
   done
 }
 
@@ -168,25 +178,32 @@ echo "$PROG: checking $branch ($(short "$tip")) against upstream main ($(short "
 if git merge-base --is-ancestor "$private_main" "$upstream"; then
   pass 1 "$remote/main is upstream main or an ancestor of it"
 else
-  mapfile -t extra < <(git rev-list --reverse "$upstream..$private_main")
+  out=$(git rev-list --reverse "$upstream..$private_main")
+  extra=()
+  [[ -z "$out" ]] || mapfile -t extra <<<"$out"
   fail 1 "$remote/main has ${#extra[@]} commit(s) that are not on upstream main; the private main must only mirror upstream (fix the mirror before landing anything):"
   list_commits "${extra[@]}"
 fi
 
-mapfile -t range < <(git rev-list --reverse "$upstream..$tip")
+out=$(git rev-list --reverse "$upstream..$tip")
+range=()
+[[ -z "$out" ]] || mapfile -t range <<<"$out"
 
 if [[ ${#range[@]} -eq 0 ]]; then
   fail range "$branch has no commits that are not already on upstream main: nothing to land"
 fi
 
 # 2a. The branch starts from upstream main itself.
-mapfile -t bases < <(git merge-base --all "$tip" "$upstream" || true)
+out=$(git merge-base --all "$tip" "$upstream") || out=''
+bases=()
+[[ -z "$out" ]] || mapfile -t bases <<<"$out"
+first_parents=$(git rev-list --first-parent "$upstream")
 if [[ ${#bases[@]} -eq 0 ]]; then
   fail 2a "$branch shares no history with upstream main"
 elif [[ ${#bases[@]} -gt 1 ]]; then
   fail 2a "$branch has ${#bases[@]} merge bases with upstream main; it must start from a single upstream main commit:"
   list_commits "${bases[@]}"
-elif grep -qxF "${bases[0]}" <<<"$(git rev-list --first-parent "$upstream")"; then
+elif grep -qxF "${bases[0]}" <<<"$first_parents"; then
   pass 2a "$branch is based on upstream main commit $(short "${bases[0]}")"
 else
   fail 2a "$branch is based on $(short "${bases[0]}"), which is upstream history but not a commit of upstream main itself (it is on a merged side branch); rebase onto upstream main:"
@@ -194,14 +211,26 @@ else
 fi
 
 # 2b. No commit in the range is shared with another branch of the private copy.
-mapfile -t others < <(
-  git for-each-ref --format='%(refname)' "refs/remotes/$remote/" |
-    grep -vxF -e "refs/remotes/$remote/HEAD" -e "refs/remotes/$remote/$branch" || true
-)
+# <remote>/<branch> is this branch's own pushed copy only when it is an
+# ancestor of (or equal to) the tip; otherwise it is compared like any other.
+own="refs/remotes/$remote/$branch"
+if ! git rev-parse --verify --quiet "$own^{commit}" >/dev/null ||
+  ! git merge-base --is-ancestor "$own" "$tip"; then
+  own=''
+fi
+out=$(git for-each-ref --format='%(refname)' "refs/remotes/$remote/")
+refs=()
+[[ -z "$out" ]] || mapfile -t refs <<<"$out"
+others=()
+for r in "${refs[@]}"; do
+  [[ "$r" == "refs/remotes/$remote/HEAD" || "$r" == "$own" ]] || others+=("$r")
+done
 shared=0
 if [[ ${#range[@]} -gt 0 && ${#others[@]} -gt 0 ]]; then
   for c in "${range[@]}"; do
-    mapfile -t holders < <(git for-each-ref --contains "$c" --format='%(refname:short)' "${others[@]}")
+    out=$(git for-each-ref --contains "$c" --format='%(refname:short)' "${others[@]}")
+    holders=()
+    [[ -z "$out" ]] || mapfile -t holders <<<"$out"
     [[ ${#holders[@]} -gt 0 ]] || continue
     if [[ "$shared" -eq 0 ]]; then
       fail 2b "commits on $branch are also on other branches of $remote; a branch must hold only its own commits on top of upstream main (e.g. it was built on another unlanded branch, or another branch was built on it):"
@@ -216,7 +245,9 @@ if [[ "$shared" -eq 0 ]]; then
 fi
 
 # 3. Linear history only.
-mapfile -t merges < <(git rev-list --reverse --min-parents=2 "$upstream..$tip")
+out=$(git rev-list --reverse --min-parents=2 "$upstream..$tip")
+merges=()
+[[ -z "$out" ]] || mapfile -t merges <<<"$out"
 if [[ ${#merges[@]} -eq 0 ]]; then
   pass 3 "no merge commits on $branch"
 else
@@ -227,7 +258,11 @@ fi
 if [[ -n "$gha_token" ]]; then
   echo "::$gha_token::"
   for f in "${failures[@]}"; do
-    echo "::error title=Lineage check ${f%%$'\t'*} failed::${f#*$'\t'}"
+    msg=${f#*$'\t'}
+    msg=${msg//%/%25}
+    msg=${msg//$'\r'/%0D}
+    msg=${msg//$'\n'/%0A}
+    echo "::error title=Lineage check ${f%%$'\t'*} failed::$msg"
   done
 fi
 
