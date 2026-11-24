@@ -21,10 +21,12 @@ any change if the repository already exists, the team doesn't exist, or the
 'embargo' custom property is missing. The steps, in order:
 
   1. gh repo create --private, wiki disabled; then projects disabled, and
-     GitHub Pages removed if it is somehow enabled.
+     GitHub Pages removed if a site exists.
   2. allow_forking=false.
   3. Set the org custom property 'embargo' to the kind. The property must
-     already exist; the script never creates it.
+     already exist as a single select allowing the kind; the script never
+     creates or changes it. From here on, org rulesets targeting
+     embargo=<kind> apply to the repository.
   4. Grant <team-slug> push access.
   5. Bare-clone upstream into a temporary directory and push only
      refs/heads/main and refs/tags/* (never refs/pull/* or other branches),
@@ -51,6 +53,9 @@ Requirements (for --yes):
   repositories, edit custom property values and administer the team (classic
   token scopes: repo, admin:org). git. The seed push authenticates through
   gh (gh auth git-credential), so no separate git credentials are needed.
+  The seed push happens after step 3, so you must be able to bypass any org
+  ruleset targeting embargo=<kind> that would reject creating main or tags
+  (for example restrict creations or required signatures).
 
 Examples:
   new-embargo-repo.sh <private-repo> <team-slug> security
@@ -72,9 +77,10 @@ usage_error() {
 
 yes=0
 print_cmd() {
-  printf '+ '
-  printf '%q ' "$@"
-  printf '\n'
+  local line
+  line=$(printf '%q ' "$@")
+  # The dry run's placeholder temp directory, shown as written.
+  printf '+ %s\n' "${line//\\<tmpdir\\>/<tmpdir>}"
 }
 run() {
   print_cmd "$@"
@@ -146,7 +152,7 @@ esac
 
 repo=$org/$name
 repo_url=https://github.com/$repo.git
-[[ $repo_url != "$UPSTREAM_URL" ]] || die "refusing to target roostorg/coop itself"
+[[ ${repo,,} != roostorg/coop ]] || die "refusing to target roostorg/coop itself"
 
 if ((yes)); then
   command -v gh >/dev/null || die "gh is required"
@@ -156,65 +162,82 @@ else
 fi
 
 # Read-only checks. Under --yes they run and stop the script before any change.
+auth_check=(gh auth status)
+repo_check=(gh api "repos/$repo" --jq .full_name)
+team_check=(gh api "orgs/$org/teams/$team" --jq .slug)
+schema_check=(gh api "orgs/$org/properties/schema/$PROPERTY"
+  --jq '[.value_type, ((.allowed_values // []) | join(" "))] | join("\t")')
 echo "# Checks (read-only; with --yes they run before any change)"
-print_cmd gh api "repos/$repo"
-print_cmd gh api "orgs/$org/teams/$team"
-print_cmd gh api "orgs/$org/properties/schema/$PROPERTY"
+print_cmd "${auth_check[@]}"
+print_cmd "${repo_check[@]}"
+print_cmd "${team_check[@]}"
+print_cmd "${schema_check[@]}"
 if ((yes)); then
-  gh auth status >/dev/null 2>&1 || die "gh is not authenticated; run: gh auth login"
+  "${auth_check[@]}" >/dev/null 2>&1 || die "gh is not authenticated; run: gh auth login"
 
-  if out=$(gh api "repos/$repo" --jq .full_name 2>&1); then
+  if out=$("${repo_check[@]}" 2>&1); then
     die "$repo already exists"
   elif [[ $out != *"HTTP 404"* ]]; then
     die "could not check whether $repo exists: $out"
   fi
 
-  out=$(gh api "orgs/$org/teams/$team" --jq .slug 2>&1) ||
+  out=$("${team_check[@]}" 2>&1) ||
     die "team '$team' not found in $org (use the team's slug): $out"
 
-  if ! schema=$(gh api "orgs/$org/properties/schema/$PROPERTY" \
-    --jq '[.value_type, ((.allowed_values // []) | join(" "))] | join("\t")' 2>&1); then
+  if ! schema=$("${schema_check[@]}" 2>&1); then
     if [[ $schema == *"HTTP 404"* ]]; then
       die "the custom property '$PROPERTY' does not exist in $org. An org owner must create it (Settings > Custom properties; single select with values 'security' and 'partner') before running this script. The script does not create it."
     fi
     die "could not read the custom property '$PROPERTY' in $org: $schema"
   fi
   IFS=$'\t' read -r value_type allowed <<<"$schema"
-  if [[ $value_type == single_select || $value_type == multi_select ]] &&
-    [[ " $allowed " != *" $kind "* ]]; then
-    die "the custom property '$PROPERTY' in $org does not allow the value '$kind' (allowed: $allowed). An org owner must add it."
-  fi
+  case $value_type in
+    single_select)
+      [[ " $allowed " == *" $kind "* ]] ||
+        die "the custom property '$PROPERTY' in $org does not allow the value '$kind' (allowed: $allowed). An org owner must add it."
+      ;;
+    string) ;;
+    *) die "the custom property '$PROPERTY' in $org is of type '$value_type'; it must be a single select (or text) property" ;;
+  esac
 fi
 
 created=0
 on_exit() {
   local rc=$?
-  [[ -z ${tmp:-} ]] || rm -rf -- "$tmp"
+  if ((yes)); then rm -rf -- "$tmp"; fi
   if ((rc != 0 && created)); then
-    log "$repo was created but setup did not finish. Finish the remaining steps by hand, or delete it: gh repo delete $repo"
+    log "$repo was created but setup did not finish. If a push or property change was rejected by an org ruleset, check that you can bypass the rulesets targeting $PROPERTY=$kind. Finish the remaining steps by hand, or delete it: gh repo delete $repo"
   fi
 }
+if ((yes)); then
+  tmp=$(mktemp -d)
+else
+  tmp='<tmpdir>'
+fi
 trap on_exit EXIT
-tmp=$(mktemp -d)
 
 echo "# 1. Create the private repository; disable wiki, projects and Pages"
 run gh repo create "$repo" --private --disable-wiki
 if ((yes)); then created=1; fi
-run gh api --method PATCH "repos/$repo" -F has_projects=false -F has_wiki=false --silent
+run gh api --method PATCH "repos/$repo" -F has_projects=false --silent
 # A new repository has no Pages site; the check guards against org defaults.
-print_cmd gh api "repos/$repo/pages"
+pages_check=(gh api "repos/$repo/pages" --silent)
+pages_delete=(gh api --method DELETE "repos/$repo/pages")
+print_cmd "${pages_check[@]}"
 echo "#   only if that returns a Pages site:"
-print_cmd gh api --method DELETE "repos/$repo/pages"
-if ((yes)) && gh api "repos/$repo/pages" --silent 2>/dev/null; then
-  gh api --method DELETE "repos/$repo/pages"
+print_cmd "${pages_delete[@]}"
+if ((yes)) && "${pages_check[@]}" 2>/dev/null; then
+  "${pages_delete[@]}"
 fi
 
 echo "# 2. Disallow forking"
 run gh api --method PATCH "repos/$repo" -F allow_forking=false --silent
 
 echo "# 3. Set the '$PROPERTY' custom property"
-run_with_input "{\"properties\":[{\"property_name\":\"$PROPERTY\",\"value\":\"$kind\"}]}" \
-  gh api --method PATCH "repos/$repo/properties/values" --input - --silent
+# The org endpoint works whether the property's values are editable by org
+# actors only or by repository admins too.
+run_with_input "{\"repository_names\":[\"$name\"],\"properties\":[{\"property_name\":\"$PROPERTY\",\"value\":\"$kind\"}]}" \
+  gh api --method PATCH "orgs/$org/properties/values" --input - --silent
 
 echo "# 4. Grant the team push access"
 run gh api --method PUT "orgs/$org/teams/$team/repos/$repo" -f permission=push --silent

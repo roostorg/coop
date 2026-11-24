@@ -81,10 +81,17 @@ case "$*" in
     case $GH_SCENARIO in
       noprop) not_found ;;
       novalue) printf 'single_select\tsecurity\n' ;;
+      multiselect) printf 'multi_select\tsecurity partner\n' ;;
       *) printf 'single_select\tsecurity partner\n' ;;
     esac
     ;;
-  "api repos/$REPO/pages --silent") not_found ;;
+  "api repos/$REPO/pages --silent") [[ $GH_SCENARIO == pages ]] || not_found ;;
+  "api --method PUT "*)
+    [[ $GH_SCENARIO != failput ]] || {
+      echo "gh: Forbidden (HTTP 403)" >&2
+      exit 1
+    }
+    ;;
   "api --method "*) ;;
   *)
     echo "unexpected gh call: $*" >&2
@@ -135,6 +142,8 @@ run_case ok 'bad/name' "$TEAM" security
 expect_rc "rejects an invalid repository name" 2
 run_case ok coop "$TEAM" security --org roostorg
 expect_rc "refuses roostorg/coop itself" 1
+run_case ok Coop "$TEAM" security --org RoostOrg
+expect_rc "refuses roostorg/coop in any case" 1
 
 run_case ok "$NAME" "$TEAM" partner --org "$ORG"
 expect_rc "dry run exits 0" 0
@@ -145,16 +154,15 @@ else
 fi
 for want in \
   "+ gh repo create $REPO --private --disable-wiki" \
-  "+ gh api --method PATCH repos/$REPO -F has_projects=false -F has_wiki=false" \
+  "+ gh api --method PATCH repos/$REPO -F has_projects=false" \
   "+ gh api --method PATCH repos/$REPO -F allow_forking=false" \
-  "\"property_name\":\"embargo\",\"value\":\"partner\"" \
+  "+ gh api --method PATCH orgs/$ORG/properties/values --input - --silent <<< '{\"repository_names\":[\"$NAME\"],\"properties\":[{\"property_name\":\"embargo\",\"value\":\"partner\"}]}'" \
   "+ gh api --method PUT orgs/$ORG/teams/$TEAM/repos/$REPO -f permission=push" \
-  "+ git clone --bare --quiet https://github.com/roostorg/coop.git" \
+  "+ git clone --bare --quiet https://github.com/roostorg/coop.git <tmpdir>/coop.git" \
   "push --quiet https://github.com/$REPO.git refs/heads/main:refs/heads/main refs/tags/\\*:refs/tags/\\*" \
   "EMBARGO_SYNC_APP_KEY"; do
   [[ $out == *"$want"* ]] || fail "dry run prints: $want" "$out"
 done
-pass "dry run prints every step"
 
 run_case noprop "$NAME" "$TEAM" security --org "$ORG" --yes
 expect_rc "missing custom property fails" 1
@@ -165,6 +173,10 @@ grep -q -- '--method' "$GH_LOG" && fail "missing property changes nothing" "$(ca
 run_case novalue "$NAME" "$TEAM" partner --org "$ORG" --yes
 expect_rc "property without the kind's value fails" 1
 [[ -e $TARGET ]] && fail "disallowed value creates no repository"
+
+run_case multiselect "$NAME" "$TEAM" partner --org "$ORG" --yes
+expect_rc "property of the wrong type fails" 1
+[[ -e $TARGET ]] && fail "wrong property type creates no repository"
 
 run_case exists "$NAME" "$TEAM" security --org "$ORG" --yes
 expect_rc "existing repository fails" 1
@@ -186,9 +198,9 @@ fi
   fail "seeded main matches upstream main"
 calls=$(grep -E '^(repo|api --method)' "$GH_LOG" | sed 's/ --silent$//')
 want_calls="repo create $REPO --private --disable-wiki
-api --method PATCH repos/$REPO -F has_projects=false -F has_wiki=false
+api --method PATCH repos/$REPO -F has_projects=false
 api --method PATCH repos/$REPO -F allow_forking=false
-api --method PATCH repos/$REPO/properties/values --input -
+api --method PATCH orgs/$ORG/properties/values --input -
 api --method PUT orgs/$ORG/teams/$TEAM/repos/$REPO -f permission=push
 api --method PATCH repos/$REPO -f default_branch=main"
 if [[ $calls == "$want_calls" ]]; then
@@ -196,8 +208,27 @@ if [[ $calls == "$want_calls" ]]; then
 else
   fail "--yes makes the expected gh calls in order" "got: $calls"
 fi
-grep -qx '{"properties":\[{"property_name":"embargo","value":"security"}\]}' "$GH_LOG" ||
+grep -qx "{\"repository_names\":\[\"$NAME\"\],\"properties\":\[{\"property_name\":\"embargo\",\"value\":\"security\"}\]}" "$GH_LOG" ||
   fail "--yes sends the property value" "$(cat "$GH_LOG")"
+grep -q 'DELETE' "$GH_LOG" && fail "--yes leaves Pages alone when there is no site"
+
+run_case pages "$NAME" "$TEAM" security --org "$ORG" --yes
+expect_rc "--yes with a Pages site succeeds" 0
+if grep -qx "api --method DELETE repos/$REPO/pages" "$GH_LOG"; then
+  pass "removes an existing Pages site"
+else
+  fail "removes an existing Pages site" "$(cat "$GH_LOG")"
+fi
+
+run_case failput "$NAME" "$TEAM" security --org "$ORG" --yes
+expect_rc "failure after creation exits non-zero" 1
+if [[ $err == *"was created but setup did not finish"*"gh repo delete $REPO"* ]]; then
+  pass "failure after creation says what to clean up"
+else
+  fail "failure after creation says what to clean up" "$err"
+fi
+[[ -e $TARGET && -z $(git -C "$TARGET" for-each-ref) ]] ||
+  fail "failure after creation stops before seeding"
 
 if ((failures)); then
   printf '%d failure(s)\n' "$failures"
