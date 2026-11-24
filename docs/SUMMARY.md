@@ -52,5 +52,6 @@
   - [NCMEC CyberTipline](integrations/ncmec.md)
   - [OpenAI CSAM Image Classifier](integrations/openai-csam-classifier.md)
   - [OpenAI Moderation API](integrations/openai-moderation.md)
+  - [Sentinel](integrations/sentinel.md)
   - [Zentropi CoPE](integrations/zentropi-cope.md)
   - [Custom](integrations/custom.md)

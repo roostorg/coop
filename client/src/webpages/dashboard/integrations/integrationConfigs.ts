@@ -8,6 +8,7 @@ import GoogleLogo from '../../../images/GoogleLogo.png';
 import GoogleLogoWithBackground from '../../../images/GoogleLogoWithBackground.png';
 import OpenAILogo from '../../../images/OpenAILogo.png';
 import OpenAILogoWithBackground from '../../../images/OpenAILogoWithBackground.png';
+import RobloxLogo from '../../../images/RobloxLogo.png';
 import ZentropiLogo from '../../../images/ZentropiLogo.png';
 
 export type IntegrationConfig = {
@@ -35,6 +36,14 @@ export const INTEGRATION_CONFIGS: IntegrationConfig[] = [
     logoWithBackground: OpenAILogoWithBackground,
     url: 'https://openai.com/',
     requiresInfo: true,
+  },
+  {
+    name: 'SENTINEL',
+    title: 'Sentinel',
+    logo: RobloxLogo,
+    logoWithBackground: RobloxLogo,
+    url: 'https://github.com/Roblox/sentinel',
+    requiresInfo: false,
   },
   {
     name: 'ZENTROPI',
