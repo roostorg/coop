@@ -1,0 +1,66 @@
+name: Embargo lineage
+
+# Private copies of roostorg/coop only: checks that a PR branch holds only
+# upstream main plus its own commits (scripts/embargo/check-lineage.sh), so it
+# can land publicly. Never runs in roostorg/coop or in public forks.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+permissions: {}
+
+concurrency:
+  group: embargo-lineage-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  visibility:
+    name: Check repository visibility
+    if: github.repository != 'roostorg/coop'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      private: ${{ steps.visibility.outputs.private }}
+    steps:
+      - id: visibility
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          echo "private=$(gh api "repos/$GITHUB_REPOSITORY" --jq .private)" >> "$GITHUB_OUTPUT"
+
+  lineage:
+    name: Lineage
+    needs: visibility
+    if: needs.visibility.outputs.private == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Require base main
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [[ "$BASE_REF" != 'main' ]]; then
+            echo "::error title=Lineage::PRs must target main, not $BASE_REF: land stacked work one branch at a time."
+            exit 1
+          fi
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # Runs main's copy of the script so a PR cannot weaken its own check.
+      - name: Check lineage
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          git show origin/main:scripts/embargo/check-lineage.sh > "$RUNNER_TEMP/check-lineage.sh"
+          bash "$RUNNER_TEMP/check-lineage.sh" --no-fetch-remote --rev "$HEAD_SHA" "$HEAD_REF"
