@@ -1,0 +1,72 @@
+name: Embargo upstream sync
+
+# Runs only in private copies of roostorg/coop. Fast-forwards their main to
+# upstream main and copies new upstream tags; fails if main has diverged.
+# Logic and tests: scripts/embargo/sync-upstream.sh, scripts/embargo/test/.
+
+on:
+  schedule:
+    - cron: '23 5 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: embargo-upstream-sync
+  cancel-in-progress: false
+
+jobs:
+  # github.event.repository is missing on schedule events, so visibility
+  # comes from the API instead of the event payload.
+  visibility:
+    if: github.repository != 'roostorg/coop'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      private: ${{ steps.repo.outputs.private }}
+    steps:
+      - name: Check that this repository is private
+        id: repo
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: echo "private=$(gh api "repos/$REPO" --jq .private)" >> "$GITHUB_OUTPUT"
+
+  sync:
+    needs: visibility
+    if: needs.visibility.outputs.private == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions: {}
+    steps:
+      # main is protected; the App is the ruleset bypass actor. Pushing
+      # upstream commits that touch .github/workflows needs workflows: write.
+      - name: Create GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          app-id: ${{ secrets.EMBARGO_SYNC_APP_ID }}
+          private-key: ${{ secrets.EMBARGO_SYNC_APP_KEY }}
+          permission-contents: write
+          permission-workflows: write
+
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Fast-forward main to upstream
+        env:
+          APP_TOKEN: ${{ steps.app-token.outputs.token }}
+          # Clear any other credential helpers, then add one that reads the
+          # token from the environment, so it is never written to .git/config.
+          GIT_CONFIG_COUNT: '2'
+          GIT_CONFIG_KEY_0: credential.helper
+          GIT_CONFIG_VALUE_0: ''
+          GIT_CONFIG_KEY_1: credential.helper
+          GIT_CONFIG_VALUE_1: '!f() { echo username=x-access-token; echo "password=$APP_TOKEN"; }; f'
+        run: scripts/embargo/sync-upstream.sh --yes
