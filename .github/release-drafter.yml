@@ -50,4 +50,9 @@ replacers:
     search: '/^(?![-*][ \t]+)(?=\S)/'
     replace: '- '
 template: |
+  <!--
+  Auto-generated: Release Drafter will overwrite edits to this draft.
+  Please edit the Release Notes sections in the PRs themselves, or edit after publishing this release.
+  -->
+
   $CHANGES
