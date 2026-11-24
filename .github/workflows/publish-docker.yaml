@@ -53,6 +53,7 @@ env:
 
 jobs:
   changes:
+    if: github.repository == 'roostorg/coop'
     runs-on: ubuntu-latest
     outputs:
       server: ${{ steps.filter.outputs.server }}
