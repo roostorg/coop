@@ -161,4 +161,4 @@ gh repo set-default --view # prints <private-repo>
 
 `git push upstream` then fails, and `gh pr create`, `gh issue create` and other `gh` commands target the private copy. This only changes defaults: a push by URL, `gh --repo roostorg/coop` and the `GH_REPO` environment variable still reach `roostorg/coop`. The settings are per clone (worktrees share them), so repeat this for every clone.
 
-AI coding agents working in these clones need the same setup. Check it before the agent starts, and tell it that the repository is private and that nothing from it goes to `roostorg/coop`, or to any other public place, until it lands. That overrides the upstream participation guidance in `AGENTS.md`. Don't share an agent's memory, notes or session context between a private clone and public work.
+AI coding agents working in these clones need the same setup. Check it before the agent starts, and tell it that the repository is private and that nothing from it goes to `roostorg/coop`, or to any other public place, until it lands. `AGENTS.md` says the same. Don't share an agent's memory, notes or session context between a private clone and public work.

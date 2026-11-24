@@ -277,6 +277,8 @@ Regularly check for upstream developments (i.e. GitHub releases, issues, PRs, an
 
 When customizing the codebase for a specific platform or downstream use case, consider how the codebase will be kept in sync with upstream developments. Prefer and encourage regularly rebasing on the upstream project, and make changes in ways that can be contributed upstream whenever possible.
 
+In a private copy of this repository (embargoed security or partner work), none of this applies: nothing from it goes to roostorg/coop or any other public place until it lands. Follow [`docs/development/embargoed-work.md`](docs/development/embargoed-work.md).
+
 ## Commit attribution
 
 Agent-authored commits should include a `Co-Authored-By` trailer naming the agent, e.g.:
