@@ -221,8 +221,28 @@ if grep -qF 'WARNING: this message will be public' "$EDITOR_SAW" &&
 else
   fail 'editor is prefilled with the commit messages and a public warning' "$(cat "$EDITOR_SAW")"
 fi
+if grep -qF 'Co-authored-by: Tester <tester@example.com>' "$EDITOR_SAW" &&
+  ! grep -qF 'Co-authored-by: First' "$EDITOR_SAW"; then
+  pass 'prefill credits the other authors as co-authors'
+else
+  fail 'prefill credits the other authors as co-authors' "$(cat "$EDITOR_SAW")"
+fi
 land fix --ghsa "git@github.com:$GHSA.git" --dry-run
 expect_rc 'accepts an SSH GHSA URL with --dry-run' 0
+land fix --ghsa "ssh://git@github.com/$GHSA.git"
+expect_rc 'accepts an ssh:// GHSA URL' 0
+expect_out 'rewrites ssh:// to the git@ form' "git@github.com:$GHSA.git"
+
+# A different core.commentChar must not leak the '#' template into the message
+GIT_CONFIG_COUNT=5 GIT_CONFIG_KEY_4=core.commentChar GIT_CONFIG_VALUE_4=';' \
+  TEST_MSG=$'# only a comment\n' land fix --ghsa "$ghsa_url"
+expect_rc "strips '#' lines whatever core.commentChar is" 1
+expect_out 'and so refuses the empty message' 'empty commit message'
+
+# Editor failure
+GIT_EDITOR=false land fix --ghsa "$ghsa_url" --yes
+expect_rc 'aborts when the editor fails' 1
+expect_out 'says the editor failed' 'editor exited with an error'
 
 # Empty message
 TEST_MSG=$'# only a comment\n\n' land fix --ghsa "$ghsa_url" --yes
@@ -266,6 +286,11 @@ expect_unchanged '--yes leaves the work clone unchanged'
 land fix --ghsa "$ghsa_url" --yes
 expect_rc 'refuses to push to an existing branch' 1
 expect_out 'says the branch exists' 'already exists'
+if [[ ! -e $EDITOR_SAW ]]; then
+  pass 'checks the target branch before opening the editor'
+else
+  fail 'checks the target branch before opening the editor'
+fi
 land fix --ghsa "$ghsa_url" --yes --remote-branch fix-2
 expect_rc '--remote-branch picks the target name' 0
 if git -C "$tmp/ghsa.git" rev-parse --verify --quiet refs/heads/fix-2 >/dev/null; then

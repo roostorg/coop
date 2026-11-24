@@ -24,6 +24,7 @@ it fails. The rebase and squash happen in memory (git merge-tree): the working
 tree, index and local branches are never changed, and a conflict leaves the
 repository exactly as it was. Opens your git editor for the commit message,
 which will be public once the work is disclosed. Dry-run unless --yes.
+Needs git 2.40 or later.
 
 Arguments:
   <branch>               Local branch with the reviewed work.
@@ -161,18 +162,35 @@ upstream_sha=$(git rev-parse --verify --quiet "refs/embargo/upstream/main^{commi
 log "upstream main is $upstream_sha"
 
 # 3. Rebase onto upstream main, in memory.
-mapfile -t commits < <(git rev-list --reverse "$upstream_sha..$branch_sha")
+revs=$(git rev-list --reverse "$upstream_sha..$branch_sha")
+commits=()
+[[ -z $revs ]] || mapfile -t commits <<<"$revs"
 ((${#commits[@]})) || die "'$branch' has no commits that aren't on upstream main"
 merge_base=$(git merge-base "$upstream_sha" "$branch_sha") ||
   die "'$branch' shares no history with upstream main"
-if ! merge_out=$(git merge-tree --write-tree --merge-base="$merge_base" \
-  "$upstream_sha" "$branch_sha"); then
-  printf '%s\n' "$merge_out" | tail -n +2 >&2
-  die "'$branch' conflicts with current upstream main; rebase it in the private copy, get it re-reviewed and run land.sh again. Nothing was changed"
-fi
+merge_rc=0
+merge_out=$(git merge-tree --write-tree --merge-base="$merge_base" \
+  "$upstream_sha" "$branch_sha") || merge_rc=$?
+case $merge_rc in
+  0) ;;
+  1)
+    printf '%s\n' "$merge_out" | tail -n +2 >&2
+    die "'$branch' conflicts with current upstream main; rebase it in the private copy, get it re-reviewed and run land.sh again. Nothing was changed"
+    ;;
+  *) die "git merge-tree failed (exit $merge_rc; land.sh needs git 2.40 or later)" ;;
+esac
 tree=$(head -n 1 <<<"$merge_out")
 [[ $tree != "$(git rev-parse "$upstream_sha^{tree}")" ]] ||
   die "'$branch' makes no changes on top of upstream main (already landed?)"
+
+# Checked before the editor so a taken name doesn't cost the message.
+ls_remote_rc=0
+git ls-remote --exit-code "$target_url" "refs/heads/$remote_branch" >/dev/null || ls_remote_rc=$?
+case $ls_remote_rc in
+  0) die "branch '$remote_branch' already exists on $target_repo; pick another with --remote-branch" ;;
+  2) ;;
+  *) log "warning: could not check whether '$remote_branch' exists on $target_repo; the push will refuse to overwrite it" ;;
+esac
 
 # 4. Commit message.
 msg_dir=$(mktemp -d)
@@ -183,6 +201,11 @@ msg_file=$msg_dir/COMMIT_EDITMSG
     git log -1 --format='%B' "$c"
     echo
   done
+  first_author=$(git log -1 --format='%an <%ae>' "${commits[0]}")
+  git log --format='%an <%ae>' "$upstream_sha..$branch_sha" | sort -u |
+    while IFS= read -r a; do
+      [[ $a == "$first_author" ]] || printf 'Co-authored-by: %s\n' "$a"
+    done
   cat <<EOF
 # WARNING: this message will be public. It becomes the commit message on
 # $target_repo, and anyone can read it once the work is published.
@@ -196,7 +219,8 @@ EOF
 editor=$(git var GIT_EDITOR)
 # Same invocation git uses, so editors configured with arguments work.
 sh -c "$editor \"\$@\"" "$editor" "$msg_file" || die "editor exited with an error; nothing was changed"
-message=$(git stripspace --strip-comments <"$msg_file")
+# The template's comments use '#' whatever core.commentChar says.
+message=$(git -c core.commentChar='#' stripspace --strip-comments <"$msg_file")
 [[ -n $message ]] || die "empty commit message; nothing was changed"
 
 first=${commits[0]}
@@ -213,22 +237,18 @@ log "squashed commit $new_sha"
   git --no-pager log -1 --format='Author: %an <%ae>%n%n%B' "$new_sha"
   git --no-pager diff --stat "$upstream_sha" "$new_sha"
   echo
+  echo "Target: $target_repo, new branch '$remote_branch'. The branch name and"
+  echo "commit become public when the work is published."
+  echo
 } >&2
 
 # 6. Push to a new branch on the target, by URL only.
-ls_remote_rc=0
-git ls-remote --exit-code "$target_url" "refs/heads/$remote_branch" >/dev/null || ls_remote_rc=$?
-case $ls_remote_rc in
-  0) die "branch '$remote_branch' already exists on $target_repo; pick another with --remote-branch" ;;
-  2) ;;
-  *) log "warning: could not check whether '$remote_branch' exists on $target_repo; the push will refuse to overwrite it" ;;
-esac
 
 if ((public)); then
   cat >&2 <<EOF
 
 ############################################################################
-##  PUBLIC PUSH                                                           ##
+##  PUBLIC PUSH
 ##  This pushes to $PUBLIC_REPO, a public repository. The commit, its
 ##  message, its author and committer, and the branch name '$remote_branch' become visible
 ##  to everyone immediately and cannot be taken back.
