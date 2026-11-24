@@ -590,7 +590,7 @@ export default class JobRouting {
       | Transaction<ManualReviewToolServicePg>
       | Kysely<ManualReviewToolServicePg>,
   ) {
-    return db
+    const rules = await db
       .selectFrom('manual_review_tool.routing_rule_versions as routing_rules')
       .innerJoin(
         'manual_review_tool.routing_rules_to_item_types as rules_to_item_types',
@@ -620,6 +620,10 @@ export default class JobRouting {
       ])
       .orderBy('routing_rules.sequence_number')
       .execute();
+    return rules.map((rule) => ({
+      ...rule,
+      version: rule.version.toISOString(),
+    }));
   }
 
   async close() {

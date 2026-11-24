@@ -21,7 +21,9 @@ const ruleSelect = [
   'r.tags',
   'r.max_daily_actions as maxDailyActions',
   'r.daily_actions_run as dailyActionsRun',
-  'r.last_action_date as lastActionDate',
+  sql<string | null>`to_char(r.last_action_date, 'YYYY-MM-DD')`.as(
+    'lastActionDate',
+  ),
   'r.created_at as createdAt',
   'r.updated_at as updatedAt',
   'r.org_id as orgId',

@@ -377,7 +377,7 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
   async updateUserStrikeThreshold(opts: {
     orgId: string;
     thresholdSettings: {
-      id: string;
+      id: number;
       threshold?: number;
       actions?: string[];
       actionParameters?: JsonObject;
@@ -389,7 +389,7 @@ export class ModerationConfigService implements ReturnsModerationConfigTypes {
   async deleteUserStrikeThreshold(opts: {
     orgId: string;
 
-    thresholdSettings: { id: string; threshold: number };
+    thresholdSettings: { id: number; threshold: number };
   }) {
     return this.userStrikeOps.deleteUserStrikeThreshold({
       orgId: opts.orgId,

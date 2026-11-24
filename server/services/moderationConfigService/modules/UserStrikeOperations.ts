@@ -76,7 +76,7 @@ export default class UserStrikeOperations {
   async updateUserStrikeThreshold(opts: {
     orgId: string;
     thresholdSettings: {
-      id: string;
+      id: number;
       threshold?: number;
       actions?: string[];
       actionParameters?: JsonObject;
@@ -144,7 +144,7 @@ export default class UserStrikeOperations {
   async deleteUserStrikeThreshold(opts: {
     orgId: string;
     threshold: number;
-    id: string;
+    id: number;
   }) {
     const { orgId, id, threshold } = opts;
 

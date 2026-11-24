@@ -214,6 +214,6 @@ export type ReportingServicePg = {
     creator_id: GeneratedAlways<string>;
     condition_set: GeneratedAlways<ConditionSet>;
     is_current: GeneratedAlways<boolean>;
-    version: GeneratedAlways<string>;
+    version: GeneratedAlways<Date>;
   };
 };
