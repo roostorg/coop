@@ -145,7 +145,7 @@ jobs:
 
   build-server:
     needs: changes
-    if: needs.changes.outputs.server != 'false'
+    if: github.repository == 'roostorg/coop' && needs.changes.outputs.server != 'false'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -232,7 +232,7 @@ jobs:
 
   build-client:
     needs: changes
-    if: needs.changes.outputs.client != 'false'
+    if: github.repository == 'roostorg/coop' && needs.changes.outputs.client != 'false'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -304,7 +304,7 @@ jobs:
   # new migration script). On a release it always publishes a versioned tag.
   build-migrations:
     needs: changes
-    if: needs.changes.outputs.db != 'false'
+    if: github.repository == 'roostorg/coop' && needs.changes.outputs.db != 'false'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -377,7 +377,7 @@ jobs:
   # credentials.
   attach-sboms:
     needs: [build-server, build-client, build-migrations]
-    if: github.event_name == 'release'
+    if: github.repository == 'roostorg/coop' && github.event_name == 'release'
     runs-on: ubuntu-latest
     permissions:
       contents: write

@@ -271,7 +271,7 @@ jobs:
             server/reports/coverage-unit/coverage-summary.json >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload coverage
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && github.repository == 'roostorg/coop' }}
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -282,7 +282,7 @@ jobs:
           fail_ci_if_error: false
 
       - name: Upload test results
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && github.repository == 'roostorg/coop' }}
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -339,7 +339,7 @@ jobs:
             server/reports/coverage-integ/coverage-summary.json >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload coverage
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && github.repository == 'roostorg/coop' }}
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -350,7 +350,7 @@ jobs:
           fail_ci_if_error: false
 
       - name: Upload test results
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && github.repository == 'roostorg/coop' }}
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -390,7 +390,7 @@ jobs:
             client/reports/coverage-unit/coverage-summary.json >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload coverage
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && github.repository == 'roostorg/coop' }}
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}

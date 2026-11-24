@@ -161,6 +161,8 @@ Note: `check_migration_order` runs only in GitHub Actions — it's GitHub-specif
 
 +PR workflows must also run on stacked PRs (PRs whose base is another PR's branch): don't add a `branches` filter to `pull_request` triggers. For PR workflows, limit `push` triggers to `main` so a PR branch doesn't get both a push and a pull_request run for the same commit.
 
+Private copies of this repository run these workflows too. Guard every job that publishes or sends anything outside the repository (GHCR, npm, GitHub Pages, Discord) with `if: github.repository == 'roostorg/coop'`; for Codecov, guard only the upload steps so tests still run.
+
 ## Security
 
 - No secrets in code or committed files. Use environment variables via `.env` (gitignored).

@@ -30,8 +30,8 @@ jobs:
   notify:
     name: Post new advisories to Discord
     # The environment's branch policy keeps its secrets on main; the if skips
-    # other branches quietly instead of failing on that policy.
-    if: github.ref == 'refs/heads/main'
+    # other branches and repositories quietly instead of failing on that policy.
+    if: github.repository == 'roostorg/coop' && github.ref == 'refs/heads/main'
     environment: security-advisory-notify
     runs-on: ubuntu-latest
     timeout-minutes: 10

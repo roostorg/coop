@@ -16,6 +16,7 @@ permissions: {}
 
 jobs:
   notify:
+    if: github.repository == 'roostorg/coop'
     runs-on: ubuntu-latest
     steps:
       - uses: roostorg/discord-bot@ec1c56411627b77bdcc6e47fca9ab8d817e739ca
