@@ -149,7 +149,7 @@ Individual checks:
 | `run_frontend_checks_if_changed` (lint)  | `docker compose run --rm --build client pnpm run lint`                                       |
 | `run_frontend_checks_if_changed` (build) | `docker compose run --rm --build client pnpm run build`                                      |
 | `check_api_server` (test)                | `docker compose run --rm --build test`                                                       |
-| `new-advisories`                         | `bash scripts/check-new-advisories.sh origin/main`                                           |
+| `new-advisories` (dependency-review)     | `bash scripts/check-new-advisories.sh "$(git merge-base origin/main HEAD)"`                  |
 
 Tear down:
 
