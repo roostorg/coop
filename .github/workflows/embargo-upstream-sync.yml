@@ -19,6 +19,7 @@ jobs:
   # github.event.repository is missing on schedule events, so visibility
   # comes from the API instead of the event payload.
   visibility:
+    name: Check visibility
     if: github.repository != 'roostorg/coop'
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -32,17 +33,34 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
-        run: echo "private=$(gh api "repos/$REPO" --jq .private)" >> "$GITHUB_OUTPUT"
+        # A failed API call must fail this job, not leave private= empty and
+        # silently skip sync.
+        run: |
+          private=$(gh api "repos/$REPO" --jq .private)
+          if [[ $private != true && $private != false ]]; then
+            echo "::error::Unexpected value for private: '$private'"
+            exit 1
+          fi
+          echo "private=$private" >> "$GITHUB_OUTPUT"
 
   sync:
+    name: Sync with upstream
     needs: visibility
-    if: needs.visibility.outputs.private == 'true'
+    if: github.repository != 'roostorg/coop' && needs.visibility.outputs.private == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    permissions: {}
+    permissions:
+      contents: read
     steps:
-      # main is protected; the App is the ruleset bypass actor. Pushing
-      # upstream commits that touch .github/workflows needs workflows: write.
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # main (and any protected tags) are covered by rulesets that the App
+      # bypasses. Pushing upstream commits that touch .github/workflows needs
+      # workflows: write.
       - name: Create GitHub App token
         id: app-token
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
@@ -51,13 +69,6 @@ jobs:
           private-key: ${{ secrets.EMBARGO_SYNC_APP_KEY }}
           permission-contents: write
           permission-workflows: write
-
-      - name: Checkout repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          token: ${{ steps.app-token.outputs.token }}
-          fetch-depth: 0
-          persist-credentials: false
 
       - name: Fast-forward main to upstream
         env:

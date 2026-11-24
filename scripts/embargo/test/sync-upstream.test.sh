@@ -3,7 +3,7 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: scripts/embargo/test/test-sync-upstream.sh [-h|--help]
+Usage: scripts/embargo/test/sync-upstream.test.sh [-h|--help]
 
 Tests scripts/embargo/sync-upstream.sh against two local bare repositories,
 one standing in for upstream and one for the private copy. Needs only git and
@@ -25,6 +25,7 @@ export GIT_AUTHOR_NAME=test GIT_AUTHOR_EMAIL=test@example.com
 export GIT_COMMITTER_NAME=test GIT_COMMITTER_EMAIL=test@example.com
 unset GITHUB_ACTIONS GITHUB_STEP_SUMMARY
 
+real_git=$(command -v git)
 failures=0
 pass() { echo "ok - $*"; }
 fail() {
@@ -160,10 +161,68 @@ runner_main=$(ref runner main)
 expect_exit 0 'runner clone' --yes
 expect_eq 'runner main untouched' "$(ref runner main)" "$runner_main"
 expect_eq 'runner gets no tags' "$(git -C runner tag --list 1.2.0)" ''
+expect_eq 'runner keeps no temporary refs' "$(git -C runner for-each-ref refs/embargo-sync/)" ''
+
+# A push that races with a commit to the mirror: a git shim lands the commit
+# on main between the script's fetch and its push. Nothing is pushed, not
+# even the new tag, and the racing commit stays.
+setup
+commit up upstream-change
+git -C up tag 1.2.0
+git -C up push --quiet origin main --tags
+commit priv racing-change
+racing=$(ref priv HEAD)
+mkdir shim
+cat >shim/git <<EOF
+#!/bin/bash
+if [[ \$1 == push ]]; then
+  "$real_git" -C "$tmp/case/priv" push --quiet origin main
+fi
+exec "$real_git" "\$@"
+EOF
+chmod +x shim/git
+PATH="$tmp/case/shim:$PATH" expect_exit 1 'push racing a mirror commit' --yes
+expect_eq 'race keeps the racing commit on main' "$(ref private.git main)" "$racing"
+if grep -q 'fetch first' "$tmp/out"; then
+  pass 'race is refused as a non-fast-forward'
+else
+  fail 'race is refused as a non-fast-forward'
+fi
+expect_eq 'race copies no tags' "$(ref private.git refs/tags/1.2.0)" none
+
+# The private copy rejects one ref (like a tag ruleset): the atomic push
+# leaves main alone too.
+setup
+commit up upstream-change
+git -C up tag 1.2.0
+git -C up push --quiet origin main --tags
+before=$(ref private.git main)
+cat >private.git/hooks/pre-receive <<'EOF'
+#!/bin/sh
+while read -r old new ref; do
+  [ "$ref" = refs/tags/1.2.0 ] && exit 1
+done
+exit 0
+EOF
+chmod +x private.git/hooks/pre-receive
+expect_exit 1 'private copy rejects a tag' --yes
+expect_eq 'rejected tag leaves main alone' "$(ref private.git main)" "$before"
+
+# Upstream has the branch, the private copy doesn't.
+setup
+git -C up push --quiet origin main:refs/heads/upstream-only
+expect_exit 1 'branch missing in private copy' --branch upstream-only
+if grep -q 'Does the branch exist there' "$tmp/out"; then
+  pass 'missing branch says so'
+else
+  fail 'missing branch says so'
+fi
 
 # Usage.
 setup
 expect_exit 2 'unknown argument' --bogus
+expect_exit 2 'missing option value' --remote
+expect_exit 2 'option value that looks like an option' --remote --yes
 expect_exit 0 '--help' --help
 
 if [[ $failures -gt 0 ]]; then

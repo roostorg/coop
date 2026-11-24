@@ -14,6 +14,9 @@ with an error: someone committed to the mirror, and a human has to look.
 An existing tag that points somewhere else than upstream's tag of the same
 name is also an error; it is never moved.
 
+The branch and the new tags are pushed in one atomic push: if the private
+copy rejects any of them (for example a tag ruleset), nothing is pushed.
+
 Without --yes it only reports what it would push.
 
 Options:
@@ -24,8 +27,14 @@ Options:
   -h, --help         Show this help.
 
 Exit status: 0 when the private copy is (or would be) in sync, 1 when the
-branch has diverged or a tag conflicts, 2 on a usage error.
+branch has diverged, a tag conflicts or the push fails, 2 on a usage error.
 EOF
+}
+
+usage_error() {
+  echo "$1" >&2
+  usage >&2
+  exit 2
 }
 
 upstream=https://github.com/roostorg/coop.git
@@ -33,18 +42,27 @@ remote=origin
 branch=main
 apply=false
 
+option_value() {
+  if [[ $# -lt 2 || -z $2 || $2 == -* ]]; then
+    usage_error "$1 needs a value"
+  fi
+}
+
 while [[ $# -gt 0 ]]; do
   case $1 in
     --upstream)
-      upstream=${2:?--upstream needs a value}
+      option_value "$@"
+      upstream=$2
       shift 2
       ;;
     --remote)
-      remote=${2:?--remote needs a value}
+      option_value "$@"
+      remote=$2
       shift 2
       ;;
     --branch)
-      branch=${2:?--branch needs a value}
+      option_value "$@"
+      branch=$2
       shift 2
       ;;
     --yes)
@@ -56,20 +74,10 @@ while [[ $# -gt 0 ]]; do
       exit 0
       ;;
     *)
-      echo "Unknown argument: $1" >&2
-      usage >&2
-      exit 2
+      usage_error "Unknown argument: $1"
       ;;
   esac
 done
-
-error() {
-  if [[ ${GITHUB_ACTIONS:-} == true ]]; then
-    echo "::error::$*"
-  else
-    echo "error: $*" >&2
-  fi
-}
 
 summary() {
   echo "$*"
@@ -78,17 +86,38 @@ summary() {
   fi
 }
 
+error() {
+  if [[ ${GITHUB_ACTIONS:-} == true ]]; then
+    echo "::error::$*"
+  else
+    echo "error: $*" >&2
+  fi
+  if [[ -n ${GITHUB_STEP_SUMMARY:-} ]]; then
+    echo "**Error:** $*" >>"$GITHUB_STEP_SUMMARY"
+  fi
+}
+
 git rev-parse --git-dir >/dev/null
 
-# Work in a private ref namespace so nothing touches the clone's own branches,
-# tags or remote-tracking refs.
+# Work in a temporary ref namespace so nothing touches the clone's own
+# branches, tags or remote-tracking refs, and remove it on exit.
 ns=refs/embargo-sync
-git for-each-ref --format='delete %(refname)' "$ns/" | git update-ref --stdin
+clean_refs() {
+  git for-each-ref --format='delete %(refname)' "$ns/" | git update-ref --stdin
+}
+clean_refs
+trap clean_refs EXIT
 
-git fetch --quiet --no-tags "$upstream" \
+if ! git fetch --quiet --no-tags "$upstream" \
   "+refs/heads/$branch:$ns/upstream/branch" \
-  "+refs/tags/*:$ns/upstream/tags/*"
-git fetch --quiet --no-tags "$remote" "+refs/heads/$branch:$ns/private/branch"
+  "+refs/tags/*:$ns/upstream/tags/*"; then
+  error "Could not fetch $branch and tags from upstream $upstream."
+  exit 1
+fi
+if ! git fetch --quiet --no-tags "$remote" "+refs/heads/$branch:$ns/private/branch"; then
+  error "Could not fetch $branch from the private copy ($remote). Does the branch exist there?"
+  exit 1
+fi
 
 upstream_sha=$(git rev-parse "$ns/upstream/branch")
 private_sha=$(git rev-parse "$ns/private/branch")
@@ -103,7 +132,12 @@ elif git merge-base --is-ancestor "$private_sha" "$upstream_sha"; then
 else
   ahead=$(git rev-list --count "$upstream_sha..$private_sha")
   error "$branch has diverged from upstream: it has $ahead commit(s) that upstream $branch doesn't. Nothing was pushed. Commits on the mirror's $branch must come from upstream; a human has to look at these and move them to another branch."
-  git log --oneline --no-decorate --max-count=50 "$upstream_sha..$private_sha" >&2
+  commits=$(git log --oneline --no-decorate --max-count=50 "$upstream_sha..$private_sha")
+  echo "$commits" >&2
+  if [[ -n ${GITHUB_STEP_SUMMARY:-} ]]; then
+    fence='```'
+    printf '\n%s\n%s\n%s\n' "$fence" "$commits" "$fence" >>"$GITHUB_STEP_SUMMARY"
+  fi
   exit 1
 fi
 
@@ -139,9 +173,13 @@ done
 if [[ ${#refspecs[@]} -eq 0 ]]; then
   :
 elif $apply; then
-  # No --force and no '+' in the refspecs: the server rejects anything that
-  # isn't a fast-forward or a new tag, including a race with another push.
-  git push --atomic "$remote" "${refspecs[@]}"
+  # Never --force and never a '+' refspec: git itself refuses to push a
+  # branch update that isn't a fast-forward or to move an existing tag,
+  # including when another push lands between the fetch and this push.
+  if ! git push --atomic "$remote" "${refspecs[@]}"; then
+    error "Push to the private copy failed; nothing was pushed. If another push landed on $branch since the fetch, re-run; if the copy rejected a ref, check its rulesets."
+    exit 1
+  fi
   summary "Pushed ${#refspecs[@]} ref(s)."
 else
   summary "Dry run, nothing pushed. Re-run with --yes to push."
