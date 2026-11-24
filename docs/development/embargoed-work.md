@@ -54,12 +54,12 @@ The private copy's `main` mirrors `roostorg/coop`'s `main`. The upstream sync wo
 
 ## Reviewing work
 
-1. Branch from the private copy's `main`.
-2. Open a PR in the private copy against its `main`. CI runs there as it does here, together with the lineage check.
+1. Branch from the private copy's `main`. Keep one branch per change: don't merge other branches into it, and don't build it on another private branch.
+2. Open a PR in the private copy against its `main`. CI runs there as it does here, together with the **Lineage** check.
 3. Review it as you would a PR to `roostorg/coop`, with the same title format, tests and checks.
 4. Don't merge it. Merging would put the private copy's `main` ahead of `roostorg/coop`, and the sync would stop. Keep the approved PR open until [landing](#landing).
 
-While the PR waits, the sync keeps `main` current. Rebase the branch onto it from time to time so it still applies when it lands:
+While the PR waits, the sync keeps `main` current. Rebase the branch onto it from time to time, and run the lineage check, which fetches `roostorg/coop`'s `main` itself:
 
 ```bash
 git fetch origin
@@ -67,7 +67,15 @@ git rebase origin/main
 scripts/embargo/check-lineage.sh <branch>
 ```
 
-The lineage check fetches `roostorg/coop`'s `main` and exits 1 if the branch doesn't build on it. Rebase and run it again until it passes.
+It exits 1 and prints each failed rule with a code:
+
+| Code      | Problem                                                     | Fix                                                                                                                 |
+| --------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `[1]`     | The private copy's `main` has commits `roostorg/coop` lacks | Reset it to `roostorg/coop`'s `main`; it only mirrors                                                               |
+| `[2a]`    | The branch doesn't build on `roostorg/coop`'s `main`        | Rebase onto `main`                                                                                                  |
+| `[2b]`    | The branch shares commits with another private branch       | Land the other branch first, or rebase so the branch holds only its own commits; same for a branch stacked on yours |
+| `[3]`     | The branch has merge commits                                | Rebase onto `main`                                                                                                  |
+| `[range]` | The branch has nothing to land                              | Nothing to do                                                                                                       |
 
 Force-pushing a rebase does not dismiss existing approvals, so ask for a new review if the rebase changed anything.
 
@@ -78,17 +86,32 @@ Land the work when its embargo ends:
 - **Security fixes** land in the same window as the release that ships them, not earlier. A fix merged to `roostorg/coop` is public, so landing it before the release is ready discloses the vulnerability with no fixed version to upgrade to. Agree the release base first, then land and release straight after: see [Security releases](security-releases.md), steps 1, 2 and 4.
 - **Partner features** land on the date agreed with the partner.
 
-Rebase the PR onto the private copy's `main` once more, then run the landing script. It does a dry run by default:
+Run the landing script from your clone of the private copy, with the PR's branch checked out locally. It needs git 2.38 or later. It checks the branch's lineage, replays it onto `roostorg/coop`'s current `main` without touching your working tree, squashes it into one commit and pushes that commit to a new branch on the target. It does not open the PR.
+
+Run it without `--yes` first. It opens your editor with the branch's commit messages, which become the squashed commit's message; that message is public once the commit lands, so remove anything about the embargo. Check the author, message and diff stat it prints, then rerun with `--yes`.
+
+For a security fix, the target is the advisory's temporary private fork. Bring the fork's `main` up to date first, as in [Undisclosed vulnerability: private fork](security-releases.md#undisclosed-vulnerability-private-fork), step 3, since the squashed commit builds on `roostorg/coop`'s current `main`:
 
 ```bash
 scripts/embargo/land.sh --help
-scripts/embargo/land.sh <pr-number>
-scripts/embargo/land.sh <pr-number> --yes
+scripts/embargo/land.sh <branch> --ghsa <ghsa-fork-url>
+scripts/embargo/land.sh <branch> --ghsa <ghsa-fork-url> --yes
 ```
 
-For a security fix, the script pushes the branch to the advisory's temporary private fork (`<ghsa-fork-url>`), where you open the PR and merge it from the advisory. Actions doesn't run in the fork, so record the private copy's CI results in the fork PR. For a partner feature, it pushes the branch to `roostorg/coop` for a normal PR, which gets the usual review and CI. Either way, the PR's title, description and commits say nothing about the embargo or the private copy.
+Open the PR from the link the script prints, and follow the rest of the private-fork steps in [Security releases](security-releases.md). Actions doesn't run in the fork, so link or copy the private copy's CI results into the fork PR.
 
-After it merges, the sync brings the commit back into the private copy's `main`. Close the private PR and delete its branch.
+For a partner feature, the target is `roostorg/coop`. The branch name is public, so pick a neutral one with `--remote-branch`; with `--yes`, the script asks you to type it to confirm:
+
+```bash
+scripts/embargo/land.sh <branch> --public --remote-branch <public-branch>
+scripts/embargo/land.sh <branch> --public --remote-branch <public-branch> --yes
+```
+
+Open the PR from the link the script prints. It gets the usual review and CI.
+
+Either way, the PR's title and description say nothing about the embargo or the private copy. If the script reports a lineage failure or a conflict, it changes nothing: rebase the branch in the private copy, have it reviewed again, and rerun.
+
+After the PR merges, the sync brings the commit into the private copy's `main`. Close the private PR and delete its branch.
 
 ## Local clone setup
 
