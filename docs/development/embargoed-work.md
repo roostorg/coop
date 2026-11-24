@@ -41,13 +41,19 @@ Partner work has no advisory, so it always uses a partner copy.
 
 ## Creating a private copy
 
-Run the script from a clone of `roostorg/coop`'s `main`. It does a dry run by default; check what it prints, then rerun it with `--yes`:
+You need `gh` signed in as an org owner, or as a member who can create private repositories, set custom property values and administer the team. The org needs a custom property named `embargo`; the script doesn't create it.
+
+Run the script from a clone of `roostorg/coop`, giving the new repository's name, the team that will work in it, and its kind. `--org` defaults to `roostorg`. Without `--yes`, it only prints what it would do:
 
 ```bash
 scripts/embargo/new-embargo-repo.sh --help
-scripts/embargo/new-embargo-repo.sh <private-repo>
-scripts/embargo/new-embargo-repo.sh <private-repo> --yes
+scripts/embargo/new-embargo-repo.sh <name> <team-slug> security
+scripts/embargo/new-embargo-repo.sh <name> <team-slug> security --yes
 ```
+
+With `--yes`, it creates the private repository with forking, wiki, projects and Pages turned off, sets its `embargo` property to the kind, gives the team push access, and pushes `roostorg/coop`'s `main` and tags to it. If the org has a ruleset for that `embargo` value that restricts creating branches or tags, you must be able to bypass it. If a step fails after the repository exists, the script says so and leaves it for you to finish or delete.
+
+The script doesn't set up the upstream sync or check the rulesets. It prints a checklist for those; work through it before anyone pushes to the new repository.
 
 Then set up your clone as in [Local clone setup](#local-clone-setup).
 
