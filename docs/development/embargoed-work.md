@@ -17,6 +17,7 @@ The tooling lives in this repository, so every private copy gets it with the his
 | --------------------------------------------- | ------------------------------------------------------------ |
 | `scripts/embargo/new-embargo-repo.sh`         | Creates and configures a private copy                        |
 | `.github/workflows/embargo-upstream-sync.yml` | Keeps the private copy's `main` in step with `roostorg/coop` |
+| `scripts/embargo/sync-upstream.sh`            | Does the sync; also runs by hand                             |
 | `scripts/embargo/check-lineage.sh`            | Checks that a branch builds on `roostorg/coop`'s `main`      |
 | `.github/workflows/embargo-lineage.yml`       | Runs the lineage check on PRs in the private copy            |
 | `scripts/embargo/land.sh`                     | Moves reviewed work from the private copy to `roostorg/coop` |
@@ -50,7 +51,17 @@ scripts/embargo/new-embargo-repo.sh <private-repo> --yes
 
 Then set up your clone as in [Local clone setup](#local-clone-setup).
 
-The private copy's `main` mirrors `roostorg/coop`'s `main`. The upstream sync workflow updates it; nobody else pushes or merges to it.
+## Keeping `main` in sync
+
+The private copy's `main` mirrors `roostorg/coop`'s `main`; nobody pushes or merges to it. The **Embargo upstream sync** workflow fast-forwards it daily and copies `roostorg/coop`'s tags. To sync sooner, run the workflow from the **Actions** tab, or run the script from your clone (dry run by default):
+
+```bash
+scripts/embargo/sync-upstream.sh --help
+scripts/embargo/sync-upstream.sh
+scripts/embargo/sync-upstream.sh --yes
+```
+
+If the private copy's `main` has commits that `roostorg/coop`'s `main` lacks, the sync fails, lists them and pushes nothing. Move those commits to a branch and open a PR for them, then reset `main` to `roostorg/coop`'s `main`. A private tag with the same name as an upstream tag but a different commit is never moved; the sync fails after pushing everything else. Rename or delete the private tag.
 
 ## Reviewing work
 
