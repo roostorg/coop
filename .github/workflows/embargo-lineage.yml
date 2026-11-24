@@ -23,14 +23,14 @@ jobs:
     permissions:
       contents: read
     outputs:
-      private: ${{ steps.visibility.outputs.private }}
+      private: ${{ steps.repo.outputs.private }}
     steps:
-      - id: visibility
+      - name: Check that this repository is private
+        id: repo
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          echo "private=$(gh api "repos/$GITHUB_REPOSITORY" --jq .private)" >> "$GITHUB_OUTPUT"
+          REPO: ${{ github.repository }}
+        run: echo "private=$(gh api "repos/$REPO" --jq .private)" >> "$GITHUB_OUTPUT"
 
   lineage:
     name: Lineage

@@ -186,7 +186,7 @@ if [[ ${#bases[@]} -eq 0 ]]; then
 elif [[ ${#bases[@]} -gt 1 ]]; then
   fail 2a "$branch has ${#bases[@]} merge bases with upstream main; it must start from a single upstream main commit:"
   list_commits "${bases[@]}"
-elif git rev-list --first-parent "$upstream" | grep -qxF "${bases[0]}"; then
+elif grep -qxF "${bases[0]}" <<<"$(git rev-list --first-parent "$upstream")"; then
   pass 2a "$branch is based on upstream main commit $(short "${bases[0]}")"
 else
   fail 2a "$branch is based on $(short "${bases[0]}"), which is upstream history but not a commit of upstream main itself (it is on a merged side branch); rebase onto upstream main:"

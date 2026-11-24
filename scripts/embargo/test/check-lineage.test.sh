@@ -149,6 +149,21 @@ commit 'fix two'
 run --rev HEAD fix
 expect '--rev excludes the remote copy of the same branch from 2b' 0 'OK: 2 commit'
 
+setup
+git checkout -q main
+{
+  for i in $(seq 1 3000); do
+    printf 'commit refs/heads/main\ncommitter test <test@example.com> %d +0000\ndata <<END\nbulk %d\nEND\n' "$((1700000000 + i))" "$i"
+    [[ "$i" -gt 1 ]] || printf 'from %s\n' "$(git rev-parse HEAD)"
+  done
+} | git fast-import --quiet
+git push -q ../upstream.git main
+git checkout -q -b fix main
+commit 'fix one'
+git push -q origin fix
+run fix
+expect 'passes with upstream history larger than a pipe buffer' 0 'OK: 1 commit' 'PASS \[2a\]'
+
 # --- failures -----------------------------------------------------------------
 
 setup
