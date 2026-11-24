@@ -20,8 +20,8 @@ HMA with CLIP loads a vision model into memory, which is much heavier than stock
 | Resource | Guidance                                                                                                                                                                                                                                                                                           |
 | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Memory   | Plan for 4 GiB or more for the HMA container. One CPU container used about 2.5 GiB after hashing a few images (measured on Docker Desktop with Apple silicon); treat it as a floor, not a sizing guide.                                                                                            |
-| Disk     | About 1.4 GB for the model weights (as measured), downloaded from Hugging Face on first use. The image is about 2.7 GB, against about 1.3 GB for stock HMA, because PyTorch is large.                                                                                                              |
-| Network  | Outbound access to GitHub and the PyTorch wheel index at build time, and to Hugging Face on first use (the model revision is not pinned). The weights are kept in a Docker volume, so later starts and rebuilds don't download them again.                                                         |
+| Disk     | The image is about 3.9 GB (as built), against about 1.3 GB for stock HMA, because PyTorch and the CLIP model weights (about 1.4 GB) are large. The weights are built into the image.                                                                                                               |
+| Network  | Outbound access to GitHub, the PyTorch wheel index and Hugging Face at build time. The CLIP model is fetched at a pinned revision during the build, and the running container needs no access to Hugging Face.                                                                                     |
 | GPU      | Optional. Hashing is much faster on an NVIDIA GPU; CPU works and is fine for development. GPU needs Linux with an NVIDIA driver and the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html). macOS can't pass a GPU to Docker. |
 
 Because every photo is hashed with CLIP too, hashing is slower for every image your deployment receives, whether or not a rule uses CLIP.
@@ -40,7 +40,7 @@ The first build downloads PyTorch and takes several minutes. Run `hma-clip` in p
 docker compose -f docker-compose.yaml -f hma/clip/docker-compose.clip.yaml up -d --build hma
 ```
 
-The override only swaps the build and adds a volume for the model weights; HMA stays on port 9876 and keeps its database, so existing banks are kept. HMA downloads the model on the first hash request. Check that the CLIP signal is enabled:
+The override only swaps the image (built as `coop-hma-clip`, so the stock `hma` image is untouched); HMA stays on port 9876 and keeps its database, so existing banks are kept. If you later run `docker compose up hma` without the override, Compose goes back to the stock image. Check that the CLIP signal is enabled:
 
 ```bash
 curl -s http://localhost:9876/c/signal_type
@@ -103,11 +103,11 @@ When an item with images is submitted, or an item is reported, Coop asks HMA to 
   "url": "https://example.com/a.jpg",
   "hashes": { "pdq": "…" },
   "embeddings": { "clip_float": "…" },
-  "matchedBanks": ["Known images", "Similar to known images"]
+  "matchedBanks": ["Known images"]
 }
 ```
 
-The embedding is kept under `embeddings`, apart from `hashes`, because everything in `hashes` is treated as an exact file hash and included in NCMEC reports. Coop removes `clip_float` from `hashes` whenever HMA returns it, whether or not `HMA_CLIP_ENABLED` is set, so it cannot reach NCMEC. `matchedBanks` lists the banks that the PDQ hash or the embedding matched, and reviewers see it in the review console.
+The embedding is kept under `embeddings`, apart from `hashes`, because everything in `hashes` is treated as an exact file hash and included in NCMEC reports. Coop removes `clip_float` from `hashes` whenever HMA returns it, whether or not `HMA_CLIP_ENABLED` is set, so it cannot reach NCMEC. `matchedBanks` lists only the banks that a hash matched, and reviewers see it in the review console as a match. Images that are merely similar are never listed there; the **Image similarity (CLIP)** signal scores them, and rules act on that score.
 
 This happens while the submission request is handled, so the request waits for it. Things to know:
 
@@ -138,7 +138,7 @@ Rules and routing rules that use the CLIP signal are not changed. They keep runn
 
 ## Check that it works
 
-The first hash request downloads the model weights, so it can take a minute or two. Use any publicly reachable image URL.
+The first hash request loads the model into memory, so it can take a few seconds. Use any publicly reachable image URL.
 
 1. **Hash an image.** The response has a `pdq` key and a `clip_float` key, a 4096-character hex string:
 
@@ -185,7 +185,128 @@ HMA cannot list a bank's contents, and adding the same image twice stores it twi
 
 ## Test it through the Coop UI
 
-`hma/clip/smoke-test.sh` (above) checks HMA from the terminal. To try the whole feature as a user would, from adding a bank to seeing a matching image arrive in the review queue, follow the [CLIP testing guide](hma-clip-ui-testing.md). It uses the fixture images in `hma/clip/fixtures/`.
+`hma/clip/smoke-test.sh` (above) checks HMA from the terminal. This walkthrough tries the whole feature as an organization admin would: create a bank, add images to it, write a rule, submit images, and see the matching one arrive in the review queue. It takes about 20 minutes, most of it waiting for HMA to index the bank, and uses the fixture images in `hma/clip/fixtures/`.
+
+### Before you start
+
+- HMA is running the CLIP-enabled image and `HMA_CLIP_ENABLED=true` is set in `server/.env` (see [Build and run](#build-and-run)). The seed script in step 3 reads the same file, so setting the variable only on the command that starts the server is not enough. The UI is at `http://localhost:3000` and the API at `http://localhost:8080` in a local setup.
+- You can sign in as an admin of an organization.
+- You have this repository checked out. The fixture images are in `hma/clip/fixtures/`: `bank/scene.jpg` (a red house with a sun) goes into the bank. Five images in `probe/` are submitted to test it: three edited copies of the house that should match (`scene-resized.jpg`, `scene-desaturated.jpg`, `scene-blurred.jpg`, scoring about 0.985, 0.959 and 0.936), and two images that should not (`other-building.jpg`, a lit tower at night, and `other.jpg`, coloured dots).
+
+### 1. Check that CLIP is on
+
+There is nothing to switch on in the UI. With `HMA_CLIP_ENABLED=true`, the **Image similarity (CLIP)** signal is usable in the rule builder (step 5). If it shows as disabled, the server was started without the variable.
+
+### 2. Create a bank
+
+1. Go to **Automated Enforcement, Matching Banks** and create a new hash bank.
+2. Name it `CLIP UI test`, leave **Enabled Ratio** at 1, and save. Enabled Ratio is the share of lookups that actually search the bank: a lower value skips the bank for the rest, so some matches are silently missed and nothing is logged.
+
+### 3. Add the fixture image to the bank
+
+The script needs your organization id, which the UI does not show. In a local setup, read it from the database (the container is named for your Compose project, so `docker compose exec postgres` also works):
+
+```bash
+docker exec <postgres container> psql -U postgres -c "select id, name from public.orgs"
+```
+
+Then, from the `server` directory:
+
+```bash
+pnpm run seed-clip-bank \
+  --org <orgId> --bank "CLIP UI test" --dir ../hma/clip/fixtures/bank --dry-run
+```
+
+`--dry-run` lists what would be added: `scene.jpg  would add`. Run it again without `--dry-run` to add the image. Expected output:
+
+```
+Bank "CLIP UI test" (COOP_..._CLIP_UI_TEST)
+  scene.jpg  added (HMA content id 1)
+1 added, 0 failed
+```
+
+The script reaches HMA through `HMA_SERVICE_URL` in `server/.env`, which must point at your HMA (`http://localhost:9876` in a local setup). If a run fails with `fetch failed`, that URL is wrong; you can set it for one run by putting `HMA_SERVICE_URL=http://localhost:9876` in front of the `pnpm` command.
+
+HMA builds its search index on a timer, so matching starts working within about 3 minutes. To wait until the bank is searchable, run this from the repository root (it stops with a message after about 5 minutes), with the HMA bank name that the seed script printed in parentheses. It prints a dot every 10 seconds and then `indexed`:
+
+```bash
+BANK=COOP_..._CLIP_UI_TEST
+HASH=$(curl -s -F "photo=@hma/clip/fixtures/probe/scene-resized.jpg" http://localhost:9876/h/hash | python3 -c "import json,sys; print(json.load(sys.stdin)['clip_float'])")
+for i in $(seq 30); do curl -s -G http://localhost:9876/m/lookup --data-urlencode signal_type=clip_float --data-urlencode "signal=$HASH" --data-urlencode "banks=$BANK" | grep -q "$BANK" && { echo indexed; break; }; printf .; sleep 10; [ "$i" = 30 ] && echo " not indexed, check HMA's logs"; done
+```
+
+### 4. Create an item type with an image field
+
+1. Go to **Settings, Item Types** and create an item type.
+2. Name it `clip_ui_test`, make it a **Content** type, and add one field named `image` of type **Image**.
+3. Save, and note the item type's id (shown in the list or in the URL of its edit page).
+
+### 5. Create a rule
+
+1. Go to **Automated Enforcement, Proactive Rules** and create a rule.
+2. Name it `CLIP UI test rule` and choose the item type `clip_ui_test`.
+3. Add a condition on the `image` field: the signal **Image similarity (CLIP)**, comparator **is greater than or equal to**, threshold **0.95**, with the bank `CLIP UI test`. The bank picker is the dropdown with the placeholder "Select media bank(s)". It only appears once you have chosen both an image input and the CLIP signal. The picker lists the banks that existed when the page was loaded, so if a bank you just created is missing, refresh the page.
+4. Set the action to **Enqueue Item to Manual Review**, and set the rule to **Live**. Rules are cached, so wait about 30 seconds before you submit images in step 7. Images submitted sooner can be checked against the old version of the rule.
+
+### 6. Make sure a review queue exists
+
+The rule's action sends items to the queue chosen by a matching routing rule, or to the organization's default review queue when no routing rule matches, and the item is dropped if there is no queue. This guide assumes no routing rules, so the items land in the default queue; if you have routing rules, look in the queue they route to. Open **Review Console, Queues**. If there is no queue, create one (the first queue is the default). Admins already see every queue, so nothing more is needed. If you review as a non-admin user, make sure that user is a reviewer on the queue (under Manage Access).
+
+### 7. Submit the images
+
+Create an API key under **Settings, API Keys** if you do not have one. Serve the probe images from this machine. Run it from inside this checkout:
+
+```bash
+python3 -m http.server 8765 --bind 0.0.0.0 --directory "$(git rev-parse --show-toplevel)/hma/clip/fixtures/probe"
+```
+
+Leave it running and watch its log: each image should be requested with `200`. A `404` means it is serving the wrong directory.
+
+**Pick an image host that three things can reach.** The image URL is fetched by the HMA containers (to hash the image), and later loaded by your browser when you open the item in the review console. `host.docker.internal` resolves inside Docker containers, but often not in your browser or shell on the host. Check before submitting: open `http://<host>:8765/scene-resized.jpg` in your browser. If it loads, use that host. If not, use your machine's address (on a Mac, `ipconfig getifaddr en0`), or add `127.0.0.1 host.docker.internal` to `/etc/hosts` (this changes a system file, so only do it if you are comfortable with that). If the browser cannot load the URL, matching still works, but the review console shows "Image failed to load".
+
+In a second terminal, set the host and submit all five images. Each call prints the HTTP status:
+
+```bash
+IMAGE_HOST=host.docker.internal   # or your machine's address
+RUN=1                             # change this number to submit the images again
+for NAME in scene-resized scene-desaturated scene-blurred other-building other; do
+  curl -s -o /dev/null -w "$NAME: %{http_code}\n" -X POST http://localhost:8080/api/v1/items/async/ \
+    -H "X-API-KEY: <your key>" -H 'Content-Type: application/json' \
+    -d "{\"items\":[{\"id\":\"clip-ui-$NAME-$RUN\",\"typeId\":\"<item type id>\",\"data\":{\"image\":\"http://$IMAGE_HOST:8765/$NAME.jpg\"}}]}"
+done
+```
+
+`202` means Coop accepted the items for processing, nothing more. Coop hashes the images before it returns `202` (so slow hashing delays the response), and the rule runs afterwards in the background. A hashing failure is swallowed, so a problem such as an unreachable image never shows up in this response. It shows up in the file server's log and in what arrives in the queue. To submit the images again, change `RUN` every time so the item ids are new (`clip-ui-scene-resized-2`, and so on). Resubmitting the same ids is a resubmission of the same items, not new ones, and an item that is already waiting in the queue does not get a second job, so a rerun with the same `RUN` can queue only some of the images.
+
+### 8. Check the result
+
+Sign in as a user of the same organization that owns the API key, then open **Review Console, Queues**. A queue cannot be opened from the Queues table. The **Pending Jobs** column shows how many items are waiting, and **Start Reviewing** opens them one at a time. To see the whole list without reviewing, turn on **Enable Preview Jobs View** under Settings, Settings, Review Console, and then use **Preview Jobs** on the queue. (If your instance has several organizations, a different one may have old jobs of its own.) After a few seconds you should see these two new items (any older jobs already in the queue are not part of this test): `clip-ui-scene-resized-1` and `clip-ui-scene-desaturated-1` (with `RUN=1`). Open an item to see its image. The queue does not show scores. The expected scores are about 0.985 and 0.959, measured on a CPU instance; scores can differ by a few thousandths on other hardware, so the desaturated copy (0.959 against the 0.95 threshold) is the closest call. The table printed by `hma/clip/smoke-test.sh` shows the scores on your machine.
+
+Three images should not be there:
+
+- `clip-ui-scene-blurred-1` is a match, but its expected score of about 0.936 is below the rule's threshold of 0.95.
+- `clip-ui-other-building-1` and `clip-ui-other-1` are not close enough to the bank image for any score.
+
+To see the threshold at work, edit the rule and lower it to 0.90, then submit the blurred copy again with a new item id (`clip-ui-scene-blurred-2`). It now arrives in the queue. Lowering the threshold below 0.90 changes nothing, because HMA only reports matches with a similarity of 0.90 or more.
+
+If nothing arrives after a minute, see "If it does not work" below.
+
+### Other things worth checking
+
+- **A bank works with other image signals too.** In the rule editor, change the condition's signal to a PDQ image signal. The bank stays selected, because HMA hashed the fixture image with PDQ as well as CLIP.
+- **Turning CLIP off.** Remove `HMA_CLIP_ENABLED` from `server/.env` and restart the server. The **Image similarity (CLIP)** signal shows as disabled in the rule builder, and `CLIP UI test rule` keeps running but reports "CLIP is not available" for each item, so move it to Draft first. Submitted images no longer get an embedding.
+- **Only a CLIP deployment can use it.** Without `HMA_CLIP_ENABLED`, the CLIP signal is shown as disabled, with a pointer to the guide.
+
+### If it does not work
+
+- **Nothing arrives in the queue.** Check that the organization has a review queue and, for a non-admin user, that the user is a reviewer on it (step 6), that `HMA_CLIP_ENABLED=true` is set and the server was restarted, that the rule is Live (a rule left in Draft fails silently: nothing is logged and nothing is enqueued), and that it uses a threshold at or below the 0.985 the resized image scores, and that the bank was seeded (step 3 printed `1 added`). HMA needs up to 3 minutes after seeding before it can match. A lookup before then finds nothing.
+- **Only some of the expected images arrive.** Check that every submission used a new `RUN` number. Then check the rule's threshold: the images score about 0.985, 0.959 and 0.936, so a threshold of 0.95 queues two of them and 0.91 queues all three.
+- **The images were never fetched, or the queue shows only items without a CLIP match.** An item whose image could not be fetched is still processed, but it has no CLIP embedding, so the rule cannot match it. The file server's log shows whether each image was requested and with what status (`404` means wrong directory, no request at all means the HMA containers cannot reach your image host). Fix the host, then submit again with a new `RUN` number.
+- **The review console says "Image failed to load".** Your browser cannot load the image URL. See "Pick an image host" in step 7. This does not affect matching.
+
+### Clean up the UI test
+
+Stop the `python3 -m http.server` process. In the UI, set the rule to Draft or delete it, delete the item type if you made it only for this test, and delete the bank `CLIP UI test` (this removes its images from HMA). Items already in the review queue can be decided or ignored.
 
 ## Clean up
 
@@ -195,18 +316,12 @@ To go back to the stock HMA, run the stock service again:
 docker compose up -d --build hma
 ```
 
-This keeps the data. The model weights are cached in a Docker volume named for your Compose project, such as `<project>_hma_clip_model_cache`. Keep it to avoid downloading the weights again next time, or find and remove it:
-
-```bash
-docker volume ls --filter name=hma_clip
-docker volume rm <the volume listed>
-```
+This keeps the data.
 
 ## How it's built
 
-`hma/clip/Dockerfile` starts from the same digest-pinned HMA release as `hma/Dockerfile`, installs PyTorch (CPU by default) and the [tx-extension-clip](https://github.com/UMass-Rescue/tx-extension-clip) extension (pinned to a commit), and swaps in `hma/clip/omm_config.py`, which is the stock configuration with the `clip_float` signal added and an optional hostname allowlist (`HMA_ALLOWED_HOSTNAMES`, which HMA applies when it fetches an image URL). It uses the stock entrypoint. The HMA release and the extension are pinned; the extension's own Python requirements are installed from PyPI at build time and can differ between builds, and the CLIP model revision is not pinned. Keep the `FROM` line in step with `hma/Dockerfile` when you update HMA.
+`hma/clip/Dockerfile` starts from the same digest-pinned HMA release as `hma/Dockerfile`, installs PyTorch (CPU by default) and the [tx-extension-clip](https://github.com/UMass-Rescue/tx-extension-clip) extension (pinned to a commit), and swaps in `hma/clip/omm_config.py`, which is the stock configuration with the `clip_float` signal added and an optional hostname allowlist (`HMA_ALLOWED_HOSTNAMES`, which HMA applies when it fetches an image URL). It uses the stock entrypoint. The HMA release and the extension are pinned; the CLIP model weights and tokenizer files are fetched at build time at pinned Hugging Face revisions and built into the image, so the running container does not download anything. The extension's own Python requirements are installed from PyPI at build time and can differ between builds. Keep the `FROM` line in step with `hma/Dockerfile` when you update HMA.
 
 ## See also
 
 - [Hasher-Matcher-Actioner (HMA)](hma.md)
-- [Testing CLIP through the Coop UI](hma-clip-ui-testing.md)

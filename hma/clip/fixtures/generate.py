@@ -4,7 +4,7 @@ third-party license and are identical on every run:
   pip install pillow
   python3 hma/clip/fixtures/generate.py
 
-Used by docs/integrations/hma-clip-ui-testing.md.
+Used by docs/integrations/hma-clip.md.
 
 bank/scene.jpg                image added to the CLIP bank
 probe/scene-resized.jpg       the same scene, resized and re-encoded (should match, score ~0.985)

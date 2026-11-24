@@ -40,7 +40,6 @@ const HMAHashBankService = {
   hashContentFromUrl: vi.fn(),
   checkImageMatchWithDetails: vi.fn(),
   isClipEnabled: vi.fn(),
-  findClosestClipMatch: vi.fn(),
 };
 
 describe('addHashesToImageFields', () => {
@@ -51,10 +50,6 @@ describe('addHashesToImageFields', () => {
     ]);
     HMAHashBankService.hashContentFromUrl.mockResolvedValue({ pdq: 'abc' });
     HMAHashBankService.isClipEnabled.mockReturnValue(false);
-    HMAHashBankService.findClosestClipMatch.mockResolvedValue({
-      matchedBanks: ['hma_bank'],
-      closestDistance: 0.03,
-    });
     HMAHashBankService.checkImageMatchWithDetails.mockResolvedValue({
       matchedBanks: ['hma_bank'],
     });
@@ -330,30 +325,20 @@ describe('addHashesToImageFields', () => {
       });
     });
 
-    it('checks the embedding against the banks with the 0.10 cutoff, so matchedBanks can list CLIP matches', async () => {
+    it('does not list CLIP matches in matchedBanks, which reviewers read as exact hash matches', async () => {
       HMAHashBankService.checkImageMatchWithDetails.mockResolvedValue({
         matchedBanks: [],
       });
       const data = await run({ cover: { url: 'https://x.test/c.png' } });
-      expect(HMAHashBankService.findClosestClipMatch).toHaveBeenCalledWith(
-        ['hma_bank'],
-        CLIP,
-      );
-      expect(
-        HMAHashBankService.checkImageMatchWithDetails,
-      ).toHaveBeenCalledWith(['hma_bank'], 'pdq', 'abc');
+      expect(data.cover).toEqual({
+        url: 'https://x.test/c.png',
+        hashes: { pdq: 'abc' },
+        embeddings: { clip_float: CLIP },
+        matchedBanks: undefined,
+      });
       expect(
         HMAHashBankService.checkImageMatchWithDetails,
       ).not.toHaveBeenCalledWith(expect.anything(), 'clip_float', CLIP);
-      expect(data.cover).toMatchObject({ matchedBanks: ['Bank'] });
-    });
-
-    it('keeps the matches the other lookups found when the CLIP lookup fails', async () => {
-      HMAHashBankService.findClosestClipMatch.mockRejectedValue(
-        new Error('HMA down'),
-      );
-      const data = await run({ cover: { url: 'https://x.test/c.png' } });
-      expect(data.cover).toMatchObject({ matchedBanks: ['Bank'] });
     });
 
     it('looks nothing up for an org without banks, but still stores the embedding', async () => {
@@ -362,18 +347,11 @@ describe('addHashesToImageFields', () => {
       expect(
         HMAHashBankService.checkImageMatchWithDetails,
       ).not.toHaveBeenCalled();
-      expect(HMAHashBankService.findClosestClipMatch).not.toHaveBeenCalled();
       expect(data.cover).toEqual({
         url: 'https://x.test/c.png',
         hashes: { pdq: 'abc' },
         embeddings: { clip_float: CLIP },
       });
-    });
-
-    it('does not look the embedding up when CLIP is not enabled', async () => {
-      HMAHashBankService.isClipEnabled.mockReturnValue(false);
-      await run({ cover: { url: 'https://x.test/c.png' } });
-      expect(HMAHashBankService.findClosestClipMatch).not.toHaveBeenCalled();
     });
 
     it('ignores an embedding supplied by the client, whether or not hashing works', async () => {

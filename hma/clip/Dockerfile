@@ -5,14 +5,14 @@
 # MD5. It is not built by default and nothing in Coop's compose file uses it;
 # see docs/integrations/hma-clip.md for how to build and run it.
 #
-# Build from the hma/ directory:
-#   docker build -f clip/Dockerfile -t hma-clip .
+# Build from the repository root:
+#   docker build -f hma/clip/Dockerfile -t hma-clip hma
 #
 # CPU by default. For GPU, build with PYTORCH_CUDA, TORCH_VERSION and
 # TORCHVISION_VERSION for your CUDA version; see the guide.
 #
 # Keep the FROM line the same as ../Dockerfile so both run one HMA release.
-FROM ghcr.io/meta/threatexchange/hma:1.2.1@sha256:a89c941da57436bc944abce42d9e6d2d757fcc539118e2f3fcafd24ae1bcc3dd
+FROM ghcr.io/meta/threatexchange/hma:1.2.2@sha256:9975bd6b4d57de0da776de8ea07fdddeb22cd0515c64c9301cc176836da514cf
 
 ARG PYTORCH_CUDA=cpu
 # Defaults are the CPU build. Each CUDA index carries different versions.
@@ -27,6 +27,34 @@ RUN pip install --no-cache-dir torch==${TORCH_VERSION} torchvision==${TORCHVISIO
 
 RUN pip install --no-cache-dir "git+https://github.com/UMass-Rescue/tx-extension-clip@${TX_EXTENSION_CLIP_COMMIT}" \
     && python -c "from tx_extension_clip import CLIPFloatSignal"
+
+# The CLIP model weights and tokenizer config are fetched here at pinned
+# revisions, so every build gets the same model and nothing is downloaded when
+# the container runs. The weights add about 1.4 GB to the image.
+ENV HF_HOME=/root/.cache/huggingface
+RUN python - <<'EOF'
+from pathlib import Path
+from huggingface_hub import snapshot_download
+
+for repo, revision, patterns in [
+    (
+        "laion/CLIP-ViT-B-32-xlm-roberta-base-laion5B-s13B-b90k",
+        "506d40eb551f4801a1c27fc20a31c7b8f590deda",
+        ["open_clip_pytorch_model.bin", "*.json"],
+    ),
+    (
+        "xlm-roberta-base",
+        "e73636d4f797dec63c3081bb6ed5c7b0bb3f2089",
+        ["*.json", "*.model"],
+    ),
+]:
+    snapshot_download(repo, revision=revision, allow_patterns=patterns)
+    # open_clip asks for the "main" revision; point it at the pinned one.
+    refs = Path(f"/root/.cache/huggingface/hub/models--{repo.replace('/', '--')}/refs")
+    refs.mkdir(parents=True, exist_ok=True)
+    (refs / "main").write_text(revision)
+EOF
+ENV HF_HUB_OFFLINE=1
 
 # The stock config is kept as a module that the CLIP config extends.
 COPY omm_config.py /app/omm_base/omm_config_base.py

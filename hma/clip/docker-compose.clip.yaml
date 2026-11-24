@@ -12,6 +12,9 @@
 
 services:
   hma:
+    # A separate image name, so `docker compose up hma` without this override
+    # does not keep running the CLIP image.
+    image: coop-hma-clip
     build:
       context: ./hma
       dockerfile: clip/Dockerfile
@@ -21,9 +24,6 @@ services:
         TORCHVISION_VERSION: ${TORCHVISION_VERSION:-0.29.2}
     environment:
       HMA_ALLOWED_HOSTNAMES: ${HMA_ALLOWED_HOSTNAMES:-}
-    volumes:
-      # CLIP model weights (~1.4 GB) download on first use; keep them across rebuilds.
-      - hma_clip_model_cache:/root/.cache/huggingface
     # deploy:
     #   resources:
     #     reservations:
@@ -31,6 +31,3 @@ services:
     #         - driver: nvidia
     #           count: all
     #           capabilities: [gpu]
-
-volumes:
-  hma_clip_model_cache:

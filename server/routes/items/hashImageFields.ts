@@ -12,7 +12,6 @@ type HashService = Pick<
   | 'hashContentFromUrl'
   | 'checkImageMatchWithDetails'
   | 'isClipEnabled'
-  | 'findClosestClipMatch'
 >;
 
 type ImageValue = string | { url: string; [key: string]: unknown };
@@ -105,30 +104,20 @@ export async function addHashesToImageFields({
       // themselves, so a failed lookup must not discard the hashes we have.
       const matchedBankNames: string[] = [];
       try {
-        // Nothing is looked up for an org without banks.
-        const lookups: Promise<{ matchedBanks: string[] }>[] = [];
-        if (allBankNames.length > 0) {
-          lookups.push(
-            ...Object.entries(hashes).map(async ([signalType, hash]) =>
-              HMAHashBankService.checkImageMatchWithDetails(
-                allBankNames,
-                signalType,
-                hash,
-              ),
-            ),
-          );
-          if (embeddings) {
-            // Held to the same 0.10 cutoff as the CLIP signal, so matchedBanks
-            // never lists a bank that the signal scores 0. Optional, so a
-            // failure here must not hide matches the other lookups found.
-            lookups.push(
-              HMAHashBankService.findClosestClipMatch(
-                allBankNames,
-                embeddings.clip_float,
-              ).catch(() => ({ matchedBanks: [] })),
-            );
-          }
-        }
+        // Nothing is looked up for an org without banks. The CLIP embedding is
+        // not checked here: matchedBanks is shown to reviewers as an exact
+        // hash match, so similar images must not appear in it. The CLIP
+        // signal scores them instead.
+        const lookups: Promise<{ matchedBanks: string[] }>[] =
+          allBankNames.length > 0
+            ? Object.entries(hashes).map(async ([signalType, hash]) =>
+                HMAHashBankService.checkImageMatchWithDetails(
+                  allBankNames,
+                  signalType,
+                  hash,
+                ),
+              )
+            : [];
         if (lookups.length > 0) {
           const matchResults = await Promise.all(lookups);
 

@@ -14,8 +14,8 @@
 #
 # Usage: hma/clip/smoke-test.sh
 #   HMA_URL   default http://localhost:9876
-# The first run downloads the CLIP model (the revision is not pinned), so it needs
-# network access and scores can differ slightly between fresh builds.
+# The CLIP model is built into the image at a pinned revision, so scores are
+# stable across builds, to within a few thousandths between CPU types.
 set -euo pipefail
 
 BASE="${HMA_URL:-http://localhost:9876}"
@@ -47,7 +47,7 @@ trap cleanup EXIT
 
 run curl -fsS "$BASE/c/signal_type" | grep -q clip_float || fail "HMA is not reachable at $BASE, or it has no clip_float signal (is it built from hma/clip/Dockerfile?)"
 
-echo "+ hash bank/scene.jpg (first run downloads the model; this can take a while)" >&2
+echo "+ hash bank/scene.jpg (the first request loads the model; this can take a while)" >&2
 HASH=$(hash_of "$FIXTURES/bank/scene.jpg")
 [ "${#HASH}" -eq 4096 ] || fail "expected a 4096-character clip_float hash, got ${#HASH}"
 echo "  clip_float hash: ${#HASH} characters, starting ${HASH:0:16}..." >&2

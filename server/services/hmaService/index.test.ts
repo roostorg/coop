@@ -1306,6 +1306,14 @@ describe('HmaService', () => {
         expect(params.get('signal')).toBe(HASH);
       });
 
+      it("restricts the lookup to the org's banks", async () => {
+        const { fetchHTTP } = await find({});
+        const [call] = callsTo(fetchHTTP, 'get', '/m/lookup');
+        expect(new URL(call.url).searchParams.get('banks')).toBe(
+          BANKS.join(','),
+        );
+      });
+
       it('reports no match and no distance when nothing is close enough', async () => {
         const { result } = await find({});
         expect(result).toEqual({

@@ -1084,6 +1084,7 @@ export class HmaService {
     const matches = await this.lookupContent({
       signal: embedding,
       signalType: 'clip_float',
+      hmaBankIds,
     });
 
     const matchedBanks: string[] = [];
@@ -1201,14 +1202,17 @@ export class HmaService {
     contentType?: ContentType;
     signalType?: string;
     signal?: string;
+    hmaBankIds?: string[];
   }): Promise<LookupResponse> {
-    const { url, contentType, signalType, signal } = options;
+    const { url, contentType, signalType, signal, hmaBankIds } = options;
 
     const params = new URLSearchParams();
     if (url) params.append('url', url);
     if (contentType) params.append('content_type', contentType);
     if (signalType) params.append('signal_type', signalType);
     if (signal) params.append('signal', signal);
+    // Restricts the search to these banks, so HMA does not search other orgs'.
+    if (hmaBankIds?.length) params.append('banks', hmaBankIds.join(','));
 
     const response = await this.fetchHTTP({
       url: `${this.hmaServiceUrl}/m/lookup?${params.toString()}`,
