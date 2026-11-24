@@ -35,3 +35,29 @@ jobs:
           fail-on-severity: high
           fail-on-scopes: runtime,development,unknown
           comment-summary-in-pr: on-failure
+
+  # Dependency review only sees packages whose own version changes, so it
+  # misses an existing vulnerable version that a bump newly pulls into the
+  # production dependencies.
+  new-advisories:
+    name: Check for new advisories in production dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup pnpm and Node.js
+        uses: pnpm/setup@731dfb6463bbd11c11fd0ee11fe00ed0e36d48a1 # v3.2.0
+        with:
+          install: false
+
+      - name: Compare advisories with the base branch
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: bash scripts/check-new-advisories.sh "$BASE_SHA"
