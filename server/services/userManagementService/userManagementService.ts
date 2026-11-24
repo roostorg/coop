@@ -1,6 +1,6 @@
 /* eslint-disable max-lines */
 import crypto from 'node:crypto';
-import { sql, type Kysely } from 'kysely';
+import { type Kysely } from 'kysely';
 
 import type { Dependencies } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
@@ -174,7 +174,7 @@ class UserManagementService {
   async deleteInvite(inviteId: string, orgId: string): Promise<boolean> {
     const result = await this.pgQuery
       .deleteFrom('public.invite_user_tokens')
-      .where('id', '=', sql<number>`${inviteId}::int`)
+      .where('id', '=', Number(inviteId))
       .where('org_id', '=', orgId)
       .execute();
 
