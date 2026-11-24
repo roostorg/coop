@@ -42,7 +42,11 @@ import { resolvers as spotTestResolvers } from './modules/spotTest.js';
 import { resolvers as textBankResolvers } from './modules/textBank.js';
 import { resolvers as userResolvers } from './modules/user.js';
 import { type GQLServices } from './services.js';
-import { forbiddenError, unauthenticatedError } from './utils/errors.js';
+import {
+  forbiddenError,
+  unauthenticatedError,
+  userInputError,
+} from './utils/errors.js';
 import { gqlErrorResult, gqlSuccessResult } from './utils/gqlResult.js';
 import { type PassportGqlContext } from './utils/passportContext.js';
 
@@ -242,7 +246,15 @@ const Mutation: GQLMutationResolvers = {
       throw forbiddenError('User does not have permission to delete invites');
     }
 
-    return context.services.UserManagementService.deleteInvite(id, user.orgId);
+    const inviteId = Number(id);
+    if (!Number.isSafeInteger(inviteId)) {
+      throw userInputError('Invalid invite ID');
+    }
+
+    return context.services.UserManagementService.deleteInvite(
+      inviteId,
+      user.orgId,
+    );
   },
   async approveUser(_, { id }, context) {
     const user = context.getUser();

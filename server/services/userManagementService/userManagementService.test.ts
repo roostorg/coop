@@ -20,7 +20,7 @@ describe('UserManagementService invites', () => {
   });
 
   testWithOrg(
-    'exposes the integer invite id as a string that deleteInvite accepts',
+    'returns the integer invite id as a number that deleteInvite accepts',
     async ({ org, service }) => {
       await service.createInviteUserToken({
         email: 'invitee@example.invalid',
@@ -28,7 +28,7 @@ describe('UserManagementService invites', () => {
         orgId: org.id,
       });
       const [invite] = await service.getPendingInvites(org.id);
-      expect(invite.id).toEqual(expect.any(String));
+      expect(invite.id).toEqual(expect.any(Number));
       expect(await service.deleteInvite(invite.id, org.id)).toBe(true);
       expect(await service.getPendingInvites(org.id)).toEqual([]);
     },

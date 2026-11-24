@@ -263,13 +263,13 @@ describe('ModerationConfigService', () => {
 
   describe('user strike thresholds', () => {
     testWithOrg(
-      'exposes the integer id as a string that update and delete accept',
+      'returns the integer id as a number that update and delete accept',
       async ({ sutWithPrimary, sutWithReadReplica, org }) => {
         const created = await sutWithPrimary.createUserStrikeThreshold({
           orgId: org.id,
           thresholdSettings: { threshold: 3, actions: [] },
         });
-        expect(created.id).toEqual(expect.any(String));
+        expect(created.id).toEqual(expect.any(Number));
         const [read] = await sutWithReadReplica.getUserStrikeThresholdsForOrg(
           org.id,
         );

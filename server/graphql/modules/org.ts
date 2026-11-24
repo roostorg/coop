@@ -348,7 +348,10 @@ const Org: GQLOrgResolvers = {
 
     const invites =
       await context.services.UserManagementService.getPendingInvites(org.id);
-    return invites as GQLPendingInvite[];
+    return invites.map((it) => ({
+      ...it,
+      id: String(it.id),
+    })) as GQLPendingInvite[];
   },
   async rules(org, _, context) {
     const user = context.getUser();
@@ -465,9 +468,11 @@ const Org: GQLOrgResolvers = {
       throw unauthenticatedError('User required.');
     }
 
-    return context.services.ModerationConfigService.getUserStrikeThresholdsForOrg(
-      user.orgId,
-    );
+    const thresholds =
+      await context.services.ModerationConfigService.getUserStrikeThresholdsForOrg(
+        user.orgId,
+      );
+    return thresholds.map((it) => ({ ...it, id: String(it.id) }));
   },
   async policies(org, _, context) {
     const user = context.getUser();

@@ -1,4 +1,4 @@
-import { sql, type Kysely } from 'kysely';
+import { type Kysely } from 'kysely';
 import { type JsonObject } from 'type-fest';
 
 import {
@@ -15,8 +15,7 @@ import { removeUndefinedKeys } from '../../../utils/misc.js';
 import { type ModerationConfigServicePg } from '../dbTypes.js';
 
 const userStrikeThresholdSelection = [
-  // The column is an integer; callers and GraphQL treat the id as a string.
-  sql<string>`id::text`.as('id'),
+  'id',
   'org_id as orgId',
   'threshold',
   'actions',
@@ -77,7 +76,7 @@ export default class UserStrikeOperations {
   async updateUserStrikeThreshold(opts: {
     orgId: string;
     thresholdSettings: {
-      id: string;
+      id: number;
       threshold?: number;
       actions?: string[];
       actionParameters?: JsonObject;
@@ -95,7 +94,7 @@ export default class UserStrikeOperations {
             action_parameters: thresholdSettings.actionParameters,
           }),
         )
-        .where('id', '=', Number(thresholdSettings.id))
+        .where('id', '=', thresholdSettings.id)
         .where('org_id', '=', orgId)
         .returning(userStrikeThresholdSelection)
         .executeTakeFirstOrThrow();
@@ -145,14 +144,14 @@ export default class UserStrikeOperations {
   async deleteUserStrikeThreshold(opts: {
     orgId: string;
     threshold: number;
-    id: string;
+    id: number;
   }) {
     const { orgId, id, threshold } = opts;
 
     const rowsDeleted = await this.pgQuery
       .deleteFrom('public.user_strike_thresholds')
       .where('org_id', '=', orgId)
-      .where('id', '=', Number(id))
+      .where('id', '=', id)
       .where('threshold', '=', threshold)
       .execute();
 

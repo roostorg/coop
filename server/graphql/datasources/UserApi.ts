@@ -212,7 +212,7 @@ class UserAPI {
     });
 
     // Delete the invite token after successful user creation
-    await this.userManagementService.deleteInvite(String(token.id), orgId);
+    await this.userManagementService.deleteInvite(token.id, orgId);
 
     return user;
   }

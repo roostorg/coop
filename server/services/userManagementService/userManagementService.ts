@@ -144,7 +144,7 @@ class UserManagementService {
   async getPendingInvites(
     orgId: string,
   ): Promise<
-    Array<{ id: string; email: string; role: UserRole; createdAt: string }>
+    Array<{ id: number; email: string; role: UserRole; createdAt: string }>
   > {
     const result = await this.pgQuery
       .selectFrom('public.invite_user_tokens')
@@ -164,17 +164,17 @@ class UserManagementService {
       .execute();
 
     return result.map((row) => ({
-      id: String(row.id),
+      id: row.id,
       email: row.email,
       role: row.role,
       createdAt: row.created_at.toISOString(),
     }));
   }
 
-  async deleteInvite(inviteId: string, orgId: string): Promise<boolean> {
+  async deleteInvite(inviteId: number, orgId: string): Promise<boolean> {
     const result = await this.pgQuery
       .deleteFrom('public.invite_user_tokens')
-      .where('id', '=', Number(inviteId))
+      .where('id', '=', inviteId)
       .where('org_id', '=', orgId)
       .execute();
 
