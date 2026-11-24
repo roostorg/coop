@@ -21,6 +21,7 @@
     "runWorkerOrJob": "tsc -p tsconfig.build.json && node --env-file-if-exists=.env ./build/bin/run-worker-or-job.js",
     "create-org": "tsc -p tsconfig.build.json && node --env-file-if-exists=.env ./build/bin/create-org-and-user.js",
     "get-invite": "tsc -p tsconfig.build.json && node --env-file-if-exists=.env ./build/bin/get-invite-token.js",
+    "seed-clip-bank": "tsc -p tsconfig.build.json && node --env-file-if-exists=.env ./build/bin/seed-clip-bank.js",
     "recover-mrt-queue": "tsc -p tsconfig.build.json && node --env-file-if-exists=.env ./build/bin/recover-mrt-queue.js",
     "knip": "knip"
   },

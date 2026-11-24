@@ -10,6 +10,7 @@ In a checkout, run each script from the `server` directory through its
 | `create-org-and-user.ts` | `pnpm run create-org`        |
 | `get-invite-token.ts`    | `pnpm run get-invite`        |
 | `recover-mrt-queue.ts`   | `pnpm run recover-mrt-queue` |
+| `seed-clip-bank.ts`      | `pnpm run seed-clip-bank`    |
 | `run-worker-or-job.ts`   | `pnpm run runWorkerOrJob`    |
 
 The server and worker images contain the compiled scripts, so inside a
@@ -251,3 +252,11 @@ pnpm run recover-mrt-queue \
 - Report history is best-effort: only inbound `submitReport` rows that made
   it into `REPORTING_SERVICE.REPORTS` are restored. Rule-driven enqueues
   (`ENQUEUE_TO_MRT`) never had a report history to begin with.
+
+## seed-clip-bank.ts
+
+Adds the images in a directory to a hash bank, hashing them with every signal HMA has enabled (including CLIP). See [Add images to a bank](../../docs/integrations/hma-clip.md#add-images-to-a-bank).
+
+```bash
+pnpm run seed-clip-bank --org <orgId> --bank "<bank name>" --dir <directory> [--dry-run]
+```
