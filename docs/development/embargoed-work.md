@@ -97,21 +97,21 @@ Land the work when its embargo ends:
 - **Security fixes** land in the same window as the release that ships them, not earlier. A fix merged to `roostorg/coop` is public, so landing it before the release is ready discloses the vulnerability with no fixed version to upgrade to. Agree the release base first, then land and release straight after: see [Security releases](security-releases.md), steps 1, 2 and 4.
 - **Partner features** land on the date agreed with the partner.
 
-Run the landing script from your clone of the private copy, with the PR's branch checked out locally. It needs git 2.38 or later. It checks the branch's lineage, replays it onto `roostorg/coop`'s current `main` without touching your working tree, squashes it into one commit and pushes that commit to a new branch on the target. It does not open the PR.
+Run the landing script from your clone of the private copy, with the PR's branch checked out locally. It needs git 2.40 or later. It checks the branch's lineage, replays it onto `roostorg/coop`'s current `main` without touching your working tree, squashes it into one commit and pushes that commit to a new branch on the target. It does not open the PR.
 
-Run it without `--yes` first. It opens your editor with the branch's commit messages, which become the squashed commit's message; that message is public once the commit lands, so remove anything about the embargo. Check the author, message and diff stat it prints, then rerun with `--yes`.
+Run it without `--yes` first. It opens your editor with the branch's commit messages, which become the squashed commit's message; that message is public once the commit lands, so remove anything about the embargo. Check the author, message, diff stat, target and branch name it prints, then rerun with `--yes`. The pushed branch takes the private branch's name unless you pass `--remote-branch`; the name becomes public too, so pick a neutral one.
 
 For a security fix, the target is the advisory's temporary private fork. Bring the fork's `main` up to date first, as in [Undisclosed vulnerability: private fork](security-releases.md#undisclosed-vulnerability-private-fork), step 3, since the squashed commit builds on `roostorg/coop`'s current `main`:
 
 ```bash
 scripts/embargo/land.sh --help
-scripts/embargo/land.sh <branch> --ghsa <ghsa-fork-url>
-scripts/embargo/land.sh <branch> --ghsa <ghsa-fork-url> --yes
+scripts/embargo/land.sh <branch> --ghsa <ghsa-fork-url> --remote-branch <public-branch>
+scripts/embargo/land.sh <branch> --ghsa <ghsa-fork-url> --remote-branch <public-branch> --yes
 ```
 
 Open the PR from the link the script prints, and follow the rest of the private-fork steps in [Security releases](security-releases.md). Actions doesn't run in the fork, so link or copy the private copy's CI results into the fork PR.
 
-For a partner feature, the target is `roostorg/coop`. The branch name is public, so pick a neutral one with `--remote-branch`; with `--yes`, the script asks you to type it to confirm:
+For a partner feature, the target is `roostorg/coop`. With `--yes`, the script asks you to type the branch name to confirm:
 
 ```bash
 scripts/embargo/land.sh <branch> --public --remote-branch <public-branch>
