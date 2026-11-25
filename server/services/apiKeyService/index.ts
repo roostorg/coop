@@ -2,6 +2,7 @@ import type { ApiKeyMetadata } from './apiKeyService.js';
 
 export {
   type ApiKeyMetadata,
+  type ApiKeyRecord,
   type ApiKeyService,
   default as makeApiKeyService,
 } from './apiKeyService.js';
