@@ -27,6 +27,7 @@
   "author": "Roostorg",
   "license": "Apache-2.0",
   "dependencies": {
+    "@adonisjs/auth": "10.1.1",
     "@adonisjs/core": "7.6.0",
     "@apollo/server": "^5.5.0",
     "@aws-sdk/client-s3": "^3.1169.0",
@@ -46,6 +47,7 @@
     "@sendgrid/mail": "^8.1.6",
     "@stdlib/stats-binomial-test": "^0.2.3",
     "@total-typescript/ts-reset": "^0.6.1",
+    "@vinejs/vine": "4.4.0",
     "bcryptjs": "^2.4.3",
     "bullmq": "^5.0.0",
     "cassandra-driver": "^4.8.0",

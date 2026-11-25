@@ -13,6 +13,8 @@ const GraphqlController = async () =>
   import('../app/controllers/graphql_controller.js');
 const SamlController = async () =>
   import('../app/controllers/saml_controller.js');
+const ActionsController = async () =>
+  import('../app/controllers/actions_controller.js');
 
 /**
  * All of the public API, under `/api/v1`. `deps` is passed to each REST
@@ -45,8 +47,19 @@ export function registerRoutes(
             .any('/graphql/*', [GraphqlController, 'handle'])
             .as('graphql.subpath');
 
+          // Ported to AdonisJS' own auth and VineJS (see the PR description).
+          router
+            .post('/actions', [ActionsController, 'store'])
+            .use(middleware.auth({ guard: 'apiKey' }));
+
           for (const controller of Object.values(controllers)) {
             for (const it of controller.routes) {
+              if (
+                controller.pathPrefix === '/actions' &&
+                it.method === 'post'
+              ) {
+                continue;
+              }
               const handler = it.handler(deps);
               const pattern = joinPath(controller.pathPrefix, it.path);
               const route = router[it.method](pattern, async (ctx) => {

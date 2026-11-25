@@ -14,14 +14,21 @@ export default class GetInviteToken extends BaseCommand {
   static {
     this.defineFlag('email', {
       type: 'string',
-      required: true,
+      // Checked in run(): ace exits 1 on a missing required flag even when
+      // asked for --help.
+      required: false,
       description: 'Email address of the invited user',
     });
   }
 
-  declare email: string;
+  declare email?: string;
 
   override async run() {
+    if (!this.email) {
+      this.logger.error('Missing required option "email"');
+      this.exitCode = 1;
+      return;
+    }
     const db = await this.app.container.make('KyselyPg');
     const closeShared = await this.app.container.make(
       'closeSharedResourcesForShutdown',

@@ -17,10 +17,12 @@ export function registerKernel(server: Server, router: Router) {
   router.use([
     async () => import('@adonisjs/core/bodyparser_middleware'),
     async () => import('../app/middleware/request_span_middleware.js'),
+    async () => import('@adonisjs/auth/initialize_auth_middleware'),
   ]);
 
   // Middleware that routes opt into by name.
   return router.named({
+    auth: async () => import('../app/middleware/auth_middleware.js'),
     session: async () =>
       import('../app/middleware/session_bridge_middleware.js'),
   });

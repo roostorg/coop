@@ -1,4 +1,5 @@
 import { http } from './app.js';
+import auth from './auth.js';
 import bodyparser from './bodyparser.js';
 import encryption from './encryption.js';
 import logger from './logger.js';
@@ -9,6 +10,7 @@ import logger from './logger.js';
  */
 export default {
   app: { http },
+  auth,
   encryption,
   bodyparser,
   logger,

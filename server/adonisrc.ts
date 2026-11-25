@@ -18,6 +18,7 @@ export default defineConfig({
   providers: [
     async () => import('./providers/app_provider.js'),
     async () => import('./providers/coop_provider.js'),
+    async () => import('@adonisjs/auth/auth_provider'),
   ],
   commands: [
     async () => import('@adonisjs/core/commands'),
