@@ -263,6 +263,7 @@ export type CoopErrorName =
   | 'TimeoutError'
   | 'ServiceUnavailableError'
   | 'BadRequestError'
+  | 'PayloadTooLargeError'
   | 'UnauthenticatedError'
   | 'UnauthorizedError'
   // apiKey errors
