@@ -11,7 +11,6 @@ import { sql, type Kysely } from 'kysely';
 
 import { inject } from '../iocContainer/utils.js';
 import { type CombinedPg } from '../services/combinedDbTypes.js';
-import { type LocationArea } from '../services/moderationConfigService/index.js';
 import { cached } from '../utils/caching.js';
 import { jsonParse, jsonStringify } from '../utils/encoding.js';
 import { makeKyselyTransactionWithRetry } from '../utils/kyselyTransactionWithRetry.js';
@@ -91,26 +90,15 @@ export type GetActionsForRuleEventuallyConsistent = ReturnType<
 >;
 
 export const makeGetLocationBankLocationsEventuallyConsistent = inject(
-  ['KyselyPgReadReplica'],
-  (db) => {
+  ['LocationBankService'],
+  (locationBankService) => {
     return cached({
-      async producer(bankId: string) {
-        const rows = await db
-          .selectFrom('public.location_bank_locations')
-          .selectAll()
-          .where('bank_id', '=', bankId)
-          .execute();
-        return rows.map(
-          (r) =>
-            ({
-              id: r.id,
-              name: r.name ?? undefined,
-              geometry: r.geometry as LocationArea['geometry'],
-              bounds: r.bounds as LocationArea['bounds'],
-              googlePlaceInfo:
-                r.google_place_info as LocationArea['googlePlaceInfo'],
-            }) satisfies LocationArea,
-        );
+      async producer(input: { orgId: string; bankId: string }) {
+        const { orgId, bankId } = input;
+        const byBank = await locationBankService.getLocations(orgId, [bankId], {
+          readFromReplica: true,
+        });
+        return byBank.get(bankId) ?? [];
       },
       directives(locations) {
         const numLocations = locations.length;

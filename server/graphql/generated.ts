@@ -26,6 +26,7 @@ import type { ReportingInsights } from '../graphql/modules/reporting.js';
 import type { SignalWithScore } from '../services/analyticsQueries/RuleActionInsights.js';
 import type { DerivedFieldSpecSource } from '../services/derivedFieldsService/helpers.js';
 import type { HashBank } from '../services/hmaService/index.js';
+import type { LocationBank } from '../services/locationBankService/index.js';
 import type {
   ContentAppealReviewJobPayload,
   ContentManualReviewJobPayload,
@@ -59,7 +60,6 @@ import type { Notification } from '../services/notificationsService/notification
 import type { ReportingRuleWithoutVersion } from '../services/reportingService/ReportingRules.js';
 import type { Signal } from '../services/signalsService/index.js';
 import type { NonEmptyString } from '../utils/typescript-types.js';
-import type { LocationBankWithoutFullPlacesAPIResponse } from './datasources/LocationBankApi.js';
 import type { Context } from './resolvers.js';
 import type {
   ItemSubmissionForGQL,
@@ -6463,7 +6463,7 @@ export type GQLResolversTypes = {
   LeafConditionWithResult: ResolverTypeWrapper<LeafConditionWithResult>;
   LocationArea: ResolverTypeWrapper<GQLLocationArea>;
   LocationAreaInput: GQLLocationAreaInput;
-  LocationBank: ResolverTypeWrapper<LocationBankWithoutFullPlacesAPIResponse>;
+  LocationBank: ResolverTypeWrapper<LocationBank>;
   LocationBankNameExistsError: ResolverTypeWrapper<GQLLocationBankNameExistsError>;
   LocationGeometry: ResolverTypeWrapper<GQLLocationGeometry>;
   LocationGeometryInput: GQLLocationGeometryInput;
@@ -7263,7 +7263,7 @@ export type GQLResolversParentTypes = {
   LeafConditionWithResult: LeafConditionWithResult;
   LocationArea: GQLLocationArea;
   LocationAreaInput: GQLLocationAreaInput;
-  LocationBank: LocationBankWithoutFullPlacesAPIResponse;
+  LocationBank: LocationBank;
   LocationBankNameExistsError: GQLLocationBankNameExistsError;
   LocationGeometry: GQLLocationGeometry;
   LocationGeometryInput: GQLLocationGeometryInput;

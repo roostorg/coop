@@ -12,6 +12,7 @@ import { type ActionCountsInput } from '../../services/actionStatisticsService/i
 import { type AggregationClause } from '../../services/aggregationsService/index.js';
 import { type ConditionSetWithResultAsLogged } from '../../services/analyticsLoggers/index.js';
 import { type CombinedPg } from '../../services/combinedDbTypes.js';
+import { locationAreaInputToLocationArea } from '../../services/locationBankService/index.js';
 import {
   makeRuleHasRunningBacktestsError,
   makeRuleIsMissingContentTypeError,
@@ -71,7 +72,6 @@ import { unauthenticatedError } from '../utils/errors.js';
 import { oneOfInputToTaggedUnion } from '../utils/inputHelpers.js';
 import { type CursorInfo, type Edge } from '../utils/paginationHandler.js';
 import { buildGraphqlRuleParent } from './buildGraphqlRuleParent.js';
-import { locationAreaInputToLocationArea } from './LocationBankApi.js';
 import {
   kyselyCancelRunningBacktestsForRule,
   kyselyCreateRule,

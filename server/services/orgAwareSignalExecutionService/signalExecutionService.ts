@@ -53,9 +53,10 @@ export type TransientRunSignalWithCache = (
   SignalResult<SignalOutputType> | { type: 'ERROR'; score: unknown }
 >;
 
-type LocationsLoader = (
-  locationBankId: string,
-) => Promise<ReadonlyDeep<LocationArea[]> | undefined>;
+type LocationsLoader = (input: {
+  orgId: string;
+  bankId: string;
+}) => Promise<ReadonlyDeep<LocationArea[]> | undefined>;
 
 export default inject(
   [
@@ -212,7 +213,9 @@ async function runSignal(
               );
             } else if (locationBankIds?.length) {
               matchingValuesFromBanks = await Promise.all(
-                locationBankIds.map(async (id) => locationsLoader(id)),
+                locationBankIds.map(async (id) =>
+                  locationsLoader({ orgId, bankId: id }),
+                ),
               ).then((allBankLocations) =>
                 allBankLocations
                   .filter((it): it is ReadonlyDeep<LocationArea>[] =>

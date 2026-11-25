@@ -9,9 +9,6 @@ import makeIntegrationAPI, {
 import makeInvestigationAPI, {
   type InvestigationAPI,
 } from '../../graphql/datasources/InvestigationApi.js';
-import makeLocationBankAPI, {
-  type LocationBankAPI,
-} from '../../graphql/datasources/LocationBankApi.js';
 import makeOrgAPI, { type OrgAPI } from '../../graphql/datasources/OrgApi.js';
 import makeRoleAPI, {
   type RoleAPI,
@@ -31,7 +28,6 @@ declare module '../index.js' {
     ActionAPIDataSource: ActionAPI;
     IntegrationAPIDataSource: IntegrationAPI;
     InvestigationAPIDataSource: InvestigationAPI;
-    LocationBankAPIDataSource: LocationBankAPI;
     OrgAPIDataSource: OrgAPI;
     RoleAPIDataSource: RoleAPI;
     RuleAPIDataSource: RuleAPI;
@@ -47,7 +43,6 @@ export function registerGqlDataSources(bottle: Bottle<Dependencies>) {
   register(bottle, 'ActionAPIDataSource', makeActionAPI);
   register(bottle, 'IntegrationAPIDataSource', makeIntegrationAPI);
   register(bottle, 'InvestigationAPIDataSource', makeInvestigationAPI);
-  register(bottle, 'LocationBankAPIDataSource', makeLocationBankAPI);
   register(bottle, 'OrgAPIDataSource', makeOrgAPI);
   register(bottle, 'RoleAPIDataSource', makeRoleAPI);
   register(bottle, 'RuleAPIDataSource', makeRuleAPI);
@@ -64,7 +59,6 @@ function makeDataSources(deps: Dependencies) {
     actionAPI: deps.ActionAPIDataSource,
     integrationAPI: deps.IntegrationAPIDataSource,
     investigationAPI: deps.InvestigationAPIDataSource,
-    locationBankAPI: deps.LocationBankAPIDataSource,
     orgAPI: deps.OrgAPIDataSource,
     roleAPI: deps.RoleAPIDataSource,
     ruleAPI: deps.RuleAPIDataSource,

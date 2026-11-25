@@ -886,9 +886,7 @@ const MatchingBanks: GQLMatchingBanksResolvers = {
     if (!user || user.orgId !== org.id) {
       throw unauthenticatedError('User required.');
     }
-    return context.dataSources.locationBankAPI.getGraphQLLocationBanksForOrg(
-      org.id,
-    );
+    return context.services.LocationBankService.listBanks(org.id);
   },
   async hashBanks(org, _, context) {
     const user = context.getUser();
