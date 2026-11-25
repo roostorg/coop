@@ -54,12 +54,6 @@ export function registerRoutes(
 
           for (const controller of Object.values(controllers)) {
             for (const it of controller.routes) {
-              if (
-                controller.pathPrefix === '/actions' &&
-                it.method === 'post'
-              ) {
-                continue;
-              }
               const handler = it.handler(deps);
               const pattern = joinPath(controller.pathPrefix, it.path);
               const route = router[it.method](pattern, async (ctx) => {

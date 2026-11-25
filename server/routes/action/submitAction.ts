@@ -1,5 +1,6 @@
 import { v1 as uuidv1 } from 'uuid';
 
+import { type SubmitActionInput } from '../../app/validators/action_validator.js';
 import { type Dependencies } from '../../iocContainer/index.js';
 import {
   parseStoredParameters,
@@ -12,7 +13,6 @@ import {
 } from '../../utils/correlationIds.js';
 import { ErrorType, makeUnauthorizedError } from '../../utils/errors.js';
 import { type RouteHandler } from '../../utils/route-helpers.js';
-import { type SubmitActionInput } from './ActionRoutes.js';
 
 export default function submitAction({
   ActionPublisher,

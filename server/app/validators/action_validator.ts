@@ -1,5 +1,5 @@
 import vine from '@vinejs/vine';
-import type { FieldContext } from '@vinejs/vine/types';
+import type { FieldContext, Infer } from '@vinejs/vine/types';
 
 import { MAX_ACTOR_NOTE_LENGTH } from '../../services/moderationConfigService/index.js';
 
@@ -18,29 +18,41 @@ const maxCodePoints = vine.createRule(
   },
 );
 
-// VineJS' `optional()` accepts null and drops it from the output; JSON Schema
-// rejected it ("must be string"). Swapping null for a non-null value makes
-// the field's type rule report it.
+// VineJS treats null as missing: `optional()` accepts and drops it, and a
+// required field reports "required". JSON Schema reported null as the wrong
+// type ("must be string"). Swapping null for a non-null value makes each
+// field's type rule report it.
 const rejectNull = (value: unknown) =>
   value === null ? Symbol('null') : value;
 
-const itemIdentifier = vine.object({
-  id: vine.string(),
-  typeId: vine.string(),
-});
+// Any JSON object, including null values inside it (`vine.record()` reports
+// those as missing keys); the handler validates the values.
+const jsonObject = vine.createRule(
+  (value: unknown, _options: undefined, field: FieldContext) => {
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+      field.report('must be object', 'object', field);
+    }
+  },
+);
+
+const nonNullString = () => vine.string().parse(rejectNull);
+
+const itemIdentifier = vine
+  .object({ id: nonNullString(), typeId: nonNullString() })
+  .parse(rejectNull);
 
 export const submitActionValidator = vine.create({
-  actionId: vine.string(),
-  itemId: vine.string(),
-  itemTypeId: vine.string(),
-  policyIds: vine.array(vine.string()).parse(rejectNull).optional(),
+  actionId: nonNullString(),
+  itemId: nonNullString(),
+  itemTypeId: nonNullString(),
+  policyIds: vine.array(nonNullString()).parse(rejectNull).optional(),
   reportedItems: vine.array(itemIdentifier).parse(rejectNull).optional(),
-  actorId: vine.string().parse(rejectNull).optional(),
+  actorId: nonNullString().optional(),
   // Parameter values are checked against the stored action spec in the handler.
-  parameters: vine.record(vine.any()).parse(rejectNull).optional(),
-  note: vine
-    .string()
-    .parse(rejectNull)
+  parameters: vine.any().parse(rejectNull).use(jsonObject()).optional(),
+  note: nonNullString()
     .use(maxCodePoints({ max: MAX_ACTOR_NOTE_LENGTH }))
     .optional(),
 });
+
+export type SubmitActionInput = Infer<typeof submitActionValidator>;

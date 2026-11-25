@@ -2,7 +2,11 @@ import type { HttpContext } from '@adonisjs/core/http';
 
 import { resolve } from '../../adonis/resolve.js';
 import submitAction from '../../routes/action/submitAction.js';
-import { submitActionValidator } from '../validators/action_validator.js';
+import { jsonBody } from '../../utils/bodySchemaValidation.js';
+import {
+  submitActionValidator,
+  type SubmitActionInput,
+} from '../validators/action_validator.js';
 import { validateJsonBody } from '../validators/coop_error_reporter.js';
 
 /**
@@ -12,10 +16,12 @@ import { validateJsonBody } from '../validators/coop_error_reporter.js';
 export default class ActionsController {
   async store(ctx: HttpContext) {
     const { orgId } = ctx.auth.use('apiKey').getUserOrFail();
-    const body = await validateJsonBody(ctx, submitActionValidator);
+    await validateJsonBody(ctx, submitActionValidator);
     ctx.orgId = orgId;
     const deps = await resolve(ctx, 'coop.deps');
-    await submitAction(deps)(ctx, body);
+    // The handler gets the body as sent, not VineJS' output (which drops
+    // unknown keys, e.g. extra fields on `reportedItems`).
+    await submitAction(deps)(ctx, jsonBody(ctx) as SubmitActionInput);
     ctx.response.header('Content-Length', 0);
   }
 }

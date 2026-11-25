@@ -9,6 +9,7 @@ import type {
   FieldContext,
   SchemaTypes,
 } from '@vinejs/vine/types';
+import _ from 'lodash';
 
 import { jsonBody } from '../../utils/bodySchemaValidation.js';
 import { makeBadRequestError } from '../../utils/errors.js';
@@ -56,22 +57,33 @@ export async function validateJsonBody<Schema extends SchemaTypes>(
   ctx: HttpContext,
   validator: VineValidator<Schema, undefined>,
 ) {
-  const [error, value] = await validator.tryValidate(jsonBody(ctx), {
+  const body = jsonBody(ctx);
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) {
+    throw validationError([{ path: '', message: 'must be object' }]);
+  }
+  const [error, value] = await validator.tryValidate(body, {
     errorReporter: () => new CoopErrorReporter(),
     messagesProvider: coopMessages,
     meta: undefined,
   });
   if (error) {
-    const fieldErrors = error.messages as FieldError[];
-    throw makeBadRequestError('Request body failed schema validation.', {
-      shouldErrorSpan: false,
-      pointer: fieldErrors[0]?.path || undefined,
-      detail: fieldErrors
-        .map(({ path, message }) => `${path || '/'}: ${message}`)
-        .join('; '),
-    });
+    // JSON Schema lists missing keys before field errors.
+    const fieldErrors = _.sortBy(error.messages as FieldError[], (it) =>
+      it.message.startsWith('must have required property') ? 0 : 1,
+    );
+    throw validationError(fieldErrors);
   }
   return value;
+}
+
+function validationError(fieldErrors: FieldError[]) {
+  return makeBadRequestError('Request body failed schema validation.', {
+    shouldErrorSpan: false,
+    pointer: fieldErrors[0]?.path || undefined,
+    detail: fieldErrors
+      .map(({ path, message }) => `${path || '/'}: ${message}`)
+      .join('; '),
+  });
 }
 
 function toPointer(fieldPath: string) {

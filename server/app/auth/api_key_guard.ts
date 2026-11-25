@@ -31,10 +31,24 @@ export class ApiKeyGuard implements GuardContract<ApiKeyPrincipal> {
 
   constructor(private readonly ctx: HttpContext) {}
 
-  async authenticate() {
-    if (this.authenticationAttempted) return this.getUserOrFail();
-    this.authenticationAttempted = true;
+  #error?: Error;
 
+  async authenticate() {
+    if (this.authenticationAttempted) {
+      // Repeat the first outcome, e.g. a 503 stays a 503.
+      if (this.#error) throw this.#error;
+      return this.getUserOrFail();
+    }
+    this.authenticationAttempted = true;
+    try {
+      return await this.#authenticate();
+    } catch (error) {
+      this.#error = error instanceof Error ? error : new Error(String(error));
+      throw this.#error;
+    }
+  }
+
+  async #authenticate() {
     const ApiKeyService = await resolve(this.ctx, 'ApiKeyService');
     const key = this.ctx.request.header('x-api-key');
     let orgId: string | null;
