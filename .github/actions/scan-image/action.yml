@@ -55,9 +55,10 @@ runs:
         mkdir -p "$RUNNER_TEMP/trivy-bin"
         tar -xzf "$RUNNER_TEMP/trivy.tar.gz" -C "$RUNNER_TEMP/trivy-bin" trivy
 
-    # Only vulnerabilities with a fixed package version are reported: Debian
-    # leaves most base-image CVEs unfixed or "will not fix", and an alert
-    # nobody can act on by upgrading buries the ones that can be.
+    # Only vulnerabilities with a fixed package version are reported, for OS
+    # and npm packages alike: most base-image CVEs are unfixed or "will not
+    # fix" upstream, and alerts nobody can act on by upgrading bury the ones
+    # that can be.
     - name: Scan image
       id: scan
       if: steps.download.outcome == 'success'
