@@ -326,6 +326,7 @@ export type GQLApiKey = {
   readonly isActive: Scalars['Boolean']['output'];
   readonly lastUsedAt?: Maybe<Scalars['String']['output']>;
   readonly name: Scalars['String']['output'];
+  readonly permissions: ReadonlyArray<Scalars['String']['output']>;
 };
 
 export type GQLApiKeyMutationError = GQLError & {
@@ -336,6 +337,12 @@ export type GQLApiKeyMutationError = GQLError & {
   readonly status: Scalars['Int']['output'];
   readonly title: Scalars['String']['output'];
   readonly type: ReadonlyArray<Scalars['String']['output']>;
+};
+
+export type GQLApiKeyPermissionDefinition = {
+  readonly __typename: 'ApiKeyPermissionDefinition';
+  readonly description: Scalars['String']['output'];
+  readonly value: Scalars['String']['output'];
 };
 
 export const GQLAppealDecision = {
@@ -746,6 +753,7 @@ export type GQLCreateActionInput = {
 export type GQLCreateApiKeyInput = {
   readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly name: Scalars['String']['input'];
+  readonly permissions: ReadonlyArray<Scalars['String']['input']>;
 };
 
 export type GQLCreateApiKeyResponse =
@@ -3734,6 +3742,7 @@ export type GQLQuery = {
   readonly allRuleInsights?: Maybe<GQLAllRuleInsights>;
   /** @deprecated Use `apiKeys` instead. */
   readonly apiKey: Scalars['String']['output'];
+  readonly apiKeyPermissions: ReadonlyArray<GQLApiKeyPermissionDefinition>;
   readonly apiKeys: ReadonlyArray<GQLApiKey>;
   readonly appealSettings?: Maybe<GQLAppealSettings>;
   readonly availableIntegrations: ReadonlyArray<GQLIntegrationMetadata>;
@@ -5112,6 +5121,7 @@ export type GQLUpdateApiKeyInput = {
   readonly description?: InputMaybe<Scalars['String']['input']>;
   readonly id: Scalars['ID']['input'];
   readonly name: Scalars['String']['input'];
+  readonly permissions?: InputMaybe<ReadonlyArray<Scalars['String']['input']>>;
 };
 
 export type GQLUpdateApiKeyResponse =
@@ -5652,11 +5662,17 @@ export type GQLApiKeysQueryVariables = Exact<{ [key: string]: never }>;
 
 export type GQLApiKeysQuery = {
   readonly __typename: 'Query';
+  readonly apiKeyPermissions: ReadonlyArray<{
+    readonly __typename: 'ApiKeyPermissionDefinition';
+    readonly value: string;
+    readonly description: string;
+  }>;
   readonly apiKeys: ReadonlyArray<{
     readonly __typename: 'ApiKey';
     readonly id: string;
     readonly name: string;
     readonly description?: string | null;
+    readonly permissions: ReadonlyArray<string>;
     readonly createdAt: string;
     readonly lastUsedAt?: string | null;
   }>;
@@ -5698,6 +5714,7 @@ export type GQLUpdateApiKeyMutation = {
           readonly id: string;
           readonly name: string;
           readonly description?: string | null;
+          readonly permissions: ReadonlyArray<string>;
         };
       };
 };
@@ -5759,6 +5776,7 @@ export type GQLRotateApiKeyMutation = {
           readonly id: string;
           readonly name: string;
           readonly description?: string | null;
+          readonly permissions: ReadonlyArray<string>;
           readonly createdAt: string;
           readonly lastUsedAt?: string | null;
           readonly createdBy?: string | null;
@@ -27324,10 +27342,15 @@ export const GQLActionFragmentFragmentDoc = gql`
 `;
 export const GQLApiKeysDocument = gql`
   query ApiKeys {
+    apiKeyPermissions {
+      value
+      description
+    }
     apiKeys {
       id
       name
       description
+      permissions
       createdAt
       lastUsedAt
     }
@@ -27485,6 +27508,7 @@ export const GQLUpdateApiKeyDocument = gql`
           id
           name
           description
+          permissions
         }
       }
       ... on ApiKeyMutationError {
@@ -27698,6 +27722,7 @@ export const GQLRotateApiKeyDocument = gql`
           id
           name
           description
+          permissions
           createdAt
           lastUsedAt
           createdBy

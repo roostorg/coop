@@ -95,7 +95,9 @@ describe('apiKey resolvers', () => {
           source,
           variableValues: {
             input: {
-              ...(operation === 'updateApiKey' ? { id: 'key-1' } : {}),
+              ...(operation === 'updateApiKey'
+                ? { id: 'key-1' }
+                : { permissions: [] }),
               name,
               description,
             },
@@ -147,8 +149,14 @@ describe('apiKey resolvers', () => {
           expect(result.errors).toBeUndefined();
           expect(service).toHaveBeenCalledWith(
             ...(operation === 'createApiKey'
-              ? ['org-1', expectedName, expectedDescription, 'user-1']
-              : ['key-1', 'org-1', expectedName, expectedDescription]),
+              ? ['org-1', expectedName, expectedDescription, 'user-1', []]
+              : [
+                  'key-1',
+                  'org-1',
+                  expectedName,
+                  expectedDescription,
+                  undefined,
+                ]),
           );
         },
       );
@@ -167,7 +175,7 @@ describe('apiKey resolvers', () => {
     };
 
     it.each([
-      ['createApiKey', '(input: { name: "Reports" })'],
+      ['createApiKey', '(input: { name: "Reports", permissions: [] })'],
       ['updateApiKey', '(input: { id: "key-1", name: "Reports" })'],
       ['deleteApiKey', '(id: "key-1")'],
       ['rotateApiKey', '(input: { id: "key-1" })'],
@@ -208,7 +216,7 @@ describe('apiKey resolvers', () => {
     it.each([
       [
         'createApiKey',
-        '(input: { name: "Reports" })',
+        '(input: { name: "Reports", permissions: [] })',
         'CreateApiKeySuccessResponse',
         { apiKey: 'secret', record },
       ],
@@ -307,7 +315,7 @@ describe('apiKey resolvers', () => {
 
     const operations = [
       '{ apiKeys { id name } }',
-      'mutation { createApiKey(input: { name: "Reports" }) { __typename } }',
+      'mutation { createApiKey(input: { permissions: [], name: "Reports" }) { __typename } }',
       'mutation { deleteApiKey(id: "key-2") { __typename } }',
       'mutation { updateApiKey(input: { id: "key-2", name: "Renamed" }) { __typename } }',
     ];
@@ -329,10 +337,131 @@ describe('apiKey resolvers', () => {
     });
 
     testWithOrg(
+      'creates keys with exactly the given permissions',
+      async ({ deps, execute, org }) => {
+        for (const permissions of [
+          [],
+          ['items:write', 'actions:execute'],
+          ['items:read', 'reports:write'],
+        ]) {
+          const result = await execute(
+            `mutation Create($permissions: [String!]!) {
+              createApiKey(input: { name: "Integration", permissions: $permissions }) {
+                ... on CreateApiKeySuccessResponse {
+                  apiKey
+                  record { permissions }
+                }
+              }
+            }`,
+            { permissions },
+          );
+          expect(result.errors).toBeUndefined();
+          const created = result.data!
+            .createApiKey as GQLCreateApiKeySuccessResponse;
+          expect(created.record.permissions).toEqual(permissions);
+          expect(
+            await deps.ApiKeyService.validateApiKey(created.apiKey),
+          ).toEqual({
+            orgId: org.id,
+            permissions,
+          });
+        }
+      },
+    );
+
+    for (const operation of ['createApiKey', 'updateApiKey'] as const) {
+      testWithOrg(
+        `returns invalid input for unknown permissions in ${operation}`,
+        async ({ deps, execute, org }) => {
+          const { record } = await deps.ApiKeyService.createApiKey(
+            org.id,
+            'Reports',
+            null,
+            null,
+            ['items:read'],
+          );
+          const before = await deps.ApiKeyService.getApiKeysForOrg(org.id);
+          const result = await execute(
+            `mutation Save($input: ${operation === 'createApiKey' ? 'CreateApiKeyInput' : 'UpdateApiKeyInput'}!) {
+              ${operation}(input: $input) {
+                __typename
+                ... on ApiKeyMutationError { status type title }
+              }
+            }`,
+            {
+              input: {
+                ...(operation === 'updateApiKey' ? { id: record.id } : {}),
+                name: 'Changed',
+                permissions: ['unknown:permission'],
+              },
+            },
+          );
+          expect(result.errors).toBeUndefined();
+          expect(result.data?.[operation]).toEqual({
+            __typename: 'ApiKeyMutationError',
+            status: 400,
+            type: ['/errors/invalid-user-input'],
+            title: 'Unknown API key permission: "unknown:permission"',
+          });
+          expect(await deps.ApiKeyService.getApiKeysForOrg(org.id)).toEqual(
+            before,
+          );
+        },
+      );
+    }
+
+    testWithOrg(
+      'edits permissions without changing the secret and preserves them when omitted',
+      async ({ deps, execute, org, foreignKey }) => {
+        const { apiKey, record } = await deps.ApiKeyService.createApiKey(
+          org.id,
+          'Reports',
+          null,
+          null,
+          ['items:read'],
+        );
+        const update = `mutation Update($id: ID!, $permissions: [String!]) {
+          updateApiKey(input: { id: $id, name: "Reports", permissions: $permissions }) {
+            ... on UpdateApiKeySuccessResponse { record { id permissions } }
+            ... on ApiKeyMutationError { status }
+          }
+        }`;
+        for (const permissions of [
+          ['reports:write', 'reports:write'],
+          undefined,
+          [],
+        ]) {
+          const expected =
+            permissions === undefined
+              ? ['reports:write']
+              : [...new Set(permissions)];
+          const result = await execute(update, { id: record.id, permissions });
+          expect(result.errors).toBeUndefined();
+          expect(result.data!.updateApiKey).toEqual({
+            record: { id: record.id, permissions: expected },
+          });
+          expect(await deps.ApiKeyService.validateApiKey(apiKey)).toEqual({
+            orgId: org.id,
+            permissions: expected,
+          });
+        }
+        const foreign = await execute(update, {
+          id: foreignKey.record.id,
+          permissions: ['items:write'],
+        });
+        expect(foreign.errors).toBeUndefined();
+        expect(foreign.data!.updateApiKey).toEqual({ status: 404 });
+        expect(
+          await deps.ApiKeyService.validateApiKey(foreignKey.apiKey),
+        ).toEqual({ orgId: foreignKey.record.orgId, permissions: [] });
+      },
+    );
+
+    testWithOrg(
       'creates, edits, and deletes only keys in the authenticated organization',
       async ({ deps, execute, org, apiKey, user, foreignKey }) => {
         const created = await execute(`mutation {
-            createApiKey(input: { name: "Reports", description: "Report ingestion" }) {
+            createApiKey(input: { permissions: [], name: "Reports", description: "Report ingestion" }) {
               ... on CreateApiKeySuccessResponse {
                 apiKey
                 record { id name description isActive createdAt lastUsedAt createdBy }
@@ -351,7 +480,10 @@ describe('apiKey resolvers', () => {
           lastUsedAt: null,
           createdBy: user.id,
         });
-        expect(await deps.ApiKeyService.validateApiKey(secret)).toBe(org.id);
+        expect(await deps.ApiKeyService.validateApiKey(secret)).toEqual({
+          orgId: org.id,
+          permissions: [],
+        });
 
         const listed = await execute(
           '{ apiKeys { id name description isActive createdAt lastUsedAt createdBy } }',
@@ -406,9 +538,9 @@ describe('apiKey resolvers', () => {
           __typename: 'ApiKeyMutationError',
           status: 404,
         });
-        expect(await deps.ApiKeyService.validateApiKey(foreignKey.apiKey)).toBe(
-          foreignKey.record.orgId,
-        );
+        expect(
+          await deps.ApiKeyService.validateApiKey(foreignKey.apiKey),
+        ).toEqual({ orgId: foreignKey.record.orgId, permissions: [] });
 
         const deleted = await execute(
           'mutation Delete($id: ID!) { deleteApiKey(id: $id) { __typename ... on DeleteApiKeySuccessResponse { id } ... on ApiKeyMutationError { status } } }',
@@ -420,7 +552,9 @@ describe('apiKey resolvers', () => {
           id: record.id,
         });
         expect(await deps.ApiKeyService.validateApiKey(secret)).toBeNull();
-        expect(await deps.ApiKeyService.validateApiKey(apiKey)).toBe(org.id);
+        expect(await deps.ApiKeyService.validateApiKey(apiKey)).toMatchObject({
+          orgId: org.id,
+        });
 
         const stored = await deps.KyselyPg.selectFrom('public.api_keys')
           .select('id')
