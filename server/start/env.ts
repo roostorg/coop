@@ -27,8 +27,13 @@ export default await Env.create(new URL('../', import.meta.url), {
   GRAPHQL_MAX_DEPTH: optionalString(),
   ITEM_QUEUE_TRAFFIC_PERCENTAGE: optionalString(),
 
-  // Read eagerly by the service container in every process.
-  UI_URL: Env.schema.string({ format: 'url', tld: false, protocol: false }),
+  // Required, but enforced where the service container reads it: ace loads
+  // this file even for `--help`, which must work without any environment.
+  UI_URL: Env.schema.string.optional({
+    format: 'url',
+    tld: false,
+    protocol: false,
+  }),
   // Required by the web server only; checked in providers/coop_provider.ts.
   SESSION_SECRET: optionalString(),
 

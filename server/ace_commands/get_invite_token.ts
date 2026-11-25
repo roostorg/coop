@@ -9,7 +9,9 @@ import type { CommandOptions } from '@adonisjs/core/types/ace';
 export default class GetInviteToken extends BaseCommand {
   static override commandName = 'coop:get-invite';
   static override description = 'Print the signup URL for an invited user';
-  static override options: CommandOptions = { startApp: true };
+  // Booted in run(), so --help needs no environment (booting builds the
+  // service graph, which reads UI_URL).
+  static override options: CommandOptions = { startApp: false };
 
   static {
     this.defineFlag('email', {
@@ -29,6 +31,7 @@ export default class GetInviteToken extends BaseCommand {
       this.exitCode = 1;
       return;
     }
+    await this.app.boot();
     const db = await this.app.container.make('KyselyPg');
     const closeShared = await this.app.container.make(
       'closeSharedResourcesForShutdown',
