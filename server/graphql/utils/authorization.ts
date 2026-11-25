@@ -43,6 +43,19 @@ export function authSchemaWrapper(
   };
 }
 
+/**
+ * Narrows the context's user to non-null. Root fields are already
+ * authenticated by {@link authSchemaWrapper}; this is for the type.
+ */
+export function requireUser(
+  user: GraphQLUserParent | null | undefined,
+): GraphQLUserParent {
+  if (!user) {
+    throw unauthenticatedError('User required.');
+  }
+  return user;
+}
+
 export function requireChildSafetyPermission(
   user: GraphQLUserParent | null | undefined,
 ): GraphQLUserParent {

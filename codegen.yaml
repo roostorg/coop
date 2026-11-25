@@ -105,7 +105,7 @@ generates:
         # `MatchingBanks` could be a standalone type — may expand later.
         MatchingBanks: ../graphql/datasources/orgKyselyPersistence.js#GraphQLOrgParent
         User: ../graphql/datasources/userKyselyPersistence.js#GraphQLUserParent
-        LocationBank: ./datasources/LocationBankApi.js#LocationBankWithoutFullPlacesAPIResponse
+        LocationBank: ../services/locationBankService/index.js#LocationBank
         Rule: ../graphql/datasources/ruleKyselyPersistence.js#GraphQLRuleParent
         Condition: ../services/moderationConfigService/index.js#Condition
         ConditionWithResult: ../services/moderationConfigService/index.js#ConditionWithResult

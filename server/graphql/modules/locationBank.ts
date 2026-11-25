@@ -1,13 +1,12 @@
+import { type LocationBank as LocationBankParent } from '../../services/locationBankService/index.js';
 import { UserPermission } from '../../services/userManagementService/index.js';
 import { isCoopErrorOfType } from '../../utils/errors.js';
-import { type LocationBankWithoutFullPlacesAPIResponse } from '../datasources/LocationBankApi.js';
 import {
   type GQLMutationResolvers,
   type GQLQueryResolvers,
 } from '../generated.js';
 import { type ResolverMap } from '../resolvers.js';
-import { requirePermission } from '../utils/authorization.js';
-import { unauthenticatedError } from '../utils/errors.js';
+import { requirePermission, requireUser } from '../utils/authorization.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 
 const typeDefs = /* GraphQL */ `
@@ -123,37 +122,35 @@ const typeDefs = /* GraphQL */ `
   }
 `;
 
-const LocationBank: ResolverMap<LocationBankWithoutFullPlacesAPIResponse> = {
-  async locations(locationBank, _, __) {
-    return locationBank.getLocations();
+const LocationBank: ResolverMap<LocationBankParent> = {
+  async locations(bank, _, context) {
+    const byBank = await context.services.LocationBankService.getLocations(
+      bank.orgId,
+      [bank.id],
+    );
+    return byBank.get(bank.id) ?? [];
   },
 };
 
 const Query: GQLQueryResolvers = {
   async locationBank(_, { id }, context) {
-    const user = context.getUser();
-    if (user == null) {
-      throw unauthenticatedError('Authenticated user required');
-    }
-
-    return context.dataSources.locationBankAPI.getGraphQLLocationBankFromId({
-      id,
-      orgId: user.orgId,
-    });
+    const user = requireUser(context.getUser());
+    return context.services.LocationBankService.getBank(user.orgId, id);
   },
 };
 
 const Mutation: GQLMutationResolvers = {
-  async createLocationBank(_, params, context) {
+  async createLocationBank(_, { input }, context) {
     const user = requirePermission(
       context.getUser(),
       UserPermission.MUTATE_LIVE_RULES,
     );
     try {
-      const bank = await context.dataSources.locationBankAPI.createLocationBank(
-        params.input,
-        user,
-      );
+      const bank = await context.services.LocationBankService.createBank({
+        ...input,
+        orgId: user.orgId,
+        ownerId: user.id,
+      });
       return gqlSuccessResult(
         { data: bank },
         'MutateLocationBankSuccessResponse',
@@ -166,16 +163,16 @@ const Mutation: GQLMutationResolvers = {
       throw e;
     }
   },
-  async updateLocationBank(_, params, context) {
+  async updateLocationBank(_, { input }, context) {
     const user = requirePermission(
       context.getUser(),
       UserPermission.MUTATE_LIVE_RULES,
     );
     try {
-      const bank = await context.dataSources.locationBankAPI.updateLocationBank(
-        params.input,
-        user.orgId,
-      );
+      const bank = await context.services.LocationBankService.updateBank({
+        ...input,
+        orgId: user.orgId,
+      });
       return gqlSuccessResult(
         { data: bank },
         'MutateLocationBankSuccessResponse',
@@ -188,16 +185,12 @@ const Mutation: GQLMutationResolvers = {
       throw e;
     }
   },
-  async deleteLocationBank(_, params, context) {
+  async deleteLocationBank(_, { id }, context) {
     const user = requirePermission(
       context.getUser(),
       UserPermission.MUTATE_LIVE_RULES,
     );
-
-    return context.dataSources.locationBankAPI.deleteLocationBank({
-      id: params.id,
-      orgId: user.orgId,
-    });
+    return context.services.LocationBankService.deleteBank(user.orgId, id);
   },
 };
 

@@ -126,6 +126,10 @@ import {
   type NormalizedItemData,
 } from '../services/itemProcessingService/index.js';
 import {
+  makeLocationBankService,
+  type LocationBankService,
+} from '../services/locationBankService/index.js';
+import {
   getRegisteredManualReviewContentResolver,
   type ManualReviewContentResolver,
 } from '../services/manualReviewContentResolver.js';
@@ -391,6 +395,7 @@ export interface Dependencies {
   ActionStatisticsService: ActionStatisticsService;
   NotificationsService: PublicInterface<NotificationsService>;
   PlacesApiService: PlacesApiService;
+  LocationBankService: LocationBankService;
   ReportingService: ReportingService;
   ContentAccessService: ContentAccessService;
   ManualReviewContentResolver: ManualReviewContentResolver;
@@ -800,6 +805,7 @@ export default async function getBottle(
   register(bottle, 'UserHistoryQueries', makeUserHistoryQueries);
   register(bottle, 'NotificationsService', makeNotificationsService);
   register(bottle, 'PlacesApiService', makePlacesApiService);
+  register(bottle, 'LocationBankService', makeLocationBankService);
   register(bottle, 'ReportingService', makeReportingService);
   register(bottle, 'OrgSettingsService', makeOrgSettingsService);
   register(bottle, 'NcmecService', makeNcmecService);
