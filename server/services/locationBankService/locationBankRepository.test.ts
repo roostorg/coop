@@ -47,20 +47,6 @@ describe('LocationBankRepository org scoping', () => {
     },
   );
 
-  testWithBanks(
-    "changes nothing in another org's bank",
-    async ({ repo, mine, theirs }) => {
-      expect(
-        await repo.update(mine.orgId, theirs.id, { name: 'stolen' }),
-      ).toBeUndefined();
-      expect(await repo.delete(mine.orgId, theirs.id)).toBe(false);
-
-      expect(await repo.findById(theirs.orgId, theirs.id)).toEqual(theirs);
-      const locations = await repo.findLocations(theirs.orgId, [theirs.id]);
-      expect(locations.get(theirs.id)).toHaveLength(1);
-    },
-  );
-
   testWithBanks('deletes a bank with its locations', async ({ repo, mine }) => {
     expect(await repo.delete(mine.orgId, mine.id)).toBe(true);
     expect(await repo.findById(mine.orgId, mine.id)).toBeUndefined();

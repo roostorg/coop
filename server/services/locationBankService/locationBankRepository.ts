@@ -12,13 +12,26 @@ export type LocationBankPg = Pick<
 /** A `Kysely` instance or a `Transaction`: both satisfy this type. */
 type Executor = Kysely<LocationBankPg>;
 
-export type LocationBank = Readonly<{
+declare const orgScoped: unique symbol;
+
+type LocationBankFields = {
   id: string;
   name: string;
   description: string | null;
   orgId: string;
   ownerId: string;
-}>;
+};
+
+/**
+ * A bank read from or written to the database within its org. The brand means
+ * only this repository creates one, so a method that takes a `LocationBank`
+ * is scoped to the org it came from.
+ */
+export type LocationBank = Readonly<LocationBankFields> & {
+  readonly [orgScoped]: true;
+};
+
+const asLocationBank = (row: LocationBankFields) => row as LocationBank;
 
 const bankColumns = [
   'id',
@@ -42,26 +55,26 @@ export class LocationBankRepository {
   }
 
   async findById(orgId: string, id: string): Promise<LocationBank | undefined> {
-    return this.db
+    const row = await this.db
       .selectFrom('public.location_banks')
       .select(bankColumns)
       .where('org_id', '=', orgId)
       .where('id', '=', id)
       .executeTakeFirst();
+    return row && asLocationBank(row);
   }
 
   async listForOrg(orgId: string): Promise<LocationBank[]> {
-    return this.db
+    const rows = await this.db
       .selectFrom('public.location_banks')
       .select(bankColumns)
       .where('org_id', '=', orgId)
       .execute();
+    return rows.map(asLocationBank);
   }
 
-  async insert(
-    bank: Omit<LocationBank, 'description'> & { description: string | null },
-  ): Promise<LocationBank> {
-    return this.db
+  async insert(bank: LocationBankFields): Promise<LocationBank> {
+    const row = await this.db
       .insertInto('public.location_banks')
       .values({
         id: bank.id,
@@ -74,6 +87,7 @@ export class LocationBankRepository {
       })
       .returning(bankColumns)
       .executeTakeFirstOrThrow();
+    return asLocationBank(row);
   }
 
   async update(
@@ -81,13 +95,14 @@ export class LocationBankRepository {
     id: string,
     patch: { name?: string; description?: string | null },
   ): Promise<LocationBank | undefined> {
-    return this.db
+    const row = await this.db
       .updateTable('public.location_banks')
       .set({ ...patch, updated_at: new Date() })
       .where('org_id', '=', orgId)
       .where('id', '=', id)
       .returning(bankColumns)
       .executeTakeFirst();
+    return row && asLocationBank(row);
   }
 
   /** Deletes the bank and its locations. Returns whether the bank existed. */
@@ -173,7 +188,13 @@ export class LocationBankRepository {
     }
     await this.db
       .deleteFrom('public.location_bank_locations')
-      .where('bank_id', '=', bank.id)
+      .where('bank_id', 'in', (qb) =>
+        qb
+          .selectFrom('public.location_banks')
+          .select('id')
+          .where('org_id', '=', bank.orgId)
+          .where('id', '=', bank.id),
+      )
       .where('id', 'in', [...locationIds])
       .execute();
   }
