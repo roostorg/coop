@@ -11,6 +11,8 @@ import {
   type GQLQueryResolvers,
   type GQLReportingRuleResolvers,
 } from '../generated.js';
+import { type Context } from '../resolvers.js';
+import { requireRuleMutationPermission } from '../utils/authorization.js';
 import { unauthenticatedError } from '../utils/errors.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 
@@ -184,12 +186,24 @@ const Query: GQLQueryResolvers = {
   },
 };
 
+async function isLiveReportingRule(
+  services: Context['services'],
+  id: string,
+  orgId: string,
+) {
+  const status = await services.ReportingService.getReportingRuleStatus({
+    id,
+    orgId,
+  });
+  return status === 'LIVE';
+}
+
 const Mutation: GQLMutationResolvers = {
   async createReportingRule(_, { input }, { services, getUser }) {
-    const user = getUser();
-    if (user == null) {
-      throw unauthenticatedError('Authenticated user required');
-    }
+    const user = await requireRuleMutationPermission(
+      getUser(),
+      () => input.status === 'LIVE',
+    );
 
     const { itemTypeIds, actionIds } = input;
 
@@ -225,10 +239,12 @@ const Mutation: GQLMutationResolvers = {
     }
   },
   async updateReportingRule(_, { input }, { services, getUser }) {
-    const user = getUser();
-    if (user == null) {
-      throw unauthenticatedError('Authenticated user required');
-    }
+    const user = await requireRuleMutationPermission(
+      getUser(),
+      async (orgId) =>
+        input.status === 'LIVE' ||
+        isLiveReportingRule(services, input.id, orgId),
+    );
     const { id, name, description, status, conditionSet, policyIds } = input;
 
     const itemTypeIds = (() => {
@@ -280,10 +296,9 @@ const Mutation: GQLMutationResolvers = {
     }
   },
   async deleteReportingRule(_, { id }, { services, getUser }) {
-    const user = getUser();
-    if (user == null) {
-      throw unauthenticatedError('Authenticated user required');
-    }
+    const user = await requireRuleMutationPermission(getUser(), async (orgId) =>
+      isLiveReportingRule(services, id, orgId),
+    );
 
     return services.ReportingService.deleteReportingRule({
       orgId: user.orgId,

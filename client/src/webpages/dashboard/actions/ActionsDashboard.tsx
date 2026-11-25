@@ -102,7 +102,7 @@ export default function ActionsDashboard() {
   useMemo(
     () =>
       setCanEditActions(
-        userHasPermissions(permissions, [GQLUserPermission.ManageOrg]),
+        userHasPermissions(permissions, [GQLUserPermission.MutateLiveRules]),
       ),
     [permissions],
   );
@@ -146,14 +146,14 @@ export default function ActionsDashboard() {
         canEdit={canEditActions && isMutable}
         editDisabledTooltipTitle={
           !canEditActions
-            ? "To edit Actions, ask your organization's admin to upgrade your role to Admin."
+            ? "To edit Actions, ask your organization's admin to upgrade your role to Rules Manager or Admin."
             : 'This action is provided by default and cannot be edited.'
         }
         onEdit={(event: MouseEvent) => editAction(id, event)}
         canDelete={canEditActions && isMutable}
         deleteDisabledTooltipTitle={
           !canEditActions
-            ? "To delete Actions, ask your organization's admin to upgrade your role to Admin."
+            ? "To delete Actions, ask your organization's admin to upgrade your role to Rules Manager or Admin."
             : 'This action is provided by default and cannot be deleted.'
         }
         onDelete={(event: MouseEvent) => showModal(id, event)}
@@ -331,7 +331,7 @@ export default function ActionsDashboard() {
       title="Create Action"
       destination="form"
       disabled={!canEditActions}
-      disabledTooltipTitle="To create Actions, ask your organization's admin to upgrade your role to Admin."
+      disabledTooltipTitle="To create Actions, ask your organization's admin to upgrade your role to Rules Manager or Admin."
       disabledTooltipPlacement="bottomRight"
     />
   );

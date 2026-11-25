@@ -72,7 +72,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup pnpm and Node.js, install dependencies
-        uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
+        uses: pnpm/setup@731dfb6463bbd11c11fd0ee11fe00ed0e36d48a1 # v3.2.0
         with:
           cache: true
           require-lockfile: true
@@ -94,7 +94,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup pnpm and Node.js, install dependencies
-        uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
+        uses: pnpm/setup@731dfb6463bbd11c11fd0ee11fe00ed0e36d48a1 # v3.2.0
         with:
           cache: true
           require-lockfile: true
@@ -228,6 +228,21 @@ jobs:
 
       - name: Build server
         run: docker compose run --rm --quiet-pull backend pnpm run build
+
+      # Start each server/bin script the way a developer does, so a script that
+      # can't load its module graph fails here. run-worker-or-job has no
+      # --help: it exits 1 rejecting the name after loading its imports.
+      - name: Smoke-test server scripts
+        run: |
+          docker compose run --rm --quiet-pull backend bash -euo pipefail -c '
+            pnpm run create-org --help
+            pnpm run get-invite --help
+            pnpm run recover-mrt-queue --help
+            status=0
+            output=$(pnpm run runWorkerOrJob --help 2>&1) || status=$?
+            printf "%s\n" "$output" >&2
+            [[ $status -eq 1 && "$output" == *"Invalid worker or job name argument"* ]]
+          '
 
       - name: Migrate CI DBs and Test
         run: |
@@ -401,7 +416,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup pnpm and Node.js, install dependencies
-        uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
+        uses: pnpm/setup@731dfb6463bbd11c11fd0ee11fe00ed0e36d48a1 # v3.2.0
         with:
           cache: true
           require-lockfile: true
@@ -421,7 +436,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup pnpm and Node.js, install dependencies
-        uses: pnpm/setup@fa36a5ef7dcdefc3a7cb25655c122e00cf6e636e # v3.1.2
+        uses: pnpm/setup@731dfb6463bbd11c11fd0ee11fe00ed0e36d48a1 # v3.2.0
         with:
           cache: true
           require-lockfile: true

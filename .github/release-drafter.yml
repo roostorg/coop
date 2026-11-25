@@ -7,11 +7,12 @@ sync-labels: true
 # Security releases are cut from release/x.y branches; only main's releases
 # set the base version and changes for main's draft.
 filter-by-commitish: true
-# Ignore instructions, empty bullets, and subsequent sections.
+# Ignore instructions, empty bullets, standalone N/A or NA, and subsequent sections.
+# Stop each HTML comment at its first closing marker.
 autolabeler:
   - labels: [has-release-notes]
     body:
-      - '/^## Release notes[ \t]*\r?\n(?:\s|<!--[\s\S]*?-->|[-*][ \t]+)*(?!<!--|#{1,2}(?:[ \t]|\r?$)|[-*](?:[ \t]|\r?$))\S/im'
+      - '/^## Release notes[ \t]*\r?\n(?:\s|<!--(?:(?!-->)[\s\S])*-->|[-*][ \t]+|n\/?a[ \t]*\r?$)*(?!<!--|#{1,2}(?:[ \t]|\r?$)|[-*](?:[ \t]|\r?$)|n\/?a[ \t]*\r?$)\S/im'
 categories:
   - type: pre-include
     when:

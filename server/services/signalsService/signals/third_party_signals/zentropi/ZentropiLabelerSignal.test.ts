@@ -79,6 +79,45 @@ describe('ZentropiLabelerSignal', () => {
     expect(info.disabled).toBe(false);
   });
 
+  it.each([
+    { name: 'missing list', labelerVersions: undefined },
+    { name: 'empty list', labelerVersions: [] },
+    { name: 'empty ID', labelerVersions: [{ id: '', label: 'Spam' }] },
+    { name: 'whitespace ID', labelerVersions: [{ id: '  ', label: 'Spam' }] },
+  ])(
+    'disables the signal without a usable labeler version: $name',
+    async ({ labelerVersions }) => {
+      const getCredentials = vi
+        .fn<GetCredentials<'ZENTROPI'>>()
+        .mockResolvedValue({
+          apiKey: 'key',
+          labelerVersions,
+        });
+      const signal = new ZentropiLabelerSignal(getCredentials, vi.fn());
+
+      expect(await signal.getDisabledInfo('org-1')).toEqual({
+        disabled: true,
+        disabledMessage:
+          'Add a labeler version in the Zentropi integration settings to use this signal.',
+      });
+    },
+  );
+
+  it('enables the signal with a version-only labeler alongside a blank ID', async () => {
+    const getCredentials = vi
+      .fn<GetCredentials<'ZENTROPI'>>()
+      .mockResolvedValue({
+        apiKey: 'key',
+        labelerVersions: [
+          { id: '', label: 'Unconfigured' },
+          { id: 'lv_abc123', label: 'Spam' },
+        ],
+      });
+    const signal = new ZentropiLabelerSignal(getCredentials, vi.fn());
+
+    expect(await signal.getDisabledInfo('org-1')).toEqual({ disabled: false });
+  });
+
   it('calls run and returns correct result', async () => {
     const fetchScores: FetchZentropiScores = vi.fn().mockResolvedValue({
       label: 1,

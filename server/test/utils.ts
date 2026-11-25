@@ -9,7 +9,7 @@ export function logErrorAndThrow(e: Error): never {
   throw e;
 }
 
-type Fixture<T extends Record<string, unknown>> = T & {
+export type Fixture<T extends Record<string, unknown>> = T & {
   cleanup?(): void | Promise<void>;
 };
 

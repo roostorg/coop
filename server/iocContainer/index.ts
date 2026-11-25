@@ -266,6 +266,7 @@ import {
   type Satisfies,
 } from '../utils/typescript-types.js';
 import { createPgPool } from './createPgPool.js';
+import { isPgSslEnabled, makePgSslOptions } from './pgSsl.js';
 import { registerGqlDataSources } from './services/gqlDataSources.js';
 import { registerWorkersAndJobs } from './services/workersAndJobs.js';
 import {
@@ -479,7 +480,11 @@ export function getPgConnectionParams(): pg.ClientConfig {
     password: safeGetEnvVar('DATABASE_PASSWORD'),
     port: parseInt(process.env.DATABASE_PORT ?? '5432'),
     host: safeGetEnvVar('DATABASE_HOST'),
-    ssl: isEnvTrue('DATABASE_SSL') ? { rejectUnauthorized: false } : undefined,
+    ssl: makePgSslOptions({
+      enabled: isPgSslEnabled(process.env.DATABASE_SSL),
+      mode: process.env.DATABASE_SSL_MODE,
+      caPath: process.env.DATABASE_SSL_CA,
+    }),
   };
 }
 

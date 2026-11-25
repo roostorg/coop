@@ -71,6 +71,7 @@ const RULE_FIELDS_FRAGMENT = gql`
     createdAt
     updatedAt
     status
+    statusIfUnexpired
     policies {
       name
     }
@@ -264,7 +265,7 @@ export default function RulesDashboard() {
           onDelete={(event: MouseEvent) => showDeleteModal(id, event)}
           canDelete={
             (canEditNonLiveRules &&
-              rules?.find((it) => it.id === id)?.status !==
+              rules?.find((it) => it.id === id)?.statusIfUnexpired !==
                 GQLRuleStatus.Live) ||
             canEditLiveRules
           }

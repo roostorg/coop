@@ -173,12 +173,11 @@ EMAIL_TRANSPORT=console
 ### With distributed tracing
 
 ```sh
+pnpm --filter nodejs-instrumentation run build
 cd server && pnpm run start:trace
 ```
 
-<!-- TODO: Expand on this https://github.com/roostorg/coop/issues/416 -->
-
-View traces at [localhost:16686](http://localhost:16686).
+View traces at [localhost:16686](http://localhost:16686). See [Observability](observability.md) for details.
 
 ### Access points
 

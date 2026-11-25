@@ -196,7 +196,7 @@ export default function TextBankForm() {
   if (bankQueryLoading || bankFormQueryLoading) {
     return <FullScreenLoading />;
   }
-  const canEditTextBanks = userHasPermissions(permissions, [
+  const canSave = userHasPermissions(permissions, [
     GQLUserPermission.MutateLiveRules,
   ]);
 
@@ -300,9 +300,9 @@ export default function TextBankForm() {
   const createButton = (
     <CoopButton
       title={id == null ? 'Create Text Bank' : 'Save Changes'}
-      disabled={!canEditTextBanks}
+      disabled={!canSave}
       loading={updateMutationParams.loading || createMutationParams.loading}
-      disabledTooltipTitle="To edit Text Banks, ask your organization's admin to upgrade your role to Rules Manager or Admin."
+      disabledTooltipTitle={`To ${id == null ? 'create' : 'edit'} Text Banks, ask your organization's admin to upgrade your role to Rules Manager or Admin.`}
       disabledTooltipPlacement="bottomLeft"
       onClick={id == null ? onCreateBank : onUpdateBank}
     />

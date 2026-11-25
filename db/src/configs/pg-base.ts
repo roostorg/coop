@@ -1,5 +1,6 @@
 import { readFileSync } from 'fs';
 import { resolve as pathResolve } from 'path';
+import { type ConnectionOptions } from 'tls';
 import {
   makeSequelizeUmzugStorage,
   SCRIPT_TEMPLATES_DIR_ABSOLUTE_PATH,
@@ -27,6 +28,10 @@ export function makePostgresDatabaseConfig(opts: {
   scriptsDirectory: string;
   driverOpts: Options & { schema: string };
   maintenanceDatabase?: string;
+  /** TLS options for every connection; undefined connects without TLS. */
+  ssl?: ConnectionOptions;
+  /** `pg.Client` subclass for every connection, e.g. to explain TLS errors. */
+  pgClient?: typeof pg.Client;
 }): DatabaseConfig<PostgresSupportedScriptFormats, PostgresContext> {
   const { scriptsDirectory, defaultScriptFormat } = opts;
   // Forward server-side `RAISE NOTICE` / `RAISE WARNING` from migrations
@@ -48,6 +53,21 @@ export function makePostgresDatabaseConfig(opts: {
     typeof (c as { query: unknown }).query === 'function';
   const driverOpts: Options & { schema: string } = {
     ...opts.driverOpts,
+    // Sequelize's pg dialect ignores a top-level `ssl` field.
+    ...(opts.ssl
+      ? {
+          dialectOptions: { ...opts.driverOpts.dialectOptions, ssl: opts.ssl },
+        }
+      : {}),
+    // Sequelize creates connections with `dialectModule.Client`; the rest of
+    // the module comes from `pg` through the prototype.
+    ...(opts.pgClient
+      ? {
+          dialectModule: Object.create(pg, {
+            Client: { value: opts.pgClient },
+          }) as typeof pg,
+        }
+      : {}),
     hooks: {
       ...opts.driverOpts.hooks,
       afterConnect(connection: unknown) {
@@ -104,6 +124,8 @@ export function makePostgresDatabaseConfig(opts: {
           pool: new pg.Pool({
             ...driverOpts,
             user: driverOpts.username,
+            ssl: opts.ssl,
+            ...(opts.pgClient ? { Client: opts.pgClient } : {}),
           }),
         }),
       });

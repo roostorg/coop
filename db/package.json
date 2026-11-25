@@ -16,12 +16,12 @@
     "knip": "knip"
   },
   "author": "Roostorg",
-  "license": "ISC",
+  "license": "Apache-2.0",
   "dependencies": {
     "@clickhouse/client": "^1.25.0",
     "@roostorg/db-migrator": "^1.1.1",
     "cassandra-driver": "^4.10.0",
-    "kysely": "^0.29.8",
+    "kysely": "^0.29.9",
     "pg": "^8.23.1",
     "sequelize": "^6.37.8",
     "ts-node": "^10.9.2",
@@ -29,7 +29,7 @@
   },
   "devDependencies": {
     "@types/pg": "^8.23.1",
-    "knip": "^6.44.2",
+    "knip": "^6.45.1",
     "typescript": "^6.0.3"
   }
 }

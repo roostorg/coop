@@ -2,24 +2,24 @@
   "name": "nodejs-instrumentation",
   "version": "1.1.0",
   "description": "",
-  "main": "transpiled/autoinstrumentation.js",
+  "private": true,
   "scripts": {
     "build": "tsc",
-    "clean": "rm -rf transpiled *.tsbuildinfo"
+    "clean": "rm -rf build *.tsbuildinfo"
   },
   "author": "Roostorg",
-  "license": "ISC",
+  "license": "Apache-2.0",
   "dependencies": {
     "@opentelemetry/api": "^1.10.0",
-    "@opentelemetry/auto-instrumentations-node": "^0.83.0",
-    "@opentelemetry/exporter-metrics-otlp-grpc": "^0.301.0",
-    "@opentelemetry/exporter-trace-otlp-grpc": "^0.301.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.83.1",
+    "@opentelemetry/exporter-metrics-otlp-grpc": "^0.301.2",
+    "@opentelemetry/exporter-trace-otlp-grpc": "^0.301.2",
     "@opentelemetry/propagator-aws-xray": "^2.2.0",
     "@opentelemetry/resource-detector-aws": "^2.23.0",
     "@opentelemetry/resource-detector-container": "^0.9.1",
-    "@opentelemetry/resources": "^2.12.0",
-    "@opentelemetry/sdk-metrics": "^2.12.0",
-    "@opentelemetry/sdk-node": "^0.301.0",
+    "@opentelemetry/resources": "^2.12.1",
+    "@opentelemetry/sdk-metrics": "^2.12.1",
+    "@opentelemetry/sdk-node": "^0.301.2",
     "@opentelemetry/sdk-trace-base": "^2.12.0",
     "@opentelemetry/semantic-conventions": "^1.45.0",
     "@opentelemetry/winston-transport": "^0.35.0"

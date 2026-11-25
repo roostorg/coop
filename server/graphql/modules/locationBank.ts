@@ -1,3 +1,4 @@
+import { UserPermission } from '../../services/userManagementService/index.js';
 import { isCoopErrorOfType } from '../../utils/errors.js';
 import { type LocationBankWithoutFullPlacesAPIResponse } from '../datasources/LocationBankApi.js';
 import {
@@ -5,6 +6,7 @@ import {
   type GQLQueryResolvers,
 } from '../generated.js';
 import { type ResolverMap } from '../resolvers.js';
+import { requirePermission } from '../utils/authorization.js';
 import { unauthenticatedError } from '../utils/errors.js';
 import { gqlErrorResult, gqlSuccessResult } from '../utils/gqlResult.js';
 
@@ -143,12 +145,11 @@ const Query: GQLQueryResolvers = {
 
 const Mutation: GQLMutationResolvers = {
   async createLocationBank(_, params, context) {
+    const user = requirePermission(
+      context.getUser(),
+      UserPermission.MUTATE_LIVE_RULES,
+    );
     try {
-      const user = context.getUser();
-      if (user == null) {
-        throw unauthenticatedError('User required.');
-      }
-
       const bank = await context.dataSources.locationBankAPI.createLocationBank(
         params.input,
         user,
@@ -166,12 +167,11 @@ const Mutation: GQLMutationResolvers = {
     }
   },
   async updateLocationBank(_, params, context) {
+    const user = requirePermission(
+      context.getUser(),
+      UserPermission.MUTATE_LIVE_RULES,
+    );
     try {
-      const user = context.getUser();
-      if (user == null) {
-        throw unauthenticatedError('User required.');
-      }
-
       const bank = await context.dataSources.locationBankAPI.updateLocationBank(
         params.input,
         user.orgId,
@@ -189,10 +189,10 @@ const Mutation: GQLMutationResolvers = {
     }
   },
   async deleteLocationBank(_, params, context) {
-    const user = context.getUser();
-    if (user == null) {
-      throw unauthenticatedError('Authenticated user required');
-    }
+    const user = requirePermission(
+      context.getUser(),
+      UserPermission.MUTATE_LIVE_RULES,
+    );
 
     return context.dataSources.locationBankAPI.deleteLocationBank({
       id: params.id,

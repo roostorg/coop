@@ -396,7 +396,7 @@ module.exports = {
     '*.d.ts',
     '.eslintrc.cjs',
     '.eslintformat.js',
-    'transpiled/',
+    'build/',
     'coverage/',
   ],
   plugins: [
@@ -738,7 +738,7 @@ module.exports = {
                 ],
                 message:
                   'Production code must not import test-only code. A test ' +
-                  'helper imported here is compiled into transpiled/ and ships ' +
+                  'helper imported here is compiled into build/ and ships ' +
                   'in the server image, and drags its dev-only dependencies ' +
                   'with it. Move the helper to the module it belongs to ' +
                   '(e.g. utils/) and import it from there.',
