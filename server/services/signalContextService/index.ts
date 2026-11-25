@@ -7,6 +7,7 @@ import {
 
 import { type RuleInput } from '../../rule_engine/RuleEvaluator.js';
 import { jsonStringify } from '../../utils/encoding.js';
+import { getOwn } from '../../utils/misc.js';
 import { type ItemInvestigationService } from '../itemInvestigationService/index.js';
 import {
   getFieldValueForRole,
@@ -321,9 +322,10 @@ function getRoleReference(
   submission: ItemSubmission,
   role: 'parentId' | 'threadId',
 ) {
-  const fieldName = (
-    submission.itemType.schemaFieldRoles as Record<string, string | undefined>
-  )[role];
+  const fieldName = getOwn(
+    submission.itemType.schemaFieldRoles as Record<string, string | undefined>,
+    role,
+  );
   if (!fieldName) return undefined;
   const field = submission.itemType.schema.find(
     (candidate) => candidate.name === fieldName,

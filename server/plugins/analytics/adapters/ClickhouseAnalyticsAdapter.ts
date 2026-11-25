@@ -2,6 +2,7 @@ import { createClient, type ClickHouseClient } from '@clickhouse/client';
 
 import { jsonStringify, tryJsonParse } from '../../../utils/encoding.js';
 import { logErrorJson } from '../../../utils/logging.js';
+import { getOwn, setOwn } from '../../../utils/misc.js';
 import type SafeTracer from '../../../utils/SafeTracer.js';
 import { getClickhouseMemorySettings } from '../../warehouse/utils/clickhouseSettings.js';
 import { formatClickhouseQuery } from '../../warehouse/utils/clickhouseSql.js';
@@ -222,7 +223,7 @@ export class ClickhouseAnalyticsAdapter implements IAnalyticsAdapter {
         regularArrayFields.includes(key) &&
         (value === null || value === undefined)
       ) {
-        normalized[key] = [];
+        setOwn(normalized, key, []);
         continue;
       }
 
@@ -230,16 +231,20 @@ export class ClickhouseAnalyticsAdapter implements IAnalyticsAdapter {
         jsonStringFields.includes(key) &&
         (value === null || value === undefined)
       ) {
-        normalized[key] = '[]';
+        setOwn(normalized, key, '[]');
         continue;
       }
 
-      normalized[key] = this.normalizeFieldValue({
+      setOwn(
+        normalized,
         key,
-        value,
-        jsonArrayFields,
-        jsonObjectFields,
-      });
+        this.normalizeFieldValue({
+          key,
+          value,
+          jsonArrayFields,
+          jsonObjectFields,
+        }),
+      );
     }
 
     // Stringify JSON fields (stored as String in ClickHouse)
@@ -259,10 +264,10 @@ export class ClickhouseAnalyticsAdapter implements IAnalyticsAdapter {
     }
 
     for (const fieldKey of fields) {
-      if (!(fieldKey in normalized)) {
-        normalized[fieldKey] = defaultValue;
+      if (!Object.hasOwn(normalized, fieldKey)) {
+        setOwn(normalized, fieldKey, defaultValue);
       } else {
-        const value = normalized[fieldKey];
+        const value = getOwn(normalized, fieldKey);
         if (typeof value === 'string') {
           // Already a string, keep it
           continue;
@@ -271,9 +276,9 @@ export class ClickhouseAnalyticsAdapter implements IAnalyticsAdapter {
           value !== null &&
           (typeof value === 'object' || Array.isArray(value))
         ) {
-          normalized[fieldKey] = jsonStringify(value);
+          setOwn(normalized, fieldKey, jsonStringify(value));
         } else {
-          normalized[fieldKey] = defaultValue;
+          setOwn(normalized, fieldKey, defaultValue);
         }
       }
     }

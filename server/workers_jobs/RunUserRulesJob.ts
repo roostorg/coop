@@ -3,6 +3,7 @@ import _ from 'lodash';
 import { inject } from '../iocContainer/utils.js';
 import { RuleEnvironment } from '../rule_engine/RuleEngine.js';
 import { toCorrelationId } from '../utils/correlationIds.js';
+import { getOwn } from '../utils/misc.js';
 
 const { groupBy } = _;
 
@@ -54,9 +55,8 @@ export default inject(
                 userTypeId: string;
                 orgId: string;
               }) => {
-                const rulesForUser = userRulesByOrgId[orgId];
+                const rulesForUser = getOwn(userRulesByOrgId, orgId);
 
-                // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
                 if (!rulesForUser?.length) {
                   return;
                 }

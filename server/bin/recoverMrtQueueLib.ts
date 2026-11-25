@@ -274,7 +274,11 @@ export async function runEnqueueWorkers(
           mode,
           reportHistoryByItem,
         );
-        stats[result]++;
+        if (result === 'enqueued') {
+          stats.enqueued++;
+        } else {
+          stats.skipped++;
+        }
       } catch (e: unknown) {
         stats.failed++;
         console.warn(

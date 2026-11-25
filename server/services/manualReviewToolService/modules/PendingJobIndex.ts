@@ -77,7 +77,7 @@ export default class PendingJobIndex {
     );
     const entries: PendingJobIndexEntry[] = [];
     for (let i = 0; i + 1 < flat.length; i += 2) {
-      entries.push({ jobId: flat[i], createdAtMs: Number(flat[i + 1]) });
+      entries.push({ jobId: flat.at(i)!, createdAtMs: Number(flat.at(i + 1)) });
     }
     return entries;
   }

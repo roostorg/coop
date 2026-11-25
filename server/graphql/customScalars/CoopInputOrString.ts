@@ -1,6 +1,7 @@
 import { GraphQLScalarType, Kind } from 'graphql';
 
 import { CoopInput } from '../../services/moderationConfigService/index.js';
+import { getOwn } from '../../utils/misc.js';
 import { userInputError } from '../utils/errors.js';
 
 export const CoopInputEnumInverted = Object.fromEntries(
@@ -23,7 +24,7 @@ export default new GraphQLScalarType<CoopInput | string, string>({
       throw userInputError('Expected a string.');
     }
 
-    return CoopInputEnumInverted[value] ?? value;
+    return getOwn(CoopInputEnumInverted, value) ?? value;
   },
   parseValue: parseCoopInputOrStringValue,
   parseLiteral(ast) {
@@ -39,6 +40,5 @@ function parseCoopInputOrStringValue(value: unknown) {
     throw userInputError('CoopInputOrString must be a CoopInput.');
   }
 
-  // @ts-ignore
-  return CoopInput[value] !== undefined ? CoopInput[value] : value;
+  return getOwn(CoopInput, value) ?? value;
 }

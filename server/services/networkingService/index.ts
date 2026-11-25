@@ -10,7 +10,7 @@ import { xml2json } from 'xml-js';
 
 import { b64EncodeArrayBuffer, jsonStringify } from '../../utils/encoding.js';
 import type { JSON } from '../../utils/json-schema-types.js';
-import { assertUnreachable } from '../../utils/misc.js';
+import { assertUnreachable, getOwn } from '../../utils/misc.js';
 import type SafeTracer from '../../utils/SafeTracer.js';
 import { MINUTE_MS } from '../../utils/time.js';
 import { bodyCancellationReason } from './bodyCancellationReason.js';
@@ -63,11 +63,9 @@ export function makeFormDataLikeWithStreams(parts: {
 }
 
 function isFormDataLikeWithStreams(it: unknown): it is FormDataLikeWithStreams {
-  return Boolean(
-    typeof it === 'object' &&
-    it != null &&
-    (it as { [formDataLikeWithStreams]?: unknown })[formDataLikeWithStreams],
-  );
+  if (typeof it !== 'object' || it === null) return false;
+  const form = it as { [formDataLikeWithStreams]?: unknown };
+  return Boolean(getOwn(form, formDataLikeWithStreams));
 }
 
 // We don't have code for converting every body type to an ArrayBuffer, which is
@@ -317,6 +315,14 @@ export async function fetchHTTP<T extends HandleResponseBody>(
           ? AbortSignal.any([timeoutSignal, callerSignal])
           : (timeoutSignal ?? callerSignal);
 
+      const agents = getOwn(agentMapping, query.maxResponseSize ?? '5mb');
+      const dispatcher = getOwn(agents, urlTrust);
+      if (dispatcher === undefined) {
+        throw new TypeError(
+          'No dispatcher configured for the requested response size',
+        );
+      }
+
       // NB: use of fetch here is okay, since this is our wrapper function that
       // should be used instead of fetch everywhere else in the codebase
       // eslint-disable-next-line no-restricted-syntax
@@ -329,7 +335,7 @@ export async function fetchHTTP<T extends HandleResponseBody>(
         },
         body: finalBody,
         duplex: finalBody instanceof ReadableStream ? 'half' : undefined,
-        dispatcher: agentMapping[query.maxResponseSize ?? '5mb'][urlTrust],
+        dispatcher,
         signal,
       });
 

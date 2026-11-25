@@ -2,6 +2,7 @@ import lodash from 'lodash';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
+import { getOwn } from '../../utils/misc.js';
 import { WEEK_MS } from '../../utils/time.js';
 import { RuleAlarmStatus } from '../moderationConfigService/index.js';
 import getRuleAlarmStatus from './getRuleAlarmStatus.js';
@@ -51,7 +52,7 @@ const makeGetCurrentPeriodRuleAlarmStatuses = inject(
         // model, we represent the number of passes _not_ as the number of times
         // that the rule passed in a period, but rather as the number of
         // distinct users that caused the rule to pass in that period.
-        const minVersion = minVersionsByRule[ruleId];
+        const minVersion = getOwn(minVersionsByRule, ruleId);
         // Without a version bound we cannot tell whether warehouse stats
         // predate a condition/item-type change. Fail closed rather than
         // treating missing history as "all stats apply".

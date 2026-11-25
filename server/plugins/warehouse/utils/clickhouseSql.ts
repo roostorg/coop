@@ -63,7 +63,7 @@ export function formatClickhouseQuery(
       if (paramIndex < 0 || paramIndex >= params.length) {
         throw new Error('Not enough parameters supplied for ClickHouse query.');
       }
-      return formatValue(params[paramIndex]);
+      return formatValue(params.at(paramIndex));
     });
     return result;
   }
@@ -74,7 +74,7 @@ export function formatClickhouseQuery(
       throw new Error('Not enough parameters supplied for ClickHouse query.');
     }
 
-    const value = params[paramIndex];
+    const value = params.at(paramIndex);
     paramIndex += 1;
     return formatValue(value);
   });

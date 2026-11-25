@@ -17,7 +17,7 @@ import {
   type CoopError,
 } from '../../utils/errors.js';
 import { everyAsync } from '../../utils/fp-helpers.js';
-import { assertUnreachable } from '../../utils/misc.js';
+import { assertUnreachable, getOwn } from '../../utils/misc.js';
 import { type NonEmptyArray } from '../../utils/typescript-types.js';
 import { type ItemSubmission } from '../itemProcessingService/makeItemSubmission.js';
 import {
@@ -132,7 +132,7 @@ export async function getDerivedFieldInputTypes(
   derivationType: DerivedFieldType,
   orgId: string,
 ): Promise<readonly SignalInputType[]> {
-  const [recipeFirstStep] = derivedFieldRecipes[derivationType];
+  const [recipeFirstStep] = getOwn(derivedFieldRecipes, derivationType)!;
   // NB: this intentionally doesn't check the step's type, so that we'll get
   // type errors if we define new step types besides RUN_SIGNAL.
   const signal = await getSignal({ orgId, signalId: recipeFirstStep.args.id });
@@ -151,7 +151,7 @@ export async function getDerivedFieldOutputType(
   derivationType: DerivedFieldType,
   orgId: string,
 ): Promise<SignalOutputType> {
-  const recipeLastStep = derivedFieldRecipes[derivationType].at(-1)!;
+  const recipeLastStep = getOwn(derivedFieldRecipes, derivationType)!.at(-1)!;
   // NB: this intentionally doesn't check the step's type, so that we'll get type
   // errors if we define new step types besides RUN_SIGNAL.
   const signal = await getSignal({ orgId, signalId: recipeLastStep.args.id });
@@ -168,7 +168,7 @@ export async function getDerivedFieldIsEnabled(
   derivationType: DerivedFieldType,
   orgId: string,
 ) {
-  const runSignalSteps = derivedFieldRecipes[derivationType].filter(
+  const runSignalSteps = getOwn(derivedFieldRecipes, derivationType)!.filter(
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     (it) => it.type === DerivedFieldOperationType.RUN_SIGNAL,
   );

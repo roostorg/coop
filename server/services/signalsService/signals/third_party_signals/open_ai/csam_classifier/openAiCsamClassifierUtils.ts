@@ -3,7 +3,7 @@ import { type ReadonlyDeep } from 'type-fest';
 
 import { jsonStringify } from '../../../../../../utils/encoding.js';
 import { makeSignalPermanentError } from '../../../../../../utils/errors.js';
-import { safeGet } from '../../../../../../utils/misc.js';
+import { getOwn, safeGet } from '../../../../../../utils/misc.js';
 import type SafeTracer from '../../../../../../utils/SafeTracer.js';
 import { type Bind2 } from '../../../../../../utils/typescript-types.js';
 import { type FetchHTTP } from '../../../../../networkingService/index.js';
@@ -57,7 +57,7 @@ export function openAiCsamClassifierRecommendedThresholds(
   // OpenAI's model card publishes a single default threshold per signal, chosen
   // to balance recall and precision. It does not publish distinct
   // high-precision / high-recall values, so both use the published default.
-  const threshold = OPEN_AI_CSAM_DEFAULT_THRESHOLDS[category];
+  const threshold = getOwn(OPEN_AI_CSAM_DEFAULT_THRESHOLDS, category)!;
   return {
     highPrecisionThreshold: threshold,
     highRecallThreshold: threshold,
@@ -110,7 +110,7 @@ function extractScoreOrThrow(
       shouldErrorSpan: true,
     });
   }
-  const score = response[0].category_scores[category];
+  const score = getOwn(response[0].category_scores, category);
   if (typeof score !== 'number' || Number.isNaN(score)) {
     throw makeSignalPermanentError(
       `Missing or non-numeric score for category "${category}"`,

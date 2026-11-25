@@ -7,6 +7,7 @@ import { createRequire } from 'module';
 import path from 'path';
 import { isCoopIntegrationPlugin } from '@roostorg/coop-types';
 
+import { setOwn } from '../../../utils/misc.js';
 import type { PluginEntry } from '../../integrationRegistry/loadPlugins.js';
 import type { SignalAuthService } from '../../signalAuthService/index.js';
 import PluginSignalAdapter, {
@@ -80,8 +81,10 @@ export function loadPluginSignals(
           `Duplicate plugin signal type "${signalTypeId}" from package "${packageSpec}".`,
         );
       }
-      byType[signalTypeId] = new PluginSignalAdapter(
-        descriptor as PluginSignalDescriptor,
+      setOwn(
+        byType,
+        signalTypeId,
+        new PluginSignalAdapter(descriptor as PluginSignalDescriptor),
       );
     }
   }

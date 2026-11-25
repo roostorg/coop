@@ -1,3 +1,4 @@
+import { getOwn } from '../../utils/misc.js';
 import { type GQLQueryResolvers } from '../generated.js';
 import { unauthenticatedError } from '../utils/errors.js';
 
@@ -98,7 +99,7 @@ const Query: GQLQueryResolvers = {
       AUTOMATED_RULE: 'automated-rule',
       POST_ACTIONS: 'post-actions',
     } as const;
-    const sources = input.filterBy.sources.map((it) => a[it]);
+    const sources = input.filterBy.sources.map((it) => getOwn(a, it)!);
 
     try {
       return await context.dataSources.ruleAPI.getActionStatistics({

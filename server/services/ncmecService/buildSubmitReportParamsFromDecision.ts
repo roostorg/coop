@@ -1,6 +1,7 @@
 import { makeDateString } from '@roostorg/coop-types';
 
 import { type Dependencies } from '../../iocContainer/index.js';
+import { setOwn } from '../../utils/misc.js';
 import {
   getFieldValueForRole,
   type NormalizedItemData,
@@ -249,7 +250,7 @@ export function extractHashesForUrl(
       const hashes = obj.hashes as Record<string, unknown>;
       const stringHashes: Record<string, string> = {};
       for (const [k, v] of Object.entries(hashes)) {
-        if (typeof v === 'string') stringHashes[k] = v;
+        if (typeof v === 'string') setOwn(stringHashes, k, v);
       }
       return Object.keys(stringHashes).length > 0 ? stringHashes : undefined;
     }
