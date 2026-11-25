@@ -366,7 +366,7 @@ Session configuration:
 - Cookie: Secure flag in production, 30-day expiry
 - Session secret: process.env.SESSION_SECRET
 
-Files: `/server/api.ts`
+Files: `/server/app/middleware/session_bridge_middleware.ts`
 
 ### SAML/SSO Authentication
 
@@ -387,5 +387,6 @@ Configuration (per org in org_settings table):
 
 Files:
 
-- `/server/api.ts`
+- `/server/app/middleware/session_bridge_middleware.ts`
+- `/server/app/controllers/saml_controller.ts`
 - `/server/services/SSOService/SSOService.ts`

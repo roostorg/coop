@@ -41,7 +41,7 @@ Apply each rule below only when the diff touches files matching its path.
   - IDOR / authorization: verify each resolver checks that the caller owns or can access the specific resource ID, not just that they are authenticated.
   - Input validation: GraphQL schema shape is not enough — look for length, range, allowlist, and canonicalization checks on resolver arguments.
   - Schema stability: removing or renaming a GraphQL type or field breaks Apollo cache and downstream consumers. Additive changes are usually safe; removals deserve a migration plan.
-- **`server/api.ts`** — Auth, session, CSRF, CORS, and rate-limit middleware live here. `AGENTS.md` requires explicit human approval for auth, session, or request-middleware changes in this file — surface them even when the diff is small. Flag any change that disables a security control.
+- **`server/app/middleware/`, `server/start/kernel.ts`, `server/start/routes.ts`, `server/app/controllers/saml_controller.ts`, `server/utils/apiKeyMiddleware.ts`** — Auth, session, CSRF, CORS, and security-header middleware live here. `AGENTS.md` requires explicit human approval for auth, session, or request-middleware changes in these files — surface them even when the diff is small. Flag any change that disables a security control.
 - **`server/**/Clickhouse*.ts`** — Raw SQL is expected in the ClickHouse adapter files. Flag any string interpolation of user input — bound parameters are required.
 - **`server/scylla/**`** — Cassandra driver queries must use bound parameters. Flag string-built CQL with user input.
 - **`server/iocContainer/**`** — Services are registered here for BottleJS DI. Direct imports of service singletons elsewhere bypass test mocking and should be flagged.

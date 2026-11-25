@@ -18,7 +18,10 @@ import {
   makeInternalServerError,
 } from '../../utils/errors.js';
 import { withRetries } from '../../utils/misc.js';
-import { type RequestHandlerWithBodies } from '../../utils/route-helpers.js';
+import {
+  RouteRejection,
+  type RouteHandler,
+} from '../../utils/route-helpers.js';
 import { isValidDate } from '../../utils/time.js';
 import {
   type AppealItemInput,
@@ -33,9 +36,9 @@ export default function submitAppeal({
   ModerationConfigService,
   Meter,
   ItemInvestigationService,
-}: Dependencies): RequestHandlerWithBodies<AppealItemInput, AppealItemOutput> {
+}: Dependencies): RouteHandler<AppealItemInput, AppealItemOutput> {
   // eslint-disable-next-line complexity
-  return async (req, res, next) => {
+  return async (ctx, body) => {
     // Generate an id for this request to correlate logs. It doesn't need to be
     // random for security (i.e., uuidv4), and making it time-based could
     // actually be convenient, so that's what we do. We'll eventually get much
@@ -50,8 +53,9 @@ export default function submitAppeal({
 
     try {
       // Get orgId from request (set by API key middleware)
-      if (!hasOrgId(req)) {
-        return next(
+      if (!hasOrgId(ctx)) {
+        // eslint-disable-next-line @typescript-eslint/only-throw-error -- see RouteRejection
+        throw new RouteRejection(
           makeBadRequestError('Invalid API Key', {
             detail:
               'Something went wrong finding or validating your API key. ' +
@@ -62,7 +66,7 @@ export default function submitAppeal({
         );
       }
 
-      const { orgId } = req;
+      const { orgId } = ctx;
 
       const toItemSubmission = rawItemSubmissionToItemSubmission.bind(
         null,
@@ -76,16 +80,16 @@ export default function submitAppeal({
 
       // Now that we've at least loaded the item type, we'll log successes and
       // failures to the data warehouse from now on. This is the basic info we'll log.
-      const appealReason = req.body.appealReason;
+      const appealReason = body.appealReason;
       const appealerIdentifier = {
-        id: req.body.appealedBy.id,
-        typeId: req.body.appealedBy.typeId,
+        id: body.appealedBy.id,
+        typeId: body.appealedBy.typeId,
       };
-      const reportedItem = req.body.actionedItem;
+      const reportedItem = body.actionedItem;
       // TODO: error handling. Our controllers still need much better error
       // handling abstractions.
-      const additionalItems = req.body.additionalItems;
-      const actionsTaken = req.body.actionsTaken;
+      const additionalItems = body.additionalItems;
+      const actionsTaken = body.actionsTaken;
       const reportedItemSubmission = await toItemSubmission(reportedItem);
 
       const additionalItemSubmissions = additionalItems
@@ -121,9 +125,7 @@ export default function submitAppeal({
         additionalItemSubmissions &&
         !isAllValidContentItems(additionalItemSubmissions);
 
-      const isInvalidAppealedAtDate = !isValidDate(
-        new Date(req.body.appealedAt),
-      );
+      const isInvalidAppealedAtDate = !isValidDate(new Date(body.appealedAt));
 
       const orgActions = (
         await ModerationConfigService.getActions({
@@ -142,7 +144,8 @@ export default function submitAppeal({
         isInvalidAppealedAtDate ||
         invalidActionIds.length > 0
       ) {
-        return next(
+        // eslint-disable-next-line @typescript-eslint/only-throw-error -- see RouteRejection
+        throw new RouteRejection(
           new AggregateError(
             [
               submittedItemIsInvalid ? reportedItemSubmission.error : [],
@@ -186,12 +189,12 @@ export default function submitAppeal({
         //This ID is meant to be the user's internal ID for the appeal, which
         //we we will propagate back to the user on any action callbacks that result
         //from the appeal review.
-        appealId: req.body.appealId,
+        appealId: body.appealId,
         requestId,
         orgId,
-        violatingPolicies: req.body.violatingPolicies,
-        appealedBy: req.body.appealedBy,
-        appealedAt: new Date(req.body.appealedAt),
+        violatingPolicies: body.violatingPolicies,
+        appealedBy: body.appealedBy,
+        appealedAt: new Date(body.appealedAt),
         appealReason,
         actionsTaken,
         actionedItem: reportedItemSubmission.itemSubmission,
@@ -227,7 +230,8 @@ export default function submitAppeal({
 
       // send response as soon as
       // the appeal has successfully been written to the data warehouse
-      res.sendStatus(204);
+      ctx.response.status(204);
+      ctx.response.finish();
 
       // Enqueue the Job to the BullMQ MRT job queue
       try {
@@ -291,17 +295,21 @@ export default function submitAppeal({
         );
         // Do nothing on error, as the span will already be marked as failed
       } catch {}
-      // this error handling only triggers on errors before the `res.sendStatus` call
+      // this error handling only triggers on errors before the `ctx.response.finish()` call
     } catch (e: unknown) {
+      if (e instanceof RouteRejection) {
+        throw e.error;
+      }
       const activeSpan = Tracer.getActiveSpan();
       if (activeSpan?.isRecording()) {
         activeSpan.recordException(e as Exception);
       }
-      return next(
-        makeInternalServerError('Failed to send appeal to reporting service', {
+      throw makeInternalServerError(
+        'Failed to send appeal to reporting service',
+        {
           requestId: fromCorrelationId(requestId),
           shouldErrorSpan: true,
-        }),
+        },
       );
     }
   };

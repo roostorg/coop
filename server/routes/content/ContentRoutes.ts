@@ -52,14 +52,9 @@ export default {
       '/',
       {
         bodySchema: evaluateContentInputSchema,
+        middleware: (deps) => [createApiKeyMiddleware(deps)],
       },
-      (deps) => [
-        createApiKeyMiddleware<
-          EvaluateContentInputCamelCase,
-          EvaluateContentOutput
-        >(deps),
-        submitContent(deps),
-      ],
+      submitContent,
     ),
   ],
 } as Controller;

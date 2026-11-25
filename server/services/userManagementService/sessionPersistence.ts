@@ -4,7 +4,8 @@ import { sql, type Kysely } from 'kysely';
  * Delete connect-pg-simple session rows for a user, to force re-authentication
  * after a password change. Passport stores the user id at
  * `sess -> 'passport' ->> 'user'` (see `passport.serializeUser` in
- * `server/api.ts`, which serializes `user.id`).
+ * `server/app/middleware/session_bridge_middleware.ts`, which serializes
+ * `user.id`).
  *
  * Pass `exceptSid` to keep one session alive — e.g. the caller's own session on
  * a self-service password change, so they aren't logged out mid-request.

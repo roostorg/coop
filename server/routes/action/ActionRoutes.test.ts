@@ -1,4 +1,3 @@
-import express from 'express';
 import _ from 'lodash';
 import supertest from 'supertest';
 import { vi } from 'vitest';
@@ -6,16 +5,14 @@ import { vi } from 'vitest';
 import { type Dependencies } from '../../iocContainer/index.js';
 import {
   BUILT_IN_ACTIONS,
-  MAX_ACTOR_NOTE_LENGTH,
   type ItemSchema,
   type ItemType,
   type ItemTypeKind,
 } from '../../services/moderationConfigService/index.js';
+import { makeBareServer } from '../../test/adonisTestHelpers.js';
 import createOrg from '../../test/fixtureHelpers/createOrg.js';
 import { makeTransactionalTestWithFixture } from '../../test/harness/transactionalTest.js';
-import { createBodySchemaValidator } from '../../utils/bodySchemaValidation.js';
-import actionRoutes from './ActionRoutes.js';
-import getActions, { type GetActionsOutput } from './getActions.js';
+import getActions from './getActions.js';
 
 const { sortBy } = _;
 
@@ -252,67 +249,6 @@ describe('GET actions', () => {
   );
 });
 
-describe('POST actions', () => {
-  test('validates object parameters and the note code-point limit', async () => {
-    const app = express();
-    app.use(express.json());
-    const schema = actionRoutes.routes.find(
-      ({ method, path }) => method === 'post' && path === '/',
-    )!.bodySchema!;
-    app.post(
-      '/api/v1/actions/',
-      createBodySchemaValidator(schema),
-      (_req, res) => res.sendStatus(204),
-    );
-    app.use(((error, _req, res, _next) => {
-      res.status(error.status ?? 500).json(error);
-    }) satisfies express.ErrorRequestHandler);
-    const body = { actionId: 'a', itemId: 'i', itemTypeId: 't' };
-
-    await supertest(app)
-      .post('/api/v1/actions/')
-      .send({ ...body, parameters: { nested: [null] } })
-      .expect(204);
-    for (const parameters of [[], null]) {
-      await supertest(app)
-        .post('/api/v1/actions/')
-        .send({ ...body, parameters })
-        .expect(400);
-    }
-
-    const mixedNote = `${'a'.repeat(MAX_ACTOR_NOTE_LENGTH - 2)}é😀`;
-    for (const note of ['', 'a'.repeat(MAX_ACTOR_NOTE_LENGTH), mixedNote]) {
-      await supertest(app)
-        .post('/api/v1/actions/')
-        .send({ ...body, note })
-        .expect(204);
-    }
-    for (const note of [
-      'a'.repeat(MAX_ACTOR_NOTE_LENGTH + 1),
-      `${mixedNote}😀`,
-    ]) {
-      const response = await supertest(app)
-        .post('/api/v1/actions/')
-        .send({ ...body, note })
-        .expect(400);
-      expect(response.body).toMatchObject({
-        pointer: '/note',
-        detail: `/note: must NOT have more than ${MAX_ACTOR_NOTE_LENGTH} characters`,
-      });
-    }
-    for (const note of [null, 1]) {
-      const response = await supertest(app)
-        .post('/api/v1/actions/')
-        .send({ ...body, note })
-        .expect(400);
-      expect(response.body).toMatchObject({
-        pointer: '/note',
-        detail: '/note: must be string',
-      });
-    }
-  });
-});
-
 describe('getActions read scheduling', () => {
   test('starts the assignments read before the actions read completes', async () => {
     let finishActions!: (actions: []) => void;
@@ -338,16 +274,14 @@ describe('getActions read scheduling', () => {
         getActionItemTypeIds: readAssignments,
       },
     });
-    const app = express();
-    app.get<Record<string, string>, GetActionsOutput, never>(
-      '/',
-      (req, res, next) => {
-        // Mimic the API-key middleware attaching the organization to the request.
+    const app = await makeBareServer((router) => {
+      router.get('/', async (ctx) => {
+        // Mimic the API-key middleware attaching the organization.
         // eslint-disable-next-line functional/immutable-data
-        const request = Object.assign(req, { orgId: 'org-1' });
-        return handler(request, res, next);
-      },
-    );
+        ctx.orgId = 'org-1';
+        return handler(ctx, undefined as never);
+      });
+    });
     const pending = supertest(app)
       .get('/')
       .expect(200)

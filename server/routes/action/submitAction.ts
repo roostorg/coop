@@ -1,5 +1,6 @@
 import { v1 as uuidv1 } from 'uuid';
 
+import { type SubmitActionInput } from '../../app/validators/action_validator.js';
 import { type Dependencies } from '../../iocContainer/index.js';
 import {
   parseStoredParameters,
@@ -11,8 +12,7 @@ import {
   toCorrelationId,
 } from '../../utils/correlationIds.js';
 import { ErrorType, makeUnauthorizedError } from '../../utils/errors.js';
-import { type RequestHandlerWithBodies } from '../../utils/route-helpers.js';
-import { type SubmitActionInput } from './ActionRoutes.js';
+import { type RouteHandler } from '../../utils/route-helpers.js';
 
 export default function submitAction({
   ActionPublisher,
@@ -20,26 +20,23 @@ export default function submitAction({
   getItemTypeEventuallyConsistent,
   UserAPIDataSource,
 }: // @ts-ignore
-Dependencies): RequestHandlerWithBodies<SubmitActionInput, undefined> {
-  return async (req, res, next) => {
+Dependencies): RouteHandler<SubmitActionInput, undefined> {
+  return async (ctx, body) => {
     const requestId = toCorrelationId({ type: 'post-actions', id: uuidv1() });
 
     // Get orgId from request (set by API key middleware)
-    if (!hasOrgId(req)) {
-      return next(
-        makeUnauthorizedError('Invalid API Key', {
-          detail:
-            'Something went wrong finding or validating your API key. ' +
-            'Make sure the proper key is provided in the x-api-key header.',
-          requestId: fromCorrelationId(requestId),
-          shouldErrorSpan: true,
-        }),
-      );
+    if (!hasOrgId(ctx)) {
+      throw makeUnauthorizedError('Invalid API Key', {
+        detail:
+          'Something went wrong finding or validating your API key. ' +
+          'Make sure the proper key is provided in the x-api-key header.',
+        requestId: fromCorrelationId(requestId),
+        shouldErrorSpan: true,
+      });
     }
 
-    const { orgId } = req;
+    const { orgId } = ctx;
 
-    const { body } = req;
     const {
       itemId,
       itemTypeId,
@@ -59,13 +56,16 @@ Dependencies): RequestHandlerWithBodies<SubmitActionInput, undefined> {
     )[0];
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (action === undefined) {
-      return next({
+      // Plain error objects, serialized as-is by the exception handler, as
+      // they were when passed to Express' `next()`.
+      // eslint-disable-next-line @typescript-eslint/only-throw-error
+      throw {
         status: 400,
         type: [ErrorType.InvalidUserInput],
         title: 'Invalid Action',
         detail: `Couldn\'t find an action for your org with ID: ${actionId}`,
         requestId: fromCorrelationId(requestId),
-      });
+      };
     }
 
     const itemType = await getItemTypeEventuallyConsistent({
@@ -73,13 +73,14 @@ Dependencies): RequestHandlerWithBodies<SubmitActionInput, undefined> {
       typeSelector: { id: itemTypeId },
     });
     if (itemType === undefined) {
-      return next({
+      // eslint-disable-next-line @typescript-eslint/only-throw-error
+      throw {
         status: 400,
         type: [ErrorType.InvalidUserInput],
         title: 'Invalid Item Type ID',
         detail: `Couldn\'t find an Item Type for your org with ID: ${itemTypeId}`,
         requestId: fromCorrelationId(requestId),
-      });
+      };
     }
     const policies = await (async () => {
       if (policyIds === undefined) {
@@ -98,18 +99,13 @@ Dependencies): RequestHandlerWithBodies<SubmitActionInput, undefined> {
 
     // Validate moderator-supplied parameter values against the action's
     // stored spec before publish. Throws BadRequestError (400) which the
-    // standard Express error handler serializes for the client.
+    // exception handler serializes for the client.
     const spec = parseStoredParameters(
       action.actionType === 'CUSTOM_ACTION' ? action.customMrtApiParams : null,
     );
-    let validatedParameters: Record<string, unknown> | undefined;
-    try {
-      const validated = validateActionParameterValues(spec, parameters ?? null);
-      validatedParameters =
-        Object.keys(validated).length > 0 ? validated : undefined;
-    } catch (e) {
-      return next(e);
-    }
+    const validated = validateActionParameterValues(spec, parameters ?? null);
+    const validatedParameters =
+      Object.keys(validated).length > 0 ? validated : undefined;
 
     await ActionPublisher.publishActions(
       [
@@ -131,7 +127,7 @@ Dependencies): RequestHandlerWithBodies<SubmitActionInput, undefined> {
       },
     );
 
-    res.status(202).end();
+    ctx.response.status(202);
     return;
   };
 }

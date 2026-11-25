@@ -263,7 +263,7 @@ Stop and get explicit human approval before:
 - Database migrations — anything added under `db/src/scripts/<service>/` runs against real data. Confirm schema design and rollback story with a maintainer ensure to use CURRENT_USER to support any user on postgres.
 - Deleting or renaming an existing GraphQL type or field — this breaks cached Apollo client state and any downstream consumer. Additive changes are usually safe; removals need a migration plan.
 - Rewiring `server/iocContainer` in a way that changes service lifecycles or startup order — cascading effects on tests and boot.
-- Auth, session, or request middleware (under `server/api.ts`) — security-sensitive; prefer a small, reviewable PR with explicit callouts.
+- Auth, session, or request middleware (`server/app/middleware/`, `server/start/kernel.ts`, `server/start/routes.ts`, `server/app/controllers/saml_controller.ts`, `server/utils/apiKeyMiddleware.ts`) — security-sensitive; prefer a small, reviewable PR with explicit callouts.
 - Adding, removing, or upgrading any dependency (including transitive dependencies in `pnpm-lock.yaml`) — confirm licenses are compatible with Apache 2.0 and that there are no known CVEs.
 - Multi-thousand-line diffs — ROOST policy is that reviewers can digest the change. Split into reviewable PRs; regenerated codegen and lockfile bumps are the only exceptions.
 

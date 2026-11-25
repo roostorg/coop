@@ -1,6 +1,5 @@
 import { faker } from '@faker-js/faker';
 import { type Profile } from '@node-saml/passport-saml';
-import { type Request } from 'express';
 import { uid } from 'uid';
 import { vi } from 'vitest';
 
@@ -15,7 +14,7 @@ import {
 } from '../datasources/userKyselyPersistence.js';
 import { resolveSamlUser } from './resolveSamlUser.js';
 
-function makeReq(orgId?: string): Pick<Request, 'params'> {
+function makeReq(orgId?: string): { params: Record<string, unknown> } {
   return { params: orgId === undefined ? {} : { orgId } };
 }
 

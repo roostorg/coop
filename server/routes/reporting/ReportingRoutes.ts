@@ -83,21 +83,17 @@ export default {
       '/',
       {
         bodySchema: reportItemInputSchema,
+        middleware: (deps) => [createApiKeyMiddleware(deps)],
       },
-      (deps) => [
-        createApiKeyMiddleware<ReportItemInput, ReportItemOutput>(deps),
-        submitReport(deps),
-      ],
+      submitReport,
     ),
     route.post<AppealItemInput, AppealItemOutput>(
       '/appeal',
       {
         bodySchema: appealItemInputSchema,
+        middleware: (deps) => [createApiKeyMiddleware(deps)],
       },
-      (deps) => [
-        createApiKeyMiddleware<AppealItemInput, AppealItemOutput>(deps),
-        submitAppeal(deps),
-      ],
+      submitAppeal,
     ),
   ],
 } as Controller;

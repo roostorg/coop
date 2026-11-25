@@ -1,5 +1,4 @@
 import { type Profile, type VerifiedCallback } from '@node-saml/passport-saml';
-import { type Request } from 'express';
 
 import {
   makeInternalServerError,
@@ -21,7 +20,7 @@ import { getOrgIdFromPath } from './orgIdFromPath.js';
 export async function resolveSamlUser(
   db: UsersDb,
   tracer: SafeTracer,
-  req: Pick<Request, 'params'>,
+  req: { params: Record<string, unknown> },
   profile: Pick<Profile, 'email'> | null,
   done: VerifiedCallback,
 ): Promise<void> {

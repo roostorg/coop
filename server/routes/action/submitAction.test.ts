@@ -1,6 +1,6 @@
-import { type Request, type Response } from 'express';
 import { vi } from 'vitest';
 
+import { makeHandlerContext } from '../../test/adonisTestHelpers.js';
 import submitAction from './submitAction.js';
 
 function makeDeps(
@@ -52,19 +52,30 @@ function makeDeps(
   return { handler, publishActions, getActions };
 }
 
-function makeReq(body: Record<string, unknown>): Request {
-  return {
-    orgId: 'org-1',
-    body,
-  } as unknown as Request;
+function makeRes() {
+  return { status: vi.fn<(code: number) => void>(), end: vi.fn<() => void>() };
 }
+type Res = ReturnType<typeof makeRes>;
 
-function makeRes(): Response {
-  const res = {
-    status: vi.fn().mockReturnThis(),
-    end: vi.fn(),
-  };
-  return res as unknown as Response;
+/**
+ * Calls the handler with an AdonisJS context for org-1, reporting a thrown
+ * error to `next` and the response status to `res`, so the assertions read
+ * as they did against Express' `(req, res, next)`.
+ */
+async function callHandler(
+  handler: ReturnType<typeof makeDeps>['handler'],
+  body: Record<string, unknown>,
+  res: Res,
+  next: (err?: unknown) => void,
+) {
+  const ctx = makeHandlerContext({ orgId: 'org-1' });
+  try {
+    await handler(ctx, body as never);
+    res.status(ctx.response.getStatus());
+    res.end();
+  } catch (e) {
+    next(e);
+  }
 }
 
 const validBody = {
@@ -81,7 +92,7 @@ describe('submitAction (REST handler)', () => {
     const res = makeRes();
     const next = vi.fn();
 
-    await handler(makeReq(validBody), res, next);
+    await callHandler(handler, validBody, res, next);
 
     expect(next).not.toHaveBeenCalled();
     expect(publishActions).toHaveBeenCalledTimes(1);
@@ -99,7 +110,7 @@ describe('submitAction (REST handler)', () => {
     const res = makeRes();
     const next = vi.fn();
 
-    await handler(makeReq({ ...validBody, parameters: {} }), res, next);
+    await callHandler(handler, { ...validBody, parameters: {} }, res, next);
 
     expect(publishActions).not.toHaveBeenCalled();
     expect(next).toHaveBeenCalledTimes(1);
@@ -112,11 +123,12 @@ describe('submitAction (REST handler)', () => {
     const res = makeRes();
     const next = vi.fn();
 
-    await handler(
-      makeReq({
+    await callHandler(
+      handler,
+      {
         ...validBody,
         parameters: { num_days: 7, bogus: 'x' },
-      }),
+      },
       res,
       next,
     );
@@ -131,11 +143,12 @@ describe('submitAction (REST handler)', () => {
     const res = makeRes();
     const next = vi.fn();
 
-    await handler(
-      makeReq({
+    await callHandler(
+      handler,
+      {
         ...validBody,
         parameters: { num_days: 'seven' },
-      }),
+      },
       res,
       next,
     );
@@ -162,12 +175,13 @@ describe('submitAction (REST handler)', () => {
     const res = makeRes();
     const next = vi.fn();
 
-    await handler(
-      makeReq({
+    await callHandler(
+      handler,
+      {
         itemId: 'item-1',
         itemTypeId: 'type-1',
         actionId: 'action-1',
-      }),
+      },
       res,
       next,
     );

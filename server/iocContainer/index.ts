@@ -587,7 +587,7 @@ export default async function getBottle(
   //
   // - 'KyselyPgPool' is the shared `pg.Pool` for the primary (writable) db.
   //   Non-Kysely Postgres consumers (e.g. the express-session store in
-  //   `api.ts`) inject this so every connection passes through `createPgPool`.
+  //   `app/middleware/session_bridge_middleware.ts`) inject this so every connection passes through `createPgPool`.
   //
   // - 'KyselyPg' is the primary Kysely instance used across services for typed
   //   pg queries. These queries go to our primary db, which accepts writes.

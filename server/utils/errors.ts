@@ -325,7 +325,7 @@ export const makeNotFoundError = (title: string, data: ErrorInstanceData) =>
   });
 
 // 401: caller did not provide valid credentials. Pair with `Unauthenticated`
-// so the GraphQL layer (`server/api.ts`) maps it to `code: 'UNAUTHENTICATED'`.
+// so the GraphQL layer (`formatGraphQLError`) maps it to `code: 'UNAUTHENTICATED'`.
 export const makeUnauthenticatedError = (
   title: string,
   data: ErrorInstanceData,

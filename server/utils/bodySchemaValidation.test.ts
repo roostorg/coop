@@ -1,10 +1,10 @@
-import type { Request, Response } from 'express';
 import * as v from 'valibot';
 import { vi } from 'vitest';
 
 import reportingRoutes from '../routes/reporting/ReportingRoutes.js';
 import { rawItemSubmissionSchema } from '../services/itemProcessingService/index.js';
-import { createBodySchemaValidator } from './bodySchemaValidation.js';
+import { makeHandlerContext } from '../test/adonisTestHelpers.js';
+import { createBodySchemaValidator, jsonBody } from './bodySchemaValidation.js';
 import { CoopError } from './errors.js';
 import { route } from './route-helpers.js';
 
@@ -13,15 +13,28 @@ const schema = v.object({
   count: v.optional(v.pipe(v.number(), v.integer())),
 });
 
-function invoke(
+/**
+ * Runs the middleware on a JSON request with `body` (no body at all when it's
+ * `undefined`), reporting a thrown error to `next` as Express middleware did.
+ */
+async function invoke(
   middleware: ReturnType<typeof createBodySchemaValidator>,
   body: unknown,
 ) {
-  const req: Partial<Request> = { body };
-  const res: Partial<Response> = {};
+  const ctx = makeHandlerContext({
+    headers:
+      body === undefined
+        ? {}
+        : { 'content-type': 'application/json', 'content-length': '1' },
+  });
+  ctx.request.updateBody(body as Record<string, unknown>);
   const next = vi.fn();
-  middleware(req as Request, res as Response, next);
-  return { next, req };
+  try {
+    await middleware(ctx, async () => next());
+  } catch (e) {
+    next(e);
+  }
+  return { next, body: jsonBody(ctx) };
 }
 
 function firstNextArg(next: ReturnType<typeof vi.fn>): unknown {
@@ -29,25 +42,25 @@ function firstNextArg(next: ReturnType<typeof vi.fn>): unknown {
 }
 
 describe('createBodySchemaValidator', () => {
-  test('passes valid bodies through to next()', () => {
+  test('passes valid bodies through to next()', async () => {
     const middleware = createBodySchemaValidator(schema);
-    const { next } = invoke(middleware, { name: 'ok', count: 3 });
+    const { next } = await invoke(middleware, { name: 'ok', count: 3 });
 
     expect(next).toHaveBeenCalledTimes(1);
     expect(next).toHaveBeenCalledWith();
   });
 
-  test('allows optional fields to be omitted', () => {
+  test('allows optional fields to be omitted', async () => {
     const middleware = createBodySchemaValidator(schema);
-    const { next } = invoke(middleware, { name: 'ok' });
+    const { next } = await invoke(middleware, { name: 'ok' });
 
     expect(next).toHaveBeenCalledTimes(1);
     expect(next).toHaveBeenCalledWith();
   });
 
-  test('forwards a BadRequestError when a required field is missing', () => {
+  test('forwards a BadRequestError when a required field is missing', async () => {
     const middleware = createBodySchemaValidator(schema);
-    const { next } = invoke(middleware, { count: 3 });
+    const { next } = await invoke(middleware, { count: 3 });
 
     expect(next).toHaveBeenCalledTimes(1);
     const err = firstNextArg(next);
@@ -61,11 +74,11 @@ describe('createBodySchemaValidator', () => {
     });
   });
 
-  test('points a nested missing field at its containing object', () => {
+  test('points a nested missing field at its containing object', async () => {
     const middleware = createBodySchemaValidator(
       v.object({ parent: v.object({ child: v.string() }) }),
     );
-    const { next } = invoke(middleware, { parent: {} });
+    const { next } = await invoke(middleware, { parent: {} });
 
     expect(firstNextArg(next)).toMatchObject({
       pointer: '/parent',
@@ -73,9 +86,12 @@ describe('createBodySchemaValidator', () => {
     });
   });
 
-  test('forwards a BadRequestError when a field has the wrong type', () => {
+  test('forwards a BadRequestError when a field has the wrong type', async () => {
     const middleware = createBodySchemaValidator(schema);
-    const { next } = invoke(middleware, { name: 'ok', count: 'not-a-number' });
+    const { next } = await invoke(middleware, {
+      name: 'ok',
+      count: 'not-a-number',
+    });
 
     expect(next).toHaveBeenCalledTimes(1);
     const err = firstNextArg(next);
@@ -88,11 +104,11 @@ describe('createBodySchemaValidator', () => {
     });
   });
 
-  test('reports a numeric-constraint failure without echoing its value', () => {
+  test('reports a numeric-constraint failure without echoing its value', async () => {
     const middleware = createBodySchemaValidator(
       v.object({ count: v.pipe(v.number(), v.minValue(2)) }),
     );
-    const { next } = invoke(middleware, { count: 1 });
+    const { next } = await invoke(middleware, { count: 1 });
 
     expect(firstNextArg(next)).toMatchObject({
       pointer: '/count',
@@ -100,11 +116,11 @@ describe('createBodySchemaValidator', () => {
     });
   });
 
-  test('reports an unknown property at its containing object', () => {
+  test('reports an unknown property at its containing object', async () => {
     const middleware = createBodySchemaValidator(
       v.strictObject({ name: v.string() }),
     );
-    const { next } = invoke(middleware, { name: 'ok', extra: 'secret' });
+    const { next } = await invoke(middleware, { name: 'ok', extra: 'secret' });
 
     expect(firstNextArg(next)).toMatchObject({
       pointer: undefined,
@@ -142,20 +158,23 @@ describe('createBodySchemaValidator', () => {
     ],
     [v.picklist(['a', 'b']), 'c', 'must be equal to one of the allowed values'],
     [v.nullable(v.string()), 42, 'must be string,null'],
-  ])('preserves validation wording for %s', (fieldSchema, value, message) => {
-    const { next } = invoke(
-      createBodySchemaValidator(v.object({ field: fieldSchema })),
-      { field: value },
-    );
+  ])(
+    'preserves validation wording for %s',
+    async (fieldSchema, value, message) => {
+      const { next } = await invoke(
+        createBodySchemaValidator(v.object({ field: fieldSchema })),
+        { field: value },
+      );
 
-    expect(firstNextArg(next)).toMatchObject({
-      pointer: '/field',
-      detail: `/field: ${message}`,
-    });
-  });
+      expect(firstNextArg(next)).toMatchObject({
+        pointer: '/field',
+        detail: `/field: ${message}`,
+      });
+    },
+  );
 
-  test('reports required fields and every extra property before field errors', () => {
-    const { next } = invoke(
+  test('reports required fields and every extra property before field errors', async () => {
+    const { next } = await invoke(
       createBodySchemaValidator(
         v.strictObject({ name: v.string(), count: v.number() }),
       ),
@@ -168,8 +187,8 @@ describe('createBodySchemaValidator', () => {
     });
   });
 
-  test('preserves item-submission alternative diagnostics', () => {
-    const { next } = invoke(
+  test('preserves item-submission alternative diagnostics', async () => {
+    const { next } = await invoke(
       createBodySchemaValidator(v.object({ item: rawItemSubmissionSchema })),
       { item: { id: 'i', typeId: 't' } },
     );
@@ -180,8 +199,8 @@ describe('createBodySchemaValidator', () => {
     });
   });
 
-  test('preserves the required-field order for appeals', () => {
-    const { next } = invoke(
+  test('preserves the required-field order for appeals', async () => {
+    const { next } = await invoke(
       createBodySchemaValidator(reportingRoutes.routes[1].bodySchema!),
       {},
     );
@@ -192,8 +211,8 @@ describe('createBodySchemaValidator', () => {
     });
   });
 
-  test('rejects arrays for an optional report reason object', () => {
-    const { next } = invoke(
+  test('rejects arrays for an optional report reason object', async () => {
+    const { next } = await invoke(
       createBodySchemaValidator(reportingRoutes.routes[0].bodySchema!),
       {
         reporter: { kind: 'user', typeId: 'user', id: 'reporter' },
@@ -208,20 +227,20 @@ describe('createBodySchemaValidator', () => {
     });
   });
 
-  test('passes an accepted extra-property body to the handler unchanged', () => {
+  test('passes an accepted extra-property body to the handler unchanged', async () => {
     const middleware = createBodySchemaValidator(schema);
     const body = { name: 'ok', surprise: true };
-    const { next, req } = invoke(middleware, body);
+    const { next, body: handlerBody } = await invoke(middleware, body);
 
     expect(next).toHaveBeenCalledTimes(1);
     expect(next).toHaveBeenCalledWith();
-    expect(req.body).toBe(body);
-    expect(req.body).toEqual({ name: 'ok', surprise: true });
+    expect(handlerBody).toBe(body);
+    expect(handlerBody).toEqual({ name: 'ok', surprise: true });
   });
 
-  test('rejects non-object bodies (e.g., undefined from a request with no body)', () => {
+  test('rejects non-object bodies (e.g., undefined from a request with no body)', async () => {
     const middleware = createBodySchemaValidator(schema);
-    const { next } = invoke(middleware, undefined);
+    const { next } = await invoke(middleware, undefined);
 
     expect(next).toHaveBeenCalledTimes(1);
     const err = firstNextArg(next);
@@ -229,18 +248,18 @@ describe('createBodySchemaValidator', () => {
     expect(err).toMatchObject({ name: 'BadRequestError', status: 400 });
   });
 
-  test('escapes issue path segments as a JSON Pointer', () => {
+  test('escapes issue path segments as a JSON Pointer', async () => {
     const middleware = createBodySchemaValidator(
       v.object({ 'a/b~c': v.string() }),
     );
-    const { next } = invoke(middleware, { 'a/b~c': 42 });
+    const { next } = await invoke(middleware, { 'a/b~c': 42 });
 
     expect(firstNextArg(next)).toMatchObject({ pointer: '/a~1b~0c' });
   });
 
-  test('does not leak validator internals or request values in the error detail', () => {
+  test('does not leak validator internals or request values in the error detail', async () => {
     const middleware = createBodySchemaValidator(schema);
-    const { next } = invoke(middleware, {
+    const { next } = await invoke(middleware, {
       name: 'secret-value',
       count: 'wrong',
     });
@@ -253,7 +272,7 @@ describe('createBodySchemaValidator', () => {
 });
 
 describe('route body schema typing', () => {
-  test('types the handler body as the original input of a transforming/defaulting schema', () => {
+  test('types the handler body as the original input of a transforming/defaulting schema', async () => {
     const transformingSchema = v.object({
       count: v.pipe(
         v.string(),
@@ -265,14 +284,13 @@ describe('route body schema typing', () => {
     route.post(
       '/typed',
       { bodySchema: transformingSchema },
-      () => (req, res) => {
-        expectTypeOf(req.body).toEqualTypeOf<
+      () => (_ctx, body) => {
+        expectTypeOf(body).toEqualTypeOf<
           v.InferInput<typeof transformingSchema>
         >();
-        expectTypeOf(req.body).not.toEqualTypeOf<
+        expectTypeOf(body).not.toEqualTypeOf<
           v.InferOutput<typeof transformingSchema>
         >();
-        res.sendStatus(204);
       },
     );
   });

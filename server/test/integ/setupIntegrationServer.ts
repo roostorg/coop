@@ -34,7 +34,9 @@ export async function makeIntegrationServer(
   }
   const deps = bottle.container as Dependencies;
 
-  const { app, shutdown: shutdownServer } = await makeServer(deps);
+  const { app, shutdown: shutdownServer } = await makeServer(deps, {
+    environment: 'test',
+  });
   const request = superTest.agent(app);
 
   const workerAbort = new AbortController();

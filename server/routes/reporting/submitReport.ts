@@ -18,7 +18,10 @@ import {
   makeInternalServerError,
 } from '../../utils/errors.js';
 import { withRetries } from '../../utils/misc.js';
-import { type RequestHandlerWithBodies } from '../../utils/route-helpers.js';
+import {
+  RouteRejection,
+  type RouteHandler,
+} from '../../utils/route-helpers.js';
 import { isValidDate } from '../../utils/time.js';
 import { addHashesToImageFields } from '../items/hashImageFields.js';
 import {
@@ -36,9 +39,9 @@ export default function submitReport({
   Meter,
   ItemInvestigationService,
   HMAHashBankService,
-}: Dependencies): RequestHandlerWithBodies<ReportItemInput, ReportItemOutput> {
+}: Dependencies): RouteHandler<ReportItemInput, ReportItemOutput> {
   // eslint-disable-next-line complexity
-  return async (req, res, next) => {
+  return async (ctx, body) => {
     // Generate an id for this request to correlate logs. It doesn't need to be
     // random for security (i.e., uuidv4), and making it time-based could
     // actually be convenient, so that's what we do. We'll eventually get much
@@ -57,8 +60,9 @@ export default function submitReport({
 
     try {
       // Get orgId from request (set by API key middleware)
-      if (!hasOrgId(req)) {
-        return next(
+      if (!hasOrgId(ctx)) {
+        // eslint-disable-next-line @typescript-eslint/only-throw-error -- see RouteRejection
+        throw new RouteRejection(
           makeBadRequestError('Invalid API Key', {
             detail:
               'Something went wrong finding or validating your API key. ' +
@@ -69,7 +73,7 @@ export default function submitReport({
         );
       }
 
-      const { orgId } = req;
+      const { orgId } = ctx;
 
       const toItemSubmission = rawItemSubmissionToItemSubmission.bind(
         null,
@@ -83,17 +87,17 @@ export default function submitReport({
 
       // Now that we've at least loaded the item type, we'll log successes and
       // failures to the data warehouse from now on. This is the basic info we'll log.
-      const reportedForReason = req.body.reportedForReason;
+      const reportedForReason = body.reportedForReason;
       const reporterIdentifier =
-        req.body.reporter.kind === 'user'
-          ? { id: req.body.reporter.id, typeId: req.body.reporter.typeId }
+        body.reporter.kind === 'user'
+          ? { id: body.reporter.id, typeId: body.reporter.typeId }
           : undefined;
-      const reportedItem = req.body.reportedItem;
+      const reportedItem = body.reportedItem;
 
       // TODO: error handling. Our controllers still need much better error
       // handling abstractions.
-      const thread = req.body.reportedItemThread;
-      const additionalItems = req.body.additionalItems;
+      const thread = body.reportedItemThread;
+      const additionalItems = body.additionalItems;
       const reportedItemSubmission = await toItemSubmission(reportedItem);
 
       if (
@@ -161,16 +165,15 @@ export default function submitReport({
         (additionalItemSubmissions &&
           !isAllValidItems(additionalItemSubmissions));
 
-      const isInvalidReportedAtDate = !isValidDate(
-        new Date(req.body.reportedAt),
-      );
+      const isInvalidReportedAtDate = !isValidDate(new Date(body.reportedAt));
       if (
         submittedItemIsInvalid ||
         threadOrAdditionalItemsHadInvalidOrIllegalItems ||
         hasAdditionalItemsOnThreadSubmission ||
         isInvalidReportedAtDate
       ) {
-        return next(
+        // eslint-disable-next-line @typescript-eslint/only-throw-error -- see RouteRejection
+        throw new RouteRejection(
           new AggregateError(
             [
               submittedItemIsInvalid ? reportedItemSubmission.error : [],
@@ -211,8 +214,8 @@ export default function submitReport({
         reportId,
         requestId,
         orgId,
-        reporter: req.body.reporter,
-        reportedAt: new Date(req.body.reportedAt),
+        reporter: body.reporter,
+        reportedAt: new Date(body.reportedAt),
         reportedForReason: reportedForReason
           ? {
               policyId: reportedForReason.policyId ?? undefined,
@@ -223,7 +226,7 @@ export default function submitReport({
         reportedItemThread: reportedThreadSubmission?.map(
           (it) => it.itemSubmission,
         ),
-        reportedItemsInThread: req.body.reportedItemsInThread,
+        reportedItemsInThread: body.reportedItemsInThread,
         additionalItemSubmissions:
           additionalItemSubmissions?.map((it) => it.itemSubmission) ?? [],
         skipJobEnqueue: true,
@@ -256,9 +259,10 @@ export default function submitReport({
 
       // send response as soon as
       // the report has successfully been written to the data warehouse
-      res.status(201).json({ reportId }).end();
+      ctx.response.status(201).json({ reportId });
+      ctx.response.finish();
 
-      if (!req.body.reportedForReason?.csam) {
+      if (!body.reportedForReason?.csam) {
         // Run reporting rules over all submitted items
         const allItemsForReportingRules = [
           reportedItemSubmission,
@@ -313,7 +317,7 @@ export default function submitReport({
                     ? [reportedForReason.policyId]
                     : [],
                 };
-                if (req.body.reportedForReason?.csam) {
+                if (body.reportedForReason?.csam) {
                   await NcmecService.enqueueForHumanReviewIfApplicable({
                     ...commonEnqueueInput,
                     item,
@@ -376,8 +380,8 @@ export default function submitReport({
                             ),
                         }
                       : {}),
-                    ...(req.body.reportedItemsInThread
-                      ? { reportedItems: req.body.reportedItemsInThread }
+                    ...(body.reportedItemsInThread
+                      ? { reportedItems: body.reportedItemsInThread }
                       : {}),
                   },
                 });
@@ -400,17 +404,21 @@ export default function submitReport({
           e,
         );
       }
-      // this error handling only triggers on errors before the `res.sendStatus` call
+      // this error handling only triggers on errors before the `ctx.response.finish()` call
     } catch (e: unknown) {
+      if (e instanceof RouteRejection) {
+        throw e.error;
+      }
       const activeSpan = Tracer.getActiveSpan();
       if (activeSpan?.isRecording()) {
         activeSpan.recordException(e as Exception);
       }
-      return next(
-        makeInternalServerError('Failed to send report to reporting service', {
+      throw makeInternalServerError(
+        'Failed to send report to reporting service',
+        {
           requestId: fromCorrelationId(requestId),
           shouldErrorSpan: true,
-        }),
+        },
       );
     }
   };
