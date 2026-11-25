@@ -31,12 +31,12 @@ Then:
 2. Set the tag to `x.y.z` (no `v` prefix), confirm the target commit on `main`, and title the release `Coop x.y.z`.
 3. Check **Create a discussion for this release** for at least major and minor releases.
 4. **Publish** the release.
-5. Confirm the **Publish Docker images** workflow succeeds, the version-tagged images exist, and the release has an SBOM attached for each image.
+5. Confirm the **Publish Docker images** workflow succeeds, the version-tagged images exist, and each image has a CycloneDX SBOM attestation (see [SBOMs](vulnerability-scanning.md#sboms)).
 
 Publishing a release triggers automations:
 
 - **Docker images**: builds and pushes version-tagged Docker images for `coop-server`, `coop-worker`, `coop-client`, and `coop-migrations`, each with SBOM and provenance attestations
-- **SBOMs**: attaches a linux/amd64 CycloneDX SBOM for each image (`<image>-x.y.z.cdx.json`) to the release
+- **SBOMs**: attests a linux/amd64 CycloneDX SBOM to each image. Releases are immutable once published, so SBOMs are attached to the images, not the release
 - **Image scans**: scans each image with Trivy and reports findings to code scanning, which is visible only to maintainers; findings never block publishing. See [Vulnerability scanning](vulnerability-scanning.md)
 - **Docs**: adds a folder for the release to the [index](https://roostorg.github.io/coop/) with a snapshot of the docs
 

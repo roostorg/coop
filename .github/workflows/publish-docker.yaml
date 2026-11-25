@@ -151,6 +151,8 @@ jobs:
       contents: read
       packages: write
       security-events: write
+      id-token: write # to sign the SBOM attestation
+      attestations: write # to store the SBOM attestation
     strategy:
       # One image's failure shouldn't cancel the other's publish.
       fail-fast: false
@@ -210,11 +212,13 @@ jobs:
           ref: ${{ needs.changes.outputs.scan-ref }}
           sha: ${{ github.sha }}
 
+      # An SBOM failure fails a release's job but never a push to main.
       - name: Generate SBOM
-        if: github.event_name == 'release'
+        id: sbom
+        continue-on-error: ${{ github.event_name != 'release' }}
         env:
           IMAGE: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}@${{ steps.build.outputs.digest }}
-          SBOM: ${{ matrix.image }}-${{ github.event.release.tag_name }}.cdx.json
+          SBOM: sbom.cdx.json
         # Trivy doesn't list the Node.js runtime, so add it from the node base
         # image's NODE_VERSION.
         run: |
@@ -223,12 +227,17 @@ jobs:
           test -n "$NODE_VERSION"
           jq --arg v "$NODE_VERSION" '.components += [{"bom-ref": "pkg:generic/node@\($v)", type: "application", name: "node", version: $v, purl: "pkg:generic/node@\($v)", cpe: "cpe:2.3:a:nodejs:node.js:\($v):*:*:*:*:*:*:*"}]' sbom.json > "$SBOM"
 
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: github.event_name == 'release'
+      # Releases are immutable once published, so the SBOM is attached to the
+      # image as a signed attestation rather than to the release.
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        if: steps.sbom.outcome == 'success'
+        continue-on-error: ${{ github.event_name != 'release' }}
         with:
-          name: sbom-${{ matrix.image }}
-          path: ${{ matrix.image }}-${{ github.event.release.tag_name }}.cdx.json
-          if-no-files-found: error
+          subject-name: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}
+          subject-digest: ${{ steps.build.outputs.digest }}
+          sbom-path: sbom.cdx.json
+          push-to-registry: true
+          create-storage-record: false
 
   build-client:
     needs: changes
@@ -238,6 +247,8 @@ jobs:
       contents: read
       packages: write
       security-events: write
+      id-token: write # to sign the SBOM attestation
+      attestations: write # to store the SBOM attestation
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -284,19 +295,26 @@ jobs:
           ref: ${{ needs.changes.outputs.scan-ref }}
           sha: ${{ github.sha }}
 
+      # An SBOM failure fails a release's job but never a push to main.
       - name: Generate SBOM
-        if: github.event_name == 'release'
+        id: sbom
+        continue-on-error: ${{ github.event_name != 'release' }}
         env:
           IMAGE: ${{ env.REGISTRY }}/${{ github.repository_owner }}/coop-client@${{ steps.build.outputs.digest }}
-          SBOM: coop-client-${{ github.event.release.tag_name }}.cdx.json
+          SBOM: sbom.cdx.json
         run: '"$RUNNER_TEMP/trivy-bin/trivy" image --quiet --platform linux/amd64 --format cyclonedx --output "$SBOM" "$IMAGE"'
 
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: github.event_name == 'release'
+      # Releases are immutable once published, so the SBOM is attached to the
+      # image as a signed attestation rather than to the release.
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        if: steps.sbom.outcome == 'success'
+        continue-on-error: ${{ github.event_name != 'release' }}
         with:
-          name: sbom-coop-client
-          path: coop-client-${{ github.event.release.tag_name }}.cdx.json
-          if-no-files-found: error
+          subject-name: ${{ env.REGISTRY }}/${{ github.repository_owner }}/coop-client
+          subject-digest: ${{ steps.build.outputs.digest }}
+          sbom-path: sbom.cdx.json
+          push-to-registry: true
+          create-storage-record: false
 
   # Bundles the db/ migration files + configs into an image meant to be run as a
   # one-shot task on deploy.
@@ -310,6 +328,8 @@ jobs:
       contents: read
       packages: write
       security-events: write
+      id-token: write # to sign the SBOM attestation
+      attestations: write # to store the SBOM attestation
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -353,11 +373,13 @@ jobs:
           ref: ${{ needs.changes.outputs.scan-ref }}
           sha: ${{ github.sha }}
 
+      # An SBOM failure fails a release's job but never a push to main.
       - name: Generate SBOM
-        if: github.event_name == 'release'
+        id: sbom
+        continue-on-error: ${{ github.event_name != 'release' }}
         env:
           IMAGE: ${{ env.REGISTRY }}/${{ github.repository_owner }}/coop-migrations@${{ steps.build.outputs.digest }}
-          SBOM: coop-migrations-${{ github.event.release.tag_name }}.cdx.json
+          SBOM: sbom.cdx.json
         # Trivy doesn't list the Node.js runtime, so add it from the node base
         # image's NODE_VERSION.
         run: |
@@ -366,31 +388,14 @@ jobs:
           test -n "$NODE_VERSION"
           jq --arg v "$NODE_VERSION" '.components += [{"bom-ref": "pkg:generic/node@\($v)", type: "application", name: "node", version: $v, purl: "pkg:generic/node@\($v)", cpe: "cpe:2.3:a:nodejs:node.js:\($v):*:*:*:*:*:*:*"}]' sbom.json > "$SBOM"
 
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: github.event_name == 'release'
+      # Releases are immutable once published, so the SBOM is attached to the
+      # image as a signed attestation rather than to the release.
+      - uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        if: steps.sbom.outcome == 'success'
+        continue-on-error: ${{ github.event_name != 'release' }}
         with:
-          name: sbom-coop-migrations
-          path: coop-migrations-${{ github.event.release.tag_name }}.cdx.json
-          if-no-files-found: error
-
-  # Kept separate so contents: write never sits in a job holding registry
-  # credentials.
-  attach-sboms:
-    needs: [build-server, build-client, build-migrations]
-    if: github.event_name == 'release'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          pattern: sbom-*
-          merge-multiple: true
-          path: sboms
-
-      - name: Attach SBOMs to release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          TAG: ${{ github.event.release.tag_name }}
-        run: gh release upload "$TAG" sboms/*.cdx.json --clobber
+          subject-name: ${{ env.REGISTRY }}/${{ github.repository_owner }}/coop-migrations
+          subject-digest: ${{ steps.build.outputs.digest }}
+          sbom-path: sbom.cdx.json
+          push-to-registry: true
+          create-storage-record: false
