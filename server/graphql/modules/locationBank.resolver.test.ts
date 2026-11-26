@@ -36,11 +36,21 @@ const point = (lat: number, lng: number, radius = 10) => ({
 const names = (locations: readonly { name: string | null }[]) =>
   locations.map((it) => it.name).sort();
 
+// Location order isn't defined, so compare banks with locations sorted.
+const sortLocations = <T extends { locations: { name: string | null }[] }>(
+  bank: T,
+) => ({
+  ...bank,
+  locations: [...bank.locations].sort((a, b) =>
+    String(a.name).localeCompare(String(b.name)),
+  ),
+});
+
 // Real Postgres and resolvers; only the Google Places call is stubbed.
 const testWithOrgs = makeTransactionalTestWithFixture(async (server) => {
   const { org } = await createOrg(server.deps);
   const { org: otherOrg } = await createOrg(server.deps);
-  await loginWithPermissions(server, org.id, [
+  const { user } = await loginWithPermissions(server, org.id, [
     UserPermission.MUTATE_LIVE_RULES,
   ]);
   // The Google Maps client is the external boundary; everything above it runs.
@@ -141,6 +151,7 @@ const testWithOrgs = makeTransactionalTestWithFixture(async (server) => {
 
   return {
     org,
+    user,
     post,
     otherOrgBankId,
     otherOrgLocationId,
@@ -157,7 +168,7 @@ const testWithOrgs = makeTransactionalTestWithFixture(async (server) => {
 describe('location banks over GraphQL', () => {
   testWithOrgs(
     'creates a bank, resolving and storing Google place data',
-    async ({ deps, createBank, readBank, placeDetails }) => {
+    async ({ deps, user, createBank, readBank, placeDetails }) => {
       const created = await createBank({
         name: 'Stores',
         description: 'Our stores',
@@ -203,7 +214,9 @@ describe('location banks over GraphQL', () => {
         ]),
       });
       expect(read.data.locationBank.locations).toHaveLength(2);
-      expect(created.data).toEqual(read.data.locationBank);
+      expect(sortLocations(created.data)).toEqual(
+        sortLocations(read.data.locationBank),
+      );
 
       // GraphQL only exposes the place id; the details are stored too.
       const stored = await deps.KyselyPg.selectFrom(
@@ -218,6 +231,70 @@ describe('location banks over GraphQL', () => {
         details: { place_id: 'place-1', name: 'Somewhere' },
         geocode: { geometry: { location: { lat: 3, lng: 4 } } },
       });
+      const bankRow = await deps.KyselyPg.selectFrom('public.location_banks')
+        .select('owner_id')
+        .where('id', '=', created.data.id)
+        .executeTakeFirstOrThrow();
+      expect(bankRow.owner_id).toBe(user.id);
+    },
+  );
+
+  testWithOrgs(
+    'resolves Google place ids for locations added by an update',
+    async ({ deps, createBank, updateBank, placeDetails }) => {
+      const created = await createBank({ name: 'Bank', locations: [] });
+
+      await updateBank({
+        id: created.data.id,
+        locationsToAdd: [
+          { geometry: point(3, 4, 0), googlePlaceId: 'place-2' },
+        ],
+      });
+
+      expect(placeDetails).toHaveBeenCalledOnce();
+      const stored = await deps.KyselyPg.selectFrom(
+        'public.location_bank_locations',
+      )
+        .select('google_place_info')
+        .where('bank_id', '=', created.data.id)
+        .executeTakeFirstOrThrow();
+      expect(stored.google_place_info).toMatchObject({
+        id: 'place-2',
+        details: { place_id: 'place-2', name: 'Somewhere' },
+        geocode: { geometry: { location: { lat: 3, lng: 4 } } },
+      });
+    },
+  );
+
+  testWithOrgs(
+    "changes nothing when Google can't resolve a place added by an update",
+    async ({ createBank, post, placeDetails, readBank }) => {
+      const created = await createBank({
+        name: 'Before',
+        locations: [{ name: 'a', geometry: point(1, 1) }],
+      });
+      placeDetails.mockRejectedValueOnce(new Error('Google is down'));
+
+      const result = await post(
+        `mutation ($input: UpdateLocationBankInput!) {
+          updateLocationBank(input: $input) { __typename }
+        }`,
+        {
+          input: {
+            id: created.data.id,
+            name: 'After',
+            locationsToDelete: [created.data.locations[0].id],
+            locationsToAdd: [
+              { geometry: point(0, 0), googlePlaceId: 'place-2' },
+            ],
+          },
+        },
+      );
+
+      expect(result.errors).toHaveLength(1);
+      const read = await readBank(created.data.id);
+      expect(read.data.locationBank).toMatchObject({ name: 'Before' });
+      expect(names(read.data.locationBank.locations)).toEqual(['a']);
     },
   );
 
@@ -299,7 +376,9 @@ describe('location banks over GraphQL', () => {
       });
       expect(names(updated.data.locations)).toEqual(['b', 'c']);
       const read = await readBank(bankId);
-      expect(read.data.locationBank).toEqual(updated.data);
+      expect(sortLocations(read.data.locationBank)).toEqual(
+        sortLocations(updated.data),
+      );
     },
   );
 
@@ -483,14 +562,34 @@ describe('location banks over GraphQL', () => {
       ]);
     },
   );
+});
+
+describe('location banks in the rule engine', () => {
+  const runGeoSignal = (
+    deps: Parameters<Parameters<typeof testWithOrgs>[1]>[0]['deps'],
+    orgId: string,
+    locationBankIds: string[],
+  ) => {
+    const runSignal = deps.TransientRunSignalWithCacheFactory();
+    return async (lat: number, lng: number) =>
+      runSignal({
+        signal: { type: SignalType.GEO_CONTAINED_WITHIN },
+        value: { type: ScalarTypes.GEOHASH, value: Geohash.encode(lat, lng) },
+        matchingValues: { locationBankIds },
+        orgId,
+      });
+  };
 
   testWithOrgs(
-    "the rule engine matches items against a bank's locations",
+    'matches items inside the locations of the given banks',
     async ({ deps, org, createBank }) => {
-      const created = await createBank({
-        name: 'Areas',
+      const circles = await createBank({
+        name: 'Circles',
+        locations: [{ name: 'circle', geometry: point(40, -74, 5) }],
+      });
+      const boxes = await createBank({
+        name: 'Boxes',
         locations: [
-          { name: 'circle', geometry: point(40, -74, 5) },
           {
             name: 'box',
             geometry: point(51.5, 0, 0),
@@ -501,14 +600,7 @@ describe('location banks over GraphQL', () => {
           },
         ],
       });
-      const runSignal = deps.TransientRunSignalWithCacheFactory();
-      const isIn = async (lat: number, lng: number) =>
-        runSignal({
-          signal: { type: SignalType.GEO_CONTAINED_WITHIN },
-          value: { type: ScalarTypes.GEOHASH, value: Geohash.encode(lat, lng) },
-          matchingValues: { locationBankIds: [created.data.id] },
-          orgId: org.id,
-        });
+      const isIn = runGeoSignal(deps, org.id, [circles.data.id, boxes.data.id]);
 
       expect(await isIn(40.01, -74.01)).toMatchObject({
         score: true,
@@ -519,6 +611,42 @@ describe('location banks over GraphQL', () => {
         matchedValue: 'box',
       });
       expect(await isIn(0, 0)).toMatchObject({ score: false });
+    },
+  );
+
+  testWithOrgs(
+    'describes an unnamed location by its radius and geohash',
+    async ({ deps, org, createBank }) => {
+      const created = await createBank({
+        name: 'Unnamed',
+        locations: [{ geometry: point(10, 20, 3) }],
+      });
+      const isIn = runGeoSignal(deps, org.id, [created.data.id]);
+      const description = `3 miles from geohash: ${Geohash.encode(10, 20)}`;
+
+      expect(await isIn(10.001, 20.001)).toMatchObject({
+        score: true,
+        matchedValue: description,
+      });
+      // With no match, the signal still reports the bank's first location.
+      expect(await isIn(0, 0)).toMatchObject({
+        score: false,
+        matchedValue: description,
+      });
+    },
+  );
+
+  testWithOrgs(
+    'errors when the banks have no locations',
+    async ({ deps, org, createBank }) => {
+      const empty = await createBank({ name: 'Empty', locations: [] });
+
+      expect(
+        await runGeoSignal(deps, org.id, [empty.data.id])(0, 0),
+      ).toMatchObject({ type: 'ERROR' });
+      expect(await runGeoSignal(deps, org.id, [uid()])(0, 0)).toMatchObject({
+        type: 'ERROR',
+      });
     },
   );
 });
