@@ -4,6 +4,8 @@ import { v1 as uuidv1 } from 'uuid';
 import { inject } from '../iocContainer/utils.js';
 import {
   buildSubmitReportParamsFromDecision,
+  canRetryAutomatically,
+  filterDecisionsToUnreported,
   isNcmecTestMode,
   LEGACY_FALLBACK_INCIDENT_TYPE,
   summarizeNcmecErrorForReviewer,
@@ -44,6 +46,7 @@ export default inject(
           role: string;
         }[];
       },
+      isTest: boolean,
     ) => {
       const itemType = await getItemTypeEventuallyConsistent({
         orgId: row.org_id,
@@ -61,6 +64,7 @@ export default inject(
           jobId: row.job_payload.id,
           userId: itemId,
           userTypeId: itemTypeId,
+          isTest,
           status: 'PERMANENT_ERROR',
           error: 'Unable to find item type or found item type is not user',
         });
@@ -74,6 +78,7 @@ export default inject(
           jobId: row.job_payload.id,
           userId: itemId,
           userTypeId: itemTypeId,
+          isTest,
           status: 'PERMANENT_ERROR',
           error: 'No Reviewer ID in Decision log',
         });
@@ -84,6 +89,7 @@ export default inject(
           jobId: row.job_payload.id,
           userId: itemId,
           userTypeId: itemTypeId,
+          isTest,
           status: 'PERMANENT_ERROR',
           error: 'No Ncmec Report Component',
         });
@@ -94,6 +100,7 @@ export default inject(
           jobId: row.job_payload.id,
           userId: itemId,
           userTypeId: itemTypeId,
+          isTest,
           status: 'PERMANENT_ERROR',
           error: 'Invalid payload kind',
         });
@@ -119,7 +126,6 @@ export default inject(
           getItemTypeEventuallyConsistent,
         });
         submitReportInvoked = true;
-        const isTest = isNcmecTestMode();
         const reportResult = await ncmecService.submitReport(
           reportParams,
           isTest,
@@ -199,6 +205,7 @@ export default inject(
           jobId: row.job_payload.id,
           userId: itemId,
           userTypeId: itemTypeId,
+          isTest,
           status: 'RETRYABLE_ERROR',
           error: summarizeNcmecErrorForReviewer(e),
         });
@@ -216,43 +223,39 @@ export default inject(
           startDate,
           endDate,
         });
-        const usersWithReports = await ncmecService.getUsersWithNcmecDecision({
-          startDate,
-        });
         if (ncmecDecisions.length === 0) {
           return;
         }
-        const previousErrors = await ncmecService.getNcmecErrorsForJobIds(
-          ncmecDecisions.map((it) => it.job_payload.id),
-        );
-        // Only retry decisions that don't have an applicable NCMEC decision and
-        // decisions that don't already have a permanent error or a retry count of
-        // 10 or more.
-        const decisionsToRetry = ncmecDecisions.filter((it) => {
-          const report = usersWithReports.find(
-            (r) =>
-              r.userId === it.job_payload.payload.item.itemId &&
-              r.userItemTypeId ===
-                it.job_payload.payload.item.itemTypeIdentifier.id &&
-              r.orgId === it.org_id,
-          );
-          // A test report only covers decisions made at or before it.
-          const alreadyReported =
-            report != null &&
-            (report.hasProductionReport ||
-              (report.latestTestReportAt != null &&
-                report.latestTestReportAt >= it.created_at));
-          return (
-            !alreadyReported &&
-            !previousErrors.some(
-              (error) =>
-                (error.job_id === it.job_payload.id &&
-                  error.retry_count >= 10) ||
-                (error.job_id === it.job_payload.id &&
-                  error.status === 'PERMANENT_ERROR'),
-            )
-          );
-        });
+        const isTest = isNcmecTestMode();
+        const jobIds = ncmecDecisions.map((it) => it.job_payload.id);
+        const [coverage, previousErrors] = await Promise.all([
+          ncmecService.getNcmecReportCoverage({ jobIds, startDate }),
+          ncmecService.getNcmecErrorsForJobIds(jobIds),
+        ]);
+        const errorByJobId = new Map(previousErrors.map((e) => [e.job_id, e]));
+        // Retry decisions that no report covers, that haven't hit a permanent
+        // error or 10 retries, and whose last attempt ran in the current mode.
+        const decisionsToRetry = filterDecisionsToUnreported(
+          ncmecDecisions.map((it) => ({
+            row: it,
+            jobId: it.job_payload.id,
+            orgId: it.org_id,
+            userId: it.job_payload.payload.item.itemId,
+            userItemTypeId: it.job_payload.payload.item.itemTypeIdentifier.id,
+            decidedAt: it.created_at,
+          })),
+          coverage,
+        )
+          .map(({ row }) => row)
+          .filter((it) => {
+            const error = errorByJobId.get(it.job_payload.id);
+            return (
+              (error === undefined ||
+                (error.retry_count < 10 &&
+                  error.status !== 'PERMANENT_ERROR')) &&
+              canRetryAutomatically(error?.is_test, isTest)
+            );
+          });
         const usersByOrg: {
           [key: string]: {
             id: string;
@@ -264,7 +267,7 @@ export default inject(
         } = {};
         // Run this sequentially to avoid overloading external systems
         for (const row of decisionsToRetry) {
-          await processDecisionRetry(row, usersByOrg);
+          await processDecisionRetry(row, usersByOrg, isTest);
         }
       },
       async shutdown() {
