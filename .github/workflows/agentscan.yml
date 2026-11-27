@@ -25,7 +25,7 @@ jobs:
           restore-keys: agentscan-cache-
 
       - name: Scan pull request author
-        uses: MatteoGabriele/agentscan-action@686cb0ad53e79b34a55cfe740b12724356a66c0e # v2.7.0
+        uses: MatteoGabriele/agentscan-action@7ad606f1e21df2119da8be99b763f282a670a1c5 # v2.8.0
         with:
           cache-path: .agentscan-cache
           mode: labels
