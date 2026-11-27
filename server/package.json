@@ -94,7 +94,7 @@
     "@eslint/eslintrc": "^3.3.5",
     "@eslint/js": "^9.39.4",
     "@faker-js/faker": "^10.5.0",
-    "@playwright/test": "^1.65.0",
+    "@playwright/test": "^1.65.1",
     "@types/bcryptjs": "^2.4.2",
     "@types/connect-pg-simple": "^7.0.0",
     "@types/cookie-parser": "^1.4.2",
@@ -115,9 +115,9 @@
     "@types/supertest": "^2.0.11",
     "@types/validator": "^13.7.0",
     "@types/yargs": "^17.0.32",
-    "@typescript-eslint/eslint-plugin": "^8.72.2",
-    "@typescript-eslint/parser": "^8.72.2",
-    "@vitest/coverage-v8": "^5.1.0",
+    "@typescript-eslint/eslint-plugin": "^8.73.0",
+    "@typescript-eslint/parser": "^8.73.0",
+    "@vitest/coverage-v8": "^5.1.1",
     "eslint": "^9.39.4",
     "eslint-import-resolver-typescript": "^3.6.0",
     "eslint-plugin-functional": "^9.0.4",
@@ -129,12 +129,12 @@
     "eslint-plugin-switch-statement": "^0.0.12",
     "js-yaml": "^5.5.0",
     "jsonpath-plus": "^10.4.0",
-    "knip": "^6.45.1",
+    "knip": "^6.46.1",
     "supertest": "^6.2.2",
     "tsc-watch": "^4.6.0",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.72.2",
+    "typescript-eslint": "^8.73.0",
     "vite": "^7.3.8",
-    "vitest": "^5.1.0"
+    "vitest": "^5.1.1"
   }
 }
