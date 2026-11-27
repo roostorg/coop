@@ -230,8 +230,8 @@ importers:
         specifier: ^2.16.1
         version: 2.16.1(react@19.3.1)
       react-router:
-        specifier: ^8.5.1
-        version: 8.5.1(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        specifier: ^8.5.2
+        version: 8.5.2(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       recharts:
         specifier: ^2.15.4
         version: 2.15.4(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -242,8 +242,8 @@ importers:
         specifier: ^1.7.4
         version: 1.7.4(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       tailwind-merge:
-        specifier: ^2.6.1
-        version: 2.6.1
+        specifier: ^2.6.2
+        version: 2.6.2
       tailwindcss-animate:
         specifier: ^1.0.7
         version: 1.0.7(tailwindcss@3.4.19(yaml@2.9.1))
@@ -489,17 +489,17 @@ importers:
   server:
     dependencies:
       '@apollo/server':
-        specifier: ^5.5.0
-        version: 5.5.1(graphql@16.15.0)(supports-color@10.2.2)
+        specifier: ^5.5.2
+        version: 5.5.2(graphql@16.15.0)(supports-color@10.2.2)
       '@as-integrations/express5':
         specifier: ^1.1.2
-        version: 1.1.2(@apollo/server@5.5.1(graphql@16.15.0)(supports-color@10.2.2))(express@5.3.0(supports-color@10.2.2))
+        version: 1.1.2(@apollo/server@5.5.2(graphql@16.15.0)(supports-color@10.2.2))(express@5.3.0(supports-color@10.2.2))
       '@aws-sdk/client-s3':
-        specifier: ^3.1169.0
-        version: 3.1169.0
+        specifier: ^3.1173.0
+        version: 3.1173.0
       '@aws-sdk/client-ses':
-        specifier: ^3.1169.0
-        version: 3.1169.0
+        specifier: ^3.1173.0
+        version: 3.1173.0
       '@clickhouse/client':
         specifier: ^1.25.0
         version: 1.25.0
@@ -573,8 +573,8 @@ importers:
         specifier: ^1.17.2
         version: 1.19.0(supports-color@10.2.2)
       fast-check:
-        specifier: ^4.6.0
-        version: 4.10.2
+        specifier: ^4.10.3
+        version: 4.10.3
       form-data-encoder:
         specifier: ^4.0.2
         version: 4.1.0
@@ -886,8 +886,8 @@ packages:
     peerDependencies:
       graphql: 14.x || 15.x || 16.x
 
-  '@apollo/server@5.5.1':
-    resolution: {integrity: sha512-Rn3g5TJQsMSUY23CWZTghWdBWyjX7dP1eaEBPkvmM2RHi82cDcpgTIkSCbGvtTUEGjwopLv1AAooU/n7iIZ20A==}
+  '@apollo/server@5.5.2':
+    resolution: {integrity: sha512-VTEEQdI2T6L5h9DFe/Bh75EBnGabqdFvYYbLjGwJ2G2kKik5gWINBpkK6vLfEwBaSgL2mBjd1o9GDBn+xde/AQ==}
     engines: {node: '>=20'}
     peerDependencies:
       graphql: ^16.11.0
@@ -986,12 +986,12 @@ packages:
     resolution: {integrity: sha512-OHlfkNzDFjYnwNPABhwAkDTUi0HPjfsKUHJDR0bSMORpCXNzRpInPCNCIT08xKDhjaPlcLJ+2Av+Sk7hHnuC8A==}
     engines: {node: '>=20.0.0'}
 
-  '@aws-sdk/client-s3@3.1169.0':
-    resolution: {integrity: sha512-5IjQ2R1TM5lMuUvCvCfGNG9q6g3nxdputC9FY7YQJf1ygVUwsOruEYxQqpjik1nZdl8mNvV57Mhivtp2JbgBtg==}
+  '@aws-sdk/client-s3@3.1173.0':
+    resolution: {integrity: sha512-eFlCOczCvpv1CN37d0BzUxoHmw2ARrMtqQ4JC0pkh5kx/SU9oUKlNtWkqrNg+QRNob0MAi3+SbQQnP5FCcKpHg==}
     engines: {node: '>=20.0.0'}
 
-  '@aws-sdk/client-ses@3.1169.0':
-    resolution: {integrity: sha512-akY4NjxmPvYbjcu5gk1aTYbySEyqakGXvGJLtGUwMWLKZMoxew4fo4ZCzYKGIE12XaLzwlO13qib+3bvPo1fZA==}
+  '@aws-sdk/client-ses@3.1173.0':
+    resolution: {integrity: sha512-+Hmk4bCNDHCxn0nxojPQKEyRptQJnZbvqf6OC9XZhJDds6vyFYmmXDcwjGqpJmwCPB8Crj8+wtVWgZpRosIE2w==}
     engines: {node: '>=20.0.0'}
 
   '@aws-sdk/core@3.981.0':
@@ -1030,8 +1030,8 @@ packages:
     resolution: {integrity: sha512-duLeE3xlf0viHeH+1RM4z5duR3b32BCZTWVMu+MbxFPjQBxy7hmIGEqt5hekuFPRuXoyhMovjNl+PNNsb5oiGQ==}
     engines: {node: '>=20.0.0'}
 
-  '@aws-sdk/middleware-sdk-s3@3.972.89':
-    resolution: {integrity: sha512-Lem2/ZT1eOicVATBukPRPm2S4JAmrTEkP3/dnJE9iTeyqIKqsJF2j04f5L0o+rrZIrwR13swiQMdzcE5jXRzNA==}
+  '@aws-sdk/middleware-sdk-s3@3.972.90':
+    resolution: {integrity: sha512-UtdPoeKTfUyk4WI6iGirvuN+2MkVMNiWyYwHlwbdOBIonD66+Jm8qR4zdlJJDLqTIDmtvULTH0ZUyEyf/BGTsA==}
     engines: {node: '>=20.0.0'}
 
   '@aws-sdk/nested-clients@3.998.3':
@@ -1720,6 +1720,12 @@ packages:
     peerDependencies:
       graphql: ^14.0.0 || ^15.0.0 || ^16.0.0 || ^17.0.0
 
+  '@graphql-tools/merge@9.2.4':
+    resolution: {integrity: sha512-vV+8uWNWn0+OsqT0r22lZuoT0cTe6fBqBtpLHre2rriLjI/ZTrsOHmabLPTUOyzgFnRrS2PzFSYGL3zKL1Wj4Q==}
+    engines: {node: '>=16.0.0'}
+    peerDependencies:
+      graphql: ^14.0.0 || ^15.0.0 || ^16.0.0 || ^17.0.0
+
   '@graphql-tools/merge@9.2.8':
     resolution: {integrity: sha512-OsCEmJ9RIMT4LB/1jBbyKHe7pMIlfGhLAQ0FVNaZqteydDUC+rTI9wZ+yaKqxQpPOFFycD+UtMhovg19lPq92Q==}
     engines: {node: '>=16.0.0'}
@@ -1734,6 +1740,12 @@ packages:
 
   '@graphql-tools/relay-operation-optimizer@7.1.4':
     resolution: {integrity: sha512-cwOD/GEo/R//1uGCP0/urIxsMFoUgzkJVyMt9BDM2HhQhU6rSgH5l6lFukAFTJyPJVdyeOdYm2i0Jj5vYWbHTw==}
+    engines: {node: '>=16.0.0'}
+    peerDependencies:
+      graphql: ^14.0.0 || ^15.0.0 || ^16.0.0 || ^17.0.0
+
+  '@graphql-tools/schema@10.1.1':
+    resolution: {integrity: sha512-24jJghRxEW+SG1lbJ45Zg9HEZ8ZKS923ihbFjOicspFLpryxJkWp6gZJ7D8tCVaSAhli4x1+1wDPAfhT8mLqxg==}
     engines: {node: '>=16.0.0'}
     peerDependencies:
       graphql: ^14.0.0 || ^15.0.0 || ^16.0.0 || ^17.0.0
@@ -6917,8 +6929,8 @@ packages:
   extend@3.0.2:
     resolution: {integrity: sha512-fjquC59cD7CyW6urNXK0FBufkZcoiGG80wTuPujX590cB5Ttln20E2UB4S/WARVqhXffZl2LNgS+gQdPIIim/g==}
 
-  fast-check@4.10.2:
-    resolution: {integrity: sha512-iK2f+YrcmoeGqk6fA0ea2bptcu/itMIm4NfEozq6N25+aG6h7s5HZbB/k1aV7b5w5sFLMCbbtRUsTVR+BgC3xw==}
+  fast-check@4.10.3:
+    resolution: {integrity: sha512-SBaU6nhh+sXxb05r2IHAKfxnR/1Pu6MqtHYaewM1BY6V5xzOxOk+4yoWO7WfeeyZG1iArFE6/DO/7iLYMUuOJg==}
     engines: {node: '>=12.17.0'}
 
   fast-deep-equal@3.1.3:
@@ -8785,8 +8797,8 @@ packages:
       '@types/react':
         optional: true
 
-  react-router@8.5.1:
-    resolution: {integrity: sha512-5u1eQ46QjuXjNfEnLwzrnou1Bm5dquO3xjVYkkMYCudtkicD2AQHtx+fvXzPATtPJx8TW6DR1x1TDRqsfHyZBw==}
+  react-router@8.5.2:
+    resolution: {integrity: sha512-luPXqNUAIZAmCHbeBysc2KO7VJjckIMZk4ByEetS7Jotit8R6lLSVVeC76UE//AYK6QD6tAnVAPGkvmqMd+b1w==}
     engines: {node: '>=22.22.0'}
     peerDependencies:
       '@types/react': '>=19.2.0'
@@ -9406,8 +9418,8 @@ packages:
     os: [darwin, linux, win32, freebsd, openbsd, netbsd, sunos, android]
     hasBin: true
 
-  tailwind-merge@2.6.1:
-    resolution: {integrity: sha512-Oo6tHdpZsGpkKG88HJ8RR1rg/RdnEkQEfMoEk2x1XRI3F1AxeU+ijRXpiVUF4UbLfcxxRGw6TbUINKYdWVsQTQ==}
+  tailwind-merge@2.6.2:
+    resolution: {integrity: sha512-o2TX9QB8K2cfaJYgMwv96uAUQK5SqpRJHD2vGDK5nyF/tk9PQTZFpwgsDsySQjlIbYdZ6ZDkk5W+bSuWSe92AA==}
 
   tailwindcss-animate@1.0.7:
     resolution: {integrity: sha512-bl6mpH3T7I3UFxuvDEXLxy/VuFxBk5bbzplh7tXI68mwMokNYd1t9qPBHlnyTwfa4JGC4zP516I1hYYtQ/vspA==}
@@ -10186,7 +10198,7 @@ snapshots:
       '@apollo/utils.logger': 3.0.0
       graphql: 16.15.0
 
-  '@apollo/server@5.5.1(graphql@16.15.0)(supports-color@10.2.2)':
+  '@apollo/server@5.5.2(graphql@16.15.0)(supports-color@10.2.2)':
     dependencies:
       '@apollo/cache-control-types': 1.0.3(graphql@16.15.0)
       '@apollo/server-gateway-interface': 2.0.0(graphql@16.15.0)
@@ -10198,7 +10210,9 @@ snapshots:
       '@apollo/utils.logger': 3.0.0
       '@apollo/utils.usagereporting': 2.1.0(graphql@16.15.0)
       '@apollo/utils.withrequired': 3.0.0
-      '@graphql-tools/schema': 10.1.5(graphql@16.15.0)
+      '@graphql-tools/merge': 9.2.4(graphql@16.15.0)
+      '@graphql-tools/schema': 10.1.1(graphql@16.15.0)
+      '@graphql-tools/utils': 11.1.0(graphql@16.15.0)
       async-retry: 1.3.3
       body-parser: 2.4.0(supports-color@10.2.2)
       content-type: 1.0.5
@@ -10272,9 +10286,9 @@ snapshots:
       immutable: 5.1.9
       invariant: 2.2.4
 
-  '@as-integrations/express5@1.1.2(@apollo/server@5.5.1(graphql@16.15.0)(supports-color@10.2.2))(express@5.3.0(supports-color@10.2.2))':
+  '@as-integrations/express5@1.1.2(@apollo/server@5.5.2(graphql@16.15.0)(supports-color@10.2.2))(express@5.3.0(supports-color@10.2.2))':
     dependencies:
-      '@apollo/server': 5.5.1(graphql@16.15.0)(supports-color@10.2.2)
+      '@apollo/server': 5.5.2(graphql@16.15.0)(supports-color@10.2.2)
       express: 5.3.0(supports-color@10.2.2)
 
   '@asamuzakjp/css-color@5.1.11':
@@ -10305,12 +10319,12 @@ snapshots:
       '@smithy/types': 4.20.0
       tslib: 2.8.1
 
-  '@aws-sdk/client-s3@3.1169.0':
+  '@aws-sdk/client-s3@3.1173.0':
     dependencies:
       '@aws-sdk/checksums': 3.1002.5
       '@aws-sdk/core': 3.981.0
       '@aws-sdk/credential-provider-node': 3.972.97
-      '@aws-sdk/middleware-sdk-s3': 3.972.89
+      '@aws-sdk/middleware-sdk-s3': 3.972.90
       '@aws-sdk/signature-v4-multi-region': 3.996.52
       '@aws-sdk/types': 3.975.1
       '@smithy/core': 3.40.0
@@ -10319,7 +10333,7 @@ snapshots:
       '@smithy/types': 4.20.0
       tslib: 2.8.1
 
-  '@aws-sdk/client-ses@3.1169.0':
+  '@aws-sdk/client-ses@3.1173.0':
     dependencies:
       '@aws-sdk/core': 3.981.0
       '@aws-sdk/credential-provider-node': 3.972.97
@@ -10425,7 +10439,7 @@ snapshots:
       '@smithy/types': 4.20.0
       tslib: 2.8.1
 
-  '@aws-sdk/middleware-sdk-s3@3.972.89':
+  '@aws-sdk/middleware-sdk-s3@3.972.90':
     dependencies:
       '@aws-sdk/core': 3.981.0
       '@aws-sdk/signature-v4-multi-region': 3.996.52
@@ -11240,6 +11254,12 @@ snapshots:
       p-limit: 3.1.0
       tslib: 2.8.1
 
+  '@graphql-tools/merge@9.2.4(graphql@16.15.0)':
+    dependencies:
+      '@graphql-tools/utils': 12.1.0(graphql@16.15.0)
+      graphql: 16.15.0
+      tslib: 2.8.1
+
   '@graphql-tools/merge@9.2.8(graphql@16.15.0)':
     dependencies:
       '@graphql-tools/utils': 12.1.0(graphql@16.15.0)
@@ -11255,6 +11275,13 @@ snapshots:
     dependencies:
       '@ardatan/relay-compiler': 13.0.1(graphql@16.15.0)
       '@graphql-tools/utils': 11.1.0(graphql@16.15.0)
+      graphql: 16.15.0
+      tslib: 2.8.1
+
+  '@graphql-tools/schema@10.1.1(graphql@16.15.0)':
+    dependencies:
+      '@graphql-tools/merge': 9.2.8(graphql@16.15.0)
+      '@graphql-tools/utils': 12.1.0(graphql@16.15.0)
       graphql: 16.15.0
       tslib: 2.8.1
 
@@ -11955,7 +11982,7 @@ snapshots:
       '@opentelemetry/core': 3.1.1(@opentelemetry/api@1.10.0)
       '@opentelemetry/instrumentation': 0.301.2(@opentelemetry/api@1.10.0)(supports-color@10.2.2)
       '@opentelemetry/semantic-conventions': 1.45.0
-      '@opentelemetry/web-common': 0.301.2(@opentelemetry/api@1.10.0)
+      '@opentelemetry/web-common': 0.301.2
     transitivePeerDependencies:
       - supports-color
 
@@ -11973,7 +12000,7 @@ snapshots:
       '@opentelemetry/core': 3.1.1(@opentelemetry/api@1.10.0)
       '@opentelemetry/instrumentation': 0.301.2(@opentelemetry/api@1.10.0)(supports-color@10.2.2)
       '@opentelemetry/semantic-conventions': 1.45.0
-      '@opentelemetry/web-common': 0.301.2(@opentelemetry/api@1.10.0)
+      '@opentelemetry/web-common': 0.301.2
     transitivePeerDependencies:
       - supports-color
 
@@ -12234,7 +12261,7 @@ snapshots:
     dependencies:
       '@opentelemetry/core': 3.1.1(@opentelemetry/api@1.10.0)
       '@opentelemetry/instrumentation': 0.301.2(@opentelemetry/api@1.10.0)(supports-color@10.2.2)
-      '@opentelemetry/web-common': 0.301.2(@opentelemetry/api@1.10.0)
+      '@opentelemetry/web-common': 0.301.2
       zone.js: 0.15.1
     transitivePeerDependencies:
       - supports-color
@@ -12251,7 +12278,7 @@ snapshots:
       '@opentelemetry/core': 3.1.1(@opentelemetry/api@1.10.0)
       '@opentelemetry/instrumentation': 0.301.2(@opentelemetry/api@1.10.0)(supports-color@10.2.2)
       '@opentelemetry/semantic-conventions': 1.45.0
-      '@opentelemetry/web-common': 0.301.2(@opentelemetry/api@1.10.0)
+      '@opentelemetry/web-common': 0.301.2
     transitivePeerDependencies:
       - supports-color
 
@@ -12442,7 +12469,7 @@ snapshots:
       '@opentelemetry/api': 1.10.0
       '@opentelemetry/core': 3.1.1(@opentelemetry/api@1.10.0)
 
-  '@opentelemetry/web-common@0.301.2(@opentelemetry/api@1.10.0)':
+  '@opentelemetry/web-common@0.301.2':
     dependencies:
       '@opentelemetry/core': 3.1.1(@opentelemetry/api@1.10.0)
       '@opentelemetry/sdk-logs': 3.1.1(@opentelemetry/api@1.10.0)
@@ -17386,7 +17413,7 @@ snapshots:
 
   extend@3.0.2: {}
 
-  fast-check@4.10.2:
+  fast-check@4.10.3:
     dependencies:
       pure-rand: 8.4.2
 
@@ -19410,7 +19437,7 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.3.0
 
-  react-router@8.5.1(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
+  react-router@8.5.2(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
     dependencies:
       '@remix-run/route-pattern': 0.22.1
       cookie-es: 3.1.1
@@ -20119,7 +20146,7 @@ snapshots:
 
   systeminformation@5.33.19: {}
 
-  tailwind-merge@2.6.1: {}
+  tailwind-merge@2.6.2: {}
 
   tailwindcss-animate@1.0.7(tailwindcss@3.4.19(yaml@2.9.1)):
     dependencies:
