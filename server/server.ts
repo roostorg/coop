@@ -1,3 +1,5 @@
+import path from 'path';
+import { fileURLToPath } from 'url';
 import express from 'express';
 
 import makeApiApp from './api.js';
@@ -49,6 +51,18 @@ export default async function makeWWWServer(deps: Dependencies) {
   });
 
   app.use('/api/v1', apiApp);
+
+  const clientBuildPath = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    'client-build',
+  );
+  app.use(express.static(clientBuildPath));
+  app.get('{*path}', (_req, res, next) => {
+    const indexPath = path.join(clientBuildPath, 'index.html');
+    res.sendFile(indexPath, (err) => {
+      if (err) next();
+    });
+  });
 
   return { app, shutdown };
 }
