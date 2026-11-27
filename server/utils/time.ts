@@ -25,24 +25,6 @@ export function getUtcDateOnlyString(date = new Date()) {
   );
 }
 
-export function dateWithoutSeconds(date: Date) {
-  const res = new Date(date);
-  res.setSeconds(0, 0);
-  return res;
-}
-
-export function getUtcParts(date: Date) {
-  return {
-    year: date.getUTCFullYear(),
-    month: date.getUTCMonth() + 1,
-    date: date.getUTCDate(),
-    hour: date.getUTCHours(),
-    minute: date.getUTCMinutes(),
-    second: date.getUTCSeconds(),
-    milliseconds: date.getUTCMilliseconds(),
-  };
-}
-
 export function isValidDate(date: Date) {
   return !isNaN(date.getTime());
 }

@@ -239,17 +239,6 @@ export type IntegrationErrorType =
   | 'IntegrationNoInputCredentialsError'
   | 'IntegrationEmptyInputCredentialsError';
 
-export const makeIntegrationConfigTooManyCredentialsError = (
-  data: ErrorInstanceData,
-) =>
-  new CoopError({
-    status: 400,
-    type: [ErrorType.InvalidUserInput],
-    title: 'This integration type expects a single api credential.',
-    name: 'IntegrationConfigTooManyCredentialsError',
-    ...data,
-  });
-
 export const makeIntegrationConfigUnsupportedIntegrationError = (
   data: ErrorInstanceData,
 ) =>
@@ -258,28 +247,5 @@ export const makeIntegrationConfigUnsupportedIntegrationError = (
     type: [ErrorType.InvalidUserInput],
     title: 'This integration type is not supported.',
     name: 'IntegrationConfigUnsupportedIntegrationError',
-    ...data,
-  });
-
-export const makeIntegrationNoInputCredentialsError = (
-  data: ErrorInstanceData,
-) =>
-  new CoopError({
-    status: 400,
-    type: [ErrorType.InvalidUserInput],
-    title:
-      'This integration config creation expects at least one API credential.',
-    name: 'IntegrationNoInputCredentialsError',
-    ...data,
-  });
-
-export const makeIntegrationEmptyInputCredentialsError = (
-  data: ErrorInstanceData,
-) =>
-  new CoopError({
-    status: 400,
-    type: [ErrorType.InvalidUserInput],
-    title: 'This integration config creation expects no empty API credentials.',
-    name: 'IntegrationEmptyInputCredentialsError',
     ...data,
   });

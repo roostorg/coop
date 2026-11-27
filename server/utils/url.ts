@@ -20,8 +20,6 @@ function defaultBlockedHostnames(): string[] {
 
 export function validateUrl(
   value: string,
-  // If you update these opts make sure to update validateUrlOrNull's opts as
-  // well
   opts: UrlValidationOptions = {
     allowedSchemes: ['http', 'https'],
     blockedHostnames: defaultBlockedHostnames(),
@@ -61,18 +59,4 @@ export function isValidUrl(url: string, opts?: UrlValidationOptions) {
  */
 export function makeUrlString(it: string) {
   return isValidUrl(it) ? instantiateOpaqueType<UrlString>(it) : undefined;
-}
-
-export function validateUrlOrNull(
-  value?: string,
-  // Keep this default in sync with `validateUrl`'s default.
-  opts: UrlValidationOptions = {
-    allowedSchemes: ['http', 'https'],
-    blockedHostnames: defaultBlockedHostnames(),
-  },
-) {
-  if (value == null) {
-    return;
-  }
-  validateUrl(value, opts);
 }

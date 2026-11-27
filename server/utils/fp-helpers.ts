@@ -28,18 +28,6 @@ export function equalLengthZip<T, U>(
   return zip(a, b) as [T, U][];
 }
 
-export async function someAsync<T>(
-  arr: T[],
-  predicate: (v: T) => Promise<boolean>,
-) {
-  for (const e of arr) {
-    if (await predicate(e)) {
-      return true;
-    }
-  }
-  return false;
-}
-
 export async function everyAsync<T>(
   arr: T[],
   predicate: (v: T) => Promise<boolean>,

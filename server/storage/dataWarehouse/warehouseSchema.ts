@@ -53,11 +53,6 @@ export function warehouseDateToDate(date: WarehouseDate | DateOnlyString) {
   return new Date(date as unknown as Date | string);
 }
 
-/** Convert a warehouse driver date to an ISO JSON string. */
-export function warehouseDateToJson(it: WarehouseDate | DateOnlyString) {
-  return typeof it === 'string' ? new Date(it).toISOString() : it.toISOString();
-}
-
 export function warehouseDateToDateOnlyString(
   it: WarehouseDate | DateOnlyString,
 ) {

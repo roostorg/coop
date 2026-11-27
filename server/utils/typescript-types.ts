@@ -84,18 +84,6 @@ export function instantiateOpaqueType<OpaqueType extends Opaque<unknown>>(
   return value as OpaqueType;
 }
 
-/**
- * Takes a value typed as an opaque type and returns it cast to its runtime
- * representation.
- *
- * @param value The opaque value that is to be casted to its runtime type.
- */
-export function unwrapOpaqueValue<OpaqueType extends Opaque<unknown>>(
-  value: OpaqueType,
-): UnwrapOpaque<OpaqueType> {
-  return value as UnwrapOpaque<OpaqueType>;
-}
-
 // A convenient helper for building types that have different values based on
 // some boolean generic.
 export type If<Cond extends boolean, IfTrue, IfFalse> = Cond extends true
@@ -243,18 +231,6 @@ export function tryParseNonEmptyString(it: unknown) {
   return isNonEmptyString(it)
     ? it
     : __throw(new Error('Was not an NonEmptyString'));
-}
-
-export function areAllValuesNonEmptyStrings<T extends { [K: string]: string }>(
-  it: T,
-): it is { [K in keyof T]: T[K] & NonEmptyString } {
-  return Object.values(it).every(isNonEmptyString);
-}
-
-export function areAllArrayValuesNonEmptyString<T>(
-  it: readonly T[],
-): it is readonly (T & NonEmptyString)[] {
-  return it.every(isNonEmptyString);
 }
 
 export type NonEmptyArray<T> = [T, ...T[]];
