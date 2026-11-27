@@ -9,6 +9,7 @@ import * as v from 'valibot';
 import { js2xml } from 'xml-js';
 
 import { type Dependencies } from '../../iocContainer/index.js';
+import { type ReportedMediaBankingEnqueueFn } from '../../queues/reportedMediaBankingQueue.js';
 import { jsonStringify } from '../../utils/encoding.js';
 import { type FixKyselyRowCorrelation } from '../../utils/kysely.js';
 import { logErrorJson } from '../../utils/logging.js';
@@ -1305,6 +1306,7 @@ export default class NcmecReporting {
     private fetchHTTP: Dependencies['fetchHTTP'],
     private signingKeyPairService: Dependencies['SigningKeyPairService'],
     private readonly tracer: Dependencies['Tracer'],
+    private readonly reportedMediaBankingEnqueue: ReportedMediaBankingEnqueueFn,
   ) {}
   async hasNCMECReportingEnabled(orgId: string) {
     const ncmecOrgSettings = await this.pgQuery
@@ -1907,6 +1909,29 @@ export default class NcmecReporting {
               is_test: isTest,
             })
             .execute();
+
+          // Enqueued before the preservation request: that calls the org's
+          // own endpoint, and if it fails the retry job skips this user,
+          // since the report was already accepted.
+          const reportedMediaHashBankId =
+            ncmecConfig?.reported_media_hash_bank_id;
+
+          if (
+            reportedMediaHashBankId != null &&
+            reportParams.media.length > 0 &&
+            isTest === false
+          ) {
+            await this.reportedMediaBankingEnqueue(
+              reportParams.media.map((media) => ({
+                orgId: reportParams.orgId,
+                hashBankId: reportedMediaHashBankId,
+                ncmecReportId: reportId,
+                itemId: media.id,
+                itemTypeId: media.typeId,
+                url: media.url,
+              })),
+            );
+          }
 
           if (ncmecConfig?.ncmec_preservation_endpoint && isTest === false) {
             await this.#sendUserPreservationRequest({

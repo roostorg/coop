@@ -20,6 +20,7 @@ export type NcmecOrgSettingsInputShape = {
   contactPersonPhone?: string | null;
   mediaReviewRequirement?: string | null;
   minMediaToReview?: number | null;
+  reportedMediaHashBankId?: number | null;
 };
 
 const VALID_NCMEC_MEDIA_REVIEW_REQUIREMENTS = ['ALL', 'MINIMUM'] as const;

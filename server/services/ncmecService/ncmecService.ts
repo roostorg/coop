@@ -2,6 +2,7 @@ import { sql, type Kysely } from 'kysely';
 
 import { type Dependencies } from '../../iocContainer/index.js';
 import { inject } from '../../iocContainer/utils.js';
+import { type ReportedMediaBankingEnqueueFn } from '../../queues/reportedMediaBankingQueue.js';
 import { type ActionExecutionCorrelationId } from '../analyticsLoggers/ActionExecutionLogger.js';
 import { type RuleExecutionCorrelationId } from '../analyticsLoggers/ruleExecutionLoggingUtils.js';
 import { type ItemSubmissionWithTypeIdentifier } from '../itemProcessingService/makeItemSubmissionWithTypeIdentifier.js';
@@ -38,6 +39,7 @@ export class NcmecService {
     readonly tracer: Dependencies['Tracer'],
     readonly itemInvestigationService: Dependencies['ItemInvestigationService'],
     readonly getItemTypeEventuallyConsistent: Dependencies['getItemTypeEventuallyConsistent'],
+    readonly reportedMediaBankingEnqueue: ReportedMediaBankingEnqueueFn,
   ) {
     this.ncmecReporting = new NcmecReporting(
       pgQuery,
@@ -45,6 +47,7 @@ export class NcmecService {
       fetchHTTP,
       signingKeyPairService,
       tracer,
+      reportedMediaBankingEnqueue,
     );
     this.ncmecEnqueueToMrt = new NcmecEnqueueToMrt(
       partialItemsService,
@@ -227,6 +230,7 @@ export class NcmecService {
         'contact_person_phone as contactPersonPhone',
         'media_review_requirement as mediaReviewRequirement',
         'min_media_to_review as minMediaToReview',
+        'reported_media_hash_bank_id as reportedMediaHashBankId',
       ])
       .where('org_id', '=', orgId)
       .executeTakeFirst();
@@ -253,6 +257,7 @@ export class NcmecService {
     contactPersonPhone: string | null;
     mediaReviewRequirement: 'ALL' | 'MINIMUM';
     minMediaToReview: number | null;
+    reportedMediaHashBankId: number | null;
   }) {
     await this.pgQuery
       .insertInto('ncmec_reporting.ncmec_org_settings')
@@ -276,6 +281,7 @@ export class NcmecService {
         contact_person_phone: params.contactPersonPhone ?? null,
         media_review_requirement: params.mediaReviewRequirement,
         min_media_to_review: params.minMediaToReview ?? null,
+        reported_media_hash_bank_id: params.reportedMediaHashBankId,
         actions_to_run_upon_report_creation: null,
         policies_applied_to_actions_run_on_report_creation: null,
       })
@@ -300,6 +306,7 @@ export class NcmecService {
           contact_person_phone: params.contactPersonPhone ?? null,
           media_review_requirement: params.mediaReviewRequirement,
           min_media_to_review: params.minMediaToReview ?? null,
+          reported_media_hash_bank_id: params.reportedMediaHashBankId,
         }),
       )
       .execute();
@@ -318,6 +325,7 @@ export default inject(
     'Tracer',
     'ItemInvestigationService',
     'getItemTypeEventuallyConsistent',
+    'reportedMediaBankingEnqueue',
   ],
   NcmecService,
 );

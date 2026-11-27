@@ -1052,9 +1052,11 @@ export class HmaService {
         content_uri?: string;
         json?: Record<string, unknown>;
       };
+      note?: string;
     },
   ): Promise<BankContentResponse> {
     const { file, contentType, url, metadata } = options;
+    const note = toHmaNote(options.note);
 
     if (!url && (!file || !contentType)) {
       throw new Error(
@@ -1064,22 +1066,23 @@ export class HmaService {
 
     let response;
     if (url) {
-      // URL-based content
-      const params = new URLSearchParams();
-      params.append('url', url);
-      if (metadata) {
-        if (metadata.content_id)
-          params.append('content_id', metadata.content_id);
-        if (metadata.content_uri)
-          params.append('content_uri', metadata.content_uri);
-        if (metadata.json)
-          params.append('metadata', jsonStringify(metadata.json));
+      // HMA reads `metadata` from the JSON body only; query-param metadata is dropped.
+      const params = new URLSearchParams({ url });
+      let body: string | undefined;
+      if (metadata || note) {
+        body = jsonStringify({
+          ...(metadata ? { metadata } : {}),
+          ...(note ? { note } : {}),
+        });
       }
 
       response = await this.fetchHTTP({
         url: `${this.hmaServiceUrl}/c/bank/${bankName}/content?${params.toString()}`,
         isUntrustedUrl: false,
         method: 'post',
+        ...(body !== undefined
+          ? { body, headers: { 'Content-Type': 'application/json' } }
+          : {}),
         handleResponseBody: 'as-json',
       });
     } else {
@@ -1099,6 +1102,8 @@ export class HmaService {
         if (metadata.json)
           formData.append('metadata', jsonStringify(metadata.json));
       }
+
+      if (note) formData.append('note', note);
 
       response = await this.fetchHTTP({
         url: `${this.hmaServiceUrl}/c/bank/${bankName}/content`,
@@ -1201,6 +1206,15 @@ export class HmaService {
     );
     return result.matched;
   }
+}
+
+function toHmaNote(note: string | undefined): string | undefined {
+  if (!note?.trim()) {
+    return undefined;
+  }
+  // HMA counts code points (Python len), not UTF-16 units, truncate to 255 to avoid exceeding the limit.
+  const codePoints = [...note];
+  return codePoints.length > 255 ? codePoints.slice(0, 255).join('') : note;
 }
 
 export default inject(['fetchHTTP', 'KyselyPg', 'Tracer'], HmaService);
